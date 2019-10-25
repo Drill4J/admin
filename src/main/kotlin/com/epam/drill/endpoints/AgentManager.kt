@@ -92,7 +92,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             this.buildVersions.add(buildVersion)
             update(this@AgentManager)
         }
-        .apply { topicResolver.sendToAllSubscribed("/$agentId/builds") }
+        .apply {
+            topicResolver.sendToAllSubscribed("/$agentId/builds")
+            updateBuildDataOnAllPlugins(agentId, buildVersion.id)
+        }
 
     suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean =
         getOrNull(agentId)?.let { agentInfo ->
@@ -234,6 +237,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 sendBinary("/plugins/load", pb, data).await()
             }
         }
+    }
+
+    private suspend fun updateBuildDataOnAllPlugins(agentId: String, buildVersion: String) {
+        val plugins = full(agentId)?.instance
+        plugins?.values?.forEach { it.updateDataOnBuildConfigChange(buildVersion) }
     }
 
 }
