@@ -67,17 +67,18 @@ class AgentBuildManager(val agentId: String) : BuildManager {
         ) ?: BuildInfo()
 
         val changes = buildInfos[buildVersion]?.methodChanges?.map ?: emptyMap()
+        val deletedMethodsCount = changes[DiffType.DELETED]?.count() ?: 0
         buildInfos[buildVersion] = buildInfos[buildVersion]?.copy(
             buildSummary = BuildSummary(
                 name = buildVersion,
                 addedDate = System.currentTimeMillis(),
-                totalMethods = changes.values.flatten().count(),
+                totalMethods = changes.values.flatten().count() - deletedMethodsCount,
                 newMethods = changes[DiffType.NEW]?.count() ?: 0,
                 modifiedMethods = (changes[DiffType.MODIFIED_NAME]?.count() ?: 0) +
                     (changes[DiffType.MODIFIED_BODY]?.count() ?: 0) +
                     (changes[DiffType.MODIFIED_DESC]?.count() ?: 0),
                 unaffectedMethods = changes[DiffType.UNAFFECTED]?.count() ?: 0,
-                deletedMethods = changes[DiffType.DELETED]?.count() ?: 0
+                deletedMethods = deletedMethodsCount
             )
         ) ?: BuildInfo()
     }
