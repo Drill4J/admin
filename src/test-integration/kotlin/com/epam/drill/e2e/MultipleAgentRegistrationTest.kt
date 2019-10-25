@@ -9,7 +9,7 @@ import org.junit.*
 
 class MultipleAgentRegistrationTest : AbstractE2ETest() {
 
-    @Test(timeout = 100000)
+    @Test(timeout = 10000)
     fun `50 Agents should be registered in parallel`() {
         createSimpleAppWithUIConnection {
             repeat(50) {

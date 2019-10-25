@@ -21,17 +21,16 @@ class BuildsTest : AbstractE2ETest() {
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-data`("DrillExtension1.class")
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                addPlugin(aw.id, pluginT2CM)
 
+                addPlugin(aw.id, pluginT2CM)
+                ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
-                    ui.getAgent()?.status shouldBe AgentStatus.BUSY
-
                 }
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 1
 
-            }.reconnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
+            }.newConnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
@@ -44,7 +43,7 @@ class BuildsTest : AbstractE2ETest() {
                 renameBuildVersion(aw.id, payload = AgentBuildVersionJson("0.1.2", "wtf"))
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 2
-            }.reconnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
+            }.newConnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()

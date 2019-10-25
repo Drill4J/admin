@@ -21,11 +21,14 @@ private val logger = KotlinLogging.logger {}
 class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
     private val plugins: Plugins by kodein.instance()
     private val pluginPaths: List<File> =
-        listOf(
+        mutableListOf(
             File("distr").resolve("adminStorage"),
-            Paths.get("").toAbsolutePath().parent.resolve("distr").resolve("adminStorage").toFile(),
             drillHomeDir.resolve("adminStorage")
-        ).map { it.canonicalFile }
+        ).apply {
+            Paths.get("")?.toAbsolutePath()?.parent?.resolve("distr")?.resolve("adminStorage")?.toFile()?.let {
+                add(it)
+            }
+        }.map { it.canonicalFile }
 
     init {
         try {

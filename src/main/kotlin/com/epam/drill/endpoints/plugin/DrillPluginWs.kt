@@ -31,24 +31,25 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val agentManager: AgentManager by instance()
 
     @Suppress("UNCHECKED_CAST")
-    override suspend fun send(agentId: String, buildVersion: String, destination: String, message: Any) {
-        val id = "$agentId:$destination:$buildVersion"
+    override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
+        val dest = destination as? String ?: app.toLocation(destination)
+        val id = "$agentId:$dest:$buildVersion"
         if (message.toString().isEmpty()) {
             eventStorage.remove(id)
         } else {
             val messageForSend = if (message is List<*>) {
                 WsSendMessageListData.serializer() stringify WsSendMessageListData(
                     WsMessageType.MESSAGE,
-                    destination,
+                    dest,
                     message as List<Any>
                 )
             } else {
-                WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.MESSAGE, destination, message)
+                WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.MESSAGE, dest, message)
             }
             logger.debug { "send data to $id destination" }
             eventStorage[id] = messageForSend
 
-            sessionStorage[destination]?.let { sessionDataSet ->
+            sessionStorage[dest]?.let { sessionDataSet ->
                 sessionDataSet.forEach { data ->
                     try {
                         if (data.subscribeInfo == SubscribeInfo(agentId, buildVersion))
@@ -57,6 +58,8 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                         sessionDataSet.removeIf { it == data }
                     }
                 }
+            } ?: run {
+                logger.debug { "ws topic '$dest' not registered yet" }
             }
         }
     }
