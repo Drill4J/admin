@@ -1,0 +1,36 @@
+name: Build & publish admin
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+jobs:
+  check_and_publish:
+    name: Check & Publish snapshot/release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: env
+        run: env
+      - name: Check
+        run: |
+          ./gradlew -si --no-daemon check
+      - name: Publish to Maven
+        run: |
+          ./gradlew -si --no-daemon publish \
+          -PbintrayUser=${BINTRAY_USER} \
+          -PbintrayApiKey=${BINTRAY_API}
+        env:
+          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+          BINTRAY_API: ${{ secrets.BINTRAY_API }}
+      - name: Publish to DockerHub
+        run: |
+          ./gradlew -si --no-daemon jib \
+          -Djib.to.auth.username=${DRILL_USERNAME} \
+          -Djib.to.auth.password=${DRILL_PASSWORD} \
+          -Djib.extraDirectories.paths=${PWD}/distr,${PWD}/ssl
+        env:
+          DRILL_USERNAME: ${{ secrets.DRILL_USERNAME }}
+          DRILL_PASSWORD: ${{ secrets.DRILL_PASSWORD }}

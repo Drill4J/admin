@@ -1,0 +1,15 @@
+name: Check admin
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Check
+        run: |
+          gradle -si --no-daemon check
