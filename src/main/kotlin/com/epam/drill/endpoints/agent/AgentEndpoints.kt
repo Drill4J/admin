@@ -3,8 +3,10 @@ package com.epam.drill.endpoints.agent
 
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.router.*
+import com.epam.drill.system.*
 import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -28,6 +30,10 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     if (agentManager.agentSession(agentId) != null) {
                         val au = call.parse(AgentInfoWebSocketSingle.serializer())
                         agentManager.updateAgent(agentId, au)
+                        if (au.sessionIdHeaderName.isNotEmpty())
+                            agentManager.agentSession(au.id)?.apply {
+                                sendToTopic("/agent/config", ServiceConfig(app.securePort(), au.sessionIdHeaderName))
+                            }
                         call.respond(HttpStatusCode.OK, "agent '$agentId' was updated")
                     } else {
                         call.respond(HttpStatusCode.BadRequest, "agent '$agentId' not found")

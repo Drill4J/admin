@@ -35,6 +35,7 @@ data class AgentInfoWebSocketSingle(
     val ipAddress: String = "",
     val activePluginsCount: Int = 0,
     val pluginsCount: Int = 0,
+    val sessionIdHeaderName: String = "",
     val rawPluginsName: MutableSet<PluginWebSocket> = mutableSetOf(),
     val buildVersions: MutableSet<AgentBuildVersionJson> = mutableSetOf()
 )
