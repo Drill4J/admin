@@ -8,16 +8,15 @@ import com.epam.drill.endpoints.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
-import com.sun.org.apache.bcel.internal.classfile.*
-import com.sun.org.apache.bcel.internal.util.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
+import kotlinx.io.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
-import java.io.*
+import org.apache.bcel.classfile.*
 
 abstract class PluginStreams() {
     lateinit var app: Application

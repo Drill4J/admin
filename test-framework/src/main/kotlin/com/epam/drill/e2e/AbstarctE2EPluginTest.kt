@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST", "unused", "UNUSED_PARAMETER")
+
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
@@ -14,6 +16,9 @@ import org.junit.*
 import org.junit.rules.*
 import java.io.*
 import java.util.concurrent.*
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.set
 
 abstract class AbstarctE2EPluginTest<T : PluginStreams> {
 
@@ -41,7 +46,9 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
 
             runBlocking {
                 block()
-                val pluginId = (PluginMetadata.serializer() parse File("plugin_config.json").readText()).id
+                val pluginId = (PluginMetadata.serializer() parse File(
+                    System.getProperty("plugin.config.path") ?: "plugin_config.json"
+                ).readText()).id
                 agents.map { (_, xx) ->
                     val (ag, classes, connect, thens) = xx
 
@@ -51,7 +58,8 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
                         handleWebSocketConversation("/ws/drill-plugin-socket?token=${globToken}") { uiIncoming, ut ->
                             val single = X::class.java.constructors.single()
                             val st = single.newInstance() as T
-                            val pluginTestInfo = PluginTestContext(ag.id, pluginId, ag.buildVersion, globToken, classes.size, this@withTestApplication
+                            val pluginTestInfo = PluginTestContext(
+                                ag.id, pluginId, ag.buildVersion, globToken, classes.size, this@withTestApplication
                             )
                             st.info = pluginTestInfo
                             st.app = application
@@ -72,7 +80,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
                                 delay(2000)
                                 addPlugin(ag.id, PluginId(pluginId))
 
-                                apply.getLoadedPlugin { metadata, file ->
+                                apply.getLoadedPlugin { _, file ->
                                     DigestUtils.md5Hex(file)
                                 }
 
@@ -97,7 +105,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
                                 )
                                 st.info = pluginTestInfo
                                 st.app = application
-                                with(st) {queued(uiIncoming, ut) }
+                                with(st) { queued(uiIncoming, ut) }
 
                                 handleWebSocketConversation(
                                     "/agent/attach",
@@ -263,12 +271,12 @@ data class PluginTestContext(
         token: String = this.token
 
     ) = engine.handleRequest(
-            HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(payload)
-        }.run { response.status() to response.content }
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
+    ) {
+        addHeader(HttpHeaders.Authorization, "Bearer $token")
+        setBody(payload)
+    }.run { response.status() to response.content }
 
 }
 

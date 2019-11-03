@@ -11,8 +11,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "5.1.0"
 }
 
-setupVersion()
-
 repositories {
     mavenLocal()
     mavenCentral()
@@ -44,7 +42,7 @@ application {
 
 val remotePlugins: Configuration by configurations.creating {}
 dependencies {
-    remotePlugins("com.epam.drill:coverage-plugin:0.4.0-SNAPSHOT")
+//    remotePlugins("com.epam.drill:coverage-plugin:0.3.20")
 }
 val integrationTestImplementation by configurations.creating {
     extendsFrom(configurations["testCompile"])
@@ -61,8 +59,8 @@ dependencies {
     implementation(ktor("locations"))
     implementation(ktor("server-core"))
     implementation(ktor("websockets"))
-    implementation(drill("drill-admin-part-jvm", drillPluginApiVersion))
-    implementation(drill("common-jvm", drillCommonLibVersion))
+    implementation(project(":plugin-api:drill-admin-part"))
+    implementation(project(":common"))
     implementation("com.hazelcast:hazelcast:3.12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
@@ -75,7 +73,7 @@ dependencies {
     implementation("com.epam.drill:kodux-jvm:0.1.1")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
 
-    testImplementation(project(":test-framework"))
+    testImplementation(project(":admin:test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
     testImplementation(kotlin("test-junit"))
     integrationTestImplementation(ktor("server-test-host"))
@@ -128,7 +126,7 @@ task<Test>("integrationTest") {
 }
 
 tasks.named("check") {
-    dependsOn("integrationTest")
+//    dependsOn("integrationTest")
 }
 
 tasks {
@@ -145,7 +143,7 @@ tasks {
 
     val downloadPlugins by registering(Copy::class) {
         from(remotePlugins.files.filter { it.extension == "zip" })
-        into(rootDir.resolve("distr").resolve("adminStorage"))
+        into(project(":admin").projectDir.resolve("distr").resolve("adminStorage"))
     }
 
     named("run") {

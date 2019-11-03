@@ -5,15 +5,11 @@ plugins {
     id("kotlinx-serialization")
     `maven-publish`
 }
-setupVersion()
 repositories {
     mavenLocal()
     mavenCentral()
     jcenter()
     maven(url = "https://dl.bintray.com/kodein-framework/Kodein-DI/")
-    if ("$version".endsWith("-SNAPSHOT")) {
-        maven(url = "https://oss.jfrog.org/artifactory/list/oss-snapshot-local")
-    }
     maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
 }
 
@@ -25,18 +21,20 @@ dependencies {
     implementation(ktor("locations"))
     implementation(ktor("server-core"))
     implementation(ktor("websockets"))
-    implementation(drill("drill-admin-part-jvm", drillPluginApiVersion))
-    implementation(drill("common-jvm", drillCommonLibVersion))
+    implementation(project(":plugin-api:drill-admin-part"))
+    implementation(project(":common"))
     implementation(ktor("server-test-host"))
     implementation("com.epam.drill:kodux-jvm:0.1.1")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
-    api(project(":core"))
+    api(project(":admin:core"))
+    implementation("org.apache.bcel:bcel:$bcelVersion")
 }
 tasks {
 
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.InternalAPI"
+        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
     }
 }
 
