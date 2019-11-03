@@ -16,9 +16,6 @@ repositories {
     mavenCentral()
     jcenter()
     maven(url = "https://dl.bintray.com/kodein-framework/Kodein-DI/")
-    if ("$version".endsWith("-SNAPSHOT")) {
-        maven(url = "https://oss.jfrog.org/artifactory/list/oss-snapshot-local")
-    }
     maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
 }
 
@@ -42,7 +39,7 @@ application {
 
 val remotePlugins: Configuration by configurations.creating {}
 dependencies {
-//    remotePlugins("com.epam.drill:coverage-plugin:0.3.20")
+    remotePlugins("com.epam.drill:coverage-plugin:+")
 }
 val integrationTestImplementation by configurations.creating {
     extendsFrom(configurations["testCompile"])
@@ -86,7 +83,7 @@ jib {
         image = "gcr.io/distroless/java:8"
     }
     to {
-        image = "drill4j/${project.name}"
+        image = "drill4j/admin"
         tags = setOf("${project.version}")
     }
     container {
@@ -162,10 +159,7 @@ tasks {
 publishing {
     repositories {
         maven {
-            url =
-                if (version.toString().endsWith("-SNAPSHOT"))
-                    uri("http://oss.jfrog.org/oss-snapshot-local")
-                else uri("http://oss.jfrog.org/oss-release-local")
+            url = uri("http://oss.jfrog.org/oss-release-local")
             credentials {
                 username =
                     if (project.hasProperty("bintrayUser"))
