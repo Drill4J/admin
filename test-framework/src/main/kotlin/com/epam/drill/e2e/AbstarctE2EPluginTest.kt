@@ -116,7 +116,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
                                     apply.getServiceConfig()?.sslPort
                                     apply.`get-set-packages-prefixes`()
                                     apply.`get-load-classes-data`(*classes.toTypedArray())
-                                    apply.getLoadedPlugin { metadata, file ->
+                                    apply.getLoadedPlugin { _, file ->
                                         DigestUtils.md5Hex(file)
                                     }
 

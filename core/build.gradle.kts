@@ -58,7 +58,6 @@ dependencies {
     implementation(ktor("websockets"))
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
-    implementation("com.hazelcast:hazelcast:3.12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
     implementation("io.github.microutils:kotlin-logging:1.6.24")
