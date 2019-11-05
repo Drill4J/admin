@@ -25,30 +25,37 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
         app.routing {
             authWebSocket("/ws/drill-admin-socket") {
                 val rawWsSession = this
+                logger.info { "New session on drill-admin-socket" }
+
                 try {
                     incoming.consumeEach { frame ->
-
                         val json = (frame as Frame.Text).readText()
                         val event = WsReceiveMessage.serializer() parse json
+                        logger.info { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
+
                         when (event.type) {
+
                             WsMessageType.SUBSCRIBE -> {
                                 val wsSession = DrillWsSession(event.destination, rawWsSession)
                                 subscribe(wsSession, event)
+                                logger.info { "${event.destination} is subscribed" }
                             }
-                            WsMessageType.MESSAGE -> {
-                                TODO("NOT IMPLEMENTED YET")
-                            }
+
                             WsMessageType.UNSUBSCRIBE -> {
-                                sessionStorage.removeTopic(event.destination)
+
+                                if (sessionStorage.removeTopic(event.destination)) {
+                                    logger.info { "${event.destination} is unsubscribed" }
+                                }
                             }
 
                             else -> {
+                                logger.info { "Event with type: '${event.type}' not supported yet" }
                             }
-
                         }
                     }
                 } catch (ex: Exception) {
                     logger.info { "Session was removed" }
+                    logger.debug { "Finished with exception: $ex" }
                     sessionStorage.remove(rawWsSession)
                 }
             }
@@ -57,7 +64,6 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun subscribe(wsSession: DrillWsSession, event: WsReceiveMessage) {
         sessionStorage += (wsSession)
-        logger.info { "${event.destination} is subscribed" }
         topicResolver.sendToAllSubscribed(event.destination)
     }
 }

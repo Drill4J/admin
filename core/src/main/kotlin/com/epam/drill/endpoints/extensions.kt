@@ -6,6 +6,7 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
+import mu.*
 
 fun Application.toLocation(rout: Any): String {
     return this.locations.href(rout)
@@ -42,6 +43,7 @@ suspend fun MutableSet<DrillWsSession>.sendTo(
                 it.send(frame)
             }
         } catch (ex: Exception) {
+            KotlinLogging.logger {}.error { "While processing drill ws session receive exception '${ex.message}'" }
             iter.remove()
         }
     }
@@ -49,10 +51,8 @@ suspend fun MutableSet<DrillWsSession>.sendTo(
 
 fun SessionStorage.exists(destination: String) = this.firstOrNull { it.url == destination } != null
 
-fun SessionStorage.removeTopic(destination: String) {
-    if (this.removeIf { it.url == destination })
-        println("$destination unsubscribe")
-}
+fun SessionStorage.removeTopic(destination: String): Boolean = this.removeIf { it.url == destination }
+
 
 fun String.textFrame() = Frame.Text(this)
 

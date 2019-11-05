@@ -33,23 +33,20 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = retrieveParams()
                 val agentInfo = agentManager.agentConfiguration(agentConfig.id, agentConfig.buildVersion)
-                agentInfo.ipAddress = call.request.local.remoteHost
-
-                agentManager.put(agentInfo, this)
-                agentManager.update()
-
-                logger.info { "Agent WS is connected. Client's address is ${call.request.local.remoteHost}" }
-                agentManager.sync(agentInfo, needSync)
                 val sslPort = app.securePort()
 
-                sendToTopic("/agent/config", ServiceConfig(sslPort,agentInfo.sessionIdHeaderName))
+                agentInfo.ipAddress = call.request.local.remoteHost
+                agentManager.put(agentInfo, this)
+                agentManager.update()
+                agentManager.sync(agentInfo, needSync)
 
+                logger.info { "Agent WS is connected. Client's address is ${call.request.local.remoteHost}, ssl port is '$sslPort" }
+
+                sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName))
                 createWsLoop(agentInfo)
-
             }
         }
     }
-
 
 
     private fun DefaultWebSocketServerSession.retrieveParams(): Pair<AgentConfig, Boolean> {
@@ -59,18 +56,18 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo) {
+
         try {
             incoming.consumeEach { frame ->
                 if (frame is Frame.Text) {
                     val message = Message.serializer() parse frame.readText()
+                    logger.info { "Processing message ${message.type} with data '${message.data}'" }
+
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
-                            logger.debug(message.data)
                             pd.processPluginData(message.data, agentInfo)
                         }
-                        MessageType.MESSAGE -> {
-                            logger.warn { "Message: '${message}' " }
-                        }
+
                         MessageType.MESSAGE_DELIVERED -> {
                             subscribers[message.destination]?.apply {
                                 if (callback.reflect()?.parameters?.get(0)?.type == Unit::class.starProjectedType)
@@ -80,16 +77,19 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 state = false
                             }
                         }
+
                         MessageType.START_CLASSES_TRANSFER -> {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .setupBuildInfo(agentInfo.buildVersion)
                         }
+
                         MessageType.CLASSES_DATA -> {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .addClass(agentInfo.buildVersion, message.data)
                         }
+
                         MessageType.FINISH_CLASSES_TRANSFER -> {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
@@ -97,18 +97,19 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             agentManager.resetAllPlugins(agentInfo.id)
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                         }
+
                         else -> {
-                            logger.warn { "How do you want to process '${message.type}' event?" }
+                            logger.warn { "Message with type '${message.type}' is not supported yet" }
                         }
                     }
 
                 }
             }
         } catch (ex: Exception) {
-            ex.printStackTrace()
+            logger.error { "Handle with exception '${ex.message}'" }
         } finally {
-            logger.info { "agentDisconnected ${agentInfo.id} disconnected!" }
             agentManager.remove(agentInfo)
+            logger.info { "Agent with id '${agentInfo.id}' was disconnected successfully" }
         }
     }
 }

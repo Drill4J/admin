@@ -11,6 +11,7 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.websocket.*
+import mu.*
 import java.io.*
 import java.time.*
 
@@ -21,6 +22,8 @@ val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
 
+private val logger = KotlinLogging.logger {}
+
 @Suppress("unused")
 fun Application.module() = kodeinApplication(
     AppBuilder {
@@ -30,6 +33,7 @@ fun Application.module() = kodeinApplication(
 
             install(StatusPages) {
                 exception<Throwable> { cause ->
+                    logger.error(cause) { "Build application finished with exception" }
                     call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
                     throw cause
                 }

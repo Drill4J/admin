@@ -15,10 +15,12 @@ import io.ktor.locations.post
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
+    val logger = KotlinLogging.logger {}
     private val app: Application by instance()
     private val agentManager: AgentManager by instance()
     private val plugins: Plugins by kodein.instance()
@@ -29,16 +31,22 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
         app.routing {
             authenticate {
                 post<Routes.Api.Agent.UnloadPlugin> { (agentId, pluginId) ->
+                    logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
                     val drillAgent = agentManager.agentSession(agentId)
+                    val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
+
                     if (drillAgent == null) {
+                        logger.warn { "Drill agent is absent" }
                         call.respond("can't find the agent '$agentId'")
                         return@post
                     }
-                    val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
+
                     if (agentPluginPartFile == null) {
+                        logger.warn { "Agent plugin part file is absent" }
                         call.respond("can't find the plugin '$pluginId' in the agent '$agentId'")
                         return@post
                     }
+
                     drillAgent.send(
                         Frame.Text(
                             Message.serializer() stringify Message(
@@ -48,6 +56,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             )
                         )
                     )
+                    logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
                     //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
                     call.respond("event 'unload' was sent to AGENT")
                 }
@@ -55,6 +64,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.AgentToggleStandby> { (agentId) ->
+                    logger.info { "Toggle agent $agentId" }
                     agentManager[agentId]?.let { agentInfo ->
                         agentInfo.status = when (agentInfo.status) {
                             AgentStatus.OFFLINE -> AgentStatus.ONLINE
@@ -73,6 +83,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             )
                         }
                         agentInfo.update(agentManager)
+                        logger.info { "Agent $agentId toggled to status ${agentInfo.status.name} successfully" }
                         call.respond(HttpStatusCode.OK, "toggled")
                     }
                 }
@@ -80,12 +91,15 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.ResetPlugin> { (agentId, pluginId) ->
+                    logger.info { "Reset plugin with id $pluginId for agent with id $agentId was successfully" }
                     val agentEntry = agentManager.full(agentId)
+
                     val (statusCode, response) = when {
                         agentEntry == null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                         plugins[pluginId] == null -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
                         else -> {
                             val pluginInstance = agentEntry.instance[pluginId]
+
                             if (pluginInstance == null) {
                                 HttpStatusCode.NotFound to
                                         "plugin with id $pluginId not installed to agent with id $agentId"
@@ -95,35 +109,42 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             }
                         }
                     }
+                    logger.info { "Reset plugin with id $pluginId for agent with id $agentId result: $response" }
                     call.respond(statusCode, response)
                 }
             }
 
             authenticate {
                 post<Routes.Api.ResetAgent> { (agentId) ->
+                    logger.info { "Reset agent with id $agentId" }
                     val agentEntry = agentManager.full(agentId)
-                    val (statusCode, response) = when {
-                        agentEntry == null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
+
+                    val (statusCode, response) = when (agentEntry) {
+                        null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                         else -> {
                             agentEntry.instance.values.forEach { pluginInstance -> pluginInstance.dropData() }
                             HttpStatusCode.OK to "reset agent with id $agentId"
                         }
                     }
+                    logger.info { "Reset agent with id $agentId result: $response" }
                     call.respond(statusCode, response)
                 }
             }
 
             authenticate {
                 post<Routes.Api.ResetAllAgents> {
+                    logger.info { "Reset all agents" }
                     agentManager.getAllAgents().forEach { agentEntry ->
                         agentEntry.instance.values.forEach { pluginInstance -> pluginInstance.dropData() }
                     }
+                    logger.info { "Reset all agents successfully" }
                     call.respond(HttpStatusCode.OK, "reset drill admin app")
                 }
             }
 
             authenticate {
                 post<Routes.Api.ReadNotification> {
+                    logger.info { "Read notification" }
                     val callString = call.receiveText()
                     val (statusCode, response) = if (callString.isBlank()) {
                         notificationsManager.readAll()
@@ -137,6 +158,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             HttpStatusCode.NotFound to "Notification with id $notificationId not found"
                         }
                     }
+                    logger.info { "Notification was reed with result: $response" }
                     call.respond(statusCode, response)
                 }
             }
@@ -171,6 +193,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.RenameBuildVersion> { (agentId) ->
+                    logger.info { "Rename build version" }
                     val buildVersion = AgentBuildVersionJson.serializer() parse call.receiveText()
                     val agentInfo = agentManager.updateAgentBuildAliases(agentId, buildVersion)
                     val (statusCode, response) = if (agentInfo == null) {
@@ -178,6 +201,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     } else {
                         HttpStatusCode.OK to "Agent with id $agentId have been updated"
                     }
+                    logger.info { "Build version rename was finished with result: $response" }
                     call.respond(statusCode, response)
                 }
             }
