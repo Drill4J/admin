@@ -38,6 +38,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 agentInfo.ipAddress = call.request.local.remoteHost
                 agentManager.put(agentInfo, this)
                 agentManager.update()
+                agentManager.adminData(agentInfo.id).loadStoredData()
                 agentManager.sync(agentInfo, needSync)
 
                 logger.info {
@@ -83,6 +84,10 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
+                            agentManager.adminData(agentInfo.id).run {
+                                buildManager.setupBuildInfo(agentInfo.buildVersion)
+                                refreshStoredSummary()
+                            }
                             logger.debug { "Starting classes transfer" }
                             agentManager.adminData(agentInfo.id)
                                 .buildManager

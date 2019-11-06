@@ -2,7 +2,9 @@ package com.epam.drill.admindata
 
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
+import com.epam.kodux.*
 import kotlinx.atomicfu.*
+import kotlinx.serialization.Serializable
 import mu.*
 import java.io.*
 import java.util.*
@@ -14,7 +16,11 @@ private val logger = KotlinLogging.logger {}
 
 typealias AdminDataVault = ConcurrentHashMap<String, AdminPluginData>
 
-class AdminPluginData(val agentId: String, private val devMode: Boolean) : AdminData {
+class AdminPluginData(
+    val agentId: String,
+    private val storeClient: StoreClient,
+    private val devMode: Boolean
+) : AdminData {
 
     private var _packagesPrefixes = atomic(PackagesPrefixes(readPackages()))
 
@@ -24,7 +30,7 @@ class AdminPluginData(val agentId: String, private val devMode: Boolean) : Admin
             _packagesPrefixes.value = value
         }
 
-    override var buildManager = AgentBuildManager(agentId)
+    override var buildManager = AgentBuildManager(agentId, storeClient)
 
     private fun readPackages(): List<String> = Properties().run {
         val propertiesFileName = if (devMode) "dev$APP_CONFIG" else "prod$APP_CONFIG"
@@ -41,4 +47,66 @@ class AdminPluginData(val agentId: String, private val devMode: Boolean) : Admin
         logger.error(ise) { "Could not read 'prefixes' property; packages prefixes are empty" }
         emptyList()
     }
+
+    suspend fun loadStoredData() {
+        storeClient.findById<AdminDataSummary>(agentId).let { summary ->
+            if (summary != null) {
+                packagesPrefixes = summary.packagesPrefixes
+                buildManager = AgentBuildManager(agentId, storeClient, summary.lastBuild)
+                storeClient.findBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
+                    .forEach { buildManager.buildInfos[it.buildVersion] = it.toBuildInfo() }
+            }
+        }
+    }
+
+    suspend fun refreshStoredSummary() {
+        storeClient.store(
+            AdminDataSummary(
+                agentId = agentId,
+                packagesPrefixes = packagesPrefixes,
+                lastBuild = buildManager.lastBuild
+            )
+        )
+    }
 }
+
+@Serializable
+data class AdminDataSummary(
+    @Id
+    val agentId: String,
+    val packagesPrefixes: PackagesPrefixes,
+    val lastBuild: String
+)
+
+@Serializable
+data class StorableBuildInfo(
+    @Id
+    val id: String,
+    val agentId: String,
+    val buildVersion: String = "",
+    val buildSummary: BuildSummary = BuildSummary(),
+    val prevBuild: String = "",
+    val methodChanges: MethodChanges = MethodChanges(),
+    val classesBytes: Map<String, ByteArray> = emptyMap(),
+    val javaMethods: Map<String, List<Method>> = emptyMap()
+) {
+    fun toBuildInfo() = BuildInfo(
+        buildVersion = buildVersion,
+        buildSummary = buildSummary,
+        prevBuild = prevBuild,
+        methodChanges = methodChanges,
+        classesBytes = classesBytes,
+        javaMethods = javaMethods
+    )
+}
+
+fun BuildInfo.toStorable(agentId: String) = StorableBuildInfo(
+    id = "$agentId:$buildVersion",
+    agentId = agentId,
+    buildVersion = buildVersion,
+    buildSummary = buildSummary,
+    prevBuild = prevBuild,
+    methodChanges = methodChanges,
+    classesBytes = classesBytes,
+    javaMethods = javaMethods
+)

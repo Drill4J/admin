@@ -24,7 +24,7 @@ dependencies {
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation(ktor("server-test-host"))
-    implementation("com.epam.drill:kodux-jvm:0.1.3")
+    implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
     implementation("io.mockk:mockk:1.9.3")

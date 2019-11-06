@@ -63,7 +63,7 @@ dependencies {
     implementation("org.jacoco:org.jacoco.core:$jacocoVersion")
     implementation("io.vavr:vavr-kotlin:$vavrVersion")
     implementation("org.apache.bcel:bcel:$bcelVersion")
-    implementation("com.epam.drill:kodux-jvm:0.1.3")
+    implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
     testImplementation(kotlin("test-junit"))
     testImplementation(project(":admin:test-framework"))

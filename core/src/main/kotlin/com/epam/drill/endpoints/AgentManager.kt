@@ -208,7 +208,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
 
     fun adminData(agentId: String) = adminData[agentId] ?: run {
-        val newAdminData = AdminPluginData(agentId, app.isDevMode())
+        val newAdminData = AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode())
         adminData[agentId] = newAdminData
         newAdminData
     }
