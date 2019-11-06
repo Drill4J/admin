@@ -15,6 +15,7 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.serialization.*
+import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -22,11 +23,15 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app: Application by instance()
     private val agentManager: AgentManager by instance()
 
+    private val logger = KotlinLogging.logger {}
+
     init {
         app.routing {
 
             authenticate {
                 post<Routes.Api.UpdateAgentConfig> { (agentId) ->
+                    logger.debug { "Update configuration for agent with id $agentId" }
+
                     if (agentManager.agentSession(agentId) != null) {
                         val au = call.parse(AgentInfoWebSocketSingle.serializer())
                         agentManager.updateAgent(agentId, au)
@@ -34,8 +39,10 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentManager.agentSession(au.id)?.apply {
                                 sendToTopic("/agent/config", ServiceConfig(app.securePort(), au.sessionIdHeaderName))
                             }
+                        logger.debug { "Agent with id'$agentId'was updated successfully" }
                         call.respond(HttpStatusCode.OK, "agent '$agentId' was updated")
                     } else {
+                        logger.warn { "Agent with id'$agentId' was not found" }
                         call.respond(HttpStatusCode.BadRequest, "agent '$agentId' not found")
                     }
                 }
@@ -43,6 +50,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.RegisterAgent> { ll ->
+                    logger.debug { "Update configuration for agent with id ${ll.agentId}" }
                     val agentId = ll.agentId
                     val agInfo = agentManager[agentId]
                     if (agInfo != null) {
@@ -60,6 +68,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             buildVersions = agInfo.buildVersions.toHashSet()
                         ).apply {
                             val oldVersion = buildVersions.find { it.id == bv }
+
                             if (oldVersion != null) {
                                 oldVersion.name = alias
                             } else {
@@ -75,8 +84,10 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             status = au.status
                         }
                         agentManager.sync(agInfo, true)
+                        logger.debug { "Agent with id '$agentId' has been registered" }
                         call.respond(HttpStatusCode.OK, "Agent '$agentId' has been registered")
                     } else {
+                        logger.warn { "Agent with id'$agentId' was not found" }
                         call.respond(HttpStatusCode.BadRequest, "Agent '$agentId' not found")
                     }
                 }
@@ -84,12 +95,16 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.UnregisterAgent> { ll ->
+                    logger.debug { "Unregister agent with id ${ll.agentId}" }
                     val agentId = ll.agentId
                     val agInfo = agentManager[agentId]
+
                     if (agInfo != null) {
                         agentManager.resetAgent(agInfo)
+                        logger.debug { "Agent with id ${ll.agentId} has been unregistered successfully" }
                         call.respond(HttpStatusCode.OK, "Agent '$agentId' has been unregistered")
                     } else {
+                        logger.warn { "Agent with id'$agentId' was not found" }
                         call.respond(HttpStatusCode.BadRequest, "Agent '$agentId' not found")
                     }
                 }

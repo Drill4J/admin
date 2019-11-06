@@ -33,29 +33,38 @@ class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
     init {
         try {
             logger.info { "Searching for plugins in paths $pluginPaths" }
+
             val pluginsFiles = pluginPaths.filter { it.exists() }
                 .flatMap { it.listFiles()!!.asIterable() }
                 .filter { it.isFile && it.extension.equals("zip", true) }
                 .map { it.canonicalFile }
+
             if (pluginsFiles.isNotEmpty()) {
+
                 logger.info { "Plugin jars found: ${pluginsFiles.count()}." }
+
                 pluginsFiles.forEach { pluginFile ->
                     logger.info { "Loading from $pluginFile." }
+
                     ZipFile(pluginFile).use { jar ->
                         val configPath = "plugin_config.json"
                         val configEntry = jar.getEntry(configPath)
+
                         if (configEntry != null) {
                             val configText = jar.getInputStream(configEntry).reader().readText()
                             @Suppress("EXPERIMENTAL_API_USAGE")
                             val config = Json.parse(PluginMetadata.serializer(), configText)
                             val pluginId = config.id
+
                             if (pluginId !in plugins.keys) {
                                 val adminPartFile = jar.extractPluginEntry(pluginId, "admin-part.jar")
                                 val agentFile = jar.extractPluginEntry(pluginId, "agent-part.jar")
+
                                 if (adminPartFile != null && agentFile != null) {
                                     val adminPartClass = JarFile(adminPartFile).use { adminJar ->
                                         processAdminPart(adminPartFile, adminJar)
                                     }
+                                    
                                     if (adminPartClass != null) {
                                         val dp = Plugin(
                                             adminPartClass,
@@ -69,14 +78,14 @@ class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
                                         plugins[pluginId] = dp
                                         logger.info { "Plugin '$pluginId' was loaded successfully." }
                                     } else {
-                                        logger.error { "Admin Plugin API class was not found for $pluginId" }
+                                        logger.warn { "Admin Plugin API class was not found for $pluginId" }
                                     }
                                 }
                             } else {
                                 logger.warn { "Plugin $pluginId has already been loaded. Skipping loading from $pluginFile." }
                             }
                         } else {
-                            logger.error { "Error loading plugin from $pluginFile - no $configPath!" }
+                            logger.warn { "Error loading plugin from $pluginFile - no $configPath!" }
                         }
                     }
                 }
@@ -85,7 +94,7 @@ class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
 
             }
         } catch (ex: Exception) {
-            logger.error(ex)
+            logger.error(ex) { "Plugin loading was finished with exception" }
         }
 
     }

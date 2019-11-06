@@ -16,20 +16,19 @@ import org.kodein.di.generic.*
 
 class LoginHandler(override val kodein: Kodein) : KodeinAware {
     val app: Application by instance()
-    val logger = KotlinLogging.logger {}
+    private val logger = KotlinLogging.logger {}
 
     init {
         app.routing {
             post<Routes.Api.Login> {
-                logger.info { }
                 val username = "guest"
                 val password = ""
-                logger.info { "Login user with name $username" }
+                logger.debug { "Login user with name $username" }
                 val credentials = UserPasswordCredential(username, password)
                 val user = userSource.findUserByCredentials(credentials)
                 val token = JwtConfig.makeToken(user)
                 call.response.header(HttpHeaders.Authorization, token)
-                logger.info { "Login user with name $username was successfully"}
+                logger.debug { "Login user with name $username was successfully" }
                 call.respond(HttpStatusCode.OK)
             }
 

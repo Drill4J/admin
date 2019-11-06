@@ -8,6 +8,8 @@ import io.ktor.locations.*
 import io.ktor.websocket.*
 import mu.*
 
+private val logger = KotlinLogging.logger {}
+
 fun Application.toLocation(rout: Any): String {
     return this.locations.href(rout)
 }
@@ -24,26 +26,27 @@ suspend fun MutableSet<DrillWsSession>.sendTo(
             if (it.url == destination) {
                 @Suppress("UNCHECKED_CAST") val frame =
                     if (message is Collection<*>) {
-                    Frame.Text(
-                        WsSendMessageListData.serializer() stringify WsSendMessageListData(
-                            type,
-                            destination,
-                            (message as Collection<Any>).toMutableList()
+                        Frame.Text(
+                            WsSendMessageListData.serializer() stringify WsSendMessageListData(
+                                type,
+                                destination,
+                                (message as Collection<Any>).toMutableList()
+                            )
                         )
-                    )
-                } else {
-                    Frame.Text(
-                        WsSendMessage.serializer() stringify WsSendMessage(
-                            type,
-                            destination,
-                            message
+                    } else {
+                        Frame.Text(
+                            WsSendMessage.serializer() stringify WsSendMessage(
+                                type,
+                                destination,
+                                message
+                            )
                         )
-                    )
-                }
+                    }
                 it.send(frame)
+                logger.debug { "Sent $frame through admin socket" }
             }
         } catch (ex: Exception) {
-            KotlinLogging.logger {}.error { "While processing drill ws session receive exception '${ex.message}'" }
+            logger.error(ex) { "Processing drill ws session was finished with exception" }
             iter.remove()
         }
     }

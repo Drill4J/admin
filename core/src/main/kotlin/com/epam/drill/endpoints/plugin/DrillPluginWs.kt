@@ -34,7 +34,9 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
         val dest = destination as? String ?: app.toLocation(destination)
         val id = "$agentId:$dest:$buildVersion"
+
         if (message.toString().isEmpty()) {
+            logger.info { "Removed message by id $id" }
             eventStorage.remove(id)
         } else {
             val messageForSend = if (message is List<*>) {
@@ -46,20 +48,22 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             } else {
                 WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.MESSAGE, dest, message)
             }
-            logger.debug { "send data to $id destination" }
+            logger.debug { "Send data to $id destination" }
             eventStorage[id] = messageForSend
-
             sessionStorage[dest]?.let { sessionDataSet ->
                 sessionDataSet.forEach { data ->
                     try {
-                        if (data.subscribeInfo == SubscribeInfo(agentId, buildVersion))
+
+                        if (data.subscribeInfo == SubscribeInfo(agentId, buildVersion)) {
                             data.session.send(Frame.Text(messageForSend))
+                        }
                     } catch (ex: Exception) {
+                        logger.error(ex) { "Sending data to $id destination was finished with exception" }
                         sessionDataSet.removeIf { it == data }
                     }
                 }
             } ?: run {
-                logger.debug { "ws topic '$dest' not registered yet" }
+                logger.warn { "WS topic '$dest' not registered yet" }
             }
         }
     }
@@ -67,10 +71,14 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     init {
         app.routing {
             authWebSocket("/ws/drill-plugin-socket") {
+                logger.debug { "New session drill-plugin-socket" }
+
                 incoming.consumeEach { frame ->
                     when (frame) {
                         is Frame.Text -> {
                             val event = WsReceiveMessage.serializer() parse frame.readText()
+                            logger.debug { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
+
                             when (event.type) {
                                 WsMessageType.SUBSCRIBE -> {
                                     val subscribeInfo = SubscribeInfo.serializer() parse event.message
@@ -96,15 +104,20 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                                                         ""
                                                     )).textFrame()
                                         )
-                                    } else this.send(Frame.Text(message))
-
+                                    } else {
+                                        this.send(Frame.Text(message))
+                                    }
+                                    logger.debug { "${event.destination} is subscribed" }
                                 }
+
                                 WsMessageType.UNSUBSCRIBE -> {
                                     sessionStorage[event.destination]?.let {
                                         it.removeIf { data -> data.session == this }
                                     }
+                                    logger.debug { "${event.destination} is unsubscribed" }
                                 }
                                 else -> {
+                                    logger.warn { "Event '${event.type}' is not implemented yet" }
                                     close(RuntimeException("Event '${event.type}' is not implemented yet"))
                                 }
                             }
@@ -112,7 +125,6 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                     }
                 }
             }
-
         }
     }
 
@@ -136,6 +148,5 @@ data class SessionData(
     val subscribeInfo: SubscribeInfo
 ) {
     override fun equals(other: Any?) = other is SessionData && other.session == session
-
     override fun hashCode() = session.hashCode()
 }

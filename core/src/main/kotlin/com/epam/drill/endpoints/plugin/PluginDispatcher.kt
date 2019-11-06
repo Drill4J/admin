@@ -19,6 +19,7 @@ import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.collections.set
@@ -30,6 +31,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val wsService: Sender by kodein.instance()
     private val topicResolver: TopicResolver by instance()
     private val store: StoreManger by instance()
+    private val logger = KotlinLogging.logger {}
 
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {
         val message = MessageWrapper.serializer().parse(pluginData)
@@ -41,7 +43,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             val plugin: AdminPluginPart<*> = fillPluginInstance(agentEntry, pluginClass, pluginId)
             plugin.processData(message.drillMessage)
         } catch (ee: Exception) {
-            ee.printStackTrace()
+            logger.error(ee) { "Processing plugin data was finished with exception" }
         }
     }
 
@@ -76,18 +78,29 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         app.routing {
             authenticate {
                 patch<Routes.Api.Agent.UpdatePlugin> { (agentId, pluginId) ->
+                    logger.debug { "Update plugin with id $pluginId for agent with id $agentId" }
                     val config = call.receive<String>()
                     val pc = PluginConfig(pluginId, config)
+                    logger.debug { "Plugin config $config" }
                     agentManager.agentSession(agentId)
                         ?.send(PluginConfig.serializer().agentWsMessage("/plugins/updatePluginConfig", pc))
+
                     if (agentManager.updateAgentPluginConfig(agentId, pc)) {
                         topicResolver.sendToAllSubscribed("/$agentId/$pluginId/config")
                         call.respond(HttpStatusCode.OK, "")
-                    } else call.respond(HttpStatusCode.NotFound, "")
+                        logger.debug { "Plugin with id $pluginId for agent with id $agentId was updated" }
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, "")
+                        logger.warn {
+                            "AgentInfo with associated with id $agentId" +
+                                    " or plugin configuration associated with id $pluginId was not found"
+                        }
+                    }
                 }
             }
             authenticate {
                 post<Routes.Api.Agent.DispatchPluginAction> { (agentId, pluginId) ->
+                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
                     val action = call.receive<String>()
                     val dp: Plugin? = plugins[pluginId]
                     val agentInfo = agentManager[agentId]
@@ -98,7 +111,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             val agentEntry = agentManager.full(agentId)
                             val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
                             val adminActionResult = adminPart.doRawAction(action)
-                            val agentPartMsg = when(adminActionResult) {
+                            val agentPartMsg = when (adminActionResult) {
                                 is String -> adminActionResult
                                 is Unit -> action
                                 else -> Unit
@@ -122,12 +135,15 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             }
                         }
                     }
+                    logger.info { "$response" }
                     call.respond(statusCode, response)
                 }
             }
 
 
             get<Routes.Api.Agent.GetPluginData> { (agentId, pluginId) ->
+                logger.debug { "Get data plugin with id $pluginId for agent with id $agentId" }
+
                 val params = call.parameters.asMap()
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
@@ -141,6 +157,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.OK to response
                     }
                 }
+                logger.debug { response }
                 call.respondText(
                     response,
                     ContentType.Application.Json,
@@ -150,6 +167,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.AddNewPlugin> { (agentId) ->
+                    logger.debug { "Add new plugin for agent with id $agentId" }
                     val pluginId = call.parse(PluginId.serializer()).pluginId
                     val (status, msg) = when (pluginId) {
                         in plugins.keys -> {
@@ -171,11 +189,13 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         }
                         else -> HttpStatusCode.BadRequest to "Plugin $pluginId not found."
                     }
+                    logger.debug { msg }
                     call.respond(status, msg)
                 }
             }
             authenticate {
                 post<Routes.Api.Agent.TogglePlugin> { (agentId, pluginId) ->
+                    logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
                     val dp: Plugin? = plugins[pluginId]
                     val session = agentManager.agentSession(agentId)
                     val (statusCode, response) = when {
@@ -194,6 +214,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             HttpStatusCode.OK to "OK"
                         }
                     }
+                    logger.debug { response }
                     call.respond(statusCode, response)
                 }
             }

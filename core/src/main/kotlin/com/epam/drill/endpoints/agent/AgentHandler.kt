@@ -40,7 +40,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 agentManager.update()
                 agentManager.sync(agentInfo, needSync)
 
-                logger.info { "Agent WS is connected. Client's address is ${call.request.local.remoteHost}, ssl port is '$sslPort" }
+                logger.info {
+                    "Agent WS is connected." +
+                            " Client's address is ${call.request.local.remoteHost}," +
+                            " ssl port is '$sslPort and needSync is $needSync"
+                }
 
                 sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName))
                 createWsLoop(agentInfo)
@@ -79,6 +83,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
+                            logger.debug { "Starting classes transfer" }
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .setupBuildInfo(agentInfo.buildVersion)
@@ -96,6 +101,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 .compareToPrev(agentInfo.buildVersion)
                             agentManager.resetAllPlugins(agentInfo.id)
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
+                            logger.debug { "Finished classes transfer" }
                         }
 
                         else -> {
@@ -106,10 +112,10 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 }
             }
         } catch (ex: Exception) {
-            logger.error { "Handle with exception '${ex.message}'" }
+            logger.error(ex) { "Handle with exception" }
         } finally {
             agentManager.remove(agentInfo)
-            logger.info { "Agent with id '${agentInfo.id}' was disconnected successfully" }
+            logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
         }
     }
 }

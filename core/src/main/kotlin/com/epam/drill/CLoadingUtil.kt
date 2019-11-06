@@ -8,6 +8,8 @@ private val logger = KotlinLogging.logger {}
 
 fun ClassLoader.loadClassesFrom(source: URL) {
     val parameters = arrayOf<Class<*>>(URL::class.java)
+    logger.debug { "Loading classes from url $source" }
+
     try {
         val method = javaClass.superclass.getDeclaredMethod("addURL", *parameters)
         method.isAccessible = true
@@ -15,5 +17,4 @@ fun ClassLoader.loadClassesFrom(source: URL) {
     } catch (e: Exception) {
         logger.error(e) { "Error loading classes from $source" }
     }
-
 }

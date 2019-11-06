@@ -45,13 +45,17 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     "",
                     buildVersions = mutableSetOf(AgentBuildVersionJson(pBuildVersion, ""))
                 )
+        logger.debug { "Agent configuration: $existingAgent" }
         return agentStore.store(existingAgent)
     }
 
     private suspend fun AgentInfo.updateBuildVersion(pBuildVersion: String, agentId: String) {
+        logger.debug { "Update build version for agent with id $agentId. Previous build version is $pBuildVersion" }
         if (status != AgentStatus.OFFLINE) {
+            logger.debug { "Agent status not busy" }
             val existingBuildVersion = buildVersions.find { it.id == pBuildVersion }
             if (existingBuildVersion == null) {
+                logger.debug { "Build version wit id $pBuildVersion not found" }
                 notificationsManager.save(
                     agentId,
                     name,
@@ -63,11 +67,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             }
             this.buildVersion = pBuildVersion
             this.buildAlias = existingBuildVersion?.name ?: ""
+            logger.debug { "Build version for agent with id $agentId was updated" }
         }
     }
 
 
     suspend fun updateAgent(agentId: String, au: AgentInfoWebSocketSingle) {
+        logger.debug { "Agent with id $agentId update with agent info :$au" }
         getOrNull(agentId)?.apply {
             name = au.name
             groupName = au.group
@@ -78,28 +84,35 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             status = au.status
             update(this@AgentManager)
         }
+        logger.debug { "Agent with id $agentId updated" }
         topicResolver.sendToAllSubscribed("/$agentId/builds")
     }
 
     suspend fun updateAgentBuildAliases(
         agentId: String,
         buildVersion: AgentBuildVersionJson
-    ): AgentInfo? = getOrNull(agentId)
-        ?.apply {
-            if (this.buildVersion == buildVersion.id) {
-                this.buildAlias = buildVersion.name
+    ): AgentInfo? {
+        logger.debug { "Update agent build aliases for agent with id $agentId" }
+        val result = getOrNull(agentId)
+            ?.apply {
+                if (this.buildVersion == buildVersion.id) {
+                    this.buildAlias = buildVersion.name
+                }
+                this.buildVersions.removeAll { it.id == buildVersion.id }
+                this.buildVersions.add(buildVersion)
+                update(this@AgentManager)
             }
-            this.buildVersions.removeAll { it.id == buildVersion.id }
-            this.buildVersions.add(buildVersion)
-            update(this@AgentManager)
-        }
-        .apply {
-            topicResolver.sendToAllSubscribed("/$agentId/builds")
-            updateBuildDataOnAllPlugins(agentId, buildVersion.id)
-        }
+            .apply {
+                topicResolver.sendToAllSubscribed("/$agentId/builds")
+                updateBuildDataOnAllPlugins(agentId, buildVersion.id)
+            }
+        logger.debug { "AgentInfo updated agent with id $agentId is $result" }
+        return result
+    }
 
-    suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean =
-        getOrNull(agentId)?.let { agentInfo ->
+    suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean {
+        logger.debug { "Update plugin config for agent with id $agentId" }
+        val result = getOrNull(agentId)?.let { agentInfo ->
             agentInfo.plugins.find { it.id == pc.id }?.let { plugin ->
                 if (plugin.config != pc.data) {
                     plugin.config = pc.data
@@ -107,8 +120,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
             }
         } != null
+        logger.debug { "" }
+        return result
+    }
 
     suspend fun resetAgent(agInfo: AgentInfo) {
+        logger.debug { "Reset agent with id ${agInfo.name}" }
         val au = AgentInfoWebSocketSingle(
             id = agInfo.id,
             name = "",
@@ -120,6 +137,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         )
             .apply { buildVersions.add(AgentBuildVersionJson(agInfo.buildVersion, INITIAL_BUILD_ALIAS)) }
         updateAgent(agInfo.id, au)
+        logger.debug { "Agent with id ${agInfo.name} has been reset" }
     }
 
     suspend fun update() {
@@ -153,10 +171,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins?.map { it.id }
 
     suspend fun addPluginFromLib(agentId: String, pluginId: String) {
+        logger.debug { "Add plugin with id $pluginId from lib for agent with id $agentId" }
         val agentInfo = store.agentStore(agentId).findById<AgentInfo>(agentId)
+
         if (agentInfo != null) {
             plugins[pluginId]?.pluginBean?.let { plugin ->
-
                 val rawPluginNames = agentInfo.plugins.toList()
                 val existingPluginBeanDb = rawPluginNames.find { it.id == pluginId }
                 if (existingPluginBeanDb == null) {
@@ -165,7 +184,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         sendPlugins()
                     }
                     logger.info { "Plugin $pluginId successfully added to agent with id $agentId!" }
-
                 }
             }
         } else {
@@ -175,12 +193,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
 
     fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) = app.launch {
+        logger.debug { "Agent with id ${ai.name} set busy status" }
         ai.status = AgentStatus.BUSY
         ai.update(this@AgentManager)
+
         try {
             block(ai)
         } finally {
             ai.status = AgentStatus.ONLINE
+            logger.debug { "Agent with id ${ai.name} set online status" }
             ai.update(this@AgentManager)
         }
     }
@@ -193,6 +214,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     suspend fun resetAllPlugins(agentId: String) {
+        logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
                 ?.send(
@@ -202,6 +224,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     )
                 )
         }
+        logger.debug { "All plugins for agent with id $agentId was reset" }
     }
 
     suspend fun AgentInfo.update() {
@@ -219,6 +242,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     fun packagesPrefixes(agentId: String) = adminData(agentId).packagesPrefixes
 
     suspend fun sync(agentInfo: AgentInfo, needSync: Boolean) {
+        logger.debug { "Agent with id ${agentInfo.name} starting sync, needSync is $needSync" }
         if (agentInfo.status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(agentInfo) {
@@ -226,6 +250,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
                 }
+            logger.debug { "Agent with id ${agentInfo.name} sync was finished" }
+        } else {
+            logger.warn { "Agent status is not registered" }
         }
     }
 

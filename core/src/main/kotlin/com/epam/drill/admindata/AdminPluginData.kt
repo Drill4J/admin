@@ -35,10 +35,10 @@ class AdminPluginData(val agentId: String, private val devMode: Boolean) : Admin
         load(AdminPluginData::class.java.getResourceAsStream("/$fileName"))
         getProperty("prefixes").split(",")
     } catch (ioe: IOException) {
-        logger.error("Could not open properties file; packages prefixes are empty")
+        logger.error(ioe) { "Could not open properties file; packages prefixes are empty" }
         emptyList()
     } catch (ise: IllegalStateException) {
-        logger.error("Could not read 'prefixes' property; packages prefixes are empty")
+        logger.error(ise) { "Could not read 'prefixes' property; packages prefixes are empty" }
         emptyList()
     }
 }

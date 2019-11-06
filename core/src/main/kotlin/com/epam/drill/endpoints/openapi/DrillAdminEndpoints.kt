@@ -20,7 +20,7 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
-    val logger = KotlinLogging.logger {}
+    private val logger = KotlinLogging.logger {}
     private val app: Application by instance()
     private val agentManager: AgentManager by instance()
     private val plugins: Plugins by kodein.instance()

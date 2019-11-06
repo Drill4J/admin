@@ -25,37 +25,36 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
         app.routing {
             authWebSocket("/ws/drill-admin-socket") {
                 val rawWsSession = this
-                logger.info { "New session on drill-admin-socket" }
+                logger.debug { "New session drill-admin-socket" }
 
                 try {
                     incoming.consumeEach { frame ->
                         val json = (frame as Frame.Text).readText()
                         val event = WsReceiveMessage.serializer() parse json
-                        logger.info { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
+                        logger.debug { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
 
                         when (event.type) {
 
                             WsMessageType.SUBSCRIBE -> {
                                 val wsSession = DrillWsSession(event.destination, rawWsSession)
                                 subscribe(wsSession, event)
-                                logger.info { "${event.destination} is subscribed" }
+                                logger.debug { "${event.destination} is subscribed" }
                             }
 
                             WsMessageType.UNSUBSCRIBE -> {
 
                                 if (sessionStorage.removeTopic(event.destination)) {
-                                    logger.info { "${event.destination} is unsubscribed" }
+                                    logger.debug { "${event.destination} is unsubscribed" }
                                 }
                             }
 
                             else -> {
-                                logger.info { "Event with type: '${event.type}' not supported yet" }
+                                logger.warn { "Event with type: '${event.type}' not supported yet" }
                             }
                         }
                     }
                 } catch (ex: Exception) {
-                    logger.info { "Session was removed" }
-                    logger.debug { "Finished with exception: $ex" }
+                    logger.error(ex) { "Finished with exception and session was removed" }
                     sessionStorage.remove(rawWsSession)
                 }
             }
