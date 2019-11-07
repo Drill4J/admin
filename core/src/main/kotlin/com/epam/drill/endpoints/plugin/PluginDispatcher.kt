@@ -30,7 +30,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val wsService: Sender by kodein.instance()
     private val topicResolver: TopicResolver by instance()
-    private val store: StoreManger by instance()
+    private val store: StoreManager by instance()
     private val logger = KotlinLogging.logger {}
 
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {

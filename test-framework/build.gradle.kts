@@ -24,7 +24,8 @@ dependencies {
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation(ktor("server-test-host"))
-    implementation("com.epam.drill:kodux-jvm:0.1.1")
+    implementation("com.epam.drill:kodux-jvm:0.1.3")
+    implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
     implementation("io.mockk:mockk:1.9.3")
     api(project(":admin:core"))
@@ -41,6 +42,10 @@ tasks {
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.coroutines.ExperimentalCoroutinesApi"
+    }
+    register<Jar>("sourcesJar") {
+        from(sourceSets.main.get().allSource)
+        archiveClassifier.set("sources")
     }
 }
 
@@ -64,6 +69,7 @@ publishing {
     publications {
         create<MavenPublication>(project.name) {
             artifact(tasks["jar"])
+            artifact(tasks["sourcesJar"])
         }
     }
 }

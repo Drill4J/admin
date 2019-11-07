@@ -140,7 +140,9 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
 
                                     val memoryClassLoader = MemoryClassLoader()
                                     val agentData = AgentDatum(classMap)
-                                    val agentPart = async.await().constructors[1].newInstance(
+                                    val declaredConstructor =
+                                        async.await().getDeclaredConstructor(PluginPayload::class.java)
+                                    val agentPart = declaredConstructor.newInstance(
                                         PluginPayload(pluginId, agentData)
                                     ) as AgentPart<*, *>
                                     val spykAgentPart = spyk(agentPart)
@@ -256,7 +258,9 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
 
                                         val memoryClassLoader = MemoryClassLoader()
                                         val agentData = AgentDatum(classMap)
-                                        val agentPart = async.await().constructors[1].newInstance(
+                                        val declaredConstructor =
+                                            async.await().getDeclaredConstructor(PluginPayload::class.java)
+                                        val agentPart = declaredConstructor.newInstance(
                                             PluginPayload(pluginId, agentData)
                                         ) as AgentPart<*, *>
                                         val spykAgentPart = spyk(agentPart)

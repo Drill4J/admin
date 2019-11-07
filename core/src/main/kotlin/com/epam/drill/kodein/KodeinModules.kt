@@ -21,7 +21,7 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 val storage: Kodein.Builder.(Application) -> Unit = { _ ->
-    bind<StoreManger>() with eagerSingleton {StoreManger(drillWorkDir) }
+    bind<StoreManager>() with eagerSingleton {StoreManager(drillWorkDir) }
     bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
     bind<CacheService>() with eagerSingleton { JvmCacheService() }
     bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }

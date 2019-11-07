@@ -17,6 +17,7 @@ import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
+    lateinit var storeManager: StoreManager
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -42,8 +43,9 @@ class AppConfig(var projectDir: File) {
             val baseLocation = projectDir.resolve(UUID.randomUUID().toString()).resolve("agent")
             withKModule {
                 kodeinModule("addition") {
-                    bind<StoreManger>() with eagerSingleton {
-                        StoreManger(baseLocation)
+                    bind<StoreManager>() with eagerSingleton {
+                        storeManager = StoreManager(baseLocation)
+                        storeManager
                     }
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(kodein)

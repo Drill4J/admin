@@ -29,7 +29,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
     private val adminData: AdminDataVault by instance()
-    private val store: StoreManger by instance()
+    private val store: StoreManager by instance()
 
     suspend fun agentConfiguration(agentId: String, pBuildVersion: String): AgentInfo {
         val agentStore = store.agentStore(agentId)
