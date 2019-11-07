@@ -5,11 +5,10 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
-import org.junit.*
 
 class BuildsTest : AbstractE2ETest() {
 
-    @Test(timeout = 10000)
+    @org.junit.jupiter.api.Test
     fun `can add new builds and rename aliases`() {
         createSimpleAppWithUIConnection(agentStreamDebug = false, uiStreamDebug = false) {
             val aw = AgentWrap("ag1")
@@ -19,7 +18,7 @@ class BuildsTest : AbstractE2ETest() {
                 register(aw.id).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`("DrillExtension1.class")
+                agent.`get-load-classes-datas`("DrillExtension1.class")
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
                 addPlugin(aw.id, pluginT2CM)
@@ -34,7 +33,7 @@ class BuildsTest : AbstractE2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`("DrillExtension2.class")
+                agent.`get-load-classes-datas`("DrillExtension2.class")
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
                 }
@@ -47,7 +46,7 @@ class BuildsTest : AbstractE2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`()
+                agent.`get-load-classes-datas`()
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
                 }

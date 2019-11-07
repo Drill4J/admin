@@ -5,7 +5,9 @@ import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
+import com.epam.drill.endpoints.plugin.*
 import com.epam.drill.plugin.api.message.*
+import com.epam.drill.plugin.api.processing.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
 import io.ktor.application.*
@@ -18,10 +20,11 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import org.apache.bcel.classfile.*
 
-abstract class PluginStreams() {
+abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
     abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>)
+    abstract suspend fun subscribe(sinf: SubscribeInfo)
 }
 
 
@@ -147,6 +150,7 @@ class Agent(
     private val `load-classes-data` = Channel<String>()
     private val plugins = Channel<PluginMetadata>()
     private val pluginBinary = Channel<ByteArray>()
+    lateinit var plugin: AgentPart<*, *>
 
     suspend fun getServiceConfig() = serviceConfig.receive()
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
@@ -179,7 +183,7 @@ class Agent(
         return receive
     }
 
-    suspend fun `get-load-classes-data`(vararg classes: String = emptyArray()): String {
+    suspend fun `get-load-classes-datas`(vararg classes: String = emptyArray()): String {
         val receive = `load-classes-data`.receive()
 
         outgoing.send(AgentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
@@ -202,7 +206,32 @@ class Agent(
 
 
         outgoing.send(AgentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
-//        delay(500)
+        outgoing.send(
+            AgentMessage(
+                MessageType.MESSAGE_DELIVERED,
+                "/agent/load-classes-data",
+                ""
+            )
+        )
+        return receive
+    }
+
+    suspend fun `get-load-classes-data`(vararg classes: JavaClass = emptyArray()): String {
+        val receive = `load-classes-data`.receive()
+        outgoing.send(AgentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
+        classes.forEach { bclass ->
+            outgoing.send(
+                AgentMessage(
+                    MessageType.CLASSES_DATA, "", Base64Class.serializer() stringify Base64Class(
+                        bclass.className.replace(".", "/"),
+                        bclass.bytes.encodeBase64()
+                    )
+                )
+            )
+        }
+
+
+        outgoing.send(AgentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
         outgoing.send(
             AgentMessage(
                 MessageType.MESSAGE_DELIVERED,
@@ -235,6 +264,9 @@ class Agent(
                             "/plugins/resetPlugin" -> {
                             }
                             "/plugins/action" -> {
+                                plugin.doRawAction((PluginAction.serializer() parse content).message)
+                            }
+                            "/plugins/unload" -> {
                             }
                             else -> TODO("$url is not implemented yet")
                         }

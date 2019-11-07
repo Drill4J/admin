@@ -68,10 +68,10 @@ dependencies {
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("com.epam.drill:kodux-jvm:0.1.1")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
-
+    testImplementation(kotlin("test-junit"))
     testImplementation(project(":admin:test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
-    testImplementation(kotlin("test-junit"))
+    integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     integrationTestImplementation(ktor("server-test-host"))
     integrationTestImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
 
@@ -114,6 +114,7 @@ idea {
 }
 
 task<Test>("integrationTest") {
+    useJUnitPlatform()
     description = "Runs the integration tests"
     group = "verification"
     testClassesDirs = sourceSets[testIngerationModuleName].output.classesDirs
@@ -122,10 +123,13 @@ task<Test>("integrationTest") {
 }
 
 tasks.named("check") {
-//    dependsOn("integrationTest")
+        dependsOn("integrationTest")
 }
 
 tasks {
+    clean {
+        delete("./work", "./../distr")
+    }
 
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"

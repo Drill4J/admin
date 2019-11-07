@@ -1,8 +1,2 @@
-admin/work
-/work
-/.idea/
-/.gradle/
-/.gradle/
-/build/
-/*/build/
-/distr/
+work/
+distr/

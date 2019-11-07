@@ -5,12 +5,11 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
-import org.junit.*
 
 
 class PluginLoadTest : AbstractE2ETest() {
 
-    @Test(timeout = 10000)
+    @org.junit.jupiter.api.Test
     fun `Plugin Load Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("ag1")) { ui, agent ->
@@ -19,7 +18,7 @@ class PluginLoadTest : AbstractE2ETest() {
                 register("ag1").first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`()
+                agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 addPlugin("ag1", pluginT2CM).first shouldBe HttpStatusCode.OK
 

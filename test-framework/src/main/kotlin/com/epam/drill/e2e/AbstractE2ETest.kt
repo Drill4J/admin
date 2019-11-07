@@ -9,16 +9,16 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
-import org.junit.*
-import org.junit.rules.*
+import org.junit.jupiter.api.io.*
+import java.io.*
 import java.util.concurrent.*
 
 
 abstract class AbstractE2ETest {
-    @get:Rule
-    val projectDir = TemporaryFolder()
-    val appConfig = AppConfig(projectDir)
-    private val testApp = appConfig.testApp
+    @TempDir
+    lateinit var projectDir: File
+
+
     lateinit var globToken: String
     val agents =
         ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit, MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
@@ -29,6 +29,8 @@ abstract class AbstractE2ETest {
         agentStreamDebug: Boolean = false,
         block: suspend () -> Unit
     ) {
+        val appConfig = AppConfig(projectDir)
+        val testApp = appConfig.testApp
         var coroutineException: Throwable? = null
         val handler = CoroutineExceptionHandler { _, exception ->
             coroutineException = exception
@@ -57,7 +59,8 @@ abstract class AbstractE2ETest {
                             ui.getBuilds()
                             delay(50)
 
-                            handleWebSocketConversation("/agent/attach",
+                            handleWebSocketConversation(
+                                "/agent/attach",
                                 wsRequestRequiredParams(ag)
                             ) { inp, out ->
                                 val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
@@ -69,7 +72,8 @@ abstract class AbstractE2ETest {
                             }
                             thens.forEach { (ain, it) ->
 
-                                handleWebSocketConversation("/agent/attach",
+                                handleWebSocketConversation(
+                                    "/agent/attach",
                                     wsRequestRequiredParams(ain)
                                 ) { inp, out ->
                                     ui.getAgent()
@@ -104,7 +108,10 @@ abstract class AbstractE2ETest {
     }
 
 
-    fun newConnect(ags: AgentWrap, bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit): AbstractE2ETest {
+    fun newConnect(
+        ags: AgentWrap,
+        bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
+    ): AbstractE2ETest {
         agents[ags.id]?.third?.add(ags to bl)
         return this
     }

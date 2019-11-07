@@ -4,12 +4,11 @@ import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.junit.*
 
 
 class AgentRegistrationTest : AbstractE2ETest() {
 
-    @Test(timeout = 100000)
+    @org.junit.jupiter.api.Test
     fun `Agent should be registered`() {
         val it = 0
         createSimpleAppWithUIConnection {
@@ -19,7 +18,7 @@ class AgentRegistrationTest : AbstractE2ETest() {
                 register("ag$it").first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`()
+                agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
             }
         }

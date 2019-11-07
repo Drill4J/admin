@@ -4,11 +4,10 @@ import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.junit.*
 
 class ToggleAgentTest : AbstractE2ETest() {
 
-    @Test(timeout = 10000)
+    @org.junit.jupiter.api.Test
     fun `Toggle Agent Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("ag1")) { ui, agent ->
@@ -17,7 +16,7 @@ class ToggleAgentTest : AbstractE2ETest() {
                 register("ag1").first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-data`()
+                agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
                 toggleAgent("ag1")

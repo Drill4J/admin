@@ -14,7 +14,6 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
-import org.junit.Test
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.test.*
@@ -54,7 +53,7 @@ class PluginWsTest {
         buildAlias = "testAlias"
     )
 
-    @Test
+    @org.junit.jupiter.api.Test
     fun `should return CloseFrame if we subscribe without SubscribeInfo`() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -68,7 +67,7 @@ class PluginWsTest {
     }
 
 
-    @Test
+    @org.junit.jupiter.api.Test
     fun `should communicate with pluginWs and return the empty MESSAGE`() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -91,7 +90,7 @@ class PluginWsTest {
         }
     }
 
-    @Test
+    @org.junit.jupiter.api.Test
     fun `should return data from storage which was sent before via send()`() {
         withTestApplication(testApp) {
             val token = requestToken()

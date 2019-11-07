@@ -26,8 +26,12 @@ dependencies {
     implementation(ktor("server-test-host"))
     implementation("com.epam.drill:kodux-jvm:0.1.1")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
+    implementation("io.mockk:mockk:1.9.3")
     api(project(":admin:core"))
     implementation("org.apache.bcel:bcel:$bcelVersion")
+    implementation(project(":plugin-api:drill-agent-part"))
+    implementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    implementation(project(":admin:test-framework:test-data"))
 }
 tasks {
 

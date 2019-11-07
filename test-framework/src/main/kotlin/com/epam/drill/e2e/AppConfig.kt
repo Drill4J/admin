@@ -11,11 +11,11 @@ import io.ktor.auth.jwt.*
 import io.ktor.config.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
-import org.junit.rules.*
 import org.kodein.di.generic.*
+import java.io.*
 import java.util.*
 
-class AppConfig(var projectDir: TemporaryFolder) {
+class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
 
     val testApp: Application.(String) -> Unit = { sslPort ->
@@ -39,7 +39,7 @@ class AppConfig(var projectDir: TemporaryFolder) {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
             withKModule { kodeinModule("pluginServices", pluginServices) }
-            val baseLocation = projectDir.newFolder(UUID.randomUUID().toString()).resolve("agent")
+            val baseLocation = projectDir.resolve(UUID.randomUUID().toString()).resolve("agent")
             withKModule {
                 kodeinModule("addition") {
                     bind<StoreManger>() with eagerSingleton {
