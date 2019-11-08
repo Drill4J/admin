@@ -33,7 +33,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     logger.debug { "Update configuration for agent with id $agentId" }
 
                     if (agentManager.agentSession(agentId) != null) {
-                        val au = call.parse(AgentInfoWebSocketSingle.serializer())
+                        val au = call.parse(AgentInfoWebSocket.serializer())
                         agentManager.updateAgent(agentId, au)
                         if (au.sessionIdHeaderName.isNotEmpty())
                             agentManager.agentSession(au.id)?.apply {
@@ -55,33 +55,13 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agInfo = agentManager[agentId]
                     if (agInfo != null) {
                         val regInfo = call.parse(AgentRegistrationInfo.serializer())
-                        val bv = agInfo.buildVersion
                         val alias = regInfo.buildAlias
-                        val au = AgentInfoWebSocketSingle(
-                            id = agentId,
-                            name = regInfo.name,
-                            group = regInfo.group,
-                            status = AgentStatus.ONLINE,
-                            description = regInfo.description,
-                            buildVersion = bv,
-                            buildAlias = alias,
-                            buildVersions = agInfo.buildVersions.toHashSet()
-                        ).apply {
-                            val oldVersion = buildVersions.find { it.id == bv }
-
-                            if (oldVersion != null) {
-                                oldVersion.name = alias
-                            } else {
-                                buildVersions.add(AgentBuildVersionJson(bv, alias))
-                            }
-                        }
-                        agInfo.apply {
-                            name = au.name
-                            groupName = au.group
-                            description = au.description
-                            buildAlias = au.buildVersions.firstOrNull { it.id == this.buildVersion }?.name ?: ""
-                            buildVersions.replaceAll(au.buildVersions)
-                            status = au.status
+                        with(agInfo) {
+                            name = regInfo.name
+                            groupName = regInfo.group
+                            description = regInfo.description
+                            buildAlias = alias
+                            status = AgentStatus.ONLINE
                         }
                         agentManager.sync(agInfo, true)
                         logger.debug { "Agent with id '$agentId' has been registered" }

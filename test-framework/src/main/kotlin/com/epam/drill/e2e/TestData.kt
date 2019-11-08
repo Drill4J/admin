@@ -30,8 +30,7 @@ val ai = AgentInfo(
     adminUrl = "",
     plugins = mutableSetOf(
         pluginMetadata
-    ),
-    buildVersions = mutableSetOf()
+    )
 )
 
 val pluginT2CM = PluginId("test-to-code-mapping")

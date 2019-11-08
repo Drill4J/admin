@@ -173,6 +173,17 @@ abstract class E2ETest : AdminTest() {
         }.run { response.status() to response.content }
     }
 
+    fun TestApplicationEngine.changePackages(
+        agentId: String,
+        token: String = globToken,
+        payload: PackagesPrefixes
+    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SetPackages(agentId))) {
+        addHeader(HttpHeaders.Authorization, "Bearer $token")
+        setBody(PackagesPrefixes.serializer() stringify payload)
+    }.run {
+        response.status() to response.content
+    }
+
 }
 
 data class AgentWrap(val id: String, val buildVersion: String = "0.1.0", val needSync: Boolean = true)

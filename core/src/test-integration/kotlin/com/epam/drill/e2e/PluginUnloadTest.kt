@@ -32,7 +32,7 @@ class PluginUnloadTest : E2ETest() {
 
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 unLoadPlugin("ag1", pluginT2CM)
-                ui.getAgent()?.pluginsCount shouldBe 1
+                ui.getAgent()?.plugins?.count() shouldBe 1
             }
         }
     }

@@ -1,29 +1,12 @@
 package com.epam.drill.agentmanager
 
+import com.epam.drill.admindata.*
 import com.epam.drill.common.*
 import com.epam.drill.plugins.*
 import kotlinx.serialization.*
 
-@Suppress("unused")
 @Serializable
-open class AgentInfoWebSocket(
-    val id: String,
-    val name: String,
-    val description: String,
-    val group: String? = "",
-    val status: AgentStatus = AgentStatus.NOT_REGISTERED,
-    var buildVersion: String,
-    var buildAlias: String,
-
-    val adminUrl: String = "",
-    var ipAddress: String = "",
-    val activePluginsCount: Int = 0,
-    val pluginsCount: Int = 0
-)
-
-@Suppress("unused")
-@Serializable
-data class AgentInfoWebSocketSingle(
+data class AgentInfoWebSocket(
     val id: String,
     val name: String,
     val description: String,
@@ -34,33 +17,15 @@ data class AgentInfoWebSocketSingle(
     val adminUrl: String = "",
     val ipAddress: String = "",
     val activePluginsCount: Int = 0,
-    val pluginsCount: Int = 0,
     val sessionIdHeaderName: String = "",
-    val rawPluginsName: MutableSet<PluginWebSocket> = mutableSetOf(),
-    val buildVersions: MutableSet<AgentBuildVersionJson> = mutableSetOf()
-)
-
-fun AgentInfo.toAgentInfoWebSocket() = AgentInfoWebSocketSingle(
-    id = id,
-    name = name,
-    description = description,
-    group = groupName,
-    status = status,
-    buildVersion = buildVersion,
-    buildAlias = buildAlias,
-    adminUrl = adminUrl,
-    ipAddress = ipAddress,
-    activePluginsCount = plugins.activePluginsCount(),
-    pluginsCount = plugins.size,
-    sessionIdHeaderName = sessionIdHeaderName,
-    rawPluginsName = plugins.toPluginsWebSocket(),
-    buildVersions = this.buildVersions
+    val plugins: Set<PluginWebSocket> = emptySet(),
+    val packagesPrefixes: List<String>
 )
 
 fun MutableSet<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
 
-fun MutableSet<AgentInfo>.toAgentInfosWebSocket() = this.map {
-    it.run {
+fun MutableSet<AgentInfo>.toAgentInfosWebSocket(adminDataVault: AdminDataVault) = this.map { agentInfo ->
+    agentInfo.run {
         AgentInfoWebSocket(
             id = id,
             name = name,
@@ -72,7 +37,25 @@ fun MutableSet<AgentInfo>.toAgentInfosWebSocket() = this.map {
             adminUrl = adminUrl,
             ipAddress = ipAddress,
             activePluginsCount = plugins.activePluginsCount(),
-            pluginsCount = plugins.size
+            sessionIdHeaderName = sessionIdHeaderName,
+            plugins = plugins.map { it.toPluginWebSocket() }.toMutableSet(),
+            packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList()
         )
     }
 }
+
+fun AgentInfo.toAgentInfoWebSocket(adminData: AdminPluginData) = AgentInfoWebSocket(
+    id = id,
+    name = name,
+    description = description,
+    group = groupName,
+    status = status,
+    buildVersion = buildVersion,
+    buildAlias = buildAlias,
+    adminUrl = adminUrl,
+    ipAddress = ipAddress,
+    activePluginsCount = plugins.activePluginsCount(),
+    sessionIdHeaderName = sessionIdHeaderName,
+    plugins = plugins.toPluginsWebSocket(),
+    packagesPrefixes = adminData.packagesPrefixes
+)

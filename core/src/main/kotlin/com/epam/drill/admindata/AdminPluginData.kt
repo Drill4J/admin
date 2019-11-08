@@ -22,9 +22,9 @@ class AdminPluginData(
     private val devMode: Boolean
 ) : AdminData {
 
-    private var _packagesPrefixes = atomic(PackagesPrefixes(readPackages()))
+    private var _packagesPrefixes = atomic(readPackages())
 
-    var packagesPrefixes: PackagesPrefixes
+    var packagesPrefixes: List<String>
         get() = _packagesPrefixes.value
         set(value) {
             _packagesPrefixes.value = value
@@ -74,7 +74,7 @@ class AdminPluginData(
 data class AdminDataSummary(
     @Id
     val agentId: String,
-    val packagesPrefixes: PackagesPrefixes,
+    val packagesPrefixes: List<String>,
     val lastBuild: String
 )
 

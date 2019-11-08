@@ -25,6 +25,15 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
     override val summaries: List<BuildSummary>
         get() = buildInfos.values.map { it.buildSummary }
 
+    val buildVersions: Map<String, String>
+        get() = buildInfos.map { (buildVersion, buildInfo) ->
+            buildVersion to buildInfo.buildAlias
+        }.toMap()
+
+    val buildVersionsJson = buildVersions.map { (id, name) ->
+        AgentBuildVersionJson(id, name)
+    }
+
     override operator fun get(buildVersion: String) = buildInfos[buildVersion]
 
     fun setupBuildInfo(buildVersion: String) {
@@ -84,6 +93,13 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         ) ?: BuildInfo(agentId)
         storeClient.store(processedBuildInfo.toStorable(agentId))
         buildInfos[buildVersion] = processedBuildInfo
+    }
+
+    fun renameBuild(buildVersion: AgentBuildVersionJson){
+        val buildInfo = buildInfos[buildVersion.id]
+        if (buildInfo != null) {
+            buildInfos[buildVersion.id] = buildInfo.copy(buildAlias = buildVersion.name)
+        }
     }
 
 }

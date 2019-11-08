@@ -185,9 +185,9 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 post<Routes.Api.Agent.SetPackages> { (agentId) ->
                     val prefixes = PackagesPrefixes.serializer() parse call.receiveText()
-                    agentManager.configurePackages(prefixes, agentId)
+                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.configurePackages(prefixes, agentId) }
                     val adminData = agentManager.adminData(agentId)
-                    adminData.packagesPrefixes = prefixes
+                    adminData.packagesPrefixes = prefixes.packagesPrefixes
                     adminData.refreshStoredSummary()
                     call.respond(HttpStatusCode.OK, "Trigger for classes processing sent to agent with id $agentId")
                 }

@@ -29,7 +29,7 @@ abstract class PluginStreams {
 
 
 class AdminUiChannels {
-    val agentChannel = Channel<AgentInfoWebSocketSingle?>()
+    val agentChannel = Channel<AgentInfoWebSocket?>()
     val agentBuildsChannel = Channel<Set<AgentBuildVersionJson>?>()
     val buildsChannel = Channel<List<BuildSummaryWebSocket>?>()
     val agentsChannel = Channel<Set<AgentInfoWebSocket>?>()
@@ -75,7 +75,7 @@ class UIEVENTLOOP(val cs: Map<String, AdminUiChannels>, val uiStreamDebug: Boole
                                     is WsRoutes.GetAgent -> {
 
                                         if (notEmptyResponse) {
-                                            cs[type.agentId]!!.agentChannel.send(AgentInfoWebSocketSingle.serializer() parse content)
+                                            cs[type.agentId]!!.agentChannel.send(AgentInfoWebSocket.serializer() parse content)
                                         } else {
                                             cs[type.agentId]!!.agentChannel.send(null)
                                         }

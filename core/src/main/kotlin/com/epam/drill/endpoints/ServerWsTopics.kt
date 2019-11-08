@@ -29,7 +29,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 val destination = app.toLocation(WsRoutes.GetAllAgents())
                 sessionStorage.sendTo(
                     destination,
-                    storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)).toMutableSet().toAgentInfosWebSocket()
+                    storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)).toMutableSet()
+                        .toAgentInfosWebSocket(agentManager.adminDataVault)
                 )
 
             }
@@ -38,7 +39,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 if (sessionStorage.exists(destination)) {
                     sessionStorage.sendTo(
                         destination,
-                        v.agent.toAgentInfoWebSocket()
+                        v.agent.toAgentInfoWebSocket(agentManager.adminData(k))
                     )
 
                 }
@@ -54,16 +55,16 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoutes.GetAllAgents> {
                     agentManager.agentStorage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id))
                         .toMutableSet()
-                        .toAgentInfosWebSocket()
+                        .toAgentInfosWebSocket(agentManager.adminDataVault)
 
                 }
 
-                topic<WsRoutes.GetAgent> { payload ->
-                    agentManager.getOrNull(payload.agentId)?.toAgentInfoWebSocket()
+                topic<WsRoutes.GetAgent> { (agentId) ->
+                    agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager.adminData(agentId))
                 }
 
                 topic<WsRoutes.GetAgentBuilds> { payload ->
-                    agentManager.getOrNull(payload.agentId)?.buildVersions
+                    agentManager.adminData(payload.agentId).buildManager.buildVersionsJson
                 }
 
                 topic<WsRoutes.GetAllPlugins> {
@@ -71,7 +72,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         .toAllPluginsWebSocket(agentManager.agentStorage.values.map { it.agent }.toMutableSet())
                 }
 
-                topic<WsRoutes.GetPluginInfo> { payload->
+                topic<WsRoutes.GetPluginInfo> { payload ->
                     val installedPluginBeanIds = agentManager
                         .getAllInstalledPluginBeanIds(payload.agentId)
                     plugins.getAllPluginBeans().map { plug ->
@@ -85,7 +86,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoutes.GetPluginConfig> { payload ->
                     agentManager.getOrNull(payload.agent)?.plugins?.find { it.id == payload.plugin }
-                    ?.config?.let { json.parseJson(it) } ?: ""
+                        ?.config?.let { json.parseJson(it) } ?: ""
                 }
 
                 topic<WsRoutes.GetNotifications> {
@@ -94,7 +95,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoutes.GetBuilds> { (agentId) ->
                     val agentBuilds: Set<AgentBuildVersionJson> =
-                        agentManager.getOrNull(agentId)?.buildVersions ?: emptySet()
+                        agentManager.adminData(agentId).buildManager.buildVersionsJson.toSet()
                     agentManager.adminData(agentId).buildManager.summaries.map { summary ->
                         summary.toWebSocketSummary(agentBuilds)
                     }.sortedByDescending { it.addedDate }
