@@ -20,7 +20,6 @@ import io.mockk.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import org.apache.commons.codec.digest.*
-import org.junit.jupiter.api.io.*
 import java.io.*
 import java.util.concurrent.*
 import java.util.jar.*
@@ -29,14 +28,9 @@ import kotlin.collections.component2
 import kotlin.collections.set
 import kotlin.test.*
 
-abstract class AbstarctE2EPluginTest<T : PluginStreams> {
+abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
 
-    @TempDir
-    lateinit var projectDir: File
-
-    lateinit var globToken: String
     val agents = ConcurrentHashMap<String, AgentAsyncStruct<T>>()
-
 
     inline fun <reified X : PluginStreams> createSimpleAppWithPlugin(
         uiStreamDebug: Boolean = false,
@@ -50,6 +44,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
             coroutineException = exception
         }
         withTestApplication({ testApp(this, sslPort) }) {
+            storeManager = appConfig.storeManager
             globToken = requestToken()
             handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->
                 val cs = mutableMapOf<String, AdminUiChannels>()
@@ -343,7 +338,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
             }
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
-    ): AbstarctE2EPluginTest<T> {
+    ): E2EPluginTest<T> {
 
         val kClass = B::class
         val build = kClass.objectInstance!!
@@ -381,7 +376,7 @@ abstract class AbstarctE2EPluginTest<T : PluginStreams> {
             }
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
-    ): AbstarctE2EPluginTest<T> {
+    ): E2EPluginTest<T> {
         agents[ags.id]?.thenCallbacks?.add(
             ThenAgentAsyncStruct(
                 ags,

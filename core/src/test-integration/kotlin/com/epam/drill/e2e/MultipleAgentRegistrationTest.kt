@@ -6,7 +6,7 @@ import io.kotlintest.*
 import io.ktor.http.*
 
 
-class MultipleAgentRegistrationTest : AbstractE2ETest() {
+class MultipleAgentRegistrationTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `4 Agents should be registered in parallel`() {

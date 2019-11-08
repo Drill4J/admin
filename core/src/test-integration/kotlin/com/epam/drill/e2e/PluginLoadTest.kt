@@ -7,7 +7,7 @@ import io.ktor.http.*
 import org.apache.commons.codec.digest.*
 
 
-class PluginLoadTest : AbstractE2ETest() {
+class PluginLoadTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `Plugin Load Test`() {

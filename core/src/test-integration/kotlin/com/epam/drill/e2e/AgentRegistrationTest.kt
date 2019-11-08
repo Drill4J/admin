@@ -6,7 +6,7 @@ import io.kotlintest.*
 import io.ktor.http.*
 
 
-class AgentRegistrationTest : AbstractE2ETest() {
+class AgentRegistrationTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `Agent should be registered`() {

@@ -5,31 +5,17 @@ import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.router.*
 import com.epam.drill.testdata.*
-import com.epam.kodux.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
-import org.junit.jupiter.api.*
-import org.junit.jupiter.api.io.*
-import java.io.*
 import java.util.concurrent.*
 
 
-abstract class AbstractE2ETest {
-    @TempDir
-    lateinit var projectDir: File
-
-    lateinit var storeManager: StoreManager
-
-
-    lateinit var globToken: String
+abstract class E2ETest : AdminTest() {
     val agents =
         ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
                 MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
-
-    @AfterEach
-    fun closeResources() { storeManager.storages.forEach { it.value.close() } }
 
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
@@ -110,16 +96,16 @@ abstract class AbstractE2ETest {
     fun connectAgent(
         ags: AgentWrap,
         bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
-    ): AbstractE2ETest {
+    ): E2ETest {
         agents[ags.id] = Triple(ags, bl, mutableListOf())
         return this
     }
 
 
-    fun newConnect(
+    fun reconnect(
         ags: AgentWrap,
         bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
-    ): AbstractE2ETest {
+    ): E2ETest {
         agents[ags.id]?.third?.add(ags to bl)
         return this
     }

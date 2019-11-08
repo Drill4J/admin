@@ -121,6 +121,7 @@ task<Test>("integrationTest") {
 
 tasks.named("check") {
     dependsOn("integrationTest")
+
 }
 
 tasks {
@@ -136,6 +137,10 @@ tasks {
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.Experimental"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.time.ExperimentalTime"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
+    }
+    register<Jar>("sourcesJar") {
+        from(sourceSets.main.get().allSource)
+        archiveClassifier.set("sources")
     }
 
 }
@@ -165,6 +170,7 @@ publishing {
         create<MavenPublication>("admin") {
             artifact(tasks["jar"])
             artifactId = "admin-core"
+            artifact(tasks["sourcesJar"])
         }
     }
 }

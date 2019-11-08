@@ -5,7 +5,7 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 
-class ToggleAgentTest : AbstractE2ETest() {
+class ToggleAgentTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `Toggle Agent Test`() {

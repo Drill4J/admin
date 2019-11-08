@@ -7,7 +7,7 @@ import io.ktor.http.*
 import org.apache.commons.codec.digest.*
 import org.junit.jupiter.api.*
 
-class PluginUnloadTest : AbstractE2ETest() {
+class PluginUnloadTest : E2ETest() {
 
     @Disabled("Disabled cuzz can't unload now!")
     @org.junit.jupiter.api.Test

@@ -7,7 +7,7 @@ import io.ktor.http.*
 import org.apache.commons.codec.digest.*
 import org.junit.jupiter.api.*
 
-class TogglePluginTest : AbstractE2ETest() {
+class TogglePluginTest : E2ETest() {
 
     @Disabled
     @org.junit.jupiter.api.Test

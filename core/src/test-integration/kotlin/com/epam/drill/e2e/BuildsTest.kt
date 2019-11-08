@@ -6,7 +6,7 @@ import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
 
-class BuildsTest : AbstractE2ETest() {
+class BuildsTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `can add new builds and rename aliases`() {
@@ -29,7 +29,7 @@ class BuildsTest : AbstractE2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 1
 
-            }.newConnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
+            }.reconnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
@@ -42,7 +42,7 @@ class BuildsTest : AbstractE2ETest() {
                 renameBuildVersion(aw.id, payload = AgentBuildVersionJson("0.1.2", "wtf"))
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 2
-            }.newConnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
+            }.reconnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
