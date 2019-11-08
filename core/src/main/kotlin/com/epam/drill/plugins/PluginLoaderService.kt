@@ -4,14 +4,16 @@ package com.epam.drill.plugins
 import com.epam.drill.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
-import io.ktor.util.*
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.io.*
 import java.lang.System.*
-import java.nio.file.*
 import java.util.jar.*
 import java.util.zip.*
 
@@ -20,81 +22,95 @@ private val logger = KotlinLogging.logger {}
 
 class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
     private val plugins: Plugins by kodein.instance()
-    private val pluginPaths: List<File> =
-        mutableListOf(
-            File("distr").resolve("adminStorage"),
-            drillHomeDir.resolve("adminStorage")
-        ).apply {
-            Paths.get("")?.toAbsolutePath()?.parent?.resolve("distr")?.resolve("adminStorage")?.toFile()?.let {
-                add(it)
-            }
-        }.map { it.canonicalFile }
+    private val plugStoragePath = File("distr").resolve("adminStorage")
+    private val pluginPaths: List<File> = mutableListOf(plugStoragePath).map { it.canonicalFile }
+    private val artifactoryUrl = "https://oss.jfrog.org/artifactory"
+    private val artifactoryRepo = "oss-release-local"
+    private val allowedPlugins = setOf("coverage")
 
     init {
-        try {
-            logger.info { "Searching for plugins in paths $pluginPaths" }
+        runBlocking {
+            HttpClient(CIO).use { client ->
+                allowedPlugins.forEach {pluginId->
+                    val version =
+                        client.get<String>("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
+                    val targetFileName = "$pluginId-plugin-$version.zip"
+                    val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
+                    val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
+                    plugStoragePath.mkdirs()
 
-            val pluginsFiles = pluginPaths.filter { it.exists() }
-                .flatMap { it.listFiles()!!.asIterable() }
-                .filter { it.isFile && it.extension.equals("zip", true) }
-                .map { it.canonicalFile }
+                    val targetFile = plugStoragePath.resolve(targetFileName)
+                    if (m2.exists())
+                        targetFile.writeBytes(m2.readBytes())
+                    else
+                        targetFile.writeBytes(client.get("$artifactoryUrl/$artifactoryRepo/$artifactPath"))
+                }
+            }
+            try {
+                logger.info { "Searching for plugins in paths $pluginPaths" }
 
-            if (pluginsFiles.isNotEmpty()) {
+                val pluginsFiles = pluginPaths.filter { it.exists() }
+                    .flatMap { it.listFiles()!!.asIterable() }
+                    .filter { it.isFile && it.extension.equals("zip", true) }
+                    .map { it.canonicalFile }
 
-                logger.info { "Plugin jars found: ${pluginsFiles.count()}." }
+                if (pluginsFiles.isNotEmpty()) {
 
-                pluginsFiles.forEach { pluginFile ->
-                    logger.info { "Loading from $pluginFile." }
+                    logger.info { "Plugin jars found: ${pluginsFiles.count()}." }
 
-                    ZipFile(pluginFile).use { jar ->
-                        val configPath = "plugin_config.json"
-                        val configEntry = jar.getEntry(configPath)
+                    pluginsFiles.forEach { pluginFile ->
+                        logger.info { "Loading from $pluginFile." }
 
-                        if (configEntry != null) {
-                            val configText = jar.getInputStream(configEntry).reader().readText()
-                            @Suppress("EXPERIMENTAL_API_USAGE")
-                            val config = Json.parse(PluginMetadata.serializer(), configText)
-                            val pluginId = config.id
+                        ZipFile(pluginFile).use { jar ->
+                            val configPath = "plugin_config.json"
+                            val configEntry = jar.getEntry(configPath)
 
-                            if (pluginId !in plugins.keys) {
-                                val adminPartFile = jar.extractPluginEntry(pluginId, "admin-part.jar")
-                                val agentFile = jar.extractPluginEntry(pluginId, "agent-part.jar")
+                            if (configEntry != null) {
+                                val configText = jar.getInputStream(configEntry).reader().readText()
+                                @Suppress("EXPERIMENTAL_API_USAGE")
+                                val config = Json.parse(PluginMetadata.serializer(), configText)
+                                val pluginId = config.id
 
-                                if (adminPartFile != null && agentFile != null) {
-                                    val adminPartClass = JarFile(adminPartFile).use { adminJar ->
-                                        processAdminPart(adminPartFile, adminJar)
+                                if (pluginId !in plugins.keys) {
+                                    val adminPartFile = jar.extractPluginEntry(pluginId, "admin-part.jar")
+                                    val agentFile = jar.extractPluginEntry(pluginId, "agent-part.jar")
+
+                                    if (adminPartFile != null && agentFile != null) {
+                                        val adminPartClass = JarFile(adminPartFile).use { adminJar ->
+                                            processAdminPart(adminPartFile, adminJar)
+                                        }
+
+                                        if (adminPartClass != null) {
+                                            val dp = Plugin(
+                                                adminPartClass,
+                                                AgentPartFiles(
+                                                    agentFile,
+                                                    jar.extractPluginEntry(pluginId, "native_plugin.dll"),
+                                                    jar.extractPluginEntry(pluginId, "libnative_plugin.so")
+                                                ),
+                                                config
+                                            )
+                                            plugins[pluginId] = dp
+                                            logger.info { "Plugin '$pluginId' was loaded successfully." }
+                                        } else {
+                                            logger.warn { "Admin Plugin API class was not found for $pluginId" }
+                                        }
                                     }
-                                    
-                                    if (adminPartClass != null) {
-                                        val dp = Plugin(
-                                            adminPartClass,
-                                            AgentPartFiles(
-                                                agentFile,
-                                                jar.extractPluginEntry(pluginId, "native_plugin.dll"),
-                                                jar.extractPluginEntry(pluginId, "libnative_plugin.so")
-                                            ),
-                                            config
-                                        )
-                                        plugins[pluginId] = dp
-                                        logger.info { "Plugin '$pluginId' was loaded successfully." }
-                                    } else {
-                                        logger.warn { "Admin Plugin API class was not found for $pluginId" }
-                                    }
+                                } else {
+                                    logger.warn { "Plugin $pluginId has already been loaded. Skipping loading from $pluginFile." }
                                 }
                             } else {
-                                logger.warn { "Plugin $pluginId has already been loaded. Skipping loading from $pluginFile." }
+                                logger.warn { "Error loading plugin from $pluginFile - no $configPath!" }
                             }
-                        } else {
-                            logger.warn { "Error loading plugin from $pluginFile - no $configPath!" }
                         }
                     }
-                }
-            } else {
-                logger.warn { "No plugins found!" }
+                } else {
+                    logger.warn { "No plugins found!" }
 
+                }
+            } catch (ex: Exception) {
+                logger.error(ex) { "Plugin loading was finished with exception" }
             }
-        } catch (ex: Exception) {
-            logger.error(ex) { "Plugin loading was finished with exception" }
         }
 
     }

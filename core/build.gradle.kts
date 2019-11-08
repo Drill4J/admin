@@ -37,10 +37,6 @@ application {
     applicationDefaultJvmArgs = appJvmArgs
 }
 
-val remotePlugins: Configuration by configurations.creating {}
-dependencies {
-    remotePlugins("com.epam.drill:coverage-plugin:+")
-}
 val integrationTestImplementation by configurations.creating {
     extendsFrom(configurations["testCompile"])
 }
@@ -56,6 +52,7 @@ dependencies {
     implementation(ktor("locations"))
     implementation(ktor("server-core"))
     implementation(ktor("websockets"))
+    implementation(ktor("client-cio"))
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
@@ -123,12 +120,12 @@ task<Test>("integrationTest") {
 }
 
 tasks.named("check") {
-        dependsOn("integrationTest")
+    dependsOn("integrationTest")
 }
 
 tasks {
     clean {
-        delete("./work", "./../distr")
+        delete("./work","./distr" ,"./../distr")
     }
 
     withType<KotlinCompile> {
@@ -141,22 +138,6 @@ tasks {
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
     }
 
-    val downloadPlugins by registering(Copy::class) {
-        from(remotePlugins.files.filter { it.extension == "zip" })
-        into(project(":admin").projectDir.resolve("distr").resolve("adminStorage"))
-    }
-
-    named("run") {
-        dependsOn(downloadPlugins)
-    }
-
-    named("integrationTest") {
-        dependsOn(downloadPlugins)
-    }
-
-    named("jib") {
-        dependsOn(downloadPlugins)
-    }
 }
 
 publishing {
