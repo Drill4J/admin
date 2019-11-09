@@ -21,6 +21,7 @@ import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import org.apache.commons.codec.digest.*
 import java.io.*
+import java.util.*
 import java.util.concurrent.*
 import java.util.jar.*
 import kotlin.collections.component1
@@ -69,8 +70,7 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     .filter { it.extension == "class" }
                                     .toList()
                                     .toTypedArray()
-                                val agent = ui.getAgent()
-                                println(agent)
+                                ui.getAgent()
 
                                 val st = X::class.java.constructors.single().newInstance() as T
                                 val pluginTestInfo = PluginTestContext(
@@ -83,7 +83,7 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                 )
                                 st.info = pluginTestInfo
                                 st.app = application
-                                with(st) { queued(uiIncoming, ut) }
+                                with(st) { queued(uiIncoming, ut, uiStreamDebug) }
                                 delay(50)
 
                                 handleWebSocketConversation(
@@ -93,8 +93,8 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
                                     apply.getServiceConfig()?.sslPort
                                     register(ag.id)
-                                    println(ui.getAgent())
-                                    println(ui.getAgent())
+                                    ui.getAgent()
+                                    ui.getAgent()
                                     apply.`get-set-packages-prefixes`()
                                     val bcelClasses = classes.map {
                                         it.inputStream().use { fs -> ClassParser(fs, "").parse() }
@@ -106,7 +106,11 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     }
                                     assertEquals(ui.getAgent()?.status, AgentStatus.ONLINE)
 
-                                    assertEquals(addPlugin(ag.id, PluginId(pluginId)).first, HttpStatusCode.OK)
+                                    assertEquals(
+                                        HttpStatusCode.OK,
+                                        addPlugin(ag.id, PluginId(pluginId)).first,
+                                        "ADD PLUGIN"
+                                    )
 
                                     lateinit var bs: ByteArray
                                     apply.getLoadedPlugin { _, file ->
@@ -153,7 +157,8 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                         }
                                     apply.plugin = spykAgentPart
                                     every { spykAgentPart.send(any()) } coAnswers {
-                                        println(this.args[0])
+                                        if (agentStreamDebug)
+                                            println(this.args[0])
                                         val content: String = this.args[0].toString()
                                         out.send(
                                             AgentMessage(
@@ -271,7 +276,8 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                             }
                                         apply.plugin = spykAgentPart
                                         every { spykAgentPart.send(any()) } coAnswers {
-                                            println(this.args[0])
+                                            if (agentStreamDebug)
+                                                println(this.args[0])
                                             val content: String = this.args[0].toString()
                                             out.send(
                                                 AgentMessage(
@@ -327,7 +333,7 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
 
 
     inline fun <reified B : Build> connectAgent(
-        ags: AgentWrap = AgentWrap("agent-1",
+        ags: AgentWrap = AgentWrap(UUID.randomUUID().toString(),
             run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
@@ -365,7 +371,7 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
     )
 
     inline fun <reified B : Build> reconnect(
-        ags: AgentWrap = AgentWrap("agent-1",
+        ags: AgentWrap = AgentWrap(agents.keys.first(),
             run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()

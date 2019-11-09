@@ -23,7 +23,7 @@ import org.apache.bcel.classfile.*
 abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
-    abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>)
+    abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>,isDebugStream: Boolean= false)
     abstract suspend fun subscribe(sinf: SubscribeInfo)
 }
 

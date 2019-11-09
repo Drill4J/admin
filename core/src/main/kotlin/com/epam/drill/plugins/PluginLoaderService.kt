@@ -20,7 +20,8 @@ import java.util.zip.*
 
 private val logger = KotlinLogging.logger {}
 
-class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
+class PluginLoaderService(override val kodein: Kodein, val workDir: File = File(getenv("DRILL_HOME"), "work")) :
+    KodeinAware {
     private val plugins: Plugins by kodein.instance()
     private val plugStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = mutableListOf(plugStoragePath).map { it.canonicalFile }
@@ -31,7 +32,7 @@ class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
     init {
         runBlocking {
             HttpClient(CIO).use { client ->
-                allowedPlugins.forEach {pluginId->
+                allowedPlugins.forEach { pluginId ->
                     val version =
                         client.get<String>("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
                     val targetFileName = "$pluginId-plugin-$version.zip"
@@ -127,17 +128,18 @@ class PluginLoaderService(override val kodein: Kodein) : KodeinAware {
         return pluginApiClass as Class<AdminPluginPart<*>>?
     }
 
-}
-
-fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
-    val jarEntry: ZipEntry = getEntry(entry) ?: return null
-    return getInputStream(jarEntry).use { istream ->
-        val workDir = File(getenv("DRILL_HOME"), "work")
-        val pluginDir = workDir.resolve("plugins").resolve(pluginId)
-        pluginDir.mkdirs()
-        File(pluginDir, jarEntry.name).apply {
-            outputStream().use { ostream -> istream.copyTo(ostream) }
-            deleteOnExit()
+    fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
+        val jarEntry: ZipEntry = getEntry(entry) ?: return null
+        return getInputStream(jarEntry).use { istream ->
+            val pluginDir = workDir.resolve("plugins").resolve(pluginId)
+            pluginDir.mkdirs()
+            File(pluginDir, jarEntry.name).apply {
+                outputStream().use { ostream -> istream.copyTo(ostream) }
+                deleteOnExit()
+            }
         }
     }
+
+
 }
+

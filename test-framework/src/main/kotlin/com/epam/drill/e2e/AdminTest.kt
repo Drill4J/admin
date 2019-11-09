@@ -15,5 +15,6 @@ abstract class AdminTest {
     @AfterEach
     fun closeResources() {
         storeManager.storages.forEach { it.value.close() }
+        storeManager.storages.clear()
     }
 }

@@ -63,6 +63,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             buildAlias = alias
                             status = AgentStatus.ONLINE
                         }
+                        val buildVersion = AgentBuildVersionJson(agInfo.id, alias)
+                        agentManager.adminData(agentId).buildManager.renameBuild(buildVersion)
                         agentManager.sync(agInfo, true)
                         logger.debug { "Agent with id '$agentId' has been registered" }
                         call.respond(HttpStatusCode.OK, "Agent '$agentId' has been registered")

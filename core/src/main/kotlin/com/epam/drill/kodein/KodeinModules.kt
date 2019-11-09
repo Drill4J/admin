@@ -20,35 +20,39 @@ import io.ktor.application.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
-val storage: Kodein.Builder.(Application) -> Unit = { _ ->
-    bind<StoreManager>() with eagerSingleton {StoreManager(drillWorkDir) }
-    bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
-    bind<CacheService>() with eagerSingleton { JvmCacheService() }
-    bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
-    bind<SessionStorage>() with eagerSingleton { HashSet<DrillWsSession>() }
-    bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
-    bind<NotificationsManager>() with eagerSingleton { NotificationsManager() }
-}
+val storage: Kodein.Builder.(Application) -> Unit
+    get() = { _ ->
+        bind<StoreManager>() with eagerSingleton { StoreManager(drillWorkDir) }
+        bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
+        bind<CacheService>() with eagerSingleton { JvmCacheService() }
+        bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+        bind<SessionStorage>() with eagerSingleton { HashSet<DrillWsSession>() }
+        bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
+        bind<NotificationsManager>() with eagerSingleton { NotificationsManager() }
+    }
 
-val wsHandler: Kodein.Builder.(Application) -> Unit = { _ ->
-    bind<AgentEndpoints>() with eagerSingleton { AgentEndpoints(kodein) }
-    bind<Sender>() with eagerSingleton { DrillPluginWs(kodein) }
-    bind<DrillServerWs>() with eagerSingleton { DrillServerWs(kodein) }
-    bind<TopicResolver>() with eagerSingleton { TopicResolver(kodein) }
-    bind<ServerWsTopics>() with eagerSingleton { ServerWsTopics(kodein) }
-    bind<WsTopic>() with singleton { WsTopic(kodein) }
-}
+val wsHandler: Kodein.Builder.(Application) -> Unit
+    get() = { _ ->
+        bind<AgentEndpoints>() with eagerSingleton { AgentEndpoints(kodein) }
+        bind<Sender>() with eagerSingleton { DrillPluginWs(kodein) }
+        bind<DrillServerWs>() with eagerSingleton { DrillServerWs(kodein) }
+        bind<TopicResolver>() with eagerSingleton { TopicResolver(kodein) }
+        bind<ServerWsTopics>() with eagerSingleton { ServerWsTopics(kodein) }
+        bind<WsTopic>() with singleton { WsTopic(kodein) }
+    }
 
-val handlers: Kodein.Builder.(Application) -> Unit = { _ ->
-    bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
-    bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
-    bind<InfoController>() with eagerSingleton { InfoController(kodein) }
-    bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
-    bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
-    bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
-}
+val handlers: Kodein.Builder.(Application) -> Unit
+    get() = { _ ->
+        bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
+        bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
+        bind<InfoController>() with eagerSingleton { InfoController(kodein) }
+        bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
+        bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
+        bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
+    }
 
-val pluginServices: Kodein.Builder.(Application) -> Unit = { _ ->
-    bind<Plugins>() with singleton { Plugins() }
-    bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(kodein) }
-}
+val pluginServices: Kodein.Builder.(Application) -> Unit
+    get() = { _ ->
+        bind<Plugins>() with singleton { Plugins() }
+        bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(kodein) }
+    }
