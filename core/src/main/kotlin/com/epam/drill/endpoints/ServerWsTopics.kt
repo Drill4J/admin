@@ -94,11 +94,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetBuilds> { (agentId) ->
-                    val agentBuilds: Set<AgentBuildVersionJson> =
-                        agentManager.adminData(agentId).buildManager.buildVersionsJson.toSet()
-                    agentManager.adminData(agentId).buildManager.summaries.map { summary ->
-                        summary.toWebSocketSummary(agentBuilds)
-                    }.sortedByDescending { it.addedDate }
+                    agentManager.adminData(agentId).buildManager.summaries.sortedByDescending { it.addedDate }
                 }
             }
 

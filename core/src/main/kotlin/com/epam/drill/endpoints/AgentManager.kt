@@ -49,10 +49,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentInfo.processBuild(pBuildVersion: String, agentId: String) {
-        logger.debug { "Updating build version for agent with id $agentId. Previous build version is $pBuildVersion" }
+        logger.debug { "Updating build version for agent with id $agentId. Build version is $pBuildVersion" }
         if (status != AgentStatus.OFFLINE) {
-            val buildInfo = adminData(agentId).buildManager[buildVersion]
-            if (buildInfo == null) {
+            val buildInfo = adminData(agentId).buildManager[pBuildVersion]
+            if (buildInfo == null || buildInfo.new) {
                 logger.debug { "Build version wit id $pBuildVersion not found" }
                 notificationsManager.save(
                     agentId,

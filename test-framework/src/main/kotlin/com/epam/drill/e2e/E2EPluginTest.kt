@@ -1,4 +1,4 @@
-@file:Suppress("UNCHECKED_CAST", "unused", "UNUSED_PARAMETER")
+@file:Suppress("UNCHECKED_CAST", "unused", "UNUSED_PARAMETER", "DEPRECATION")
 
 package com.epam.drill.e2e
 

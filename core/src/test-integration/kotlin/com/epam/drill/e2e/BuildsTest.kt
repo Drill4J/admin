@@ -5,6 +5,7 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
+import java.io.*
 
 class BuildsTest : E2ETest() {
 
@@ -20,13 +21,6 @@ class BuildsTest : E2ETest() {
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`("DrillExtension1.class")
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-
-                addPlugin(aw.id, pluginT2CM)
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
-                agent.getLoadedPlugin { metadata, file ->
-                    DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
-                }
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 1
 
             }.reconnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
@@ -34,9 +28,6 @@ class BuildsTest : E2ETest() {
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`("DrillExtension2.class")
-                agent.getLoadedPlugin { metadata, file ->
-                    DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
-                }
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 2
                 renameBuildVersion(aw.id, payload = AgentBuildVersionJson("0.1.2", "wtf"))
@@ -47,15 +38,16 @@ class BuildsTest : E2ETest() {
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                agent.getLoadedPlugin { metadata, file ->
-                    DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
-                }
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 3
                 renameBuildVersion(aw.id, payload = AgentBuildVersionJson("0.1.3", "omg"))
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getBuilds()
                 val builds = ui.getBuilds()
-                builds?.size shouldBe 3
+                builds!!.size shouldBe 3
+                builds.find { it.buildVersion == "0.1.0" }!!.alias shouldBe "sad"
+                builds.find { it.buildVersion == "0.1.2" }!!.alias shouldBe "wtf"
+                builds.find { it.buildVersion == "0.1.3" }!!.alias shouldBe "omg"
             }
         }
 

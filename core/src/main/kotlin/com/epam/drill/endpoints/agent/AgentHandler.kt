@@ -84,14 +84,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
+                            logger.debug { "Starting classes transfer" }
                             agentManager.adminData(agentInfo.id).run {
-                                buildManager.setupBuildInfo(agentInfo.buildVersion)
+                                buildManager.setupBuildInfo(agentInfo.buildVersion, agentInfo.buildAlias)
                                 refreshStoredSummary()
                             }
-                            logger.debug { "Starting classes transfer" }
-                            agentManager.adminData(agentInfo.id)
-                                .buildManager
-                                .setupBuildInfo(agentInfo.buildVersion)
                         }
 
                         MessageType.CLASSES_DATA -> {

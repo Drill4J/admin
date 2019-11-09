@@ -1,5 +1,6 @@
 package com.epam.drill.admindata
 
+import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -22,8 +23,8 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
             _lastBuild.value = value
         }
 
-    override val summaries: List<BuildSummary>
-        get() = buildInfos.values.map { it.buildSummary }
+    override val summaries: List<BuildSummaryWebSocket>
+        get() = buildInfos.values.map { it.buildSummary.toWebSocketSummary(it.buildAlias) }
 
     val buildVersions: Map<String, String>
         get() = buildInfos.map { (buildVersion, buildInfo) ->
@@ -36,9 +37,10 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
 
     override operator fun get(buildVersion: String) = buildInfos[buildVersion]
 
-    fun setupBuildInfo(buildVersion: String) {
-        val buildVersionIsNew = buildInfos[buildVersion] == null
-        val buildInfo = buildInfos[buildVersion] ?: BuildInfo(agentId)
+    fun setupBuildInfo(buildVersion: String, currentAlias: String) {
+        val buildVersionIsNew = buildInfos[buildVersion] == null || buildInfos[buildVersion]!!.new
+        val buildInfo = buildInfos[buildVersion]
+            ?: BuildInfo(buildVersion = buildVersion, buildAlias = currentAlias)
         val prevBuild = buildInfo.prevBuild
         buildInfos[buildVersion] = buildInfo.copy(
             buildVersion = buildVersion,
@@ -47,11 +49,12 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         )
         if (buildVersionIsNew) {
             lastBuild = buildVersion
+            buildInfos[buildVersion] = buildInfos[buildVersion]!!.copy(new = false)
         }
     }
 
     fun addClass(buildVersion: String, rawData: String) {
-        val buildInfo = buildInfos[buildVersion] ?: BuildInfo(agentId)
+        val buildInfo = buildInfos[buildVersion] ?: BuildInfo(buildVersion = buildVersion)
         val currentClasses = buildInfo.classesBytes
         val base64Class = Base64Class.serializer() parse rawData
         buildInfos[buildVersion] = buildInfo.copy(
@@ -63,8 +66,9 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         val currentMethods = buildInfos[buildVersion]?.classesBytes?.mapValues { (className, bytes) ->
             BcelClassParser(bytes, className).parseToJavaMethods()
         } ?: emptyMap()
-        buildInfos[buildVersion] = buildInfos[buildVersion]?.copy(javaMethods = currentMethods) ?: BuildInfo(agentId)
-        val buildInfo = buildInfos[buildVersion] ?: BuildInfo(agentId)
+        buildInfos[buildVersion] = buildInfos[buildVersion]?.copy(javaMethods = currentMethods)
+            ?: BuildInfo(buildVersion = buildVersion)
+        val buildInfo = buildInfos[buildVersion] ?: BuildInfo(buildVersion = buildVersion)
         val prevMethods = buildInfos[buildInfo.prevBuild]?.javaMethods ?: mapOf()
 
         val coverageBuilder = CoverageBuilder()
@@ -74,13 +78,13 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
 
         buildInfos[buildVersion] = buildInfos[buildVersion]?.copy(
             methodChanges = MethodsComparator(bundleCoverage).compareClasses(prevMethods, currentMethods)
-        ) ?: BuildInfo(agentId)
+        ) ?: BuildInfo(buildVersion = buildVersion)
 
         val changes = buildInfos[buildVersion]?.methodChanges?.map ?: emptyMap()
         val deletedMethodsCount = changes[DiffType.DELETED]?.count() ?: 0
         val processedBuildInfo = buildInfos[buildVersion]?.copy(
             buildSummary = BuildSummary(
-                name = buildVersion,
+                buildVersion = buildVersion,
                 addedDate = System.currentTimeMillis(),
                 totalMethods = changes.values.flatten().count() - deletedMethodsCount,
                 newMethods = changes[DiffType.NEW]?.count() ?: 0,
@@ -90,16 +94,16 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
                 unaffectedMethods = changes[DiffType.UNAFFECTED]?.count() ?: 0,
                 deletedMethods = deletedMethodsCount
             )
-        ) ?: BuildInfo(agentId)
+        ) ?: BuildInfo(buildVersion = buildVersion)
         storeClient.store(processedBuildInfo.toStorable(agentId))
         buildInfos[buildVersion] = processedBuildInfo
     }
 
-    fun renameBuild(buildVersion: AgentBuildVersionJson){
-        val buildInfo = buildInfos[buildVersion.id]
-        if (buildInfo != null) {
-            buildInfos[buildVersion.id] = buildInfo.copy(buildAlias = buildVersion.name)
-        }
+    suspend fun renameBuild(buildVersion: AgentBuildVersionJson) {
+        val buildInfo = buildInfos[buildVersion.id]?.copy(buildAlias = buildVersion.name)
+            ?: BuildInfo(buildVersion = buildVersion.id, buildAlias = buildVersion.name)
+        buildInfos[buildVersion.id] = buildInfo
+        storeClient.store(buildInfo.toStorable(agentId))
     }
 
 }

@@ -54,7 +54,8 @@ class AdminPluginData(
                 packagesPrefixes = summary.packagesPrefixes
                 buildManager = AgentBuildManager(agentId, storeClient, summary.lastBuild)
                 storeClient.findBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
-                    .forEach { buildManager.buildInfos[it.buildVersion] = it.toBuildInfo() }
+                    .forEach {
+                        buildManager.buildInfos[it.buildVersion] = it.toBuildInfo() }
             }
         }
     }
@@ -84,6 +85,7 @@ data class StorableBuildInfo(
     val id: String,
     val agentId: String,
     val buildVersion: String = "",
+    val buildAlias: String = "",
     val buildSummary: BuildSummary = BuildSummary(),
     val prevBuild: String = "",
     val methodChanges: MethodChanges = MethodChanges(),
@@ -92,6 +94,7 @@ data class StorableBuildInfo(
 ) {
     fun toBuildInfo() = BuildInfo(
         buildVersion = buildVersion,
+        buildAlias = buildAlias,
         buildSummary = buildSummary,
         prevBuild = prevBuild,
         methodChanges = methodChanges,
@@ -104,6 +107,7 @@ fun BuildInfo.toStorable(agentId: String) = StorableBuildInfo(
     id = "$agentId:$buildVersion",
     agentId = agentId,
     buildVersion = buildVersion,
+    buildAlias = buildAlias,
     buildSummary = buildSummary,
     prevBuild = prevBuild,
     methodChanges = methodChanges,
