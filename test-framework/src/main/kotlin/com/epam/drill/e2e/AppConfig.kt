@@ -46,7 +46,8 @@ class AppConfig(var projectDir: File) {
                     bind<PluginLoaderService>() with eagerSingleton {
                         PluginLoaderService(
                             kodein,
-                            projectDir.resolve("work")
+                            projectDir.resolve("work"),
+                            false
                         )
                     }
                 }

@@ -20,7 +20,11 @@ import java.util.zip.*
 
 private val logger = KotlinLogging.logger {}
 
-class PluginLoaderService(override val kodein: Kodein, val workDir: File = File(getenv("DRILL_HOME"), "work")) :
+class PluginLoaderService(
+    override val kodein: Kodein,
+    val workDir: File = File(getenv("DRILL_HOME"), "work"),
+    val withArtifactory: Boolean = true
+) :
     KodeinAware {
     private val plugins: Plugins by kodein.instance()
     private val plugStoragePath = File("distr").resolve("adminStorage")
@@ -30,23 +34,24 @@ class PluginLoaderService(override val kodein: Kodein, val workDir: File = File(
     private val allowedPlugins = setOf("coverage")
 
     init {
-        runBlocking {
-            HttpClient(CIO).use { client ->
-                allowedPlugins.forEach { pluginId ->
-                    val version =
-                        client.get<String>("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
-                    val targetFileName = "$pluginId-plugin-$version.zip"
-                    val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
-                    val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
-                    plugStoragePath.mkdirs()
+        runBlocking(Dispatchers.IO) {
+            if (withArtifactory)
+                HttpClient(CIO).use { client ->
+                    allowedPlugins.forEach { pluginId ->
+                        val version =
+                            client.get<String>("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
+                        val targetFileName = "$pluginId-plugin-$version.zip"
+                        val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
+                        val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
+                        plugStoragePath.mkdirs()
 
-                    val targetFile = plugStoragePath.resolve(targetFileName)
-                    if (m2.exists())
-                        targetFile.writeBytes(m2.readBytes())
-                    else
-                        targetFile.writeBytes(client.get("$artifactoryUrl/$artifactoryRepo/$artifactPath"))
+                        val targetFile = plugStoragePath.resolve(targetFileName)
+                        if (m2.exists())
+                            targetFile.writeBytes(m2.readBytes())
+                        else
+                            targetFile.writeBytes(client.get("$artifactoryUrl/$artifactoryRepo/$artifactPath"))
+                    }
                 }
-            }
             try {
                 logger.info { "Searching for plugins in paths $pluginPaths" }
 
