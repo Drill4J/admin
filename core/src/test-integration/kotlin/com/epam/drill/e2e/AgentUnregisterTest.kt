@@ -7,19 +7,21 @@ import io.ktor.http.*
 
 class AgentUnregisterTest : E2ETest() {
 
+    private val agentId = "unregisterAgent"
+
     @org.junit.jupiter.api.Test
     fun `Agent Unregister Test`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap("ag1")) { ui, agent ->
+            connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
-                register("ag1").first shouldBe HttpStatusCode.OK
+                register(agentId).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
-                unRegister("ag1")
+                unRegister(agentId)
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
             }
         }

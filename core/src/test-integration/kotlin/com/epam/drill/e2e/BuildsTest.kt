@@ -4,15 +4,15 @@ import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.apache.commons.codec.digest.*
-import java.io.*
 
 class BuildsTest : E2ETest() {
+
+    private val agentId = "buildRenamingAgent"
 
     @org.junit.jupiter.api.Test
     fun `can add new builds and rename aliases`() {
         createSimpleAppWithUIConnection(agentStreamDebug = false, uiStreamDebug = false) {
-            val aw = AgentWrap("ag1")
+            val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 agent.getServiceConfig()?.sslPort shouldBe sslPort

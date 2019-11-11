@@ -7,21 +7,23 @@ import io.ktor.http.*
 
 class ToggleAgentTest : E2ETest() {
 
+    private val agentId = "toggleAgent"
+
     @org.junit.jupiter.api.Test
     fun `Toggle Agent Test`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap("ag1")) { ui, agent ->
+            connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
-                register("ag1").first shouldBe HttpStatusCode.OK
+                register(agentId).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
-                toggleAgent("ag1")
+                toggleAgent(agentId)
                 ui.getAgent()?.status shouldBe AgentStatus.OFFLINE
-                toggleAgent("ag1")
+                toggleAgent(agentId)
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
             }
         }
