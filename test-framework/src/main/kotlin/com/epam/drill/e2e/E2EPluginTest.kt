@@ -44,7 +44,9 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
         val handler = CoroutineExceptionHandler { _, exception ->
             coroutineException = exception
         }
-        withTestApplication({ testApp(this, sslPort) }) {
+        var l = System.currentTimeMillis()
+        withTestApplication({ testApp(this, sslPort, false) }) {
+            println((System.currentTimeMillis() - l))
             storeManager = appConfig.storeManager
             globToken = requestToken()
             handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->
@@ -99,7 +101,7 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     val bcelClasses = classes.map {
                                         it.inputStream().use { fs -> ClassParser(fs, "").parse() }
                                     }
-
+                                    l = System.currentTimeMillis()
                                     apply.`get-load-classes-data`(*bcelClasses.toTypedArray())
                                     val classMap: Map<String, ByteArray> = bcelClasses.associate {
                                         it.className.replace(".", "/") to it.bytes
@@ -136,7 +138,6 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                         clazz
                                     }
 
-
                                     val memoryClassLoader = MemoryClassLoader()
                                     val agentData = AgentDatum(classMap)
                                     val declaredConstructor =
@@ -144,7 +145,10 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     val agentPart = declaredConstructor.newInstance(
                                         PluginPayload(pluginId, agentData)
                                     ) as AgentPart<*, *>
+                                    println("API Loading: " + (System.currentTimeMillis() - l))
+                                    l = System.currentTimeMillis()
                                     val spykAgentPart = spyk(agentPart)
+                                    println("Mocking: " + (System.currentTimeMillis() - l))
                                     if (spykAgentPart is InstrumentationPlugin)
                                         every { spykAgentPart.retransform() } answers {
                                             agentData.classMap.forEach { (k, v) ->
@@ -172,21 +176,23 @@ abstract class E2EPluginTest<T : PluginStreams> : AdminTest() {
                                     }
 
                                     st.subscribe(SubscribeInfo(pluginTestInfo.agentId, pluginTestInfo.buildVersionHash))
-
+                                    l = System.currentTimeMillis()
                                     spykAgentPart.enabled = true
                                     spykAgentPart.updateRawConfig(pluginMeta.config)
                                     spykAgentPart.on()
-
+                                    println("ON: " + (System.currentTimeMillis() - l))
                                     pluginTestInfo.lis = memoryClassLoader.sw
                                     val first = memoryClassLoader.sw.first {
                                         !it.isInterface &&
                                                 it.interfaces.flatMap { it.interfaces.toSet() }.any { it == Tst::class.java }
                                     }
+                                    l = System.currentTimeMillis()
                                     mockkObject(DrillContext)
                                     every { DrillContext[any()] } returns ""
                                     every { DrillContext.invoke() } returns null
                                     buildw.test = first.newInstance() as Tst
                                     unmockkObject(DrillContext)
+                                    println("GLO~bAL mocking: " + (System.currentTimeMillis() - l))
                                     connect(pluginTestInfo, st, buildw)
                                 }
                             }

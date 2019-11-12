@@ -27,22 +27,29 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
 
                     if (agentId != null) {
                         val agentInfo = am.getOrNull(agentId)
-                        if (agentInfo?.status == null) {
-                            call.respondText(
-                                ValidationResponse.serializer() stringify ValidationResponse("Agent '$agentId' not found"),
-                                ContentType.Application.Json,
-                                HttpStatusCode.BadRequest
-                            )
-                            return@intercept finish()
-                        } else if (agentInfo.status == AgentStatus.BUSY) {
-                            logger.info { "Agent status is busy" }
+                        when {
+                            agentInfo?.status == null -> {
+                                if (am.getAllAgents().none { it.agent.serviceGroup == agentId }) {
+                                    call.respondText(
+                                        ValidationResponse.serializer() stringify ValidationResponse("Agent '$agentId' not found"),
+                                        ContentType.Application.Json,
+                                        HttpStatusCode.BadRequest
+                                    )
+                                    return@intercept finish()
+                                }
+                            }
+                            agentInfo.status == AgentStatus.BUSY -> {
+                                logger.info { "Agent status is busy" }
 
-                            call.respondText(
-                                ValidationResponse.serializer() stringify ValidationResponse(agentIsBusyMessage),
-                                ContentType.Application.Json,
-                                HttpStatusCode.BadRequest
-                            )
-                            return@intercept finish()
+                                call.respondText(
+                                    ValidationResponse.serializer() stringify ValidationResponse(agentIsBusyMessage),
+                                    ContentType.Application.Json,
+                                    HttpStatusCode.BadRequest
+                                )
+                                return@intercept finish()
+                            }
+
+
                         }
                     }
                 }

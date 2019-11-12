@@ -23,7 +23,7 @@ import org.apache.bcel.classfile.*
 abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
-    abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>,isDebugStream: Boolean= false)
+    abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean = false)
     abstract suspend fun subscribe(sinf: SubscribeInfo)
 }
 
@@ -47,7 +47,11 @@ class AdminUiChannels {
 
 }
 
-class UIEVENTLOOP(val cs: Map<String, AdminUiChannels>, val uiStreamDebug: Boolean) {
+class UIEVENTLOOP(
+    val cs: Map<String, AdminUiChannels>,
+    val uiStreamDebug: Boolean,
+    val glob: Channel<Set<AgentInfoWebSocket>> = Channel()
+) {
 
     fun Application.queued(wsTopic: WsTopic, incoming: ReceiveChannel<Frame>) = this.launch {
         incoming.consumeEach {
@@ -66,11 +70,7 @@ class UIEVENTLOOP(val cs: Map<String, AdminUiChannels>, val uiStreamDebug: Boole
                             this@queued.launch {
                                 when (type) {
                                     is WsRoutes.GetAllAgents -> {
-//                                if (notEmptyResponse) {
-//                                    agentsChannel.send((AgentInfoWebSocket.serializer().set parse content))
-//                                } else {
-//                                    agentsChannel.send(null)
-//                                }
+                                        glob.send(AgentInfoWebSocket.serializer().set parse content)
                                     }
                                     is WsRoutes.GetAgent -> {
 
@@ -267,6 +267,15 @@ class Agent(
                                 plugin.doRawAction((PluginAction.serializer() parse content).message)
                             }
                             "/plugins/unload" -> {
+                            }
+                            "/ping" -> {
+                                outgoing.send(
+                                    AgentMessage(
+                                        MessageType.MESSAGE_DELIVERED,
+                                        "/ping",
+                                        ""
+                                    )
+                                )
                             }
                             else -> TODO("$url is not implemented yet")
                         }

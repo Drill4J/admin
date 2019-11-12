@@ -5,14 +5,12 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
-import org.junit.jupiter.api.*
 
 
 class PluginLoadTest : E2ETest() {
 
     private val agentId = "pluginLoad"
 
-    @Disabled("Disabled cuzz can't load now!")
     @org.junit.jupiter.api.Test
     fun `Plugin Load Test`() {
         createSimpleAppWithUIConnection {
@@ -24,7 +22,7 @@ class PluginLoadTest : E2ETest() {
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                addPlugin(agentId, pluginT2CM).first shouldBe HttpStatusCode.OK
+                addPlugin(agentId, testPlugin).first shouldBe HttpStatusCode.OK
 
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash

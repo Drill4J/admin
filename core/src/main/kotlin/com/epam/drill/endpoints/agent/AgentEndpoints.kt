@@ -14,6 +14,7 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
@@ -48,6 +49,20 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
+            authenticate {
+                post<Routes.Api.Agent.ActivateAgents> { (grp) ->
+                    var a = 0
+                    agentManager.getAllAgents().filter { it.agent.serviceGroup == grp }.map {
+                        app.launch {
+                            it.agentSession.sendToTopic("/ping", "").await()
+                            a++
+                        }
+                    }.forEach {
+                        it.join()
+                    }
+                    call.respondText(a.toString())
+                }
+            }
             authenticate {
                 post<Routes.Api.Agent.RegisterAgent> { ll ->
                     logger.debug { "Update configuration for agent with id ${ll.agentId}" }

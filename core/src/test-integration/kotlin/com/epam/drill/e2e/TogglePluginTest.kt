@@ -24,7 +24,7 @@ class TogglePluginTest : E2ETest() {
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
-                addPlugin(agentId, pluginT2CM)
+                addPlugin(agentId, testPlugin)
 
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
@@ -33,9 +33,9 @@ class TogglePluginTest : E2ETest() {
                 }
 
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                togglePlugin(agentId, pluginT2CM)
+                togglePlugin(agentId, testPlugin)
                 ui.getAgent()?.activePluginsCount shouldBe 0
-                togglePlugin(agentId, pluginT2CM)
+                togglePlugin(agentId, testPlugin)
                 ui.getAgent()?.activePluginsCount shouldBe 1
             }
         }

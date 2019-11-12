@@ -1,5 +1,6 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
@@ -9,10 +10,12 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import java.util.concurrent.*
 
 
 abstract class E2ETest : AdminTest() {
+    var watcher: (suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit?)? = null
     val agents =
         ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
                 MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
@@ -28,13 +31,18 @@ abstract class E2ETest : AdminTest() {
         val handler = CoroutineExceptionHandler { _, exception ->
             coroutineException = exception
         }
-        withTestApplication({ testApp(this, sslPort) }) {
+        withTestApplication({ testApp(this, sslPort, false) }) {
             storeManager = appConfig.storeManager
             globToken = requestToken()
             //create the 'drill-admin-socket' websocket connection
             handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
-
                 block()
+                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-all-agents"))
+                uiIncoming.receive()
+                val glob = Channel<Set<AgentInfoWebSocket>>()
+                val globLaunch = application.launch(handler) {
+                    watcher?.invoke(this@withTestApplication, glob)
+                }
                 val cs = mutableMapOf<String, AdminUiChannels>()
                 runBlocking {
                     agents.map { (_, xx) ->
@@ -42,7 +50,7 @@ abstract class E2ETest : AdminTest() {
                         launch(handler) {
                             val ui = AdminUiChannels()
                             cs[ag.id] = ui
-                            val uiE = UIEVENTLOOP(cs, uiStreamDebug)
+                            val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
                             with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
 
                             //create the '/agent/attach' websocket connection
@@ -57,12 +65,16 @@ abstract class E2ETest : AdminTest() {
                                 "/agent/attach",
                                 wsRequestRequiredParams(ag)
                             ) { inp, out ->
+                                glob.receive()
                                 val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
                                 connect(
                                     this@withTestApplication,
                                     ui,
                                     apply
                                 )
+                                while (globLaunch.isActive)
+                                    delay(100)
+
                             }
                             thens.forEach { (ain, it) ->
 
@@ -70,6 +82,7 @@ abstract class E2ETest : AdminTest() {
                                     "/agent/attach",
                                     wsRequestRequiredParams(ain)
                                 ) { inp, out ->
+                                    glob.receive()
                                     ui.getAgent()
                                     ui.getBuilds()
                                     val apply =
@@ -79,10 +92,13 @@ abstract class E2ETest : AdminTest() {
                                         ui,
                                         apply
                                     )
+                                    while (globLaunch.isActive)
+                                        delay(100)
                                 }
                             }
                         }
                     }.forEach { it.join() }
+                    globLaunch.join()
                 }
 
             }
@@ -92,6 +108,11 @@ abstract class E2ETest : AdminTest() {
         }
     }
 
+
+    fun uiWatcher(bl: suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit): E2ETest {
+        this.watcher = bl
+        return this
+    }
 
     fun connectAgent(
         ags: AgentWrap,
@@ -110,6 +131,14 @@ abstract class E2ETest : AdminTest() {
         return this
     }
 
+
+    fun TestApplicationEngine.activateAgentByGroup(
+        groupId: String,
+        token: String = globToken
+    ) =
+        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.ActivateAgents(groupId))) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+        }.run { response.status() to response.content }
 
     fun TestApplicationEngine.register(
         agentId: String,
@@ -186,4 +215,9 @@ abstract class E2ETest : AdminTest() {
 
 }
 
-data class AgentWrap(val id: String, val buildVersion: String = "0.1.0", val needSync: Boolean = true)
+data class AgentWrap(
+    val id: String,
+    val buildVersion: String = "0.1.0",
+    val serviceGroupId: String = "",
+    val needSync: Boolean = true
+)

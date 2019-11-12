@@ -111,6 +111,12 @@ idea {
 }
 
 task<Test>("integrationTest") {
+    doFirst {
+        copy {
+            from(project(":admin:test-framework:test-plugin").tasks["distZip"])
+            into(file("distr").resolve("adminStorage"))
+        }
+    }
     useJUnitPlatform()
     description = "Runs the integration tests"
     group = "verification"
@@ -126,7 +132,7 @@ tasks.named("check") {
 
 tasks {
     clean {
-        delete("./work","./distr" ,"./../distr")
+        delete("./work", "./distr", "./../distr")
     }
 
     withType<KotlinCompile> {

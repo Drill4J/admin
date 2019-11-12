@@ -32,7 +32,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         app.routing {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = retrieveParams()
-                val agentInfo = agentManager.agentConfiguration(agentConfig.id, agentConfig.buildVersion)
+                val agentInfo = agentManager.agentConfiguration(agentConfig)
                 val sslPort = app.securePort()
 
                 agentInfo.ipAddress = call.request.local.remoteHost

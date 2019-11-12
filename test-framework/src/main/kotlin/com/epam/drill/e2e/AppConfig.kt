@@ -20,7 +20,7 @@ class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreManager
 
-    val testApp: Application.(String) -> Unit = { sslPort ->
+    val testApp: Application.(String, Boolean) -> Unit = { sslPort, withArtifactory ->
         (environment.config as MapApplicationConfig).apply {
             put("ktor.deployment.sslPort", sslPort)
             put("ktor.dev", "true")
@@ -47,7 +47,7 @@ class AppConfig(var projectDir: File) {
                         PluginLoaderService(
                             kodein,
                             projectDir.resolve("work"),
-                            false
+                            withArtifactory
                         )
                     }
                 }

@@ -24,7 +24,7 @@ class PluginUnloadTest : E2ETest() {
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
 
-                addPlugin(agentId, pluginT2CM)
+                addPlugin(agentId, testPlugin)
 
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
@@ -33,7 +33,7 @@ class PluginUnloadTest : E2ETest() {
                 }
 
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                unLoadPlugin("pluginUnload1", pluginT2CM)
+                unLoadPlugin("pluginUnload1", testPlugin)
                 ui.getAgent()?.plugins?.count() shouldBe 1
             }
         }

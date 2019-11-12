@@ -13,7 +13,7 @@ fun wsRequestRequiredParams(
     return {
         this.addHeader(
             AgentConfigParam,
-            Cbor.dumps(AgentConfig.serializer(), AgentConfig(ag.id, ag.buildVersion, ag.needSync))
+            Cbor.dumps(AgentConfig.serializer(), AgentConfig(ag.id, ag.buildVersion, ag.serviceGroupId, ag.needSync))
         )
         this.addHeader(NeedSyncParam, ag.needSync.toString())
     }

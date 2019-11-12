@@ -31,7 +31,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val plugins: Plugins by instance()
     val adminDataVault: AdminDataVault by instance()
 
-    suspend fun agentConfiguration(agentId: String, pBuildVersion: String): AgentInfo {
+    suspend fun agentConfiguration(config: AgentConfig): AgentInfo {
+        val (agentId: String, pBuildVersion: String, serviceGroup: String) = config
         val agentStore = store.agentStore(agentId)
         val existingAgent =
             agentStore.findById<AgentInfo>(agentId)?.apply { processBuild(pBuildVersion, agentId) }
@@ -39,6 +40,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     agentId,
                     agentId,
                     AgentStatus.NOT_REGISTERED,
+                    serviceGroup,
                     "",
                     "",
                     pBuildVersion,
