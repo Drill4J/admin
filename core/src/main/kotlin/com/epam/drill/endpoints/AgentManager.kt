@@ -216,7 +216,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
                 ?.sendToTopic(
-                    "/plugins/resetPlugin", PluginId.serializer() stringify PluginId(pluginId)
+                    "/plugins/resetPlugin", PluginId(pluginId)
                 )
         }
         logger.debug { "All plugins for agent with id $agentId was reset" }
