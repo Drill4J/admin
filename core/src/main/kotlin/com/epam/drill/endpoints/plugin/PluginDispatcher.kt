@@ -47,7 +47,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun fillPluginInstance(
+    private suspend fun fillPluginInstance(
         agentEntry: AgentEntry?,
         pluginClass: Class<AdminPluginPart<*>>,
         pluginId: String
@@ -69,6 +69,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 agentInfo,
                 pluginId
             )
+            plugin.initialize()
             agentEntry.instance[pluginId] = plugin
             plugin
         }
