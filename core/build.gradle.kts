@@ -109,14 +109,12 @@ idea {
         scopes["TEST"]?.get("plus")?.add(integrationTestImplementation)
     }
 }
-
+val prepareDist = tasks.register<Copy>("prepareDist") {
+    from(project(":admin:test-framework:test-plugin").tasks["distZip"])
+    into(file("distr").resolve("adminStorage"))
+}
 task<Test>("integrationTest") {
-    doFirst {
-        copy {
-            from(project(":admin:test-framework:test-plugin").tasks["distZip"])
-            into(file("distr").resolve("adminStorage"))
-        }
-    }
+    dependsOn(prepareDist)
     useJUnitPlatform()
     description = "Runs the integration tests"
     group = "verification"

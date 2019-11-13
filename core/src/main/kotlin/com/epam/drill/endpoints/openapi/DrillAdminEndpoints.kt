@@ -26,6 +26,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val plugins: Plugins by kodein.instance()
     private val topicResolver: TopicResolver by instance()
     private val notificationsManager: NotificationsManager by instance()
+    private val handler: AdminEndpointsHandler by instance()
 
     init {
         app.routing {
@@ -197,11 +198,13 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.Agent.RenameBuildVersion> { (agentId) ->
                     logger.info { "Rename build version" }
                     val buildVersion = AgentBuildVersionJson.serializer() parse call.receiveText()
-                    val agentInfo = agentManager.updateAgentBuildAliases(agentId, buildVersion)
-                    val (statusCode, response) = if (agentInfo == null) {
-                        HttpStatusCode.NotFound to "Agent with id $agentId not found"
-                    } else {
-                        HttpStatusCode.OK to "Agent with id $agentId have been updated"
+                    val (statusCode, response) = when (handler.updateBuildAliasWithResult(
+                        agentId,
+                        buildVersion
+                    )) {
+                        HttpStatusCode.BadRequest -> HttpStatusCode.BadRequest to "Build named ${buildVersion.name} already exists"
+                        HttpStatusCode.OK -> HttpStatusCode.OK to "Agent with id $agentId have been updated"
+                        else -> HttpStatusCode.InternalServerError to "Request handle with exception"
                     }
                     logger.info { "Build version rename was finished with result: $response" }
                     call.respond(statusCode, response)

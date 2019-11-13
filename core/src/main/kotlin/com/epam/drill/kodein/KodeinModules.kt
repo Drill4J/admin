@@ -49,6 +49,7 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
+        bind<AdminEndpointsHandler>() with eagerSingleton { AdminEndpointsHandler(kodein) }
     }
 
 val pluginServices: Kodein.Builder.(Application) -> Unit
