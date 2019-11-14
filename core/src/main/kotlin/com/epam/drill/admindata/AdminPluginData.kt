@@ -90,7 +90,8 @@ data class StorableBuildInfo(
     val prevBuild: String = "",
     val methodChanges: MethodChanges = MethodChanges(),
     val classesBytes: Map<String, ByteArray> = emptyMap(),
-    val javaMethods: Map<String, List<Method>> = emptyMap()
+    val javaMethods: Map<String, List<Method>> = emptyMap(),
+    val new: Boolean
 ) {
     fun toBuildInfo() = BuildInfo(
         buildVersion = buildVersion,
@@ -99,7 +100,8 @@ data class StorableBuildInfo(
         prevBuild = prevBuild,
         methodChanges = methodChanges,
         classesBytes = classesBytes,
-        javaMethods = javaMethods
+        javaMethods = javaMethods,
+        new = new
     )
 }
 
@@ -112,5 +114,6 @@ fun BuildInfo.toStorable(agentId: String) = StorableBuildInfo(
     prevBuild = prevBuild,
     methodChanges = methodChanges,
     classesBytes = classesBytes,
-    javaMethods = javaMethods
+    javaMethods = javaMethods,
+    new = new
 )
