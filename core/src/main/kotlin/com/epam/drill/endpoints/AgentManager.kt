@@ -74,6 +74,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
+    suspend fun applyPackagesChangesOnAllPlugins(agentId: String) {
+        val agentEntry = full(agentId)
+        val plugins = agentEntry?.agent?.plugins?.map { it.id }
+        plugins?.forEach { pluginId -> agentEntry.instance[pluginId]?.applyPackagesChanges() }
+        resetAllPlugins(agentId)
+    }
+
 
     suspend fun updateAgent(agentId: String, au: AgentInfoWebSocket) {
         logger.debug { "Agent with id $agentId update with agent info :$au" }

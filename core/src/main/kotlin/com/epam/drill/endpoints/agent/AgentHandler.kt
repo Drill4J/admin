@@ -101,7 +101,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .compareToPrev(agentInfo.buildVersion)
-                            agentManager.resetAllPlugins(agentInfo.id)
+                            agentManager.applyPackagesChangesOnAllPlugins(agentInfo.id)
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                             logger.debug { "Finished classes transfer" }
                         }
