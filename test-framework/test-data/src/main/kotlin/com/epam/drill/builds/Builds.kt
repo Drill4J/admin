@@ -17,7 +17,7 @@ object Build1 : Build {
 object Build2 : Build {
     override lateinit var test: Tst
     override val name: String = "build2"
-    fun entryPoint() = Build1.test as Test
+    fun entryPoint() = test as Test
 
     interface Test : Tst {
         fun test1()
