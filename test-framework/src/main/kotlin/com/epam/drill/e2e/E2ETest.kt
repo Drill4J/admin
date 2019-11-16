@@ -11,11 +11,12 @@ import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
+import org.junit.jupiter.api.*
+import java.time.*
 import java.util.concurrent.*
 
 
 abstract class E2ETest : AdminTest() {
-    var watcher: (suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit?)? = null
     val agents =
         ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
                 MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
@@ -25,93 +26,89 @@ abstract class E2ETest : AdminTest() {
         agentStreamDebug: Boolean = false,
         block: suspend () -> Unit
     ) {
-        val appConfig = AppConfig(projectDir)
-        val testApp = appConfig.testApp
-        var coroutineException: Throwable? = null
-        val handler = CoroutineExceptionHandler { _, exception ->
-            coroutineException = exception
-        }
-        withTestApplication({ testApp(this, sslPort, false) }) {
-            storeManager = appConfig.storeManager
-            globToken = requestToken()
-            //create the 'drill-admin-socket' websocket connection
-            handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
-                block()
-                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-all-agents"))
-                uiIncoming.receive()
-                val glob = Channel<Set<AgentInfoWebSocket>>()
-                val globLaunch = application.launch(handler) {
-                    watcher?.invoke(this@withTestApplication, glob)
-                }
-                val cs = mutableMapOf<String, AdminUiChannels>()
-                runBlocking {
-                    agents.map { (_, xx) ->
-                        val (ag, connect, thens) = xx
-                        launch(handler) {
-                            val ui = AdminUiChannels()
-                            cs[ag.id] = ui
-                            val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
-                            with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
+        assertTimeout(Duration.ofSeconds(10)) {
+            val appConfig = AppConfig(projectDir)
+            val testApp = appConfig.testApp
+            var coroutineException: Throwable? = null
+            val handler = CoroutineExceptionHandler { _, exception ->
+                coroutineException = exception
+            }
+            withTestApplication({ testApp(this, sslPort, false) }) {
+                storeManager = appConfig.storeManager
+                globToken = requestToken()
+                //create the 'drill-admin-socket' websocket connection
+                handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
+                    block()
+                    ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-all-agents"))
+                    uiIncoming.receive()
+                    val glob = Channel<Set<AgentInfoWebSocket>>()
+                    val globLaunch = application.launch(handler) {
+                        watcher?.invoke(this@withTestApplication, glob)
+                    }
+                    val cs = mutableMapOf<String, AdminUiChannels>()
+                    runBlocking(handler) {
+                        agents.map { (_, xx) ->
+                            val (ag, connect, thens) = xx
+                            launch(handler) {
+                                val ui = AdminUiChannels()
+                                cs[ag.id] = ui
+                                val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
+                                with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
 
-                            //create the '/agent/attach' websocket connection
-                            ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-agent/${ag.id}"))
-                            ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/${ag.id}/builds"))
+                                //create the '/agent/attach' websocket connection
+                                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-agent/${ag.id}"))
+                                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/${ag.id}/builds"))
 
-                            ui.getAgent()
-                            ui.getBuilds()
-                            delay(50)
-
-                            handleWebSocketConversation(
-                                "/agent/attach",
-                                wsRequestRequiredParams(ag)
-                            ) { inp, out ->
-                                glob.receive()
-                                val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
-                                connect(
-                                    this@withTestApplication,
-                                    ui,
-                                    apply
-                                )
-                                while (globLaunch.isActive)
-                                    delay(100)
-
-                            }
-                            thens.forEach { (ain, it) ->
+                                ui.getAgent()
+                                ui.getBuilds()
+                                delay(50)
 
                                 handleWebSocketConversation(
                                     "/agent/attach",
-                                    wsRequestRequiredParams(ain)
+                                    wsRequestRequiredParams(ag)
                                 ) { inp, out ->
                                     glob.receive()
-                                    ui.getAgent()
-                                    ui.getBuilds()
-                                    val apply =
-                                        Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
-                                    it(
+                                    val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
+                                    connect(
                                         this@withTestApplication,
                                         ui,
                                         apply
                                     )
                                     while (globLaunch.isActive)
                                         delay(100)
+
+                                }
+                                thens.forEach { (ain, it) ->
+
+                                    handleWebSocketConversation(
+                                        "/agent/attach",
+                                        wsRequestRequiredParams(ain)
+                                    ) { inp, out ->
+                                        glob.receive()
+                                        ui.getAgent()
+                                        ui.getBuilds()
+                                        val apply =
+                                            Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
+                                        it(
+                                            this@withTestApplication,
+                                            ui,
+                                            apply
+                                        )
+                                        while (globLaunch.isActive)
+                                            delay(100)
+                                    }
                                 }
                             }
-                        }
-                    }.forEach { it.join() }
-                    globLaunch.join()
-                }
+                        }.forEach { it.join() }
+                        globLaunch.join()
+                    }
 
-            }
-            if (coroutineException != null) {
-                throw coroutineException as Throwable
+                }
+                if (coroutineException != null) {
+                    throw coroutineException as Throwable
+                }
             }
         }
-    }
-
-
-    fun uiWatcher(bl: suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit): E2ETest {
-        this.watcher = bl
-        return this
     }
 
     fun connectAgent(

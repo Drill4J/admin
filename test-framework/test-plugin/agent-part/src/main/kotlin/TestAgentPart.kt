@@ -8,7 +8,8 @@ class TestAgentPart constructor(
     private val payload: PluginPayload
 ) : AgentPart<String, String>(payload) {
     override fun on() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        println("plugin ON $this")
+        send("xx")
     }
 
     override fun off() {
@@ -27,7 +28,7 @@ class TestAgentPart constructor(
     }
 
     override val id: String
-        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+        get() = "test-plugin"
     override val serDe: SerDe<String>
         get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
 

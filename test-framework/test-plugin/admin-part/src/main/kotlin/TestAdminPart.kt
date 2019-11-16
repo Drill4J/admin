@@ -17,7 +17,9 @@ class TestAdminPart(
     id: String
 ) : AdminPluginPart<String>(adminData, sender, storeClient, agentInfo, id) {
     override suspend fun processData(dm: DrillMessage): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        println("Process data. Redirect on UI")
+        sender.send(agentInfo.id, agentInfo.buildVersion, "new-destination", dm)
+        return ""
     }
 
     override suspend fun dropData() {

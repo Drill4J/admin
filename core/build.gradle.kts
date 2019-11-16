@@ -36,7 +36,7 @@ application {
     mainClassName = appMainClassName
     applicationDefaultJvmArgs = appJvmArgs
 }
-
+val testData by configurations.creating {}
 val integrationTestImplementation by configurations.creating {
     extendsFrom(configurations["testCompile"])
 }
@@ -71,6 +71,7 @@ dependencies {
     integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     integrationTestImplementation(ktor("server-test-host"))
     integrationTestImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
+    add("testData", project(":admin:test-framework:test-data"))
 
 }
 
@@ -100,6 +101,18 @@ sourceSets {
             runtimeClasspath += output + compileClasspath + sourceSets["test"].runtimeClasspath + integrationTestRuntime
         }
     }
+
+    (1..2).forEach {
+        create("build$it") {
+            java.srcDir("src/test-data/build$it/java")
+            dependencies {
+                implementation(project(":admin:test-framework:test-data"))
+            }
+            compileClasspath += testData
+            runtimeClasspath += output + compileClasspath
+        }
+        tasks["testIntegrationClasses"].dependsOn("build${it}Classes")
+    }
 }
 idea {
     module {
@@ -109,12 +122,14 @@ idea {
         scopes["TEST"]?.get("plus")?.add(integrationTestImplementation)
     }
 }
+val testPluginProject = project(":admin:test-framework:test-plugin")
 val prepareDist = tasks.register<Copy>("prepareDist") {
-    from(project(":admin:test-framework:test-plugin").tasks["distZip"])
+    from(testPluginProject.tasks["distZip"])
     into(file("distr").resolve("adminStorage"))
 }
 task<Test>("integrationTest") {
     dependsOn(prepareDist)
+    systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
     useJUnitPlatform()
     description = "Runs the integration tests"
     group = "verification"
