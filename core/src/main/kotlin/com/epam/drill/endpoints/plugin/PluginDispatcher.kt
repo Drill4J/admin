@@ -8,6 +8,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
+import com.epam.drill.service.*
 import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
@@ -100,42 +101,21 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
             authenticate {
-                post<Routes.Api.Agent.DispatchPluginAction> { (agentId, pluginId) ->
-                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
+                post<Routes.Api.Agent.DispatchPluginAction> { (id, pluginId) ->
+                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $id" }
                     val action = call.receive<String>()
                     val dp: Plugin? = plugins[pluginId]
-                    val agentInfo = agentManager[agentId]
-                    val (statusCode, response) = when {
-                        (dp == null) -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
-                        (agentInfo == null) -> HttpStatusCode.NotFound to "agent with id $agentId not found"
-                        else -> {
-                            val agentEntry = agentManager.full(agentId)
-                            val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
-                            val adminActionResult = adminPart.doRawAction(action)
-                            val agentPartMsg = when (adminActionResult) {
-                                is String -> adminActionResult
-                                is Unit -> action
-                                else -> Unit
-                            }
-                            if (agentPartMsg is String) {
-                                agentManager.agentSession(agentId)?.apply {
-                                    val agentAction = PluginAction(pluginId, agentPartMsg)
-                                    val agentPluginMsg = PluginAction.serializer() stringify agentAction
-                                    val agentMsg = Message(MessageType.MESSAGE, "/plugins/action", agentPluginMsg)
-                                    val agentFrame = Frame.Text(Message.serializer() stringify agentMsg)
-                                    send(agentFrame)
-                                }
-                            }
-                            if (adminActionResult is StatusMessage) {
-                                HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
-                            } else {
-                                HttpStatusCode.OK to when (adminActionResult) {
-                                    is String -> adminActionResult
-                                    else -> EmptyContent
-                                }
-                            }
-                        }
+                    if (dp == null) {
+                        call.respond(HttpStatusCode.NotFound, "plugin with id $pluginId not found");return@post
                     }
+                    val (statusCode, response) = call.attributes.getOrNull(srv)?.run {
+                        processMultipleActions(
+                            agentManager.agentStorage.values.filter { it.agent.serviceGroup == id },
+                            dp,
+                            pluginId,
+                            action
+                        )
+                    } ?: processSingleAction(dp, id, action)
                     logger.info { "$response" }
                     call.respond(statusCode, response)
                 }
@@ -221,5 +201,76 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
 
         }
+    }
+
+    private suspend fun PluginDispatcher.processMultipleActions(
+        agents: List<AgentEntry>,
+        dp: Plugin,
+        pluginId: String,
+        action: String
+    ): Pair<HttpStatusCode, Any> {
+        return agents.map { agentEntry ->
+            val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
+            val adminActionResult = adminPart.doRawAction(action)
+            val agentPartMsg = when (adminActionResult) {
+                is String -> adminActionResult
+                is Unit -> action
+                else -> Unit
+            }
+            if (agentPartMsg is String) {
+                agentEntry.agentSession.apply {
+                    val agentAction = PluginAction(pluginId, agentPartMsg)
+                    val agentPluginMsg = PluginAction.serializer() stringify agentAction
+                    val agentMsg =
+                        Message(MessageType.MESSAGE, "/plugins/action", agentPluginMsg)
+                    val agentFrame = Frame.Text(Message.serializer() stringify agentMsg)
+                    send(agentFrame)
+                }
+            }
+            if (adminActionResult is StatusMessage) {
+                HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
+            } else {
+                HttpStatusCode.OK to when (adminActionResult) {
+                    is String -> adminActionResult
+                    else -> EmptyContent
+                }
+            }
+        }.reduce { k, _ -> k }
+    }
+
+    private suspend fun PluginDispatcher.processSingleAction(
+        dp: Plugin,
+        id: String,
+        action: String
+    ): Pair<HttpStatusCode, Any> = run {
+        val pluginId = dp.pluginBean.id
+        val agentEntry = agentManager.full(id)
+        val adminPart: AdminPluginPart<*> =
+            fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
+        val adminActionResult = adminPart.doRawAction(action)
+        val agentPartMsg = when (adminActionResult) {
+            is String -> adminActionResult
+            is Unit -> action
+            else -> Unit
+        }
+        if (agentPartMsg is String) {
+            agentManager.agentSession(id)?.apply {
+                val agentAction = PluginAction(pluginId, agentPartMsg)
+                val agentPluginMsg = PluginAction.serializer() stringify agentAction
+                val agentMsg =
+                    Message(MessageType.MESSAGE, "/plugins/action", agentPluginMsg)
+                val agentFrame = Frame.Text(Message.serializer() stringify agentMsg)
+                send(agentFrame)
+            }
+        }
+        if (adminActionResult is StatusMessage) {
+            HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
+        } else {
+            HttpStatusCode.OK to when (adminActionResult) {
+                is String -> adminActionResult
+                else -> EmptyContent
+            }
+        }
+
     }
 }

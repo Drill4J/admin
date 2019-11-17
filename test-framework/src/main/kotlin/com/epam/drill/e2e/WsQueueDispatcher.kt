@@ -254,7 +254,7 @@ class Agent(
                     val url = parseJson[Message::destination.name]!!.content
                     val content = parseJson[Message::data.name]!!.content
                     if (agentStreamDebug)
-                        println("AGENT $agentId: $parseJson")
+                        println("AGENT $agentId IN: $parseJson")
                     app.launch {
                         when (url) {
                             "/agent/config" -> serviceConfig.send(ServiceConfig.serializer() parse content)

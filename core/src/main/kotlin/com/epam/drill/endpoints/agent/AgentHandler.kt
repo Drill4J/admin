@@ -47,7 +47,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             " ssl port is '$sslPort and needSync is $needSync"
                 }
 
-                sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName))
+                sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName)).call()
                 createWsLoop(agentInfo)
             }
         }

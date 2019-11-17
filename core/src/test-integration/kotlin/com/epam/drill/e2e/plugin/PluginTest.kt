@@ -6,6 +6,8 @@ import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
+import io.kotlintest.*
+import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -13,56 +15,43 @@ import org.junit.jupiter.api.*
 
 class PluginTest : E2EPluginTest() {
 
-    @RepeatedTest(3)
+    @RepeatedTest(3) //some stress
     fun testE2ePluginAPI() {
-        createSimpleAppWithPlugin<PTestStream>(true, true) {
-            connectAgent<Build1> { _, _ ->
+        createSimpleAppWithPlugin<PTestStream> {
+            connectAgent<Build1>("myServiceGroup") { _, _ ->
+                pluginAction("x").first shouldBe HttpStatusCode.OK
                 println("hi ag1")
             }
-            connectAgent<Build1> { _, _ ->
+            connectAgent<Build1>("myServiceGroup") { _, _ ->
                 println("hi ag2")
             }
-            connectAgent<Build1> { _, _ ->
+            connectAgent<Build1>("myServiceGroup") { _, _ ->
                 println("hi ag3")
             }
-            connectAgent<Build1> { _, _ ->
+            connectAgent<Build1>("myServiceGroup") { _, _ ->
                 println("hi ag4")
             }
-            connectAgent<Build1> { _, _ ->
+            connectAgent<Build1>("myServiceGroup") { _, _ ->
                 println("hi ag5")
             }
             uiWatcher { ch ->
-                lateinit var message: AgentInfoWebSocket
-                do {
-                    message = ch.receive().first()
-                } while (message.activePluginsCount != 1 || message.status != AgentStatus.ONLINE)
-
-
+                waitForMultipleAgents(ch)
+                val (status, content) = pluginAction("myActionForAllAgents", "myServiceGroup")
+                status shouldBe HttpStatusCode.OK
+                content shouldBe "act"
             }
         }
 
     }
 
-
-}
-
-class PTestStream : PluginStreams() {
-    lateinit var iut: SendChannel<Frame>
-    @ExperimentalCoroutinesApi
-    override fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean) {
-        iut = out
-        app.launch {
-            incoming.consumeEach {
-                if (it is Frame.Text)
-                    println(it.readText())
-            }
-
-        }
+    private suspend fun waitForMultipleAgents(ch: Channel<Set<AgentInfoWebSocket>>) {
+        lateinit var message: Set<AgentInfoWebSocket>
+        do {
+            message = ch.receive()
+            if (message.all { it.activePluginsCount == 1 } && message.all { it.status == AgentStatus.ONLINE })
+                break
+        } while (true)
     }
 
-
-    override suspend fun subscribe(sinf: SubscribeInfo) {
-        iut.send(UiMessage(WsMessageType.SUBSCRIBE, "new-destination", SubscribeInfo.serializer() stringify sinf))
-    }
 
 }

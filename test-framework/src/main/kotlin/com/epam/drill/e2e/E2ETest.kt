@@ -17,7 +17,7 @@ import java.util.concurrent.*
 
 
 abstract class E2ETest : AdminTest() {
-    val agents =
+    private val agents =
         ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
                 MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
 

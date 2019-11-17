@@ -19,6 +19,7 @@ import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.util.concurrent.atomic.*
 
 class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app: Application by instance()
@@ -38,7 +39,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentManager.updateAgent(agentId, au)
                         if (au.sessionIdHeaderName.isNotEmpty())
                             agentManager.agentSession(au.id)?.apply {
-                                sendToTopic("/agent/config", ServiceConfig(app.securePort(), au.sessionIdHeaderName))
+                                sendToTopic("/agent/config", ServiceConfig(app.securePort(), au.sessionIdHeaderName)).call()
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
                         call.respond(HttpStatusCode.OK, "agent '$agentId' was updated")
@@ -51,16 +52,18 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 post<Routes.Api.Agent.ActivateAgents> { (grp) ->
-                    var a = 0
-                    agentManager.getAllAgents().filter { it.agent.serviceGroup == grp }.map {
+                    val counter = AtomicInteger()
+                    val filter = agentManager.getAllAgents().filter { it.agent.serviceGroup == grp }
+
+                    filter.map {
                         app.launch {
                             it.agentSession.sendToTopic("/ping", "").await()
-                            a++
+                            counter.incrementAndGet()
                         }
                     }.forEach {
                         it.join()
                     }
-                    call.respondText(a.toString())
+                    call.respondText(counter.toString())
                 }
             }
             authenticate {

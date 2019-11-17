@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.*
 
 plugins {
     kotlin("jvm")
+    `kotlinx-serialization`
 }
 
 repositories {
@@ -16,6 +17,7 @@ dependencies {
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
 }
 
 tasks.withType<KotlinCompile> {

@@ -2,13 +2,13 @@ package com.epam.drill.plugins.coverage
 
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.processing.*
+import kotlinx.serialization.internal.*
 
 @Suppress("unused")
 class TestAgentPart constructor(
     private val payload: PluginPayload
 ) : AgentPart<String, String>(payload) {
     override fun on() {
-        println("plugin ON $this")
         send("xx")
     }
 
@@ -27,12 +27,11 @@ class TestAgentPart constructor(
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override val id: String
-        get() = "test-plugin"
-    override val serDe: SerDe<String>
-        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+    override val id: String = payload.pluginId
+    override val serDe: SerDe<String> = SerDe(StringSerializer)
 
     override suspend fun doAction(action: String): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        println(action)
+        return "action"
     }
 }

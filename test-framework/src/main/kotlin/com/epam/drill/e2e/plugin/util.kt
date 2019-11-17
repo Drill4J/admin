@@ -2,6 +2,8 @@ package com.epam.drill.e2e.plugin
 
 import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.processing.*
+import io.ktor.http.cio.websocket.*
+import kotlinx.coroutines.channels.*
 import org.apache.bcel.classfile.*
 import org.apache.bcel.generic.*
 import java.util.jar.*
@@ -37,4 +39,14 @@ fun MemoryClassLoader.clazz(
                 javaClass
             }.find { it.superclassName == "com.epam.drill.plugin.api.processing.AgentPart" }!!.className
     ) as Class<AgentPart<*, *>>
+}
+
+class OutsSock(private val mainChannel: SendChannel<Frame>, private val withDebug: Boolean = false) :
+    SendChannel<Frame> by mainChannel {
+    override suspend fun send(element: Frame) {
+        if (withDebug && element is Frame.Text) {
+            println("AGENT OUT: ${element.readText()}")
+        }
+        mainChannel.send(element)
+    }
 }

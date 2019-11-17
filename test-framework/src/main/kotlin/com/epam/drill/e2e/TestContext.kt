@@ -8,7 +8,9 @@ import java.util.concurrent.*
 class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncStruct> = ConcurrentHashMap()) {
 
     inline fun <reified B : Build> connectAgent(
-        ags: AgentWrap = AgentWrap(UUID.randomUUID().toString().replace("-", ""),
+        serviceGroup: String = "",
+        ags: AgentWrap = AgentWrap(
+            UUID.randomUUID().toString().replace("-", ""),
             run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
@@ -16,7 +18,8 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
                             it.readBytes().sum()
                         }
                 map.sum().toString()
-            }
+            },
+            serviceGroup
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {
@@ -33,7 +36,9 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
     }
 
     inline fun <reified B : Build> reconnect(
-        ags: AgentWrap = AgentWrap(agents.keys.first(),
+        serviceGroup: String = "",
+        ags: AgentWrap = AgentWrap(
+            agents.keys.first(),
             run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
@@ -41,7 +46,8 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
                             it.readBytes().sum()
                         }
                 map.sum().toString()
-            }
+            },
+            serviceGroup
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {

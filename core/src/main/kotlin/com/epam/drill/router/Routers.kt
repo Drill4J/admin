@@ -31,8 +31,8 @@ object Routes {
             @Location("/{agentId}/register")
             data class RegisterAgent(val agentId: String)
 
-            @Location("/{groupId}/activate")
-            data class ActivateAgents(val groupId: String)
+            @Location("/{agentId}/activate")
+            data class ActivateAgents(val agentId: String)
 
             @Location("/{agentId}/unregister")
             data class UnregisterAgent(val agentId: String)

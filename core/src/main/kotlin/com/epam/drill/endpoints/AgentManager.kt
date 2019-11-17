@@ -189,7 +189,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     agentInfo.plugins += plugin
                     wrapBusy(agentInfo) {
                         sendPlugins()
-                    }
+                    }.join() // dangerous blocking
+
                     logger.info { "Plugin $pluginId successfully added to agent with id $agentId!" }
                 }
             }
@@ -199,7 +200,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
 
-    fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) = app.launch {
+    fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) = GlobalScope.launch {
         logger.debug { "Agent with id ${ai.name} set busy status" }
         ai.status = AgentStatus.BUSY
         ai.update(this@AgentManager)
@@ -224,9 +225,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic(
-                    "/plugins/resetPlugin", PluginId(pluginId)
-                )
+                ?.sendToTopic("/plugins/resetPlugin", PluginId(pluginId))?.call()
         }
         logger.debug { "All plugins for agent with id $agentId was reset" }
     }
