@@ -4,12 +4,13 @@ import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
+import org.junit.jupiter.api.*
 
 class PackagesPrefixesSettingTest : E2ETest() {
 
     private val agentId = "ag02"
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `Packages prefixes changing Test`() {
         createSimpleAppWithUIConnection(agentStreamDebug = true) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->

@@ -193,8 +193,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val adminData = agentManager.adminData(agentId).apply { resetBuilds() }
                     adminData.packagesPrefixes = prefixes.packagesPrefixes
                     agentManager.applyPackagesChangesOnAllPlugins(agentId)
-                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.disableAllPlugins(agentId) }
-                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.configurePackages(prefixes, agentId) }
+                    agentManager.wrapBusy(agentManager[agentId]!!) {
+                        agentManager.disableAllPlugins(agentId)
+                        agentManager.configurePackages(prefixes, agentId)
+                    }
                     adminData.refreshStoredSummary()
                     call.respond(HttpStatusCode.OK, "Trigger for classes processing sent to agent with id $agentId")
                 }
