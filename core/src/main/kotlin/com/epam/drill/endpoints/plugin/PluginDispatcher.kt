@@ -188,7 +188,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     WsSendMessage.serializer() stringify
                                             WsSendMessage(
                                                 WsMessageType.MESSAGE,
-                                                "/plugins/togglePlugin", pluginId
+                                                "/plugins/togglePlugin",
+                                                TogglePayload(pluginId)
                                             )
                                 )
                             )

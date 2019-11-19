@@ -78,7 +78,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val agentEntry = full(agentId)
         val plugins = agentEntry?.agent?.plugins?.map { it.id }
         plugins?.forEach { pluginId -> agentEntry.instance[pluginId]?.applyPackagesChanges() }
-        resetAllPlugins(agentId)
     }
 
 
@@ -221,13 +220,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         newAdminData
     }
 
-    suspend fun resetAllPlugins(agentId: String) {
+    suspend fun disableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic("/plugins/resetPlugin", PluginId(pluginId))?.call()
+                ?.sendToTopic( "/plugins/togglePlugin", TogglePayload(pluginId, false))?.call()
         }
-        logger.debug { "All plugins for agent with id $agentId was reset" }
+        logger.debug { "All plugins for agent with id $agentId were disabled" }
+    }
+
+    suspend fun enableAllPlugins(agentId: String) {
+        logger.debug { "Reset all plugins for agent with id $agentId" }
+        getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
+            agentSession(agentId)
+                ?.sendToTopic( "/plugins/togglePlugin", TogglePayload(pluginId, true))?.call()
+        }
+        logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
 
     suspend fun AgentInfo.update() {

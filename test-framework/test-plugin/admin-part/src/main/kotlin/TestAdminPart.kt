@@ -7,7 +7,6 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.kodux.*
 import kotlinx.serialization.internal.*
-import kotlinx.serialization.modules.*
 
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
@@ -18,6 +17,9 @@ class TestAdminPart(
     agentInfo: AgentInfo,
     id: String
 ) : AdminPluginPart<String>(adminData, sender, storeClient, agentInfo, id) {
+
+    var packagesChangesCount = 0
+
     override suspend fun processData(dm: DrillMessage): Any {
         sender.send(agentInfo.id, agentInfo.buildVersion, "new-destination", dm)
         return ""
@@ -28,8 +30,22 @@ class TestAdminPart(
     }
 
     override val serDe: SerDe<String> = SerDe(StringSerializer)
+
     override suspend fun doAction(action: String): Any {
-        println(action)
-        return "act"
+        return when (action) {
+            "packagesChangesCount" -> {
+                println(packagesChangesCount)
+                StatusMessage(StatusCodes.OK, packagesChangesCount.toString())
+            }
+            else -> {
+                println(action)
+                "act"
+            }
+        }
+    }
+
+    override suspend fun applyPackagesChanges() {
+        packagesChangesCount++
+        sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
     }
 }

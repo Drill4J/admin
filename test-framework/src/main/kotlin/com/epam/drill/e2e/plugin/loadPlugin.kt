@@ -110,7 +110,15 @@ suspend fun AdminTest.loadPlugin(
             SubscribeInfo(
                 pluginTestInfo.agentId,
                 pluginTestInfo.buildVersionHash
-            )
+            ),
+            "new-destination"
+        )
+        st.subscribe(
+            SubscribeInfo(
+                pluginTestInfo.agentId,
+                pluginTestInfo.buildVersionHash
+            ),
+            "/packagesChangesCount"
         )
 
         spykAgentPart.enabled = true

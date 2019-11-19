@@ -136,6 +136,19 @@ data class PluginTestContext(
         setBody(payload)
     }.run { response.status() to response.content }
 
+    fun changePackages(
+        agentId: String = this.agentId,
+        token: String = this.token,
+        payload: PackagesPrefixes = PackagesPrefixes()
+    ) = engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.SetPackages(agentId))
+    ) {
+        addHeader(HttpHeaders.Authorization, "Bearer $token")
+        setBody(PackagesPrefixes.serializer() stringify payload)
+    }.run {
+        response.status() to response.content
+    }
 }
 
 

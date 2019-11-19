@@ -79,7 +79,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentSession?.send(
                                 Frame.Text(
                                     WsSendMessage.serializer() stringify
-                                            WsSendMessage(WsMessageType.MESSAGE, "/plugins/togglePlugin", it.id)
+                                            WsSendMessage(
+                                                WsMessageType.MESSAGE,
+                                                "/plugins/togglePlugin",
+                                                TogglePayload(it.id)
+                                            )
                                 )
                             )
                         }
@@ -186,9 +190,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 post<Routes.Api.Agent.SetPackages> { (agentId) ->
                     val prefixes = PackagesPrefixes.serializer() parse call.receiveText()
-                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.configurePackages(prefixes, agentId) }
-                    val adminData = agentManager.adminData(agentId)
+                    val adminData = agentManager.adminData(agentId).apply { resetBuilds() }
                     adminData.packagesPrefixes = prefixes.packagesPrefixes
+                    agentManager.applyPackagesChangesOnAllPlugins(agentId)
+                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.disableAllPlugins(agentId) }
+                    agentManager.wrapBusy(agentManager[agentId]!!) { agentManager.configurePackages(prefixes, agentId) }
                     adminData.refreshStoredSummary()
                     call.respond(HttpStatusCode.OK, "Trigger for classes processing sent to agent with id $agentId")
                 }

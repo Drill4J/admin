@@ -60,6 +60,12 @@ class AdminPluginData(
         }
     }
 
+    suspend fun resetBuilds() {
+        storeClient.deleteBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
+        buildManager = AgentBuildManager(agentId, storeClient)
+        refreshStoredSummary()
+    }
+
     suspend fun refreshStoredSummary() {
         storeClient.store(
             AdminDataSummary(
