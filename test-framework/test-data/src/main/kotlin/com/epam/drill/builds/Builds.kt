@@ -1,8 +1,8 @@
 package com.epam.drill.builds
 
 object Build1 : Build {
-    override lateinit var test: Tst
-    fun entryPoint() = test as Test
+    override lateinit var test: Class<Tst>
+    fun entryPoint() = test.newInstance() as Test
     override val name: String = "build1"
 
 
@@ -15,9 +15,9 @@ object Build1 : Build {
 }
 
 object Build2 : Build {
-    override lateinit var test: Tst
+    override lateinit var test: Class<Tst>
     override val name: String = "build2"
-    fun entryPoint() = test as Test
+    fun entryPoint() = test.newInstance() as Test
 
     interface Test : Tst {
         fun test1()
@@ -27,9 +27,9 @@ object Build2 : Build {
 }
 
 object Build3 : Build {
-    override lateinit var test: Tst
+    override lateinit var test: Class<Tst>
     override val name: String = "build3"
-    fun entryPoint() = test as Test
+    fun entryPoint() = test.newInstance() as Test
 
     interface Test : Tst {
         fun test1()
@@ -39,9 +39,9 @@ object Build3 : Build {
 }
 
 object Build4 : Build {
-    override lateinit var test: Tst
+    override lateinit var test: Class<Tst>
     override val name: String = "build4"
-    fun entryPoint() = test as Test
+    fun entryPoint() = test.newInstance() as Test
 
     interface Test : Tst {
         fun test1()
@@ -51,9 +51,9 @@ object Build4 : Build {
 }
 
 object Build5 : Build {
-    override lateinit var test: Tst
+    override lateinit var test: Class<Tst>
     override val name: String = "build5"
-    fun entryPoint() = test as Test
+    fun entryPoint() = test.newInstance() as Test
     interface Test : Tst {
         fun test1()
         fun test2()
@@ -62,7 +62,7 @@ object Build5 : Build {
 }
 
 interface Build {
-    var test: Tst
+    var test: Class<Tst>
     val name: String
 }
 

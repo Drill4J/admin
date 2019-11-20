@@ -130,11 +130,8 @@ suspend fun AdminTest.loadPlugin(
             !it.isInterface &&
                     it.interfaces.flatMap { it.interfaces.toSet() }.any { it == Tst::class.java }
         } ?: fail("can't find classes for build")
-        mockkObject(DrillContext)
-        every { DrillContext[any()] } returns ""
-        every { DrillContext.invoke() } returns null
-        build.test = first.newInstance() as Tst
-        unmockkObject(DrillContext)
+        @Suppress("UNCHECKED_CAST")
+        build.test = first as Class<Tst>
         mut.unlock()
     }
 }

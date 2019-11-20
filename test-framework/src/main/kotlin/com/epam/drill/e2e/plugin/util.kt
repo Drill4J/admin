@@ -28,6 +28,26 @@ fun MemoryClassLoader.clazz(
                             if (!constant.bytes.contains("$coreName$"))
                                 regeneratedClass.constantPool.setConstant(
                                     idx,
+                                    ConstantUtf8(
+                                        constant.bytes
+                                            .replace(coreName, "$coreName$classSuffix")
+                                            .replace(
+                                                "com/epam/drill/plugins/coverage/DrillProbeArrayProvider",
+                                                "com/epam/drill/plugins/coverage/DrillProbeArrayProvider$classSuffix"
+                                            )
+                                    )
+                                )
+                        }
+                    }
+                    regeneratedClass.constantPool
+                    regeneratedClass.update()
+                } else if (javaClass.className == "com.epam.drill.plugins.coverage.DrillProbeArrayProvider") {
+                    javaClass.className = "${javaClass.className}$classSuffix"
+                    regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
+                        if (constant is ConstantUtf8) {
+                            if (!constant.bytes.contains("$coreName$"))
+                                regeneratedClass.constantPool.setConstant(
+                                    idx,
                                     ConstantUtf8(constant.bytes.replace(coreName, "$coreName$classSuffix"))
                                 )
                         }

@@ -23,6 +23,7 @@ import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.util.*
 import kotlin.collections.set
 
 class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
@@ -210,9 +211,18 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         pluginId: String,
         action: String
     ): Pair<HttpStatusCode, Any> {
+        val sessionId = UUID.randomUUID().toString()
         return agents.map { agentEntry ->
             val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
-            val adminActionResult = adminPart.doRawAction(action)
+            val actionObject = adminPart.parseAction(action)
+            val adminActionResult =
+                if (actionObject is com.epam.drill.plugins.coverage.StartNewSession &&
+                    actionObject.payload.sessionId.isEmpty()
+                ) {
+                    val reAction = actionObject.copy(actionObject.payload.copy(sessionId = sessionId))
+                    @Suppress("UNCHECKED_CAST")
+                    (adminPart as AdminPluginPart<Any>).doAction(reAction)
+                } else adminPart.doRawAction(action)
             val agentPartMsg = when (adminActionResult) {
                 is String -> adminActionResult
                 is Unit -> action

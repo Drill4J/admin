@@ -20,9 +20,10 @@ abstract class E2EPluginTest : AdminTest() {
     inline fun <reified X : PluginStreams> createSimpleAppWithPlugin(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
+        timeout: Long = 20,
         noinline block: suspend TestContext<X>.() -> Unit
     ) {
-        assertTimeout(ofSeconds(10)) { pluginRun(block, uiStreamDebug, agentStreamDebug) }
+        assertTimeout(ofSeconds(timeout)) { pluginRun(block, uiStreamDebug, agentStreamDebug) }
     }
 
 
