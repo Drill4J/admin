@@ -6,6 +6,7 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.channels.*
 import mu.*
 
 private val logger = KotlinLogging.logger {}
@@ -46,7 +47,10 @@ suspend fun MutableSet<DrillWsSession>.sendTo(
                 logger.debug { "Sent $frame through admin socket" }
             }
         } catch (ex: Exception) {
-            logger.error(ex) { "Processing drill ws session was finished with exception" }
+            when (ex) {
+                is ClosedSendChannelException -> logger.warn { "The socket connection was aborted" }
+                else -> logger.error(ex) { "Processing drill ws session was finished with exception" }
+            }
             iter.remove()
         }
     }

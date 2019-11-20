@@ -21,6 +21,7 @@ import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.util.concurrent.*
 import kotlin.reflect.full.*
 import kotlin.reflect.jvm.*
 
@@ -72,7 +73,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             incoming.consumeEach { frame ->
                 if (frame is Frame.Text) {
                     val message = Message.serializer() parse frame.readText()
-                    logger.info { "Processing message ${message.type} with data '${message.data}'" }
+                    logger.debug { "Processing message ${message.type} with data '${message.data}'" }
 
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
@@ -121,7 +122,10 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 }
             }
         } catch (ex: Exception) {
-            logger.error(ex) { "Handle with exception" }
+            when (ex) {
+                is CancellationException -> logger.error { "Handle the agent was cancelled" }
+                else -> logger.error(ex) { "Handle with exception" }
+            }
         } finally {
             agentManager.remove(agentInfo)
             logger.info { "Agent with id '${agentInfo.id}' was disconnected" }

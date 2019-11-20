@@ -46,7 +46,10 @@ private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
     try {
         JwtConfig.verifier.verify(token)
     } catch (ex: JWTVerificationException) {
-        logger.error(ex) { "Token '$token' verified was finished with exception" }
+        when (ex) {
+            is TokenExpiredException -> logger.debug { "Token is invalid" }
+            else -> logger.debug { "Token '$token' verified was finished with exception" }
+        }
         send(Frame.Text(WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.UNAUTHORIZED)))
         close()
     }

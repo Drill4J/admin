@@ -42,7 +42,6 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
                             }
 
                             WsMessageType.UNSUBSCRIBE -> {
-
                                 if (sessionStorage.removeTopic(event.destination)) {
                                     logger.debug { "${event.destination} is unsubscribed" }
                                 }
