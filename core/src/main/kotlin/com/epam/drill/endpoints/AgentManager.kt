@@ -24,7 +24,6 @@ const val INITIAL_BUILD_ALIAS = "Initial build"
 class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver: TopicResolver by instance()
-    private val notificationsManager: NotificationsManager by instance()
     private val store: StoreManager by instance()
     val app: Application by instance()
     val agentStorage: AgentStorage by instance()
@@ -50,24 +49,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return agentStore.store(existingAgent)
     }
 
-    private suspend fun AgentInfo.processBuild(pBuildVersion: String, agentId: String) {
+    private fun AgentInfo.processBuild(pBuildVersion: String, agentId: String) {
         logger.debug { "Updating build version for agent with id $agentId. Build version is $pBuildVersion" }
         if (status != AgentStatus.OFFLINE) {
             val buildInfo = adminData(agentId).buildManager[pBuildVersion]
-            if (buildInfo == null || buildInfo.new) {
-                logger.debug { "Build version wit id $pBuildVersion not found" }
-                notificationsManager.save(
-                    agentId,
-                    name,
-                    NotificationType.BUILD,
-                    notificationsManager.buildArrivedMessage(pBuildVersion)
-                )
-                topicResolver.sendToAllSubscribed("/notifications")
-                logger.debug {
-                    "Notification of a new build version ($pBuildVersion) " +
-                            "for agent with id $agentId was created"
-                }
-            }
             this.buildVersion = pBuildVersion
             this.buildAlias = buildInfo?.buildAlias ?: ""
             logger.debug { "Build version for agent with id $agentId was updated" }

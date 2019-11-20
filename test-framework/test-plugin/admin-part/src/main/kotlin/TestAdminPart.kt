@@ -6,6 +6,7 @@ import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.kodux.*
+import kotlinx.serialization.*
 import kotlinx.serialization.internal.*
 
 
@@ -47,5 +48,19 @@ class TestAdminPart(
     override suspend fun applyPackagesChanges() {
         packagesChangesCount++
         sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
+    }
+
+    override fun getPluginData(params: Map<String, String>): String {
+        return when (params["type"]) {
+            "recommendations" -> newBuildActionsList()
+            else -> ""
+        }
+    }
+
+    private fun newBuildActionsList(): String {
+        val list = mutableListOf<String>()
+        list.add("test plugin recommendation 1")
+        list.add("test plugin recommendation 2")
+        return String.serializer().list stringify list
     }
 }

@@ -1,5 +1,6 @@
 package com.epam.drill.notifications
 
+import com.epam.drill.common.*
 import com.epam.drill.dataclasses.*
 import com.epam.drill.util.*
 import java.util.*
@@ -45,14 +46,24 @@ class NotificationManagerTest {
     }
 
     private fun saveRandomBuildNotification(count: Int) {
+        var previousVersion = ""
+
         for (i in 1..count) {
             val buildVersion = UUID.randomUUID().toString()
+
             manager.save(
                 AGENT_ID,
                 "testName",
                 NotificationType.BUILD,
-                manager.buildArrivedMessage(buildVersion)
+                NewBuildArrivedMessage.serializer() stringify
+                        NewBuildArrivedMessage(
+                            buildVersion,
+                            previousVersion,
+                            BuildDiff(1, 2, 3, 4, 5),
+                            listOf("recommendation_1", "recommendation_2")
+                        )
             )
+            previousVersion = buildVersion
         }
     }
 }

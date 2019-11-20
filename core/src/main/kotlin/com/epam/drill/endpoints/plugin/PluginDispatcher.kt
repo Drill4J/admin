@@ -42,14 +42,14 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             val dp: Plugin = plugins[pluginId] ?: return
             val pluginClass = dp.pluginClass
             val agentEntry = agentManager.full(agentInfo.id)
-            val plugin: AdminPluginPart<*> = fillPluginInstance(agentEntry, pluginClass, pluginId)
+            val plugin: AdminPluginPart<*> = getPluginInstance(agentEntry, pluginClass, pluginId)
             plugin.processData(message.drillMessage)
         } catch (ee: Exception) {
             logger.error(ee) { "Processing plugin data was finished with exception" }
         }
     }
 
-    private suspend fun fillPluginInstance(
+    suspend fun getPluginInstance(
         agentEntry: AgentEntry?,
         pluginClass: Class<AdminPluginPart<*>>,
         pluginId: String
@@ -134,7 +134,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     (agentInfo == null) -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                     else -> {
                         val agentEntry = agentManager.full(agentId)
-                        val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
+                        val adminPart: AdminPluginPart<*> = getPluginInstance(agentEntry, dp.pluginClass, pluginId)
                         val response = adminPart.getPluginData(params)
                         HttpStatusCode.OK to response
                     }
@@ -162,7 +162,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     val dp: Plugin = plugins[pluginId]!!
                                     val pluginClass = dp.pluginClass
                                     val agentEntry = agentManager.full(agentInfo.id)
-                                    fillPluginInstance(agentEntry, pluginClass, pluginId)
+                                    getPluginInstance(agentEntry, pluginClass, pluginId)
                                     HttpStatusCode.OK to "Plugin '$pluginId' was added to agent '$agentId'"
                                 }
                             } else {
@@ -213,7 +213,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
         return agents.map { agentEntry ->
-            val adminPart: AdminPluginPart<*> = fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
+            val adminPart: AdminPluginPart<*> = getPluginInstance(agentEntry, dp.pluginClass, pluginId)
             val actionObject = adminPart.parseAction(action)
             val adminActionResult =
                 if (actionObject is com.epam.drill.plugins.coverage.StartNewSession &&
@@ -257,7 +257,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val pluginId = dp.pluginBean.id
         val agentEntry = agentManager.full(id)
         val adminPart: AdminPluginPart<*> =
-            fillPluginInstance(agentEntry, dp.pluginClass, pluginId)
+            getPluginInstance(agentEntry, dp.pluginClass, pluginId)
         val adminActionResult = adminPart.doRawAction(action)
         val agentPartMsg = when (adminActionResult) {
             is String -> adminActionResult

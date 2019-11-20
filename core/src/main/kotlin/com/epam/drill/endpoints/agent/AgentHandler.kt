@@ -4,9 +4,12 @@ package com.epam.drill.endpoints.agent
 
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
+import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
+import com.epam.drill.plugins.*
 import com.epam.drill.system.*
+import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -27,6 +30,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val pd: PluginDispatcher by kodein.instance()
     private val topicResolver: TopicResolver by instance()
+    private val notificationsManager: NotificationsManager by instance()
+    private val plugins: Plugins by instance()
 
     init {
         app.routing {
@@ -98,9 +103,17 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
+                            val isNewBuild =
+                                agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.new ?: false
+
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .compareToPrev(agentInfo.buildVersion)
+                            agentManager.applyPackagesChangesOnAllPlugins(agentInfo.id)
+
+                            if (isNewBuild) {
+                                newBuildNotify(agentInfo)
+                            }
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                             agentManager.enableAllPlugins(agentInfo.id)
                             logger.debug { "Finished classes transfer" }
@@ -110,7 +123,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             logger.warn { "Message with type '${message.type}' is not supported yet" }
                         }
                     }
-
                 }
             }
         } catch (ex: Exception) {
@@ -119,5 +131,54 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentManager.remove(agentInfo)
             logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
         }
+    }
+
+    private suspend fun newBuildNotify(agentInfo: AgentInfo) {
+        val recommendations = mutableListOf<String>()
+        val methodChanges =
+            agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.methodChanges
+                ?: MethodChanges()
+
+        val buildDiff = BuildDiff(
+            methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
+            methodChanges.map[DiffType.MODIFIED_DESC]?.count() ?: 0,
+            methodChanges.map[DiffType.MODIFIED_NAME]?.count() ?: 0,
+            methodChanges.map[DiffType.NEW]?.count() ?: 0,
+            methodChanges.map[DiffType.DELETED]?.count() ?: 0
+        )
+        val previousBuildVersion =
+            agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.prevBuild
+                ?: ""
+
+        val connectedPlugins = plugins.filter {
+            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
+        }
+
+        if (connectedPlugins.isNotEmpty()) {
+            connectedPlugins.forEach {
+                val result = pd.getPluginInstance(
+                    agentManager.full(agentInfo.id),
+                    it.value.pluginClass,
+                    it.key
+                ).getPluginData(mapOf("type" to "recommendations"))
+                recommendations.addAll(String.serializer().list parse result)
+            }
+        }
+
+        notificationsManager.save(
+            agentInfo.id,
+            agentInfo.name,
+            NotificationType.BUILD,
+            NewBuildArrivedMessage.serializer() stringify NewBuildArrivedMessage(
+                agentInfo.buildVersion,
+                previousBuildVersion,
+                buildDiff,
+                recommendations
+            )
+        )
+        agentManager.adminData(agentInfo.id).run {
+            buildManager.setProcessed(agentInfo.buildVersion)
+        }
+        topicResolver.sendToAllSubscribed("/notifications")
     }
 }

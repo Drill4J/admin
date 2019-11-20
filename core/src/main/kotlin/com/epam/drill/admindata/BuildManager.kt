@@ -49,6 +49,11 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         )
         if (buildVersionIsNew) {
             lastBuild = buildVersion
+        }
+    }
+
+    fun setProcessed(buildVersion: String) {
+        if (buildInfos[buildVersion] != null && buildInfos[buildVersion]!!.new) {
             buildInfos[buildVersion] = buildInfos[buildVersion]!!.copy(new = false)
         }
     }

@@ -27,7 +27,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
-import org.junit.Test
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*
@@ -231,13 +230,22 @@ object PainRoutes {
 }
 
 fun generateThreeNotifications(agentId: String, agentName: String) {
+    var previousVersion = ""
+
     for (i in 0..2) {
         val buildVersion = UUID.randomUUID().toString()
         notificationsManager.save(
             agentId,
             agentName,
             NotificationType.BUILD,
-            notificationsManager.buildArrivedMessage(buildVersion)
+            NewBuildArrivedMessage.serializer() stringify
+                    NewBuildArrivedMessage(
+                        buildVersion,
+                        previousVersion,
+                        BuildDiff(1, 2, 3, 4, 5),
+                        listOf("recommendation_1", "recommendation_2")
+                    )
         )
+        previousVersion = buildVersion
     }
 }
