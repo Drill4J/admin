@@ -59,6 +59,7 @@ class NotificationManagerTest {
                         NewBuildArrivedMessage(
                             buildVersion,
                             previousVersion,
+                            "prevAlias",
                             BuildDiff(1, 2, 3, 4, 5),
                             listOf("recommendation_1", "recommendation_2")
                         )

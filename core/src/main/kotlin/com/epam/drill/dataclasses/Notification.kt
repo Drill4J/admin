@@ -27,8 +27,9 @@ data class NotificationId(val notificationId: String)
 
 @Serializable
 data class NewBuildArrivedMessage(
-    val current: String,
-    val prev: String,
+    val currentId: String,
+    val prevId: String,
+    val prevAlias: String,
     val buildDiff: BuildDiff,
     val recommendations: List<String>
 )
@@ -43,7 +44,7 @@ data class BuildDiff(
     val modName: Int = 0,
 
     val new: Int,
-    val del: Int
+    val deleted: Int
 ) {
-    val mod = modBody + modDesc + modName
+    val modified = modBody + modDesc + modName
 }

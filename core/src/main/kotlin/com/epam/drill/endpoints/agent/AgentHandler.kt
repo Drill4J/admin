@@ -134,11 +134,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun newBuildNotify(agentInfo: AgentInfo) {
-        val recommendations = mutableListOf<String>()
-        val methodChanges =
-            agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.methodChanges
-                ?: MethodChanges()
-
+        val buildManager = agentManager.adminData(agentInfo.id).buildManager
+        val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
         val buildDiff = BuildDiff(
             methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
             methodChanges.map[DiffType.MODIFIED_DESC]?.count() ?: 0,
@@ -146,24 +143,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             methodChanges.map[DiffType.NEW]?.count() ?: 0,
             methodChanges.map[DiffType.DELETED]?.count() ?: 0
         )
-        val previousBuildVersion =
-            agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.prevBuild
-                ?: ""
-
-        val connectedPlugins = plugins.filter {
-            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
-        }
-
-        if (connectedPlugins.isNotEmpty()) {
-            connectedPlugins.forEach {
-                val result = pd.getPluginInstance(
-                    agentManager.full(agentInfo.id),
-                    it.value.pluginClass,
-                    it.key
-                ).getPluginData(mapOf("type" to "recommendations"))
-                recommendations.addAll(String.serializer().list parse result)
-            }
-        }
+        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild ?: ""
+        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
 
         notificationsManager.save(
             agentInfo.id,
@@ -172,13 +153,31 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             NewBuildArrivedMessage.serializer() stringify NewBuildArrivedMessage(
                 agentInfo.buildVersion,
                 previousBuildVersion,
+                previousBuildAlias,
                 buildDiff,
-                recommendations
+                pluginsRecommendations(agentInfo)
             )
         )
         agentManager.adminData(agentInfo.id).run {
             buildManager.setProcessed(agentInfo.buildVersion)
         }
         topicResolver.sendToAllSubscribed("/notifications")
+    }
+
+    private suspend fun pluginsRecommendations(agentInfo: AgentInfo): List<String> {
+        val recommendations = mutableListOf<String>()
+        val connectedPlugins = plugins.filter {
+            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
+        }
+
+        connectedPlugins.forEach {
+            val result = pd.getPluginInstance(
+                agentManager.full(agentInfo.id),
+                it.value.pluginClass,
+                it.key
+            ).getPluginData(mapOf("type" to "recommendations"))
+            recommendations.addAll(String.serializer().list parse result)
+        }
+        return recommendations
     }
 }
