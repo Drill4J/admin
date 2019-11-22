@@ -90,7 +90,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetNotifications> {
-                    notificationsManager.allNotifications
+                    notificationsManager.allNotifications.sortedByDescending { it.date }
                 }
 
                 topic<WsRoutes.GetBuilds> { (agentId) ->
@@ -100,5 +100,4 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
         }
     }
-
 }
