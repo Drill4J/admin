@@ -17,6 +17,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.cbor.*
+import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -103,17 +104,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
-                            val isNewBuild =
-                                agentManager.adminData(agentInfo.id).buildManager[agentInfo.buildVersion]?.new ?: false
-
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .compareToPrev(agentInfo.buildVersion)
                             agentManager.applyPackagesChangesOnAllPlugins(agentInfo.id)
-
-                            if (isNewBuild) {
-                                newBuildNotify(agentInfo)
-                            }
+                            newBuildNotify(agentInfo)
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                             agentManager.enableAllPlugins(agentInfo.id)
                             logger.debug { "Finished classes transfer" }
@@ -135,6 +130,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun newBuildNotify(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
+        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
+
+        if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
+            return
+        }
+
+        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
         val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
         val buildDiff = BuildDiff(
             methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
@@ -143,8 +145,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             methodChanges.map[DiffType.NEW]?.count() ?: 0,
             methodChanges.map[DiffType.DELETED]?.count() ?: 0
         )
-        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild ?: ""
-        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
 
         notificationsManager.save(
             agentInfo.id,
@@ -158,9 +158,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 pluginsRecommendations(agentInfo)
             )
         )
-        agentManager.adminData(agentInfo.id).run {
-            buildManager.setProcessed(agentInfo.buildVersion)
-        }
         topicResolver.sendToAllSubscribed("/notifications")
     }
 
@@ -175,8 +172,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 agentManager.full(agentInfo.id),
                 it.value.pluginClass,
                 it.key
-            ).getPluginData(mapOf("type" to "recommendations"))
-            recommendations.addAll(String.serializer().list parse result)
+            ).getPluginData(mapOf("type" to "recommendations")).ifEmpty { "[]" }
+
+            try {
+                recommendations.addAll(String.serializer().list parse result)
+            } catch (exception: JsonDecodingException) {
+                logger.error(exception) { "Parsing result '$result' finished with exception: " }
+            }
         }
         return recommendations
     }
