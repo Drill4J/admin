@@ -38,8 +38,8 @@ class PluginLoaderService(
             if (withArtifactory)
                 HttpClient(CIO).use { client ->
                     allowedPlugins.forEach { pluginId ->
-                        val version =
-                            client.get<String>("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
+                        val version = getenv("T2CM_VERSION")
+                            ?: client.get("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
                         val targetFileName = "$pluginId-plugin-$version.zip"
                         val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
                         val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
