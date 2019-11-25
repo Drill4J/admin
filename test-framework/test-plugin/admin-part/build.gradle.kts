@@ -6,6 +6,7 @@ plugins {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
     jcenter()
