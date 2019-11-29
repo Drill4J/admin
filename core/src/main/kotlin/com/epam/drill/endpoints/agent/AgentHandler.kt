@@ -172,7 +172,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         }
 
         connectedPlugins.forEach {
-            val result = pd.getPluginInstance(
+            val result = agentManager.instantiateAdminPluginPart(
                 agentManager.full(agentInfo.id),
                 it.value.pluginClass,
                 it.key

@@ -39,7 +39,10 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentManager.updateAgent(agentId, au)
                         if (au.sessionIdHeaderName.isNotEmpty())
                             agentManager.agentSession(au.id)?.apply {
-                                sendToTopic("/agent/config", ServiceConfig(app.securePort(), au.sessionIdHeaderName)).call()
+                                sendToTopic(
+                                    "/agent/config",
+                                    ServiceConfig(app.securePort(), au.sessionIdHeaderName)
+                                ).call()
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
                         call.respond(HttpStatusCode.OK, "agent '$agentId' was updated")
@@ -67,29 +70,29 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 }
             }
             authenticate {
-                post<Routes.Api.Agent.RegisterAgent> { ll ->
-                    logger.debug { "Update configuration for agent with id ${ll.agentId}" }
-                    val agentId = ll.agentId
+                post<Routes.Api.Agent.RegisterAgent> { payload ->
+                    logger.debug { "Registering agent with id ${payload.agentId}" }
+                    val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
-                    if (agInfo != null) {
+                    val (status, message) = if (agInfo != null) {
                         val regInfo = call.parse(AgentRegistrationInfo.serializer())
-                        val alias = regInfo.buildAlias
                         with(agInfo) {
                             name = regInfo.name
                             groupName = regInfo.group
                             description = regInfo.description
-                            buildAlias = alias
                             status = AgentStatus.ONLINE
+                            sessionIdHeaderName = regInfo.sessionIdHeaderName
                         }
-                        val buildVersion = AgentBuildVersionJson(agInfo.buildVersion, alias)
-                        agentManager.adminData(agentId).buildManager.renameBuild(buildVersion)
+                        agentManager.adminData(agentId).apply { packagesPrefixes = regInfo.packagesPrefixes }
+                        agentManager.addPlugins(agInfo, regInfo.plugins)
                         agentManager.sync(agInfo, true)
                         logger.debug { "Agent with id '$agentId' has been registered" }
-                        call.respond(HttpStatusCode.OK, "Agent '$agentId' has been registered")
+                        HttpStatusCode.OK to "Agent '$agentId' has been registered"
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        call.respond(HttpStatusCode.BadRequest, "Agent '$agentId' not found")
+                        HttpStatusCode.BadRequest to "Agent '$agentId' not found"
                     }
+                    call.respond(status, message)
                 }
             }
 
@@ -117,6 +120,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 data class AgentRegistrationInfo(
     val name: String,
     val description: String,
-    val buildAlias: String,
-    val group: String = ""
+    val group: String = "",
+    val packagesPrefixes: List<String>,
+    val sessionIdHeaderName: String = "",
+    val plugins: List<String>
 )

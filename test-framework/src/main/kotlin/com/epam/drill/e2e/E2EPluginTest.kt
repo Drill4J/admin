@@ -32,21 +32,35 @@ abstract class E2EPluginTest : AdminTest() {
 fun AdminTest.register(
     agentId: String,
     token: String = globToken,
-    payload: AgentRegistrationInfo = AgentRegistrationInfo("xz", "ad", "sad")
+    payload: AgentRegistrationInfo = AgentRegistrationInfo(
+        name = "xz",
+        description = "ad",
+        packagesPrefixes = listOf("testPrefix"),
+        plugins = listOf("test-plugin")
+    )
 ) =
-    engine.handleRequest(HttpMethod.Post, "/api" + engine.application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
+    engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))
+    ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(AgentRegistrationInfo.serializer() stringify payload)
     }.run { response.status() to response.content }
 
 fun AdminTest.addPlugin(agentId: String, payload: PluginId, token: String = globToken) =
-    engine.handleRequest(HttpMethod.Post, "/api" + engine.application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))) {
+    engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
+    ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PluginId.serializer() stringify payload)
     }.run { response.status() to response.content }
 
 fun AdminTest.unRegister(agentId: String, token: String = globToken) =
-    engine.handleRequest(HttpMethod.Post, "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))) {
+    engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
+    ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
     }.run { response.status() to response.content }
 
@@ -95,7 +109,10 @@ fun AdminTest.activateAgentByGroup(
     groupId: String,
     token: String = globToken
 ) =
-    engine.handleRequest(HttpMethod.Post, "/api" + engine.application.locations.href(Routes.Api.Agent.ActivateAgents(groupId))) {
+    engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.ActivateAgents(groupId))
+    ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
     }.run { response.status() to response.content }
 

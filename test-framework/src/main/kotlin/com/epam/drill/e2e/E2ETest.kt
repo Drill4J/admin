@@ -140,12 +140,16 @@ abstract class E2ETest : AdminTest() {
     fun TestApplicationEngine.register(
         agentId: String,
         token: String = globToken,
-        payload: AgentRegistrationInfo = AgentRegistrationInfo("xz", "ad", "sad")
-    ) =
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(AgentRegistrationInfo.serializer() stringify payload)
-        }.run { response.status() to response.content }
+        payload: AgentRegistrationInfo = AgentRegistrationInfo(
+            name = "xz",
+            description = "ad",
+            packagesPrefixes = listOf("testPrefix"),
+            plugins = emptyList()
+        )
+    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
+        addHeader(HttpHeaders.Authorization, "Bearer $token")
+        setBody(AgentRegistrationInfo.serializer() stringify payload)
+    }.run { response.status() to response.content }
 
     fun TestApplicationEngine.addPlugin(agentId: String, payload: PluginId, token: String = globToken) =
         handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))) {

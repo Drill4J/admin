@@ -45,7 +45,7 @@ class BuildsTest : E2ETest() {
                 ui.getBuilds()
                 val builds = ui.getBuilds()
                 builds!!.size shouldBe 3
-                builds.find { it.buildVersion == "0.1.0" }!!.alias shouldBe "sad"
+                builds.find { it.buildVersion == "0.1.0" }!!.alias shouldBe ""
                 builds.find { it.buildVersion == "0.1.2" }!!.alias shouldBe "wtf"
                 builds.find { it.buildVersion == "0.1.3" }!!.alias shouldBe "omg"
             }

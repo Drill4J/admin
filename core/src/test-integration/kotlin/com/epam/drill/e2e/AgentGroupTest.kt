@@ -5,7 +5,6 @@ import com.epam.drill.endpoints.agent.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
-import kotlinx.coroutines.*
 import org.junit.jupiter.api.*
 
 
@@ -21,10 +20,10 @@ class AgentGroupTest : E2ETest() {
                 register(
                     "ag$wit",
                     payload = AgentRegistrationInfo(
-                        "first first",
-                        "ad",
-                        "sad",
-                        "myGroup"
+                        name = "first first",
+                        description = "ad",
+                        packagesPrefixes = listOf("testPrefix"),
+                        plugins = emptyList()
                     )
                 ).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
@@ -39,10 +38,10 @@ class AgentGroupTest : E2ETest() {
                 register(
                     "ag$it",
                     payload = AgentRegistrationInfo(
-                        "first second",
-                        "ad",
-                        "sad",
-                        "myGroup"
+                        name = "first first",
+                        description = "ad",
+                        packagesPrefixes = listOf("testPrefix"),
+                        plugins = emptyList()
                     )
                 ).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY

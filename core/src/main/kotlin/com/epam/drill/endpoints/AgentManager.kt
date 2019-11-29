@@ -3,12 +3,12 @@ package com.epam.drill.endpoints
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
-import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.agent.*
+import com.epam.drill.plugin.api.*
+import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.*
 import com.epam.drill.storage.*
 import com.epam.drill.system.*
-import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
@@ -25,6 +25,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver: TopicResolver by instance()
     private val store: StoreManager by instance()
+    private val wsService: Sender by kodein.instance()
     val app: Application by instance()
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
@@ -161,25 +162,26 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins?.map { it.id }
 
-    suspend fun addPluginFromLib(agentId: String, pluginId: String) {
-        logger.debug { "Add plugin with id $pluginId from lib for agent with id $agentId" }
-        val agentInfo = store.agentStore(agentId).findById<AgentInfo>(agentId)
+    suspend fun addPlugins(agentInfo: AgentInfo, plugins: List<String>) {
+        val agentEntry = full(agentInfo.id)
+        plugins.forEach { pluginId ->
+            val dp: Plugin = this.plugins[pluginId]!!
+            val pluginClass = dp.pluginClass
+            instantiateAdminPluginPart(agentEntry, pluginClass, pluginId)
+        }
+        addPluginsToAgent(agentInfo, plugins)
+    }
 
-        if (agentInfo != null) {
-            plugins[pluginId]?.pluginBean?.let { plugin ->
-                val rawPluginNames = agentInfo.plugins.toList()
-                val existingPluginBeanDb = rawPluginNames.find { it.id == pluginId }
+    private fun addPluginsToAgent(agentInfo: AgentInfo, plugins: List<String>) {
+        plugins.forEach { pluginId ->
+            logger.debug { "Add plugin with id $pluginId from lib for agent with id ${agentInfo.id}" }
+            this.plugins[pluginId]?.pluginBean?.let { plugin ->
+                val existingPluginBeanDb = agentInfo.plugins.find { it.id == pluginId }
                 if (existingPluginBeanDb == null) {
                     agentInfo.plugins += plugin
-                    wrapBusy(agentInfo) {
-                        sendPlugins()
-                    }.join() // dangerous blocking
-
-                    logger.info { "Plugin $pluginId successfully added to agent with id $agentId!" }
+                    logger.info { "Plugin $pluginId successfully added to agent with id ${agentInfo.id}!" }
                 }
             }
-        } else {
-            logger.warn { "Agent with id $agentId not found in your DB." }
         }
     }
 
@@ -209,7 +211,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic( "/plugins/togglePlugin", TogglePayload(pluginId, false))?.call()
+                ?.sendToTopic("/plugins/togglePlugin", TogglePayload(pluginId, false))?.call()
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
@@ -218,7 +220,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic( "/plugins/togglePlugin", TogglePayload(pluginId, true))?.call()
+                ?.sendToTopic("/plugins/togglePlugin", TogglePayload(pluginId, true))?.call()
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
@@ -242,7 +244,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (agentInfo.status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(agentInfo) {
-                    configurePackages(PackagesPrefixes(packagesPrefixes(id)), id)
+                    configurePackages(PackagesPrefixes(packagesPrefixes(id)), id)//thread sleep
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
                 }
@@ -263,9 +265,43 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
+    suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
+        wrapBusy(agentInfo) {
+            sendPlugins()
+        }.join()
+    }
+
     private suspend fun updateBuildDataOnAllPlugins(agentId: String, buildVersion: String) {
         val plugins = full(agentId)?.instance
         plugins?.values?.forEach { it.updateDataOnBuildConfigChange(buildVersion) }
+    }
+
+    suspend fun instantiateAdminPluginPart(
+        agentEntry: AgentEntry?,
+        pluginClass: Class<AdminPluginPart<*>>,
+        pluginId: String
+    ): AdminPluginPart<*> {
+        return agentEntry?.instance!![pluginId] ?: run {
+            val constructor =
+                pluginClass.getConstructor(
+                    AdminData::class.java,
+                    Sender::class.java,
+                    StoreClient::class.java,
+                    AgentInfo::class.java,
+                    String::class.java
+                )
+            val agentInfo = agentEntry.agent
+            val plugin = constructor.newInstance(
+                adminData(agentInfo.id),
+                wsService,
+                store.agentStore(agentInfo.id),
+                agentInfo,
+                pluginId
+            )
+            plugin.initialize()
+            agentEntry.instance[pluginId] = plugin
+            plugin
+        }
     }
 
 }
