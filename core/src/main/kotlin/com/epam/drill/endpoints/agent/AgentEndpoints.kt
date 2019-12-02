@@ -125,5 +125,5 @@ data class AgentRegistrationInfo(
     val group: String = "",
     val packagesPrefixes: List<String>,
     val sessionIdHeaderName: String = "",
-    val plugins: List<String>
+    val plugins: List<String> = emptyList()
 )
