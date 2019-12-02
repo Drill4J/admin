@@ -11,7 +11,7 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.locations.post
+import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -36,31 +36,33 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val drillAgent = agentManager.agentSession(agentId)
                     val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
 
-                    if (drillAgent == null) {
-                        logger.warn { "Drill agent is absent" }
-                        call.respond("can't find the agent '$agentId'")
-                        return@post
-                    }
-
-                    if (agentPluginPartFile == null) {
-                        logger.warn { "Agent plugin part file is absent" }
-                        call.respond("can't find the plugin '$pluginId' in the agent '$agentId'")
-                        return@post
-                    }
-
-                    drillAgent.send(
-                        Frame.Text(
-                            Message.serializer() stringify Message(
-                                MessageType.MESSAGE,
-                                "/plugins/unload",
-                                pluginId
+                    val (status, response) = when {
+                        drillAgent == null -> {
+                            logger.warn { "Drill agent is absent" }
+                            HttpStatusCode.NotFound to "Can't find the agent '$agentId'"
+                        }
+                        agentPluginPartFile == null -> {
+                            logger.warn { "Agent plugin part file is absent" }
+                            HttpStatusCode.NotFound to "Can't find the plugin '$pluginId' in the agent '$agentId'"
+                        }
+                        else -> {
+                            drillAgent.send(
+                                Frame.Text(
+                                    Message.serializer() stringify Message(
+                                        MessageType.MESSAGE,
+                                        "/plugins/unload",
+                                        pluginId
+                                    )
+                                )
                             )
-                        )
-                    )
-                    logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
-                    //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
-                    call.respond("event 'unload' was sent to AGENT")
+                            logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
+                            //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
+                            HttpStatusCode.OK to "Event 'unload' was sent to AGENT"
+                        }
+                    }
+                    call.respondJsonIfErrorsOccured(status, response)
                 }
+
             }
 
             authenticate {
@@ -115,7 +117,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                     logger.info { "Reset plugin with id $pluginId for agent with id $agentId result: $response" }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
@@ -132,7 +134,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                     logger.info { "Reset agent with id $agentId result: $response" }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
@@ -164,7 +166,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                     logger.info { "Notification was reed with result: $response" }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
@@ -183,7 +185,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             HttpStatusCode.NotFound to "Notification with id $notificationId not found"
                         }
                     }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
@@ -198,7 +200,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentManager.configurePackages(prefixes, agentId)
                     }
                     adminData.refreshStoredSummary()
-                    call.respond(HttpStatusCode.OK, "Trigger for classes processing sent to agent with id $agentId")
+                    call.respondJsonIfErrorsOccured(
+                        HttpStatusCode.OK,
+                        "Trigger for classes processing sent to agent with id $agentId"
+                    )
                 }
             }
 
@@ -215,7 +220,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         else -> HttpStatusCode.InternalServerError to "Request handle with exception"
                     }
                     logger.info { "Build version rename was finished with result: $response" }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
         }

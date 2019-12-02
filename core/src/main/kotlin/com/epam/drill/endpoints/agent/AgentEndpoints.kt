@@ -34,7 +34,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.UpdateAgentConfig> { (agentId) ->
                     logger.debug { "Update configuration for agent with id $agentId" }
 
-                    if (agentManager.agentSession(agentId) != null) {
+                    val (status, message) = if (agentManager.agentSession(agentId) != null) {
                         val au = call.parse(AgentInfoWebSocket.serializer())
                         agentManager.updateAgent(agentId, au)
                         if (au.sessionIdHeaderName.isNotEmpty())
@@ -45,11 +45,12 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                                 ).call()
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
-                        call.respond(HttpStatusCode.OK, "agent '$agentId' was updated")
+                        HttpStatusCode.OK to "agent '$agentId' was updated"
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        call.respond(HttpStatusCode.BadRequest, "agent '$agentId' not found")
+                        HttpStatusCode.BadRequest to "agent '$agentId' not found"
                     }
+                    call.respondJsonIfErrorsOccured(status, message)
                 }
             }
 
@@ -92,7 +93,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         logger.warn { "Agent with id'$agentId' was not found" }
                         HttpStatusCode.BadRequest to "Agent '$agentId' not found"
                     }
-                    call.respond(status, message)
+                    call.respondJsonIfErrorsOccured(status, message)
                 }
             }
 
@@ -102,14 +103,15 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentId = ll.agentId
                     val agInfo = agentManager[agentId]
 
-                    if (agInfo != null) {
+                    val (status, message) = if (agInfo != null) {
                         agentManager.resetAgent(agInfo)
                         logger.debug { "Agent with id ${ll.agentId} has been unregistered successfully" }
-                        call.respond(HttpStatusCode.OK, "Agent '$agentId' has been unregistered")
+                        HttpStatusCode.OK to "Agent '$agentId' has been unregistered"
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        call.respond(HttpStatusCode.BadRequest, "Agent '$agentId' not found")
+                        HttpStatusCode.BadRequest to "Agent '$agentId' not found"
                     }
+                    call.respondJsonIfErrorsOccured(status, message)
                 }
             }
         }

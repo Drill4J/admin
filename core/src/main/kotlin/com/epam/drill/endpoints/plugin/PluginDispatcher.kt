@@ -16,7 +16,6 @@ import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.request.*
-import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
@@ -56,17 +55,18 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     agentManager.agentSession(agentId)
                         ?.send(PluginConfig.serializer().agentWsMessage("/plugins/updatePluginConfig", pc))
 
-                    if (agentManager.updateAgentPluginConfig(agentId, pc)) {
+                    val (statusCode, response) = if (agentManager.updateAgentPluginConfig(agentId, pc)) {
                         topicResolver.sendToAllSubscribed("/$agentId/$pluginId/config")
-                        call.respond(HttpStatusCode.OK, "")
                         logger.debug { "Plugin with id $pluginId for agent with id $agentId was updated" }
+                        HttpStatusCode.OK to ""
                     } else {
-                        call.respond(HttpStatusCode.NotFound, "")
                         logger.warn {
                             "AgentInfo with associated with id $agentId" +
                                     " or plugin configuration associated with id $pluginId was not found"
                         }
+                        HttpStatusCode.NotFound to ""
                     }
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
             authenticate {
@@ -74,19 +74,21 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $id" }
                     val action = call.receive<String>()
                     val dp: Plugin? = plugins[pluginId]
-                    if (dp == null) {
-                        call.respond(HttpStatusCode.NotFound, "plugin with id $pluginId not found");return@post
+                    val (statusCode, response) = if (dp == null) {
+                        HttpStatusCode.NotFound to "Plugin with id $pluginId not found"
+                    } else {
+                        call.attributes.getOrNull(srv)?.run {
+                            processMultipleActions(
+                                agentManager.agentStorage.values.filter { it.agent.serviceGroup == id },
+                                dp,
+                                pluginId,
+                                action
+                            )
+                        } ?: processSingleAction(dp, id, action)
+
                     }
-                    val (statusCode, response) = call.attributes.getOrNull(srv)?.run {
-                        processMultipleActions(
-                            agentManager.agentStorage.values.filter { it.agent.serviceGroup == id },
-                            dp,
-                            pluginId,
-                            action
-                        )
-                    } ?: processSingleAction(dp, id, action)
                     logger.info { "$response" }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response.toString())
                 }
             }
 
@@ -109,11 +111,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     }
                 }
                 logger.debug { response }
-                call.respondText(
-                    response,
-                    ContentType.Application.Json,
-                    statusCode
-                )
+                call.respondJsonIfErrorsOccured(statusCode, response)
             }
 
             authenticate {
@@ -139,7 +137,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         else -> HttpStatusCode.BadRequest to "Plugin $pluginId not found."
                     }
                     logger.debug { msg }
-                    call.respond(status, msg)
+                    call.respondJsonIfErrorsOccured(status, msg)
                 }
             }
             authenticate {
@@ -165,7 +163,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                     logger.debug { response }
-                    call.respond(statusCode, response)
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
