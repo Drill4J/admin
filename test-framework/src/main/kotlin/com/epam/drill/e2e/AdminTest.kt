@@ -3,6 +3,7 @@ package com.epam.drill.e2e
 import com.epam.drill.agentmanager.*
 import com.epam.kodux.*
 import io.ktor.server.testing.*
+import jetbrains.exodus.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.sync.*
 import org.junit.jupiter.api.*
@@ -24,7 +25,12 @@ abstract class AdminTest {
 
     @AfterEach
     fun closeResources() {
-        storeManager.storages.forEach { it.value.close() }
+        storeManager.storages.forEach {
+            try {
+                it.value.close()
+            } catch (ignored: ExodusException) {
+            }
+        }
         storeManager.storages.clear()
     }
 }
