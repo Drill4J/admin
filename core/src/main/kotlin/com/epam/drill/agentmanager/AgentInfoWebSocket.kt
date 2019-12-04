@@ -19,7 +19,8 @@ data class AgentInfoWebSocket(
     val activePluginsCount: Int = 0,
     val sessionIdHeaderName: String = "",
     val plugins: Set<PluginWebSocket> = emptySet(),
-    val packagesPrefixes: List<String>
+    val packagesPrefixes: List<String>,
+    val agentType: String
 )
 
 fun MutableSet<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
@@ -39,7 +40,8 @@ fun MutableSet<AgentInfo>.toAgentInfosWebSocket(adminDataVault: AdminDataVault) 
             activePluginsCount = plugins.activePluginsCount(),
             sessionIdHeaderName = sessionIdHeaderName,
             plugins = plugins.map { it.toPluginWebSocket() }.toMutableSet(),
-            packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList()
+            packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList(),
+            agentType = agentType.notation
         )
     }
 }
@@ -57,5 +59,6 @@ fun AgentInfo.toAgentInfoWebSocket(adminData: AdminPluginData) = AgentInfoWebSoc
     activePluginsCount = plugins.activePluginsCount(),
     sessionIdHeaderName = sessionIdHeaderName,
     plugins = plugins.toPluginsWebSocket(),
-    packagesPrefixes = adminData.packagesPrefixes
+    packagesPrefixes = adminData.packagesPrefixes,
+    agentType = agentType.notation
 )

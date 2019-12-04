@@ -50,7 +50,8 @@ class PluginWsTest {
         groupName = "test",
         description = "test",
         buildVersion = buildVersion,
-        buildAlias = "testAlias"
+        buildAlias = "testAlias",
+        agentType = AgentType.JAVA
     )
 
     @org.junit.jupiter.api.Test

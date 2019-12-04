@@ -220,5 +220,6 @@ data class AgentWrap(
     val id: String,
     val buildVersion: String = "0.1.0",
     val serviceGroupId: String = "",
-    val needSync: Boolean = true
+    val needSync: Boolean = true,
+    val agentType: AgentType = AgentType.JAVA
 )
