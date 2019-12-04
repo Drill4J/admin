@@ -109,7 +109,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 .buildManager
                                 .compareToPrev(agentInfo.buildVersion)
                             agentManager.applyPackagesChangesOnAllPlugins(agentInfo.id)
-                            newBuildNotify(agentInfo)
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                             agentManager.enableAllPlugins(agentInfo.id)
                             logger.debug { "Finished classes transfer" }
@@ -130,60 +129,5 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentManager.remove(agentInfo)
             logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
         }
-    }
-
-    private suspend fun newBuildNotify(agentInfo: AgentInfo) {
-        val buildManager = agentManager.adminData(agentInfo.id).buildManager
-        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
-
-        if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
-            return
-        }
-
-        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
-        val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
-        val buildDiff = BuildDiff(
-            methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
-            methodChanges.map[DiffType.MODIFIED_DESC]?.count() ?: 0,
-            methodChanges.map[DiffType.MODIFIED_NAME]?.count() ?: 0,
-            methodChanges.map[DiffType.NEW]?.count() ?: 0,
-            methodChanges.map[DiffType.DELETED]?.count() ?: 0
-        )
-
-        notificationsManager.save(
-            agentInfo.id,
-            agentInfo.name,
-            NotificationType.BUILD,
-            NewBuildArrivedMessage.serializer() stringify NewBuildArrivedMessage(
-                agentInfo.buildVersion,
-                previousBuildVersion,
-                previousBuildAlias,
-                buildDiff,
-                pluginsRecommendations(agentInfo)
-            )
-        )
-        topicResolver.sendToAllSubscribed("/notifications")
-    }
-
-    private suspend fun pluginsRecommendations(agentInfo: AgentInfo): List<String> {
-        val recommendations = mutableListOf<String>()
-        val connectedPlugins = plugins.filter {
-            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
-        }
-
-        connectedPlugins.forEach {
-            val result = agentManager.instantiateAdminPluginPart(
-                agentManager.full(agentInfo.id),
-                it.value.pluginClass,
-                it.key
-            ).getPluginData(mapOf("type" to "recommendations")).ifEmpty { "[]" }
-
-            try {
-                recommendations.addAll(String.serializer().list parse result)
-            } catch (exception: JsonDecodingException) {
-                logger.error(exception) { "Parsing result '$result' finished with exception: " }
-            }
-        }
-        return recommendations
     }
 }

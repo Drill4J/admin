@@ -3,15 +3,19 @@ package com.epam.drill.endpoints
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
+import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.*
 import com.epam.drill.storage.*
 import com.epam.drill.system.*
+import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 import mu.*
 import org.apache.commons.codec.digest.*
 import org.kodein.di.*
@@ -30,6 +34,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
     val adminDataVault: AdminDataVault by instance()
+    private val notificationsManager: NotificationsManager by instance()
 
     suspend fun agentConfiguration(config: AgentConfig): AgentInfo {
         val (agentId: String, pBuildVersion: String, serviceGroup: String, agentType) = config
@@ -199,6 +204,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             ai.status = AgentStatus.ONLINE
             logger.debug { "Agent with id ${ai.name} set online status" }
             ai.update(this@AgentManager)
+            notificationsManager.newBuildNotify(ai, topicResolver, this@AgentManager, plugins)
         }
     }
 
@@ -305,7 +311,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             plugin
         }
     }
-
 }
 
 suspend fun AgentInfo.update(agentManager: AgentManager) {

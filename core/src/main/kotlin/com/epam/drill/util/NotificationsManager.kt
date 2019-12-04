@@ -1,7 +1,14 @@
 package com.epam.drill.util
 
+import com.epam.drill.common.*
 import com.epam.drill.dataclasses.*
+import com.epam.drill.endpoints.*
+import com.epam.drill.endpoints.agent.*
+import com.epam.drill.plugins.*
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 import mu.*
+import sun.plugin2.main.server.*
 import java.util.concurrent.*
 
 class NotificationsManager {
@@ -44,4 +51,68 @@ class NotificationsManager {
     fun delete(id: String): Boolean = notifications[id]?.let {
         notifications.remove(id) != null
     } ?: false
+
+    suspend fun newBuildNotify(
+        agentInfo: AgentInfo,
+        topicResolver: TopicResolver,
+        agentManage: AgentManager,
+        plugins: Plugins
+    ) {
+        val buildManager = agentManage.adminData(agentInfo.id).buildManager
+        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
+
+        if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
+            return
+        }
+
+        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
+        val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
+        val buildDiff = BuildDiff(
+            methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
+            methodChanges.map[DiffType.MODIFIED_DESC]?.count() ?: 0,
+            methodChanges.map[DiffType.MODIFIED_NAME]?.count() ?: 0,
+            methodChanges.map[DiffType.NEW]?.count() ?: 0,
+            methodChanges.map[DiffType.DELETED]?.count() ?: 0
+        )
+
+        save(
+            agentInfo.id,
+            agentInfo.name,
+            NotificationType.BUILD,
+            NewBuildArrivedMessage.serializer() stringify NewBuildArrivedMessage(
+                agentInfo.buildVersion,
+                previousBuildVersion,
+                previousBuildAlias,
+                buildDiff,
+                pluginsRecommendations(agentInfo, plugins, agentManage)
+            )
+        )
+        topicResolver.sendToAllSubscribed("/notifications")
+    }
+
+    private suspend fun pluginsRecommendations(
+        agentInfo: AgentInfo,
+        plugins: Plugins,
+        agentManage: AgentManager
+    ): List<String> {
+        val recommendations = mutableListOf<String>()
+        val connectedPlugins = plugins.filter {
+            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
+        }
+
+        connectedPlugins.forEach {
+            val result = agentManage.instantiateAdminPluginPart(
+                agentManage.full(agentInfo.id),
+                it.value.pluginClass,
+                it.key
+            ).getPluginData(mapOf("type" to "recommendations")).ifEmpty { "[]" }
+
+            try {
+                recommendations.addAll(String.serializer().list parse result)
+            } catch (exception: JsonDecodingException) {
+                logger.error(exception) { "Parsing result '$result' finished with exception: " }
+            }
+        }
+        return recommendations
+    }
 }
