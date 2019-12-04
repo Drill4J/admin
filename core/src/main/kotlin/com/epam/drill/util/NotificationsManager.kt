@@ -8,7 +8,6 @@ import com.epam.drill.plugins.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
-import sun.plugin2.main.server.*
 import java.util.concurrent.*
 
 class NotificationsManager {

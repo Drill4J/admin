@@ -4,7 +4,6 @@ package com.epam.drill.endpoints.agent
 
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
-import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
 import com.epam.drill.plugins.*
@@ -17,7 +16,6 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.cbor.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*

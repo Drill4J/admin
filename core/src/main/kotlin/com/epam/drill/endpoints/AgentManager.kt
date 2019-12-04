@@ -3,7 +3,6 @@ package com.epam.drill.endpoints
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
-import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
@@ -14,8 +13,6 @@ import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.apache.commons.codec.digest.*
 import org.kodein.di.*
