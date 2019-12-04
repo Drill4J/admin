@@ -6,9 +6,7 @@ import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
-import com.epam.drill.plugins.*
 import com.epam.drill.system.*
-import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -30,8 +28,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val pd: PluginDispatcher by kodein.instance()
     private val topicResolver: TopicResolver by instance()
-    private val notificationsManager: NotificationsManager by instance()
-    private val plugins: Plugins by instance()
 
     init {
         app.routing {
