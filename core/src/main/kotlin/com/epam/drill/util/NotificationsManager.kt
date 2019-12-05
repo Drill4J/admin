@@ -8,9 +8,15 @@ import com.epam.drill.plugins.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
+import org.kodein.di.*
+import org.kodein.di.generic.*
 import java.util.concurrent.*
 
-class NotificationsManager {
+class NotificationsManager(override val kodein: Kodein) : KodeinAware {
+    private val topicResolver: TopicResolver by instance()
+    val plugins: Plugins by instance()
+    private val agentManager: AgentManager by instance()
+
     private val notifications = ConcurrentHashMap<String, Notification>()
     private val logger = KotlinLogging.logger {}
 
@@ -52,12 +58,9 @@ class NotificationsManager {
     } ?: false
 
     suspend fun newBuildNotify(
-        agentInfo: AgentInfo,
-        topicResolver: TopicResolver,
-        agentManage: AgentManager,
-        plugins: Plugins
+        agentInfo: AgentInfo
     ) {
-        val buildManager = agentManage.adminData(agentInfo.id).buildManager
+        val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
 
         if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
@@ -83,16 +86,14 @@ class NotificationsManager {
                 previousBuildVersion,
                 previousBuildAlias,
                 buildDiff,
-                pluginsRecommendations(agentInfo, plugins, agentManage)
+                pluginsRecommendations(agentInfo)
             )
         )
         topicResolver.sendToAllSubscribed("/notifications")
     }
 
     private suspend fun pluginsRecommendations(
-        agentInfo: AgentInfo,
-        plugins: Plugins,
-        agentManage: AgentManager
+        agentInfo: AgentInfo
     ): List<String> {
         val recommendations = mutableListOf<String>()
         val connectedPlugins = plugins.filter {
@@ -100,8 +101,8 @@ class NotificationsManager {
         }
 
         connectedPlugins.forEach {
-            val result = agentManage.instantiateAdminPluginPart(
-                agentManage.full(agentInfo.id),
+            val result = agentManager.instantiateAdminPluginPart(
+                agentManager.full(agentInfo.id),
                 it.value.pluginClass,
                 it.key
             ).getPluginData(mapOf("type" to "recommendations")).ifEmpty { "[]" }

@@ -33,9 +33,9 @@ import java.util.*
 import kotlin.collections.HashSet
 import kotlin.test.*
 
-val notificationsManager = NotificationsManager()
 
 internal class DrillServerWsTest {
+    private lateinit var notificationsManager: NotificationsManager
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
@@ -55,7 +55,10 @@ internal class DrillServerWsTest {
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { pluginStorage }
-                    bind<NotificationsManager>() with eagerSingleton { notificationsManager }
+                    bind<NotificationsManager>() with eagerSingleton {
+                        notificationsManager = NotificationsManager(kodein)
+                        notificationsManager
+                    }
                     bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
                     bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
                     bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(kodein) }
@@ -180,6 +183,30 @@ internal class DrillServerWsTest {
         }
     }
 
+    fun generateThreeNotifications(
+        agentId: String,
+        agentName: String
+    ) {
+        var previousVersion = ""
+
+        for (i in 0..2) {
+            val buildVersion = UUID.randomUUID().toString()
+            notificationsManager.save(
+                agentId,
+                agentName,
+                NotificationType.BUILD,
+                NewBuildArrivedMessage.serializer() stringify
+                        NewBuildArrivedMessage(
+                            buildVersion,
+                            previousVersion,
+                            "prevAlias",
+                            BuildDiff(1, 2, 3, 4, 5),
+                            listOf("recommendation_1", "recommendation_2")
+                        )
+            )
+            previousVersion = buildVersion
+        }
+    }
 }
 
 fun UiMessage(type: WsMessageType, destination: String, message: String) =
@@ -227,26 +254,4 @@ object PainRoutes {
 
     @Location("/mytopic2")
     class MyTopic2
-}
-
-fun generateThreeNotifications(agentId: String, agentName: String) {
-    var previousVersion = ""
-
-    for (i in 0..2) {
-        val buildVersion = UUID.randomUUID().toString()
-        notificationsManager.save(
-            agentId,
-            agentName,
-            NotificationType.BUILD,
-            NewBuildArrivedMessage.serializer() stringify
-                    NewBuildArrivedMessage(
-                        buildVersion,
-                        previousVersion,
-                        "prevAlias",
-                        BuildDiff(1, 2, 3, 4, 5),
-                        listOf("recommendation_1", "recommendation_2")
-                    )
-        )
-        previousVersion = buildVersion
-    }
 }

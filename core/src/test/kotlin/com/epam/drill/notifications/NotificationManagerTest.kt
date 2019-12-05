@@ -2,7 +2,12 @@ package com.epam.drill.notifications
 
 import com.epam.drill.common.*
 import com.epam.drill.dataclasses.*
+import com.epam.drill.endpoints.*
+import com.epam.drill.endpoints.agent.*
+import com.epam.drill.plugins.*
 import com.epam.drill.util.*
+import org.kodein.di.*
+import org.kodein.di.generic.*
 import java.util.*
 import kotlin.test.*
 
@@ -10,7 +15,13 @@ const val AGENT_ID = "testId"
 
 class NotificationManagerTest {
 
-    private val manager = NotificationsManager()
+    val kodein = Kodein {
+        bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+        bind<Plugins>() with eagerSingleton { Plugins() }
+        bind<TopicResolver>() with eagerSingleton { TopicResolver(kodein) }
+    }
+
+    private val manager = NotificationsManager(kodein)
 
     @Test
     fun `saving process is correct`() {

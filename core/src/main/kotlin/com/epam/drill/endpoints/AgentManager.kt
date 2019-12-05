@@ -201,7 +201,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             ai.status = AgentStatus.ONLINE
             logger.debug { "Agent with id ${ai.name} set online status" }
             ai.update(this@AgentManager)
-            notificationsManager.newBuildNotify(ai, topicResolver, this@AgentManager, plugins)
+            notificationsManager.newBuildNotify(ai)
         }
     }
 

@@ -28,7 +28,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { HashSet<DrillWsSession>() }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
-        bind<NotificationsManager>() with eagerSingleton { NotificationsManager() }
+        bind<NotificationsManager>() with eagerSingleton { NotificationsManager(kodein) }
     }
 
 val wsHandler: Kodein.Builder.(Application) -> Unit
