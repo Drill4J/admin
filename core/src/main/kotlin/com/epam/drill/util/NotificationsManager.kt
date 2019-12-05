@@ -14,7 +14,7 @@ import java.util.concurrent.*
 
 class NotificationsManager(override val kodein: Kodein) : KodeinAware {
     private val topicResolver: TopicResolver by instance()
-    val plugins: Plugins by instance()
+    private val plugins: Plugins by instance()
     private val agentManager: AgentManager by instance()
 
     private val notifications = ConcurrentHashMap<String, Notification>()
@@ -57,9 +57,7 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
         notifications.remove(id) != null
     } ?: false
 
-    suspend fun newBuildNotify(
-        agentInfo: AgentInfo
-    ) {
+    suspend fun newBuildNotify(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
 
