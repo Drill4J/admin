@@ -207,7 +207,7 @@ abstract class E2ETest : AdminTest() {
         agentId: String,
         token: String = globToken,
         payload: PackagesPrefixes
-    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SetPackages(agentId))) {
+    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PackagesPrefixes.serializer() stringify payload)
     }.run {

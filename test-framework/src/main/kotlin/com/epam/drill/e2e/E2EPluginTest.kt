@@ -160,7 +160,7 @@ data class PluginTestContext(
         payload: PackagesPrefixes = PackagesPrefixes()
     ) = engine.handleRequest(
         HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.SetPackages(agentId))
+        "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PackagesPrefixes.serializer() stringify payload)

@@ -15,6 +15,7 @@ import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -190,14 +191,15 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.Agent.SetPackages> { (agentId) ->
-                    val prefixes = PackagesPrefixes.serializer() parse call.receiveText()
+                post<Routes.Api.Agent.SystemSettings> { (agentId) ->
+                    val systemSettings = SystemSettings.serializer() parse call.receiveText()
                     val adminData = agentManager.adminData(agentId).apply { resetBuilds() }
-                    adminData.packagesPrefixes = prefixes.packagesPrefixes
+                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
                     agentManager.applyPackagesChangesOnAllPlugins(agentId)
                     agentManager.wrapBusy(agentManager[agentId]!!) {
+                        sessionIdHeaderName = systemSettings.sessionIdHeaderName
                         agentManager.disableAllPlugins(agentId)
-                        agentManager.configurePackages(prefixes, agentId)
+                        agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
                     }
                     adminData.refreshStoredSummary()
                     call.respondJsonIfErrorsOccured(
@@ -226,3 +228,9 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
         }
     }
 }
+
+@Serializable
+data class SystemSettings(
+    val packagesPrefixes: List<String> = emptyList(),
+    val sessionIdHeaderName: String = ""
+)

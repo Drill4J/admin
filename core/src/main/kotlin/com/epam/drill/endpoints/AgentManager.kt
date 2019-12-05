@@ -237,9 +237,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.targetMap[this.id]!!.agent = this
     }
 
-    suspend fun configurePackages(prefixes: PackagesPrefixes, agentId: String) {
-        if (prefixes.packagesPrefixes.isNotEmpty()) {
-            agentSession(agentId)?.setPackagesPrefixes(prefixes)
+    suspend fun configurePackages(prefixes: List<String>, agentId: String) {
+        if (prefixes.isNotEmpty()) {
+            agentSession(agentId)?.setPackagesPrefixes(PackagesPrefixes(prefixes))
         }
         agentSession(agentId)?.triggerClassesSending()
     }
@@ -251,7 +251,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (agentInfo.status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(agentInfo) {
-                    configurePackages(PackagesPrefixes(packagesPrefixes(id)), id)//thread sleep
+                    configurePackages(packagesPrefixes(id), id)//thread sleep
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
                 }

@@ -37,8 +37,8 @@ object Routes {
             @Location("/{agentId}/unregister")
             data class UnregisterAgent(val agentId: String)
 
-            @Location("/{agentId}/set-packages")
-            data class SetPackages(val agentId: String)
+            @Location("/{agentId}/system-settings")
+            data class SystemSettings(val agentId: String)
 
             @Location("/{agentId}/rename-build")
             data class RenameBuildVersion(val agentId: String)
