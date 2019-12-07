@@ -41,7 +41,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentManager.agentSession(au.id)?.apply {
                                 sendToTopic(
                                     "/agent/config",
-                                    ServiceConfig(app.securePort(), au.sessionIdHeaderName)
+                                    ServiceConfig(app.securePort(), au.sessionIdHeaderName.toLowerCase())
                                 ).call()
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
