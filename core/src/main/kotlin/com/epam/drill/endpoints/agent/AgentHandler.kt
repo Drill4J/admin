@@ -49,7 +49,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 }
 
                 sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName)).call()
-                createWsLoop(agentInfo)
+                createWsLoop(agentInfo, agentConfig.instanceId)
             }
         }
     }
@@ -61,7 +61,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         return agentConfig to needSync
     }
 
-    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo) {
+    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String) {
 
         try {
             incoming.consumeEach { frame ->
@@ -120,8 +120,14 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Handle with exception" }
             }
         } finally {
-            agentManager.remove(agentInfo)
-            logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
+            agentInfo.instanceIds.remove(instanceId)
+            if (agentInfo.instanceIds.isEmpty()) {
+                agentManager.remove(agentInfo)
+                logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
+            } else{
+                agentManager.singleUpdate(agentInfo.id)
+                logger.info { "Instance '$instanceId' of Agent '${agentInfo.id}' was disconnected" }
+            }
         }
     }
 }

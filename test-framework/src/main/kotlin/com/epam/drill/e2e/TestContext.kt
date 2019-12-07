@@ -10,8 +10,9 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
     inline fun <reified B : Build> connectAgent(
         serviceGroup: String = "",
         ags: AgentWrap = AgentWrap(
-            UUID.randomUUID().toString().replace("-", ""),
-            run {
+            id = UUID.randomUUID().toString().replace("-", ""),
+            instanceId = "1",
+            buildVersion = run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
                         .filter { it.extension == "class" }.map {
@@ -19,7 +20,8 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
                         }
                 map.sum().toString()
             },
-            serviceGroup
+            needSync = true,
+            serviceGroupId = serviceGroup
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {
@@ -39,6 +41,7 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
         serviceGroup: String = "",
         ags: AgentWrap = AgentWrap(
             agents.keys.first(),
+            "1",
             run {
                 val map =
                     File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()

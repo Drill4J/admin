@@ -36,7 +36,6 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
             st.info = pluginTestInfo
             st.app = engine.application
             with(st) { queued(uiIncoming, ut) }
-
             engine.handleWebSocketConversation(
                 "/agent/attach",
                 wsRequestRequiredParams(ag)
@@ -60,6 +59,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 val classMap: Map<String, ByteArray> = bcelClasses.associate {
                     it.className.replace(".", "/") to it.bytes
                 }
+                assertEquals(null, ui.getAgent()?.status)
                 assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
                 assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
 

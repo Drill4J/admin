@@ -17,9 +17,7 @@ import java.util.concurrent.*
 
 
 abstract class E2ETest : AdminTest() {
-    private val agents =
-        ConcurrentHashMap<String, Triple<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
-                MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>>>()
+    private val agents = ConcurrentHashMap<AgentKey, AgentStruct>()
 
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
@@ -48,8 +46,9 @@ abstract class E2ETest : AdminTest() {
                     val cs = mutableMapOf<String, AdminUiChannels>()
                     runBlocking(handler) {
                         agents.map { (_, xx) ->
-                            val (ag, connect, thens) = xx
+                            val (ag, startClb, connect, thens) = xx
                             launch(handler) {
+                                startClb()
                                 val ui = AdminUiChannels()
                                 cs[ag.id] = ui
                                 val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
@@ -113,9 +112,10 @@ abstract class E2ETest : AdminTest() {
 
     fun connectAgent(
         ags: AgentWrap,
+        startClb: suspend () -> Unit = {},
         bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
     ): E2ETest {
-        agents[ags.id] = Triple(ags, bl, mutableListOf())
+        agents[AgentKey(ags.id, ags.instanceId)] = AgentStruct(ags, startClb, bl, mutableListOf())
         return this
     }
 
@@ -124,7 +124,7 @@ abstract class E2ETest : AdminTest() {
         ags: AgentWrap,
         bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
     ): E2ETest {
-        agents[ags.id]?.third?.add(ags to bl)
+        agents[AgentKey(ags.id, ags.instanceId)]?.reconnects?.add(ags to bl)
         return this
     }
 
@@ -216,8 +216,17 @@ abstract class E2ETest : AdminTest() {
 
 }
 
+data class AgentKey(val id: String, val instanceId: String)
+data class AgentStruct(
+    val agWrap: AgentWrap,
+    val startClb: suspend () -> Unit = {},
+    val clbs: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
+    val reconnects: MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>
+)
+
 data class AgentWrap(
     val id: String,
+    val instanceId: String = id + "1",
     val buildVersion: String = "0.1.0",
     val serviceGroupId: String = "",
     val needSync: Boolean = true,

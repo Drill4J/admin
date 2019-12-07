@@ -3,6 +3,7 @@ package com.epam.drill.e2e.plugin
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
+import com.epam.drill.endpoints.agent.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
@@ -53,7 +54,14 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     agentStreamDebug
                 ).apply { queued() }
             apply.getServiceConfig()?.sslPort
-            register(ag.id)
+            register(
+                ag.id, payload = AgentRegistrationInfo(
+                    name = "xz",
+                    description = "ad",
+                    packagesPrefixes = listOf("testPrefix"),
+                    plugins = listOf(pluginMeta.id)
+                )
+            )
             ui.getAgent()
             ui.getAgent()
             apply.`get-set-packages-prefixes`()

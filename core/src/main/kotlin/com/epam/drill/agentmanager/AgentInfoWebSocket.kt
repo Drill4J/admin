@@ -8,6 +8,7 @@ import kotlinx.serialization.*
 @Serializable
 data class AgentInfoWebSocket(
     val id: String,
+    val instanceIds: MutableSet<String>,
     val name: String,
     val description: String,
     val group: String = "",
@@ -29,6 +30,7 @@ fun MutableSet<AgentInfo>.toAgentInfosWebSocket(adminDataVault: AdminDataVault) 
     agentInfo.run {
         AgentInfoWebSocket(
             id = id,
+            instanceIds = instanceIds,
             name = name,
             description = description.take(200),
             group = groupName,
@@ -48,6 +50,7 @@ fun MutableSet<AgentInfo>.toAgentInfosWebSocket(adminDataVault: AdminDataVault) 
 
 fun AgentInfo.toAgentInfoWebSocket(adminData: AdminPluginData) = AgentInfoWebSocket(
     id = id,
+    instanceIds = instanceIds,
     name = name,
     description = description,
     group = groupName,

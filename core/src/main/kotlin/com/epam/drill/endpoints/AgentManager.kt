@@ -34,7 +34,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager: NotificationsManager by instance()
 
     suspend fun agentConfiguration(config: AgentConfig): AgentInfo {
-        val (agentId: String, pBuildVersion: String, serviceGroup: String, agentType) = config
+        val (agentId: String, instanceId: String, pBuildVersion: String, serviceGroup: String, agentType) = config
         val agentStore = store.agentStore(agentId)
         val existingAgent =
             agentStore.findById<AgentInfo>(agentId)?.apply { processBuild(pBuildVersion, agentId) }
@@ -48,8 +48,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     pBuildVersion,
                     "",
                     agentType
-                )
+                ).apply { instanceIds.add(instanceId) }
         logger.debug { "Agent configuration: $existingAgent" }
+        existingAgent.instanceIds.add(instanceId)
         return agentStore.store(existingAgent)
     }
 
@@ -130,7 +131,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             buildVersion = agInfo.buildVersion,
             buildAlias = INITIAL_BUILD_ALIAS,
             packagesPrefixes = adminData(agInfo.id).packagesPrefixes,
-            agentType = agInfo.agentType.notation
+            agentType = agInfo.agentType.notation,
+            instanceIds = agInfo.instanceIds
         )
         updateAgent(agInfo.id, au)
         logger.debug { "Agent with id ${agInfo.name} has been reset" }

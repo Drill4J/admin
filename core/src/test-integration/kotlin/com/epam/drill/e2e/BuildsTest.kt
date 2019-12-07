@@ -24,6 +24,7 @@ class BuildsTest : E2ETest() {
                 ui.getBuilds()?.size shouldBe 1
 
             }.reconnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
+                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()
@@ -34,6 +35,7 @@ class BuildsTest : E2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getBuilds()?.size shouldBe 2
             }.reconnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
+                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
                 agent.`get-set-packages-prefixes`()

@@ -66,7 +66,7 @@ class UIEVENTLOOP(
                     val (_, type) = wsTopic.getParams(url)
                     val notEmptyResponse = content != "\"\""
                     when (messageType) {
-                        WsMessageType.MESSAGE ->
+                        WsMessageType.MESSAGE,WsMessageType.DELETE ->
                             this@queued.launch {
                                 when (type) {
                                     is WsRoutes.GetAllAgents -> {
@@ -269,6 +269,15 @@ class Agent(
                             "/plugins/unload" -> {
                             }
                             "/ping" -> {
+                                outgoing.send(
+                                    AgentMessage(
+                                        MessageType.MESSAGE_DELIVERED,
+                                        "/ping",
+                                        ""
+                                    )
+                                )
+                            }
+                            "/plugins/togglePlugin" -> {
                                 outgoing.send(
                                     AgentMessage(
                                         MessageType.MESSAGE_DELIVERED,
