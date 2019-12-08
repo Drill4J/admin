@@ -47,6 +47,24 @@ object Routes {
             data class GetPluginData(val agentId: String, val pluginId: String)
         }
 
+
+        @Location("/all/register")
+        object RegisterAll
+
+        @Location("/all/{pluginId}/dispatch-action")
+        data class DispatchAllPluginAction(val pluginId: String)
+
+        @Location("/service-group")
+        class ServiceGroup {
+            @Location("/{serviceGroupId}/register")
+            data class Register(val serviceGroupId: String)
+
+            @Location("/{serviceGroupId}/{pluginId}/dispatch-action")
+            data class DispatchPluginAction(val serviceGroupId: String, val pluginId: String)
+
+
+        }
+
         @Location("/{agentId}/{pluginId}/reset")
         data class ResetPlugin(val agentId: String, val pluginId: String)
 

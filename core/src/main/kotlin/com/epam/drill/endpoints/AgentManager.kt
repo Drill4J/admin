@@ -272,6 +272,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
+    fun serviceGroup(serviceGroupId: String) = getAllAgents().filter { it.agent.serviceGroup == serviceGroupId }
+
     suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
         wrapBusy(agentInfo) {
             sendPlugins()

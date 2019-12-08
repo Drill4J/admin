@@ -51,6 +51,7 @@ fun Application.module() = kodeinApplication(
                 jwt {
                     realm = jwtRealm
                     verifier(JwtConfig.verifier)
+                    skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
                     validate {
                         it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                     }

@@ -17,6 +17,7 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.routing.*
+import io.ktor.util.pipeline.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -89,6 +90,21 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     }
                     logger.info { "$response" }
                     call.respondJsonIfErrorsOccured(statusCode, response.toString())
+                }
+            }
+
+            authenticate {
+                post<Routes.Api.ServiceGroup.DispatchPluginAction> { (serviceGroupId, pluginId) ->
+                    val agents = agentManager.serviceGroup(serviceGroupId)
+                    logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
+                    dispatchPluginAction(pluginId, this, this@PluginDispatcher, agents)
+                }
+            }
+
+            authenticate {
+                post<Routes.Api.DispatchAllPluginAction> { (pluginId) ->
+                    val agents = agentManager.getAllAgents()
+                    dispatchPluginAction(pluginId, this, this@PluginDispatcher, agents.toList())
                 }
             }
 
@@ -168,6 +184,29 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
 
         }
+    }
+
+    private suspend fun dispatchPluginAction(
+        pluginId: String,
+        pipelineContext: PipelineContext<Unit, ApplicationCall>,
+        pluginDispatcher: PluginDispatcher,
+        agents: List<AgentEntry>
+    ) {
+        val action = pipelineContext.call.receive<String>()
+        val dp: Plugin? = plugins[pluginId]
+        val (statusCode, response) = if (dp == null) {
+            HttpStatusCode.NotFound to "Plugin with id $pluginId not found"
+        } else {
+
+            pluginDispatcher.processMultipleActions(
+                agents,
+                dp,
+                pluginId,
+                action
+            )
+        }
+        logger.info { "$response" }
+        pipelineContext.call.respondJsonIfErrorsOccured(statusCode, response.toString())
     }
 
     private suspend fun processMultipleActions(

@@ -70,23 +70,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     call.respondText(counter.toString())
                 }
             }
+
             authenticate {
-                post<Routes.Api.Agent.RegisterAgent> { payload ->
-                    logger.debug { "Registering agent with id ${payload.agentId}" }
-                    val agentId = payload.agentId
+                post<Routes.Api.Agent.RegisterAgent> { (agentId) ->
+                    logger.debug { "Registering agent with id $agentId" }
                     val agInfo = agentManager[agentId]
                     val (status, message) = if (agInfo != null) {
                         val regInfo = call.parse(AgentRegistrationInfo.serializer())
-                        with(agInfo) {
-                            name = regInfo.name
-                            groupName = regInfo.group
-                            description = regInfo.description
-                            status = AgentStatus.ONLINE
-                            sessionIdHeaderName = regInfo.sessionIdHeaderName
-                        }
-                        agentManager.adminData(agentId).apply { packagesPrefixes = regInfo.packagesPrefixes }
-                        agentManager.addPlugins(agInfo, regInfo.plugins)
-                        agentManager.sync(agInfo, true)
+                        register(agInfo, regInfo)
                         logger.debug { "Agent with id '$agentId' has been registered" }
                         HttpStatusCode.OK to "Agent '$agentId' has been registered"
                     } else {
@@ -94,6 +85,35 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.BadRequest to "Agent '$agentId' not found"
                     }
                     call.respondJsonIfErrorsOccured(status, message)
+                }
+            }
+
+            authenticate {
+                post<Routes.Api.ServiceGroup.Register> { (serviceGroupId) ->
+                    logger.debug { "Registering agents in $serviceGroupId" }
+                    val regInfo = call.parse(AgentRegistrationInfo.serializer())
+                    val serviceGroup = agentManager.serviceGroup(serviceGroupId)
+                    serviceGroup.forEach { agInfo ->
+                        register(agInfo.agent, regInfo.copy(name = agInfo.agent.id, description = agInfo.agent.id))
+                    }
+
+                    call.respondJsonIfErrorsOccured(
+                        HttpStatusCode.OK,
+                        "${serviceGroup.joinToString { it.agent.id }} registered"
+                    )
+                }
+            }
+
+            authenticate {
+                post<Routes.Api.RegisterAll> {
+                    logger.debug { "Registering all agents" }
+                    val regInfo = call.parse(AgentRegistrationInfo.serializer())
+                    val allAgents = agentManager.getAllAgents().map { it.agent }
+                    allAgents.forEach { agInfo ->
+                        register(agInfo, regInfo.copy(name = agInfo.id, description = agInfo.id))
+                    }
+
+                    call.respondJsonIfErrorsOccured(HttpStatusCode.OK, "${allAgents.joinToString { it.id }} registered")
                 }
             }
 
@@ -115,6 +135,19 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 }
             }
         }
+    }
+
+    suspend fun register(agInfo: AgentInfo, regInfo: AgentRegistrationInfo) {
+        with(agInfo) {
+            name = regInfo.name
+            groupName = regInfo.group
+            description = regInfo.description
+            status = AgentStatus.ONLINE
+            sessionIdHeaderName = regInfo.sessionIdHeaderName
+        }
+        agentManager.adminData(agInfo.id).apply { packagesPrefixes = regInfo.packagesPrefixes }
+        agentManager.addPlugins(agInfo, regInfo.plugins)
+        agentManager.sync(agInfo, true)
     }
 }
 
