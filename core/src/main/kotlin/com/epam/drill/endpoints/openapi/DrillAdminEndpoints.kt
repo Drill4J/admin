@@ -1,11 +1,13 @@
 package com.epam.drill.endpoints.openapi
 
 import com.epam.drill.common.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
+import com.epam.drill.system.*
 import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -194,14 +196,18 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.Agent.SystemSettings> { (agentId) ->
                     val systemSettings = SystemSettings.serializer() parse call.receiveText()
                     val adminData = agentManager.adminData(agentId).apply { resetBuilds() }
-                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                    agentManager.applyPackagesChangesOnAllPlugins(agentId)
-                    agentManager.wrapBusy(agentManager[agentId]!!) {
-                        sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                        agentManager.disableAllPlugins(agentId)
-                        agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
+                    if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                        adminData.packagesPrefixes = systemSettings.packagesPrefixes
+                        agentManager.applyPackagesChangesOnAllPlugins(agentId)
+                        agentManager.wrapBusy(agentManager[agentId]!!) {
+
+                            agentManager.disableAllPlugins(agentId)
+                            agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
+                        }
+                        adminData.refreshStoredSummary()
                     }
-                    adminData.refreshStoredSummary()
+                    agentManager[agentId]!!.sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                    agentManager.updateConfig(agentManager[agentId]!!)
                     call.respondJsonIfErrorsOccured(
                         HttpStatusCode.OK,
                         "Trigger for classes processing sent to agent with id $agentId"

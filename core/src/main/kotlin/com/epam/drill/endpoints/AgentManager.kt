@@ -3,6 +3,7 @@ package com.epam.drill.endpoints
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
@@ -251,6 +252,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (agentInfo.status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(agentInfo) {
+                    updateConfig(this)
                     configurePackages(packagesPrefixes(id), id)//thread sleep
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
@@ -259,6 +261,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         } else {
             logger.warn { "Agent status is not registered" }
         }
+    }
+
+    suspend fun updateConfig(ainfo:AgentInfo) {
+        if (ainfo.sessionIdHeaderName.isNotEmpty())
+            agentSession(ainfo.id)?.apply {
+                sendToTopic(
+                    "/agent/config",
+                    ServiceConfig(app.securePort(), ainfo.sessionIdHeaderName.toLowerCase())
+                ).call()
+            }
     }
 
     private suspend fun AgentInfo.sendPlugins() {

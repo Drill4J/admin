@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
+import com.epam.drill.endpoints.openapi.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
@@ -12,7 +13,7 @@ class PackagesPrefixesSettingTest : E2ETest() {
 
     @Test
     fun `Packages prefixes changing Test`() {
-        createSimpleAppWithUIConnection(agentStreamDebug = true) {
+        createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
@@ -24,14 +25,14 @@ class PackagesPrefixesSettingTest : E2ETest() {
 
                 changePackages(
                     agentId = agentId,
-                    payload = PackagesPrefixes(listOf("testPrefix"))
+                    payload = SystemSettings(listOf("newTestPrefix"),"")
                 ).first shouldBe HttpStatusCode.OK
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 val agent2 = ui.getAgent()
                 agent2?.status shouldBe AgentStatus.ONLINE
-                agent2?.packagesPrefixes?.first() shouldBe "testPrefix"
+                agent2?.packagesPrefixes?.first() shouldBe "newTestPrefix"
             }
         }
     }

@@ -143,7 +143,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             groupName = regInfo.group
             description = regInfo.description
             status = AgentStatus.ONLINE
-            sessionIdHeaderName = regInfo.sessionIdHeaderName
+            sessionIdHeaderName = regInfo.sessionIdHeaderName.toLowerCase()
         }
         agentManager.adminData(agInfo.id).apply { packagesPrefixes = regInfo.packagesPrefixes }
         agentManager.addPlugins(agInfo, regInfo.plugins)

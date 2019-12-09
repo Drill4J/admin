@@ -4,6 +4,7 @@ import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
+import com.epam.drill.endpoints.openapi.*
 import com.epam.drill.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
@@ -206,10 +207,10 @@ abstract class E2ETest : AdminTest() {
     fun TestApplicationEngine.changePackages(
         agentId: String,
         token: String = globToken,
-        payload: PackagesPrefixes
+        payload: SystemSettings
     ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(PackagesPrefixes.serializer() stringify payload)
+        setBody(SystemSettings.serializer() stringify payload)
     }.run {
         response.status() to response.content
     }
