@@ -26,7 +26,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
-        bind<SessionStorage>() with eagerSingleton { HashSet<DrillWsSession>() }
+        bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
         bind<NotificationsManager>() with eagerSingleton { NotificationsManager(kodein) }
     }

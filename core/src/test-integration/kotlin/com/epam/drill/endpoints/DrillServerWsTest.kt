@@ -69,7 +69,7 @@ internal class DrillServerWsTest {
         })
     }
 
-    private val pluginStorage = HashSet<DrillWsSession>()
+    private val pluginStorage = SessionStorage()
 
     @org.junit.jupiter.api.Test
     fun testConversation() {

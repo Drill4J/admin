@@ -269,6 +269,7 @@ class Agent(
                             is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content)
                             is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content)
                             is Communication.Agent.PluginLoadEvent -> plugins.send(PluginMetadata.serializer() parse content)
+                            is Communication.Agent.ChangeHeaderNameEvent -> {}
 
                             is Communication.Plugin.DispatchEvent -> plugin.doRawAction((PluginAction.serializer() parse content).message)
 
