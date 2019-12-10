@@ -1,5 +1,6 @@
 package com.epam.drill.endpoints.agent
 
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -60,7 +61,8 @@ open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultW
 
     val subscribers = ConcurrentHashMap<String, Signal>()
 
-    suspend fun sendToTopic(topicName: String, message: Any = ""): WsDeferred {
+    suspend inline fun <reified TopicUrl : Any> sendToTopic(message: Any = ""): WsDeferred {
+        val topicName = TopicUrl::class.topicUrl()
         val callback: suspend () -> Unit = {
             @Suppress("UNCHECKED_CAST")
             val kClass = message::class as KClass<Any>
@@ -78,9 +80,9 @@ open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultW
     }
 
 
-    suspend fun sendBinary(topicName: String, meta: Any = "", data: ByteArray): WsDeferred {
-        sendToTopic(topicName, meta).call()
-        return WsDeferred(this, { send(Frame.Binary(false, data)) }, topicName)
+    suspend inline fun <reified TopicUrl : Any> sendBinary(meta: Any = "", data: ByteArray): WsDeferred {
+        sendToTopic<TopicUrl>(meta).call()
+        return WsDeferred(this, { send(Frame.Binary(false, data)) }, TopicUrl::class.topicUrl())
     }
 
 

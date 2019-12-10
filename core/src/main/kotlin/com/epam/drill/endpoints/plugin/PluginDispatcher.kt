@@ -1,5 +1,6 @@
 package com.epam.drill.endpoints.plugin
 
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
@@ -13,7 +14,6 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.routing.*
@@ -53,9 +53,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val config = call.receive<String>()
                     val pc = PluginConfig(pluginId, config)
                     logger.debug { "Plugin config $config" }
-                    agentManager.agentSession(agentId)
-                        ?.send(PluginConfig.serializer().agentWsMessage("/plugins/updatePluginConfig", pc))
-
+                    agentManager.agentSession(agentId)?.sendToTopic<Communication.Plugin.UpdateConfigEvent>(pc)
                     val (statusCode, response) = if (agentManager.updateAgentPluginConfig(agentId, pc)) {
                         topicResolver.sendToAllSubscribed("/$agentId/$pluginId/config")
                         logger.debug { "Plugin with id $pluginId for agent with id $agentId was updated" }
@@ -165,16 +163,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         (dp == null) -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
                         (session == null) -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                         else -> {
-                            session.send(
-                                Frame.Text(
-                                    WsSendMessage.serializer() stringify
-                                            WsSendMessage(
-                                                WsMessageType.MESSAGE,
-                                                "/plugins/togglePlugin",
-                                                TogglePayload(pluginId)
-                                            )
-                                )
-                            )
+                            session.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId))
                             HttpStatusCode.OK to "OK"
                         }
                     }
@@ -237,10 +226,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 agentEntry.agentSession.apply {
                     val agentAction = PluginAction(pluginId, agentPartMsg)
                     val agentPluginMsg = PluginAction.serializer() stringify agentAction
-                    val agentMsg =
-                        Message(MessageType.MESSAGE, "/plugins/action", agentPluginMsg)
-                    val agentFrame = Frame.Text(Message.serializer() stringify agentMsg)
-                    send(agentFrame)
+                    sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
                 }
             }
             if (adminActionResult is StatusMessage) {
@@ -273,10 +259,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             agentManager.agentSession(id)?.apply {
                 val agentAction = PluginAction(pluginId, agentPartMsg)
                 val agentPluginMsg = PluginAction.serializer() stringify agentAction
-                val agentMsg =
-                    Message(MessageType.MESSAGE, "/plugins/action", agentPluginMsg)
-                val agentFrame = Frame.Text(Message.serializer() stringify agentMsg)
-                send(agentFrame)
+                sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
             }
         }
         if (adminActionResult is StatusMessage) {

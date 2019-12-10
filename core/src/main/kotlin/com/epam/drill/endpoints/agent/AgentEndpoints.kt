@@ -2,6 +2,7 @@ package com.epam.drill.endpoints.agent
 
 
 import com.epam.drill.agentmanager.*
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.*
@@ -12,14 +13,11 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.locations.*
-import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.concurrent.atomic.*
 
 class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app: Application by instance()
@@ -39,9 +37,11 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentManager.updateAgent(agentId, au)
                         if (au.sessionIdHeaderName.isNotEmpty())
                             agentManager.agentSession(au.id)?.apply {
-                                sendToTopic(
-                                    "/agent/config",
-                                    ServiceConfig(app.securePort(), au.sessionIdHeaderName.toLowerCase())
+                                sendToTopic<Communication.Agent.UpdateConfigEvent>(
+                                    ServiceConfig(
+                                        app.securePort(),
+                                        au.sessionIdHeaderName.toLowerCase()
+                                    )
                                 ).call()
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
@@ -51,23 +51,6 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.BadRequest to "agent '$agentId' not found"
                     }
                     call.respondJsonIfErrorsOccured(status, message)
-                }
-            }
-
-            authenticate {
-                post<Routes.Api.Agent.ActivateAgents> { (grp) ->
-                    val counter = AtomicInteger()
-                    val filter = agentManager.getAllAgents().filter { it.agent.serviceGroup == grp }
-
-                    filter.map {
-                        app.launch {
-                            it.agentSession.sendToTopic("/ping", "").await()
-                            counter.incrementAndGet()
-                        }
-                    }.forEach {
-                        it.join()
-                    }
-                    call.respondText(counter.toString())
                 }
             }
 

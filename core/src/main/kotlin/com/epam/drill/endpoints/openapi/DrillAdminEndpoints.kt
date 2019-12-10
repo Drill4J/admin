@@ -1,13 +1,12 @@
 package com.epam.drill.endpoints.openapi
 
+import com.epam.drill.api.*
 import com.epam.drill.common.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
-import com.epam.drill.system.*
 import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -81,16 +80,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                         val agentSession = agentManager.agentSession(agentId)
                         agentInfo.plugins.filter { it.enabled }.forEach {
-                            agentSession?.send(
-                                Frame.Text(
-                                    WsSendMessage.serializer() stringify
-                                            WsSendMessage(
-                                                WsMessageType.MESSAGE,
-                                                "/plugins/togglePlugin",
-                                                TogglePayload(it.id)
-                                            )
-                                )
-                            )
+                            agentSession?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id))
                         }
                         agentInfo.update(agentManager)
                         logger.info { "Agent $agentId toggled to status ${agentInfo.status.name} successfully" }

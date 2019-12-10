@@ -129,15 +129,6 @@ abstract class E2ETest : AdminTest() {
         return this
     }
 
-
-    fun TestApplicationEngine.activateAgentByGroup(
-        groupId: String,
-        token: String = globToken
-    ) =
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.ActivateAgents(groupId))) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.run { response.status() to response.content }
-
     fun TestApplicationEngine.register(
         agentId: String,
         token: String = globToken,

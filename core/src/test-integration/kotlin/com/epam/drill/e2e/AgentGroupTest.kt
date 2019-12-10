@@ -60,8 +60,6 @@ class AgentGroupTest : E2ETest() {
                 println(x.receive().map { it.id to it.status to it.group })
                 println(x.receive().map { it.id to it.status to it.group })
 
-                activateAgentByGroup("micro").second
-
                 val register = register("micro")
                 register.first shouldBe HttpStatusCode.BadRequest
                 println(register.second)

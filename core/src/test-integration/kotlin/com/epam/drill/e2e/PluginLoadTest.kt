@@ -14,7 +14,7 @@ class PluginLoadTest : E2ETest() {
 
     @org.junit.jupiter.api.Test
     fun `Plugin Load Test`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(true, true) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 agent.getServiceConfig()?.sslPort shouldBe sslPort
@@ -29,13 +29,17 @@ class PluginLoadTest : E2ETest() {
 
                 agent.getLoadedPlugin { metadata, file ->
                     DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
+
                     ui.getAgent()?.status shouldBe AgentStatus.BUSY
+
                 }
 
+                println("fuckOff")
                 ui.getAgent()?.apply {
                     status shouldBe AgentStatus.ONLINE
                     activePluginsCount shouldBe 1
                 }
+                println("goodbuy")
             }
         }
     }

@@ -2,6 +2,7 @@
 
 package com.epam.drill.endpoints.agent
 
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.*
@@ -37,10 +38,12 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 val sslPort = app.securePort()
 
                 agentInfo.ipAddress = call.request.local.remoteHost
+
                 agentManager.put(agentInfo, this)
                 agentManager.update()
                 agentManager.adminData(agentInfo.id).loadStoredData()
                 agentManager.sync(agentInfo, needSync)
+
 
                 logger.info {
                     "Agent WS is connected." +
@@ -48,7 +51,12 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             " ssl port is '$sslPort and needSync is $needSync"
                 }
 
-                sendToTopic("/agent/config", ServiceConfig(sslPort, agentInfo.sessionIdHeaderName)).call()
+                sendToTopic<Communication.Agent.UpdateConfigEvent>(
+                    ServiceConfig(
+                        sslPort,
+                        agentInfo.sessionIdHeaderName
+                    )
+                ).call()
                 createWsLoop(agentInfo, agentConfig.instanceId)
             }
         }
@@ -124,7 +132,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             if (agentInfo.instanceIds.isEmpty()) {
                 agentManager.remove(agentInfo)
                 logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
-            } else{
+            } else {
                 agentManager.singleUpdate(agentInfo.id)
                 logger.info { "Instance '$instanceId' of Agent '${agentInfo.id}' was disconnected" }
             }

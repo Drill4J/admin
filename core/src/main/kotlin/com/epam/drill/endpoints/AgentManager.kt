@@ -2,6 +2,7 @@ package com.epam.drill.endpoints
 
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.agent.*
@@ -219,7 +220,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic("/plugins/togglePlugin", TogglePayload(pluginId, false))?.call()
+                ?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))?.call()
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
@@ -227,8 +228,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     suspend fun enableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
-            agentSession(agentId)
-                ?.sendToTopic("/plugins/togglePlugin", TogglePayload(pluginId, true))?.call()
+            agentSession(agentId)?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true))?.call()
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
@@ -263,12 +263,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun updateConfig(ainfo:AgentInfo) {
+    suspend fun updateConfig(ainfo: AgentInfo) {
         if (ainfo.sessionIdHeaderName.isNotEmpty())
             agentSession(ainfo.id)?.apply {
-                sendToTopic(
-                    "/agent/config",
-                    ServiceConfig(app.securePort(), ainfo.sessionIdHeaderName.toLowerCase())
+                sendToTopic<Communication.Agent.UpdateConfigEvent>(
+                    ServiceConfig(
+                        app.securePort(),
+                        ainfo.sessionIdHeaderName.toLowerCase()
+                    )
                 ).call()
             }
     }
@@ -279,7 +281,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             plugins.forEach { pb ->
                 val data = this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
                 pb.md5Hash = DigestUtils.md5Hex(data)
-                sendBinary("/plugins/load", pb, data).await()
+                sendBinary<Communication.Agent.PluginLoadEvent>(pb, data).await()
             }
         }
     }
@@ -334,7 +336,7 @@ suspend fun AgentInfo.update(agentManager: AgentManager) {
 }
 
 suspend fun AgentWsSession.setPackagesPrefixes(data: PackagesPrefixes) =
-    sendToTopic("/agent/set-packages-prefixes", data).await()
+    sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(data).await()
 
 suspend fun AgentWsSession.triggerClassesSending() =
-    sendToTopic("/agent/load-classes-data", "").await()
+    sendToTopic<Communication.Agent.LoadClassesDataEvent>().await()

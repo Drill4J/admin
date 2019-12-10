@@ -105,17 +105,6 @@ fun AdminTest.renameBuildVersion(
     }.run { response.status() to response.content }
 }
 
-fun AdminTest.activateAgentByGroup(
-    groupId: String,
-    token: String = globToken
-) =
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.ActivateAgents(groupId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-    }.run { response.status() to response.content }
-
 fun AdminTest.pluginAction(
     payload: String,
     agentId: String,

@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.agentmanager.*
+import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.common.ws.*
 import com.epam.drill.dataclasses.*
@@ -19,6 +20,8 @@ import kotlinx.io.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import org.apache.bcel.classfile.*
+import kotlin.reflect.full.*
+
 
 abstract class PluginStreams {
     lateinit var app: Application
@@ -66,7 +69,7 @@ class UIEVENTLOOP(
                     val (_, type) = wsTopic.getParams(url)
                     val notEmptyResponse = content != "\"\""
                     when (messageType) {
-                        WsMessageType.MESSAGE,WsMessageType.DELETE ->
+                        WsMessageType.MESSAGE, WsMessageType.DELETE ->
                             this@queued.launch {
                                 when (type) {
                                     is WsRoutes.GetAllAgents -> {
@@ -157,7 +160,7 @@ class Agent(
         val receive = plugins.receive()
         val pluginBinarys = getPluginBinary()
         block(receive, pluginBinarys)
-        outgoing.send(AgentMessage(MessageType.MESSAGE_DELIVERED, "/plugins/load", ""))
+        outgoing.send(AgentMessage(MessageType.MESSAGE_DELIVERED, "/agent/load", ""))
 
     }
 
@@ -247,6 +250,10 @@ class Agent(
             println()
             println("______________________________________________________________")
         }
+        val mapw = Communication::class.nestedClasses.map { it.nestedClasses }.flatten().associate { cls ->
+            val newInstance = cls.createInstance()
+            (cls.annotations[1] as Topic).url to newInstance
+        }
         incoming.consumeEach {
             when (it) {
                 is Frame.Text -> {
@@ -255,38 +262,32 @@ class Agent(
                     val content = parseJson[Message::data.name]!!.content
                     if (agentStreamDebug)
                         println("AGENT $agentId IN: $parseJson")
+
                     app.launch {
-                        when (url) {
-                            "/agent/config" -> serviceConfig.send(ServiceConfig.serializer() parse content)
-                            "/agent/set-packages-prefixes" -> `set-packages-prefixes`.send(content)
-                            "/agent/load-classes-data" -> `load-classes-data`.send(content)
-                            "/plugins/load" -> plugins.send(PluginMetadata.serializer() parse content)
-                            "/plugins/resetPlugin" -> {
+                        when (mapw[url]) {
+                            is Communication.Agent.UpdateConfigEvent -> serviceConfig.send(ServiceConfig.serializer() parse content)
+                            is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content)
+                            is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content)
+                            is Communication.Agent.PluginLoadEvent -> plugins.send(PluginMetadata.serializer() parse content)
+
+                            is Communication.Plugin.DispatchEvent -> plugin.doRawAction((PluginAction.serializer() parse content).message)
+
+                            is Communication.Plugin.UnloadEvent -> {
                             }
-                            "/plugins/action" -> {
-                                plugin.doRawAction((PluginAction.serializer() parse content).message)
+                            is Communication.Plugin.ToggleEvent -> {
                             }
-                            "/plugins/unload" -> {
+                            is Communication.Plugin.ResetEvent -> {
                             }
-                            "/ping" -> {
+                            else -> {
                                 outgoing.send(
                                     AgentMessage(
                                         MessageType.MESSAGE_DELIVERED,
-                                        "/ping",
+                                        url,
                                         ""
                                     )
                                 )
+                                TODO("$url is not implemented yet")
                             }
-                            "/plugins/togglePlugin" -> {
-                                outgoing.send(
-                                    AgentMessage(
-                                        MessageType.MESSAGE_DELIVERED,
-                                        "/ping",
-                                        ""
-                                    )
-                                )
-                            }
-                            else -> TODO("$url is not implemented yet")
                         }
                     }
                 }
