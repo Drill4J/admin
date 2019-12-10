@@ -185,16 +185,15 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 post<Routes.Api.Agent.SystemSettings> { (agentId) ->
                     val systemSettings = SystemSettings.serializer() parse call.receiveText()
-                    val adminData = agentManager.adminData(agentId).apply { resetBuilds() }
+                    val adminData = agentManager.adminData(agentId)
                     if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                        adminData.resetBuilds()
                         adminData.packagesPrefixes = systemSettings.packagesPrefixes
                         agentManager.applyPackagesChangesOnAllPlugins(agentId)
                         agentManager.wrapBusy(agentManager[agentId]!!) {
-
                             agentManager.disableAllPlugins(agentId)
                             agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
                         }
-                        adminData.refreshStoredSummary()
                     }
                     agentManager[agentId]!!.sessionIdHeaderName = systemSettings.sessionIdHeaderName
                     agentManager.updateConfig(agentManager[agentId]!!)

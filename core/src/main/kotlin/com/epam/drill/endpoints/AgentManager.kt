@@ -4,7 +4,6 @@ import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
@@ -263,16 +262,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun updateConfig(ainfo: AgentInfo) {
-        if (ainfo.sessionIdHeaderName.isNotEmpty())
-            agentSession(ainfo.id)?.apply {
-                sendToTopic<Communication.Agent.UpdateConfigEvent>(
-                    ServiceConfig(
-                        app.securePort(),
-                        ainfo.sessionIdHeaderName.toLowerCase()
-                    )
-                )
-            }
+    suspend fun updateConfig(aInfo: AgentInfo) {
+        agentSession(aInfo.id)?.apply {
+            sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(aInfo.sessionIdHeaderName.toLowerCase())
+        }
     }
 
     private suspend fun AgentInfo.sendPlugins() {
