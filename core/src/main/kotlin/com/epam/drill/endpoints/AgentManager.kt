@@ -220,7 +220,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
-                ?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))?.call()
+                ?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
@@ -228,7 +228,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     suspend fun enableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
-            agentSession(agentId)?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true))?.call()
+            agentSession(agentId)?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true))
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
@@ -271,7 +271,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         app.securePort(),
                         ainfo.sessionIdHeaderName.toLowerCase()
                     )
-                ).call()
+                )
             }
     }
 

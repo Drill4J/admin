@@ -42,7 +42,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                                         app.securePort(),
                                         au.sessionIdHeaderName.toLowerCase()
                                     )
-                                ).call()
+                                )
                             }
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
                         HttpStatusCode.OK to "agent '$agentId' was updated"

@@ -56,7 +56,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         sslPort,
                         agentInfo.sessionIdHeaderName
                     )
-                ).call()
+                )
                 createWsLoop(agentInfo, agentConfig.instanceId)
             }
         }

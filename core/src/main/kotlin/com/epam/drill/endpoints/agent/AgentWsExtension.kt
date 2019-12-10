@@ -38,21 +38,21 @@ suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> B
     }
 }
 
-class WsDeferred(val asession: AgentWsSession, val clb: suspend () -> Unit, val topicName: String) {
-    inline fun <reified T> then(noinline handler: suspend (T) -> Unit) {
-        asession.subscribe(topicName, handler)
+class WsDeferred(asession: AgentWsSession, val clb: suspend () -> Unit, topicName: String) {
+    var signal: Signal = Signal(true, {}, topicName)
+
+    init {
+        @Suppress("UNCHECKED_CAST")
+        asession.subscribers[topicName] = signal
     }
 
-    suspend fun call() {
+    suspend fun call(): WsDeferred {
         clb()
+        return this
     }
 
     suspend fun await() {
-        val q = Signal(true, {}, topicName)
-        @Suppress("UNCHECKED_CAST")
-        asession.subscribers[topicName] = q
-        clb()
-        q.await()
+        signal.await()
     }
 }
 
@@ -66,23 +66,19 @@ open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultW
         val callback: suspend () -> Unit = {
             @Suppress("UNCHECKED_CAST")
             val kClass = message::class as KClass<Any>
-            send(
-                Frame.Text(
-                    Message.serializer() stringify
-                            Message(
-                                MessageType.MESSAGE, topicName,
-                                kClass.serializer() stringify message
-                            )
-                )
+            val text = Message.serializer() stringify Message(
+                MessageType.MESSAGE, topicName,
+                if (message is String) message else kClass.serializer() stringify message
             )
+            send(Frame.Text(text))
         }
-        return WsDeferred(this, callback, topicName)
+        return WsDeferred(this, callback, topicName).apply { call() }
     }
 
 
     suspend inline fun <reified TopicUrl : Any> sendBinary(meta: Any = "", data: ByteArray): WsDeferred {
-        sendToTopic<TopicUrl>(meta).call()
-        return WsDeferred(this, { send(Frame.Binary(false, data)) }, TopicUrl::class.topicUrl())
+        sendToTopic<TopicUrl>(meta)
+        return WsDeferred(this, { send(Frame.Binary(false, data)) }, TopicUrl::class.topicUrl()).apply { call() }
     }
 
 
