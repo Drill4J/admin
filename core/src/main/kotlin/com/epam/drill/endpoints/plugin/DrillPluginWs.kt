@@ -58,7 +58,10 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                             data.session.send(Frame.Text(messageForSend))
                         }
                     } catch (ex: Exception) {
-                        logger.error(ex) { "Sending data to $id destination was finished with exception" }
+                        when (ex) {
+                            is ClosedSendChannelException ->logger.debug { "Channel for websocket $id closed" }
+                            else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
+                        }
                         sessionDataSet.removeIf { it == data }
                     }
                 }

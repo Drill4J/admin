@@ -2,6 +2,7 @@
 
 package com.epam.drill.endpoints
 
+import com.epam.drill.*
 import com.epam.drill.cache.*
 import com.epam.drill.cache.impl.*
 import com.epam.drill.common.*
@@ -10,8 +11,11 @@ import com.epam.drill.kodein.*
 import com.epam.drill.storage.*
 import com.epam.drill.websockets.*
 import io.ktor.application.*
+import io.ktor.features.*
+import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
 import org.kodein.di.*
@@ -20,11 +24,17 @@ import kotlin.test.*
 
 
 class PluginWsTest {
-
     lateinit var kodeinApplication: Kodein
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
+
+        install(ContentNegotiation) {
+            register(ContentType.Any, EmptyContentWrapper())
+            serialization()
+        }
+
+        enableSwaggerSupport()
         kodeinApplication = kodeinApplication(AppBuilder {
             withKModule {
                 kodeinModule("test") {

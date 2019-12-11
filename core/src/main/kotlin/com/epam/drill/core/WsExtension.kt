@@ -7,6 +7,7 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import mu.*
 
 private val logger = KotlinLogging.logger {}
@@ -50,7 +51,10 @@ private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
             is TokenExpiredException -> logger.debug { "Token is invalid" }
             else -> logger.debug { "Token '$token' verified was finished with exception" }
         }
-        send(Frame.Text(WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.UNAUTHORIZED)))
+        try {
+            send(Frame.Text(WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.UNAUTHORIZED)))
+        } catch (ignored: ClosedSendChannelException) {
+        }
         close()
     }
 }

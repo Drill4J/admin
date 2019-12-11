@@ -21,6 +21,7 @@ dependencies {
     implementation(ktor("locations"))
     implementation(ktor("server-core"))
     implementation(ktor("websockets"))
+    implementation(ktor("serialization"))
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation(ktor("server-test-host"))

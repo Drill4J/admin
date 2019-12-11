@@ -9,8 +9,13 @@ import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
+import io.ktor.request.*
 import io.ktor.response.*
+import io.ktor.serialization.*
+import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.io.*
+import kotlinx.serialization.json.*
 import mu.*
 import java.io.*
 import java.time.*
@@ -47,8 +52,18 @@ fun Application.module() = kodeinApplication(
                 masking = false
             }
 
+            install(ContentNegotiation) {
+                register(ContentType.Any, EmptyContentWrapper())
+                serialization()
+            }
+
+            enableSwaggerSupport()
+
             install(Authentication) {
                 jwt {
+                    skipWhen { applicationCall ->
+                        applicationCall.request.headers["Referer"]?.contains("openapi.json") ?: false
+                    }
                     realm = jwtRealm
                     verifier(JwtConfig.verifier)
                     skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
@@ -79,3 +94,17 @@ fun Application.module() = kodeinApplication(
         withKModule { kodeinModule("pluginServices", pluginServices) }
     }
 )
+
+class EmptyContentWrapper(val srl: SerializationConverter = SerializationConverter(Json(DefaultJsonConfiguration))) : ContentConverter {
+    override suspend fun convertForReceive(context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>) =
+        if (context.subject.type == Unit::class) Unit
+        else srl.convertForReceive(context)
+
+
+    override suspend fun convertForSend(
+        context: PipelineContext<Any, ApplicationCall>,
+        contentType: ContentType,
+        value: Any
+    ) = srl.convertForSend(context, contentType, value)
+
+}

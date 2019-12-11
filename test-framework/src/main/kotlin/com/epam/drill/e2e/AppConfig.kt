@@ -10,7 +10,10 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.config.*
+import io.ktor.features.*
+import io.ktor.http.*
 import io.ktor.locations.*
+import io.ktor.serialization.*
 import io.ktor.websocket.*
 import org.kodein.di.generic.*
 import java.io.*
@@ -36,6 +39,14 @@ class AppConfig(var projectDir: File) {
                 }
             }
         }
+
+        install(ContentNegotiation) {
+            register(ContentType.Any, EmptyContentWrapper())
+            serialization()
+        }
+
+        enableSwaggerSupport()
+
         kodeinApplication(AppBuilder {
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }

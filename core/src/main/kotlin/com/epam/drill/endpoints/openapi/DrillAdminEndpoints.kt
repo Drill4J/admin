@@ -8,12 +8,11 @@ import com.epam.drill.endpoints.agent.*
 import com.epam.drill.plugins.*
 import com.epam.drill.router.*
 import com.epam.drill.util.*
+import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.locations.*
-import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.serialization.*
@@ -33,7 +32,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             authenticate {
-                post<Routes.Api.Agent.UnloadPlugin> { (agentId, pluginId) ->
+                val unloadPluginResponds = "Unload plugin"
+                    .responds(
+                        ok<String>(
+                            example("result", "Unload plugin with such id for agent with such id was successfully")
+                        ), notFound(), badRequest()
+                    )
+                post<Routes.Api.Agent.UnloadPlugin>(unloadPluginResponds) { payload ->
+                    val (agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
                     val drillAgent = agentManager.agentSession(agentId)
                     val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
@@ -68,7 +74,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.Agent.AgentToggleStandby> { (agentId) ->
+                val agentToggleStandByResponds = "Agent Toggle StandBy"
+                    .responds(
+                        ok<String>(
+                            example("result", "toggled")
+                        )
+                    )
+                post<Routes.Api.Agent.AgentToggleStandby>(agentToggleStandByResponds) { params ->
+                    val (agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     agentManager[agentId]?.let { agentInfo ->
                         agentInfo.status = when (agentInfo.status) {
@@ -90,7 +103,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.ResetPlugin> { (agentId, pluginId) ->
+                val resetPluginResponds = "Reset plugin"
+                    .responds(
+                        ok<String>(
+                            example("result", "reset plugin with such id for agent with such id")
+                        ), notFound(), badRequest()
+                    )
+                post<Routes.Api.ResetPlugin>(resetPluginResponds) { payload ->
+                    val (agentId, pluginId) = payload
                     logger.info { "Reset plugin with id $pluginId for agent with id $agentId was successfully" }
                     val agentEntry = agentManager.full(agentId)
 
@@ -115,7 +135,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.ResetAgent> { (agentId) ->
+                val resetAgentResponse = "Reset agent"
+                    .responds(
+                        ok<String>(
+                            example("result", "Reset agent with such id")
+                        ), notFound()
+                    )
+                post<Routes.Api.ResetAgent>(resetAgentResponse) { payload ->
+                    val (agentId) = payload
                     logger.info { "Reset agent with id $agentId" }
                     val agentEntry = agentManager.full(agentId)
 
@@ -132,7 +159,13 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.ResetAllAgents> {
+                val resetAllAgentsResponds = "Reset all agents"
+                    .responds(
+                        ok<String>(
+                            example("result", "reset drill admin app")
+                        )
+                    )
+                post<Routes.Api.ResetAllAgents>(resetAllAgentsResponds) { _ ->
                     logger.info { "Reset all agents" }
                     agentManager.getAllAgents().forEach { agentEntry ->
                         agentEntry.instance.values.forEach { pluginInstance -> pluginInstance.dropData() }
@@ -143,14 +176,24 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.ReadNotification> {
+                val notificationResponds = "Read Notification"
+                    .examples(
+                        example("notification", NotificationId("Some notification id"))
+                    )
+                    .responds(
+                        ok<String>(
+                            example("result", "All notifications successfully read"),
+                            example("result", "Notification with such id successfully read")
+                        ),
+                        notFound()
+                    )
+                post<Routes.Api.ReadNotification, NotificationId>(notificationResponds) { _, notificationIdObject ->
                     logger.info { "Read notification" }
-                    val callString = call.receiveText()
-                    val (statusCode, response) = if (callString.isBlank()) {
+                    val (statusCode, response) = if (notificationIdObject.notificationId.isBlank()) {
                         notificationsManager.readAll()
                         HttpStatusCode.OK to "All notifications successfully read"
                     } else {
-                        val (notificationId) = NotificationId.serializer() parse callString
+                        val (notificationId) = notificationIdObject
                         if (notificationsManager.read(notificationId)) {
                             topicResolver.sendToAllSubscribed("/notifications")
                             HttpStatusCode.OK to "Notification with id $notificationId successfully read"
@@ -164,13 +207,22 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.DeleteNotification> {
-                    val callString = call.receiveText()
-                    val (statusCode, response) = if (callString.isBlank()) {
+                val notificationResponds = "Delete Notification"
+                    .examples(
+                        example("notification", NotificationId("Some notification id"))
+                    )
+                    .responds(
+                        ok<String>(
+                            example("result", "All notifications successfully deleted")
+                        ),
+                        notFound()
+                    )
+                post<Routes.Api.DeleteNotification, NotificationId>(notificationResponds) { _, notificationIdObject ->
+                    val (statusCode, response) = if (notificationIdObject.notificationId.isBlank()) {
                         notificationsManager.deleteAll()
                         HttpStatusCode.OK to "All notifications successfully deleted"
                     } else {
-                        val (notificationId) = NotificationId.serializer() parse callString
+                        val (notificationId) = notificationIdObject
                         if (notificationsManager.delete(notificationId)) {
                             topicResolver.sendToAllSubscribed("/notifications")
                             HttpStatusCode.OK to "Notification with id $notificationId successfully deleted"
@@ -183,8 +235,20 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.Agent.SystemSettings> { (agentId) ->
-                    val systemSettings = SystemSettings.serializer() parse call.receiveText()
+                val systemSettingsResponds = "Update system settings"
+                    .examples(
+                        example(
+                            "systemSettings",
+                            SystemSettings(listOf("some package prefixes"), "some session header name")
+                        )
+                    )
+                    .responds(
+                        ok<String>(
+                            example("Trigger for classes processing sent to agent with such id")
+                        )
+                    )
+                post<Routes.Api.Agent.SystemSettings, SystemSettings>(systemSettingsResponds) { params, systemSettings ->
+                    val (agentId) = params
                     val adminData = agentManager.adminData(agentId)
                     if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
                         adminData.resetBuilds()
@@ -205,9 +269,23 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                post<Routes.Api.Agent.RenameBuildVersion> { (agentId) ->
+                val renameBuildVersionResponds = "Rename build version"
+                    .examples(
+                        example(
+                            "agent build version name", "some build version name"
+                        )
+                    )
+                    .responds(
+                        ok<String>(
+                            example("result", "Agent with such id have been updated")
+                        ),
+                        internalServerError<String>(
+                            example("error", "Request handle with exception")
+                        )
+                    )
+                post<Routes.Api.Agent.RenameBuildVersion, AgentBuildVersionJson>(renameBuildVersionResponds) { payload, buildVersion ->
                     logger.info { "Rename build version" }
-                    val buildVersion = AgentBuildVersionJson.serializer() parse call.receiveText()
+                    val (agentId) = payload
                     val (statusCode, response) = when (handler.updateBuildAliasWithResult(
                         agentId,
                         buildVersion

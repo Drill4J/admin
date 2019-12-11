@@ -18,6 +18,7 @@ import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -30,7 +31,6 @@ import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*
-import kotlin.collections.HashSet
 import kotlin.test.*
 
 
@@ -48,6 +48,13 @@ internal class DrillServerWsTest {
                 }
             }
         }
+
+        install(ContentNegotiation) {
+            register(ContentType.Any, EmptyContentWrapper())
+        }
+
+        enableSwaggerSupport()
+
         kodeinApplication(AppBuilder {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
@@ -114,11 +121,11 @@ internal class DrillServerWsTest {
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNull(currentNotifications.find { it.id == firstNotificationId })
                 assertNotificationsCounters(currentNotifications, 2, 2)
-                handleHttpPostRequest(locations.href(Routes.Api.ReadNotification()), "", token)
+                handleHttpPostRequest(locations.href(Routes.Api.ReadNotification()), NotificationId.serializer() stringify NotificationId(""), token)
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 2, 0)
-                handleHttpPostRequest(locations.href(Routes.Api.DeleteNotification()), "", token)
+                handleHttpPostRequest(locations.href(Routes.Api.DeleteNotification()), NotificationId.serializer() stringify NotificationId(""), token)
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 0, 0)
