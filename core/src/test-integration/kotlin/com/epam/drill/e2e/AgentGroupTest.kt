@@ -16,7 +16,6 @@ class AgentGroupTest : E2ETest() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                agent.getServiceConfig()?.sslPort shouldBe sslPort
                 register(
                     "ag$wit",
                     payload = AgentRegistrationInfo(
@@ -34,7 +33,6 @@ class AgentGroupTest : E2ETest() {
             val it = 1
             connectAgent(AgentWrap("ag$it", "0.1.$it", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                agent.getServiceConfig()?.sslPort shouldBe sslPort
                 register(
                     "ag$it",
                     payload = AgentRegistrationInfo(

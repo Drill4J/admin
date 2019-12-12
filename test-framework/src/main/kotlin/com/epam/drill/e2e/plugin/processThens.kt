@@ -48,7 +48,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                         out,
                         agentStreamDebug
                     ).apply { queued() }
-                apply.getServiceConfig()?.sslPort
+                apply.getHeaders()
                 //
                 apply.`get-set-packages-prefixes`()
                 val bcelClasses = classes.map {

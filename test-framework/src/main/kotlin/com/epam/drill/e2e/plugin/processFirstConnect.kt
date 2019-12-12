@@ -53,7 +53,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     OutsSock(out, agentStreamDebug),
                     agentStreamDebug
                 ).apply { queued() }
-            apply.getServiceConfig()?.sslPort
+            apply.getHeaders()
             register(
                 ag.id, payload = AgentRegistrationInfo(
                     name = "xz",

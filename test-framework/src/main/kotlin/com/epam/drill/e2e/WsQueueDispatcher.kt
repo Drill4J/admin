@@ -148,14 +148,14 @@ class Agent(
     val outgoing: SendChannel<Frame>,
     val agentStreamDebug: Boolean
 ) {
-    private val serviceConfig = Channel<ServiceConfig?>()
+    private val headers = Channel<Int>()
     private val `set-packages-prefixes` = Channel<String>()
     private val `load-classes-data` = Channel<String>()
     private val plugins = Channel<PluginMetadata>()
     private val pluginBinary = Channel<ByteArray>()
     lateinit var plugin: AgentPart<*, *>
 
-    suspend fun getServiceConfig() = serviceConfig.receive()
+    suspend fun getHeaders() = headers.receive()
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
         val receive = plugins.receive()
         val pluginBinarys = getPluginBinary()
@@ -265,11 +265,12 @@ class Agent(
 
                     app.launch {
                         when (mapw[url]) {
-                            is Communication.Agent.UpdateConfigEvent -> serviceConfig.send(ServiceConfig.serializer() parse content)
                             is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content)
                             is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content)
                             is Communication.Agent.PluginLoadEvent -> plugins.send(PluginMetadata.serializer() parse content)
-                            is Communication.Agent.ChangeHeaderNameEvent -> {}
+                            is Communication.Agent.ChangeHeaderNameEvent -> {
+                                headers.send(0)
+                            }
 
                             is Communication.Plugin.DispatchEvent -> plugin.doRawAction((PluginAction.serializer() parse content).message)
 
