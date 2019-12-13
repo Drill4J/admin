@@ -77,6 +77,8 @@ dependencies {
 
 }
 
+val jibExtraDirs = "$buildDir/jib-extra-dirs"
+
 jib {
     from {
         image = "gcr.io/distroless/java:8"
@@ -88,8 +90,13 @@ jib {
     container {
         ports = listOf("8090", "5006")
         mainClass = appMainClassName
+        volumes = listOf("/work", "/distr")
 
         jvmFlags = appJvmArgs
+    }
+    extraDirectories {
+        setPaths(jibExtraDirs)
+        permissions = mapOf("/work" to "775", "/distr" to "775")
     }
 }
 val testIngerationModuleName = "test-integration"
@@ -116,6 +123,7 @@ sourceSets {
         tasks["testIntegrationClasses"].dependsOn("build${it}Classes")
     }
 }
+
 idea {
     module {
         testSourceDirs =
@@ -150,6 +158,21 @@ tasks {
         delete("./work", "./distr", "./../distr")
     }
 
+    val makeJibExtraDirs by registering(Sync::class) {
+        group = "jib"
+        into(jibExtraDirs)
+        from("src/main/jib")
+        from("temporary.jks")
+        doLast {
+            mkdir(destinationDir.resolve("work"))
+            mkdir(destinationDir.resolve("distr"))
+        }
+    }
+    
+    processResources {
+        dependsOn(makeJibExtraDirs)
+    }
+    
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
