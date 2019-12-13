@@ -81,7 +81,7 @@ val jibExtraDirs = "$buildDir/jib-extra-dirs"
 
 jib {
     from {
-        image = "gcr.io/distroless/java:8"
+        image = "gcr.io/distroless/java:8-debug"
     }
     to {
         image = "drill4j/admin"
@@ -158,21 +158,23 @@ tasks {
         delete("./work", "./distr", "./../distr")
     }
 
-    val makeJibExtraDirs by registering(Sync::class) {
+    val makeJibExtraDirs by registering(Copy::class) {
         group = "jib"
+        outputs.upToDateWhen(Specs.satisfyNone())
         into(jibExtraDirs)
         from("src/main/jib")
         from("temporary.jks")
         doLast {
-            mkdir(destinationDir.resolve("work"))
-            mkdir(destinationDir.resolve("distr"))
+            listOf("work", "distr")
+                .map(destinationDir::resolve)
+                .forEach { mkdir(it) }
         }
     }
-    
-    processResources {
+
+    withType<com.google.cloud.tools.jib.gradle.JibTask> {
         dependsOn(makeJibExtraDirs)
     }
-    
+
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
