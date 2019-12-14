@@ -1,15 +1,28 @@
-import org.jetbrains.kotlin.gradle.plugin.*
 import org.jetbrains.kotlin.gradle.tasks.*
 
 plugins {
-    kotlin("jvm")
-    id("kotlinx-serialization")
-    id("com.google.cloud.tools.jib") version "1.6.1"
+    `kotlin-platform-jvm`
+    `kotlinx-serialization`
     application
     `maven-publish`
-    idea
+    id("com.google.cloud.tools.jib") version "1.7.0"
     id("com.github.johnrengelman.shadow") version "5.1.0"
 }
+
+val `test-integration`: SourceSet by sourceSets.creating
+
+val testData: Configuration by configurations.creating
+
+val testBuildSourceSets: List<SourceSet> = listOf("build1", "build2").map { testBuildName ->
+    sourceSets.create(testBuildName) {
+        java.setSrcDirs("src/test-data/$testBuildName/java".let(::listOf))
+        compileClasspath += testData
+    }
+}
+
+val intTestImplementationCfg by configurations.named(`test-integration`.implementationConfigurationName) {
+    extendsFrom(configurations.testImplementation.get(), testData)
+} 
 
 repositories {
     mavenLocal()
@@ -17,31 +30,6 @@ repositories {
     jcenter()
     maven(url = "https://dl.bintray.com/kodein-framework/Kodein-DI/")
     maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
-}
-
-val appMainClassName by extra("io.ktor.server.netty.EngineMain")
-
-val appJvmArgs = listOf(
-    "-server",
-    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006",
-    "-Djava.awt.headless=true",
-    "-Xms128m",
-    "-Xmx2g",
-    "-XX:+UseG1GC",
-    "-XX:MaxGCPauseMillis=100"
-)
-
-
-application {
-    mainClassName = appMainClassName
-    applicationDefaultJvmArgs = appJvmArgs
-}
-val testData by configurations.creating {}
-val integrationTestImplementation by configurations.creating {
-    extendsFrom(configurations["testCompile"])
-}
-val integrationTestRuntime by configurations.creating {
-    extendsFrom(configurations["testRuntime"])
 }
 
 dependencies {
@@ -70,11 +58,27 @@ dependencies {
     testImplementation(kotlin("test-junit"))
     testImplementation(project(":admin:test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
-    integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
-    integrationTestImplementation(ktor("server-test-host"))
-    integrationTestImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
-    add("testData", project(":admin:test-framework:test-data"))
+    intTestImplementationCfg("org.junit.jupiter:junit-jupiter:5.5.2")
+    intTestImplementationCfg(ktor("server-test-host"))
+    intTestImplementationCfg("io.kotlintest:kotlintest-runner-junit5:3.3.2")
+    testData(project(":admin:test-framework:test-data"))
+}
 
+val appMainClassName by extra("io.ktor.server.netty.EngineMain")
+
+val appJvmArgs = listOf(
+    "-server",
+    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006",
+    "-Djava.awt.headless=true",
+    "-Xms128m",
+    "-Xmx2g",
+    "-XX:+UseG1GC",
+    "-XX:MaxGCPauseMillis=100"
+)
+
+application {
+    mainClassName = appMainClassName
+    applicationDefaultJvmArgs = appJvmArgs
 }
 
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
@@ -99,63 +103,40 @@ jib {
         permissions = mapOf("/work" to "775", "/distr" to "775")
     }
 }
-val testIngerationModuleName = "test-integration"
 
-sourceSets {
-    create(testIngerationModuleName) {
-        withConvention(KotlinSourceSet::class) {
-            kotlin.srcDir("src/$testIngerationModuleName/kotlin")
-            resources.srcDir("src/$testIngerationModuleName/resources")
-            compileClasspath += sourceSets["main"].output + integrationTestImplementation + configurations["testRuntimeClasspath"]
-            runtimeClasspath += output + compileClasspath + sourceSets["test"].runtimeClasspath + integrationTestRuntime
-        }
-    }
-
-    (1..2).forEach {
-        create("build$it") {
-            java.srcDir("src/test-data/build$it/java")
-            dependencies {
-                implementation(project(":admin:test-framework:test-data"))
-            }
-            compileClasspath += testData
-            runtimeClasspath += output + compileClasspath
-        }
-        tasks["testIntegrationClasses"].dependsOn("build${it}Classes")
-    }
-}
-
-idea {
-    module {
-        testSourceDirs =
-            (sourceSets[testIngerationModuleName].withConvention(KotlinSourceSet::class) { kotlin.srcDirs })
-        testResourceDirs = (sourceSets[testIngerationModuleName].resources.srcDirs)
-        scopes["TEST"]?.get("plus")?.add(integrationTestImplementation)
-    }
-}
 val testPluginProject = project(":admin:test-framework:test-plugin")
-val prepareDist = tasks.register<Copy>("prepareDist") {
-    from(testPluginProject.tasks["distZip"])
-    into(file("distr").resolve("adminStorage"))
-}
-task<Test>("integrationTest") {
-    dependsOn(prepareDist)
-    systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
-    useJUnitPlatform()
-    description = "Runs the integration tests"
-    group = "verification"
-    testClassesDirs = sourceSets[testIngerationModuleName].output.classesDirs
-    classpath = sourceSets[testIngerationModuleName].runtimeClasspath
-    mustRunAfter(tasks["test"])
-}
-
-tasks.named("check") {
-    dependsOn("integrationTest")
-
-}
 
 tasks {
     clean {
-        delete("./work", "./distr", "./../distr")
+        delete("work", "distr")
+    }
+
+    val prepareDist by registering(Copy::class) {
+        from(testPluginProject.tasks["distZip"])
+        into(file("distr").resolve("adminStorage"))
+    }
+    
+    named(`test-integration`.classesTaskName) {
+        testBuildSourceSets.forEach { srcSet ->
+            dependsOn(srcSet.classesTaskName)
+        }
+    }
+
+    val test by existing(Test::class)
+
+    val integrationTest by registering(Test::class) {
+        dependsOn(prepareDist)
+        mustRunAfter(test)
+        systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
+        useJUnitPlatform()
+        description = "Runs the integration tests"
+        group = "verification"
+        testClassesDirs = `test-integration`.output.classesDirs
+        classpath = `test-integration`.runtimeClasspath
+    }
+
+    named("check") {
+        dependsOn(integrationTest)
     }
 
     val makeJibExtraDirs by registering(Copy::class) {
@@ -184,11 +165,11 @@ tasks {
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.time.ExperimentalTime"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
     }
-    register<Jar>("sourcesJar") {
-        from(sourceSets.main.get().allSource)
-        archiveClassifier.set("sources")
-    }
+}
 
+val sourcesJar by tasks.registering(Jar::class) {
+    from(sourceSets.main.get().allSource)
+    archiveClassifier.set("sources")
 }
 
 publishing {
@@ -210,24 +191,13 @@ publishing {
 
     publications {
         create<MavenPublication>("adminFull") {
-            artifact(tasks["shadowJar"])
+            artifact(tasks.shadowJar.get())
             artifactId = "admin-core"
         }
         create<MavenPublication>("admin") {
-            artifact(tasks["jar"])
+            artifact(tasks.jar.get())
             artifactId = "admin-core"
-            artifact(tasks["sourcesJar"])
+            artifact(sourcesJar.get())
         }
     }
 }
-
-@Suppress("unused")
-fun DependencyHandler.ktor(module: String, version: String? = ktorVersion): Any =
-    "io.ktor:ktor-$module${version?.let { ":$version" } ?: ""}"
-
-@Suppress("unused")
-fun DependencyHandler.drill(module: String, version: Any? = project.version): Any =
-    "com.epam.drill:$module${version?.let { ":$version" } ?: ""}"
-
-fun DependencyHandler.integrationTestImplementation(dependencyNotation: Any): Dependency? =
-    add("integrationTestImplementation", dependencyNotation)

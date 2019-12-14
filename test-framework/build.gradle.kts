@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.*
 
 plugins {
-    kotlin("jvm")
-    id("kotlinx-serialization")
+    `kotlin-platform-jvm`
+    `kotlinx-serialization`
     `maven-publish`
 }
 repositories {
@@ -35,8 +35,8 @@ dependencies {
     implementation("org.junit.jupiter:junit-jupiter:5.5.2")
     implementation(project(":admin:test-framework:test-data"))
 }
-tasks {
 
+tasks {
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.InternalAPI"
@@ -44,10 +44,11 @@ tasks {
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.coroutines.ExperimentalCoroutinesApi"
     }
-    register<Jar>("sourcesJar") {
-        from(sourceSets.main.get().allSource)
-        archiveClassifier.set("sources")
-    }
+}
+
+val sourcesJar by tasks.registering(Jar::class) {
+    from(sourceSets.main.get().allSource)
+    archiveClassifier.set("sources")
 }
 
 publishing {
@@ -69,16 +70,10 @@ publishing {
 
     publications {
         create<MavenPublication>(project.name) {
-            artifact(tasks["jar"])
-            artifact(tasks["sourcesJar"])
+            afterEvaluate {
+                artifact(tasks.jar.get())
+                artifact(sourcesJar.get())
+            }
         }
     }
 }
-
-@Suppress("unused")
-fun DependencyHandler.ktor(module: String, version: String? = ktorVersion): Any =
-    "io.ktor:ktor-$module${version?.let { ":$version" } ?: ""}"
-
-@Suppress("unused")
-fun DependencyHandler.drill(module: String, version: Any? = project.version): Any =
-    "com.epam.drill:$module${version?.let { ":$version" } ?: ""}"
