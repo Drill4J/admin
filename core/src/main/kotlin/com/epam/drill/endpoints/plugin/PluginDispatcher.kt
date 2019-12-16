@@ -128,8 +128,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         example("result", "some plugin data")
                     )
                 )
-            get<Routes.Api.Agent.GetPluginData>(getPluginDataResponds) { params ->
-                val (agentId, pluginId) = params
+            get<Routes.Api.Agent.GetPluginData>(getPluginDataResponds) { (agentId, pluginId) ->
                 logger.debug { "Get data plugin with id $pluginId for agent with id $agentId" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
@@ -140,7 +139,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         val agentEntry = agentManager.full(agentId)
                         val adminPart: AdminPluginPart<*> =
                             agentManager.instantiateAdminPluginPart(agentEntry, dp.pluginClass, pluginId)
-                        val response = adminPart.getPluginData(mapOf(agentId to pluginId))
+                        val response = adminPart.getPluginData(context.parameters.asMap())
                         HttpStatusCode.OK to response
                     }
                 }
