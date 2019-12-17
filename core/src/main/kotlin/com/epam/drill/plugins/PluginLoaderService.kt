@@ -4,10 +4,6 @@ package com.epam.drill.plugins
 import com.epam.drill.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
@@ -25,38 +21,27 @@ class PluginLoaderService(
     override val kodein: Kodein,
     val workDir: File = File(getenv("DRILL_HOME"), "work"),
     val withArtifactory: Boolean = true
-) :
-    KodeinAware {
+) : KodeinAware {
     private val plugins: Plugins by kodein.instance()
-    private val plugStoragePath = File("distr").resolve("adminStorage")
-    private val pluginPaths: List<File> = mutableListOf(plugStoragePath).map { it.canonicalFile }
-    private val artifactoryBaseUrl = "https://oss.jfrog.org"
-    private val artifactoryPathElement = "artifactory"
-    private val artifactoryRepo = "oss-release-local"
+    private val pluginStoragePath = File("distr").resolve("adminStorage")
+    private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }
+
     private val allowedPlugins = setOf("coverage")
 
     init {
-        runBlocking(Dispatchers.IO) {
-            if (withArtifactory)
-                HttpClient(CIO).use { client ->
-                    allowedPlugins.forEach { pluginId ->
-                        val version = getPluginVersion(client, pluginId)
-                        val targetFileName = "$pluginId-plugin-$version.zip"
-                        val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
-                        val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
-                        plugStoragePath.mkdirs()
+        runBlocking(Dispatchers.Default) {
+            pluginStoragePath.mkdirs()
+            if (withArtifactory) {
+                val pluginLoader = ArtifactoryPluginLoader(
+                    baseUrl = "https://oss.jfrog.org",
+                    basePath = "artifactory",
+                    repo = "oss-release-local",
+                    storageDir = pluginStoragePath,
+                    devMode = true
+                )
+                pluginLoader.loadPlugins(allowedPlugins)
+            }
 
-                        val targetFile = plugStoragePath.resolve(targetFileName)
-                        if (m2.exists())
-                            targetFile.writeBytes(m2.readBytes())
-                        else
-                            targetFile.writeBytes(
-                                client.get(
-                                    "$artifactoryBaseUrl/$artifactoryPathElement/$artifactoryRepo/$artifactPath"
-                                )
-                            )
-                    }
-                }
             try {
                 logger.info { "Searching for plugins in paths $pluginPaths" }
 
@@ -126,22 +111,6 @@ class PluginLoaderService(
 
     }
 
-    private suspend fun getPluginVersion(client: HttpClient, pluginId: String): String {
-        val version = getenv("T2CM_VERSION")
-
-        if (version.isNullOrBlank() ||
-            "latest" == version
-        ) {
-            val builder = URLBuilder(artifactoryBaseUrl)
-                .path(artifactoryPathElement, "api", "search", "latestVersion")
-            builder.parameters.append("g", "com.epam.drill")
-            builder.parameters.append("a", "$pluginId-plugin")
-            builder.parameters.append("repos", artifactoryRepo)
-            return client.get(builder.build())
-        }
-        return version
-    }
-
     private fun processAdminPart(
         adminPartFile: File, adminJar: JarFile
     ): Class<AdminPluginPart<*>>? {
@@ -154,7 +123,7 @@ class PluginLoaderService(
         return pluginApiClass as Class<AdminPluginPart<*>>?
     }
 
-    fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
+    private fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
         val jarEntry: ZipEntry = getEntry(entry) ?: return null
         return getInputStream(jarEntry).use { istream ->
             val pluginDir = workDir.resolve("plugins").resolve(pluginId)
@@ -168,4 +137,3 @@ class PluginLoaderService(
 
 
 }
-
