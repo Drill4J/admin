@@ -6,13 +6,14 @@ import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import org.apache.commons.codec.digest.*
+import kotlin.test.*
 
 
 class PluginLoadTest : E2ETest() {
 
     private val agentId = "pluginLoad"
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `Plugin Load Test`() {
         createSimpleAppWithUIConnection(true, true) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
@@ -22,7 +23,8 @@ class PluginLoadTest : E2ETest() {
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                GlobalScope.launch { //add plugin blocks thread now.. will act it in background coroutine
+                GlobalScope.launch {
+                    //add plugin blocks thread now.. will act it in background coroutine
                     addPlugin(agentId, testPlugin).first shouldBe HttpStatusCode.OK
                 }
 

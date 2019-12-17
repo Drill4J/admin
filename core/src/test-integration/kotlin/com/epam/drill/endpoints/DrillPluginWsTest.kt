@@ -64,7 +64,7 @@ class PluginWsTest {
         agentType = AgentType.JAVA
     )
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `should return CloseFrame if we subscribe without SubscribeInfo`() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -78,7 +78,7 @@ class PluginWsTest {
     }
 
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `should communicate with pluginWs and return the empty MESSAGE`() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -101,7 +101,7 @@ class PluginWsTest {
         }
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `should return data from storage which was sent before via send()`() {
         withTestApplication(testApp) {
             val token = requestToken()

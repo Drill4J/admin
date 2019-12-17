@@ -2,10 +2,11 @@ package com.epam.drill.e2e
 
 import com.epam.drill.common.*
 import io.kotlintest.*
+import kotlin.test.*
 
 class AgentTypeTest : E2ETest() {
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `check agent type`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(id = "agentId1", agentType = AgentType.JAVA)) { ui, _ ->

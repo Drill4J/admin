@@ -1,15 +1,15 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlin.test.Test
 
 class ToggleAgentTest : E2ETest() {
 
     private val agentId = "toggleAgent"
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `Toggle Agent Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->

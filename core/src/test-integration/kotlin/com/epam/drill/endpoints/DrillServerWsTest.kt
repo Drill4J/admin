@@ -78,7 +78,7 @@ internal class DrillServerWsTest {
 
     private val pluginStorage = SessionStorage()
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun testConversation() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -99,7 +99,7 @@ internal class DrillServerWsTest {
         }
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `notifications are displayed and processed correctly`() {
         withTestApplication(testApp) {
             val token = requestToken()
@@ -158,7 +158,7 @@ internal class DrillServerWsTest {
         return Notification.serializer().list parse json[WsReceiveMessage::message.name].toString()
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `topic resolvation goes correctly`() {
         withTestApplication(testApp) {
             val token = handleRequest(HttpMethod.Post, "/api/login").run { response.headers[HttpHeaders.Authorization] }
@@ -177,7 +177,7 @@ internal class DrillServerWsTest {
 
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `get UNAUTHORIZED event if token is invalid`() {
         withTestApplication(testApp) {
             val invalidToken = requestToken() + "1"

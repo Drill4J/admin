@@ -1,15 +1,15 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlin.test.*
 
 class AgentUnregisterTest : E2ETest() {
 
     private val agentId = "unregisterAgent"
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `Agent Unregister Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->

@@ -1,17 +1,17 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
+import kotlin.test.*
 
 
 class MultipleInstanceProcessingTest : E2ETest() {
 
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `agent can have multiple instances`() {
         createSimpleAppWithUIConnection {
             val latch1 = Channel<Int>()
