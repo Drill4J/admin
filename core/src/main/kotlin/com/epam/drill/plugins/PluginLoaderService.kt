@@ -7,6 +7,7 @@ import com.epam.drill.plugin.api.end.*
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
@@ -29,7 +30,8 @@ class PluginLoaderService(
     private val plugins: Plugins by kodein.instance()
     private val plugStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = mutableListOf(plugStoragePath).map { it.canonicalFile }
-    private val artifactoryUrl = "https://oss.jfrog.org/artifactory"
+    private val artifactoryBaseUrl = "https://oss.jfrog.org"
+    private val artifactoryPathElement = "artifactory"
     private val artifactoryRepo = "oss-release-local"
     private val allowedPlugins = setOf("coverage")
 
@@ -38,8 +40,7 @@ class PluginLoaderService(
             if (withArtifactory)
                 HttpClient(CIO).use { client ->
                     allowedPlugins.forEach { pluginId ->
-                        val version = getenv("T2CM_VERSION")
-                            ?: client.get("$artifactoryUrl/api/search/latestVersion?g=com.epam.drill&a=$pluginId-plugin&v=+&repos=$artifactoryRepo")
+                        val version = getPluginVersion(client, pluginId)
                         val targetFileName = "$pluginId-plugin-$version.zip"
                         val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFileName"
                         val m2 = File(getProperty("user.home"), "/.m2/repository/$artifactPath")
@@ -49,7 +50,11 @@ class PluginLoaderService(
                         if (m2.exists())
                             targetFile.writeBytes(m2.readBytes())
                         else
-                            targetFile.writeBytes(client.get("$artifactoryUrl/$artifactoryRepo/$artifactPath"))
+                            targetFile.writeBytes(
+                                client.get(
+                                    "$artifactoryBaseUrl/$artifactoryPathElement/$artifactoryRepo/$artifactPath"
+                                )
+                            )
                     }
                 }
             try {
@@ -119,6 +124,22 @@ class PluginLoaderService(
             }
         }
 
+    }
+
+    private suspend fun getPluginVersion(client: HttpClient, pluginId: String): String {
+        val version = getenv("T2CM_VERSION")
+
+        if (version.isNullOrBlank() ||
+            "latest" == version
+        ) {
+            val builder = URLBuilder(artifactoryBaseUrl)
+                .path(artifactoryPathElement, "api", "search", "latestVersion")
+            builder.parameters.append("g", "com.epam.drill")
+            builder.parameters.append("a", "$pluginId-plugin")
+            builder.parameters.append("repos", artifactoryRepo)
+            return client.get(builder.build())
+        }
+        return version
     }
 
     private fun processAdminPart(
