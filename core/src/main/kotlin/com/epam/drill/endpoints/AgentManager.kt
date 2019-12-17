@@ -34,34 +34,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val adminDataVault: AdminDataVault by instance()
     private val notificationsManager: NotificationsManager by instance()
 
-    suspend fun agentConfiguration(config: AgentConfig): AgentInfo {
-        val (agentId: String, instanceId: String, pBuildVersion: String, serviceGroup: String, agentType) = config
-        val agentStore = store.agentStore(agentId)
-        val existingAgent =
-            agentStore.findById<AgentInfo>(agentId)?.apply { processBuild(pBuildVersion, agentId) }
-                ?: return AgentInfo(
-                    agentId,
-                    agentId,
-                    AgentStatus.NOT_REGISTERED,
-                    serviceGroup,
-                    "",
-                    "",
-                    pBuildVersion,
-                    "",
-                    agentType
-                ).apply { instanceIds.add(instanceId) }
-        logger.debug { "Agent configuration: $existingAgent" }
-        existingAgent.instanceIds.add(instanceId)
-        return agentStore.store(existingAgent)
-    }
-
-    private fun AgentInfo.processBuild(pBuildVersion: String, agentId: String) {
-        logger.debug { "Updating build version for agent with id $agentId. Build version is $pBuildVersion" }
+    fun processBuild(aInfo: AgentInfo, pBuildVersion: String) = with(aInfo) {
+        logger.debug { "Updating build version for agent with id $id. Build version is $pBuildVersion" }
         if (status != AgentStatus.OFFLINE) {
-            val buildInfo = adminData(agentId).buildManager[pBuildVersion]
+            val buildInfo = adminData(id).buildManager[pBuildVersion]
             this.buildVersion = pBuildVersion
             this.buildAlias = buildInfo?.buildAlias ?: ""
-            logger.debug { "Build version for agent with id $agentId was updated" }
+            logger.debug { "Build version for agent with id $id was updated" }
         }
     }
 
@@ -234,7 +213,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun AgentInfo.update() {
         store.agentStore(this.id).store(this)
-        agentStorage.targetMap[this.id]!!.agent = this
+        agentStorage.targetMap[this.id]?.agent = this
     }
 
     suspend fun configurePackages(prefixes: List<String>, agentId: String) {

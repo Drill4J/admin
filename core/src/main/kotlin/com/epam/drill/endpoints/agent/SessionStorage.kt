@@ -2,4 +2,4 @@ package com.epam.drill.endpoints.agent
 
 import com.epam.drill.endpoints.*
 
-typealias SessionStorage = HashSet<DrillWsSession>
+typealias SessionStorage = MutableSet<DrillWsSession>

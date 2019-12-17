@@ -92,11 +92,13 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
     }
 
     suspend fun singleUpdate(key: K) {
-        onAdd.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(key, targetMap[key]!!)
+        targetMap[key]?.let { value ->
+            onAdd.forEach {
+                val first = it.first
+                val second = it.second
+                first {
+                    second(key, value)
+                }
             }
         }
 

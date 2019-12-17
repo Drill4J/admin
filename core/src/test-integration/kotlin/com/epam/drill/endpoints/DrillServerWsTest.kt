@@ -31,6 +31,7 @@ import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*
+import java.util.concurrent.*
 import kotlin.test.*
 
 
@@ -76,7 +77,7 @@ internal class DrillServerWsTest {
         })
     }
 
-    private val pluginStorage = SessionStorage()
+    private val pluginStorage = Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>())
 
     @Test
     fun testConversation() {

@@ -15,7 +15,7 @@ fun Application.toLocation(rout: Any): String {
     return this.locations.href(rout)
 }
 
-suspend fun MutableSet<DrillWsSession>.sendTo(
+suspend fun SessionStorage.sendTo(
     destination: String,
     message: Any,
     type: WsMessageType = WsMessageType.MESSAGE
