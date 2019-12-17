@@ -3,7 +3,6 @@ package com.epam.drill.websockets
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import io.ktor.http.*
-import org.junit.Test
 import kotlin.reflect.*
 import kotlin.test.*
 

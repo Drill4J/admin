@@ -54,12 +54,12 @@ dependencies {
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
     implementation("com.epam.drill:ktor-swagger:$swaggerVersion")
-    implementation(kotlin("test-junit5"))
+    testImplementation(kotlin("test-junit5"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation(project(":admin:test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
-    intTestImplementationCfg("org.junit.jupiter:junit-jupiter:5.5.2")
+    intTestImplementationCfg("io.kotlintest:kotlintest-runner-junit5:3.4.2")
     intTestImplementationCfg(ktor("server-test-host"))
-    intTestImplementationCfg("io.kotlintest:kotlintest-runner-junit5:3.3.2")
     testData(project(":admin:test-framework:test-data"))
 }
 
@@ -114,27 +114,28 @@ tasks {
         from(testPluginProject.tasks["distZip"])
         into(file("distr").resolve("adminStorage"))
     }
-    
+
+    withType<Test> {
+        useJUnitPlatform()
+    }
+
     named(`test-integration`.classesTaskName) {
         testBuildSourceSets.forEach { srcSet ->
             dependsOn(srcSet.classesTaskName)
         }
     }
-
-    val test by existing(Test::class)
-
+    
     val integrationTest by registering(Test::class) {
         dependsOn(prepareDist)
         mustRunAfter(test)
         systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
-        useJUnitPlatform()
         description = "Runs the integration tests"
         group = "verification"
         testClassesDirs = `test-integration`.output.classesDirs
         classpath = `test-integration`.runtimeClasspath
     }
-
-    named("check") {
+    
+    check {
         dependsOn(integrationTest)
     }
 

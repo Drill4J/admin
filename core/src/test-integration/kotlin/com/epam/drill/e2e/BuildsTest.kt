@@ -4,12 +4,13 @@ import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlin.test.*
 
 class BuildsTest : E2ETest() {
 
     private val agentId = "buildRenamingAgent"
 
-    @org.junit.jupiter.api.Test
+    @Test
     fun `can add new builds and rename aliases`() {
         createSimpleAppWithUIConnection(agentStreamDebug = false, uiStreamDebug = false) {
             val aw = AgentWrap(agentId)
