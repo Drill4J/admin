@@ -272,7 +272,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 val renameBuildVersionResponds = "Rename build version"
                     .examples(
                         example(
-                            "agent build version name", "some build version name"
+                            "agent build version name", AgentBuildVersionJson("Petclinic", "some build version name")
                         )
                     )
                     .responds(
