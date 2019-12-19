@@ -48,7 +48,7 @@ private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
         JwtConfig.verifier.verify(token)
     } catch (ex: JWTVerificationException) {
         when (ex) {
-            is TokenExpiredException -> logger.debug { "Token is invalid" }
+            is TokenExpiredException -> Unit //Ignore, since we don't have token refreshing 
             else -> logger.debug { "Token '$token' verified was finished with exception" }
         }
         try {
