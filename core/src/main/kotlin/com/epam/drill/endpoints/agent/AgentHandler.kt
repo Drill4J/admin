@@ -1,12 +1,10 @@
-@file:Suppress("EXPERIMENTAL_API_USAGE", "UNCHECKED_CAST")
+@file:Suppress("EXPERIMENTAL_API_USAGE")
 
 package com.epam.drill.endpoints.agent
 
-import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
-import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -28,46 +26,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val pd: PluginDispatcher by kodein.instance()
     private val topicResolver: TopicResolver by instance()
-    private val store: StoreManager by instance()
-
 
     init {
         app.routing {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = retrieveParams()
-                val (agentId, instanceId, pBuildVersion, serviceGroup, agentType) = agentConfig
-                val agentStore = store.agentStore(agentId)
-                val agentInfo =
-                    agentStore.findById<AgentInfo>(agentId)?.apply {
-                        agentManager.processBuild(this, pBuildVersion)
-                        this.instanceIds.add(instanceId)
-                        agentManager.put(this, this@agentWebsocket)
-                        agentManager.update()
-                        agentManager.adminData(this.id).loadStoredData()
-                        agentManager.sync(this, needSync)
-                    } ?: AgentInfo(
-                        agentId,
-                        agentId,
-                        AgentStatus.NOT_REGISTERED,
-                        serviceGroup,
-                        "",
-                        "",
-                        pBuildVersion,
-                        "",
-                        agentType
-                    ).apply {
-                        this.instanceIds.add(instanceId)
-                        agentManager.put(this, this@agentWebsocket)
-                        agentManager.update()
-                        agentManager.adminData(this.id).loadStoredData()
-
-                    }
-
-
-
-                agentStore.store(agentInfo)
-                sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(agentInfo.sessionIdHeaderName.toLowerCase())
-                createWsLoop(agentInfo, instanceId)
+                val agentInfo = agentManager.attach(agentConfig, needSync, this)
+                createWsLoop(agentInfo, agentConfig.instanceId)
             }
         }
     }

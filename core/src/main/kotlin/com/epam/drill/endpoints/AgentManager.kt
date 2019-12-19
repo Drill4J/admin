@@ -34,11 +34,26 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val adminDataVault: AdminDataVault by instance()
     private val notificationsManager: NotificationsManager by instance()
 
-    fun processBuild(aInfo: AgentInfo, pBuildVersion: String) = with(aInfo) {
-        logger.debug { "Updating build version for agent with id $id. Build version is $pBuildVersion" }
+    suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
+        val id = config.id
+        val agentStore = store.agentStore(id)
+        val existingInfo = agentStore.findById<AgentInfo>(id)?.processBuild(config.buildVersion)
+        val info = existingInfo ?: config.toAgentInfo()
+        info.instanceIds.add(config.instanceId)
+        agentStorage.put(id, AgentEntry(info, session))
+        update()
+        adminData(id).loadStoredData()
+        existingInfo?.sync(needSync) // sync only existing info!
+        agentStore.store(info)
+        session.updateConfig(info)
+        return info
+    }
+
+    private fun AgentInfo.processBuild(version: String) = apply {
+        logger.debug { "Updating build version for agent with id $id. Build version is $version" }
         if (status != AgentStatus.OFFLINE) {
-            val buildInfo = adminData(id).buildManager[pBuildVersion]
-            this.buildVersion = pBuildVersion
+            val buildInfo = adminData(id).buildManager[version]
+            this.buildVersion = version
             this.buildAlias = buildInfo?.buildAlias ?: ""
             logger.debug { "Build version for agent with id $id was updated" }
         }
@@ -124,10 +139,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun singleUpdate(agentId: String) {
         agentStorage.singleUpdate(agentId)
-    }
-
-    suspend fun put(agentInfo: AgentInfo, session: AgentWsSession) {
-        agentStorage.put(agentInfo.id, AgentEntry(agentInfo, session))
     }
 
     suspend fun remove(agentInfo: AgentInfo) {
@@ -225,26 +236,28 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     fun packagesPrefixes(agentId: String) = adminData(agentId).packagesPrefixes
 
-    suspend fun sync(agentInfo: AgentInfo, needSync: Boolean) {
-        logger.debug { "Agent with id ${agentInfo.name} starting sync, needSync is $needSync" }
-        if (agentInfo.status != AgentStatus.NOT_REGISTERED) {
+    suspend fun AgentInfo.sync(needSync: Boolean) {
+        logger.debug { "Agent with id $name starting sync, needSync is $needSync" }
+        if (status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
-                wrapBusy(agentInfo) {
+                wrapBusy(this) {
                     updateConfig(this)
                     configurePackages(packagesPrefixes(id), id)//thread sleep
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
                 }
-            logger.debug { "Agent with id ${agentInfo.name} sync was finished" }
+            logger.debug { "Agent with id $name sync was finished" }
         } else {
             logger.warn { "Agent status is not registered" }
         }
     }
 
-    suspend fun updateConfig(aInfo: AgentInfo) {
-        agentSession(aInfo.id)?.apply {
-            sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(aInfo.sessionIdHeaderName.toLowerCase())
-        }
+    private suspend fun AgentWsSession.updateConfig(info: AgentInfo) {
+        sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(info.sessionIdHeaderName.toLowerCase())
+    }
+
+    suspend fun updateConfig(info: AgentInfo) {
+        agentSession(info.id)?.updateConfig(info)
     }
 
     private suspend fun AgentInfo.sendPlugins() {
@@ -299,6 +312,18 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 }
+
+fun AgentConfig.toAgentInfo() = AgentInfo(
+    id = id,
+    name = id,
+    status = AgentStatus.NOT_REGISTERED,
+    serviceGroup = serviceGroupId,
+    groupName = "",
+    description = "",
+    buildVersion = buildVersion,
+    buildAlias = "",
+    agentType = agentType
+)
 
 suspend fun AgentInfo.update(agentManager: AgentManager) {
     val ai = this

@@ -167,9 +167,11 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
                                     HttpStatusCode.BadRequest to "Plugin '$pluginIdObject' is already in agent '$agentId'"
                                 } else {
-                                    agentManager.addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
-                                    agentManager.sendPluginsToAgent(agentInfo)
-                                    agentManager.sync(agentInfo, true)
+                                    agentManager.apply {
+                                        addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
+                                        sendPluginsToAgent(agentInfo)
+                                        agentInfo.sync(true)
+                                    }
                                     HttpStatusCode.OK to "Plugin '$pluginIdObject' was added to agent '$agentId'"
                                 }
                             } else {
