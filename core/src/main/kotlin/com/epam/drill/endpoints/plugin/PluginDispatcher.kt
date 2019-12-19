@@ -18,6 +18,7 @@ import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -103,7 +104,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val dispatchPluginsResponds = "Dispatch defined plugin actions in defined service group"
                     .responds()
-                post<Routes.Api.ServiceGroup.DispatchPluginAction>(dispatchPluginsResponds){ params ->
+                post<Routes.Api.ServiceGroup.DispatchPluginAction>(dispatchPluginsResponds) { params ->
                     val (serviceGroupId, pluginId) = params
                     val agents = agentManager.serviceGroup(serviceGroupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
@@ -245,15 +246,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         return agents.map { agentEntry ->
             val adminPart: AdminPluginPart<*> =
                 agentManager.instantiateAdminPluginPart(agentEntry, dp.pluginClass, pluginId)
-            val actionObject = adminPart.parseAction(action)
-            val adminActionResult =
-                if (actionObject is com.epam.drill.plugins.coverage.StartNewSession &&
-                    actionObject.payload.sessionId.isEmpty()
-                ) {
-                    val reAction = actionObject.copy(actionObject.payload.copy(sessionId = sessionId))
-                    @Suppress("UNCHECKED_CAST")
-                    (adminPart as AdminPluginPart<Any>).doAction(reAction)
-                } else adminPart.doRawAction(action)
+            val adminActionResult = adminPart.doRawAction(sessionSubstituting(action, sessionId))
             val agentPartMsg = when (adminActionResult) {
                 is String -> adminActionResult
                 is Unit -> action
@@ -275,6 +268,17 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
         }.reduce { k, _ -> k }
+    }
+
+    private fun sessionSubstituting(action: String, sessionId: String): String {
+        val parseJson = json.parseJson(action) as? JsonObject
+        val mainContainer = parseJson?.get("payload") as? JsonObject
+        val sessionIdContainer = mainContainer?.get("sessionId")
+        return if (sessionIdContainer != null && sessionIdContainer.content.isEmpty()) {
+            (mainContainer.content as MutableMap<String, JsonElement>)["sessionId"] =
+                JsonElement.serializer() parse sessionId
+            mainContainer.toString()
+        } else action
     }
 
     private suspend fun processSingleAction(

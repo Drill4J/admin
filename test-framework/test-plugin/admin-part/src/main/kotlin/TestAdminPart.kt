@@ -50,7 +50,7 @@ class TestAdminPart(
         sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
     }
 
-    override fun getPluginData(params: Map<String, String>): String {
+    override suspend fun getPluginData(params: Map<String, String>): String {
         return when (params["type"]) {
             "recommendations" -> newBuildActionsList()
             else -> ""
