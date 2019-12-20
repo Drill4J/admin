@@ -44,9 +44,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         update()
         adminData(id).loadStoredData()
         existingInfo?.sync(needSync) // sync only existing info!
-        agentStore.store(info)
+        info.update()
         session.updateConfig(info)
         return info
+    }
+
+    suspend fun removeInstance(info: AgentInfo, instanceId: String) {
+        //FIXME Global mutable state!!!
+        info.instanceIds.remove(instanceId)
+        if (info.instanceIds.isEmpty()) {
+            remove(info)
+            logger.info { "Agent with id '${info.id}' was disconnected" }
+        } else {
+            singleUpdate(info.id)
+            logger.info { "Instance '$instanceId' of Agent '${info.id}' was disconnected" }
+        }
+        info.update()
     }
 
     private fun AgentInfo.processBuild(version: String) = apply {

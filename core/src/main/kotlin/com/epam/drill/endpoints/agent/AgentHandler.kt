@@ -102,14 +102,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Handle with exception" }
             }
         } finally {
-            agentInfo.instanceIds.remove(instanceId)
-            if (agentInfo.instanceIds.isEmpty()) {
-                agentManager.remove(agentInfo)
-                logger.info { "Agent with id '${agentInfo.id}' was disconnected" }
-            } else {
-                agentManager.singleUpdate(agentInfo.id)
-                logger.info { "Instance '$instanceId' of Agent '${agentInfo.id}' was disconnected" }
-            }
+            agentManager.removeInstance(agentInfo, instanceId)
         }
     }
 }
