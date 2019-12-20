@@ -1,6 +1,5 @@
 package com.epam.drill.admindata
 
-import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -105,6 +104,8 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         buildInfos[buildVersion.id] = buildInfo
         storeClient.store(buildInfo.toStorable(agentId))
     }
+
+    fun buildAliasExists(alias: String) = buildInfos.any { it.value.buildAlias == alias }
 
 }
 

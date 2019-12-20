@@ -290,6 +290,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentId,
                         buildVersion
                     )) {
+                        HttpStatusCode.NotFound -> HttpStatusCode.BadRequest to "Build with id ${buildVersion.id} does not exist"
                         HttpStatusCode.BadRequest -> HttpStatusCode.BadRequest to "Build named ${buildVersion.name} already exists"
                         HttpStatusCode.OK -> HttpStatusCode.OK to "Agent with id $agentId have been updated"
                         else -> HttpStatusCode.InternalServerError to "Request handle with exception"

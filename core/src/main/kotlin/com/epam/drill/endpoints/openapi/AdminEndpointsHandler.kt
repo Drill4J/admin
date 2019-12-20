@@ -15,11 +15,10 @@ class AdminEndpointsHandler(override val kodein: Kodein) : KodeinAware {
         agentId: String,
         buildVersion: AgentBuildVersionJson
     ): HttpStatusCode {
-
+        val buildManager = agentManager.adminData(agentId).buildManager
         return when {
-            agentManager.adminData(agentId).buildManager.buildInfos
-                .any { it.value.buildAlias == buildVersion.name } -> HttpStatusCode.BadRequest
-
+            buildManager[buildVersion.id] == null -> HttpStatusCode.NotFound
+            buildManager.buildAliasExists(buildVersion.name) -> HttpStatusCode.BadRequest
             else -> {
                 agentManager.updateAgentBuildAliases(agentId, buildVersion)
                 HttpStatusCode.OK
