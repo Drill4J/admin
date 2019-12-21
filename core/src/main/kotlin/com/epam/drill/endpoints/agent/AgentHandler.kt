@@ -102,7 +102,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Handle with exception" }
             }
         } finally {
-            agentManager.removeInstance(agentInfo, instanceId)
+            agentManager.apply {
+                agentInfo.removeInstance(instanceId)
+            }
         }
     }
 }

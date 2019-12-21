@@ -13,6 +13,8 @@ import com.epam.drill.system.*
 import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import mu.*
 import org.apache.commons.codec.digest.*
@@ -27,19 +29,21 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver: TopicResolver by instance()
     private val store: StoreManager by instance()
-    private val wsService: Sender by kodein.instance()
+    private val wsService: Sender by instance()
     val app: Application by instance()
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
     val adminDataVault: AdminDataVault by instance()
     private val notificationsManager: NotificationsManager by instance()
+    
+    private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 
     suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
         val id = config.id
         val agentStore = store.agentStore(id)
         val existingInfo = agentStore.findById<AgentInfo>(id)?.processBuild(config.buildVersion)
         val info = existingInfo ?: config.toAgentInfo()
-        info.instanceIds.add(config.instanceId)
+        info.addInstanceId(config.instanceId)
         agentStorage.put(id, AgentEntry(info, session))
         update()
         adminData(id).loadStoredData()
@@ -49,18 +53,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return info
     }
 
-    suspend fun removeInstance(info: AgentInfo, instanceId: String) {
-        //FIXME Global mutable state!!!
-        info.instanceIds.remove(instanceId)
-        if (info.instanceIds.isEmpty()) {
-            remove(info)
-            logger.info { "Agent with id '${info.id}' was disconnected" }
-        } else {
-            singleUpdate(info.id)
-            logger.info { "Instance '$instanceId' of Agent '${info.id}' was disconnected" }
-        }
-        info.update()
+    val AgentInfo.instanceIds: PersistentSet<String>
+        get() = instanceIds(_instanceIds.value)
+
+    private fun AgentInfo.addInstanceId(instanceId: String) {
+        persistentSetOf<String>()
+        _instanceIds.update { it.put(id, instanceIds(it) + instanceId) }
     }
+
+    suspend fun AgentInfo.removeInstance(instanceId: String) {
+        _instanceIds.update { it.put(id, instanceIds(it) - instanceId) }
+        if (instanceIds.isEmpty()) {
+            remove(this)
+            logger.info { "Agent with id '${id}' was disconnected" }
+        } else {
+            singleUpdate(id)
+            logger.info { "Instance '$instanceId' of Agent '${id}' was disconnected" }
+        }
+    }
+
+    private fun AgentInfo.instanceIds(it: PersistentMap<String, PersistentSet<String>>) =
+        it[id].orEmpty().toPersistentSet()
 
     private fun AgentInfo.processBuild(version: String) = apply {
         logger.debug { "Updating build version for agent with id $id. Build version is $version" }

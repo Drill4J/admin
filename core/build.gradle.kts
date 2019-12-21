@@ -45,6 +45,7 @@ dependencies {
     implementation(project(":plugin-api:drill-admin-part"))
     implementation(project(":common"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
     implementation("io.github.microutils:kotlin-logging:1.7.8")
     implementation("ch.qos.logback:logback-classic:1.2.3")

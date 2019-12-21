@@ -30,7 +30,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 sessionStorage.sendTo(
                     destination,
                     storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)).toMutableSet()
-                        .toAgentInfosWebSocket(agentManager.adminDataVault)
+                        .toAgentInfosWebSocket(agentManager)
                 )
 
             }
@@ -39,7 +39,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 if (sessionStorage.exists(destination)) {
                     sessionStorage.sendTo(
                         destination,
-                        v.agent.toAgentInfoWebSocket(agentManager.adminData(k))
+                        v.agent.toAgentInfoWebSocket(agentManager)
                     )
 
                 }
@@ -55,12 +55,12 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoutes.GetAllAgents> {
                     agentManager.agentStorage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id))
                         .toMutableSet()
-                        .toAgentInfosWebSocket(agentManager.adminDataVault)
+                        .toAgentInfosWebSocket(agentManager)
 
                 }
 
                 topic<WsRoutes.GetAgent> { (agentId) ->
-                    agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager.adminData(agentId))
+                    agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager)
                 }
 
                 topic<WsRoutes.GetAgentBuilds> { payload ->

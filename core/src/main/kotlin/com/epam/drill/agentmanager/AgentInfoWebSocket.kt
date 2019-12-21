@@ -1,14 +1,14 @@
 package com.epam.drill.agentmanager
 
-import com.epam.drill.admindata.*
 import com.epam.drill.common.*
+import com.epam.drill.endpoints.*
 import com.epam.drill.plugins.*
 import kotlinx.serialization.*
 
 @Serializable
 data class AgentInfoWebSocket(
     val id: String,
-    val instanceIds: MutableSet<String>,
+    val instanceIds: Set<String>,
     val name: String,
     val description: String,
     val group: String = "",
@@ -24,44 +24,48 @@ data class AgentInfoWebSocket(
     val agentType: String
 )
 
-fun MutableSet<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
+fun Set<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
 
-fun MutableSet<AgentInfo>.toAgentInfosWebSocket(adminDataVault: AdminDataVault) = this.map { agentInfo ->
-    agentInfo.run {
-        AgentInfoWebSocket(
-            id = id,
-            instanceIds = instanceIds,
-            name = name,
-            description = description.take(200),
-            group = groupName,
-            status = status,
-            buildVersion = buildVersion,
-            buildAlias = buildAlias,
-            adminUrl = adminUrl,
-            ipAddress = ipAddress,
-            activePluginsCount = plugins.activePluginsCount(),
-            sessionIdHeaderName = sessionIdHeaderName,
-            plugins = plugins.map { it.toPluginWebSocket() }.toMutableSet(),
-            packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList(),
-            agentType = agentType.notation
-        )
+fun MutableSet<AgentInfo>.toAgentInfosWebSocket(agentManager: AgentManager) = this.map { agentInfo ->
+    agentManager.run {
+        agentInfo.run {
+            AgentInfoWebSocket(
+                id = id,
+                instanceIds = instanceIds,
+                name = name,
+                description = description.take(200),
+                group = groupName,
+                status = status,
+                buildVersion = buildVersion,
+                buildAlias = buildAlias,
+                adminUrl = adminUrl,
+                ipAddress = ipAddress,
+                activePluginsCount = plugins.activePluginsCount(),
+                sessionIdHeaderName = sessionIdHeaderName,
+                plugins = plugins.map { it.toPluginWebSocket() }.toSet(),
+                packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList(),
+                agentType = agentType.notation
+            )
+        }
     }
 }
 
-fun AgentInfo.toAgentInfoWebSocket(adminData: AdminPluginData) = AgentInfoWebSocket(
-    id = id,
-    instanceIds = instanceIds,
-    name = name,
-    description = description,
-    group = groupName,
-    status = status,
-    buildVersion = buildVersion,
-    buildAlias = buildAlias,
-    adminUrl = adminUrl,
-    ipAddress = ipAddress,
-    activePluginsCount = plugins.activePluginsCount(),
-    sessionIdHeaderName = sessionIdHeaderName,
-    plugins = plugins.toPluginsWebSocket(),
-    packagesPrefixes = adminData.packagesPrefixes,
-    agentType = agentType.notation
-)
+fun AgentInfo.toAgentInfoWebSocket(agentManager: AgentManager) = agentManager.run {
+    AgentInfoWebSocket(
+        id = id,
+        instanceIds = instanceIds,
+        name = name,
+        description = description,
+        group = groupName,
+        status = status,
+        buildVersion = buildVersion,
+        buildAlias = buildAlias,
+        adminUrl = adminUrl,
+        ipAddress = ipAddress,
+        activePluginsCount = this@toAgentInfoWebSocket.plugins.activePluginsCount(),
+        sessionIdHeaderName = sessionIdHeaderName,
+        plugins = this@toAgentInfoWebSocket.plugins.toPluginsWebSocket(),
+        packagesPrefixes = adminData(id).packagesPrefixes,
+        agentType = agentType.notation
+    )
+}
