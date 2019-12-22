@@ -1,0 +1,28 @@
+name: Build & publish drill artifacts
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build_and_publish:
+    name: Publish to Maven repo and Docker registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Check
+        run: gradle build
+      - name: Publish
+        run: |
+          gradle -si publish
+        env:
+          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
+      - name: Publish to DockerHub
+        run: |
+          gradle -si jib \
+          -Djib.to.auth.username=${DRILL_USERNAME} \
+          -Djib.to.auth.password=${DRILL_PASSWORD}
+        env:
+          DRILL_USERNAME: ${{ secrets.DRILL_USERNAME }}
+          DRILL_PASSWORD: ${{ secrets.DRILL_PASSWORD }}
