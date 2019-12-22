@@ -5,13 +5,6 @@ plugins {
     `kotlinx-serialization`
     `maven-publish`
 }
-repositories {
-    mavenLocal()
-    mavenCentral()
-    jcenter()
-    maven(url = "https://dl.bintray.com/kodein-framework/Kodein-DI/")
-    maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
-}
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -22,18 +15,18 @@ dependencies {
     implementation(ktor("server-core"))
     implementation(ktor("websockets"))
     implementation(ktor("serialization"))
-    implementation(project(":plugin-api:drill-admin-part"))
-    implementation(project(":common"))
+    implementation(drill("drill-admin-part-jvm", drillCommonVersion))
+    implementation(drill("common-jvm", drillAdminPartVersion))
     implementation(ktor("server-test-host"))
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
     implementation("io.mockk:mockk:1.9.3")
-    api(project(":admin:core"))
+    api(project(":core"))
     implementation("org.apache.bcel:bcel:$bcelVersion")
-    implementation(project(":plugin-api:drill-agent-part"))
+    implementation(drill("drill-agent-part-jvm", drillAdminPartVersion))
     implementation("org.junit.jupiter:junit-jupiter:5.5.2")
-    implementation(project(":admin:test-framework:test-data"))
+    implementation(project(":test-framework:test-data"))
 }
 
 tasks {

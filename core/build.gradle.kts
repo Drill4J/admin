@@ -24,14 +24,6 @@ val intTestImplementationCfg by configurations.named(`test-integration`.implemen
     extendsFrom(configurations.testImplementation.get(), testData)
 } 
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-    jcenter()
-    maven(url = "https://dl.bintray.com/kodein-framework/Kodein-DI/")
-    maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
-}
-
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(ktor("auth"))
@@ -42,8 +34,8 @@ dependencies {
     implementation(ktor("websockets"))
     implementation(ktor("client-cio"))
     implementation(ktor("serialization"))
-    implementation(project(":plugin-api:drill-admin-part"))
-    implementation(project(":common"))
+    implementation(drill("drill-admin-part-jvm", drillAdminPartVersion))
+    implementation(drill("common-jvm", drillCommonVersion))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3")
     implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
@@ -57,11 +49,11 @@ dependencies {
     implementation("com.epam.drill:ktor-swagger:$swaggerVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
-    testImplementation(project(":admin:test-framework"))
+    testImplementation(project(":test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
     intTestImplementationCfg("io.kotlintest:kotlintest-runner-junit5:3.4.2")
     intTestImplementationCfg(ktor("server-test-host"))
-    testData(project(":admin:test-framework:test-data"))
+    testData(project(":test-framework:test-data"))
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")
@@ -104,7 +96,7 @@ jib {
     }
 }
 
-val testPluginProject = project(":admin:test-framework:test-plugin")
+val testPluginProject = project(":test-framework:test-plugin")
 
 tasks {
     clean {

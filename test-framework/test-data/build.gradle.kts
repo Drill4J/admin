@@ -4,10 +4,6 @@ plugins {
     kotlin("jvm")
     `maven-publish`
 }
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))

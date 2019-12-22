@@ -8,7 +8,7 @@ tasks {
     distributions {
         main {
             contents {
-                from(getByPath(":admin:test-framework:test-plugin:admin-part:jar"), getByPath(":admin:test-framework:test-plugin:agent-part:jar"), pluginConfigJson)
+                from(getByPath(":test-framework:test-plugin:admin-part:jar"), getByPath(":test-framework:test-plugin:agent-part:jar"), pluginConfigJson)
                 into("/")
             }
         }

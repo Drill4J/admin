@@ -1,2 +1,5 @@
-work/
-distr/
+/.idea/
+.gradle/
+build/
+/core/work/
+/core/distr/
