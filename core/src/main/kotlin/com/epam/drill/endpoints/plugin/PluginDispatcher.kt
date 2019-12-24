@@ -166,20 +166,20 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             if (agentId in agentManager) {
                                 val agentInfo = agentManager[agentId]!!
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
-                                    HttpStatusCode.BadRequest to "Plugin '$pluginIdObject' is already in agent '$agentId'"
+                                    HttpStatusCode.BadRequest to "Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'"
                                 } else {
                                     agentManager.apply {
                                         addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
                                         sendPluginsToAgent(agentInfo)
                                         agentInfo.sync(true)
                                     }
-                                    HttpStatusCode.OK to "Plugin '$pluginIdObject' was added to agent '$agentId'"
+                                    HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
                                 }
                             } else {
                                 HttpStatusCode.BadRequest to "Agent '$agentId' not found"
                             }
                         }
-                        else -> HttpStatusCode.BadRequest to "Plugin $pluginIdObject not found."
+                        else -> HttpStatusCode.BadRequest to "Plugin ${pluginIdObject.pluginId} not found."
                     }
                     logger.debug { msg }
                     call.respondJsonIfErrorsOccured(status, msg)
