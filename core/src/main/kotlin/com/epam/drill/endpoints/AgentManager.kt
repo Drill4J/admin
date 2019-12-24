@@ -45,7 +45,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val info = existingInfo ?: config.toAgentInfo()
         info.addInstanceId(config.instanceId)
         agentStorage.put(id, AgentEntry(info, session))
-        update()
         adminData(id).loadStoredData()
         existingInfo?.sync(needSync) // sync only existing info!
         info.update()
