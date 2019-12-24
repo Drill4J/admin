@@ -1,0 +1,37 @@
+name: Tag develop
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  tag:
+    name: Tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Gradle Cache
+        id: cache-gradle
+        uses: actions/cache@v1
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Gradle Build Cache
+        id: cache-build
+        uses: actions/cache@v1
+        with:
+          path: ./build-cache
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+      - name: Set tag vesion
+        id: set_ver
+        run: |
+          echo "::set-output name=tag_ver::$(gradle -q :printVersion)"
+      - name: Tag commit
+        uses: tvdias/github-tagger@v0.0.1
+        with:
+          repo-token: ${{ secrets.REPO_TOKEN }}
+          tag: v${{ steps.set_ver.outputs.tag_ver }}
