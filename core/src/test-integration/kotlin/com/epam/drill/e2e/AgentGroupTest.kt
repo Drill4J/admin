@@ -2,7 +2,6 @@ package com.epam.drill.e2e
 
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.agent.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.junit.jupiter.api.*
@@ -11,7 +10,7 @@ import org.junit.jupiter.api.*
 class AgentGroupTest : E2ETest() {
 
     @RepeatedTest(1)
-    fun `Asz`() {
+    fun `emulate microservices registration`() {
         val wit = 0
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
@@ -51,8 +50,6 @@ class AgentGroupTest : E2ETest() {
 
             uiWatcher { x ->
 
-                println(x.receive().map { it.id to it.status to it.group })
-                println(x.receive().map { it.id to it.status to it.group })
                 println(x.receive().map { it.id to it.status to it.group })
                 println(x.receive().map { it.id to it.status to it.group })
                 println(x.receive().map { it.id to it.status to it.group })
