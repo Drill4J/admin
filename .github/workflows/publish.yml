@@ -2,7 +2,7 @@ name: Build & publish drill artifacts
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   build_and_publish:
