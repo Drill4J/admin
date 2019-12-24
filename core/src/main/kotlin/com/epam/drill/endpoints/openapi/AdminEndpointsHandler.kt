@@ -25,4 +25,31 @@ class AdminEndpointsHandler(override val kodein: Kodein) : KodeinAware {
             }
         }
     }
+
+    suspend fun updateSystemSettings(
+        agentId: String,
+        systemSettings: SystemSettings
+    ): HttpStatusCode {
+
+        return when {
+            systemSettings.packagesPrefixes.any { it.isBlank() } -> HttpStatusCode.BadRequest
+
+            else -> {
+                val adminData = agentManager.adminData(agentId)
+
+                if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                    adminData.resetBuilds()
+                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
+                    agentManager.applyPackagesChangesOnAllPlugins(agentId)
+                    agentManager.wrapBusy(agentManager[agentId]!!) {
+                        agentManager.disableAllPlugins(agentId)
+                        agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
+                    }
+                }
+                agentManager[agentId]!!.sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                agentManager.updateConfig(agentManager[agentId]!!)
+                HttpStatusCode.OK
+            }
+        }
+    }
 }

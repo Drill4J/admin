@@ -245,26 +245,20 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<String>(
                             example("Trigger for classes processing sent to agent with such id")
-                        )
+                        ),
+                        badRequest()
                     )
                 post<Routes.Api.Agent.SystemSettings, SystemSettings>(systemSettingsResponds) { params, systemSettings ->
                     val (agentId) = params
-                    val adminData = agentManager.adminData(agentId)
-                    if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
-                        adminData.resetBuilds()
-                        adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                        agentManager.applyPackagesChangesOnAllPlugins(agentId)
-                        agentManager.wrapBusy(agentManager[agentId]!!) {
-                            agentManager.disableAllPlugins(agentId)
-                            agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
-                        }
+                    val statusCode = handler.updateSystemSettings(agentId, systemSettings)
+
+                    val response = when (statusCode) {
+                        HttpStatusCode.OK -> "Trigger for classes processing sent to agent with id $agentId"
+                        HttpStatusCode.BadRequest -> "Package prefixes contains empty value"
+                        else -> "Request handle with exception"
                     }
-                    agentManager[agentId]!!.sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                    agentManager.updateConfig(agentManager[agentId]!!)
-                    call.respondJsonIfErrorsOccured(
-                        HttpStatusCode.OK,
-                        "Trigger for classes processing sent to agent with id $agentId"
-                    )
+                    logger.info { "System settings update was finished with result: $response" }
+                    call.respondJsonIfErrorsOccured(statusCode, response)
                 }
             }
 
