@@ -95,7 +95,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentInfo.plugins.filter { it.enabled }.forEach {
                             agentSession?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id))
                         }
-                        agentInfo.update(agentManager)
+                        with(agentManager) { agentInfo.commitChanges() }
                         logger.info { "Agent $agentId toggled to status ${agentInfo.status.name} successfully" }
                         call.respond(HttpStatusCode.OK, "toggled")
                     }
