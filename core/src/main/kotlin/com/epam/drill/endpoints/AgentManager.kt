@@ -35,7 +35,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val plugins: Plugins by instance()
     val adminDataVault: AdminDataVault by instance()
     private val notificationsManager: NotificationsManager by instance()
-    
+
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 
     suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
@@ -47,7 +47,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.put(id, AgentEntry(info, session))
         adminData(id).loadStoredData()
         existingInfo?.sync(needSync) // sync only existing info!
-        info.update()
+        info.persistToDatabase()
         session.updateConfig(info)
         return info
     }
@@ -66,7 +66,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             remove(this)
             logger.info { "Agent with id '${id}' was disconnected" }
         } else {
-            singleUpdate(id)
+            notifySingleAgent(id)
             logger.info { "Instance '$instanceId' of Agent '${id}' was disconnected" }
         }
     }
@@ -100,7 +100,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             description = au.description
             buildAlias = au.buildAlias
             status = au.status
-            update(this@AgentManager)
+            commitChanges()
         }
         logger.debug { "Agent with id $agentId updated" }
         topicResolver.sendToAllSubscribed("/$agentId/builds")
@@ -118,7 +118,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     this.buildAlias = buildVersion.name
                 }
                 adminData(agentId).buildManager.renameBuild(buildVersion)
-                update(this@AgentManager)
+                commitChanges()
                 topicResolver.sendToAllSubscribed("/$agentId/builds")
                 updateBuildDataOnAllPlugins(agentId, buildVersion.id)
             }
@@ -132,7 +132,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             agentInfo.plugins.find { it.id == pc.id }?.let { plugin ->
                 if (plugin.config != pc.data) {
                     plugin.config = pc.data
-                    agentInfo.update(this)
+                    agentInfo.commitChanges()
                 }
             }
         } != null
@@ -158,11 +158,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Agent with id ${agInfo.name} has been reset" }
     }
 
-    suspend fun update() {
+    private suspend fun notifyAllAgents() {
         agentStorage.update()
     }
 
-    suspend fun singleUpdate(agentId: String) {
+    private suspend fun notifySingleAgent(agentId: String) {
         agentStorage.singleUpdate(agentId)
     }
 
@@ -211,14 +211,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) = GlobalScope.launch {
         logger.debug { "Agent with id ${ai.name} set busy status" }
         ai.status = AgentStatus.BUSY
-        ai.update(this@AgentManager)
+        ai.commitChanges()
 
         try {
             block(ai)
         } finally {
             ai.status = AgentStatus.ONLINE
             logger.debug { "Agent with id ${ai.name} set online status" }
-            ai.update(this@AgentManager)
+            ai.commitChanges()
             notificationsManager.newBuildNotify(ai)
         }
     }
@@ -247,7 +247,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
 
-    suspend fun AgentInfo.update() {
+    private suspend fun AgentInfo.persistToDatabase() {
         store.agentStore(this.id).store(this)
         agentStorage.targetMap[this.id]?.agent = this
     }
@@ -336,6 +336,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             plugin
         }
     }
+
+    suspend fun AgentInfo.commitChanges() {
+        persistToDatabase()
+        notifyAllAgents()
+        notifySingleAgent(this.id)
+    }
 }
 
 fun AgentConfig.toAgentInfo() = AgentInfo(
@@ -349,13 +355,6 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     buildAlias = "",
     agentType = agentType
 )
-
-suspend fun AgentInfo.update(agentManager: AgentManager) {
-    val ai = this
-    agentManager.apply { ai.update() }
-    agentManager.update()
-    agentManager.singleUpdate(this.id)
-}
 
 suspend fun AgentWsSession.setPackagesPrefixes(data: PackagesPrefixes) =
     sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(data).await()
