@@ -72,7 +72,7 @@ class PluginWsTest {
                 outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, "/pluginTopic1", ""))
                 val receive = incoming.receive()
                 assertTrue(receive is Frame.Close)
-                assertEquals(CloseReason.Codes.UNEXPECTED_CONDITION.code, receive.readReason()?.code)
+                assertEquals(CloseReason.Codes.INTERNAL_ERROR.code, receive.readReason()?.code)
             }
         }
     }
