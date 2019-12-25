@@ -59,7 +59,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                         }
                     } catch (ex: Exception) {
                         when (ex) {
-                            is ClosedSendChannelException ->logger.debug { "Channel for websocket $id closed" }
+                            is ClosedSendChannelException, is CancellationException -> logger.debug { "Channel for websocket $id closed" }
                             else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
                         }
                         sessionDataSet.removeIf { it == data }
@@ -121,7 +121,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                                 }
                                 else -> {
                                     logger.warn { "Event '${event.type}' is not implemented yet" }
-                                    close(RuntimeException("Event '${event.type}' is not implemented yet"))
+                                    close()
                                 }
                             }
                         }

@@ -8,6 +8,7 @@ import io.ktor.locations.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import mu.*
+import java.util.concurrent.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -48,7 +49,7 @@ suspend fun SessionStorage.sendTo(
             }
         } catch (ex: Exception) {
             when (ex) {
-                is ClosedSendChannelException -> logger.warn { "The socket connection was aborted" }
+                is ClosedSendChannelException, is CancellationException -> logger.warn { "The socket connection was aborted" }
                 else -> logger.error(ex) { "Processing drill ws session was finished with exception" }
             }
             iter.remove()
