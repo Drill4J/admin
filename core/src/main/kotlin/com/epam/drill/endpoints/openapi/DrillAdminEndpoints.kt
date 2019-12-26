@@ -1,5 +1,6 @@
 package com.epam.drill.endpoints.openapi
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.dataclasses.*
@@ -15,7 +16,6 @@ import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -239,7 +239,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .examples(
                         example(
                             "systemSettings",
-                            SystemSettings(listOf("some package prefixes"), "some session header name")
+                            SystemSettingsDto(listOf("some package prefixes"), "some session header name")
                         )
                     )
                     .responds(
@@ -248,7 +248,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         ),
                         badRequest()
                     )
-                post<Routes.Api.Agent.SystemSettings, SystemSettings>(systemSettingsResponds) { params, systemSettings ->
+                post<Routes.Api.Agent.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
                     val (agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 
@@ -296,9 +296,3 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
         }
     }
 }
-
-@Serializable
-data class SystemSettings(
-    val packagesPrefixes: List<String> = emptyList(),
-    val sessionIdHeaderName: String = ""
-)

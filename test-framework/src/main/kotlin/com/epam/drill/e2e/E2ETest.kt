@@ -1,10 +1,10 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.servicegroup.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
-import com.epam.drill.endpoints.openapi.*
 import com.epam.drill.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
@@ -244,12 +244,12 @@ abstract class E2ETest : AdminTest() {
     fun TestApplicationEngine.changePackages(
         agentId: String,
         token: String = globToken,
-        payload: SystemSettings,
+        payload: SystemSettingsDto,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync {
         handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(SystemSettings.serializer() stringify payload)
+            setBody(SystemSettingsDto.serializer() stringify payload)
         }.apply { resultBlock(response.status(), response.content) }
     }
 

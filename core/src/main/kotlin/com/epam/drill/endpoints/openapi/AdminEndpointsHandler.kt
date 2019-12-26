@@ -1,5 +1,6 @@
 package com.epam.drill.endpoints.openapi
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.common.*
 
 import com.epam.drill.endpoints.*
@@ -28,26 +29,13 @@ class AdminEndpointsHandler(override val kodein: Kodein) : KodeinAware {
 
     suspend fun updateSystemSettings(
         agentId: String,
-        systemSettings: SystemSettings
+        systemSettings: SystemSettingsDto
     ): HttpStatusCode {
-
         return when {
             systemSettings.packagesPrefixes.any { it.isBlank() } -> HttpStatusCode.BadRequest
 
             else -> {
-                val adminData = agentManager.adminData(agentId)
-
-                if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
-                    adminData.resetBuilds()
-                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                    agentManager.applyPackagesChangesOnAllPlugins(agentId)
-                    agentManager.wrapBusy(agentManager[agentId]!!) {
-                        agentManager.disableAllPlugins(agentId)
-                        agentManager.configurePackages(systemSettings.packagesPrefixes, agentId)
-                    }
-                }
-                agentManager[agentId]!!.sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                agentManager.updateConfig(agentManager[agentId]!!)
+                agentManager.updateSystemSettings(agentId, systemSettings)
                 HttpStatusCode.OK
             }
         }

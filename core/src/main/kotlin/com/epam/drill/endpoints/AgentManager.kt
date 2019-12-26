@@ -2,6 +2,7 @@ package com.epam.drill.endpoints
 
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admindata.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
@@ -56,7 +57,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             existingInfo?.sync(needSync) // sync only existing info!
         }
         info.persistToDatabase()
-        session.updateConfig(info)
+        session.updateSessionHeader(info)
         return info
     }
 
@@ -274,7 +275,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(this) {
-                    updateConfig(this)
+                    updateSessionHeader(this)
                     configurePackages(packagesPrefixes(id), id)//thread sleep
                     sendPlugins()
                     topicResolver.sendToAllSubscribed("/$id/builds")
@@ -285,12 +286,29 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private suspend fun AgentWsSession.updateConfig(info: AgentInfo) {
+    private suspend fun AgentWsSession.updateSessionHeader(info: AgentInfo) {
         sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(info.sessionIdHeaderName.toLowerCase())
     }
 
-    suspend fun updateConfig(info: AgentInfo) {
-        agentSession(info.id)?.updateConfig(info)
+    private suspend fun updateSessionHeader(info: AgentInfo) {
+        agentSession(info.id)?.updateSessionHeader(info)
+    }
+
+    suspend fun updateSystemSettings(agentId: String, systemSettings: SystemSettingsDto) {
+        val adminData = adminData(agentId)
+        getOrNull(agentId)?.let {
+            wrapBusy(it) {
+                if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                    adminData.resetBuilds()
+                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
+                    applyPackagesChangesOnAllPlugins(agentId)
+                    disableAllPlugins(agentId)
+                    configurePackages(systemSettings.packagesPrefixes, agentId)
+                }
+                it.sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                updateSessionHeader(it)
+            }
+        }
     }
 
     private suspend fun AgentInfo.sendPlugins() {
