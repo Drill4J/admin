@@ -2,11 +2,9 @@
 
 package com.epam.drill.router
 
-import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
-const val mainGroup = "API endpoints"
 const val agentGroup = "Agent operations"
 const val systemGroup = "System operations"
 const val agentPluginManagementGroup = "Agent's plugins operations"
@@ -63,7 +61,6 @@ object Routes {
             data class GetPluginData(val agentId: String, val pluginId: String)
         }
 
-
         @Group(systemGroup)
         @Location("/all/register")
         object RegisterAll
@@ -74,6 +71,10 @@ object Routes {
 
         @Location("/service-group")
         class ServiceGroup {
+            @Group(systemGroup)
+            @Location("/{serviceGroupId}")
+            data class Update(val serviceGroupId: String)
+
             @Group(systemGroup)
             @Location("/{serviceGroupId}/register")
             data class Register(val serviceGroupId: String)

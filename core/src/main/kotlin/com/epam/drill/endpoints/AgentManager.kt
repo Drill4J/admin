@@ -1,5 +1,6 @@
 package com.epam.drill.endpoints
 
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admindata.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.api.*
@@ -30,6 +31,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val topicResolver: TopicResolver by instance()
     private val store: StoreManager by instance()
     private val wsService: Sender by instance()
+    private val serviceGroupManager: ServiceGroupManager by instance()
     val app: Application by instance()
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
@@ -40,6 +42,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
         val id = config.id
+        logger.debug { "Service group id ${config.serviceGroupId}" }
+        if (config.serviceGroupId.isNotBlank()) {
+            serviceGroupManager.syncOnAttach(config.serviceGroupId)
+        }
         val agentStore = store.agentStore(id)
         val existingInfo = agentStore.findById<AgentInfo>(id)?.processBuild(config.buildVersion)
         val info = existingInfo ?: config.toAgentInfo()

@@ -1,5 +1,3 @@
-@file:Suppress("UNCHECKED_CAST")
-
 package com.epam.drill.e2e.plugin
 
 import com.epam.drill.agentmanager.*
@@ -27,6 +25,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
     withTestApplication({ testApp(this, sslPort, false) }) {
         engine = this@withTestApplication
         storeManager = appConfig.storeManager
+        commonStore = appConfig.commonStore
         globToken = requestToken()
 
         handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->

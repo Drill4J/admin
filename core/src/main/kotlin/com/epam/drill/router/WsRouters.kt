@@ -6,6 +6,9 @@ object WsRoutes {
     @Location("/get-all-agents")
     class GetAllAgents
 
+    @Location("/service-group/{groupId}")
+    data class ServiceGroup(val groupId: String)
+
     @Location("/get-agent/{agentId}")
     data class GetAgent(val agentId: String)
 

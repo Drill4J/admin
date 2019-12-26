@@ -1,6 +1,8 @@
 package com.epam.drill.kodein
 
 import com.epam.drill.*
+import com.epam.drill.admin.servicegroup.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.admindata.*
 import com.epam.drill.cache.*
 import com.epam.drill.cache.impl.*
@@ -24,9 +26,11 @@ import java.util.concurrent.*
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
-        bind<StoreManager>() with eagerSingleton { StoreManager(drillWorkDir) }
+        bind<StoreManager>() with eagerSingleton { StoreManager(drillWorkDir.resolve("agents")) }
+        bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir) }
         bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
+        bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>()) }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
@@ -49,6 +53,7 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<InfoController>() with eagerSingleton { InfoController(kodein) }
         bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
+        bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
         bind<AdminEndpointsHandler>() with eagerSingleton { AdminEndpointsHandler(kodein) }

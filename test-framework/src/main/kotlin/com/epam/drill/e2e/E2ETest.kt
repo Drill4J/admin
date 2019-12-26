@@ -34,6 +34,7 @@ abstract class E2ETest : AdminTest() {
             }
             withTestApplication({ testApp(this, sslPort, false) }) {
                 storeManager = appConfig.storeManager
+                commonStore = appConfig.commonStore
                 globToken = requestToken()
                 //create the 'drill-admin-socket' websocket connection
                 handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
