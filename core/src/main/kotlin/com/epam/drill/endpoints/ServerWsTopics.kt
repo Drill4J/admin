@@ -1,6 +1,7 @@
 package com.epam.drill.endpoints
 
 
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.agent.*
@@ -16,6 +17,7 @@ import org.kodein.di.generic.*
 
 class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val wsTopic: WsTopic by instance()
+    private val serviceGroupManager: ServiceGroupManager by instance()
     private val agentManager: AgentManager by instance()
     private val plugins: Plugins by instance()
     private val app: Application by instance()
@@ -58,6 +60,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         .toAgentInfosWebSocket(agentManager)
 
                 }
+
+                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
 
                 topic<WsRoutes.GetAgent> { (agentId) ->
                     agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager)

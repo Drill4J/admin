@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.jwt.config.*
 import com.epam.drill.kodein.*
@@ -22,6 +23,8 @@ import java.util.*
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreManager
+    lateinit var commonStore: CommonStore
+
 
     val testApp: Application.(String, Boolean) -> Unit = { sslPort, withArtifactory ->
         (environment.config as MapApplicationConfig).apply {
@@ -48,6 +51,7 @@ class AppConfig(var projectDir: File) {
         enableSwaggerSupport()
 
         kodeinApplication(AppBuilder {
+
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
@@ -64,12 +68,17 @@ class AppConfig(var projectDir: File) {
                 }
             }
 
-            val baseLocation = projectDir.resolve(UUID.randomUUID().toString()).resolve("agent")
+            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
+
             withKModule {
                 kodeinModule("addition") {
                     bind<StoreManager>() with eagerSingleton {
-                        storeManager = StoreManager(baseLocation)
+                        storeManager = StoreManager(baseLocation.resolve("agent"))
                         storeManager
+                    }
+                    bind<CommonStore>() with eagerSingleton {
+                        commonStore = CommonStore(baseLocation.resolve("common"))
+                        commonStore
                     }
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(kodein)
