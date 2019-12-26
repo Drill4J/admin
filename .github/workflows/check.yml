@@ -13,22 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - name: Gradle Cache
-        id: cache-gradle
-        uses: actions/cache@v1
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      - name: Gradle Build Cache
-        id: cache-build
-        uses: actions/cache@v1
-        with:
-          path: ./build-cache
-          key: ${{ runner.os }}-build-${{ hashFiles('**/*.gradle.kts') }}
-          restore-keys: |
-            ${{ runner.os }}-build-
+#      - name: Gradle Cache
+#        id: cache-gradle
+#        uses: actions/cache@v1
+#        with:
+#          path: ~/.gradle/caches
+#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+#          restore-keys: |
+#            ${{ runner.os }}-gradle-
+#      - name: Gradle Build Cache
+#        id: cache-build
+#        uses: actions/cache@v1
+#        with:
+#          path: ./build-cache
+#          key: ${{ runner.os }}-build-${{ hashFiles('**/*.gradle.kts') }}
+#          restore-keys: |
+#            ${{ runner.os }}-build-
       - name: Check
         run: |
-          gradle check
+          gradle -si check

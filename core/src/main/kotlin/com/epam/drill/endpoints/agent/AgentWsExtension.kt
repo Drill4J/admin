@@ -30,11 +30,15 @@ class Signal(
     }
 }
 
+private val awaiter = newFixedThreadPoolContext(2, "awaiter")
+
 suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> Boolean) {
     val expirationMark = MonoClock.markNow() + timeout
-    while (state()) {
-        if (expirationMark.hasPassedNow()) throw WsAwaitException("did't get signal by $timeout for '$description' destination")
-        delay(200)
+    withContext(awaiter) {
+        while (state()) {
+            if (expirationMark.hasPassedNow()) throw WsAwaitException("did't get signal by $timeout for '$description' destination")
+            delay(200)
+        }
     }
 }
 

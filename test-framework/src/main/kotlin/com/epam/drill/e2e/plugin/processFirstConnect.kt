@@ -54,14 +54,16 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     agentStreamDebug
                 ).apply { queued() }
             apply.getHeaders()
-            register(
-                ag.id, payload = AgentRegistrationInfo(
-                    name = "xz",
-                    description = "ad",
-                    packagesPrefixes = listOf("testPrefix"),
-                    plugins = listOf(pluginMeta.id)
+            launch {
+                register(
+                    ag.id, payload = AgentRegistrationInfo(
+                        name = "xz",
+                        description = "ad",
+                        packagesPrefixes = listOf("testPrefix"),
+                        plugins = listOf(pluginMeta.id)
+                    )
                 )
-            )
+            }
             ui.getAgent()
             ui.getAgent()
             apply.`get-set-packages-prefixes`()

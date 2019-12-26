@@ -4,12 +4,8 @@ import com.epam.drill.agentmanager.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.endpoints.plugin.*
 import io.kotlintest.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
 

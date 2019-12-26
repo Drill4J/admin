@@ -4,26 +4,29 @@ import com.epam.drill.common.*
 import com.epam.drill.endpoints.agent.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.junit.jupiter.api.*
+import kotlinx.coroutines.*
+import kotlin.test.*
 
 
 class AgentGroupTest : E2ETest() {
 
-    @RepeatedTest(1)
+    @Ignore
     fun `emulate microservices registration`() {
         val wit = 0
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                register(
-                    "ag$wit",
-                    payload = AgentRegistrationInfo(
-                        name = "first first",
-                        description = "ad",
-                        packagesPrefixes = listOf("testPrefix"),
-                        plugins = emptyList()
-                    )
-                ).first shouldBe HttpStatusCode.OK
+                launch {
+                    register(
+                        "ag$wit",
+                        payload = AgentRegistrationInfo(
+                            name = "first first",
+                            description = "ad",
+                            packagesPrefixes = listOf("testPrefix"),
+                            plugins = emptyList()
+                        )
+                    ).first shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
@@ -32,15 +35,17 @@ class AgentGroupTest : E2ETest() {
             val it = 1
             connectAgent(AgentWrap("ag$it", "0.1.$it", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                register(
-                    "ag$it",
-                    payload = AgentRegistrationInfo(
-                        name = "first first",
-                        description = "ad",
-                        packagesPrefixes = listOf("testPrefix"),
-                        plugins = emptyList()
-                    )
-                ).first shouldBe HttpStatusCode.OK
+                launch {
+                    register(
+                        "ag$it",
+                        payload = AgentRegistrationInfo(
+                            name = "first first",
+                            description = "ad",
+                            packagesPrefixes = listOf("testPrefix"),
+                            plugins = emptyList()
+                        )
+                    ).first shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()

@@ -25,7 +25,7 @@ abstract class E2ETest : AdminTest() {
         agentStreamDebug: Boolean = false,
         block: suspend () -> Unit
     ) {
-        assertTimeout(Duration.ofSeconds(10)) {
+        assertTimeout(Duration.ofSeconds(40)) {
             val appConfig = AppConfig(projectDir)
             val testApp = appConfig.testApp
             var coroutineException: Throwable? = null
