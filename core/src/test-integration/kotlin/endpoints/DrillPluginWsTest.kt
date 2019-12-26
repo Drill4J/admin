@@ -9,8 +9,10 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.jwt.storage.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
+import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -26,6 +28,7 @@ import kotlin.test.*
 
 class PluginWsTest {
     lateinit var kodeinApplication: Kodein
+    private lateinit var storeManager: StoreManager
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
@@ -39,6 +42,11 @@ class PluginWsTest {
         kodeinApplication = kodeinApplication(AppBuilder {
             withKModule {
                 kodeinModule("test") {
+                    bind<StoreManager>() with eagerSingleton {
+                        storeManager = StoreManager(drillWorkDir.resolve("agents"))
+                        storeManager
+                    }
+                    bind<TokenManager>() with singleton { TokenManager(kodein) }
                     bind<LoginHandler>() with eagerSingleton {
                         LoginHandler(
                             kodein
@@ -155,5 +163,10 @@ class PluginWsTest {
         }
     }
 
+    @AfterTest
+    fun shutdown() = try {
+        storeManager.storages.values.forEach { it.close() }
+    } catch (_: Exception) {
+    }
 }
 

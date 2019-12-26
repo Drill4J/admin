@@ -112,6 +112,10 @@ object Routes {
         @Group(systemGroup)
         @Location("/login")
         class Login
+
+        @Group(systemGroup)
+        @Location("/refresh")
+        class RefreshToken
     }
 
 }

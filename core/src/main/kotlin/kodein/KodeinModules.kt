@@ -11,6 +11,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
+import com.epam.drill.admin.jwt.storage.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
@@ -35,6 +36,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<SessionStorage>() with eagerSingleton { Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>()) }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
         bind<NotificationsManager>() with eagerSingleton { NotificationsManager(kodein) }
+        bind<TokenManager>() with singleton { TokenManager(kodein) }
     }
 
 val wsHandler: Kodein.Builder.(Application) -> Unit

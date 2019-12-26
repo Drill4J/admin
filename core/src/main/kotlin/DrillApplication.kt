@@ -65,10 +65,10 @@ fun Application.module() = kodeinApplication(
                         applicationCall.request.headers["Referer"]?.contains("openapi.json") ?: false
                     }
                     realm = jwtRealm
-                    verifier(JwtConfig.verifier)
+                    verifier(JwtAuth.verifier(TokenType.Access))
                     skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
                     validate {
-                        it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
+                       it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                     }
                 }
             }
@@ -95,7 +95,8 @@ fun Application.module() = kodeinApplication(
     }
 )
 
-class EmptyContentWrapper(val srl: SerializationConverter = SerializationConverter(Json(DefaultJsonConfiguration))) : ContentConverter {
+class EmptyContentWrapper(val srl: SerializationConverter = SerializationConverter(Json(DefaultJsonConfiguration))) :
+    ContentConverter {
     override suspend fun convertForReceive(context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>) =
         if (context.subject.type == Unit::class) Unit
         else srl.convertForReceive(context)

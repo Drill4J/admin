@@ -36,7 +36,7 @@ class AppConfig(var projectDir: File) {
         install(Authentication) {
             jwt {
                 realm = "Drill4J app"
-                verifier(JwtConfig.verifier)
+                verifier(JwtAuth.verifier(TokenType.Access))
                 validate {
                     it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                 }

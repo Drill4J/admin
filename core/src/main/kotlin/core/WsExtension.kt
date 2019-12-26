@@ -50,18 +50,23 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication() {
 private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
 
     try {
-        JwtConfig.verifier.verify(token)
+        JwtAuth.verifier(TokenType.Access).verify(token)
     } catch (ex: JWTVerificationException) {
-        when (ex) {
-            is TokenExpiredException -> Unit //Ignore, since we don't have token refreshing 
-            else -> logger.debug { "Token '$token' verified was finished with exception" }
-        }
         try {
-            send(Frame.Text(
-                WsSendMessage.serializer() stringify WsSendMessage(
-                    WsMessageType.UNAUTHORIZED
-                )
-            ))
+            when (ex) {
+                is TokenExpiredException ->
+                    send(Frame.Text(
+                        WsSendMessage.serializer() stringify WsSendMessage(
+                            WsMessageType.INVALIDATED
+                        )
+                    ))
+                else ->
+                    send(Frame.Text(
+                        WsSendMessage.serializer() stringify WsSendMessage(
+                            WsMessageType.UNAUTHORIZED
+                        )
+                    ))
+            }
         } catch (ignored: ClosedSendChannelException) {
         }
         close()

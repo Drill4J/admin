@@ -13,10 +13,12 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.jwt.storage.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websockets.*
+import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -39,13 +41,14 @@ import kotlin.test.*
 
 internal class DrillServerWsTest {
     private lateinit var notificationsManager: NotificationsManager
+    private lateinit var storeManager: StoreManager
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
         install(Authentication) {
             jwt {
                 realm = "Drill4J app"
-                verifier(JwtConfig.verifier)
+                verifier(JwtAuth.verifier(TokenType.Access))
                 validate {
                     it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                 }
@@ -62,6 +65,10 @@ internal class DrillServerWsTest {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {
+                    bind<StoreManager>() with eagerSingleton {
+                        storeManager = StoreManager(drillWorkDir.resolve("agents"))
+                        storeManager
+                    }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { pluginStorage }
@@ -69,6 +76,7 @@ internal class DrillServerWsTest {
                         notificationsManager = NotificationsManager(kodein)
                         notificationsManager
                     }
+                    bind<TokenManager>() with singleton { TokenManager(kodein) }
                     bind<LoginHandler>() with eagerSingleton {
                         LoginHandler(
                             kodein
@@ -128,11 +136,19 @@ internal class DrillServerWsTest {
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNull(currentNotifications.find { it.id == firstNotificationId })
                 assertNotificationsCounters(currentNotifications, 2, 2)
-                handleHttpPostRequest(locations.href(Routes.Api.ReadNotification()), NotificationId.serializer() stringify NotificationId(""), token)
+                handleHttpPostRequest(
+                    locations.href(Routes.Api.ReadNotification()),
+                    NotificationId.serializer() stringify NotificationId(""),
+                    token
+                )
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 2, 0)
-                handleHttpPostRequest(locations.href(Routes.Api.DeleteNotification()), NotificationId.serializer() stringify NotificationId(""), token)
+                handleHttpPostRequest(
+                    locations.href(Routes.Api.DeleteNotification()),
+                    NotificationId.serializer() stringify NotificationId(""),
+                    token
+                )
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 0, 0)
@@ -220,6 +236,12 @@ internal class DrillServerWsTest {
             )
             previousVersion = buildVersion
         }
+    }
+
+    @AfterTest
+    fun shutdown() = try {
+        storeManager.storages.values.forEach { it.close() }
+    } catch (_: Exception) {
     }
 }
 

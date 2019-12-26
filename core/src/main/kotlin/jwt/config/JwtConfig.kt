@@ -1,34 +1,32 @@
 package com.epam.drill.admin.jwt.config
 
-import com.auth0.jwt.*
 import com.auth0.jwt.algorithms.*
-import com.epam.drill.admin.jwt.user.*
 import java.util.*
 
-object JwtConfig {
-    private const val secret = "HDZZh35d82zdzHJFF86tt"
-    private const val issuser = "http://drill-4-j/"
-    private const val validityInMs = (36_000_00) * 2
-    private val algorithm = Algorithm.HMAC512(secret)
+data class JwtConfig(val typeOfToken: TokenType) {
+    private val secret: String
+    val validity: Long
+    val algorithm: Algorithm
 
-    val verifier: JWTVerifier = JWT
-        .require(algorithm)
-        .withIssuer(issuser)
-        .build()
+    companion object {
+        lateinit var issuer: String
+    }
 
-    /**
-     * produce a tocken
-     */
-    fun makeToken(user: User): String = JWT.create()
-        .withSubject("Authentication")
-        .withIssuer(issuser)
-        .withClaim("id", user.id)
-        .withClaim("role", user.role)
-        .withExpiresAt(getExpiration())
-        .sign(algorithm)
+    init {
+        val property = Properties()
+        JwtConfig::class.java.classLoader.getResourceAsStream("jwt.properties").use {
+            property.load(it)
+        }
 
-    /**
-     * Calculate the expiration Date based on current time + the given validity
-     */
-    private fun getExpiration() = Date(System.currentTimeMillis() + validityInMs)
+        secret = property.getProperty("jwt.secret.${typeOfToken.name}")
+        issuer = property.getProperty("jwt.issuer")
+        validity = property.getProperty("jwt.validity.${typeOfToken.name}").toLong()
+        algorithm = Algorithm.HMAC256(secret)
+    }
+
+}
+
+sealed class TokenType(val name: String) {
+    object Access : TokenType("access")
+    object Refresh : TokenType("refresh")
 }
