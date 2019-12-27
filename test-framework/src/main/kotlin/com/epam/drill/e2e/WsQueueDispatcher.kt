@@ -1,9 +1,9 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.agentmanager.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.dataclasses.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
@@ -35,7 +35,7 @@ class AdminUiChannels {
     val agentChannel = Channel<AgentInfoWebSocket?>()
     val agentBuildsChannel = Channel<Set<AgentBuildVersionJson>?>()
     val buildsChannel = Channel<List<BuildSummaryWebSocket>?>()
-    val agentsChannel = Channel<Set<AgentInfoWebSocket>?>()
+    val agentsChannel = Channel<GroupedAgentsDto?>()
     val allPluginsChannel = Channel<Set<PluginWebSocket>?>()
     val notificationsChannel = Channel<Set<Notification>?>()
     val agentPluginInfoChannel = Channel<Set<PluginWebSocket>?>()
@@ -53,7 +53,7 @@ class AdminUiChannels {
 class UIEVENTLOOP(
     val cs: Map<String, AdminUiChannels>,
     val uiStreamDebug: Boolean,
-    val glob: Channel<Set<AgentInfoWebSocket>> = Channel()
+    val glob: Channel<GroupedAgentsDto> = Channel()
 ) {
 
     fun Application.queued(wsTopic: WsTopic, incoming: ReceiveChannel<Frame>) = this.launch {
@@ -73,7 +73,7 @@ class UIEVENTLOOP(
                             this@queued.launch {
                                 when (type) {
                                     is WsRoutes.GetAllAgents -> {
-                                        glob.send(AgentInfoWebSocket.serializer().set parse content)
+                                        glob.send(GroupedAgentsDto.serializer() parse content)
                                     }
                                     is WsRoutes.GetAgent -> {
 

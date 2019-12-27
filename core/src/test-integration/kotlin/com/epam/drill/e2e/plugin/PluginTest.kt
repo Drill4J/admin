@@ -1,6 +1,6 @@
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.agentmanager.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
@@ -48,11 +48,11 @@ class PluginTest : E2EPluginTest() {
 
     }
 
-    private suspend fun waitForMultipleAgents(ch: Channel<Set<AgentInfoWebSocket>>) {
-        lateinit var message: Set<AgentInfoWebSocket>
+    private suspend fun waitForMultipleAgents(ch: Channel<GroupedAgentsDto>) {
+        lateinit var message: GroupedAgentsDto
         do {
             message = ch.receive()
-            if (message.all { it.activePluginsCount == 1 } && message.all { it.status == AgentStatus.ONLINE })
+            if (message.grouped.flatMap { it.agents }.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE })
                 break
         } while (true)
     }

@@ -1,6 +1,6 @@
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.agentmanager.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import com.epam.drill.endpoints.*
@@ -34,7 +34,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
             uts.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-all-agents"))
             frontIn.receive()
             val cs = mutableMapOf<String, AdminUiChannels>()
-            val glob = Channel<Set<AgentInfoWebSocket>>()
+            val glob = Channel<GroupedAgentsDto>()
             val globLaunch = application.launch(handler) {
                 watcher?.invoke(this@withTestApplication, glob)
             }

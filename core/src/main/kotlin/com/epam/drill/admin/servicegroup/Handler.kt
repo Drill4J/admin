@@ -7,7 +7,6 @@ import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
