@@ -52,7 +52,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         info.addInstanceId(config.instanceId)
         agentStorage.put(id, AgentEntry(info, session))
         adminData(id).loadStoredData()
-        existingInfo?.sync(needSync) // sync only existing info!
+        app.launch {
+            existingInfo?.sync(needSync) // sync only existing info!
+        }
         info.persistToDatabase()
         session.updateConfig(info)
         return info
@@ -214,7 +216,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
 
-    fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) = GlobalScope.launch {
+    suspend fun wrapBusy(ai: AgentInfo, block: suspend AgentInfo.() -> Unit) {
         logger.debug { "Agent with id ${ai.name} set busy status" }
         ai.status = AgentStatus.BUSY
         ai.commitChanges()
@@ -307,7 +309,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
         wrapBusy(agentInfo) {
             sendPlugins()
-        }.join()
+        }
     }
 
     private suspend fun updateBuildDataOnAllPlugins(agentId: String, buildVersion: String) {

@@ -14,7 +14,9 @@ class ToggleAgentTest : E2ETest() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                register(agentId).first shouldBe HttpStatusCode.OK
+                register(agentId) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()

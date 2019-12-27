@@ -138,73 +138,119 @@ abstract class E2ETest : AdminTest() {
             description = "ad",
             packagesPrefixes = listOf("testPrefix"),
             plugins = emptyList()
-        )
-    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(AgentRegistrationInfo.serializer() stringify payload)
-    }.run { response.status() to response.content }
-
-    fun TestApplicationEngine.addPlugin(agentId: String, payload: PluginId, token: String = globToken) =
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))) {
+        ),
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) = callAsync {
+        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(PluginId.serializer() stringify payload)
-        }.run { response.status() to response.content }
-
-    fun TestApplicationEngine.unRegister(agentId: String, token: String = globToken) =
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.run { response.status() to response.content }
-
-    fun TestApplicationEngine.unLoadPlugin(agentId: String, payload: PluginId, token: String = globToken) {
-        handleRequest(
-            HttpMethod.Post,
-            "/api" + application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.run { response.status() to response.content }
+            setBody(AgentRegistrationInfo.serializer() stringify payload)
+        }.apply { resultBlock(response.status(), response.content) }
     }
 
-    fun TestApplicationEngine.togglePlugin(agentId: String, pluginId: PluginId, token: String = globToken) {
-        handleRequest(
-            HttpMethod.Post,
-            "/api" + application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.run { response.status() to response.content }
+    fun TestApplicationEngine.addPlugin(
+        agentId: String,
+        payload: PluginId,
+        token: String = globToken,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) =
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+                setBody(PluginId.serializer() stringify payload)
+            }.apply { resultBlock(response.status(), response.content) }
+        }
+
+    fun TestApplicationEngine.unRegister(
+        agentId: String,
+        token: String = globToken,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) =
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+            }.apply { resultBlock(response.status(), response.content) }
+        }
+
+    fun TestApplicationEngine.unLoadPlugin(
+        agentId: String,
+        payload: PluginId,
+        token: String = globToken,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) {
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+            }.apply { resultBlock(response.status(), response.content) }
+        }
     }
 
-    fun TestApplicationEngine.toggleAgent(agentId: String, token: String = globToken) {
-        handleRequest(
-            HttpMethod.Post,
-            "/api" + application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.run { response.status() to response.content }
+    fun TestApplicationEngine.togglePlugin(
+        agentId: String,
+        pluginId: PluginId,
+        token: String = globToken,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) {
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+            }.apply { resultBlock(response.status(), response.content) }
+        }
+    }
+
+    fun TestApplicationEngine.toggleAgent(
+        agentId: String,
+        token: String = globToken,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) {
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+            }.apply { resultBlock(response.status(), response.content) }
+        }
     }
 
     fun TestApplicationEngine.renameBuildVersion(
         agentId: String,
         token: String = globToken,
-        payload: AgentBuildVersionJson
+        payload: AgentBuildVersionJson,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) {
-        handleRequest(
-            HttpMethod.Post,
-            "/api" + application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(AgentBuildVersionJson.serializer() stringify payload)
-        }.run { response.status() to response.content }
+        callAsync {
+            handleRequest(
+                HttpMethod.Post,
+                "/api" + application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
+            ) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+                setBody(AgentBuildVersionJson.serializer() stringify payload)
+            }.apply { resultBlock(response.status(), response.content) }
+        }
     }
 
     fun TestApplicationEngine.changePackages(
         agentId: String,
         token: String = globToken,
-        payload: SystemSettings
-    ) = handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(SystemSettings.serializer() stringify payload)
-    }.run {
-        response.status() to response.content
+        payload: SystemSettings,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) = callAsync {
+        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+            setBody(SystemSettings.serializer() stringify payload)
+        }.apply { resultBlock(response.status(), response.content) }
     }
 
 }
