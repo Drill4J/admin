@@ -16,6 +16,7 @@ import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.*
@@ -123,13 +124,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
 
 
-            val getPluginDataResponds = "Get plugin data"
-                .responds(
-                    ok<String>(
-                        example("result", "some plugin data")
-                    )
-                )
-            get<Routes.Api.Agent.GetPluginData>(getPluginDataResponds) { (agentId, pluginId) ->
+
+            get<Routes.Api.Agent.GetPluginData> { (agentId, pluginId) ->
                 logger.debug { "Get data plugin with id $pluginId for agent with id $agentId" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
@@ -145,7 +141,12 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     }
                 }
                 logger.debug { response }
-                call.respondJsonIfErrorsOccured(statusCode, response)
+                when (response) {
+                    is ByteArray -> call.respondBytes(response, ContentType.MultiPart.Any, HttpStatusCode.OK)
+                    "" -> call.respond(HttpStatusCode.BadRequest, "no data")
+                    else -> call.respondJsonIfErrorsOccured(statusCode, response.toString())
+                }
+
             }
 
             authenticate {

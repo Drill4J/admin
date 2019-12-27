@@ -103,7 +103,7 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
                 agentManager.full(agentInfo.id),
                 it.value.pluginClass,
                 it.key
-            ).getPluginData(mapOf("type" to "recommendations")).ifEmpty { "[]" }
+            ).getPluginData(mapOf("type" to "recommendations")).toString().ifEmpty { "[]" }
 
             try {
                 recommendations.addAll(String.serializer().list parse result)
