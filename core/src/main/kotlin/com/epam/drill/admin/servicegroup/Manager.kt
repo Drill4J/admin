@@ -39,7 +39,9 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
                 group -> groups.put(id, group)
                 else -> groups.put(id, store(oldValue, group))
             }
-        }[id]
+        }[id]?.apply {
+            topicResolver.sendToAllSubscribed(WsRoutes.ServiceGroup(groupId = group.id))
+        }
     }
 
     fun group(agents: Iterable<AgentInfo>): GroupedAgents {
@@ -63,7 +65,6 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun store(oldValue: ServiceGroup, group: ServiceGroup): ServiceGroup {
         logger.debug { "Updating group ${group.id}, old: $oldValue new: $group" }
         commonStore.client.store(group)
-        topicResolver.sendToAllSubscribed(WsRoutes.ServiceGroup(groupId = group.id))
         return group
     }
 }
