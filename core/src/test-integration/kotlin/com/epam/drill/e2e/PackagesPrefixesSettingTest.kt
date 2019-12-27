@@ -2,7 +2,6 @@ package com.epam.drill.e2e
 
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.openapi.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.junit.jupiter.api.*
@@ -16,7 +15,9 @@ class PackagesPrefixesSettingTest : E2ETest() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                register(agentId).first shouldBe HttpStatusCode.OK
+                register(agentId) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
@@ -24,8 +25,10 @@ class PackagesPrefixesSettingTest : E2ETest() {
 
                 changePackages(
                     agentId = agentId,
-                    payload = SystemSettings(listOf("newTestPrefix"),"")
-                ).first shouldBe HttpStatusCode.OK
+                    payload = SystemSettings(listOf("newTestPrefix"), "")
+                ) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()

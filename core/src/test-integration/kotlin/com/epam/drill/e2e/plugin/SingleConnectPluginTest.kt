@@ -12,7 +12,9 @@ class SingleConnectPluginTest : E2EPluginTest() {
     fun testE2ePluginAPI() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>("myServiceGroup") { _, _ ->
-                pluginAction("x").first shouldBe HttpStatusCode.OK
+                pluginAction("x") { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }.join()
                 println("hi ag1")
             }.reconnect<Build2> { _, _ ->
                 println("hi reconnected ag1")

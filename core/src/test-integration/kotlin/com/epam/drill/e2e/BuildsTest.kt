@@ -1,7 +1,6 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
-import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
@@ -16,7 +15,9 @@ class BuildsTest : E2ETest() {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-                register(aw.id).first shouldBe HttpStatusCode.OK
+                register(aw.id) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`("DrillExtension1.class")

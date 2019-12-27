@@ -4,12 +4,8 @@ import com.epam.drill.agentmanager.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.endpoints.plugin.*
 import io.kotlintest.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
 
@@ -19,8 +15,12 @@ class PluginTest : E2EPluginTest() {
     fun testE2ePluginAPI() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>("myServiceGroup") { _, _ ->
-                pluginAction("x").first shouldBe HttpStatusCode.OK
-                println("hi ag1")
+                println("5")
+                pluginAction("x") { code, _ ->
+                    code shouldBe HttpStatusCode.OK
+                    println("hi ag1")
+                }
+                println("6")
             }
             connectAgent<Build1>("myServiceGroup") { _, _ ->
                 println("hi ag2")
@@ -36,9 +36,13 @@ class PluginTest : E2EPluginTest() {
             }
             uiWatcher { ch ->
                 waitForMultipleAgents(ch)
-                val (status, content) = pluginAction("myActionForAllAgents", "myServiceGroup")
-                status shouldBe HttpStatusCode.OK
-                content shouldBe "act"
+                println("1")
+                pluginAction("myActionForAllAgents", "myServiceGroup") { status, content ->
+                    println("2")
+                    status shouldBe HttpStatusCode.OK
+                    content shouldBe "act"
+                }
+                println("3")
             }
         }
 

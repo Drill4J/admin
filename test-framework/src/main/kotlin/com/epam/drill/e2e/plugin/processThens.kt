@@ -62,20 +62,21 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 assertEquals(null, ui.getAgent()?.status)
                 assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
                 assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
-
-                loadPlugin(
-                    apply,
-                    ag,
-                    classMap,
-                    pluginId,
-                    agentStreamDebug,
-                    out,
-                    st,
-                    pluginTestInfo,
-                    pluginMeta,
-                    build,
-                    true
-                )
+                callAsync {
+                    loadPlugin(
+                        apply,
+                        ag,
+                        classMap,
+                        pluginId,
+                        agentStreamDebug,
+                        out,
+                        st,
+                        pluginTestInfo,
+                        pluginMeta,
+                        build,
+                        true
+                    )
+                }
                 ui.getAgent()
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)

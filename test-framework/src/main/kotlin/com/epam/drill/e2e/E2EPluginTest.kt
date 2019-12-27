@@ -37,87 +37,127 @@ fun AdminTest.register(
         description = "ad",
         packagesPrefixes = listOf("testPrefix"),
         plugins = listOf("test-plugin")
-    )
-) =
+    ),
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) = callAsync {
     engine.handleRequest(
         HttpMethod.Post,
         "/api" + engine.application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(AgentRegistrationInfo.serializer() stringify payload)
-    }.run { response.status() to response.content }
+    }.apply { resultBlock(response.status(), response.content) }
+}
 
-fun AdminTest.addPlugin(agentId: String, payload: PluginId, token: String = globToken) =
+fun AdminTest.addPlugin(
+    agentId: String,
+    payload: PluginId,
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) = callAsync {
     engine.handleRequest(
         HttpMethod.Post,
         "/api" + engine.application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PluginId.serializer() stringify payload)
-    }.run { response.status() to response.content }
-
-fun AdminTest.unRegister(agentId: String, token: String = globToken) =
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-    }.run { response.status() to response.content }
-
-fun AdminTest.unLoadPlugin(agentId: String, payload: PluginId, token: String = globToken) {
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-    }.run { response.status() to response.content }
+    }.apply { resultBlock(response.status(), response.content) }
 }
 
-fun AdminTest.togglePlugin(agentId: String, pluginId: PluginId, token: String = globToken) {
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-    }.run { response.status() to response.content }
+fun AdminTest.unRegister(
+    agentId: String,
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) =
+    callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+        }.apply { resultBlock(response.status(), response.content) }
+    }
+
+fun AdminTest.unLoadPlugin(
+    agentId: String,
+    payload: PluginId,
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) {
+    callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+        }.apply { resultBlock(response.status(), response.content) }
+    }
 }
 
-fun AdminTest.toggleAgent(agentId: String, token: String = globToken) {
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-    }.run { response.status() to response.content }
+fun AdminTest.togglePlugin(
+    agentId: String,
+    pluginId: PluginId,
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) {
+    callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+        }.apply { resultBlock(response.status(), response.content) }
+    }
+}
+
+fun AdminTest.toggleAgent(
+    agentId: String,
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+) {
+    callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+        }.apply { resultBlock(response.status(), response.content) }
+    }
 }
 
 fun AdminTest.renameBuildVersion(
     agentId: String,
     token: String = globToken,
-    payload: AgentBuildVersionJson
+    payload: AgentBuildVersionJson,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) {
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(AgentBuildVersionJson.serializer() stringify payload)
-    }.run { response.status() to response.content }
+    callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+            setBody(AgentBuildVersionJson.serializer() stringify payload)
+        }.apply { resultBlock(response.status(), response.content) }
+    }
 }
 
 fun AdminTest.pluginAction(
     payload: String,
     agentId: String,
     pluginId: String = testPlugin.pluginId,
-    token: String = globToken
+    token: String = globToken,
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 
-) = engine.handleRequest(
-    HttpMethod.Post,
-    "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
-) {
-    addHeader(HttpHeaders.Authorization, "Bearer $token")
-    setBody(payload)
-}.run { response.status() to response.content }
+) = callAsync {
+    engine.handleRequest(
+        HttpMethod.Post,
+        "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
+    ) {
+        addHeader(HttpHeaders.Authorization, "Bearer $token")
+        setBody(payload)
+    }.apply { resultBlock(response.status(), response.content) }
+}
 
 data class PluginTestContext(
     val agentId: String,
@@ -133,28 +173,31 @@ data class PluginTestContext(
         payload: String,
         pluginId: String = this.pluginId,
         agentId: String = this.agentId,
-        token: String = this.token
-
-    ) = engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(payload)
-    }.run { response.status() to response.content }
+        token: String = this.token,
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) = callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+            setBody(payload)
+        }.apply { resultBlock(response.status(), response.content) }
+    }
 
     fun changePackages(
         agentId: String = this.agentId,
         token: String = this.token,
-        payload: PackagesPrefixes = PackagesPrefixes()
-    ) = engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(PackagesPrefixes.serializer() stringify payload)
-    }.run {
-        response.status() to response.content
+        payload: PackagesPrefixes = PackagesPrefixes(),
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    ) = callAsync {
+        engine.handleRequest(
+            HttpMethod.Post,
+            "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))
+        ) {
+            addHeader(HttpHeaders.Authorization, "Bearer $token")
+            setBody(PackagesPrefixes.serializer() stringify payload)
+        }.apply { resultBlock(response.status(), response.content) }
     }
 }
 

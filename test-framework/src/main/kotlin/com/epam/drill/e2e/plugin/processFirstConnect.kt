@@ -72,19 +72,20 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
             val classMap: Map<String, ByteArray> = bcelClasses.associate {
                 it.className.replace(".", "/") to it.bytes
             }
-
-            loadPlugin(
-                apply,
-                ag,
-                classMap,
-                pluginId,
-                agentStreamDebug,
-                out,
-                st,
-                pluginTestInfo,
-                pluginMeta,
-                build
-            )
+            callAsync {
+                loadPlugin(
+                    apply,
+                    ag,
+                    classMap,
+                    pluginId,
+                    agentStreamDebug,
+                    out,
+                    st,
+                    pluginTestInfo,
+                    pluginMeta,
+                    build
+                )
+            }
             ui.getAgent()
             connect(pluginTestInfo, st, build)
             while (globLaunch.isActive)

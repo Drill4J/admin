@@ -5,6 +5,7 @@ import com.epam.drill.endpoints.agent.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.junit.jupiter.api.*
+import kotlin.test.*
 
 
 class AgentGroupTest : E2ETest() {
@@ -23,7 +24,9 @@ class AgentGroupTest : E2ETest() {
                         packagesPrefixes = listOf("testPrefix"),
                         plugins = emptyList()
                     )
-                ).first shouldBe HttpStatusCode.OK
+                ) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
@@ -40,7 +43,9 @@ class AgentGroupTest : E2ETest() {
                         packagesPrefixes = listOf("testPrefix"),
                         plugins = emptyList()
                     )
-                ).first shouldBe HttpStatusCode.OK
+                ) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
@@ -55,9 +60,9 @@ class AgentGroupTest : E2ETest() {
                 println(x.receive().map { it.id to it.status to it.group })
                 println(x.receive().map { it.id to it.status to it.group })
 
-                val register = register("micro")
-                register.first shouldBe HttpStatusCode.BadRequest
-                println(register.second)
+                register("micro") { status, _ ->
+                    status shouldBe HttpStatusCode.BadRequest
+                }.join()
 
             }
         }
