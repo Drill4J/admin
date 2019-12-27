@@ -31,8 +31,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 val destination = app.toLocation(WsRoutes.GetAllAgents())
                 sessionStorage.sendTo(
                     destination,
-                    storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)).toMutableSet()
-                        .toAgentInfosWebSocket(agentManager)
+                    serviceGroupManager.group(storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)))
+                        .toDto(agentManager)
                 )
 
             }
@@ -55,10 +55,9 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
             wsTopic {
                 topic<WsRoutes.GetAllAgents> {
-                    agentManager.agentStorage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id))
-                        .toMutableSet()
-                        .toAgentInfosWebSocket(agentManager)
-
+                    val storage = agentManager.agentStorage
+                    serviceGroupManager.group(storage.values.map { it.agent }.sortedWith(compareBy(AgentInfo::id)))
+                        .toDto(agentManager)
                 }
 
                 topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }

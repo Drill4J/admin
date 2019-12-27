@@ -1,7 +1,7 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.agentmanager.*
 import com.epam.kodux.*
 import io.ktor.server.testing.*
 import jetbrains.exodus.*
@@ -13,7 +13,7 @@ import java.util.*
 
 abstract class AdminTest {
     val mut = Mutex()
-    var watcher: (suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit?)? = null
+    var watcher: (suspend TestApplicationEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
     val projectDir = File(System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID())
 
     lateinit var engine: TestApplicationEngine
@@ -21,7 +21,7 @@ abstract class AdminTest {
     lateinit var storeManager: StoreManager
     lateinit var commonStore: CommonStore
 
-    fun uiWatcher(bl: suspend TestApplicationEngine.(Channel<Set<AgentInfoWebSocket>>) -> Unit): AdminTest {
+    fun uiWatcher(bl: suspend TestApplicationEngine.(Channel<GroupedAgentsDto>) -> Unit): AdminTest {
         this.watcher = bl
         return this
     }

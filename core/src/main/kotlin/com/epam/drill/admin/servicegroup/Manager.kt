@@ -1,6 +1,7 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.store.*
+import com.epam.drill.common.*
 import com.epam.drill.endpoints.agent.*
 import com.epam.drill.router.*
 import kotlinx.atomicfu.*
@@ -39,6 +40,16 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
                 else -> groups.put(id, store(oldValue, group))
             }
         }[id]
+    }
+
+    fun group(agents: Iterable<AgentInfo>): GroupedAgents {
+        val groups = _state.value
+        val agentGroups = agents.filter { it.serviceGroup.isEmpty() || it.serviceGroup in groups }
+            .groupBy { it.serviceGroup }
+        val singleAgents = SingleAgents(agentGroups[""] ?: emptyList())
+        val groupedAgents = agentGroups.filterKeys(String::isNotEmpty)
+            .map { (key, value) -> AgentGroup(groups[key]!!, value) }
+        return singleAgents to groupedAgents
     }
 
     private suspend fun CommonStore.ensureGroup(groupId: String): ServiceGroup =

@@ -5,6 +5,7 @@ import com.epam.drill.endpoints.*
 import com.epam.drill.plugins.*
 import kotlinx.serialization.*
 
+//TODO Rename to AgentInfoDto
 @Serializable
 data class AgentInfoWebSocket(
     val id: String,
@@ -26,46 +27,28 @@ data class AgentInfoWebSocket(
 
 fun Set<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
 
-fun MutableSet<AgentInfo>.toAgentInfosWebSocket(agentManager: AgentManager) = this.map { agentInfo ->
-    agentManager.run {
-        agentInfo.run {
-            AgentInfoWebSocket(
-                id = id,
-                instanceIds = instanceIds,
-                name = name,
-                description = description.take(200),
-                group = groupName,
-                status = status,
-                buildVersion = buildVersion,
-                buildAlias = buildAlias,
-                adminUrl = adminUrl,
-                ipAddress = ipAddress,
-                activePluginsCount = plugins.activePluginsCount(),
-                sessionIdHeaderName = sessionIdHeaderName,
-                plugins = plugins.map { it.toPluginWebSocket() }.toSet(),
-                packagesPrefixes = adminDataVault[id]?.packagesPrefixes ?: emptyList(),
-                agentType = agentType.notation
-            )
-        }
-    }
+fun MutableSet<AgentInfo>.toAgentInfosWebSocket(agentManager: AgentManager) = map { agentInfo ->
+    agentInfo.toDto(agentManager, isList = true)
 }
 
-fun AgentInfo.toAgentInfoWebSocket(agentManager: AgentManager) = agentManager.run {
+fun AgentInfo.toDto(agentManager: AgentManager, isList: Boolean = false): AgentInfoWebSocket = agentManager.run {
     AgentInfoWebSocket(
         id = id,
         instanceIds = instanceIds,
         name = name,
-        description = description,
+        description = if (isList) description.take(200) else description,
         group = groupName,
         status = status,
         buildVersion = buildVersion,
         buildAlias = buildAlias,
         adminUrl = adminUrl,
         ipAddress = ipAddress,
-        activePluginsCount = this@toAgentInfoWebSocket.plugins.activePluginsCount(),
+        activePluginsCount = this@toDto.plugins.activePluginsCount(),
         sessionIdHeaderName = sessionIdHeaderName,
-        plugins = this@toAgentInfoWebSocket.plugins.toPluginsWebSocket(),
+        plugins = this@toDto.plugins.toPluginsWebSocket(),
         packagesPrefixes = adminData(id).packagesPrefixes,
         agentType = agentType.notation
     )
 }
+
+fun AgentInfo.toAgentInfoWebSocket(agentManager: AgentManager) = toDto(agentManager)

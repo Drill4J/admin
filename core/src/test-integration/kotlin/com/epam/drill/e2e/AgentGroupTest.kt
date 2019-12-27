@@ -1,11 +1,12 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.agent.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
-import kotlin.test.*
 
 
 class AgentGroupTest : E2ETest() {
@@ -55,10 +56,10 @@ class AgentGroupTest : E2ETest() {
 
             uiWatcher { x ->
 
-                println(x.receive().map { it.id to it.status to it.group })
-                println(x.receive().map { it.id to it.status to it.group })
-                println(x.receive().map { it.id to it.status to it.group })
-                println(x.receive().map { it.id to it.status to it.group })
+                println(receiveAgents(x))
+                println(receiveAgents(x))
+                println(receiveAgents(x))
+                println(receiveAgents(x))
 
                 register("micro") { status, _ ->
                     status shouldBe HttpStatusCode.BadRequest
@@ -67,5 +68,8 @@ class AgentGroupTest : E2ETest() {
             }
         }
     }
+
+    private suspend fun receiveAgents(uiChannel: Channel<GroupedAgentsDto>) =
+        uiChannel.receive().grouped.flatMap { it.agents }.map { it.id to it.status to it.group }
 
 }

@@ -1,6 +1,6 @@
 package com.epam.drill.e2e
 
-import com.epam.drill.agentmanager.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
@@ -41,7 +41,7 @@ abstract class E2ETest : AdminTest() {
                     block()
                     ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/get-all-agents"))
                     uiIncoming.receive()
-                    val glob = Channel<Set<AgentInfoWebSocket>>()
+                    val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
                         watcher?.invoke(this@withTestApplication, glob)
                     }
