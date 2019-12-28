@@ -26,7 +26,7 @@ class PluginLoaderService(
     private val pluginStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }
 
-    private val allowedPlugins = setOf("coverage")
+    private val allowedPlugins = setOf("coverage", "test2code")
 
     init {
         runBlocking(Dispatchers.Default) {
