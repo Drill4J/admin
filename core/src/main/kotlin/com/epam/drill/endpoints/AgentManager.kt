@@ -104,7 +104,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Agent with id $agentId update with agent info :$au" }
         getOrNull(agentId)?.apply {
             name = au.name
-            groupName = au.group
+            environment = au.environment
             sessionIdHeaderName = au.sessionIdHeaderName
             description = au.description
             buildAlias = au.buildAlias
@@ -154,7 +154,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val au = AgentInfoWebSocket(
             id = agInfo.id,
             name = "",
-            group = "",
+            environment = "",
             status = AgentStatus.NOT_REGISTERED,
             description = "",
             buildVersion = agInfo.buildVersion,
@@ -375,7 +375,7 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     name = id,
     status = AgentStatus.NOT_REGISTERED,
     serviceGroup = serviceGroupId,
-    groupName = "",
+    environment = "",
     description = "",
     buildVersion = buildVersion,
     buildAlias = "",
