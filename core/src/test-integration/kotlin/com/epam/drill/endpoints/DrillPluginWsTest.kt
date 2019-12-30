@@ -57,7 +57,7 @@ class PluginWsTest {
         name = "test",
         status = AgentStatus.ONLINE,
         ipAddress = "1.7.2.23",
-        groupName = "test",
+        environment = "test",
         description = "test",
         buildVersion = buildVersion,
         buildAlias = "testAlias",

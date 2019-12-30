@@ -48,7 +48,7 @@ val agentInfoWebSocketExample = AgentInfoWebSocket(
     buildAlias = "0.1.0",
     description = "",
     packagesPrefixes = listOf("org/springframework/samples/petclinic"),
-    group = "",
+    environment = "",
     agentType = "Java",
     instanceIds = mutableSetOf()
 )
@@ -56,7 +56,7 @@ val agentInfoWebSocketExample = AgentInfoWebSocket(
 val agentRegistrationExample = AgentRegistrationInfo(
     name = "Petclinic",
     description = "Simple web service",
-    group = "",
+    environment = "",
     sessionIdHeaderName = "",
     plugins = mutableListOf("test-to-code-mapping"),
     packagesPrefixes = listOf("org/springframework/samples/petclinic")

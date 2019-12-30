@@ -70,6 +70,6 @@ class AgentGroupTest : E2ETest() {
     }
 
     private suspend fun receiveAgents(uiChannel: Channel<GroupedAgentsDto>) =
-        uiChannel.receive().grouped.flatMap { it.agents }.map { it.id to it.status to it.group }
+        uiChannel.receive().grouped.flatMap { it.agents }.map { it.id to it.status to it.environment }
 
 }

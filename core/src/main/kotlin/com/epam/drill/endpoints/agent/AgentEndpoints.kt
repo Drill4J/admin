@@ -143,7 +143,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     suspend fun register(agInfo: AgentInfo, regInfo: AgentRegistrationInfo) {
         with(agInfo) {
             name = regInfo.name
-            groupName = regInfo.group
+            environment = regInfo.environment
             description = regInfo.description
             status = AgentStatus.ONLINE
             sessionIdHeaderName = regInfo.sessionIdHeaderName.toLowerCase()
@@ -160,7 +160,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 data class AgentRegistrationInfo(
     val name: String,
     val description: String,
-    val group: String = "",
+    val environment: String = "",
     val packagesPrefixes: List<String>,
     val sessionIdHeaderName: String = "",
     val plugins: List<String> = emptyList()
