@@ -60,8 +60,6 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         .toDto(agentManager)
                 }
 
-                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
-
                 topic<WsRoutes.GetAgent> { (agentId) ->
                     agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager)
                 }

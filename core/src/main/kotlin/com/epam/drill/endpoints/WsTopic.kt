@@ -24,7 +24,7 @@ class WsTopic(override val kodein: Kodein) : KodeinAware {
         block(this)
     }
 
-    fun resolve(destination: String): Any {
+    suspend fun resolve(destination: String): Any {
         if (pathToCallBackMapping.isEmpty()) return ""
         val (callback, param) = getParams(destination)
         val result = callback.resolve(param)
@@ -77,15 +77,15 @@ data class URLTopic(val rawUrl: String) : Comparable<URLTopic> {
 }
 
 
-inline fun <reified R : Any> WsTopic.topic(noinline block: (R) -> Any?) {
+inline fun <reified R : Any> WsTopic.topic(noinline block: suspend (R) -> Any?) {
     val findAnnotation = R::class.findAnnotation<Location>()
     val path = findAnnotation?.path!!
     @Suppress("UNCHECKED_CAST")
     pathToCallBackMapping[URLTopic(path)] = R::class to CallbackWrapper(block) as CallbackWrapper<Any, Any>
 }
 
-class CallbackWrapper<T, R>(val block: (R) -> T?) {
-    fun resolve(param: R): T? {
+class CallbackWrapper<T, R>(val block: suspend (R) -> T?) {
+    suspend fun resolve(param: R): T? {
         return block(param)
     }
 }
