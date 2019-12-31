@@ -5,6 +5,7 @@ package com.epam.drill.endpoints.agent
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.plugin.*
+import com.epam.drill.util.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -26,6 +27,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val pd: PluginDispatcher by kodein.instance()
     private val topicResolver: TopicResolver by instance()
+    private val notificationsManager: NotificationsManager by instance()
 
     init {
         app.routing {
@@ -71,7 +73,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             logger.debug { "Starting classes transfer" }
                             agentManager.adminData(agentInfo.id).run {
                                 buildManager.setupBuildInfo(agentInfo.buildVersion, agentInfo.buildAlias)
-                                refreshStoredSummary()
                             }
                         }
 
@@ -83,8 +84,10 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
                             agentManager.adminData(agentInfo.id)
-                                .buildManager
-                                .compareToPrev(agentInfo.buildVersion)
+                                .apply {
+                                    buildManager.processBuild(notificationsManager, agentInfo)
+                                    refreshStoredSummary()
+                                }
                             topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
                             agentManager.enableAllPlugins(agentInfo.id)
                             logger.debug { "Finished classes transfer" }

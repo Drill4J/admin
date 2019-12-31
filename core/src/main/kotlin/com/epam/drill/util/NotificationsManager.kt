@@ -61,7 +61,7 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
 
-        if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
+        if (previousBuildVersion.isNullOrEmpty()) {
             return
         }
 

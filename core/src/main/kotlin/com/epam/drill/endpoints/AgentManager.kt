@@ -12,7 +12,6 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.*
 import com.epam.drill.storage.*
 import com.epam.drill.system.*
-import com.epam.drill.util.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import kotlinx.atomicfu.*
@@ -37,7 +36,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
     val adminDataVault: AdminDataVault by instance()
-    private val notificationsManager: NotificationsManager by instance()
 
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 
@@ -228,7 +226,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             ai.status = AgentStatus.ONLINE
             logger.debug { "Agent with id ${ai.name} set online status" }
             ai.commitChanges()
-            notificationsManager.newBuildNotify(ai)
         }
     }
 
