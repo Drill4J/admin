@@ -1,12 +1,15 @@
 package com.epam.drill.admin.servicegroup
 
+import com.epam.drill.endpoints.*
 import com.epam.drill.router.*
+import com.epam.drill.storage.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.coroutines.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -15,6 +18,9 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
 
     private val app: Application by instance()
     private val serviceGroupManager: ServiceGroupManager by instance()
+    private val wsTopic: WsTopic by instance()
+    private val agentManager: AgentManager by instance()
+    private val agentStorage: AgentStorage = agentManager.agentStorage
 
     init {
         app.routing {
@@ -41,5 +47,30 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                 }
             }
         }
+
+        runBlocking {
+            wsTopic {
+                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
+
+                topic<WsRoutes.ServiceGroupPlugin> { (groupId, pluginId) ->
+                    val summaries = agentStorage.values
+                        .filter { it.agent.serviceGroup == groupId }
+                        .map {
+                            val adminData = agentManager.adminData(it.agent.id)
+                            val pluginData = it.getPluginData(pluginId)
+                            it.toPluginSummaryDto(adminData, pluginData)
+                        }
+                    ServiceGroupSummaryDto(
+                        name = serviceGroupManager[groupId]?.name ?: "",
+                        summaries = summaries,
+                        aggregatedData = "" //TODO aggregation
+                    )
+                }
+            }
+        }
     }
+}
+
+private suspend fun AgentEntry.getPluginData(pluginId: String): Any {
+    return instance[pluginId]?.getPluginData(emptyMap()) ?: ""
 }
