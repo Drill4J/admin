@@ -2,6 +2,7 @@ package com.epam.drill.plugins
 
 
 import com.epam.drill.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import kotlinx.coroutines.*
@@ -114,13 +115,12 @@ class PluginLoaderService(
     private fun processAdminPart(
         adminPartFile: File, adminJar: JarFile
     ): Class<AdminPluginPart<*>>? {
-        val sysClassLoader = ClassLoader.getSystemClassLoader()
-        sysClassLoader.loadClassesFrom(adminPartFile.toURI().toURL())
+        val pluginClassLoader = PluginClassLoader(adminPartFile.toURI().toURL())
         val entrySet = adminJar.entries().iterator().asSequence().toSet()
         val pluginApiClass =
-            retrieveApiClass(AdminPluginPart::class.java, entrySet, sysClassLoader)
+            retrieveApiClass(AdminPluginPart::class.java, entrySet, pluginClassLoader)
         @Suppress("UNCHECKED_CAST")
-        return pluginApiClass as Class<AdminPluginPart<*>>?
+        return pluginApiClass as? Class<AdminPluginPart<*>>
     }
 
     private fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
