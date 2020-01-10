@@ -272,13 +272,13 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     }
 
     private fun sessionSubstituting(action: String, sessionId: String): String {
-        val parseJson = json.parseJson(action) as? JsonObject
-        val mainContainer = parseJson?.get("payload") as? JsonObject
-        val sessionIdContainer = mainContainer?.get("sessionId")
-        return if (sessionIdContainer != null && sessionIdContainer.content.isEmpty()) {
+        val parseJson = json.parseJson(action) as? JsonObject ?: return action
+        val mainContainer = parseJson["payload"] as? JsonObject ?: return action
+        val sessionIdContainer = mainContainer["sessionId"]
+        return if (sessionIdContainer == null || sessionIdContainer.content.isEmpty()) {
             (mainContainer.content as MutableMap<String, JsonElement>)["sessionId"] =
                 JsonElement.serializer() parse sessionId
-            mainContainer.toString()
+            parseJson.toString()
         } else action
     }
 
