@@ -29,7 +29,7 @@ data class ArtifactoryPluginLoader(
         val version: String = getVersion(pluginId)
         logger.info { "Loading $pluginId v$version" }
         val targetFilename = "$pluginId-plugin-$version.zip"
-        val artifactPath = "com/epam/drill/$pluginId-plugin/$version/$targetFilename"
+        val artifactPath = "com/epam/drill/plugins/$pluginId-plugin/$version/$targetFilename"
         val targetFile = storageDir.resolve(targetFilename)
         if (devMode) {
             val localMavenRepo = File(System.getProperty("user.home"), ".m2").resolve("repository")
@@ -46,11 +46,11 @@ data class ArtifactoryPluginLoader(
     }
 
     private suspend fun HttpClient.getVersion(pluginId: String): String {
-        return when (val envVersion = System.getenv("T2CM_VERSION")?.trim() ?: "") {
+        return when (val envVersion = pluginId.toEnvVersion()) {
             "", "latest" -> get(baseUrl) {
                 url.path(basePath, "api/search/latestVersion")
                 url.parameters.apply {
-                    append("g", "com.epam.drill")
+                    append("g", "com.epam.drill.plugins")
                     append("a", "$pluginId-plugin")
                     append("v", " ")
                     append("repos", repo)
@@ -58,6 +58,17 @@ data class ArtifactoryPluginLoader(
             }
             else -> envVersion
         }
+    }
+
+
+
+    private fun String.toEnvVersion(): String {
+        val normalizedId = replace(Regex("\\s|-"), "_").toUpperCase()
+        val envVersion = System.getenv("${normalizedId}_PLUGIN_VERSION")
+        if (envVersion == null && this == "test2code") { //TODO remove non-standard env var handling
+            return System.getenv("T2CM_VERSION") ?: ""
+        }
+        return envVersion ?: ""
     }
 
     private suspend fun HttpClient.downloadPlugin(artifactPath: String, targetFile: File) {
