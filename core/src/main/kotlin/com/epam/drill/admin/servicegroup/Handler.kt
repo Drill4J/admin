@@ -63,6 +63,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                     ServiceGroupSummaryDto(
                         name = serviceGroupManager[groupId]?.name ?: "",
                         summaries = summaries,
+                        count = summaries.count(),
                         aggregatedData = "" //TODO aggregation
                     )
                 }

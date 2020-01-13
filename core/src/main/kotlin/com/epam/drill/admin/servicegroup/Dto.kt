@@ -29,6 +29,7 @@ data class PluginSummaryDto(
 data class ServiceGroupSummaryDto(
     val name: String,
     val summaries: List<PluginSummaryDto>,
+    val count: Int,
     @ContextualSerialization val aggregatedData: Any
 )
 
