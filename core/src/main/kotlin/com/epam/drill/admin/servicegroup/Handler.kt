@@ -1,6 +1,7 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.endpoints.*
+import com.epam.drill.plugins.*
 import com.epam.drill.router.*
 import com.epam.drill.storage.*
 import de.nielsfalk.ktor.swagger.*
@@ -10,6 +11,7 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -20,6 +22,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     private val serviceGroupManager: ServiceGroupManager by instance()
     private val wsTopic: WsTopic by instance()
     private val agentManager: AgentManager by instance()
+    private val plugins: Plugins by instance()
     private val agentStorage: AgentStorage = agentManager.agentStorage
 
     init {
@@ -57,21 +60,23 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         .filter { it.agent.serviceGroup == groupId }
                         .map {
                             val adminData = agentManager.adminData(it.agent.id)
-                            val pluginData = it.getPluginData(pluginId)
+                            val plugin = plugins[pluginId]
+                            val pluginData = plugin?.summaryOf(it) ?: JsonNull
                             it.toPluginSummaryDto(adminData, pluginData)
                         }
                     ServiceGroupSummaryDto(
                         name = serviceGroupManager[groupId]?.name ?: "",
                         summaries = summaries,
                         count = summaries.count(),
-                        aggregatedData = "" //TODO aggregation
+                        aggregatedData = JsonNull //TODO aggregation
                     )
                 }
             }
         }
     }
-}
 
-private suspend fun AgentEntry.getPluginData(pluginId: String): Any {
-    return instance[pluginId]?.getPluginData(emptyMap()) ?: ""
+    private suspend fun Plugin.summaryOf(entry: AgentEntry): Any {
+        val adminPart = agentManager.instantiateAdminPluginPart(entry, pluginClass, pluginBean.id)
+        return adminPart.getPluginData(emptyMap())
+    }
 }

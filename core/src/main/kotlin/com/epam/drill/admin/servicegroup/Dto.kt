@@ -19,9 +19,16 @@ data class GroupedAgentsDto(
 )
 
 @Serializable
+data class LastBuildDto(
+    val version: String,
+    val alias: String
+)
+
+@Serializable
 data class PluginSummaryDto(
+    val agentId: String,
     val agentName: String,
-    val lastBuild: String,
+    val lastBuild: LastBuildDto,
     @ContextualSerialization val data: Any
 )
 
@@ -44,8 +51,14 @@ fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
 )
 
 internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any) = PluginSummaryDto(
+    agentId = agent.id,
     agentName = agent.name,
-    lastBuild = adminData.buildManager.lastBuild,
+    lastBuild = adminData.buildManager.run {
+        LastBuildDto(
+            version = lastBuild,
+            alias = buildVersions[lastBuild] ?: ""
+        )
+    },
     data = data
 )
 
