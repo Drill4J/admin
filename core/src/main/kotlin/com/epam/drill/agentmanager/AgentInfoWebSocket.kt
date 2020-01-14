@@ -11,7 +11,7 @@ data class AgentInfoWebSocket(
     val id: String,
     val instanceIds: Set<String>,
     val name: String,
-    val description: String,
+    val description: String = "",
     val environment: String = "",
     val status: AgentStatus,
     val buildVersion: String,

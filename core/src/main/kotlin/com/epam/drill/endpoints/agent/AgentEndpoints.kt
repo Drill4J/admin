@@ -62,7 +62,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             example("result", "Agent with such id has been registered")
                         ), badRequest()
                     )
-                post<Routes.Api.Agent.RegisterAgent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo->
+                post<Routes.Api.Agent.RegisterAgent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -159,7 +159,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 @Serializable
 data class AgentRegistrationInfo(
     val name: String,
-    val description: String,
+    val description: String = "",
     val environment: String = "",
     val packagesPrefixes: List<String>,
     val sessionIdHeaderName: String = "",
