@@ -64,11 +64,12 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                             val pluginData = plugin?.summaryOf(it) ?: JsonNull
                             it.toPluginSummaryDto(adminData, pluginData)
                         }
+                    val aggregatedData = summaries.map {it.data }.aggregate()
                     ServiceGroupSummaryDto(
                         name = serviceGroupManager[groupId]?.name ?: "",
                         summaries = summaries,
                         count = summaries.count(),
-                        aggregatedData = JsonNull //TODO aggregation
+                        aggregatedData = aggregatedData ?: JsonNull
                     )
                 }
             }
@@ -80,3 +81,10 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
         return adminPart.getPluginData(emptyMap())
     }
 }
+
+private fun Iterable<Any>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
+    .takeIf { it.any() }
+    ?.reduce { acc, aggregator ->
+        @Suppress("UNCHECKED_CAST")
+        aggregator(acc) as? (Any) -> Any ?: acc
+    }
