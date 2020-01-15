@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Check
-        run: gradle build
+        run: gradle test
       - name: Publish
         run: |
           gradle -si publish
