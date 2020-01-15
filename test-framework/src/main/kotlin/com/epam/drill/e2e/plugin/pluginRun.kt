@@ -16,14 +16,19 @@ import kotlin.collections.set
 inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
     noinline block: suspend TestContext<PS>.() -> Unit,
     uiStreamDebug: Boolean,
-    agentStreamDebug: Boolean
+    agentStreamDebug: Boolean,
+    context: CompletableJob
 ) {
     val appConfig = AppConfig(projectDir)
     val testApp = appConfig.testApp
     var coroutineException: Throwable? = null
-    val handler = CoroutineExceptionHandler { _, exception -> coroutineException = exception }
-    withTestApplication({ testApp(this, sslPort, false) }) {
-        engine = this@withTestApplication
+    val handler = CoroutineExceptionHandler { _, exception -> coroutineException = exception } + context
+    withApplication(
+        environment = createTestEnvironment { parentCoroutineContext = context },
+        configure = { dispatcher = Dispatchers.IO + context })
+    {
+        testApp(application, sslPort, false)
+        engine = this@withApplication
         storeManager = appConfig.storeManager
         commonStore = appConfig.commonStore
         globToken = requestToken()
@@ -36,7 +41,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
             val cs = mutableMapOf<String, AdminUiChannels>()
             val glob = Channel<GroupedAgentsDto>()
             val globLaunch = application.launch(handler) {
-                watcher?.invoke(this@withTestApplication, glob)
+                watcher?.invoke(this@withApplication, glob)
             }
             val pluginMeta = (PluginMetadata.serializer() parse
                     File(System.getProperty("plugin.config.path") ?: "./../plugin_config.json").readText())

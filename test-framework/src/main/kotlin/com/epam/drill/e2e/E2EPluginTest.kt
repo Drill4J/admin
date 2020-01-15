@@ -10,10 +10,10 @@ import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
-import org.junit.jupiter.api.*
+import kotlinx.coroutines.*
 import java.net.*
-import java.time.Duration.*
 import kotlin.collections.set
+import kotlin.time.*
 
 abstract class E2EPluginTest : AdminTest() {
 
@@ -22,10 +22,12 @@ abstract class E2EPluginTest : AdminTest() {
         agentStreamDebug: Boolean = false,
         timeout: Long = 20,
         noinline block: suspend TestContext<X>.() -> Unit
-    ) {
-        assertTimeout(ofSeconds(timeout)) { pluginRun(block, uiStreamDebug, agentStreamDebug) }
+    ) = runBlocking {
+        val context = SupervisorJob()
+        val timeoutJob = createTimeoutJob(timeout.seconds, context)
+        pluginRun(block, uiStreamDebug, agentStreamDebug, context)
+        timeoutJob.cancel()
     }
-
 
 }
 

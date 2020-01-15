@@ -1,7 +1,7 @@
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.endpoints.*
 import com.epam.drill.endpoints.agent.*
@@ -12,9 +12,8 @@ import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import org.junit.jupiter.api.*
-import java.time.*
 import java.util.concurrent.*
+import kotlin.time.*
 
 
 abstract class E2ETest : AdminTest() {
@@ -25,14 +24,18 @@ abstract class E2ETest : AdminTest() {
         agentStreamDebug: Boolean = false,
         block: suspend () -> Unit
     ) {
-        assertTimeout(Duration.ofSeconds(10)) {
+        runBlocking {
+            val context = SupervisorJob()
+            val timeoutJob = createTimeoutJob(5.seconds, context)
             val appConfig = AppConfig(projectDir)
             val testApp = appConfig.testApp
             var coroutineException: Throwable? = null
-            val handler = CoroutineExceptionHandler { _, exception ->
-                coroutineException = exception
-            }
-            withTestApplication({ testApp(this, sslPort, false) }) {
+            val handler = CoroutineExceptionHandler { _, exception -> coroutineException = exception } + context
+            withApplication(
+                environment = createTestEnvironment { parentCoroutineContext = context },
+                configure = { dispatcher = Dispatchers.IO + context })
+            {
+                testApp(application, sslPort, false)
                 storeManager = appConfig.storeManager
                 commonStore = appConfig.commonStore
                 globToken = requestToken()
@@ -43,7 +46,7 @@ abstract class E2ETest : AdminTest() {
                     uiIncoming.receive()
                     val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
-                        watcher?.invoke(this@withTestApplication, glob)
+                        watcher?.invoke(this@withApplication, glob)
                     }
                     val cs = mutableMapOf<String, AdminUiChannels>()
                     runBlocking(handler) {
@@ -71,7 +74,7 @@ abstract class E2ETest : AdminTest() {
                                     glob.receive()
                                     val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
                                     connect(
-                                        this@withTestApplication,
+                                        this@withApplication,
                                         ui,
                                         apply
                                     )
@@ -91,7 +94,7 @@ abstract class E2ETest : AdminTest() {
                                         val apply =
                                             Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
                                         it(
-                                            this@withTestApplication,
+                                            this@withApplication,
                                             ui,
                                             apply
                                         )
@@ -109,6 +112,7 @@ abstract class E2ETest : AdminTest() {
                     throw coroutineException as Throwable
                 }
             }
+            timeoutJob.cancel()
         }
     }
 
