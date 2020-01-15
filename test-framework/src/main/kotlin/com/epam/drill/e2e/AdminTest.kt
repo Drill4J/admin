@@ -5,11 +5,13 @@ import com.epam.drill.admin.store.*
 import com.epam.kodux.*
 import io.ktor.server.testing.*
 import jetbrains.exodus.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.sync.*
 import org.junit.jupiter.api.*
 import java.io.*
 import java.util.*
+import kotlin.time.*
 
 abstract class AdminTest {
     val mut = Mutex()
@@ -39,6 +41,17 @@ abstract class AdminTest {
             commonStore.client.close()
         } catch (ignored: ExodusException) {
         } catch (ignored: UninitializedPropertyAccessException) {//FIXME get rid of this lateinit complexity
+        }
+    }
+}
+
+fun CoroutineScope.createTimeoutJob(timeout: Duration, context: Job) = launch {
+    val expirationMark = MonoClock.markNow() + timeout
+    while (true) {
+        delay(50)
+        if (expirationMark.hasPassedNow()) {
+            context.cancelChildren()
+            fail("Timeout exception")
         }
     }
 }
