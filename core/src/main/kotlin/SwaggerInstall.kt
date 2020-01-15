@@ -44,7 +44,7 @@ val agentInfoWebSocketExample = AgentInfoDto(
     name = "Petclinic",
     status = AgentStatus.NOT_REGISTERED,
     buildVersion = "0.0.1",
-    plugins = mutableSetOf(PluginDto(id = "", relation = null)),
+    plugins = setOf(PluginDto(id = "", relation = "")),
     buildAlias = "0.1.0",
     description = "",
     packagesPrefixes = listOf("org/springframework/samples/petclinic"),
