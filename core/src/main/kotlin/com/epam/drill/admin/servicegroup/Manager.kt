@@ -2,8 +2,8 @@ package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
-import com.epam.drill.endpoints.agent.*
-import com.epam.drill.router.*
+import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.router.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*

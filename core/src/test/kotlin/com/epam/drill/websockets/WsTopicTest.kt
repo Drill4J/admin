@@ -1,7 +1,8 @@
 package com.epam.drill.websockets
 
+import com.epam.drill.admin.common.*
 import com.epam.drill.common.*
-import com.epam.drill.endpoints.*
+import com.epam.drill.admin.endpoints.*
 import io.ktor.http.*
 import kotlin.reflect.*
 import kotlin.test.*
@@ -22,7 +23,12 @@ internal class WsTopicKtTest {
         val string = "someText: \"asdf\""
         val serializedString = serialize(string)
         assertEquals(string, serializedString)
-        val complexStructure1 = mapOf("key" to WsSendMessage(WsMessageType.SUBSCRIBE, "asd", "vbn"))
+        val complexStructure1 = mapOf("key" to WsSendMessage(
+            WsMessageType.SUBSCRIBE,
+            "asd",
+            "vbn"
+        )
+        )
         val serializedStructure1 = serialize(complexStructure1)
         val result1 = "{\"key\":{\"type\":\"SUBSCRIBE\",\"destination\":\"asd\",\"message\":\"vbn\"}}"
         assertEquals(result1, serializedStructure1)

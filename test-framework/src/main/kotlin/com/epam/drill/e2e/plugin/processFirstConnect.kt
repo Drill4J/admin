@@ -3,7 +3,7 @@ package com.epam.drill.e2e.plugin
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.endpoints.agent.*
+import com.epam.drill.admin.endpoints.agent.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*

@@ -1,5 +1,6 @@
-package com.epam.drill.endpoints
+package com.epam.drill.admin.endpoints
 
+import com.epam.drill.admin.common.*
 import com.epam.drill.common.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -12,7 +13,11 @@ fun TestApplicationEngine.requestToken(): String {
 }
 
 fun UiMessage(type: WsMessageType, destination: String, message: String="") =
-    (WsSendMessage.serializer() stringify WsSendMessage(type, destination, message)).textFrame()
+    (WsSendMessage.serializer() stringify WsSendMessage(
+        type,
+        destination,
+        message
+    )).textFrame()
 
 
 fun AgentMessage(type: MessageType, destination: String, message: String) =

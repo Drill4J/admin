@@ -1,6 +1,6 @@
 package com.epam.drill.methods
 
-import com.epam.drill.admindata.*
+import com.epam.drill.admin.admindata.*
 import com.epam.drill.common.*
 import com.epam.drill.methods.stubs.*
 import kotlin.test.*

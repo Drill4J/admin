@@ -32,7 +32,7 @@ fun MemoryClassLoader.clazz(
                                         constant.bytes
                                             .replace(coreName, "$coreName$classSuffix")
                                             .replace(
-                                                "com/epam/drill/plugins/coverage/DrillProbeArrayProvider",
+                                                "/coverage/DrillProbeArrayProvider",
                                                 "com/epam/drill/plugins/coverage/DrillProbeArrayProvider$classSuffix"
                                             )
                                     )

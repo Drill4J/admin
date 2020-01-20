@@ -1,11 +1,11 @@
 package com.epam.drill.e2e
 
-import com.epam.drill.*
+import com.epam.drill.admin.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.jwt.config.*
-import com.epam.drill.kodein.*
-import com.epam.drill.plugins.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.jwt.config.*
+import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.plugins.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
