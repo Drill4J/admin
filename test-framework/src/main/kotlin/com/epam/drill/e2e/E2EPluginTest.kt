@@ -1,11 +1,9 @@
-@file:Suppress("UNCHECKED_CAST", "unused", "UNUSED_PARAMETER", "DEPRECATION")
-
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
 import com.epam.drill.e2e.plugin.*
-import com.epam.drill.endpoints.agent.*
-import com.epam.drill.router.*
+import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -17,6 +15,7 @@ import kotlin.time.*
 
 abstract class E2EPluginTest : AdminTest() {
 
+    @ExperimentalTime
     inline fun <reified X : PluginStreams> createSimpleAppWithPlugin(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,

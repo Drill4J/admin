@@ -1,16 +1,17 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.common.*
 import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.agentmanager.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
-import com.epam.drill.dataclasses.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.endpoints.plugin.*
+import com.epam.drill.admin.dataclasses.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
-import com.epam.drill.plugins.*
-import com.epam.drill.router.*
+import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.router.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.util.*

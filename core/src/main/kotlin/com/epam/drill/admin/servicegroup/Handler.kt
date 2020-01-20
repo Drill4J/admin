@@ -1,9 +1,9 @@
 package com.epam.drill.admin.servicegroup
 
-import com.epam.drill.endpoints.*
-import com.epam.drill.plugins.*
-import com.epam.drill.router.*
-import com.epam.drill.storage.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.router.*
+import com.epam.drill.admin.storage.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*

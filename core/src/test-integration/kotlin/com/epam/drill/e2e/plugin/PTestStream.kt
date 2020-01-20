@@ -1,9 +1,10 @@
 package com.epam.drill.e2e.plugin
 
+import com.epam.drill.admin.common.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.endpoints.plugin.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.plugin.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*

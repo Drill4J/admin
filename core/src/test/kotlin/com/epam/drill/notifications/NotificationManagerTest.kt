@@ -1,11 +1,11 @@
 package com.epam.drill.notifications
 
 import com.epam.drill.common.*
-import com.epam.drill.dataclasses.*
-import com.epam.drill.endpoints.*
-import com.epam.drill.endpoints.agent.*
-import com.epam.drill.plugins.*
-import com.epam.drill.util.*
+import com.epam.drill.admin.dataclasses.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.util.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*

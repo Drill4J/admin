@@ -1,7 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.common.*
-import com.epam.drill.endpoints.agent.*
+import com.epam.drill.admin.endpoints.agent.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
