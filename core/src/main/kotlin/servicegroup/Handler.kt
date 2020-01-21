@@ -77,7 +77,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun Plugin.summaryOf(entry: AgentEntry): Any {
-        val adminPart = agentManager.instantiateAdminPluginPart(entry, pluginClass, pluginBean.id)
+        val adminPart = agentManager.ensurePluginInstance(entry, this)
         return adminPart.getPluginData(emptyMap())
     }
 }

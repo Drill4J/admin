@@ -1,17 +1,16 @@
 package com.epam.drill.admin.endpoints
 
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
-import com.epam.drill.api.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.plugin.api.*
-import com.epam.drill.plugin.api.end.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.system.*
 import com.epam.drill.admin.util.*
+import com.epam.drill.api.*
+import com.epam.drill.common.*
+import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import kotlinx.atomicfu.*
@@ -28,14 +27,18 @@ const val INITIAL_BUILD_ALIAS = "Initial build"
 
 class AgentManager(override val kodein: Kodein) : KodeinAware {
 
-    private val topicResolver: TopicResolver by instance()
-    private val store: StoreManager by instance()
-    private val wsService: Sender by instance()
-    private val serviceGroupManager: ServiceGroupManager by instance()
     val app: Application by instance()
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
-    val adminDataVault: AdminDataVault by instance()
+
+    val AgentInfo.instanceIds: PersistentSet<String>
+        get() = instanceIds(_instanceIds.value)
+
+    private val topicResolver: TopicResolver by instance()
+    private val store: StoreManager by instance()
+    private val sender: Sender by instance()
+    private val serviceGroupManager: ServiceGroupManager by instance()
+    private val adminDataVault: AdminDataVault by instance()
     private val notificationsManager: NotificationsManager by instance()
 
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
@@ -50,8 +53,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val existingInfo = agentStore.findById<AgentInfo>(id)?.processBuild(config.buildVersion)
         val info = existingInfo ?: config.toAgentInfo()
         info.addInstanceId(config.instanceId)
-        agentStorage.put(id, AgentEntry(info, session))
+        val agentEntry = AgentEntry(info, session)
+        agentStorage.put(id, agentEntry)
         adminData(id).loadStoredData()
+        existingInfo?.initPlugins(agentEntry)
         app.launch {
             existingInfo?.sync(needSync) // sync only existing info!
         }
@@ -60,11 +65,18 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return info
     }
 
-    val AgentInfo.instanceIds: PersistentSet<String>
-        get() = instanceIds(_instanceIds.value)
+    private suspend fun AgentInfo.initPlugins(agentEntry: AgentEntry) {
+        val enabledPlugins = plugins.filter { it.enabled }
+        for (pluginMeta in enabledPlugins) {
+            val pluginId = pluginMeta.id
+            val plugin = this@AgentManager.plugins[pluginId]
+            if (plugin != null) {
+                ensurePluginInstance(agentEntry, plugin)
+            } else logger.error { "Plugin $pluginId not loaded." }
+        }
+    }
 
     private fun AgentInfo.addInstanceId(instanceId: String) {
-        persistentSetOf<String>()
         _instanceIds.update { it.put(id, instanceIds(it) + instanceId) }
     }
 
@@ -91,13 +103,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.debug { "Build version for agent with id $id was updated" }
         }
     }
-
-    suspend fun applyPackagesChangesOnAllPlugins(agentId: String) {
-        val agentEntry = full(agentId)
-        val plugins = agentEntry?.agent?.plugins?.map { it.id }
-        plugins?.forEach { pluginId -> agentEntry.instance[pluginId]?.applyPackagesChanges() }
-    }
-
 
     suspend fun updateAgent(agentId: String, au: AgentInfoWebSocket) {
         logger.debug { "Agent with id $agentId update with agent info :$au" }
@@ -193,11 +198,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins?.map { it.id }
 
     suspend fun addPlugins(agentInfo: AgentInfo, plugins: List<String>) {
-        val agentEntry = full(agentInfo.id)
+        val agentEntry = full(agentInfo.id)!!
         plugins.forEach { pluginId ->
             val dp: Plugin = this.plugins[pluginId]!!
-            val pluginClass = dp.pluginClass
-            instantiateAdminPluginPart(agentEntry, pluginClass, pluginId)
+            ensurePluginInstance(agentEntry, dp)
         }
         addPluginsToAgent(agentInfo, plugins)
     }
@@ -300,7 +304,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
                     adminData.resetBuilds()
                     adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                    applyPackagesChangesOnAllPlugins(agentId)
+                    full(agentId)?.applyPackagesChanges()
                     disableAllPlugins(agentId)
                     configurePackages(systemSettings.packagesPrefixes, agentId)
                 }
@@ -330,35 +334,20 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun updateBuildDataOnAllPlugins(agentId: String, buildVersion: String) {
-        val plugins = full(agentId)?.instance
-        plugins?.values?.forEach { it.updateDataOnBuildConfigChange(buildVersion) }
+        val plugins = full(agentId)?.plugins
+        plugins?.forEach { it.updateDataOnBuildConfigChange(buildVersion) }
     }
 
-    suspend fun instantiateAdminPluginPart(
-        agentEntry: AgentEntry?,
-        pluginClass: Class<AdminPluginPart<*>>,
-        pluginId: String
-    ): AdminPluginPart<*> {
-        return agentEntry?.instance!![pluginId] ?: run {
-            val constructor =
-                pluginClass.getConstructor(
-                    AdminData::class.java,
-                    Sender::class.java,
-                    StoreClient::class.java,
-                    AgentInfo::class.java,
-                    String::class.java
-                )
-            val agentInfo = agentEntry.agent
-            val plugin = constructor.newInstance(
-                adminData(agentInfo.id),
-                wsService,
-                store.agentStore(agentInfo.id),
-                agentInfo,
-                pluginId
-            )
-            plugin.initialize()
-            agentEntry.instance[pluginId] = plugin
-            plugin
+    suspend fun ensurePluginInstance(
+        agentEntry: AgentEntry,
+        plugin: Plugin
+    ) : AdminPluginPart<*> {
+        return agentEntry.get(plugin.pluginBean.id) {
+            val adminPluginData = adminData(agent.id)
+            val store = store.agentStore(agent.id)
+            val pluginInstance = plugin.createInstance(agent, adminPluginData, sender, store)
+            pluginInstance.initialize()
+            pluginInstance
         }
     }
 

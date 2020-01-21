@@ -1,15 +1,15 @@
 package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.common.*
-import com.epam.drill.api.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.plugin.api.end.*
-import com.epam.drill.plugin.api.message.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.service.*
+import com.epam.drill.api.*
+import com.epam.drill.common.*
+import com.epam.drill.plugin.api.end.*
+import com.epam.drill.plugin.api.message.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -37,11 +37,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val message = MessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
         try {
-            val dp: Plugin = plugins[pluginId] ?: return
-            val pluginClass = dp.pluginClass
-            val agentEntry = agentManager.full(agentInfo.id)
-            val plugin: AdminPluginPart<*> = agentManager.instantiateAdminPluginPart(agentEntry, pluginClass, pluginId)
-            plugin.processData(message.drillMessage)
+            val plugin: Plugin = plugins[pluginId] ?: return
+            val agentEntry = agentManager.full(agentInfo.id)!!
+            val pluginInstance: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
+            pluginInstance.processData(message.drillMessage)
         } catch (ee: Exception) {
             logger.error(ee) { "Processing plugin data was finished with exception" }
         }
@@ -130,13 +129,13 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 logger.debug { "Get data plugin with id $pluginId for agent with id $agentId" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
+                val agentEntry = agentManager.full(agentId)
                 val (statusCode, response) = when {
-                    (dp == null) -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
-                    (agentInfo == null) -> HttpStatusCode.NotFound to "agent with id $agentId not found"
+                    (dp == null) -> HttpStatusCode.NotFound to "plugin '$pluginId' not found"
+                    (agentInfo == null) -> HttpStatusCode.NotFound to "agent '$agentId' not found"
+                    (agentEntry == null) -> HttpStatusCode.NotFound to "data for agent '$agentId' not found"
                     else -> {
-                        val agentEntry = agentManager.full(agentId)
-                        val adminPart: AdminPluginPart<*> =
-                            agentManager.instantiateAdminPluginPart(agentEntry, dp.pluginClass, pluginId)
+                        val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
                         val response = adminPart.getPluginData(context.parameters.asMap())
                         HttpStatusCode.OK to response
                     }
@@ -252,8 +251,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
         return agents.map { agentEntry ->
-            val adminPart: AdminPluginPart<*> =
-                agentManager.instantiateAdminPluginPart(agentEntry, dp.pluginClass, pluginId)
+            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
             val adminActionResult = adminPart.doRawAction(sessionSubstituting(action, sessionId))
             val agentPartMsg = when (adminActionResult) {
                 is String -> adminActionResult
@@ -297,9 +295,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     ): Pair<HttpStatusCode, Any> = run {
         val pluginId = dp.pluginBean.id
         val agentEntry = agentManager.full(id)
-        val adminPart: AdminPluginPart<*> =
-            agentManager.instantiateAdminPluginPart(agentEntry, dp.pluginClass, pluginId)
-        val adminActionResult = adminPart.doRawAction(action)
+        val adminActionResult: Any = if (agentEntry != null) {
+            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
+            adminPart.doRawAction(action)
+        } else Unit
         val agentPartMsg = when (adminActionResult) {
             is String -> adminActionResult
             is Unit -> action
