@@ -118,7 +118,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentEntry == null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                         plugins[pluginId] == null -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
                         else -> {
-                            val pluginInstance = agentEntry.instance[pluginId]
+                            val pluginInstance = agentEntry[pluginId]
 
                             if (pluginInstance == null) {
                                 HttpStatusCode.NotFound to
@@ -149,7 +149,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = when (agentEntry) {
                         null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
                         else -> {
-                            agentEntry.instance.values.forEach { pluginInstance -> pluginInstance.dropData() }
+                            agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
                             HttpStatusCode.OK to "reset agent with id $agentId"
                         }
                     }
@@ -168,7 +168,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.ResetAllAgents>(resetAllAgentsResponds) { _ ->
                     logger.info { "Reset all agents" }
                     agentManager.getAllAgents().forEach { agentEntry ->
-                        agentEntry.instance.values.forEach { pluginInstance -> pluginInstance.dropData() }
+                        agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
                     }
                     logger.info { "Reset all agents successfully" }
                     call.respond(HttpStatusCode.OK, "reset drill admin app")

@@ -93,24 +93,24 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun pluginsRecommendations(
         agentInfo: AgentInfo
     ): List<String> {
-        val recommendations = mutableListOf<String>()
-        val connectedPlugins = plugins.filter {
-            agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
-        }
 
-        connectedPlugins.forEach {
-            val result = agentManager.instantiateAdminPluginPart(
-                agentManager.full(agentInfo.id),
-                it.value.pluginClass,
-                it.key
-            ).getPluginData(mapOf("type" to "recommendations")).toString().ifEmpty { "[]" }
-
-            try {
-                recommendations.addAll(String.serializer().list parse result)
-            } catch (exception: JsonDecodingException) {
-                logger.error(exception) { "Parsing result '$result' finished with exception: " }
+        return agentManager.full(agentInfo.id)?.let { agentEntry ->
+            val connectedPlugins = plugins.filter {
+                agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
             }
-        }
-        return recommendations
+
+            val results = connectedPlugins.map { (_, plugin: Plugin) ->
+                val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
+                pluginInstance.getPluginData(mapOf("type" to "recommendations")).toString().ifEmpty { "[]" }
+            }
+            results.mapNotNull { result ->
+                try {
+                    String.serializer().list parse result
+                } catch (exception: JsonDecodingException) {
+                    logger.error(exception) { "Parsing result '$result' finished with exception: " }
+                    null
+                }
+            }.flatten()
+        } ?: emptyList()
     }
 }
