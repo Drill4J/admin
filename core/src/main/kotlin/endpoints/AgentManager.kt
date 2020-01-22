@@ -71,8 +71,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             val pluginId = pluginMeta.id
             val plugin = this@AgentManager.plugins[pluginId]
             if (plugin != null) {
-                ensurePluginInstance(agentEntry, plugin)
-            } else logger.error { "Plugin $pluginId not loaded." }
+                if (adminDataVault[id]?.buildManager?.lastBuild == buildVersion) {
+                    ensurePluginInstance(agentEntry, plugin)
+                    logger.info { "Instance of plugin=$pluginId loaded from db, buildVersion=$buildVersion" }
+                } else {
+                    logger.info { "Instance of plugin=$pluginId not loaded (no data), buildVersion=$buildVersion" }
+                }
+            } else logger.error { "plugin=$pluginId not loaded!" }
         }
     }
 
