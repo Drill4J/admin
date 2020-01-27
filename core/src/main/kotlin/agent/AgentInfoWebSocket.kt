@@ -27,14 +27,10 @@ data class AgentInfoWebSocket(
 
 fun Set<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
 
-fun MutableSet<AgentInfo>.toAgentInfosWebSocket(agentManager: AgentManager) = map { agentInfo ->
-    agentInfo.toDto(agentManager, isList = true)
-}
-
 fun AgentInfo.toDto(agentManager: AgentManager, isList: Boolean = false): AgentInfoWebSocket = agentManager.run {
     AgentInfoWebSocket(
         id = id,
-        instanceIds = instanceIds,
+        instanceIds = instanceIds(id),
         name = name,
         description = if (isList) description.take(200) else description,
         environment = environment,

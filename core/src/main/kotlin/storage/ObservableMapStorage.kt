@@ -26,6 +26,18 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
         } else {
             targetMap.put(key, value)
         }
+        handleAdd(key, value)
+        handleUpdate()
+        return putValue
+    }
+
+    suspend fun remove(key: K): V? {
+        val remove = targetMap.remove(key)
+        handleRemove(key)
+        return remove
+    }
+
+    suspend fun handleAdd(key: K, value: V) {
         onAdd.forEach {
             val first = it.first
             val second = it.second
@@ -33,6 +45,9 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
                 second(key, value)
             }
         }
+    }
+
+    private suspend fun handleUpdate() {
         onUpdate.forEach {
             val first = it.first
             val second = it.second
@@ -40,11 +55,9 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
                 second(targetMap)
             }
         }
-        return putValue
     }
 
-    suspend fun remove(key: K): V? {
-        val remove = targetMap.remove(key)
+    suspend fun handleRemove(key: K) {
         onRemove.forEach {
             val first = it.first
             val second = it.second
@@ -52,14 +65,7 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
                 second(key)
             }
         }
-        onUpdate.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(targetMap)
-            }
-        }
-        return remove
+        handleUpdate()
     }
 
     suspend fun clear() {
@@ -71,39 +77,20 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
                 second()
             }
         }
-        onUpdate.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(targetMap)
-            }
-        }
+        handleUpdate()
     }
 
     suspend fun update() {
-        onUpdate.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(targetMap)
-            }
-        }
+        handleUpdate()
 
     }
 
     suspend fun singleUpdate(key: K) {
         targetMap[key]?.let { value ->
-            onAdd.forEach {
-                val first = it.first
-                val second = it.second
-                first {
-                    second(key, value)
-                }
-            }
+            handleAdd(key, value)
         }
 
     }
-
 }
 
 class ObservableContext<R> {

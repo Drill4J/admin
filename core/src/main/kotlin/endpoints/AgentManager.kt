@@ -31,8 +31,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
 
-    val AgentInfo.instanceIds: PersistentSet<String>
-        get() = instanceIds(_instanceIds.value)
+    val activeAgents
+        get() = agentStorage.values
+            .map { it.agent }
+            .filter { instanceIds(it.id).isNotEmpty() }
+            .sortedWith(compareBy(AgentInfo::id))
 
     private val topicResolver: TopicResolver by instance()
     private val store: StoreManager by instance()
@@ -44,25 +47,48 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 
     suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
+        logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
-        logger.debug { "Service group id ${config.serviceGroupId}" }
-        if (config.serviceGroupId.isNotBlank()) {
-            serviceGroupManager.syncOnAttach(config.serviceGroupId)
+        val serviceGroup = config.serviceGroupId
+        logger.debug { "Service group id '$serviceGroup'" }
+        if (serviceGroup.isNotBlank()) {
+            serviceGroupManager.syncOnAttach(serviceGroup)
         }
-        val agentStore = store.agentStore(id)
-        val existingInfo = agentStore.findById<AgentInfo>(id)?.processBuild(config.buildVersion)
-        val info = existingInfo ?: config.toAgentInfo()
-        info.addInstanceId(config.instanceId)
-        val agentEntry = AgentEntry(info, session)
-        agentStorage.put(id, agentEntry)
-        adminData(id).loadStoredData()
-        existingInfo?.initPlugins(agentEntry)
-        app.launch {
-            existingInfo?.sync(needSync) // sync only existing info!
+        val oldInstanceIds = instanceIds(id)
+        addInstanceId(id, config.instanceId)
+        val existingEntry = agentStorage.targetMap[id]
+        val currentInfo = existingEntry?.agent
+        val buildVersion = config.buildVersion
+        //TODO agent instances
+        return if (
+            (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds)
+            && currentInfo?.buildVersion == buildVersion && currentInfo.serviceGroup == serviceGroup
+        ) {
+            //TODO remove duplicated code
+            existingEntry.agentSession = session
+            notifySingleAgent(id)
+            notifyAllAgents()
+            app.launch {
+                currentInfo.sync(needSync) // sync only existing info!
+            }
+            currentInfo.persistToDatabase()
+            session.updateSessionHeader(currentInfo)
+            currentInfo
+        } else {
+            val store = store.agentStore(id)
+            val storedInfo = store.findById<AgentInfo>(id)?.processBuild(buildVersion)
+            val info = storedInfo ?: config.toAgentInfo()
+            val entry = AgentEntry(info, session)
+            agentStorage.put(id, entry)
+            adminData(id).loadStoredData()
+            storedInfo?.initPlugins(entry)
+            app.launch {
+                storedInfo?.sync(needSync) // sync only existing info!
+            }
+            info.persistToDatabase()
+            session.updateSessionHeader(info)
+            info
         }
-        info.persistToDatabase()
-        session.updateSessionHeader(info)
-        return info
     }
 
     private suspend fun AgentInfo.initPlugins(agentEntry: AgentEntry) {
@@ -81,23 +107,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun AgentInfo.addInstanceId(instanceId: String) {
-        _instanceIds.update { it.put(id, instanceIds(it) + instanceId) }
+    private fun addInstanceId(agentId: String, instanceId: String) {
+        _instanceIds.update { it.put(agentId, instanceIds(agentId, it) + instanceId) }
     }
 
     suspend fun AgentInfo.removeInstance(instanceId: String) {
-        _instanceIds.update { it.put(id, instanceIds(it) - instanceId) }
-        if (instanceIds.isEmpty()) {
-            remove(this)
+        _instanceIds.update { it.put(id, instanceIds(id, it) - instanceId) }
+        if (instanceIds(id).isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
+            agentStorage.handleRemove(id)
         } else {
             notifySingleAgent(id)
             logger.info { "Instance '$instanceId' of Agent '${id}' was disconnected" }
         }
     }
 
-    private fun AgentInfo.instanceIds(it: PersistentMap<String, PersistentSet<String>>) =
-        it[id].orEmpty().toPersistentSet()
+    fun instanceIds(
+        agentId: String,
+        it: PersistentMap<String, PersistentSet<String>> = _instanceIds.value
+    ): PersistentSet<String> {
+        return it[agentId].orEmpty().toPersistentSet()
+    }
 
     private fun AgentInfo.processBuild(version: String) = apply {
         logger.debug { "Updating build version for agent with id $id. Build version is $version" }
@@ -170,7 +200,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             buildAlias = INITIAL_BUILD_ALIAS,
             packagesPrefixes = adminData(agInfo.id).packagesPrefixes,
             agentType = agInfo.agentType.notation,
-            instanceIds = agInfo.instanceIds
+            instanceIds = instanceIds(agInfo.id)
         )
         updateAgent(agInfo.id, au)
         logger.debug { "Agent with id ${agInfo.name} has been reset" }
@@ -184,10 +214,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.singleUpdate(agentId)
     }
 
-    suspend fun remove(agentInfo: AgentInfo) {
-        agentStorage.remove(agentInfo.id)
-    }
-
     fun agentSession(k: String) = agentStorage.targetMap[k]?.agentSession
 
     fun buildVersionByAgentId(agentId: String) = getOrNull(agentId)?.buildVersion ?: ""
@@ -195,7 +221,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     operator fun contains(k: String) = k in agentStorage.targetMap
 
     fun getOrNull(agentId: String) = agentStorage.targetMap[agentId]?.agent
+
     operator fun get(agentId: String) = agentStorage.targetMap[agentId]?.agent
+
     fun full(agentId: String) = agentStorage.targetMap[agentId]
 
     fun getAllAgents() = agentStorage.targetMap.values
@@ -346,7 +374,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     suspend fun ensurePluginInstance(
         agentEntry: AgentEntry,
         plugin: Plugin
-    ) : AdminPluginPart<*> {
+    ): AdminPluginPart<*> {
         return agentEntry.get(plugin.pluginBean.id) {
             val adminPluginData = adminData(agent.id)
             val store = store.agentStore(agent.id)
