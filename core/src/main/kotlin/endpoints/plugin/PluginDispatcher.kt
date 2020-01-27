@@ -20,6 +20,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
@@ -130,7 +131,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
                 val agentEntry = agentManager.full(agentId)
-                val (statusCode, response) = when {
+                val (statusCode: HttpStatusCode, response: Any) = when {
                     (dp == null) -> HttpStatusCode.NotFound to "plugin '$pluginId' not found"
                     (agentInfo == null) -> HttpStatusCode.NotFound to "agent '$agentId' not found"
                     (agentEntry == null) -> HttpStatusCode.NotFound to "data for agent '$agentId' not found"
@@ -144,9 +145,16 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 when (response) {
                     is ByteArray -> call.respondBytes(response, ContentType.MultiPart.Any, HttpStatusCode.OK)
                     "" -> call.respond(HttpStatusCode.BadRequest, "no data")
-                    else -> call.respondJsonIfErrorsOccured(statusCode, response.toString())
+                    is String -> call.respondJsonIfErrorsOccured(
+                        statusCode,
+                        response
+                    )
+                    else -> call.respondJsonIfErrorsOccured(
+                        statusCode,
+                        @Suppress("UNCHECKED_CAST")
+                        (response::class.serializer() as KSerializer<Any>).stringify(response)
+                    )
                 }
-
             }
 
             authenticate {
