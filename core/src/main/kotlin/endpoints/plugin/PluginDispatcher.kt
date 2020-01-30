@@ -6,6 +6,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.service.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
@@ -20,7 +21,6 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
-import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
@@ -60,15 +60,14 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = if (agentManager.updateAgentPluginConfig(agentId, pc)) {
                         topicResolver.sendToAllSubscribed("/$agentId/$pluginId/config")
                         logger.debug { "Plugin with id $pluginId for agent with id $agentId was updated" }
-                        HttpStatusCode.OK to ""
+                        HttpStatusCode.OK to EmptyContent
                     } else {
-                        logger.warn {
-                            "AgentInfo with associated with id $agentId" +
-                                    " or plugin configuration associated with id $pluginId was not found"
-                        }
-                        HttpStatusCode.NotFound to ""
+                        val errorMessage = "AgentInfo with associated with id $agentId" +
+                                " or plugin configuration associated with id $pluginId was not found"
+                        logger.warn { errorMessage }
+                        HttpStatusCode.NotFound to ErrorResponse(errorMessage)
                     }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
             authenticate {
@@ -86,7 +85,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $id" }
                     val dp: Plugin? = plugins[pluginId]
                     val (statusCode, response) = if (dp == null) {
-                        HttpStatusCode.NotFound to "Plugin with id $pluginId not found"
+                        HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } else {
                         call.attributes.getOrNull(srv)?.run {
                             processMultipleActions(
@@ -99,7 +98,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
                     }
                     logger.info { "$response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response.toString())
+                    call.respond(statusCode, response)
                 }
             }
 
@@ -132,9 +131,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val agentInfo = agentManager[agentId]
                 val agentEntry = agentManager.full(agentId)
                 val (statusCode: HttpStatusCode, response: Any) = when {
-                    (dp == null) -> HttpStatusCode.NotFound to "plugin '$pluginId' not found"
-                    (agentInfo == null) -> HttpStatusCode.NotFound to "agent '$agentId' not found"
-                    (agentEntry == null) -> HttpStatusCode.NotFound to "data for agent '$agentId' not found"
+                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                    (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
+                    (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("data for agent '$agentId' not found")
                     else -> {
                         val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
                         val response = adminPart.getPluginData(context.parameters.asMap())
@@ -142,19 +141,27 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     }
                 }
                 logger.debug { response }
-                when (response) {
-                    is ByteArray -> call.respondBytes(response, ContentType.MultiPart.Any, HttpStatusCode.OK)
-                    "" -> call.respond(HttpStatusCode.BadRequest, "no data")
-                    is String -> call.respondJsonIfErrorsOccured(
-                        statusCode,
-                        response
-                    )
-                    else -> call.respondJsonIfErrorsOccured(
-                        statusCode,
-                        @Suppress("UNCHECKED_CAST")
-                        (response::class.serializer() as KSerializer<Any>).stringify(response)
-                    )
+                sendResponse(response, statusCode)
+            }
+
+            get<Routes.Api.ServiceGroup.PluginData> { (serviceGroupId, pluginId, dataType) ->
+                logger.debug { "Take data plugin with id $pluginId for service group with id $serviceGroupId and dataType $dataType" }
+                val dp: Plugin? = plugins[pluginId]
+                val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
+
+                val (statusCode: HttpStatusCode, response: Any) = when {
+                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                    (serviceGroup.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("data for serviceGroup '$serviceGroupId' not found")
+                    else -> {
+                        val response = serviceGroup.map {
+                            val adminPart = agentManager.ensurePluginInstance(it, dp)
+                            adminPart.getPluginData(mapOf("type" to dataType))
+                        }.aggregate() ?: ""
+                        HttpStatusCode.OK to response
+                    }
                 }
+                logger.debug { response }
+                sendResponse(response, statusCode)
             }
 
             authenticate {
@@ -175,7 +182,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             if (agentId in agentManager) {
                                 val agentInfo = agentManager[agentId]!!
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
-                                    HttpStatusCode.BadRequest to "Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'"
+                                    HttpStatusCode.BadRequest to
+                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.apply {
                                         addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
@@ -185,13 +193,13 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
                                 }
                             } else {
-                                HttpStatusCode.BadRequest to "Agent '$agentId' not found"
+                                HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
                             }
                         }
-                        else -> HttpStatusCode.BadRequest to "Plugin ${pluginIdObject.pluginId} not found."
+                        else -> HttpStatusCode.BadRequest to ErrorResponse("Plugin ${pluginIdObject.pluginId} not found.")
                     }
                     logger.debug { msg }
-                    call.respondJsonIfErrorsOccured(status, msg)
+                    call.respond(status, msg)
                 }
             }
             authenticate {
@@ -213,19 +221,35 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val dp: Plugin? = plugins[pluginId]
                     val session = agentManager.agentSession(agentId)
                     val (statusCode, response) = when {
-                        (dp == null) -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
-                        (session == null) -> HttpStatusCode.NotFound to "agent with id $agentId not found"
+                        (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
+                        (session == null) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
                         else -> {
                             session.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId))
-                            HttpStatusCode.OK to "OK"
+                            HttpStatusCode.OK to EmptyContent
                         }
                     }
                     logger.debug { response }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
         }
+    }
+
+    private suspend fun PipelineContext<Unit, ApplicationCall>.sendResponse(
+        response: Any,
+        statusCode: HttpStatusCode
+    ) = when (response) {
+        is ByteArray -> call.respondBytes(response, ContentType.MultiPart.Any, HttpStatusCode.OK)
+        "" -> call.respond(HttpStatusCode.BadRequest, "no data")
+        is String -> call.respondText(
+            response,
+            ContentType.Application.Json
+        )
+        else -> call.respond(
+            statusCode,
+            response
+        )
     }
 
     private suspend fun dispatchPluginAction(
@@ -237,7 +261,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val action = pipelineContext.call.receive<String>()
         val dp: Plugin? = plugins[pluginId]
         val (statusCode, response) = if (dp == null) {
-            HttpStatusCode.NotFound to "Plugin with id $pluginId not found"
+            HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
         } else {
 
             pluginDispatcher.processMultipleActions(
@@ -248,7 +272,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             )
         }
         logger.info { "$response" }
-        pipelineContext.call.respondJsonIfErrorsOccured(statusCode, response.toString())
+        pipelineContext.call.respond(statusCode, response)
     }
 
     private suspend fun processMultipleActions(

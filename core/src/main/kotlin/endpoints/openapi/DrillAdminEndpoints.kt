@@ -12,6 +12,7 @@ import com.epam.drill.admin.util.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
@@ -34,9 +35,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val unloadPluginResponds = "Unload plugin"
                     .responds(
-                        ok<String>(
-                            example("result", "Unload plugin with such id for agent with such id was successfully")
-                        ), notFound(), badRequest()
+                        ok<Unit>(), notFound(), badRequest()
                     )
                 post<Routes.Api.Agent.UnloadPlugin>(unloadPluginResponds) { payload ->
                     val (agentId, pluginId) = payload
@@ -47,11 +46,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (status, response) = when {
                         drillAgent == null -> {
                             logger.warn { "Drill agent is absent" }
-                            HttpStatusCode.NotFound to "Can't find the agent '$agentId'"
+                            HttpStatusCode.NotFound to ErrorResponse("Can't find the agent '$agentId'")
                         }
                         agentPluginPartFile == null -> {
                             logger.warn { "Agent plugin part file is absent" }
-                            HttpStatusCode.NotFound to "Can't find the plugin '$pluginId' in the agent '$agentId'"
+                            HttpStatusCode.NotFound to ErrorResponse("Can't find the plugin '$pluginId' in the agent '$agentId'")
                         }
                         else -> {
                             drillAgent.send(
@@ -65,10 +64,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             )
                             logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
                             //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
-                            HttpStatusCode.OK to "Event 'unload' was sent to AGENT"
+                            HttpStatusCode.OK to EmptyContent
                         }
                     }
-                    call.respondJsonIfErrorsOccured(status, response)
+                    call.respond(status, response)
                 }
 
             }
@@ -105,9 +104,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val resetPluginResponds = "Reset plugin"
                     .responds(
-                        ok<String>(
-                            example("result", "reset plugin with such id for agent with such id")
-                        ), notFound(), badRequest()
+                        ok<Unit>(), notFound(), badRequest()
                     )
                 post<Routes.Api.ResetPlugin>(resetPluginResponds) { payload ->
                     val (agentId, pluginId) = payload
@@ -115,31 +112,29 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentEntry = agentManager.full(agentId)
 
                     val (statusCode, response) = when {
-                        agentEntry == null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
-                        plugins[pluginId] == null -> HttpStatusCode.NotFound to "plugin with id $pluginId not found"
+                        agentEntry == null -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
+                        plugins[pluginId] == null -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
                         else -> {
                             val pluginInstance = agentEntry[pluginId]
 
                             if (pluginInstance == null) {
                                 HttpStatusCode.NotFound to
-                                        "plugin with id $pluginId not installed to agent with id $agentId"
+                                        ErrorResponse("plugin with id $pluginId not installed to agent with id $agentId")
                             } else {
                                 pluginInstance.dropData()
-                                HttpStatusCode.OK to "reset plugin with id $pluginId for agent with id $agentId"
+                                HttpStatusCode.OK to EmptyContent
                             }
                         }
                     }
                     logger.info { "Reset plugin with id $pluginId for agent with id $agentId result: $response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
             authenticate {
                 val resetAgentResponse = "Reset agent"
                     .responds(
-                        ok<String>(
-                            example("result", "Reset agent with such id")
-                        ), notFound()
+                        ok<Unit>(), notFound()
                     )
                 post<Routes.Api.ResetAgent>(resetAgentResponse) { payload ->
                     val (agentId) = payload
@@ -147,14 +142,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentEntry = agentManager.full(agentId)
 
                     val (statusCode, response) = when (agentEntry) {
-                        null -> HttpStatusCode.NotFound to "agent with id $agentId not found"
+                        null -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
                         else -> {
                             agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
-                            HttpStatusCode.OK to "reset agent with id $agentId"
+                            HttpStatusCode.OK to EmptyContent
                         }
                     }
                     logger.info { "Reset agent with id $agentId result: $response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
@@ -198,11 +193,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             topicResolver.sendToAllSubscribed("/notifications")
                             HttpStatusCode.OK to "Notification with id $notificationId successfully read"
                         } else {
-                            HttpStatusCode.NotFound to "Notification with id $notificationId not found"
+                            HttpStatusCode.NotFound to ErrorResponse("Notification with id $notificationId not found")
                         }
                     }
                     logger.info { "Notification was reed with result: $response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
@@ -227,10 +222,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             topicResolver.sendToAllSubscribed("/notifications")
                             HttpStatusCode.OK to "Notification with id $notificationId successfully deleted"
                         } else {
-                            HttpStatusCode.NotFound to "Notification with id $notificationId not found"
+                            HttpStatusCode.NotFound to ErrorResponse("Notification with id $notificationId not found")
                         }
                     }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
@@ -243,22 +238,20 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         )
                     )
                     .responds(
-                        ok<String>(
-                            example("Trigger for classes processing sent to agent with such id")
-                        ),
+                        ok<String>(),
                         badRequest()
                     )
                 post<Routes.Api.Agent.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
                     val (agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 
-                    val response = when (statusCode) {
-                        HttpStatusCode.OK -> "Trigger for classes processing sent to agent with id $agentId"
-                        HttpStatusCode.BadRequest -> "Package prefixes contains empty value"
-                        else -> "Request handle with exception"
+                    val response: Any = when (statusCode) {
+                        HttpStatusCode.OK -> EmptyContent
+                        HttpStatusCode.BadRequest -> ErrorResponse("Package prefixes contains empty value")
+                        else -> ErrorResponse("Request handle with exception")
                     }
                     logger.info { "System settings update was finished with result: $response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
 
@@ -270,9 +263,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         )
                     )
                     .responds(
-                        ok<String>(
-                            example("result", "Agent with such id have been updated")
-                        ),
+                        ok<Unit>(),
                         internalServerError<String>(
                             example("error", "Request handle with exception")
                         )
@@ -284,13 +275,13 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentId,
                         buildVersion
                     )) {
-                        HttpStatusCode.NotFound -> HttpStatusCode.BadRequest to "Build with id ${buildVersion.id} does not exist"
-                        HttpStatusCode.BadRequest -> HttpStatusCode.BadRequest to "Build named ${buildVersion.name} already exists"
-                        HttpStatusCode.OK -> HttpStatusCode.OK to "Agent with id $agentId have been updated"
-                        else -> HttpStatusCode.InternalServerError to "Request handle with exception"
+                        HttpStatusCode.NotFound -> HttpStatusCode.BadRequest to ErrorResponse("Build with id ${buildVersion.id} does not exist")
+                        HttpStatusCode.BadRequest -> HttpStatusCode.BadRequest to ErrorResponse("Build named ${buildVersion.name} already exists")
+                        HttpStatusCode.OK -> HttpStatusCode.OK to EmptyContent
+                        else -> HttpStatusCode.InternalServerError to ErrorResponse("Request handle with exception")
                     }
                     logger.info { "Build version rename was finished with result: $response" }
-                    call.respondJsonIfErrorsOccured(statusCode, response)
+                    call.respond(statusCode, response)
                 }
             }
         }
