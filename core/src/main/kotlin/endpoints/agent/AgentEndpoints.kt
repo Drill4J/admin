@@ -9,7 +9,9 @@ import com.epam.drill.admin.router.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.client.utils.*
 import io.ktor.http.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.serialization.*
 import mu.*
@@ -31,9 +33,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         example("Petclinic", agentInfoWebSocketExample)
                     )
                     .responds(
-                        ok<String>(
-                            example("result", "Agent with such id was updated successfully")
-                        ), badRequest()
+                        ok<Unit>(), badRequest()
                     )
                 post<Routes.Api.UpdateAgentConfig, AgentInfoWebSocket>(updateConfigResponds) { location, au ->
                     val agentId = location.agentId
@@ -42,12 +42,12 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (status, message) = if (agentManager.agentSession(agentId) != null) {
                         agentManager.updateAgent(agentId, au)
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
-                        HttpStatusCode.OK to "agent '$agentId' was updated"
+                        HttpStatusCode.OK to EmptyContent
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        HttpStatusCode.BadRequest to "agent '$agentId' not found"
+                        HttpStatusCode.BadRequest to ErrorResponse("agent '$agentId' not found")
                     }
-                    call.respondJsonIfErrorsOccured(status, message)
+                    call.respond(status, message)
                 }
             }
 
@@ -58,9 +58,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         example("Petclinic", agentRegistrationExample)
                     )
                     .responds(
-                        ok<String>(
-                            example("result", "Agent with such id has been registered")
-                        ), badRequest()
+                        ok<Unit>(), badRequest()
                     )
                 post<Routes.Api.Agent.RegisterAgent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
@@ -69,12 +67,12 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (status, message) = if (agInfo != null) {
                         register(agInfo, regInfo)
                         logger.debug { "Agent with id '$agentId' has been registered" }
-                        HttpStatusCode.OK to "Agent '$agentId' has been registered"
+                        HttpStatusCode.OK to EmptyContent
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        HttpStatusCode.BadRequest to "Agent '$agentId' not found"
+                        HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
                     }
-                    call.respondJsonIfErrorsOccured(status, message)
+                    call.respond(status, message)
                 }
             }
 
@@ -93,7 +91,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         register(agInfo.agent, regInfo.copy(name = agInfo.agent.id, description = agInfo.agent.id))
                     }
 
-                    call.respondJsonIfErrorsOccured(
+                    call.respond(
                         HttpStatusCode.OK,
                         "${serviceGroup.joinToString { it.agent.id }} registered"
                     )
@@ -114,16 +112,17 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         register(agInfo, regInfo.copy(name = agInfo.id, description = agInfo.id))
                     }
 
-                    call.respondJsonIfErrorsOccured(HttpStatusCode.OK, "${allAgents.joinToString { it.id }} registered")
+                    call.respond(
+                        HttpStatusCode.OK,
+                        "${allAgents.joinToString { it.id }} registered"
+                    )
                 }
             }
 
             authenticate {
                 val unregisterAgentResponds = "Unregister agent"
                     .responds(
-                        ok<String>(
-                            example("result", "Agent with such id has been unregistered successfully")
-                        ), badRequest()
+                        ok<Unit>(), badRequest()
                     )
                 post<Routes.Api.Agent.UnregisterAgent>(unregisterAgentResponds) { payload ->
                     logger.debug { "Unregister agent with id ${payload.agentId}" }
@@ -133,12 +132,12 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (status, message) = if (agInfo != null) {
                         agentManager.resetAgent(agInfo)
                         logger.debug { "Agent with id ${payload.agentId} has been unregistered successfully" }
-                        HttpStatusCode.OK to "Agent '$agentId' has been unregistered"
+                        HttpStatusCode.OK to EmptyContent
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
-                        HttpStatusCode.BadRequest to "Agent '$agentId' not found"
+                        HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
                     }
-                    call.respondJsonIfErrorsOccured(status, message)
+                    call.respond(status, message)
                 }
             }
         }

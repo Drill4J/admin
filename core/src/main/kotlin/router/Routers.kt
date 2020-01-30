@@ -83,6 +83,9 @@ object Routes {
             @Location("/{serviceGroupId}/{pluginId}/dispatch-action")
             data class DispatchPluginAction(val serviceGroupId: String, val pluginId: String)
 
+            @Group(systemGroup)
+            @Location("/{serviceGroupId}/plugins/{pluginId}/{dataType}")
+            data class PluginData(val serviceGroupId: String, val pluginId: String, val dataType: String)
         }
 
         @Group(agentPluginManagementGroup)

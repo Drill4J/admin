@@ -82,7 +82,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     }
 }
 
-private fun Iterable<Any>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
+fun Iterable<Any>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
     .takeIf { it.any() }
     ?.reduce { acc, aggregator ->
         @Suppress("UNCHECKED_CAST")
