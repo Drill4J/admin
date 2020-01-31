@@ -40,7 +40,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 if (sessionStorage.exists(destination)) {
                     sessionStorage.sendTo(
                         destination,
-                        v.agent.toAgentInfoWebSocket(agentManager)
+                        v.agent.toDto(agentManager)
                     )
 
                 }
@@ -58,7 +58,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetAgent> { (agentId) ->
-                    agentManager.getOrNull(agentId)?.toAgentInfoWebSocket(agentManager)
+                    agentManager.getOrNull(agentId)?.toDto(agentManager)
                 }
 
                 topic<WsRoutes.GetAgentBuilds> { payload ->
@@ -67,14 +67,14 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoutes.GetAllPlugins> {
                     plugins.map { (_, dp) -> dp.pluginBean }
-                        .toAllPluginsWebSocket(agentManager.agentStorage.values.map { it.agent }.toMutableSet())
+                        .mapToDto(agentManager.agentStorage.values.map { it.agent })
                 }
 
                 topic<WsRoutes.GetPluginInfo> { payload ->
                     val installedPluginBeanIds = agentManager
                         .getAllInstalledPluginBeanIds(payload.agentId)
                     plugins.getAllPluginBeans().map { plug ->
-                        val pluginWebSocket = plug.toPluginWebSocket()
+                        val pluginWebSocket = plug.toDto()
                         if (plug partOf installedPluginBeanIds) {
                             pluginWebSocket.relation = "Installed"
                         }

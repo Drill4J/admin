@@ -35,7 +35,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                post<Routes.Api.UpdateAgentConfig, AgentInfoWebSocket>(updateConfigResponds) { location, au ->
+                post<Routes.Api.UpdateAgentConfig, AgentInfoDto>(updateConfigResponds) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 

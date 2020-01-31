@@ -139,7 +139,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun updateAgent(agentId: String, au: AgentInfoWebSocket) {
+    suspend fun updateAgent(agentId: String, au: AgentInfoDto) {
         logger.debug { "Agent with id $agentId update with agent info :$au" }
         getOrNull(agentId)?.apply {
             name = au.name
@@ -190,7 +190,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun resetAgent(agInfo: AgentInfo) {
         logger.debug { "Reset agent with id ${agInfo.name}" }
-        val au = AgentInfoWebSocket(
+        val au = AgentInfoDto(
             id = agInfo.id,
             name = "",
             environment = "",

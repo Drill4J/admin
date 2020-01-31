@@ -1,20 +1,19 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.admindata.*
-import com.epam.drill.common.*
-import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugins.*
 import kotlinx.serialization.*
 
 @Serializable
 data class ServiceGroupDto(
     val group: ServiceGroup,
-    val agents: List<AgentInfoWebSocket>
+    val agents: List<AgentInfoDto>,
+    val plugins: List<PluginDto>
 )
 
 @Serializable
 data class GroupedAgentsDto(
-    val single: List<AgentInfoWebSocket>,
+    val single: List<AgentInfoDto>,
     val grouped: List<ServiceGroupDto>
 )
 
@@ -39,27 +38,3 @@ data class ServiceGroupSummaryDto(
     val count: Int,
     @ContextualSerialization val aggregatedData: Any
 )
-
-fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
-    single = first.agentInfos.toDto(agentManager),
-    grouped = second.map { agentGroup ->
-        ServiceGroupDto(
-            group = agentGroup.group,
-            agents = agentGroup.agentInfos.toDto(agentManager)
-        )
-    }
-)
-
-internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any) = PluginSummaryDto(
-    agentId = agent.id,
-    agentName = agent.name,
-    lastBuild = adminData.buildManager.run {
-        LastBuildDto(
-            version = lastBuild,
-            alias = buildVersions[lastBuild] ?: ""
-        )
-    },
-    data = data
-)
-
-private fun List<AgentInfo>.toDto(agentManager: AgentManager) = map { it.toDto(agentManager) }

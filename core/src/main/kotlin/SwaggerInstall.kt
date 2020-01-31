@@ -39,12 +39,12 @@ fun Application.enableSwaggerSupport() {
     }
 }
 
-val agentInfoWebSocketExample = AgentInfoWebSocket(
+val agentInfoWebSocketExample = AgentInfoDto(
     id = "Petclinic",
     name = "Petclinic",
     status = AgentStatus.NOT_REGISTERED,
     buildVersion = "0.0.1",
-    plugins = mutableSetOf(PluginWebSocket(id = "", relation = null)),
+    plugins = mutableSetOf(PluginDto(id = "", relation = null)),
     buildAlias = "0.1.0",
     description = "",
     packagesPrefixes = listOf("org/springframework/samples/petclinic"),

@@ -33,13 +33,13 @@ abstract class PluginStreams {
 
 
 class AdminUiChannels {
-    val agentChannel = Channel<AgentInfoWebSocket?>()
+    val agentChannel = Channel<AgentInfoDto?>()
     val agentBuildsChannel = Channel<Set<AgentBuildVersionJson>?>()
     val buildsChannel = Channel<List<BuildSummaryWebSocket>?>()
     val agentsChannel = Channel<GroupedAgentsDto?>()
-    val allPluginsChannel = Channel<Set<PluginWebSocket>?>()
+    val allPluginsChannel = Channel<Set<PluginDto>?>()
     val notificationsChannel = Channel<Set<Notification>?>()
-    val agentPluginInfoChannel = Channel<Set<PluginWebSocket>?>()
+    val agentPluginInfoChannel = Channel<Set<PluginDto>?>()
 
     suspend fun getAgent() = agentChannel.receive()
     suspend fun getAgentBuilds() = agentBuildsChannel.receive()
@@ -79,7 +79,7 @@ class UIEVENTLOOP(
                                     is WsRoutes.GetAgent -> {
 
                                         if (notEmptyResponse) {
-                                            cs[type.agentId]!!.agentChannel.send(AgentInfoWebSocket.serializer() parse content)
+                                            cs[type.agentId]!!.agentChannel.send(AgentInfoDto.serializer() parse content)
                                         } else {
                                             cs[type.agentId]!!.agentChannel.send(null)
                                         }
@@ -121,7 +121,7 @@ class UIEVENTLOOP(
                                     }
                                     is WsRoutes.GetPluginInfo -> {
                                         if (notEmptyResponse) {
-                                            cs[type.agentId]!!.agentPluginInfoChannel.send(PluginWebSocket.serializer().set parse content)
+                                            cs[type.agentId]!!.agentPluginInfoChannel.send(PluginDto.serializer().set parse content)
                                         } else {
                                             cs[type.agentId]!!.agentPluginInfoChannel.send(null)
                                         }
