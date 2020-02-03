@@ -57,8 +57,8 @@ object Routes {
             data class RenameBuildVersion(val agentId: String)
 
             @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/{pluginId}/get-data")
-            data class GetPluginData(val agentId: String, val pluginId: String)
+            @Location("/{agentId}/plugin/{pluginId}/{dataType}")
+            data class PluginData(val agentId: String, val pluginId: String, val dataType: String)
         }
 
         @Group(systemGroup)
@@ -84,7 +84,7 @@ object Routes {
             data class DispatchPluginAction(val serviceGroupId: String, val pluginId: String)
 
             @Group(systemGroup)
-            @Location("/{serviceGroupId}/plugins/{pluginId}/{dataType}")
+            @Location("/{serviceGroupId}/plugin/{pluginId}/{dataType}")
             data class PluginData(val serviceGroupId: String, val pluginId: String, val dataType: String)
         }
 

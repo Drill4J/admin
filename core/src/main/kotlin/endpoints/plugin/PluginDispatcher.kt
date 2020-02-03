@@ -125,8 +125,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
 
 
-            get<Routes.Api.Agent.GetPluginData> { (agentId, pluginId) ->
-                logger.debug { "Get data plugin with id $pluginId for agent with id $agentId" }
+            get<Routes.Api.Agent.PluginData> { (agentId, pluginId, dataType) ->
+                logger.debug { "Take data plugin with id $pluginId for agent with id $agentId and dataType $dataType" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
                 val agentEntry = agentManager.full(agentId)
@@ -136,7 +136,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("data for agent '$agentId' not found")
                     else -> {
                         val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
-                        val response = adminPart.getPluginData(context.parameters.asMap())
+                        val response = adminPart.getPluginData(mapOf("type" to dataType))
                         HttpStatusCode.OK to response
                     }
                 }
