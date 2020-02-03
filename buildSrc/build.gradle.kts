@@ -15,7 +15,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8", kotlinVersion))
     implementation(kotlin("serialization", kotlinVersion))
     implementation(kotlin("reflect", kotlinVersion))
-    implementation("com.epam.drill:gradle-plugin:0.9.0")
+    implementation("com.epam.drill:gradle-plugin:0.10.0")
 }
 
 kotlinDslPluginOptions {
