@@ -16,6 +16,7 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
@@ -304,7 +305,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
             } else {
                 HttpStatusCode.OK to when (adminActionResult) {
-                    is String -> adminActionResult
+                    is String -> TextContent(
+                        text = adminActionResult,
+                        contentType = ContentType.Application.Json
+                    )
                     else -> EmptyContent
                 }
             }
@@ -350,7 +354,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
         } else {
             HttpStatusCode.OK to when (adminActionResult) {
-                is String -> adminActionResult
+                is String -> TextContent(
+                    text = adminActionResult,
+                    contentType = ContentType.Application.Json
+                )
                 else -> EmptyContent
             }
         }

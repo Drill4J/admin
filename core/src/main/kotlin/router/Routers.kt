@@ -80,11 +80,11 @@ object Routes {
             data class Plugin(val serviceGroupParent: ServiceGroup, val pluginId: String) {
                 @Group(systemGroup)
                 @Location("/dispatch-action")
-                data class DispatchAction(val pluginParent: Plugin)
+                data class DispatchAction(val parent: Plugin)
 
                 @Group(systemGroup)
                 @Location("/data/{dataType}")
-                data class Data(val pluginParent: Plugin, val dataType: String)
+                data class Data(val parent: Plugin, val dataType: String)
             }
         }
 
