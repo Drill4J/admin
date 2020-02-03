@@ -105,8 +105,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val dispatchPluginsResponds = "Dispatch defined plugin actions in defined service group"
                     .responds()
-                post<Routes.Api.ServiceGroup.DispatchPluginAction>(dispatchPluginsResponds) { params ->
-                    val (serviceGroupId, pluginId) = params
+                post<Routes.Api.ServiceGroup.Plugin.DispatchAction>(dispatchPluginsResponds) { (pluginParent) ->
+                    val pluginId = pluginParent.pluginId
+                    val serviceGroupId = pluginParent.serviceGroupParent.serviceGroupId
                     val agents = agentManager.serviceGroup(serviceGroupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
                     dispatchPluginAction(pluginId, this, this@PluginDispatcher, agents)
@@ -126,7 +127,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
 
             get<Routes.Api.Agent.PluginData> { (agentId, pluginId, dataType) ->
-                logger.debug { "Take data plugin with id $pluginId for agent with id $agentId and dataType $dataType" }
+                logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
                 val agentEntry = agentManager.full(agentId)
@@ -144,8 +145,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 sendResponse(response, statusCode)
             }
 
-            get<Routes.Api.ServiceGroup.PluginData> { (serviceGroupId, pluginId, dataType) ->
-                logger.debug { "Take data plugin with id $pluginId for service group with id $serviceGroupId and dataType $dataType" }
+            get<Routes.Api.ServiceGroup.Plugin.Data> { (pluginParent, dataType) ->
+                val pluginId = pluginParent.pluginId
+                val serviceGroupId = pluginParent.serviceGroupParent.serviceGroupId
+                logger.debug { "Get plugin data, serviceGroupId=${serviceGroupId}serviceGroupId, pluginId=${pluginId}, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
                 val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
 

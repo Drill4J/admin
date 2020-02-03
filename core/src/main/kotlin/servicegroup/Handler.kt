@@ -41,7 +41,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         ok<Unit>(),
                         notFound()
                     )
-                put<Routes.Api.ServiceGroup.Update, ServiceGroup>(meta) { _, group ->
+                put<Routes.Api.ServiceGroup, ServiceGroup>(meta) { _, group ->
                     val statusCode = when (serviceGroupManager.update(group)) {
                         null -> HttpStatusCode.NotFound
                         else -> HttpStatusCode.OK

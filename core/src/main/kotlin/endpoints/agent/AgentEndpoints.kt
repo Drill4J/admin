@@ -3,9 +3,9 @@ package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -83,8 +83,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.ServiceGroup.Register, AgentRegistrationInfo>(registrationResponds) { params, regInfo ->
-                    val (serviceGroupId) = params
+                post<Routes.Api.ServiceGroup.Register, AgentRegistrationInfo>(registrationResponds) { (serviceGroupParent), regInfo ->
+                    val serviceGroupId = serviceGroupParent.serviceGroupId
                     logger.debug { "Registering agents in $serviceGroupId" }
                     val serviceGroup = agentManager.serviceGroup(serviceGroupId)
                     serviceGroup.forEach { agInfo ->

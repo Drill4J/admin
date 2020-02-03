@@ -57,7 +57,7 @@ object Routes {
             data class RenameBuildVersion(val agentId: String)
 
             @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/plugin/{pluginId}/{dataType}")
+            @Location("/{agentId}/plugin/{pluginId}/data/{dataType}")
             data class PluginData(val agentId: String, val pluginId: String, val dataType: String)
         }
 
@@ -69,23 +69,23 @@ object Routes {
         @Location("/all/{pluginId}/dispatch-action")
         data class DispatchAllPluginAction(val pluginId: String)
 
-        @Location("/service-group")
-        class ServiceGroup {
+        @Location("/service-group/{serviceGroupId}")
+        data class ServiceGroup(val serviceGroupId: String) {
             @Group(systemGroup)
-            @Location("/{serviceGroupId}")
-            data class Update(val serviceGroupId: String)
+            @Location("/register")
+            data class Register(val serviceGroupParent: ServiceGroup)
 
             @Group(systemGroup)
-            @Location("/{serviceGroupId}/register")
-            data class Register(val serviceGroupId: String)
+            @Location("/plugin/{pluginId}")
+            data class Plugin(val serviceGroupParent: ServiceGroup, val pluginId: String) {
+                @Group(systemGroup)
+                @Location("/dispatch-action")
+                data class DispatchAction(val pluginParent: Plugin)
 
-            @Group(systemGroup)
-            @Location("/{serviceGroupId}/{pluginId}/dispatch-action")
-            data class DispatchPluginAction(val serviceGroupId: String, val pluginId: String)
-
-            @Group(systemGroup)
-            @Location("/{serviceGroupId}/plugin/{pluginId}/{dataType}")
-            data class PluginData(val serviceGroupId: String, val pluginId: String, val dataType: String)
+                @Group(systemGroup)
+                @Location("/data/{dataType}")
+                data class Data(val pluginParent: Plugin, val dataType: String)
+            }
         }
 
         @Group(agentPluginManagementGroup)
