@@ -3,13 +3,13 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.util.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
 import org.kodein.di.*
@@ -30,10 +30,19 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
         runBlocking {
             agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
                 val destination = app.toLocation(WsRoutes.GetAllAgents())
+                val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
                 sessionStorage.sendTo(
                     destination,
-                    serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
+                    groupedAgents
                 )
+                val serviceGroups = groupedAgents.grouped
+                if (serviceGroups.any()) {
+                    for (group in serviceGroups) {
+                        val route = WsRoutes.ServiceGroupPlugins(group.group.id)
+                        val dest = app.toLocation(route)
+                        sessionStorage.sendTo(dest, group.plugins)
+                    }
+                }
             }
             agentManager.agentStorage.onAdd += add(mutableSetOf()) { k, v ->
                 val destination = app.toLocation(WsRoutes.GetAgent(k))

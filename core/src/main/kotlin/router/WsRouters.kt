@@ -9,6 +9,9 @@ object WsRoutes {
     @Location("/service-group/{groupId}")
     data class ServiceGroup(val groupId: String)
 
+    @Location("/service-group/{groupId}/plugins")
+    data class ServiceGroupPlugins(val groupId: String)
+
     @Location("/service-group/{groupId}/plugin/{pluginId}")
     data class ServiceGroupPlugin(val groupId: String, val pluginId: String)
 

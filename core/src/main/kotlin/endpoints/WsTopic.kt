@@ -17,7 +17,7 @@ import kotlin.reflect.full.*
 private val regexPathParam = "\\{(.*)}".toRegex()
 
 class WsTopic(override val kodein: Kodein) : KodeinAware {
-    private val app: Application by instance()
+    val app: Application by instance()
     val pathToCallBackMapping: MutableMap<URLTopic, Pair<KClass<*>, CallbackWrapper<Any, Any>>> = ConcurrentHashMap()
 
     suspend operator fun invoke(block: suspend WsTopic.() -> Unit) {

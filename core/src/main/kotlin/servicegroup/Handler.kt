@@ -1,5 +1,6 @@
 package com.epam.drill.admin.servicegroup
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
@@ -56,6 +57,13 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
             wsTopic {
                 topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
 
+                topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
+                    agentManager.activeAgents
+                        .filter { it.serviceGroup == groupId }
+                        .plugins()
+                        .mapToDto()
+                }
+
                 topic<WsRoutes.ServiceGroupPlugin> { (groupId, pluginId) ->
                     val summaries = agentStorage.values
                         .filter { it.agent.serviceGroup == groupId }
@@ -65,7 +73,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                             val pluginData = plugin?.summaryOf(it) ?: JsonNull
                             it.toPluginSummaryDto(adminData, pluginData)
                         }
-                    val aggregatedData = summaries.map {it.data }.aggregate()
+                    val aggregatedData = summaries.map { it.data }.aggregate()
                     ServiceGroupSummaryDto(
                         name = serviceGroupManager[groupId]?.name ?: "",
                         summaries = summaries,
