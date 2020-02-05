@@ -65,7 +65,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                             val pluginData = plugin?.summaryOf(it) ?: JsonNull
                             it.toPluginSummaryDto(adminData, pluginData)
                         }
-                    val aggregatedData = summaries.map {it.data }.aggregate()
+                    val aggregatedData = summaries.map { it.data }.aggregate()
                     ServiceGroupSummaryDto(
                         name = serviceGroupManager[groupId]?.name ?: "",
                         summaries = summaries,
@@ -79,6 +79,6 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun Plugin.summaryOf(entry: AgentEntry): Any? {
         val adminPart = agentManager.ensurePluginInstance(entry, this)
-        return adminPart.getPluginData()
+        return adminPart.getPluginData("summary")
     }
 }
