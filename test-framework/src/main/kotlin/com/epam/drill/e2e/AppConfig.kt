@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
@@ -12,9 +13,7 @@ import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.config.*
 import io.ktor.features.*
-import io.ktor.http.*
 import io.ktor.locations.*
-import io.ktor.serialization.*
 import io.ktor.websocket.*
 import org.kodein.di.generic.*
 import java.io.*
@@ -44,8 +43,7 @@ class AppConfig(var projectDir: File) {
         }
 
         install(ContentNegotiation) {
-            register(ContentType.Any, EmptyContentWrapper())
-            serialization()
+            converters()
         }
 
         enableSwaggerSupport()

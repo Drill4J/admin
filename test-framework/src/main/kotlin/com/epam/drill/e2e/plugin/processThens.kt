@@ -31,7 +31,8 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 ag.buildVersion,
                 globToken,
                 classes.size,
-                engine
+                engine,
+                asyncEngine.context
             )
             st.info = pluginTestInfo
             st.app = engine.application
@@ -62,7 +63,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 assertEquals(null, ui.getAgent()?.status)
                 assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
                 assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
-                callAsync {
+                callAsync(asyncEngine.context) {
                     loadPlugin(
                         apply,
                         ag,

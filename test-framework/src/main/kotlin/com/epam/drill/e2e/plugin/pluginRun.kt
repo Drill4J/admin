@@ -28,8 +28,8 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
         environment = createTestEnvironment { parentCoroutineContext = context },
         configure = { dispatcher = Dispatchers.IO + context })
     {
+        asyncEngine = AsyncTestAppEngine(handler, this)
         testApp(application, sslPort, false)
-        engine = this@withApplication
         storeManager = appConfig.storeManager
         commonStore = appConfig.commonStore
         globToken = requestToken()
@@ -42,7 +42,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
             val cs = mutableMapOf<String, AdminUiChannels>()
             val glob = Channel<GroupedAgentsDto>()
             val globLaunch = application.launch(handler) {
-                watcher?.invoke(this@withApplication, glob)
+                watcher?.invoke(asyncEngine, glob)
             }
             val pluginMeta = (PluginMetadata.serializer() parse
                     File(System.getProperty("plugin.config.path") ?: "./../plugin_config.json").readText())

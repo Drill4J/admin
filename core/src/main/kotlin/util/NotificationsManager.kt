@@ -4,6 +4,7 @@ import com.epam.drill.common.*
 import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
@@ -93,16 +94,16 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun pluginsRecommendations(
         agentInfo: AgentInfo
     ): List<String> {
-
         return agentManager.full(agentInfo.id)?.let { agentEntry ->
             val connectedPlugins = plugins.filter {
                 agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
             }
 
+            //TODO rewrite this double parsing
             val results = connectedPlugins.map { (_, plugin: Plugin) ->
                 val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
-                pluginInstance.getPluginData(mapOf("type" to "recommendations")).toString().ifEmpty { "[]" }
-            }
+                pluginInstance.getPluginData(type = "recommendations") as? String
+            }.filterNotNull()
             results.mapNotNull { result ->
                 try {
                     String.serializer().list parse result

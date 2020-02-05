@@ -9,9 +9,7 @@ object callAsync : CoroutineScope {
     override val coroutineContext: CoroutineContext
         get() = asyncCallLoop
 
-    operator fun invoke(vlock: suspend () -> Unit) = launch {
+    operator fun invoke(context: CoroutineContext = EmptyCoroutineContext, vlock: suspend () -> Unit) = launch(context) {
         vlock()
     }
-
-
 }

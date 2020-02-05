@@ -2,11 +2,11 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.servicegroup.*
+import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -14,6 +14,7 @@ import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import java.util.concurrent.*
+import kotlin.coroutines.*
 import kotlin.time.*
 
 
@@ -25,18 +26,21 @@ abstract class E2ETest : AdminTest() {
         agentStreamDebug: Boolean = false,
         block: suspend () -> Unit
     ) {
-        runBlocking {
-            val context = SupervisorJob()
+        var coroutineException: Throwable? = null
+        val context = SupervisorJob()
+        val handler = CoroutineExceptionHandler { _, exception ->
+            coroutineException = exception
+        } + context
+        runBlocking(handler) {
             val timeoutJob = createTimeoutJob(5.seconds, context)
             val appConfig = AppConfig(projectDir)
             val testApp = appConfig.testApp
-            var coroutineException: Throwable? = null
-            val handler = CoroutineExceptionHandler { _, exception -> coroutineException = exception } + context
             withApplication(
                 environment = createTestEnvironment { parentCoroutineContext = context },
-                configure = { dispatcher = Dispatchers.IO + context })
-            {
+                configure = { dispatcher = Dispatchers.IO + context }
+            ) {
                 testApp(application, sslPort, false)
+                asyncEngine = AsyncTestAppEngine(handler, this)
                 storeManager = appConfig.storeManager
                 commonStore = appConfig.commonStore
                 globToken = requestToken()
@@ -47,16 +51,16 @@ abstract class E2ETest : AdminTest() {
                     uiIncoming.receive()
                     val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
-                        watcher?.invoke(this@withApplication, glob)
+                        watcher?.invoke(asyncEngine, glob)
                     }
                     val cs = mutableMapOf<String, AdminUiChannels>()
-                    runBlocking(handler) {
+                    coroutineScope {
                         agents.map { (_, xx) ->
                             val (ag, startClb, connect, thens) = xx
                             launch(handler) {
-                                startClb()
                                 val ui = AdminUiChannels()
                                 cs[ag.id] = ui
+                                startClb()
                                 val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
                                 with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
 
@@ -75,7 +79,7 @@ abstract class E2ETest : AdminTest() {
                                     glob.receive()
                                     val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
                                     connect(
-                                        this@withApplication,
+                                        asyncEngine,
                                         ui,
                                         apply
                                     )
@@ -95,7 +99,7 @@ abstract class E2ETest : AdminTest() {
                                         val apply =
                                             Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
                                         it(
-                                            this@withApplication,
+                                            asyncEngine,
                                             ui,
                                             apply
                                         )
@@ -109,18 +113,18 @@ abstract class E2ETest : AdminTest() {
                     }
 
                 }
-                if (coroutineException != null) {
-                    throw coroutineException as Throwable
-                }
             }
             timeoutJob.cancel()
+        }
+        if (coroutineException != null) {
+            throw coroutineException!!
         }
     }
 
     fun connectAgent(
         ags: AgentWrap,
         startClb: suspend () -> Unit = {},
-        bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
+        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
     ): E2ETest {
         agents[AgentKey(ags.id, ags.instanceId)] = AgentStruct(ags, startClb, bl, mutableListOf())
         return this
@@ -129,143 +133,145 @@ abstract class E2ETest : AdminTest() {
 
     fun reconnect(
         ags: AgentWrap,
-        bl: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit
+        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
     ): E2ETest {
         agents[AgentKey(ags.id, ags.instanceId)]?.reconnects?.add(ags to bl)
         return this
     }
 
-    fun TestApplicationEngine.register(
-        agentId: String,
-        token: String = globToken,
-        payload: AgentRegistrationInfo = AgentRegistrationInfo(
-            name = "xz",
-            description = "ad",
-            packagesPrefixes = listOf("testPrefix"),
-            plugins = emptyList()
-        ),
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-    ) = callAsync {
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(AgentRegistrationInfo.serializer() stringify payload)
-        }.apply { resultBlock(response.status(), response.content) }
-    }
-
-    fun TestApplicationEngine.addPlugin(
+    fun AsyncTestAppEngine.addPlugin(
         agentId: String,
         payload: PluginId,
         token: String = globToken,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) =
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-                setBody(PluginId.serializer() stringify payload)
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                    addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    setBody(PluginId.serializer() stringify payload)
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
 
-    fun TestApplicationEngine.unRegister(
+    fun AsyncTestAppEngine.unregister(
         agentId: String,
         token: String = globToken,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) =
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
 
-    fun TestApplicationEngine.unLoadPlugin(
+    fun AsyncTestAppEngine.unLoadPlugin(
         agentId: String,
         payload: PluginId,
         token: String = globToken,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) {
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
     }
 
-    fun TestApplicationEngine.togglePlugin(
+    fun AsyncTestAppEngine.togglePlugin(
         agentId: String,
         pluginId: PluginId,
         token: String = globToken,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) {
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
     }
 
-    fun TestApplicationEngine.toggleAgent(
+    fun AsyncTestAppEngine.toggleAgent(
         agentId: String,
         token: String = globToken,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) {
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
     }
 
-    fun TestApplicationEngine.renameBuildVersion(
+    fun AsyncTestAppEngine.renameBuildVersion(
         agentId: String,
         token: String = globToken,
         payload: AgentBuildVersionJson,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) {
-        callAsync {
-            handleRequest(
-                HttpMethod.Post,
-                "/api" + application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-                setBody(AgentBuildVersionJson.serializer() stringify payload)
-            }.apply { resultBlock(response.status(), response.content) }
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Post,
+                    "/api" + application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
+                ) {
+                    addHeader(HttpHeaders.Authorization, "Bearer $token")
+                    addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    setBody(AgentBuildVersionJson.serializer() stringify payload)
+                }.apply { resultBlock(response.status(), response.content) }
+            }
         }
     }
 
-    fun TestApplicationEngine.changePackages(
+    fun AsyncTestAppEngine.changePackages(
         agentId: String,
         token: String = globToken,
         payload: SystemSettingsDto,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-    ) = callAsync {
-        handleRequest(HttpMethod.Post, "/api" + application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(SystemSettingsDto.serializer() stringify payload)
-        }.apply { resultBlock(response.status(), response.content) }
+    ) = callAsync(context) {
+        with(engine) {
+            handleRequest(HttpMethod.Post, "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))) {
+                addHeader(HttpHeaders.Authorization, "Bearer $token")
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(SystemSettingsDto.serializer() stringify payload)
+            }.apply { resultBlock(response.status(), response.content) }
+        }
     }
 
 }
+
+data class AsyncTestAppEngine(val context: CoroutineContext, val engine: TestApplicationEngine)
 
 data class AgentKey(val id: String, val instanceId: String)
 data class AgentStruct(
     val agWrap: AgentWrap,
     val startClb: suspend () -> Unit = {},
-    val clbs: suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit,
-    val reconnects: MutableList<Pair<AgentWrap, suspend TestApplicationEngine.(AdminUiChannels, Agent) -> Unit>>
+    val clbs: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
+    val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit>>
 )
 
 data class AgentWrap(

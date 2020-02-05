@@ -2,7 +2,6 @@ package com.epam.drill.e2e
 
 import com.epam.drill.common.*
 import com.epam.drill.e2e.plugin.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
@@ -11,6 +10,7 @@ import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import java.net.*
 import kotlin.collections.set
+import kotlin.coroutines.*
 import kotlin.time.*
 
 abstract class E2EPluginTest : AdminTest() {
@@ -30,32 +30,12 @@ abstract class E2EPluginTest : AdminTest() {
 
 }
 
-fun AdminTest.register(
-    agentId: String,
-    token: String = globToken,
-    payload: AgentRegistrationInfo = AgentRegistrationInfo(
-        name = "xz",
-        description = "ad",
-        packagesPrefixes = listOf("testPrefix"),
-        plugins = listOf("test-plugin")
-    ),
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-) = callAsync {
-    engine.handleRequest(
-        HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.RegisterAgent(agentId))
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(AgentRegistrationInfo.serializer() stringify payload)
-    }.apply { resultBlock(response.status(), response.content) }
-}
-
 fun AdminTest.addPlugin(
     agentId: String,
     payload: PluginId,
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-) = callAsync {
+) = callAsync(asyncEngine.context) {
     engine.handleRequest(
         HttpMethod.Post,
         "/api" + engine.application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
@@ -70,7 +50,7 @@ fun AdminTest.unRegister(
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) =
-    callAsync {
+    callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
@@ -85,7 +65,7 @@ fun AdminTest.unLoadPlugin(
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) {
-    callAsync {
+    callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
@@ -101,7 +81,7 @@ fun AdminTest.togglePlugin(
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) {
-    callAsync {
+    callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
@@ -116,7 +96,7 @@ fun AdminTest.toggleAgent(
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) {
-    callAsync {
+    callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
@@ -132,7 +112,7 @@ fun AdminTest.renameBuildVersion(
     payload: AgentBuildVersionJson,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 ) {
-    callAsync {
+    callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
@@ -150,7 +130,7 @@ fun AdminTest.pluginAction(
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 
-) = callAsync {
+) = callAsync(asyncEngine.context) {
     engine.handleRequest(
         HttpMethod.Post,
         "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
@@ -167,6 +147,7 @@ data class PluginTestContext(
     val token: String,
     val classesCount: Int,
     val engine: TestApplicationEngine,
+    val context: CoroutineContext,
     var lis: MutableList<Class<*>> = mutableListOf()
 ) {
 
@@ -176,7 +157,7 @@ data class PluginTestContext(
         agentId: String = this.agentId,
         token: String = this.token,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-    ) = callAsync {
+    ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
@@ -191,7 +172,7 @@ data class PluginTestContext(
         token: String = this.token,
         payload: PackagesPrefixes = PackagesPrefixes(),
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-    ) = callAsync {
+    ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
             "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))

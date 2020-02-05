@@ -3,6 +3,7 @@ package com.epam.drill.admin.endpoints.plugin
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.service.*
@@ -64,7 +65,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.OK to EmptyContent
                     } else {
                         val errorMessage = "AgentInfo with associated with id $agentId" +
-                                " or plugin configuration associated with id $pluginId was not found"
+                            " or plugin configuration associated with id $pluginId was not found"
                         logger.warn { errorMessage }
                         HttpStatusCode.NotFound to ErrorResponse(errorMessage)
                     }
@@ -133,16 +134,15 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val agentInfo = agentManager[agentId]
                 val agentEntry = agentManager.full(agentId)
                 val (statusCode: HttpStatusCode, response: Any) = when {
-                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
-                    (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
-                    (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("data for agent '$agentId' not found")
+                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
+                    (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
+                    (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
                     else -> {
                         val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
-                        val response = adminPart.getPluginData(mapOf("type" to dataType))
-                        HttpStatusCode.OK to response
+                        val pluginData = adminPart.getPluginData(type = dataType)
+                        pluginData.toStatusResponsePair()
                     }
                 }
-                logger.debug { response }
                 sendResponse(response, statusCode)
             }
 
@@ -154,14 +154,16 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
 
                 val (statusCode: HttpStatusCode, response: Any) = when {
-                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
-                    (serviceGroup.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("data for serviceGroup '$serviceGroupId' not found")
+                    dp == null -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                    serviceGroup.isEmpty() -> HttpStatusCode.NotFound to ErrorResponse(
+                        "data for serviceGroup '$serviceGroupId' not found"
+                    )
                     else -> {
-                        val response = serviceGroup.map {
+                        val aggregatedData = serviceGroup.map {
                             val adminPart = agentManager.ensurePluginInstance(it, dp)
-                            adminPart.getPluginData(mapOf("type" to dataType))
-                        }.aggregate() ?: ""
-                        HttpStatusCode.OK to response
+                            adminPart.getPluginData(type = dataType)
+                        }.aggregate()
+                        aggregatedData.toStatusResponsePair()
                     }
                 }
                 logger.debug { response }
@@ -187,7 +189,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 val agentInfo = agentManager[agentId]!!
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
                                     HttpStatusCode.BadRequest to
-                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
+                                        ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.apply {
                                         addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
@@ -210,7 +212,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val togglePluginResponds = "Toggle Plugin"
                     .responds(
                         ok<String>(
-                            example("result",
+                            example(
+                                "result",
                                 WsSendMessage(
                                     WsMessageType.MESSAGE,
                                     "some destination",
@@ -244,15 +247,19 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         response: Any,
         statusCode: HttpStatusCode
     ) = when (response) {
-        is ByteArray -> call.respondBytes(response, ContentType.MultiPart.Any, HttpStatusCode.OK)
-        "" -> call.respond(HttpStatusCode.BadRequest, "no data")
         is String -> call.respondText(
-            response,
-            ContentType.Application.Json
+            text = response,
+            contentType = ContentType.Application.Json,
+            status = statusCode
+        )
+        is ByteArray -> call.respondBytes(
+            bytes = response,
+            contentType = ContentType.MultiPart.Any,
+            status = statusCode
         )
         else -> call.respond(
-            statusCode,
-            response
+            status = statusCode,
+            message = response
         )
     }
 

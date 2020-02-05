@@ -1,6 +1,7 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
@@ -76,15 +77,8 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private suspend fun Plugin.summaryOf(entry: AgentEntry): Any {
+    private suspend fun Plugin.summaryOf(entry: AgentEntry): Any? {
         val adminPart = agentManager.ensurePluginInstance(entry, this)
-        return adminPart.getPluginData(emptyMap())
+        return adminPart.getPluginData()
     }
 }
-
-fun Iterable<Any>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
-    .takeIf { it.any() }
-    ?.reduce { acc, aggregator ->
-        @Suppress("UNCHECKED_CAST")
-        aggregator(acc) as? (Any) -> Any ?: acc
-    }

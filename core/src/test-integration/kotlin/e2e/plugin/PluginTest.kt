@@ -8,10 +8,11 @@ import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
+import kotlin.test.*
 
 class PluginTest : E2EPluginTest() {
 
-    @RepeatedTest(3) //some stress
+    @RepeatedTest(10)
     fun testE2ePluginAPI() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>("myServiceGroup") { _, _ ->

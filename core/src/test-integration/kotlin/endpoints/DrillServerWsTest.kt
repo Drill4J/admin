@@ -1,11 +1,12 @@
 @file:Suppress("FunctionName")
 
-package com.epam.drill.websockets
+package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.common.*
 import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
@@ -53,7 +54,7 @@ internal class DrillServerWsTest {
         }
 
         install(ContentNegotiation) {
-            register(ContentType.Any, EmptyContentWrapper())
+            converters()
         }
 
         enableSwaggerSupport()
@@ -143,6 +144,7 @@ internal class DrillServerWsTest {
     private fun TestApplicationEngine.handleHttpPostRequest(location: String, body: String, token: String) {
         handleRequest(HttpMethod.Post, location) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
+            addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             setBody(body)
         }
     }

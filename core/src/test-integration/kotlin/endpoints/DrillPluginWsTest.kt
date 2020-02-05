@@ -31,7 +31,6 @@ class PluginWsTest {
         install(WebSockets)
 
         install(ContentNegotiation) {
-            register(ContentType.Any, EmptyContentWrapper())
             serialization()
         }
 

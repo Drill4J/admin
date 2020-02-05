@@ -11,7 +11,7 @@ class AgentUnregisterTest : E2ETest() {
     private val agentId = "unregisterAgent"
 
     @Test
-    fun `Agent Unregister Test`() {
+    fun `unregistering`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
@@ -22,7 +22,9 @@ class AgentUnregisterTest : E2ETest() {
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
                 ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                unRegister(agentId)
+                unregister(agentId) { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
             }
         }

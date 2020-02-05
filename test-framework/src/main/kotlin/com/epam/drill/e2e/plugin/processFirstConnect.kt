@@ -34,7 +34,8 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
             ag.buildVersion,
             globToken,
             classes.size,
-            engine
+            engine,
+            asyncEngine.context
         )
         st.info = pluginTestInfo
         st.app = engine.application
@@ -54,7 +55,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     agentStreamDebug
                 ).apply { queued() }
             apply.getHeaders()
-            register(
+            asyncEngine.register(
                 ag.id, payload = AgentRegistrationInfo(
                     name = "xz",
                     description = "ad",
@@ -72,7 +73,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
             val classMap: Map<String, ByteArray> = bcelClasses.associate {
                 it.className.replace(".", "/") to it.bytes
             }
-            callAsync {
+            callAsync(asyncEngine.context) {
                 loadPlugin(
                     apply,
                     ag,

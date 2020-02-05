@@ -27,3 +27,10 @@ internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any
     },
     data = data
 )
+
+fun Iterable<Any?>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
+    .takeIf { it.any() }
+    ?.reduce { acc, aggregator ->
+        @Suppress("UNCHECKED_CAST")
+        aggregator(acc) as? (Any) -> Any ?: acc
+    }

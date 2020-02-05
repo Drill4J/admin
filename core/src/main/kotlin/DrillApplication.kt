@@ -1,5 +1,6 @@
 package com.epam.drill.admin
 
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
@@ -10,12 +11,8 @@ import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
-import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.serialization.*
-import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
-import kotlinx.serialization.json.*
 import mu.*
 import java.io.*
 import java.time.*
@@ -53,8 +50,7 @@ fun Application.module() = kodeinApplication(
             }
 
             install(ContentNegotiation) {
-                register(ContentType.Any, EmptyContentWrapper())
-                serialization()
+                converters()
             }
 
             enableSwaggerSupport()
@@ -94,17 +90,3 @@ fun Application.module() = kodeinApplication(
         withKModule { kodeinModule("pluginServices", pluginServices) }
     }
 )
-
-class EmptyContentWrapper(val srl: SerializationConverter = SerializationConverter(Json(DefaultJsonConfiguration))) : ContentConverter {
-    override suspend fun convertForReceive(context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>) =
-        if (context.subject.type == Unit::class) Unit
-        else srl.convertForReceive(context)
-
-
-    override suspend fun convertForSend(
-        context: PipelineContext<Any, ApplicationCall>,
-        contentType: ContentType,
-        value: Any
-    ) = srl.convertForSend(context, contentType, value)
-
-}
