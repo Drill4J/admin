@@ -295,7 +295,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val sessionId = UUID.randomUUID().toString()
         return agents.map { agentEntry ->
             val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
-            val adminActionResult = adminPart.doRawAction(sessionSubstituting(action, sessionId))
+            val adminActionResult: Any = adminPart.doRawAction(sessionSubstituting(action, sessionId))
             val agentPartMsg = when (adminActionResult) {
                 is String -> adminActionResult
                 is Unit -> action
@@ -308,17 +308,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
                 }
             }
-            if (adminActionResult is StatusMessage) {
-                HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
-            } else {
-                HttpStatusCode.OK to when (adminActionResult) {
-                    is String -> TextContent(
-                        text = adminActionResult,
-                        contentType = ContentType.Application.Json
-                    )
-                    else -> EmptyContent
-                }
-            }
+            toResponsePair(adminActionResult)
         }.reduce { k, _ -> k }
     }
 
@@ -357,17 +347,17 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
             }
         }
-        if (adminActionResult is StatusMessage) {
-            HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult.message
-        } else {
-            HttpStatusCode.OK to when (adminActionResult) {
-                is String -> TextContent(
-                    text = adminActionResult,
-                    contentType = ContentType.Application.Json
-                )
-                else -> EmptyContent
-            }
-        }
-
+        toResponsePair(adminActionResult)
     }
+}
+
+
+
+private fun toResponsePair(adminActionResult: Any): Pair<HttpStatusCode, Any> = when(adminActionResult) {
+    is StatusMessage -> HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult
+    is String -> HttpStatusCode.OK to TextContent(
+        text = adminActionResult,
+        contentType = ContentType.Application.Json
+    )
+    else -> HttpStatusCode.OK to EmptyContent
 }
