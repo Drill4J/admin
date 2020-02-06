@@ -75,9 +75,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val agentToggleStandByResponds = "Agent Toggle StandBy"
                     .responds(
-                        ok<String>(
-                            example("result", "toggled")
-                        )
+                        ok<Unit>(), notFound(), badRequest()
                     )
                 post<Routes.Api.Agent.AgentToggleStandby>(agentToggleStandByResponds) { params ->
                     val (agentId) = params
@@ -96,7 +94,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                         with(agentManager) { agentInfo.commitChanges() }
                         logger.info { "Agent $agentId toggled to status ${agentInfo.status.name} successfully" }
-                        call.respond(HttpStatusCode.OK, "toggled")
+                        call.respond(HttpStatusCode.OK, EmptyContent)
                     }
                 }
             }
@@ -156,9 +154,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val resetAllAgentsResponds = "Reset all agents"
                     .responds(
-                        ok<String>(
-                            example("result", "reset drill admin app")
-                        )
+                        ok<Unit>()
                     )
                 post<Routes.Api.ResetAllAgents>(resetAllAgentsResponds) { _ ->
                     logger.info { "Reset all agents" }
@@ -166,7 +162,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
                     }
                     logger.info { "Reset all agents successfully" }
-                    call.respond(HttpStatusCode.OK, "reset drill admin app")
+                    call.respond(HttpStatusCode.OK, EmptyContent)
                 }
             }
 
