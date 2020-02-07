@@ -1,11 +1,12 @@
 package com.epam.drill.admin.util
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.common.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
@@ -58,14 +59,33 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
         notifications.remove(id) != null
     } ?: false
 
-    suspend fun newBuildNotify(agentInfo: AgentInfo) {
+    suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
-
-        if (previousBuildVersion.isNullOrEmpty() || previousBuildVersion == agentInfo.buildVersion) {
-            return
+        if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {
+            saveNewBuildNotification(agentInfo, buildManager, previousBuildVersion)
         }
+    }
 
+    private suspend fun saveNewBuildNotification(
+        agentInfo: AgentInfo,
+        buildManager: AgentBuildManager,
+        previousBuildVersion: String
+    ) {
+        save(
+            agentInfo.id,
+            agentInfo.name,
+            NotificationType.BUILD,
+            createNewBuildMessage(buildManager, previousBuildVersion, agentInfo)
+        )
+        topicResolver.sendToAllSubscribed("/notifications")
+    }
+
+    private suspend fun createNewBuildMessage(
+        buildManager: AgentBuildManager,
+        previousBuildVersion: String,
+        agentInfo: AgentInfo
+    ): String {
         val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
         val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
         val buildDiff = BuildDiff(
@@ -76,19 +96,14 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
             methodChanges.map[DiffType.DELETED]?.count() ?: 0
         )
 
-        save(
-            agentInfo.id,
-            agentInfo.name,
-            NotificationType.BUILD,
-            NewBuildArrivedMessage.serializer() stringify NewBuildArrivedMessage(
-                agentInfo.buildVersion,
-                previousBuildVersion,
-                previousBuildAlias,
-                buildDiff,
-                pluginsRecommendations(agentInfo)
-            )
+        val newBuildArrivedMessage = NewBuildArrivedMessage(
+            agentInfo.buildVersion,
+            previousBuildVersion,
+            previousBuildAlias,
+            buildDiff,
+            pluginsRecommendations(agentInfo)
         )
-        topicResolver.sendToAllSubscribed("/notifications")
+        return NewBuildArrivedMessage.serializer() stringify newBuildArrivedMessage
     }
 
     private suspend fun pluginsRecommendations(

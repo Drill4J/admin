@@ -31,7 +31,7 @@ object WsRoutes {
     data class GetPluginConfig(val agent: String, val plugin: String)
 
     @Location("/notifications")
-    class GetNotifications()
+    class GetNotifications
 
     @Location("/{agentId}/builds")
     data class GetBuilds(val agentId: String)
