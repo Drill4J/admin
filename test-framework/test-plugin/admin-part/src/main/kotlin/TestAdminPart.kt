@@ -40,7 +40,7 @@ class TestAdminPart(
             }
             else -> {
                 println(action)
-                "act"
+                StatusMessage(StatusCodes.OK, "act")
             }
         }
     }

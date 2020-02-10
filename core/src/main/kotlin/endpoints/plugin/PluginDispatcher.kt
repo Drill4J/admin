@@ -6,7 +6,6 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.service.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
@@ -83,21 +82,20 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         ), notFound()
                     )
                 post<Routes.Api.Agent.DispatchPluginAction, String>(dispatchResponds) { payload, action ->
-                    val (id, pluginId) = payload
-                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $id" }
-                    val dp: Plugin? = plugins[pluginId]
-                    val (statusCode, response) = if (dp == null) {
+                    val (agentId, pluginId) = payload
+                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
+                    val plugin: Plugin? = plugins[pluginId]
+                    val (statusCode, response) = if (plugin == null)
                         HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    } else {
-                        call.attributes.getOrNull(srv)?.run {
-                            processMultipleActions(
-                                agentManager.agentStorage.values.filter { it.agent.serviceGroup == id },
-                                dp,
-                                pluginId,
-                                action
-                            )
-                        } ?: processSingleAction(dp, id, action)
-
+                    else {
+                        val agentEntry = agentManager.full(agentId)
+                        processSingleAction(
+                            agentEntry,
+                            plugin,
+                            pluginId,
+                            action,
+                            agentId
+                        )
                     }
                     logger.info { "$response" }
                     call.respond(statusCode, response)
@@ -106,27 +104,33 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 val dispatchPluginsResponds = "Dispatch defined plugin actions in defined service group"
-                    .responds()
-                post<Routes.Api.ServiceGroup.Plugin.DispatchAction>(dispatchPluginsResponds) { (pluginParent) ->
-                    val pluginId = pluginParent.pluginId
-                    val serviceGroupId = pluginParent.serviceGroupParent.serviceGroupId
+                    .examples(
+                        example("action", "some action name")
+                    )
+                    .responds(
+                        ok<String>(
+                            example("")
+                        ), notFound()
+                    )
+                post<Routes.Api.ServiceGroup.Plugin.DispatchAction, String>(dispatchPluginsResponds) { pluginParent, action ->
+                    val pluginId = pluginParent.parent.pluginId
+                    val serviceGroupId = pluginParent.parent.serviceGroupParent.serviceGroupId
                     val agents = agentManager.serviceGroup(serviceGroupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
-                    dispatchPluginAction(pluginId, this, this@PluginDispatcher, agents)
+                    val plugin: Plugin? = plugins[pluginId]
+                    val (statusCode, response) = if (plugin == null)
+                        HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                    else
+                        processMultipleActions(
+                            agents,
+                            plugin,
+                            pluginId,
+                            action
+                        )
+                    logger.info { "$response" }
+                    call.respond(statusCode, response)
                 }
             }
-
-            authenticate {
-                val dispatchResponds = "Dispatch all plugin action"
-                    .responds()
-                post<Routes.Api.DispatchAllPluginAction>(dispatchResponds) { params ->
-                    val (pluginId) = params
-                    val agents = agentManager.getAllAgents()
-                    dispatchPluginAction(pluginId, this, this@PluginDispatcher, agents.toList())
-                }
-            }
-
-
 
             get<Routes.Api.Agent.PluginData> { (agentId, pluginId, dataType) ->
                 logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
@@ -263,52 +267,21 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         )
     }
 
-    private suspend fun dispatchPluginAction(
-        pluginId: String,
-        pipelineContext: PipelineContext<Unit, ApplicationCall>,
-        pluginDispatcher: PluginDispatcher,
-        agents: List<AgentEntry>
-    ) {
-        val action = pipelineContext.call.receive<String>()
-        val dp: Plugin? = plugins[pluginId]
-        val (statusCode, response) = if (dp == null) {
-            HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-        } else {
-
-            pluginDispatcher.processMultipleActions(
-                agents,
-                dp,
-                pluginId,
-                action
-            )
-        }
-        logger.info { "$response" }
-        pipelineContext.call.respond(statusCode, response)
-    }
-
     private suspend fun processMultipleActions(
         agents: List<AgentEntry>,
-        dp: Plugin,
+        plugin: Plugin,
         pluginId: String,
         action: String
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
-        return agents.map { agentEntry ->
-            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
-            val adminActionResult: Any = adminPart.doRawAction(sessionSubstituting(action, sessionId))
-            val agentPartMsg = when (adminActionResult) {
-                is String -> adminActionResult
-                is Unit -> action
-                else -> Unit
-            }
-            if (agentPartMsg is String) {
-                agentEntry.agentSession.apply {
-                    val agentAction = PluginAction(pluginId, agentPartMsg)
-                    val agentPluginMsg = PluginAction.serializer() stringify agentAction
-                    sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
-                }
-            }
-            toResponsePair(adminActionResult)
+        return agents.map { agentEntry: AgentEntry ->
+            processSingleAction(
+                agentEntry,
+                plugin,
+                pluginId,
+                sessionSubstituting(action, sessionId),
+                agentEntry.agent.id
+            )
         }.reduce { k, _ -> k }
     }
 
@@ -325,14 +298,14 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun processSingleAction(
-        dp: Plugin,
-        id: String,
-        action: String
-    ): Pair<HttpStatusCode, Any> = run {
-        val pluginId = dp.pluginBean.id
-        val agentEntry = agentManager.full(id)
+        agentEntry: AgentEntry?,
+        plugin: Plugin,
+        pluginId: String,
+        action: String,
+        agentId: String
+    ): Pair<HttpStatusCode, Any> {
         val adminActionResult: Any = if (agentEntry != null) {
-            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
+            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
             adminPart.doRawAction(action)
         } else Unit
         val agentPartMsg = when (adminActionResult) {
@@ -340,18 +313,15 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             is Unit -> action
             else -> Unit
         }
-        if (agentPartMsg is String) {
-            agentManager.agentSession(id)?.apply {
+        if (agentPartMsg is String)
+            agentManager.agentSession(agentId)?.apply {
                 val agentAction = PluginAction(pluginId, agentPartMsg)
                 val agentPluginMsg = PluginAction.serializer() stringify agentAction
                 sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
             }
-        }
-        toResponsePair(adminActionResult)
+        return toResponsePair(adminActionResult)
     }
 }
-
-
 
 private fun toResponsePair(adminActionResult: Any): Pair<HttpStatusCode, Any> = when(adminActionResult) {
     is StatusMessage -> HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult
