@@ -1,8 +1,8 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.plugin.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -125,15 +125,16 @@ fun AdminTest.renameBuildVersion(
 
 fun AdminTest.pluginAction(
     payload: String,
-    agentId: String,
+    serviceGroupId: String,
     pluginId: String = testPlugin.pluginId,
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 
 ) = callAsync(asyncEngine.context) {
+    val plugin = Routes.Api.ServiceGroup.Plugin(Routes.Api.ServiceGroup(serviceGroupId), pluginId)
     engine.handleRequest(
         HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
+        engine.application.locations.href(Routes.Api.ServiceGroup.Plugin.DispatchAction(plugin))
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(payload)

@@ -15,7 +15,6 @@ import org.kodein.di.generic.*
 
 const val agentIsBusyMessage =
     "Sorry, this agent is busy at the moment. Please try again later"
-val srv = AttributeKey<Boolean>("isServiceGroup")
 class RequestValidator(override val kodein: Kodein) : KodeinAware {
     val app: Application by instance()
     val am: AgentManager by instance()
@@ -38,7 +37,6 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
                                     )
                                     return@intercept finish()
                                 }
-                                call.attributes.put(srv, true)
                             }
                             agentInfo.status == AgentStatus.BUSY -> {
                                 logger.info { "Agent status is busy" }

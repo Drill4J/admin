@@ -65,10 +65,6 @@ object Routes {
         @Location("/all/register")
         object RegisterAll
 
-        @Group(systemGroup)
-        @Location("/all/{pluginId}/dispatch-action")
-        data class DispatchAllPluginAction(val pluginId: String)
-
         @Location("/service-group/{serviceGroupId}")
         data class ServiceGroup(val serviceGroupId: String) {
             @Group(systemGroup)
