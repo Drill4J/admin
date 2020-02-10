@@ -78,15 +78,5 @@ object Routes {
                 data class Data(val parent: Plugin, val dataType: String)
             }
         }
-
-        //TODO rewrite notifications
-        @Group(SYSTEM)
-        @Location("/notifications/read")
-        class ReadNotification
-
-        @Group(SYSTEM)
-        @Location("/notifications/delete")
-        class DeleteNotification
     }
-
 }

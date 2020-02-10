@@ -12,7 +12,6 @@ import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
@@ -65,15 +64,11 @@ internal class DrillServerWsTest {
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { pluginStorage }
                     bind<NotificationManager>() with eagerSingleton {
-                        notificationsManager =
-                            NotificationManager(kodein)
+                        notificationsManager = NotificationManager(kodein)
                         notificationsManager
                     }
-                    bind<LoginHandler>() with eagerSingleton {
-                        LoginHandler(
-                            kodein
-                        )
-                    }
+                    bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
+                    bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
                     bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
                     bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(kodein) }
                     bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
@@ -110,67 +105,41 @@ internal class DrillServerWsTest {
     fun `notifications are displayed and processed correctly`() {
         withTestApplication(testApp) {
             val token = requestToken()
-            generateThreeNotifications("testId", "testName")
+            generateNotification("testId")
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
                 var currentNotifications = getCurrentNotifications(incoming, outgoing)
-                assertNotificationsCounters(currentNotifications, 3, 3)
                 val firstNotificationId = currentNotifications.first().id
-                val jsonId = NotificationId.serializer() stringify NotificationId(firstNotificationId)
-                handleHttpPostRequest(locations.href(Routes.Api.ReadNotification()), jsonId, token)
-                currentNotifications = getCurrentNotifications(incoming, outgoing)
-                assertEquals(
-                    NotificationStatus.READ,
-                    currentNotifications.find { it.id == firstNotificationId }!!.status
+                handleHttpPatchRequest(
+                    locations.href(
+                        Notifications.Notification.Read(
+                            Notifications.Notification(
+                                firstNotificationId
+                            )
+                        )
+                    ), token
                 )
-                assertNotificationsCounters(currentNotifications, 3, 2)
-                handleHttpPostRequest(locations.href(Routes.Api.DeleteNotification()), jsonId, token)
-                getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
-                assertNull(currentNotifications.find { it.id == firstNotificationId })
-                assertNotificationsCounters(currentNotifications, 2, 2)
-                handleHttpPostRequest(
-                    locations.href(Routes.Api.ReadNotification()),
-                    NotificationId.serializer() stringify NotificationId(""),
-                    token
+                assertTrue(
+                    currentNotifications.find { it.id == firstNotificationId }!!.read
                 )
-                getCurrentNotifications(incoming, outgoing)
-                currentNotifications = getCurrentNotifications(incoming, outgoing)
-                assertNotificationsCounters(currentNotifications, 2, 0)
-                handleHttpPostRequest(
-                    locations.href(Routes.Api.DeleteNotification()),
-                    NotificationId.serializer() stringify NotificationId(""),
-                    token
-                )
-                getCurrentNotifications(incoming, outgoing)
-                currentNotifications = getCurrentNotifications(incoming, outgoing)
-                assertNotificationsCounters(currentNotifications, 0, 0)
             }
         }
     }
 
-    private fun TestApplicationEngine.handleHttpPostRequest(location: String, body: String, token: String) {
-        handleRequest(HttpMethod.Post, location) {
+    private fun TestApplicationEngine.handleHttpPatchRequest(location: String, token: String) {
+        handleRequest(HttpMethod.Patch, location) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
-            addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            setBody(body)
         }
-    }
-
-    private fun assertNotificationsCounters(notifications: List<Notification>, total: Int, unread: Int) {
-        val notificationsCount = notifications.count()
-        val unreadNotificationsCount = notifications.count { it.status == NotificationStatus.UNREAD }
-        assertEquals(total, notificationsCount)
-        assertEquals(unread, unreadNotificationsCount)
     }
 
     private suspend fun TestApplicationCall.getCurrentNotifications(
         incoming: ReceiveChannel<Frame>,
         outgoing: SendChannel<Frame>
     ): List<Notification> {
-        outgoing.send(uiMessage(Subscribe(locations.href(WsRoutes.GetNotifications()), "")))
+        outgoing.send(uiMessage(Subscribe(locations.href(WsNotifications), "")))
         val frame = incoming.receive()
         val json = json.parseJson((frame as Frame.Text).readText()) as JsonObject
-        outgoing.send(uiMessage(Unsubscribe(locations.href(WsRoutes.GetNotifications()))))
+        outgoing.send(uiMessage(Unsubscribe(locations.href(WsNotifications))))
         return Notification.serializer().list parse json[WsSendMessage::message.name].toString()
     }
 
@@ -189,7 +158,6 @@ internal class DrillServerWsTest {
                 assertEquals("testId", parsed)
             }
         }
-
     }
 
     @Test
@@ -205,28 +173,23 @@ internal class DrillServerWsTest {
         }
     }
 
-    fun generateThreeNotifications(
-        agentId: String,
-        agentName: String
-    ) {
-        var previousVersion = ""
-
-        for (i in 0..2) {
-            val buildVersion = UUID.randomUUID().toString()
-            notificationsManager.save(
+    fun generateNotification(agentId: String) {
+        notificationsManager.save(
+            Notification(
+                "id",
                 agentId,
-                agentName,
+                System.currentTimeMillis(),
                 NotificationType.BUILD,
+                false,
                 NewBuildArrivedMessage.serializer() stringify
-                    NewBuildArrivedMessage(
-                        buildVersion,
-                        previousVersion,
-                        BuildDiff(1, 2, 3, 4, 5),
-                        listOf("recommendation_1", "recommendation_2")
-                    )
+                        NewBuildArrivedMessage(
+                            "0.2.0",
+                            "0.1.0",
+                            BuildDiff(1, 2, 3, 4, 5),
+                            listOf("recommendation_1", "recommendation_2")
+                        )
             )
-            previousVersion = buildVersion
-        }
+        )
     }
 }
 

@@ -27,9 +27,6 @@ object WsRoutes {
     @Location("/plugins")
     class Plugins
 
-    @Location("/notifications")
-    class GetNotifications
-
     @Location("/agents/{agentId}/builds")
     data class AgentBuilds(val agentId: String)
 }

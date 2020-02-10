@@ -114,65 +114,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val notificationResponds = "Read Notification"
-                    .examples(
-                        example("notification", NotificationId("Some notification id"))
-                    )
-                    .responds(
-                        ok<String>(
-                            example("result", "All notifications successfully read"),
-                            example("result", "Notification with such id successfully read")
-                        ),
-                        notFound()
-                    )
-                post<Routes.Api.ReadNotification, NotificationId>(notificationResponds) { _, notificationIdObject ->
-                    logger.info { "Read notification" }
-                    val (statusCode, response) = if (notificationIdObject.notificationId.isBlank()) {
-                        notificationsManager.readAll()
-                        HttpStatusCode.OK to "All notifications successfully read"
-                    } else {
-                        val (notificationId) = notificationIdObject
-                        if (notificationsManager.read(notificationId)) {
-                            topicResolver.sendToAllSubscribed("/notifications")
-                            HttpStatusCode.OK to "Notification with id $notificationId successfully read"
-                        } else {
-                            HttpStatusCode.NotFound to ErrorResponse("Notification with id $notificationId not found")
-                        }
-                    }
-                    logger.info { "Notification was reed with result: $response" }
-                    call.respond(statusCode, response)
-                }
-            }
-
-            authenticate {
-                val notificationResponds = "Delete Notification"
-                    .examples(
-                        example("notification", NotificationId("Some notification id"))
-                    )
-                    .responds(
-                        ok<String>(
-                            example("result", "All notifications successfully deleted")
-                        ),
-                        notFound()
-                    )
-                post<Routes.Api.DeleteNotification, NotificationId>(notificationResponds) { _, notificationIdObject ->
-                    val (statusCode, response) = if (notificationIdObject.notificationId.isBlank()) {
-                        notificationsManager.deleteAll()
-                        HttpStatusCode.OK to "All notifications successfully deleted"
-                    } else {
-                        val (notificationId) = notificationIdObject
-                        if (notificationsManager.delete(notificationId)) {
-                            topicResolver.sendToAllSubscribed("/notifications")
-                            HttpStatusCode.OK to "Notification with id $notificationId successfully deleted"
-                        } else {
-                            HttpStatusCode.NotFound to ErrorResponse("Notification with id $notificationId not found")
-                        }
-                    }
-                    call.respond(statusCode, response)
-                }
-            }
-
-            authenticate {
                 val systemSettingsResponds = "Update system settings"
                     .examples(
                         example(

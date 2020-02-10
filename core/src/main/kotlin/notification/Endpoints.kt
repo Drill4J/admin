@@ -14,6 +14,7 @@ import org.kodein.di.generic.*
 
 class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
+    private val notificationManager: NotificationManager by instance()
 
     private val app: Application by instance()
 
@@ -26,7 +27,9 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
     private fun Route.authenticated() {
         val readMeta = "".responds(ok<Unit>(), notFound())
         patch<Notifications.Notification.Read>(readMeta) { read ->
-            logger.info { "Read notification ${read.parent.id}" }
+            val notificationId = read.parent.id
+            logger.info { "Read notification $notificationId" }
+            notificationManager.read(notificationId)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
     }

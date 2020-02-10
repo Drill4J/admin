@@ -12,3 +12,6 @@ object Notifications {
         data class Read(val parent: Notification)
     }
 }
+
+@Location("/notifications")
+object WsNotifications

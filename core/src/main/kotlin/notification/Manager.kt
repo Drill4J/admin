@@ -6,58 +6,53 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.concurrent.*
+import java.util.*
+
+internal val logger = KotlinLogging.logger {}
 
 class NotificationManager(override val kodein: Kodein) : KodeinAware {
-
     private val topicResolver: TopicResolver by instance()
     private val plugins: Plugins by instance()
     private val agentManager: AgentManager by instance()
+    private val _notifications = atomic(persistentMapOf<String, Notification>())
 
-    private val notifications = ConcurrentHashMap<String, Notification>()
+    val notifications
+        get() = _notifications.value
 
-    private val logger = KotlinLogging.logger {}
-
-    val allNotifications
-        get() = notifications.values
-
-    fun save(agentId: String, agentName: String, type: NotificationType, message: String) {
-        val id = java.util.UUID.randomUUID().toString()
-        logger.info { "New notification type $type with $id associated with agent $agentId. Message: $message" }
-        notifications[id] = Notification(
-            id,
-            agentId,
-            agentName,
-            System.currentTimeMillis(),
-            NotificationStatus.UNREAD,
-            type,
-            message
-        )
+    fun save(notification: Notification) {
+        val notificationId = notification.id
+        logger.info {
+            "New notification with $notificationId associated with agent ${notification.agentId}." +
+                    " Message: ${notification.message}"
+        }
+        _notifications.update { it.put(notificationId, notification) }
     }
 
     fun readAll() {
-        allNotifications.forEach {
-            notifications[it.id] = it.copy(status = NotificationStatus.READ)
+        notifications.values.forEach { notification ->
+            _notifications.update { it.put(notification.id, notification.copy(read = true)) }
         }
     }
 
-    fun read(id: String): Boolean = notifications[id]?.let {
-        val readNotification = it.copy(status = NotificationStatus.READ)
-        notifications[id] = readNotification
-        notifications[id]!!.id == readNotification.id
+    fun read(id: String): Boolean = notifications[id]?.let { notification ->
+        _notifications.update { it.put(id, notification.copy(read = true)) }
+        true
     } ?: false
 
     fun deleteAll() {
-        notifications.clear()
+        _notifications.update { it.clear() }
     }
 
     fun delete(id: String): Boolean = notifications[id]?.let {
-        notifications.remove(id) != null
+        _notifications.update { it.remove(id) }
+        true
     } ?: false
 
     suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
@@ -73,11 +68,16 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         buildManager: AgentBuildManager,
         previousBuildVersion: String
     ) {
+        val id = UUID.randomUUID().toString()
         save(
-            agentInfo.id,
-            agentInfo.name,
-            NotificationType.BUILD,
-            createNewBuildMessage(buildManager, previousBuildVersion, agentInfo)
+            Notification(
+                id,
+                agentInfo.id,
+                System.currentTimeMillis(),
+                NotificationType.BUILD,
+                false,
+                createNewBuildMessage(buildManager, previousBuildVersion, agentInfo)
+            )
         )
         topicResolver.sendToAllSubscribed("/notifications")
     }
