@@ -6,6 +6,7 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -66,7 +67,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoutes.ServiceGroupPlugin> { (groupId, pluginId) ->
                     val summaries = agentStorage.values
-                        .filter { it.agent.serviceGroup == groupId }
+                        .filter { it.agent.serviceGroup == groupId && it.agent.status != AgentStatus.NOT_REGISTERED }
                         .map {
                             val adminData = agentManager.adminData(it.agent.id)
                             val plugin = plugins[pluginId]
