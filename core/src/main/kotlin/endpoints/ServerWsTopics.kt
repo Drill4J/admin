@@ -92,8 +92,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         ?.config?.let { json.parseJson(it) } ?: ""
                 }
 
-                topic<WsRoutes.GetNotifications> {
-                    notificationManager.allNotifications.sortedByDescending { it.date }
+                topic<WsNotifications> {
+                    notificationManager.notifications.values.reversed()
                 }
 
                 topic<WsRoutes.AgentBuilds> { (agentId) ->

@@ -76,22 +76,12 @@ class UIEVENTLOOP(
                                         glob.send(GroupedAgentsDto.serializer() parse content)
                                     }
                                     is WsRoutes.Agent -> {
-
                                         if (notEmptyResponse) {
                                             cs[type.agentId]!!.agentChannel.send(AgentInfoDto.serializer() parse content)
                                         } else {
                                             cs[type.agentId]!!.agentChannel.send(null)
                                         }
-
                                     }
-                                    is WsRoutes.Plugins -> {
-                                        //                                if (notEmptyResponse) {
-//                                    allPluginsChannel.send((PluginWebSocket.serializer().set parse content))
-//                                } else {
-//                                    allPluginsChannel.send(null)
-//                                }
-                                    }
-
                                     is WsRoutes.AgentBuilds -> {
                                         if (notEmptyResponse) {
                                             cs.getValue(type.agentId)
@@ -99,17 +89,6 @@ class UIEVENTLOOP(
                                         } else {
                                             cs.getValue(type.agentId).buildsChannel.send(null)
                                         }
-                                    }
-
-                                    is WsRoutes.GetNotifications -> {
-                                        //                                if (notEmptyResponse) {
-//                                    notificationsChannel.send(Notification.serializer().set parse content)
-//                                } else {
-//                                    notificationsChannel.send(null)
-//                                }
-                                    }
-
-                                    is WsRoutes.AgentPluginConfig -> {
                                     }
                                     is WsRoutes.AgentPlugins -> {
                                         if (notEmptyResponse) {

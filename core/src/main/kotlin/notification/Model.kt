@@ -6,24 +6,15 @@ import kotlinx.serialization.*
 data class Notification(
     val id: String,
     val agentId: String,
-    val agentName: String,
     val date: Long,
-    val status: NotificationStatus,
     val type: NotificationType,
+    val read: Boolean,
     val message: String
 )
-
-enum class NotificationStatus {
-    UNREAD,
-    READ
-}
 
 enum class NotificationType {
     BUILD
 }
-
-@Serializable
-data class NotificationId(val notificationId: String)
 
 @Serializable
 data class NewBuildArrivedMessage(
