@@ -1,8 +1,4 @@
-val drillCommonVersion = "0.5.0-0"
-
-val drillAdminPartVersion = "0.5.0-0"
-
-val drillAgentPartVersion = "0.5.0-0"
+val drillApiVersion = "0.5.0-15"
 
 val serializationRuntimeVersion = "0.14.0"
 

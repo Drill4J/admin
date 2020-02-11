@@ -11,8 +11,8 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation(drill("drill-agent-part-jvm", drillAgentPartVersion))
-    implementation(drill("common-jvm", drillCommonVersion))
+    implementation(drill("drill-agent-part-jvm", drillApiVersion))
+    implementation(drill("common-jvm", drillApiVersion))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
 }
 
