@@ -57,9 +57,9 @@ abstract class E2ETest : AdminTest() {
                     coroutineScope {
                         agents.map { (_, xx) ->
                             val (ag, startClb, connect, thens) = xx
+                            val ui = AdminUiChannels()
+                            cs[ag.id] = ui
                             launch(handler) {
-                                val ui = AdminUiChannels()
-                                cs[ag.id] = ui
                                 startClb()
                                 val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
                                 with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }

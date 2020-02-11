@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.*
-
 plugins {
     `kotlin-platform-jvm`
     `kotlinx-serialization`
@@ -8,21 +6,6 @@ plugins {
     id("com.google.cloud.tools.jib") version "1.7.0"
     id("com.github.johnrengelman.shadow") version "5.1.0"
 }
-
-val `test-integration`: SourceSet by sourceSets.creating
-
-val testData: Configuration by configurations.creating
-
-val testBuildSourceSets: List<SourceSet> = listOf("build1", "build2").map { testBuildName ->
-    sourceSets.create(testBuildName) {
-        java.setSrcDirs("src/test-data/$testBuildName/java".let(::listOf))
-        compileClasspath += testData
-    }
-}
-
-val intTestImplementationCfg by configurations.named(`test-integration`.implementationConfigurationName) {
-    extendsFrom(configurations.testImplementation.get(), testData)
-} 
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -45,15 +28,11 @@ dependencies {
     implementation("io.vavr:vavr-kotlin:$vavrVersion")
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
-    implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
+    implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill:ktor-swagger:$swaggerVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
-    testImplementation(project(":test-framework"))
     testImplementation("io.mockk:mockk:1.9.3")
-    intTestImplementationCfg("io.kotlintest:kotlintest-runner-junit5:3.4.2")
-    intTestImplementationCfg(ktor("server-test-host"))
-    testData(project(":test-framework:test-data"))
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")
@@ -96,40 +75,13 @@ jib {
     }
 }
 
-val testPluginProject = project(":test-framework:test-plugin")
-
 tasks {
     clean {
         delete("work", "distr")
     }
 
-    val prepareDist by registering(Copy::class) {
-        from(testPluginProject.tasks["distZip"])
-        into(file("distr").resolve("adminStorage"))
-    }
-
-    withType<Test> {
+    test {
         useJUnitPlatform()
-    }
-
-    named(`test-integration`.classesTaskName) {
-        testBuildSourceSets.forEach { srcSet ->
-            dependsOn(srcSet.classesTaskName)
-        }
-    }
-    
-    val integrationTest by registering(Test::class) {
-        dependsOn(prepareDist)
-        mustRunAfter(test)
-        systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
-        description = "Runs the integration tests"
-        group = "verification"
-        testClassesDirs = `test-integration`.output.classesDirs
-        classpath = `test-integration`.runtimeClasspath
-    }
-    
-    check {
-        dependsOn(integrationTest)
     }
 
     val makeJibExtraDirs by registering(Copy::class) {
@@ -149,15 +101,19 @@ tasks {
         dependsOn(makeJibExtraDirs)
     }
 
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "1.8"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.InternalAPI"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.Experimental"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.time.ExperimentalTime"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.coroutines.ObsoleteCoroutinesApi"
-        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "1.8"
+            freeCompilerArgs = listOf(
+                "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI",
+                "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI",
+                "-Xuse-experimental=io.ktor.util.InternalAPI",
+                "-Xuse-experimental=kotlin.Experimental",
+                "-Xuse-experimental=kotlin.time.ExperimentalTime",
+                "-Xuse-experimental=kotlinx.coroutines.ObsoleteCoroutinesApi",
+                "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
+            )
+        }
     }
 }
 

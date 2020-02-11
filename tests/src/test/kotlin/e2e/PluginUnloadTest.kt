@@ -6,14 +6,13 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
-import org.junit.jupiter.api.*
-import kotlin.test.Test
+import kotlin.test.*
 
 class PluginUnloadTest : E2ETest() {
 
     private val agentId = "pluginUnload"
 
-    @Disabled("Disabled cuzz can't unload now!")
+    @Ignore("Disabled cuzz can't unload now!")
     @Test
     fun `Plugin unload test`() {
         createSimpleAppWithUIConnection {

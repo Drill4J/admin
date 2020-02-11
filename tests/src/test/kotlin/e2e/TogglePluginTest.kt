@@ -6,14 +6,13 @@ import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.apache.commons.codec.digest.*
-import org.junit.jupiter.api.*
-import kotlin.test.Test
+import kotlin.test.*
 
 class TogglePluginTest : E2ETest() {
 
     private val agentId = "togglePlugin"
 
-    @Disabled
+    @Ignore
     @Test
     fun `Plugin should be toggled`() {
         createSimpleAppWithUIConnection {
