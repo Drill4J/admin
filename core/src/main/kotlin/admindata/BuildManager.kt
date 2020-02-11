@@ -40,13 +40,14 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
         val buildVersionIsNew = buildInfos[buildVersion] == null || buildInfos[buildVersion]!!.new
         val buildInfo = buildInfos[buildVersion]
             ?: BuildInfo(buildVersion = buildVersion, buildAlias = currentAlias)
-        val prevBuild = buildInfo.prevBuild
+        val prevBuild = if (buildVersionIsNew) lastBuild else buildInfo.prevBuild
         buildInfos[buildVersion] = buildInfo.copy(
             buildVersion = buildVersion,
             classesBytes = emptyMap(),
-            prevBuild = if (buildVersionIsNew) lastBuild else prevBuild
+            prevBuild = prevBuild
         )
         if (buildVersionIsNew) {
+            buildInfos[prevBuild]?.apply { buildInfos[prevBuild] = copy(nextBuild = buildVersion) }
             lastBuild = buildVersion
             buildInfos[buildVersion] = buildInfos[buildVersion]!!.copy(new = false)
         }
