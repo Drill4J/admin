@@ -16,7 +16,6 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
-import io.ktor.http.content.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
@@ -89,13 +88,15 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     else {
                         val agentEntry = agentManager.full(agentId)
-                        processSingleAction(
+                        val adminActionResult = processSingleAction(
                             agentEntry,
                             plugin,
                             pluginId,
                             action,
                             agentId
                         )
+                        val statusResponse = toStatusResponse(adminActionResult)
+                        HttpStatusCode.fromValue(statusResponse.code) to statusResponse
                     }
                     logger.info { "$response" }
                     call.respond(statusCode, response)
@@ -274,17 +275,19 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         action: String
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
-        return agents
+        val statusesResponse: List<StatusResponse> = agents
             .filter { it.agent.status != AgentStatus.NOT_REGISTERED }
             .map { agentEntry: AgentEntry ->
-                processSingleAction(
+                val adminActionResult = processSingleAction(
                     agentEntry,
                     plugin,
                     pluginId,
                     sessionSubstituting(action, sessionId),
                     agentEntry.agent.id
                 )
-            }.reduce { k, _ -> k }
+                toStatusResponse(adminActionResult)
+            }
+        return HttpStatusCode.OK to statusesResponse
     }
 
     private fun sessionSubstituting(action: String, sessionId: String): String {
@@ -305,7 +308,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         pluginId: String,
         action: String,
         agentId: String
-    ): Pair<HttpStatusCode, Any> {
+    ): Any {
         val adminActionResult: Any = if (agentEntry != null) {
             val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
             adminPart.doRawAction(action)
@@ -321,15 +324,12 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 val agentPluginMsg = PluginAction.serializer() stringify agentAction
                 sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
             }
-        return toResponsePair(adminActionResult)
+        return adminActionResult
     }
 }
 
-private fun toResponsePair(adminActionResult: Any): Pair<HttpStatusCode, Any> = when(adminActionResult) {
-    is StatusMessage -> HttpStatusCode.fromValue(adminActionResult.code) to adminActionResult
-    is String -> HttpStatusCode.OK to TextContent(
-        text = adminActionResult,
-        contentType = ContentType.Application.Json
-    )
-    else -> HttpStatusCode.OK to EmptyContent
+private fun toStatusResponse(adminActionResult: Any): StatusResponse = when (adminActionResult) {
+    is StatusMessage -> StatusResponse(adminActionResult.code, adminActionResult.message)
+    is String -> StatusResponse(HttpStatusCode.OK.value, adminActionResult)
+    else -> StatusResponse(HttpStatusCode.OK.value, EmptyContent)
 }
