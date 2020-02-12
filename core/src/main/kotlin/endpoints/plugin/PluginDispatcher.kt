@@ -274,15 +274,17 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         action: String
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
-        return agents.map { agentEntry: AgentEntry ->
-            processSingleAction(
-                agentEntry,
-                plugin,
-                pluginId,
-                sessionSubstituting(action, sessionId),
-                agentEntry.agent.id
-            )
-        }.reduce { k, _ -> k }
+        return agents
+            .filter { it.agent.status != AgentStatus.NOT_REGISTERED }
+            .map { agentEntry: AgentEntry ->
+                processSingleAction(
+                    agentEntry,
+                    plugin,
+                    pluginId,
+                    sessionSubstituting(action, sessionId),
+                    agentEntry.agent.id
+                )
+            }.reduce { k, _ -> k }
     }
 
     private fun sessionSubstituting(action: String, sessionId: String): String {
