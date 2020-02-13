@@ -278,14 +278,18 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val statusesResponse: List<StatusResponse> = agents
             .filter { it.agent.status != AgentStatus.NOT_REGISTERED }
             .map { agentEntry: AgentEntry ->
-                val adminActionResult = processSingleAction(
-                    agentEntry,
-                    plugin,
-                    pluginId,
-                    sessionSubstituting(action, sessionId),
-                    agentEntry.agent.id
-                )
-                toStatusResponse(adminActionResult)
+                if (agentEntry.agent.status != AgentStatus.BUSY)
+                    StatusResponse(StatusCodes.CONFLICT, "The agent with id=${agentEntry.agent.id} is busy")
+                else {
+                    val adminActionResult = processSingleAction(
+                        agentEntry,
+                        plugin,
+                        pluginId,
+                        sessionSubstituting(action, sessionId),
+                        agentEntry.agent.id
+                    )
+                    toStatusResponse(adminActionResult)
+                }
             }
         return HttpStatusCode.OK to statusesResponse
     }
