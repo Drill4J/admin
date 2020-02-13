@@ -95,7 +95,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             action,
                             agentId
                         )
-                        val statusResponse = toStatusResponse(adminActionResult)
+                        val statusResponse = adminActionResult.toStatusResponse()
                         HttpStatusCode.fromValue(statusResponse.code) to statusResponse
                     }
                     logger.info { "$response" }
@@ -288,7 +288,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         sessionSubstituting(action, sessionId),
                         agentEntry.agent.id
                     )
-                    toStatusResponse(adminActionResult)
+                    adminActionResult.toStatusResponse()
                 }
             }
         return HttpStatusCode.OK to statusesResponse
@@ -332,8 +332,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     }
 }
 
-private fun toStatusResponse(adminActionResult: Any): StatusResponse = when (adminActionResult) {
-    is StatusMessage -> StatusResponse(adminActionResult.code, adminActionResult.message)
-    is String -> StatusResponse(HttpStatusCode.OK.value, adminActionResult)
-    else -> StatusResponse(HttpStatusCode.OK.value, EmptyContent)
+private fun Any.toStatusResponse(): StatusResponse = when(this) {
+    is StatusMessage -> StatusResponse(code, message)
+    is String -> StatusResponse(HttpStatusCode.OK.value, this)
+    Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
+    else -> StatusResponse(HttpStatusCode.OK.value, this)
 }
