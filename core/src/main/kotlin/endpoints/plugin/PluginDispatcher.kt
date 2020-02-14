@@ -83,21 +83,16 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.Agent.DispatchPluginAction, String>(dispatchResponds) { payload, action ->
                     val (agentId, pluginId) = payload
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
-                    val plugin: Plugin? = plugins[pluginId]
-                    val (statusCode, response) = if (plugin == null)
-                        HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    else {
-                        val agentEntry = agentManager.full(agentId)
-                        val adminActionResult = processSingleAction(
-                            agentEntry,
-                            plugin,
-                            pluginId,
-                            action,
-                            agentId
-                        )
-                        val statusResponse = adminActionResult.toStatusResponse()
-                        HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                    }
+                    val agentEntry = agentManager.full(agentId)
+                    val (statusCode, response) = agentEntry?.run {
+                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                        if (plugin != null) {
+                            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(this, plugin)
+                            val result = adminPart.processSingleAction(action)
+                            val statusResponse = result.toStatusResponse()
+                            HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                    } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
                     logger.info { "$response" }
                     call.respond(statusCode, response)
                 }
@@ -124,7 +119,6 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     else
                         processMultipleActions(
                             agents,
-                            plugin,
                             pluginId,
                             action
                         )
@@ -270,27 +264,24 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun processMultipleActions(
         agents: List<AgentEntry>,
-        plugin: Plugin,
         pluginId: String,
         action: String
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
-        val statusesResponse: List<StatusResponse> = agents
-            .filter { it.agent.status != AgentStatus.NOT_REGISTERED }
-            .map { agentEntry: AgentEntry ->
-                if (agentEntry.agent.status == AgentStatus.BUSY)
-                    StatusResponse(StatusCodes.CONFLICT, "The agent with id=${agentEntry.agent.id} is busy")
-                else {
-                    val adminActionResult = processSingleAction(
-                        agentEntry,
-                        plugin,
-                        pluginId,
-                        sessionSubstituting(action, sessionId),
-                        agentEntry.agent.id
-                    )
+        val statusesResponse: List<StatusResponse> = agents.mapNotNull { entry: AgentEntry ->
+            when (entry.agent.status) {
+                AgentStatus.ONLINE -> entry[pluginId]?.run {
+                    val sessionAction = sessionSubstituting(action, sessionId)
+                    val adminActionResult = processSingleAction(sessionAction)
                     adminActionResult.toStatusResponse()
                 }
+                AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
+                else -> StatusResponse(
+                    HttpStatusCode.Conflict.value,
+                    "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}"
+                )
             }
+        }
         return HttpStatusCode.OK to statusesResponse
     }
 
@@ -306,33 +297,24 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         } else action
     }
 
-    private suspend fun processSingleAction(
-        agentEntry: AgentEntry?,
-        plugin: Plugin,
-        pluginId: String,
-        action: String,
-        agentId: String
-    ): Any {
-        val adminActionResult: Any = if (agentEntry != null) {
-            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
-            adminPart.doRawAction(action)
-        } else Unit
-        val agentPartMsg = when (adminActionResult) {
-            is String -> adminActionResult
-            is Unit -> action
-            else -> Unit
-        }
-        if (agentPartMsg is String)
-            agentManager.agentSession(agentId)?.apply {
-                val agentAction = PluginAction(pluginId, agentPartMsg)
+    private suspend fun AdminPluginPart<*>.processSingleAction(action: String): Any {
+        val result = doRawAction(action)
+        when (result) {
+            is StatusMessage -> null
+            Unit -> action
+            else -> stringifyAction(result)
+        }?.let { agentPartMsg ->
+            agentManager.agentSession(agentInfo.id)?.apply {
+                val agentAction = PluginAction(id, agentPartMsg)
                 val agentPluginMsg = PluginAction.serializer() stringify agentAction
                 sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
             }
-        return adminActionResult
+        }
+        return result
     }
 }
 
-private fun Any.toStatusResponse(): StatusResponse = when(this) {
+private fun Any.toStatusResponse(): StatusResponse = when (this) {
     is StatusMessage -> StatusResponse(code, message)
     is String -> StatusResponse(HttpStatusCode.OK.value, this)
     Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
