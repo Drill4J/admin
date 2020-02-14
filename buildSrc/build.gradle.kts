@@ -10,12 +10,13 @@ repositories {
 }
 
 val kotlinVersion = "1.3.60"
+val gradlePluginVersion = "0.15.1"
 dependencies {
     implementation(kotlin("gradle-plugin", kotlinVersion))
     implementation(kotlin("stdlib-jdk8", kotlinVersion))
     implementation(kotlin("serialization", kotlinVersion))
     implementation(kotlin("reflect", kotlinVersion))
-    implementation("com.epam.drill:gradle-plugin:0.10.0")
+    implementation("com.epam.drill:gradle-plugin:$gradlePluginVersion")
 }
 
 kotlinDslPluginOptions {
