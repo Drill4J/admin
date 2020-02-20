@@ -193,6 +193,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset agent with id ${agInfo.name}" }
         val au = AgentInfoDto(
             id = agInfo.id,
+            serviceGroup = agInfo.serviceGroup,
             name = "",
             environment = "",
             status = AgentStatus.NOT_REGISTERED,
