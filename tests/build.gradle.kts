@@ -53,7 +53,7 @@ dependencies {
     testImplementation("org.apache.bcel:bcel:$bcelVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.3")
 
-    testImplementation(kotlin("test-junit"))
+    testImplementation(kotlin("test-junit5"))
     testImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("io.mockk:mockk:1.9.3")
@@ -64,10 +64,6 @@ dependencies {
 tasks {
     clean {
         delete("work", "distr")
-    }
-
-    test {
-        exclude("*")
     }
 
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
