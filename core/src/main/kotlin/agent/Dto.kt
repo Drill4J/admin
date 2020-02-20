@@ -14,6 +14,7 @@ data class SystemSettingsDto(
 @Serializable
 data class AgentInfoDto(
     val id: String,
+    val serviceGroup: String,
     val instanceIds: Set<String>,
     val name: String,
     val description: String = "",
@@ -33,6 +34,7 @@ data class AgentInfoDto(
 fun AgentInfo.toDto(agentManager: AgentManager, isList: Boolean = false): AgentInfoDto = agentManager.run {
     AgentInfoDto(
         id = id,
+        serviceGroup = serviceGroup,
         instanceIds = instanceIds(id),
         name = name,
         description = if (isList) description.take(200) else description,

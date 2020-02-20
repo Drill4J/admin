@@ -1,23 +1,20 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import de.nielsfalk.ktor.swagger.version.v2.*
 import de.nielsfalk.ktor.swagger.version.v3.*
 import io.ktor.application.*
 
-
-private val agentIdSchema = mapOf<String, String>(
-    "type" to "String"
-)
-
-
 fun Application.enableSwaggerSupport() {
     install(SwaggerSupport) {
+        val agentIdSchema = mapOf(
+            "type" to "String"
+        )
         forwardRoot = true
         val information = Information(
             version = "1.0",
@@ -41,6 +38,7 @@ fun Application.enableSwaggerSupport() {
 
 val agentInfoWebSocketExample = AgentInfoDto(
     id = "Petclinic",
+    serviceGroup = "",
     name = "Petclinic",
     status = AgentStatus.NOT_REGISTERED,
     buildVersion = "0.0.1",
@@ -61,7 +59,3 @@ val agentRegistrationExample = AgentRegistrationInfo(
     plugins = mutableListOf("test-to-code-mapping"),
     packagesPrefixes = listOf("org/springframework/samples/petclinic")
 )
-
-
-
-
