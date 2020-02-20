@@ -70,10 +70,6 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     agentManager.getOrNull(agentId)?.toDto(agentManager)
                 }
 
-                topic<WsRoutes.GetAgentBuilds> { payload ->
-                    agentManager.adminData(payload.agentId).buildManager.buildVersionsJson
-                }
-
                 topic<WsRoutes.GetAllPlugins> {
                     plugins.map { (_, dp) -> dp.pluginBean }
                         .mapToDto(agentManager.agentStorage.values.map { it.agent })
@@ -101,7 +97,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).buildManager.summaries.sortedByDescending { it.addedDate }
+                    agentManager.adminData(agentId).buildManager.buildSummaries
                 }
             }
 

@@ -251,35 +251,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-            authenticate {
-                val renameBuildVersionResponds = "Rename build version"
-                    .examples(
-                        example(
-                            "agent build version name", AgentBuildVersionJson("some build id", "some build version name")
-                        )
-                    )
-                    .responds(
-                        ok<Unit>(),
-                        internalServerError<String>(
-                            example("error", "Request handle with exception")
-                        )
-                    )
-                post<Routes.Api.Agent.RenameBuildVersion, AgentBuildVersionJson>(renameBuildVersionResponds) { payload, buildVersion ->
-                    logger.info { "Rename build version" }
-                    val (agentId) = payload
-                    val (statusCode, response) = when (handler.updateBuildAliasWithResult(
-                        agentId,
-                        buildVersion
-                    )) {
-                        HttpStatusCode.NotFound -> HttpStatusCode.BadRequest to ErrorResponse("Build with id ${buildVersion.id} does not exist")
-                        HttpStatusCode.BadRequest -> HttpStatusCode.BadRequest to ErrorResponse("Build named ${buildVersion.name} already exists")
-                        HttpStatusCode.OK -> HttpStatusCode.OK to EmptyContent
-                        else -> HttpStatusCode.InternalServerError to ErrorResponse("Request handle with exception")
-                    }
-                    logger.info { "Build version rename was finished with result: $response" }
-                    call.respond(statusCode, response)
-                }
-            }
         }
     }
 }

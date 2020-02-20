@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
@@ -34,15 +35,13 @@ abstract class PluginStreams {
 
 class AdminUiChannels {
     val agentChannel = Channel<AgentInfoDto?>()
-    val agentBuildsChannel = Channel<Set<AgentBuildVersionJson>?>()
-    val buildsChannel = Channel<List<BuildSummaryWebSocket>?>()
+    val buildsChannel = Channel<List<BuildSummaryDto>?>()
     val agentsChannel = Channel<GroupedAgentsDto?>()
     val allPluginsChannel = Channel<Set<PluginDto>?>()
     val notificationsChannel = Channel<Set<Notification>?>()
     val agentPluginInfoChannel = Channel<Set<PluginDto>?>()
 
     suspend fun getAgent() = agentChannel.receive()
-    suspend fun getAgentBuilds() = agentBuildsChannel.receive()
     suspend fun getBuilds() = buildsChannel.receive()
     suspend fun getAllAgents() = agentsChannel.receive()
     suspend fun getAllPluginsInfo() = allPluginsChannel.receive()
@@ -85,13 +84,6 @@ class UIEVENTLOOP(
                                         }
 
                                     }
-                                    is WsRoutes.GetAgentBuilds -> {
-                                        if (notEmptyResponse) {
-                                            cs[type.agentId]!!.agentBuildsChannel.send((AgentBuildVersionJson.serializer().set parse content))
-                                        } else {
-                                            cs[type.agentId]!!.agentBuildsChannel.send(null)
-                                        }
-                                    }
                                     is WsRoutes.GetAllPlugins -> {
                                         //                                if (notEmptyResponse) {
 //                                    allPluginsChannel.send((PluginWebSocket.serializer().set parse content))
@@ -103,7 +95,7 @@ class UIEVENTLOOP(
                                     is WsRoutes.GetBuilds -> {
                                         if (notEmptyResponse) {
                                             cs.getValue(type.agentId)
-                                                .buildsChannel.send((BuildSummaryWebSocket.serializer().list parse content))
+                                                .buildsChannel.send((BuildSummaryDto.serializer().list parse content))
                                         } else {
                                             cs.getValue(type.agentId).buildsChannel.send(null)
                                         }

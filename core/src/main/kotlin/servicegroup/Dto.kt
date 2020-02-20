@@ -18,16 +18,10 @@ data class GroupedAgentsDto(
 )
 
 @Serializable
-data class LastBuildDto(
-    val version: String,
-    val alias: String
-)
-
-@Serializable
 data class PluginSummaryDto(
     val agentId: String,
     val agentName: String,
-    val lastBuild: LastBuildDto,
+    val lastBuild: String,
     @ContextualSerialization val data: Any
 )
 

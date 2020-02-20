@@ -52,10 +52,6 @@ object Routes {
             @Location("/{agentId}/system-settings")
             data class SystemSettings(val agentId: String)
 
-            @Group(agentGroup)
-            @Location("/{agentId}/rename-build")
-            data class RenameBuildVersion(val agentId: String)
-
             @Group(agentPluginManagementGroup)
             @Location("/{agentId}/plugin/{pluginId}/data/{dataType}")
             data class PluginData(val agentId: String, val pluginId: String, val dataType: String)
