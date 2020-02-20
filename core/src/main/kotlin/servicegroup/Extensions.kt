@@ -19,12 +19,7 @@ internal fun AgentGroup.toDto(agentManager: AgentManager) = ServiceGroupDto(
 internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any) = PluginSummaryDto(
     agentId = agent.id,
     agentName = agent.name,
-    lastBuild = adminData.buildManager.run {
-        LastBuildDto(
-            version = lastBuild,
-            alias = buildVersions[lastBuild] ?: ""
-        )
-    },
+    lastBuild = adminData.buildManager.lastBuild,
     data = data
 )
 

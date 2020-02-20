@@ -1,5 +1,6 @@
 package com.epam.drill.admin.admindata
 
+import com.epam.drill.admin.build.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -11,7 +12,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 
-class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastBuild: String = "") : BuildManager {
+class AgentBuildManager(val agentId: String, private val storeClient: StoreClient, lastBuild: String = "") : BuildManager {
     private val _lastBuild = atomic(lastBuild)
 
     override val buildInfos: MutableMap<String, BuildInfo> = ConcurrentHashMap()
@@ -22,24 +23,19 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
             _lastBuild.value = value
         }
 
+    @Deprecated("This field should be removed after applying appropriate changes to API")
     override val summaries: List<BuildSummaryWebSocket>
-        get() = buildInfos.values.map { it.buildSummary.toWebSocketSummary(it.buildAlias) }
+        get() = emptyList()
 
-    val buildVersions: Map<String, String>
-        get() = buildInfos.map { (buildVersion, buildInfo) ->
-            buildVersion to buildInfo.buildAlias
-        }.toMap()
-
-    val buildVersionsJson = buildVersions.map { (id, name) ->
-        AgentBuildVersionJson(id, name)
-    }
+    val buildSummaries: List<BuildSummaryDto>
+        get() = buildInfos.values.map { it.toBuildSummaryDto() }
 
     override operator fun get(buildVersion: String) = buildInfos[buildVersion]
 
-    fun setupBuildInfo(buildVersion: String, currentAlias: String) {
+    fun setupBuildInfo(buildVersion: String) {
         val buildVersionIsNew = buildInfos[buildVersion] == null || buildInfos[buildVersion]!!.new
         val buildInfo = buildInfos[buildVersion]
-            ?: BuildInfo(buildVersion = buildVersion, buildAlias = currentAlias)
+            ?: BuildInfo(buildVersion = buildVersion)
         val prevBuild = buildInfo.prevBuild
         buildInfos[buildVersion] = buildInfo.copy(
             buildVersion = buildVersion,
@@ -79,33 +75,9 @@ class AgentBuildManager(val agentId: String, val storeClient: StoreClient, lastB
             methodChanges = MethodsComparator(bundleCoverage).compareClasses(prevMethods, currentMethods)
         ) ?: BuildInfo(buildVersion = buildVersion)
 
-        val changes = buildInfos[buildVersion]?.methodChanges?.map ?: emptyMap()
-        val deletedMethodsCount = changes[DiffType.DELETED]?.count() ?: 0
-        val processedBuildInfo = buildInfos[buildVersion]?.copy(
-            buildSummary = BuildSummary(
-                buildVersion = buildVersion,
-                addedDate = System.currentTimeMillis(),
-                totalMethods = changes.values.flatten().count() - deletedMethodsCount,
-                newMethods = changes[DiffType.NEW]?.count() ?: 0,
-                modifiedMethods = (changes[DiffType.MODIFIED_NAME]?.count() ?: 0) +
-                        (changes[DiffType.MODIFIED_BODY]?.count() ?: 0) +
-                        (changes[DiffType.MODIFIED_DESC]?.count() ?: 0),
-                unaffectedMethods = changes[DiffType.UNAFFECTED]?.count() ?: 0,
-                deletedMethods = deletedMethodsCount
-            )
-        ) ?: BuildInfo(buildVersion = buildVersion)
+        val processedBuildInfo = buildInfos[buildVersion]!!
         storeClient.store(processedBuildInfo.toStorable(agentId))
-        buildInfos[buildVersion] = processedBuildInfo
     }
-
-    suspend fun renameBuild(buildVersion: AgentBuildVersionJson) {
-        val buildInfo = buildInfos[buildVersion.id]?.copy(buildAlias = buildVersion.name)
-            ?: BuildInfo(buildVersion = buildVersion.id, buildAlias = buildVersion.name)
-        buildInfos[buildVersion.id] = buildInfo
-        storeClient.store(buildInfo.toStorable(agentId))
-    }
-
-    fun buildAliasExists(alias: String) = buildInfos.any { it.value.buildAlias == alias }
 
 }
 

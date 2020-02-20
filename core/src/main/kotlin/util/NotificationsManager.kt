@@ -86,7 +86,6 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
         previousBuildVersion: String,
         agentInfo: AgentInfo
     ): String {
-        val previousBuildAlias = buildManager[previousBuildVersion]?.buildAlias ?: ""
         val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
         val buildDiff = BuildDiff(
             methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
@@ -99,7 +98,6 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
         val newBuildArrivedMessage = NewBuildArrivedMessage(
             agentInfo.buildVersion,
             previousBuildVersion,
-            previousBuildAlias,
             buildDiff,
             pluginsRecommendations(agentInfo)
         )

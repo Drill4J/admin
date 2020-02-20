@@ -106,23 +106,6 @@ fun AdminTest.toggleAgent(
     }
 }
 
-fun AdminTest.renameBuildVersion(
-    agentId: String,
-    token: String = globToken,
-    payload: AgentBuildVersionJson,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-) {
-    callAsync(asyncEngine.context) {
-        engine.handleRequest(
-            HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(AgentBuildVersionJson.serializer() stringify payload)
-        }.apply { resultBlock(response.status(), response.content) }
-    }
-}
-
 fun AdminTest.pluginAction(
     payload: String,
     serviceGroupId: String,

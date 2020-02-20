@@ -29,7 +29,6 @@ data class NotificationId(val notificationId: String)
 data class NewBuildArrivedMessage(
     val currentId: String,
     val prevId: String,
-    val prevAlias: String,
     val buildDiff: BuildDiff,
     val recommendations: List<String>
 )

@@ -178,9 +178,8 @@ internal class DrillServerWsTest {
                 assertNotNull(tmp)
                 val parseJson = json.parseJson((tmp as Frame.Text).readText())
                 val parsed =
-                    AgentBuildVersionJson.serializer() parse (parseJson as JsonObject)[WsReceiveMessage::message.name].toString()
-                assertEquals("testId", parsed.id)
-                assertEquals("blabla", parsed.name)
+                    String.serializer() parse (parseJson as JsonObject)[WsReceiveMessage::message.name].toString()
+                assertEquals("testId", parsed)
             }
         }
 
@@ -215,7 +214,6 @@ internal class DrillServerWsTest {
                         NewBuildArrivedMessage(
                             buildVersion,
                             previousVersion,
-                            "prevAlias",
                             BuildDiff(1, 2, 3, 4, 5),
                             listOf("recommendation_1", "recommendation_2")
                         )
@@ -247,10 +245,7 @@ class ServerStubTopics(override val kodein: Kodein) : KodeinAware {
                     if (payload.data == "string") {
                         "the data is: ${payload.data}"
                     } else {
-                        AgentBuildVersionJson(
-                            id = "testId",
-                            name = payload.data
-                        )
+                        "testId"
                     }
                 }
                 topic<PainRoutes.MyTopic> {

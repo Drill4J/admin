@@ -227,26 +227,6 @@ abstract class E2ETest : AdminTest() {
         }
     }
 
-    fun AsyncTestAppEngine.renameBuildVersion(
-        agentId: String,
-        token: String = globToken,
-        payload: AgentBuildVersionJson,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-    ) {
-        callAsync(context) {
-            with(engine) {
-                handleRequest(
-                    HttpMethod.Post,
-                    "/api" + application.locations.href(Routes.Api.Agent.RenameBuildVersion(agentId))
-                ) {
-                    addHeader(HttpHeaders.Authorization, "Bearer $token")
-                    addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    setBody(AgentBuildVersionJson.serializer() stringify payload)
-                }.apply { resultBlock(response.status(), response.content) }
-            }
-        }
-    }
-
     fun AsyncTestAppEngine.changePackages(
         agentId: String,
         token: String = globToken,

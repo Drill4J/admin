@@ -23,8 +23,6 @@ import org.kodein.di.generic.*
 
 private val logger = KotlinLogging.logger {}
 
-const val INITIAL_BUILD_ALIAS = "Initial build"
-
 class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     val app: Application by instance()
@@ -133,9 +131,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private fun AgentInfo.processBuild(version: String) = apply {
         logger.debug { "Updating build version for agent with id $id. Build version is $version" }
         if (status != AgentStatus.OFFLINE) {
-            val buildInfo = adminData(id).buildManager[version]
             this.buildVersion = version
-            this.buildAlias = buildInfo?.buildAlias ?: ""
             logger.debug { "Build version for agent with id $id was updated" }
         }
     }
@@ -147,32 +143,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             environment = au.environment
             sessionIdHeaderName = au.sessionIdHeaderName
             description = au.description
-            buildAlias = au.buildAlias
             status = au.status
             commitChanges()
         }
         logger.debug { "Agent with id $agentId updated" }
         topicResolver.sendToAllSubscribed("/$agentId/builds")
-    }
-
-    suspend fun updateAgentBuildAliases(
-        agentId: String,
-        buildVersion: AgentBuildVersionJson
-    ): AgentInfo? {
-        logger.debug { "Update agent build aliases for agent with id $agentId" }
-        val result = getOrNull(agentId)
-            ?.apply {
-                logger.debug { "Update agent build aliases for agent with id $agentId" }
-                if (this.buildVersion == buildVersion.id) {
-                    this.buildAlias = buildVersion.name
-                }
-                adminData(agentId).buildManager.renameBuild(buildVersion)
-                commitChanges()
-                topicResolver.sendToAllSubscribed("/$agentId/builds")
-                updateBuildDataOnAllPlugins(agentId, buildVersion.id)
-            }
-        logger.debug { "AgentInfo updated agent with id $agentId is $result" }
-        return result
     }
 
     suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean {
@@ -199,7 +174,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             status = AgentStatus.NOT_REGISTERED,
             description = "",
             buildVersion = agInfo.buildVersion,
-            buildAlias = INITIAL_BUILD_ALIAS,
             packagesPrefixes = adminData(agInfo.id).packagesPrefixes,
             agentType = agInfo.agentType.notation,
             instanceIds = instanceIds(agInfo.id)
@@ -403,6 +377,7 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     environment = "",
     description = "",
     buildVersion = buildVersion,
+    //TODO: remove this field after applying appropriate changes to API
     buildAlias = "",
     agentType = agentType
 )
