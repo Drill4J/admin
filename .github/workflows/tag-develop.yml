@@ -32,6 +32,6 @@ jobs:
           echo "::set-output name=tag_ver::$(gradle -q :printVersion)"
       - name: Tag commit
         uses: tvdias/github-tagger@v0.0.1
-        with:
-          repo-token: ${{ secrets.REPO_TOKEN }}
-          tag: v${{ steps.set_ver.outputs.tag_ver }}
+          with:
+            repo-token: ${{ secrets.REPO_TOKEN }}
+            tag: v${{ steps.set_ver.outputs.tag_ver }}
