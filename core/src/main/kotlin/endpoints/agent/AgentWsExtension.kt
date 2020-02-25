@@ -25,7 +25,7 @@ class Signal(
     val callback: suspend (Any) -> Unit,
     private val topicName: String
 ) {
-    suspend fun await(timeout: Duration = 40.seconds) {
+    suspend fun await(timeout: Duration = 90.seconds) {
         awaitWithExpr(timeout, topicName) { state }
     }
 }
