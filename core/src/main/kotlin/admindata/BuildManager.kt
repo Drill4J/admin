@@ -12,7 +12,11 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 
-class AgentBuildManager(val agentId: String, private val storeClient: StoreClient, lastBuild: String = "") : BuildManager {
+class AgentBuildManager(
+    val agentId: String,
+    private val storeClient: StoreClient,
+    lastBuild: String = ""
+) : BuildManager {
     private val _lastBuild = atomic(lastBuild)
 
     override val buildInfos: MutableMap<String, BuildInfo> = ConcurrentHashMap()
@@ -23,12 +27,16 @@ class AgentBuildManager(val agentId: String, private val storeClient: StoreClien
             _lastBuild.value = value
         }
 
-    @Deprecated("This field should be removed after applying appropriate changes to API")
-    override val summaries: List<BuildSummaryWebSocket>
-        get() = emptyList()
+    @Deprecated(
+        replaceWith = ReplaceWith(""),
+        level = DeprecationLevel.ERROR,
+        message = "This field should be removed after applying appropriate changes to API"
+    )
+    override val summaries
+        get() = throw UnsupportedOperationException()
 
     val buildSummaries: List<BuildSummaryDto>
-        get() = buildInfos.values.map { it.toBuildSummaryDto() }
+        get() = buildInfos.values.map(BuildInfo::toBuildSummaryDto)
 
     override operator fun get(buildVersion: String) = buildInfos[buildVersion]
 
