@@ -21,7 +21,7 @@ data class GroupedAgentsDto(
 data class PluginSummaryDto(
     val agentId: String,
     val agentName: String,
-    val lastBuild: String,
+    val buildVersion: String,
     @ContextualSerialization val data: Any
 )
 
