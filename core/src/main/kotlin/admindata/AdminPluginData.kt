@@ -25,7 +25,7 @@ class AdminPluginData(
 
     private val _packagesPrefixes = atomic(readPackages())
 
-    override val buildManager = _buildManager.value
+    override val buildManager get() = _buildManager.value
 
     var packagesPrefixes: List<String>
         get() = _packagesPrefixes.value
