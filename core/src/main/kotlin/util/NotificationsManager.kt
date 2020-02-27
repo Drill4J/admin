@@ -61,7 +61,7 @@ class NotificationsManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
-        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.prevBuild
+        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
         if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {
             saveNewBuildNotification(agentInfo, buildManager, previousBuildVersion)
         }

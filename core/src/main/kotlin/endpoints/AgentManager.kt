@@ -377,7 +377,6 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     environment = "",
     description = "",
     buildVersion = buildVersion,
-    buildAlias = "", //TODO remove after changes in API
     agentType = agentType
 )
 

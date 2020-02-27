@@ -2,6 +2,7 @@ package com.epam.drill.admin.endpoints
 
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
@@ -97,7 +98,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).buildManager.buildSummaries
+                    agentManager.adminData(agentId).buildManager.builds.map(BuildInfo::toBuildSummaryDto)
                 }
             }
 

@@ -21,16 +21,17 @@ class AdminPluginData(
     private val storeClient: StoreClient,
     private val devMode: Boolean
 ) : AdminData {
+    private val _buildManager = atomic(AgentBuildManager(agentId, storeClient))
 
-    private var _packagesPrefixes = atomic(readPackages())
+    private val _packagesPrefixes = atomic(readPackages())
+
+    override val buildManager = _buildManager.value
 
     var packagesPrefixes: List<String>
         get() = _packagesPrefixes.value
         set(value) {
             _packagesPrefixes.value = value
         }
-
-    override var buildManager = AgentBuildManager(agentId, storeClient)
 
     private fun readPackages(): List<String> = Properties().run {
         val propertiesFileName = if (devMode) "dev$APP_CONFIG" else "prod$APP_CONFIG"
@@ -52,17 +53,23 @@ class AdminPluginData(
         storeClient.findById<AdminDataSummary>(agentId).let { summary ->
             if (summary != null) {
                 packagesPrefixes = summary.packagesPrefixes
-                buildManager = AgentBuildManager(agentId, storeClient, summary.lastBuild)
-                storeClient.findBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
-                    .forEach {
-                        buildManager.buildInfos[it.buildVersion] = it.toBuildInfo() }
+
+                val builds = storeClient.findBy<StorableBuildInfo> {
+                    StorableBuildInfo::agentId eq agentId
+                }.map(StorableBuildInfo::toBuildInfo)
+                _buildManager.value = AgentBuildManager(
+                    agentId = agentId,
+                    storeClient = storeClient,
+                    builds = builds,
+                    lastBuild = summary.lastBuild
+                )
             }
         }
     }
 
     suspend fun resetBuilds() {
         storeClient.deleteBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
-        buildManager = AgentBuildManager(agentId, storeClient)
+        _buildManager.value = AgentBuildManager(agentId, storeClient)
         refreshStoredSummary()
     }
 
@@ -79,27 +86,25 @@ class AdminPluginData(
 
 @Serializable
 data class AdminDataSummary(
-    @Id
-    val agentId: String,
+    @Id val agentId: String,
     val packagesPrefixes: List<String>,
     val lastBuild: String
 )
 
 @Serializable
 data class StorableBuildInfo(
-    @Id
-    val id: String,
+    @Id val id: String,
     val agentId: String,
-    val buildVersion: String = "",
-    val prevBuild: String = "",
+    val version: String = "",
+    val parentVersion: String = "",
     val methodChanges: MethodChanges = MethodChanges(),
     val classesBytes: Map<String, ByteArray> = emptyMap(),
     val javaMethods: Map<String, List<Method>> = emptyMap(),
     val new: Boolean
 ) {
     fun toBuildInfo() = BuildInfo(
-        buildVersion = buildVersion,
-        prevBuild = prevBuild,
+        version = version,
+        parentVersion = parentVersion,
         methodChanges = methodChanges,
         classesBytes = classesBytes,
         javaMethods = javaMethods,
@@ -108,10 +113,10 @@ data class StorableBuildInfo(
 }
 
 fun BuildInfo.toStorable(agentId: String) = StorableBuildInfo(
-    id = "$agentId:$buildVersion",
+    id = "$agentId:$version",
     agentId = agentId,
-    buildVersion = buildVersion,
-    prevBuild = prevBuild,
+    version = version,
+    parentVersion = parentVersion,
     methodChanges = methodChanges,
     classesBytes = classesBytes,
     javaMethods = javaMethods,

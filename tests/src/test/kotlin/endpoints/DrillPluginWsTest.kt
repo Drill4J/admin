@@ -72,7 +72,6 @@ class PluginWsTest {
         environment = "test",
         description = "test",
         buildVersion = buildVersion,
-        buildAlias = "", //TODO remove after changes in API
         agentType = AgentType.JAVA
     )
 

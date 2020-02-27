@@ -9,6 +9,7 @@ import org.apache.bcel.classfile.*
 import org.jacoco.core.analysis.*
 import java.io.*
 
+//TODO Replace this with a descent lib
 class MethodsComparator(
     private val bundle: IBundleCoverage? = null,
     private val result: IncrementalCache = IncrementalCache()
@@ -132,3 +133,10 @@ class BcelClassParser(
     }
 }
 
+private val Method.sign get() = "$name$desc"
+
+private fun Method.nameModified(otherMethod: Method) = hash == otherMethod.hash && desc == otherMethod.desc
+
+private fun Method.descriptorModified(otherMethod: Method) = name == otherMethod.name && hash == otherMethod.hash
+
+private fun Method.bodyModified(otherMethod: Method) = name == otherMethod.name && desc == otherMethod.desc
