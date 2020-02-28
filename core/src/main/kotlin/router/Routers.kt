@@ -5,106 +5,92 @@ package com.epam.drill.admin.router
 import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
-const val agentGroup = "Agent operations"
-const val systemGroup = "System operations"
-const val agentPluginManagementGroup = "Agent's plugins operations"
+private const val SYSTEM = "System operations"
+private const val AGENT = "Agent Endpoints"
+private const val AGENT_PLUGIN = "Agent Plugin Endpoints"
+private const val SERVICE_GROUP = "Service Group Endpoints"
 
 object Routes {
 
     @Location("/api")
     class Api {
-        @Group(agentGroup)
+        @Group(AGENT)
         @Location("/agents")
-        class Agent {
-            @Group(agentGroup)
-            @Location("/{agentId}/toggle-standby")
-            data class AgentToggleStandby(val agentId: String)
+        class Agents {
+            @Group(SYSTEM)
+            @Location("/reset")
+            object Reset
 
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/{pluginId}/unload-plugin")
-            data class UnloadPlugin(val agentId: String, val pluginId: String)
+            @Group(AGENT)
+            @Location("/{agentId}")
+            data class Agent(val agentId: String)
 
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/{pluginId}/update-plugin")
-            data class UpdatePlugin(val agentId: String, val pluginId: String)
+            @Group(AGENT)
+            @Location("/{agentId}/toggle")
+            data class ToggleAgent(val agentId: String)
 
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/{pluginId}/dispatch-action")
-            data class DispatchPluginAction(val agentId: String, val pluginId: String)
+            @Group(AGENT)
+            @Location("/{agentId}/reset")
+            data class ResetAgent(val agentId: String)
 
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/{pluginId}/toggle-plugin")
-            data class TogglePlugin(val agentId: String, val pluginId: String)
-
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/load-plugin")
-            data class AddNewPlugin(val agentId: String)
-
-            @Group(agentGroup)
-            @Location("/{agentId}/register")
-            data class RegisterAgent(val agentId: String)
-
-            @Group(agentGroup)
-            @Location("/{agentId}/unregister")
-            data class UnregisterAgent(val agentId: String)
-
-            @Group(systemGroup)
+            @Group(AGENT)
             @Location("/{agentId}/system-settings")
             data class SystemSettings(val agentId: String)
 
-            @Group(agentPluginManagementGroup)
-            @Location("/{agentId}/plugin/{pluginId}/data/{dataType}")
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins")
+            data class Plugins(val agentId: String)
+
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins/{pluginId}")
+            data class Plugin(val agentId: String, val pluginId: String)
+
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins/{pluginId}/dispatch-action")
+            data class DispatchPluginAction(val agentId: String, val pluginId: String)
+
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins/{pluginId}/reset")
+            data class ResetPlugin(val agentId: String, val pluginId: String)
+
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins/{pluginId}/toggle")
+            data class TogglePlugin(val agentId: String, val pluginId: String)
+
+            @Group(AGENT_PLUGIN)
+            @Location("/{agentId}/plugins/{pluginId}/data/{dataType}")
             data class PluginData(val agentId: String, val pluginId: String, val dataType: String)
         }
 
-        @Group(systemGroup)
-        @Location("/all/register")
-        object RegisterAll
-
-        @Location("/service-group/{serviceGroupId}")
+        @Group(SERVICE_GROUP)
+        @Location("/service-groups/{serviceGroupId}")
         data class ServiceGroup(val serviceGroupId: String) {
-            @Group(systemGroup)
+            @Group(SERVICE_GROUP)
             @Location("/register")
             data class Register(val serviceGroupParent: ServiceGroup)
 
-            @Group(systemGroup)
-            @Location("/plugin/{pluginId}")
+            @Group(SERVICE_GROUP)
+            @Location("/plugins/{pluginId}")
             data class Plugin(val serviceGroupParent: ServiceGroup, val pluginId: String) {
-                @Group(systemGroup)
+                @Group(SERVICE_GROUP)
                 @Location("/dispatch-action")
                 data class DispatchAction(val parent: Plugin)
 
-                @Group(systemGroup)
+                @Group(SERVICE_GROUP)
                 @Location("/data/{dataType}")
                 data class Data(val parent: Plugin, val dataType: String)
             }
         }
 
-        @Group(agentPluginManagementGroup)
-        @Location("/{agentId}/{pluginId}/reset")
-        data class ResetPlugin(val agentId: String, val pluginId: String)
-
-        @Group(agentGroup)
-        @Location("/{agentId}/reset")
-        data class ResetAgent(val agentId: String)
-
-        @Group(systemGroup)
-        @Location("/reset")
-        class ResetAllAgents
-
-        @Group(agentGroup)
-        @Location("/agent/{agentId}")
-        data class UpdateAgentConfig(val agentId: String)
-
-        @Group(systemGroup)
+        @Group(SYSTEM)
         @Location("/notifications/read")
-        class ReadNotification()
+        class ReadNotification
 
-        @Group(systemGroup)
+        @Group(SYSTEM)
         @Location("/notifications/delete")
-        class DeleteNotification()
+        class DeleteNotification
 
-        @Group(systemGroup)
+        @Group(SYSTEM)
         @Location("/login")
         class Login
     }

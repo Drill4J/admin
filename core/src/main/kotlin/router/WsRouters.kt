@@ -3,33 +3,33 @@ package com.epam.drill.admin.router
 import io.ktor.locations.*
 
 object WsRoutes {
-    @Location("/get-all-agents")
-    class GetAllAgents
-
-    @Location("/service-group/{groupId}")
+    @Location("/service-groups/{groupId}")
     data class ServiceGroup(val groupId: String)
 
-    @Location("/service-group/{groupId}/plugins")
+    @Location("/service-groups/{groupId}/plugins")
     data class ServiceGroupPlugins(val groupId: String)
 
-    @Location("/service-group/{groupId}/plugin/{pluginId}")
+    @Location("/service-groups/{groupId}/plugins/{pluginId}")
     data class ServiceGroupPlugin(val groupId: String, val pluginId: String)
 
-    @Location("/get-agent/{agentId}")
-    data class GetAgent(val agentId: String)
+    @Location("/agents")
+    class Agents
 
-    @Location("/get-all-plugins")
-    class GetAllPlugins
+    @Location("/agents/{agentId}/plugins")
+    data class AgentPlugins(val agentId: String)
 
-    @Location("/{agentId}/get-plugin-info")
-    data class GetPluginInfo(val agentId: String)
+    @Location("/agents/{agent}/plugins/{plugin}/config")
+    data class AgentPluginConfig(val agent: String, val plugin: String)
 
-    @Location("/{agent}/{plugin}/config")
-    data class GetPluginConfig(val agent: String, val plugin: String)
+    @Location("/agents/{agentId}")
+    data class Agent(val agentId: String)
+
+    @Location("/plugins")
+    class Plugins
 
     @Location("/notifications")
     class GetNotifications
 
-    @Location("/{agentId}/builds")
-    data class GetBuilds(val agentId: String)
+    @Location("/agents/{agentId}/builds")
+    data class AgentBuilds(val agentId: String)
 }

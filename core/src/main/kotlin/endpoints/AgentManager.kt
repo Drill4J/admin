@@ -4,6 +4,7 @@ import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.system.*
@@ -147,7 +148,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             commitChanges()
         }
         logger.debug { "Agent with id $agentId updated" }
-        topicResolver.sendToAllSubscribed("/$agentId/builds")
+        topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentId))
     }
 
     suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean {
@@ -292,7 +293,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     updateSessionHeader(this)
                     configurePackages(packagesPrefixes(id), id)//thread sleep
                     sendPlugins()
-                    topicResolver.sendToAllSubscribed("/$id/builds")
+                    topicResolver.sendToAllSubscribed("/agents/$id/builds")
                 }
             logger.debug { "Agent with id $name sync was finished" }
         } else {

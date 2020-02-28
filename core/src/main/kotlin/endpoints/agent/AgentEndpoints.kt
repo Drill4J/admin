@@ -35,7 +35,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                post<Routes.Api.UpdateAgentConfig, AgentInfoDto>(updateConfigResponds) { location, au ->
+                //TODO replace with "patch" when supported in ktor-swagger
+                put<Routes.Api.Agents.Agent, AgentInfoDto>(updateConfigResponds) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
@@ -60,7 +61,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                post<Routes.Api.Agent.RegisterAgent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
+                post<Routes.Api.Agents.Agent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -105,7 +106,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.RegisterAll, AgentRegistrationInfo>(registerAllResponds) { _, regInfo ->
+                post<Routes.Api.Agents, AgentRegistrationInfo>(registerAllResponds) { _, regInfo ->
                     logger.debug { "Registering all agents" }
                     val allAgents = agentManager.getAllAgents().map { it.agent }
                     allAgents.forEach { agInfo ->
@@ -124,7 +125,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                post<Routes.Api.Agent.UnregisterAgent>(unregisterAgentResponds) { payload ->
+                delete<Routes.Api.Agents.Agent>(unregisterAgentResponds) { payload ->
                     logger.debug { "Unregister agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]

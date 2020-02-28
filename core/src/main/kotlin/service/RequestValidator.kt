@@ -2,8 +2,11 @@ package com.epam.drill.admin.service
 
 import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.router.*
 import io.ktor.application.*
 import io.ktor.http.*
+import io.ktor.locations.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.*
@@ -26,10 +29,12 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
                 if (context is RoutingApplicationCall) {
                     val agentId = context.parameters["agentId"]
 
+
+
                     if (agentId != null) {
                         val agentInfo = am.getOrNull(agentId)
-                        when {
-                            agentInfo?.status == null -> {
+                        when(agentInfo?.status) {
+                            null -> {
                                 if (am.getAllAgents().none { it.agent.serviceGroup == agentId }) {
                                     call.respond(
                                         HttpStatusCode.BadRequest,
@@ -38,17 +43,21 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
                                     return@intercept finish()
                                 }
                             }
-                            agentInfo.status == AgentStatus.BUSY -> {
-                                logger.info { "Agent status is busy" }
+                            AgentStatus.BUSY -> {
+                                val agentPath = locations.href(Routes.Api.Agents.Agent(agentId))
+                                with(context.request) {
+                                    if (path() != agentPath && httpMethod != HttpMethod.Post) {
+                                        logger.info { "Agent status is busy" }
 
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ValidationResponse(agentIsBusyMessage)
-                                )
-                                return@intercept finish()
+                                        call.respond(
+                                            HttpStatusCode.BadRequest,
+                                            ValidationResponse(agentIsBusyMessage)
+                                        )
+                                        return@intercept finish()
+                                    }
+                                }
                             }
-
-
+                            else -> Unit
                         }
                     }
                 }

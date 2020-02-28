@@ -30,7 +30,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
         runBlocking {
             agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
-                val destination = app.toLocation(WsRoutes.GetAllAgents())
+                val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
                 sessionStorage.sendTo(
                     destination,
@@ -46,7 +46,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
             }
             agentManager.agentStorage.onAdd += add(mutableSetOf()) { k, v ->
-                val destination = app.toLocation(WsRoutes.GetAgent(k))
+                val destination = app.toLocation(WsRoutes.Agent(k))
                 if (sessionStorage.exists(destination)) {
                     sessionStorage.sendTo(
                         destination,
@@ -57,26 +57,26 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
 
             agentManager.agentStorage.onRemove += remove(mutableSetOf()) { k ->
-                val destination = app.toLocation(WsRoutes.GetAgent(k))
+                val destination = app.toLocation(WsRoutes.Agent(k))
                 if (sessionStorage.exists(destination))
                     sessionStorage.sendTo(destination, "", WsMessageType.DELETE)
             }
 
             wsTopic {
-                topic<WsRoutes.GetAllAgents> {
+                topic<WsRoutes.Agents> {
                     serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
                 }
 
-                topic<WsRoutes.GetAgent> { (agentId) ->
+                topic<WsRoutes.Agent> { (agentId) ->
                     agentManager.getOrNull(agentId)?.toDto(agentManager)
                 }
 
-                topic<WsRoutes.GetAllPlugins> {
+                topic<WsRoutes.Plugins> {
                     plugins.map { (_, dp) -> dp.pluginBean }
                         .mapToDto(agentManager.agentStorage.values.map { it.agent })
                 }
 
-                topic<WsRoutes.GetPluginInfo> { payload ->
+                topic<WsRoutes.AgentPlugins> { payload ->
                     val installedPluginBeanIds = agentManager
                         .getAllInstalledPluginBeanIds(payload.agentId)
                     plugins.getAllPluginBeans().map { plug ->
@@ -88,7 +88,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     }
                 }
 
-                topic<WsRoutes.GetPluginConfig> { payload ->
+                topic<WsRoutes.AgentPluginConfig> { payload ->
                     agentManager.getOrNull(payload.agent)?.plugins?.find { it.id == payload.plugin }
                         ?.config?.let { json.parseJson(it) } ?: ""
                 }
@@ -97,7 +97,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     notificationsManager.allNotifications.sortedByDescending { it.date }
                 }
 
-                topic<WsRoutes.GetBuilds> { (agentId) ->
+                topic<WsRoutes.AgentBuilds> { (agentId) ->
                     agentManager.adminData(agentId).buildManager.builds.map(BuildInfo::toBuildSummaryDto)
                 }
             }

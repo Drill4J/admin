@@ -38,7 +38,7 @@ fun AdminTest.addPlugin(
 ) = callAsync(asyncEngine.context) {
     engine.handleRequest(
         HttpMethod.Post,
-        "/api" + engine.application.locations.href(Routes.Api.Agent.AddNewPlugin(agentId))
+        engine.application.locations.href(Routes.Api.Agents.Plugins(agentId))
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PluginId.serializer() stringify payload)
@@ -52,8 +52,8 @@ fun AdminTest.unRegister(
 ) =
     callAsync(asyncEngine.context) {
         engine.handleRequest(
-            HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.UnregisterAgent(agentId))
+            HttpMethod.Delete,
+            engine.application.locations.href(Routes.Api.Agents.Agent(agentId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -67,8 +67,8 @@ fun AdminTest.unLoadPlugin(
 ) {
     callAsync(asyncEngine.context) {
         engine.handleRequest(
-            HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.UnloadPlugin(agentId, payload.pluginId))
+            HttpMethod.Delete,
+            engine.application.locations.href(Routes.Api.Agents.Plugin(agentId, payload.pluginId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -84,7 +84,7 @@ fun AdminTest.togglePlugin(
     callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.TogglePlugin(agentId, pluginId.pluginId))
+            engine.application.locations.href(Routes.Api.Agents.TogglePlugin(agentId, pluginId.pluginId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -98,8 +98,8 @@ fun AdminTest.toggleAgent(
 ) {
     callAsync(asyncEngine.context) {
         engine.handleRequest(
-            HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.AgentToggleStandby(agentId))
+            HttpMethod.Patch,
+            engine.application.locations.href(Routes.Api.Agents.ToggleAgent(agentId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -144,7 +144,7 @@ data class PluginTestContext(
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.DispatchPluginAction(agentId, pluginId))
+            engine.application.locations.href(Routes.Api.Agents.DispatchPluginAction(agentId, pluginId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
             setBody(payload)
@@ -159,7 +159,7 @@ data class PluginTestContext(
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
-            "/api" + engine.application.locations.href(Routes.Api.Agent.SystemSettings(agentId))
+            engine.application.locations.href(Routes.Api.Agents.SystemSettings(agentId))
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
             setBody(PackagesPrefixes.serializer() stringify payload)

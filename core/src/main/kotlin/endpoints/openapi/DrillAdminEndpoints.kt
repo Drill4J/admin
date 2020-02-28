@@ -3,13 +3,13 @@ package com.epam.drill.admin.endpoints.openapi
 import com.epam.drill.admin.agent.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
+import de.nielsfalk.ktor.swagger.*
 import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
-import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
@@ -37,7 +37,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                post<Routes.Api.Agent.UnloadPlugin>(unloadPluginResponds) { payload ->
+                delete<Routes.Api.Agents.Plugin>(unloadPluginResponds) { payload ->
                     val (agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
                     val drillAgent = agentManager.agentSession(agentId)
@@ -77,7 +77,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                post<Routes.Api.Agent.AgentToggleStandby>(agentToggleStandByResponds) { params ->
+                post<Routes.Api.Agents.ToggleAgent>(agentToggleStandByResponds) { params ->
                     val (agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     agentManager[agentId]?.let { agentInfo ->
@@ -104,7 +104,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                post<Routes.Api.ResetPlugin>(resetPluginResponds) { payload ->
+                post<Routes.Api.Agents.ResetPlugin>(resetPluginResponds) { payload ->
                     val (agentId, pluginId) = payload
                     logger.info { "Reset plugin with id $pluginId for agent with id $agentId was successfully" }
                     val agentEntry = agentManager.full(agentId)
@@ -134,7 +134,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound()
                     )
-                post<Routes.Api.ResetAgent>(resetAgentResponse) { payload ->
+                put<Routes.Api.Agents.ResetAgent, Unit>(resetAgentResponse) { payload, _ ->
                     val (agentId) = payload
                     logger.info { "Reset agent with id $agentId" }
                     val agentEntry = agentManager.full(agentId)
@@ -156,7 +156,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>()
                     )
-                post<Routes.Api.ResetAllAgents>(resetAllAgentsResponds) { _ ->
+                put<Routes.Api.Agents.Reset, Unit>(resetAllAgentsResponds) { _, _ ->
                     logger.info { "Reset all agents" }
                     agentManager.getAllAgents().forEach { agentEntry ->
                         agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
@@ -237,7 +237,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         ok<String>(),
                         badRequest()
                     )
-                post<Routes.Api.Agent.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
+                post<Routes.Api.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
                     val (agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 

@@ -72,10 +72,10 @@ class UIEVENTLOOP(
                         WsMessageType.MESSAGE, WsMessageType.DELETE ->
                             this@queued.launch {
                                 when (type) {
-                                    is WsRoutes.GetAllAgents -> {
+                                    is WsRoutes.Agents -> {
                                         glob.send(GroupedAgentsDto.serializer() parse content)
                                     }
-                                    is WsRoutes.GetAgent -> {
+                                    is WsRoutes.Agent -> {
 
                                         if (notEmptyResponse) {
                                             cs[type.agentId]!!.agentChannel.send(AgentInfoDto.serializer() parse content)
@@ -84,7 +84,7 @@ class UIEVENTLOOP(
                                         }
 
                                     }
-                                    is WsRoutes.GetAllPlugins -> {
+                                    is WsRoutes.Plugins -> {
                                         //                                if (notEmptyResponse) {
 //                                    allPluginsChannel.send((PluginWebSocket.serializer().set parse content))
 //                                } else {
@@ -92,7 +92,7 @@ class UIEVENTLOOP(
 //                                }
                                     }
 
-                                    is WsRoutes.GetBuilds -> {
+                                    is WsRoutes.AgentBuilds -> {
                                         if (notEmptyResponse) {
                                             cs.getValue(type.agentId)
                                                 .buildsChannel.send((BuildSummaryDto.serializer().list parse content))
@@ -109,9 +109,9 @@ class UIEVENTLOOP(
 //                                }
                                     }
 
-                                    is WsRoutes.GetPluginConfig -> {
+                                    is WsRoutes.AgentPluginConfig -> {
                                     }
-                                    is WsRoutes.GetPluginInfo -> {
+                                    is WsRoutes.AgentPlugins -> {
                                         if (notEmptyResponse) {
                                             cs[type.agentId]!!.agentPluginInfoChannel.send(PluginDto.serializer().set parse content)
                                         } else {

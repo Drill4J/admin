@@ -5,6 +5,7 @@ package com.epam.drill.admin.endpoints.agent
 import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
+import com.epam.drill.admin.router.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -85,7 +86,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
                                 .compareToPrev(agentInfo.buildVersion)
-                            topicResolver.sendToAllSubscribed("/${agentInfo.id}/builds")
+                            topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
                             agentManager.enableAllPlugins(agentInfo.id)
                             logger.debug { "Finished classes transfer" }
                         }
