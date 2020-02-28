@@ -4,7 +4,7 @@ val serializationRuntimeVersion = "0.14.0"
 
 val atomicFuVersion = "0.14.1"
 
-val jacocoVersion = "0.8.3"
+val jacocoVersion = "0.8.5"
 
 val vavrVersion = "0.10.0"
 
