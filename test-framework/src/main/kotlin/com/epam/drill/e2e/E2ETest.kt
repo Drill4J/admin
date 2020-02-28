@@ -148,7 +148,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Post,
-                    application.locations.href(Routes.Api.Agents.Plugins(agentId))
+                    toApiUri(Routes.Api.Agents.Plugins(agentId))
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                     addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -166,7 +166,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Delete,
-                    application.locations.href(Routes.Api.Agents.Agent(agentId))
+                    toApiUri(Routes.Api.Agents.Agent(agentId))
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -183,7 +183,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Delete,
-                    application.locations.href(Routes.Api.Agents.Plugin(agentId, payload.pluginId))
+                    toApiUri(Routes.Api.Agents.Plugin(agentId, payload.pluginId))
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -201,7 +201,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Post,
-                    application.locations.href(Routes.Api.Agents.TogglePlugin(agentId, pluginId.pluginId))
+                    toApiUri(Routes.Api.Agents.TogglePlugin(agentId, pluginId.pluginId))
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -217,8 +217,8 @@ abstract class E2ETest : AdminTest() {
         callAsync(context) {
             with(engine) {
                 handleRequest(
-                    HttpMethod.Patch,
-                    application.locations.href(Routes.Api.Agents.ToggleAgent(agentId))
+                    HttpMethod.Post,
+                    toApiUri(Routes.Api.Agents.ToggleAgent(agentId))
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -233,7 +233,7 @@ abstract class E2ETest : AdminTest() {
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync(context) {
         with(engine) {
-            handleRequest(HttpMethod.Post, engine.application.locations.href(Routes.Api.Agents.SystemSettings(agentId))) {
+            handleRequest(HttpMethod.Put, toApiUri(Routes.Api.Agents.SystemSettings(agentId))) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody(SystemSettingsDto.serializer() stringify payload)

@@ -13,10 +13,14 @@ private const val SERVICE_GROUP = "Service Group Endpoints"
 object Routes {
 
     @Location("/api")
-    class Api {
+    object Api {
+        @Group(SYSTEM)
+        @Location("/login")
+        class Login
+
         @Group(AGENT)
         @Location("/agents")
-        class Agents {
+        object Agents {
             @Group(SYSTEM)
             @Location("/reset")
             object Reset
@@ -78,6 +82,7 @@ object Routes {
             }
         }
 
+        //TODO rewrite notifications
         @Group(SYSTEM)
         @Location("/notifications/read")
         class ReadNotification
@@ -85,10 +90,6 @@ object Routes {
         @Group(SYSTEM)
         @Location("/notifications/delete")
         class DeleteNotification
-
-        @Group(SYSTEM)
-        @Location("/login")
-        class Login
     }
 
 }

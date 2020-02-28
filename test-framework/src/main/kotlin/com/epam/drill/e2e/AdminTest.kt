@@ -62,14 +62,17 @@ abstract class AdminTest {
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync(context) {
         with(engine) {
-            handleRequest(HttpMethod.Post, application.locations.href(Routes.Api.Agents.Agent(agentId))) {
+            handleRequest(HttpMethod.Post, toApiUri(Routes.Api.Agents.Agent(agentId))) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody(AgentRegistrationInfo.serializer() stringify payload)
             }.apply { resultBlock(response.status(), response.content) }
         }
     }
+}
 
+fun TestApplicationEngine.toApiUri(location: Any): String = application.locations.href(location).let { uri ->
+    if (uri.startsWith("/api")) uri else "/api$uri"
 }
 
 @ExperimentalTime
