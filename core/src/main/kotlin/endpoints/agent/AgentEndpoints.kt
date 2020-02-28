@@ -84,8 +84,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.ServiceGroup.Register, AgentRegistrationInfo>(registrationResponds) { (serviceGroupParent), regInfo ->
-                    val serviceGroupId = serviceGroupParent.serviceGroupId
+                post<Routes.Api.ServiceGroup, AgentRegistrationInfo>(registrationResponds) { location, regInfo ->
+                    val serviceGroupId = location.serviceGroupId
                     logger.debug { "Registering agents in $serviceGroupId" }
                     val serviceGroup = agentManager.serviceGroup(serviceGroupId)
                     serviceGroup.forEach { agInfo ->

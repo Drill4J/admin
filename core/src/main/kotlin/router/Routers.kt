@@ -66,10 +66,6 @@ object Routes {
         @Location("/service-groups/{serviceGroupId}")
         data class ServiceGroup(val serviceGroupId: String) {
             @Group(SERVICE_GROUP)
-            @Location("/register")
-            data class Register(val serviceGroupParent: ServiceGroup)
-
-            @Group(SERVICE_GROUP)
             @Location("/plugins/{pluginId}")
             data class Plugin(val serviceGroupParent: ServiceGroup, val pluginId: String) {
                 @Group(SERVICE_GROUP)
