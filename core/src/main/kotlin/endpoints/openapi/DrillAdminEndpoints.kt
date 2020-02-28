@@ -237,7 +237,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         ok<String>(),
                         badRequest()
                     )
-                post<Routes.Api.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
+                put<Routes.Api.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
                     val (agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 
