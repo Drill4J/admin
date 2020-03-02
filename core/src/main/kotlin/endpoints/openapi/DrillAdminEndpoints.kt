@@ -1,15 +1,16 @@
 package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.api.*
-import com.epam.drill.common.*
-import de.nielsfalk.ktor.swagger.*
 import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
+import com.epam.drill.api.*
+import com.epam.drill.api.dto.*
+import com.epam.drill.common.*
+import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
@@ -148,6 +149,20 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     }
                     logger.info { "Reset agent with id $agentId result: $response" }
                     call.respond(statusCode, response)
+                }
+            }
+
+            authenticate {
+                val loggingResponds = "Configure agent logging levels"
+                    .responds(
+                        ok<Unit>(), notFound()
+                    )
+                put<Routes.Api.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (agentId), loggingConfig ->
+                    logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
+                    agentManager.agentSession(agentId)
+                        ?.sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig)?.await()
+                    logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
+                    call.respond(HttpStatusCode.OK, EmptyContent)
                 }
             }
 
