@@ -29,7 +29,7 @@ dependencies {
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
-    implementation("com.epam.drill:ktor-swagger:$swaggerVersion")
+    implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("io.mockk:mockk:1.9.3")

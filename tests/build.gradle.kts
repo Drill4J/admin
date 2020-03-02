@@ -34,7 +34,7 @@ dependencies {
 
     testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
 
-    testImplementation("com.epam.drill:ktor-swagger:$swaggerVersion")
+    testImplementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     testImplementation(ktor("server-test-host"))
     testImplementation(ktor("auth"))
     testImplementation(ktor("auth-jwt"))
