@@ -38,6 +38,10 @@ object Routes {
             data class ResetAgent(val agentId: String)
 
             @Group(AGENT)
+            @Location("/{agentId}/logging-levels")
+            data class LoggingLevels(val agentId: String)
+
+            @Group(AGENT)
             @Location("/{agentId}/system-settings")
             data class SystemSettings(val agentId: String)
 
