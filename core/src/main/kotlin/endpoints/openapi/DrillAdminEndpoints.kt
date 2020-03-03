@@ -101,58 +101,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val resetPluginResponds = "Reset plugin"
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-                post<Routes.Api.Agents.ResetPlugin>(resetPluginResponds) { payload ->
-                    val (agentId, pluginId) = payload
-                    logger.info { "Reset plugin with id $pluginId for agent with id $agentId was successfully" }
-                    val agentEntry = agentManager.full(agentId)
-
-                    val (statusCode, response) = when {
-                        agentEntry == null -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
-                        plugins[pluginId] == null -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
-                        else -> {
-                            val pluginInstance = agentEntry[pluginId]
-
-                            if (pluginInstance == null) {
-                                HttpStatusCode.NotFound to
-                                        ErrorResponse("plugin with id $pluginId not installed to agent with id $agentId")
-                            } else {
-                                pluginInstance.dropData()
-                                HttpStatusCode.OK to EmptyContent
-                            }
-                        }
-                    }
-                    logger.info { "Reset plugin with id $pluginId for agent with id $agentId result: $response" }
-                    call.respond(statusCode, response)
-                }
-            }
-
-            authenticate {
-                val resetAgentResponse = "Reset agent"
-                    .responds(
-                        ok<Unit>(), notFound()
-                    )
-                put<Routes.Api.Agents.ResetAgent, Unit>(resetAgentResponse) { payload, _ ->
-                    val (agentId) = payload
-                    logger.info { "Reset agent with id $agentId" }
-                    val agentEntry = agentManager.full(agentId)
-
-                    val (statusCode, response) = when (agentEntry) {
-                        null -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
-                        else -> {
-                            agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
-                            HttpStatusCode.OK to EmptyContent
-                        }
-                    }
-                    logger.info { "Reset agent with id $agentId result: $response" }
-                    call.respond(statusCode, response)
-                }
-            }
-
-            authenticate {
                 val loggingResponds = "Configure agent logging levels"
                     .responds(
                         ok<Unit>(), notFound()
@@ -162,21 +110,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     agentManager.agentSession(agentId)
                         ?.sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig)?.await()
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
-                    call.respond(HttpStatusCode.OK, EmptyContent)
-                }
-            }
-
-            authenticate {
-                val resetAllAgentsResponds = "Reset all agents"
-                    .responds(
-                        ok<Unit>()
-                    )
-                put<Routes.Api.Agents.Reset, Unit>(resetAllAgentsResponds) { _, _ ->
-                    logger.info { "Reset all agents" }
-                    agentManager.getAllAgents().forEach { agentEntry ->
-                        agentEntry.plugins.forEach { pluginInstance -> pluginInstance.dropData() }
-                    }
-                    logger.info { "Reset all agents successfully" }
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }
             }

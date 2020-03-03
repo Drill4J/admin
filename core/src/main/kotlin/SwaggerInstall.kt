@@ -1,8 +1,6 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
@@ -36,21 +34,13 @@ fun Application.enableSwaggerSupport() {
     }
 }
 
-val agentInfoWebSocketExample = AgentInfoDto(
-    id = "Petclinic",
-    serviceGroup = "",
+val agentUpdateExample = AgentUpdateDto(
     name = "Petclinic",
-    status = AgentStatus.NOT_REGISTERED,
-    buildVersion = "0.0.1",
-    plugins = setOf(PluginDto(id = "", relation = "")),
     description = "",
-    packagesPrefixes = listOf("org/springframework/samples/petclinic"),
-    environment = "",
-    agentType = "Java",
-    instanceIds = mutableSetOf()
+    environment = ""
 )
 
-val agentRegistrationExample = AgentRegistrationInfo(
+val agentRegistrationExample = AgentRegistrationDto(
     name = "Petclinic",
     description = "Simple web service",
     environment = "",

@@ -21,21 +21,18 @@ object Routes {
         @Group(AGENT)
         @Location("/agents")
         object Agents {
-            @Group(SYSTEM)
-            @Location("/reset")
-            object Reset
 
             @Group(AGENT)
             @Location("/{agentId}")
             data class Agent(val agentId: String)
 
             @Group(AGENT)
-            @Location("/{agentId}/toggle")
-            data class ToggleAgent(val agentId: String)
+            @Location("/{agentId}/info")
+            data class AgentInfo(val agentId: String)
 
             @Group(AGENT)
-            @Location("/{agentId}/reset")
-            data class ResetAgent(val agentId: String)
+            @Location("/{agentId}/toggle")
+            data class ToggleAgent(val agentId: String)
 
             @Group(AGENT)
             @Location("/{agentId}/logging")
@@ -56,10 +53,6 @@ object Routes {
             @Group(AGENT_PLUGIN)
             @Location("/{agentId}/plugins/{pluginId}/dispatch-action")
             data class DispatchPluginAction(val agentId: String, val pluginId: String)
-
-            @Group(AGENT_PLUGIN)
-            @Location("/{agentId}/plugins/{pluginId}/reset")
-            data class ResetPlugin(val agentId: String, val pluginId: String)
 
             @Group(AGENT_PLUGIN)
             @Location("/{agentId}/plugins/{pluginId}/toggle")

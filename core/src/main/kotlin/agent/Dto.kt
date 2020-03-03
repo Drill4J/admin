@@ -30,6 +30,23 @@ data class AgentInfoDto(
     val agentType: String
 )
 
+@Serializable
+data class AgentRegistrationDto(
+    val name: String,
+    val description: String = "",
+    val environment: String = "",
+    val packagesPrefixes: List<String>,
+    val sessionIdHeaderName: String = "",
+    val plugins: List<String> = emptyList()
+)
+
+@Serializable
+data class AgentUpdateDto(
+    val name: String,
+    val description: String = "",
+    val environment: String = ""
+)
+
 fun AgentInfo.toDto(agentManager: AgentManager, isList: Boolean = false): AgentInfoDto = agentManager.run {
     AgentInfoDto(
         id = id,

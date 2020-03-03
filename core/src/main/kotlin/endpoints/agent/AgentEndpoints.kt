@@ -13,7 +13,6 @@ import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -30,13 +29,12 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val updateConfigResponds = "Update agent configuration"
                     .examples(
-                        example("Petclinic", agentInfoWebSocketExample)
+                        example("Petclinic", agentUpdateExample)
                     )
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                //TODO replace with "patch" when supported in ktor-swagger
-                put<Routes.Api.Agents.Agent, AgentInfoDto>(updateConfigResponds) { location, au ->
+                patch<Routes.Api.Agents.AgentInfo, AgentUpdateDto>(updateConfigResponds) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
@@ -60,7 +58,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<Routes.Api.Agents.Agent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
+                patch<Routes.Api.Agents.Agent, AgentRegistrationDto>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -83,7 +81,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                patch<Routes.Api.ServiceGroup, AgentRegistrationInfo>(registrationResponds) { location, regInfo ->
+                patch<Routes.Api.ServiceGroup, AgentRegistrationDto>(registrationResponds) { location, regInfo ->
                     val serviceGroupId = location.serviceGroupId
                     logger.debug { "Registering agents in $serviceGroupId" }
                     val serviceGroup = agentManager.serviceGroup(serviceGroupId)
@@ -105,7 +103,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.Agents, AgentRegistrationInfo>(registerAllResponds) { _, regInfo ->
+                post<Routes.Api.Agents, AgentRegistrationDto>(registerAllResponds) { _, regInfo ->
                     logger.debug { "Registering all agents" }
                     val allAgents = agentManager.getAllAgents().map { it.agent }
                     allAgents.forEach { agInfo ->
@@ -143,7 +141,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun register(agInfo: AgentInfo, regInfo: AgentRegistrationInfo) {
+    suspend fun register(agInfo: AgentInfo, regInfo: AgentRegistrationDto) {
         with(agInfo) {
             name = regInfo.name
             environment = regInfo.environment
@@ -158,13 +156,3 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         }
     }
 }
-
-@Serializable
-data class AgentRegistrationInfo(
-    val name: String,
-    val description: String = "",
-    val environment: String = "",
-    val packagesPrefixes: List<String>,
-    val sessionIdHeaderName: String = "",
-    val plugins: List<String> = emptyList()
-)

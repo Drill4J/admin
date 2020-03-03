@@ -1,7 +1,7 @@
 package com.epam.drill.admin.e2e
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.common.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
@@ -35,7 +35,7 @@ class AgentRegistrationTest : E2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(
                     agentId,
-                    payload = AgentRegistrationInfo(
+                    payload = AgentRegistrationDto(
                         name = "without description",
                         packagesPrefixes = listOf("testPrefix"),
                         plugins = emptyList()

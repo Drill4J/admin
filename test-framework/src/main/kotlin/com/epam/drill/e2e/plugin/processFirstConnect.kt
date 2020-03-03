@@ -1,9 +1,9 @@
 package com.epam.drill.e2e.plugin
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.admin.endpoints.agent.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
@@ -56,7 +56,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                 ).apply { queued() }
             apply.getHeaders()
             asyncEngine.register(
-                ag.id, payload = AgentRegistrationInfo(
+                ag.id, payload = AgentRegistrationDto(
                     name = "xz",
                     description = "ad",
                     packagesPrefixes = listOf("testPrefix"),

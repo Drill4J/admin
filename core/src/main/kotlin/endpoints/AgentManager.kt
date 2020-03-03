@@ -137,14 +137,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun updateAgent(agentId: String, au: AgentInfoDto) {
-        logger.debug { "Agent with id $agentId update with agent info :$au" }
+    suspend fun updateAgent(agentId: String, agentUpdateDto: AgentUpdateDto) {
+        logger.debug { "Agent with id $agentId update with agent info $agentUpdateDto" }
         getOrNull(agentId)?.apply {
-            name = au.name
-            environment = au.environment
-            sessionIdHeaderName = au.sessionIdHeaderName
-            description = au.description
-            status = au.status
+            name = agentUpdateDto.name
+            environment = agentUpdateDto.environment
+            description = agentUpdateDto.description
             commitChanges()
         }
         logger.debug { "Agent with id $agentId updated" }
@@ -167,20 +165,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun resetAgent(agInfo: AgentInfo) {
         logger.debug { "Reset agent with id ${agInfo.name}" }
-        val au = AgentInfoDto(
-            id = agInfo.id,
-            serviceGroup = agInfo.serviceGroup,
-            name = "",
-            environment = "",
-            status = AgentStatus.NOT_REGISTERED,
-            description = "",
-            buildVersion = agInfo.buildVersion,
-            packagesPrefixes = adminData(agInfo.id).packagesPrefixes,
-            agentType = agInfo.agentType.notation,
-            instanceIds = instanceIds(agInfo.id)
-        )
-        updateAgent(agInfo.id, au)
+        getOrNull(agInfo.id)?.apply {
+            name = ""
+            environment = ""
+            description = ""
+            status = AgentStatus.NOT_REGISTERED
+            commitChanges()
+        }
         logger.debug { "Agent with id ${agInfo.name} has been reset" }
+        topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agInfo.id))
     }
 
     private suspend fun notifyAllAgents() {
