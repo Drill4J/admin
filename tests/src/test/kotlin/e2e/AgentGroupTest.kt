@@ -1,6 +1,6 @@
 package com.epam.drill.admin.e2e
 
-import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
@@ -20,7 +20,7 @@ class AgentGroupTest : E2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(
                     "ag$wit",
-                    payload = AgentRegistrationInfo(
+                    payload = AgentRegistrationDto(
                         name = "first first",
                         description = "ad",
                         packagesPrefixes = listOf("testPrefix"),
@@ -39,7 +39,7 @@ class AgentGroupTest : E2ETest() {
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(
                     "ag$it",
-                    payload = AgentRegistrationInfo(
+                    payload = AgentRegistrationDto(
                         name = "first first",
                         description = "ad",
                         packagesPrefixes = listOf("testPrefix"),

@@ -1,6 +1,6 @@
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
@@ -53,7 +53,7 @@ abstract class AdminTest {
     fun AsyncTestAppEngine.register(
         agentId: String,
         token: String = globToken,
-        payload: AgentRegistrationInfo = AgentRegistrationInfo(
+        payload: AgentRegistrationDto = AgentRegistrationDto(
             name = "xz",
             description = "ad",
             packagesPrefixes = listOf("testPrefix"),
@@ -65,7 +65,7 @@ abstract class AdminTest {
             handleRequest(HttpMethod.Patch, toApiUri(Routes.Api.Agents.Agent(agentId))) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody(AgentRegistrationInfo.serializer() stringify payload)
+                setBody(AgentRegistrationDto.serializer() stringify payload)
             }.apply { resultBlock(response.status(), response.content) }
         }
     }
