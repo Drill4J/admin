@@ -52,9 +52,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-
             authenticate {
-                val registerAgentResponds = "Registering agent"
+                val registerAgentResponds = "Register agent"
                     .examples(
                         example("Petclinic", agentRegistrationExample)
                     )
@@ -78,13 +77,13 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val registrationResponds = "Registering agent in defined service group"
+                val registrationResponds = "Register agent in defined service group"
                     .examples(
                         example("agentRegistrationInfo",
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.ServiceGroup, AgentRegistrationInfo>(registrationResponds) { location, regInfo ->
+                patch<Routes.Api.ServiceGroup, AgentRegistrationInfo>(registrationResponds) { location, regInfo ->
                     val serviceGroupId = location.serviceGroupId
                     logger.debug { "Registering agents in $serviceGroupId" }
                     val serviceGroup = agentManager.serviceGroup(serviceGroupId)
