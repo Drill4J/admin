@@ -61,7 +61,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                post<Routes.Api.Agents.Agent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
+                patch<Routes.Api.Agents.Agent, AgentRegistrationInfo>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]

@@ -62,7 +62,7 @@ abstract class AdminTest {
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync(context) {
         with(engine) {
-            handleRequest(HttpMethod.Post, toApiUri(Routes.Api.Agents.Agent(agentId))) {
+            handleRequest(HttpMethod.Patch, toApiUri(Routes.Api.Agents.Agent(agentId))) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody(AgentRegistrationInfo.serializer() stringify payload)
