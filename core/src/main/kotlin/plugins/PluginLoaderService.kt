@@ -2,9 +2,11 @@ package com.epam.drill.admin.plugins
 
 
 import com.epam.drill.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
+import io.ktor.application.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
@@ -15,15 +17,15 @@ import java.lang.System.*
 import java.util.jar.*
 import java.util.zip.*
 
-
 private val logger = KotlinLogging.logger {}
 
 class PluginLoaderService(
     override val kodein: Kodein,
-    val workDir: File = File(getenv("DRILL_HOME"), "work"),
-    val withArtifactory: Boolean = true
+    val workDir: File = File(getenv("DRILL_HOME"), "work")
 ) : KodeinAware {
-    private val plugins: Plugins by kodein.instance()
+    private val plugins: Plugins by instance()
+    private val application: Application by instance()
+
     private val pluginStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }
 
@@ -32,13 +34,17 @@ class PluginLoaderService(
     init {
         runBlocking(Dispatchers.Default) {
             pluginStoragePath.mkdirs()
-            if (withArtifactory) {
+            val remoteEnabled = application.drillConfig
+                .config("plugins")
+                .config("remote")
+                .property("enabled").getString().toBoolean()
+            if (remoteEnabled) {
                 val pluginLoader = ArtifactoryPluginLoader(
                     baseUrl = "https://oss.jfrog.org",
                     basePath = "artifactory",
                     repo = "oss-release-local",
                     storageDir = pluginStoragePath,
-                    devMode = true
+                    devMode = application.isDevMode
                 )
                 pluginLoader.loadPlugins(allowedPlugins)
             }

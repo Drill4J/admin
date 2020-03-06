@@ -29,7 +29,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
         configure = { dispatcher = Dispatchers.IO + context })
     {
         asyncEngine = AsyncTestAppEngine(handler, this)
-        testApp(application, sslPort, false)
+        testApp(application, sslPort)
         storeManager = appConfig.storeManager
         commonStore = appConfig.commonStore
         globToken = requestToken()

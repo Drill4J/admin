@@ -38,7 +38,7 @@ abstract class E2ETest : AdminTest() {
                 environment = createTestEnvironment { parentCoroutineContext = context },
                 configure = { dispatcher = Dispatchers.IO + context }
             ) {
-                testApp(application, sslPort, false)
+                testApp(application, sslPort)
                 asyncEngine = AsyncTestAppEngine(handler, this)
                 storeManager = appConfig.storeManager
                 commonStore = appConfig.commonStore

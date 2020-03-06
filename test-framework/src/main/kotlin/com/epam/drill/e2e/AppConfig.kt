@@ -25,10 +25,11 @@ class AppConfig(var projectDir: File) {
     lateinit var commonStore: CommonStore
 
 
-    val testApp: Application.(String, Boolean) -> Unit = { sslPort, withArtifactory ->
+    val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
             put("ktor.deployment.sslPort", sslPort)
-            put("ktor.dev", "true")
+            put("drill.devMode", "true")
+            put("drill.plugins.remote.enabled", "false")
         }
         install(Locations)
         install(WebSockets)
@@ -59,8 +60,7 @@ class AppConfig(var projectDir: File) {
                     bind<PluginLoaderService>() with eagerSingleton {
                         PluginLoaderService(
                             kodein,
-                            projectDir.resolve("work"),
-                            withArtifactory
+                            projectDir.resolve("work")
                         )
                     }
                 }

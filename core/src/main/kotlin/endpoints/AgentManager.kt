@@ -2,12 +2,12 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.system.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
@@ -249,7 +249,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
 
     fun adminData(agentId: String) = adminDataVault[agentId] ?: run {
-        val newAdminData = AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode())
+        val newAdminData = AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode)
         adminDataVault[agentId] = newAdminData
         newAdminData
     }
