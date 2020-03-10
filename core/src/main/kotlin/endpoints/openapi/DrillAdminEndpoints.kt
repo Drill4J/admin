@@ -100,13 +100,15 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
 
             authenticate {
                 val loggingResponds = "Configure agent logging levels"
+                    .examples(
+                        example("Agent logging config", defaultLoggingConfig)
+                    )
                     .responds(
                         ok<Unit>(), notFound()
                     )
                 put<Routes.Api.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
-                    agentManager.agentSession(agentId)
-                        ?.sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig)?.await()
+                    agentManager.configLogging(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }

@@ -10,6 +10,7 @@ import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.api.*
+import com.epam.drill.api.dto.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
@@ -292,6 +293,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         delay(500L)
                         triggerClassesSending()
                         sendPlugins(info)
+                        restoreLoggingConfig(id)
                         enableAllPlugins(id)
                     }
                     topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
@@ -378,6 +380,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         notifyAllAgents()
         notifySingleAgent(this.id)
     }
+
+    suspend fun configLogging(agentId: String, loggingConfig: LoggingConfig) {
+        agentSession(agentId)?.apply {
+            setLoggingConfig(loggingConfig)
+            val agentStore = store.agentStore(agentId)
+            agentStore.store(loggingConfig.associateWithAgent(agentId))
+        }
+    }
+
+    private suspend fun restoreLoggingConfig(agentId: String) {
+        agentSession(agentId)?.apply {
+            val agentStore = store.agentStore(agentId)
+            val loggingConfig = agentStore.findById<AgentLoggingConfig>(agentId)?.config ?: defaultLoggingConfig
+            setLoggingConfig(loggingConfig)
+        }
+    }
 }
 
 fun AgentConfig.toAgentInfo() = AgentInfo(
@@ -397,3 +415,7 @@ suspend fun AgentWsSession.setPackagesPrefixes(data: PackagesPrefixes) =
 
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent>().await()
+
+suspend fun AgentWsSession.setLoggingConfig(loggingConfig: LoggingConfig) {
+    sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig).await()
+}
