@@ -10,6 +10,12 @@ import org.jacoco.core.analysis.*
 import java.io.*
 
 //TODO Replace this with a descent lib
+
+fun IBundleCoverage.compareClasses(
+    oldClasses: Map<String, Methods>,
+    newClasses: Map<String, Methods>
+): MethodChanges = MethodsComparator(this).compareClasses(oldClasses, newClasses)
+
 class MethodsComparator(
     private val bundle: IBundleCoverage? = null,
     private val result: IncrementalCache = IncrementalCache()

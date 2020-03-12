@@ -1,6 +1,6 @@
 package com.epam.drill.admin.admindata
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.build.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
@@ -21,9 +21,6 @@ class AdminPluginData(
     private val storeClient: StoreClient,
     private val devMode: Boolean
 ) : AdminData {
-    private val _buildManager = atomic(AgentBuildManager(agentId, storeClient))
-
-    private val _packagesPrefixes = atomic(readPackages())
 
     override val buildManager get() = _buildManager.value
 
@@ -33,30 +30,18 @@ class AdminPluginData(
             _packagesPrefixes.value = value
         }
 
-    private fun readPackages(): List<String> = Properties().run {
-        val propertiesFileName = if (devMode) "dev$APP_CONFIG" else "prod$APP_CONFIG"
-        getPackagesProperty(propertiesFileName)
-    }
+    private val _buildManager = atomic(AgentBuildManager(agentId, storeClient))
 
-    private fun Properties.getPackagesProperty(fileName: String): List<String> = try {
-        load(AdminPluginData::class.java.getResourceAsStream("/$fileName"))
-        getProperty("prefixes").split(",")
-    } catch (ioe: IOException) {
-        logger.error(ioe) { "Could not open properties file; packages prefixes are empty" }
-        emptyList()
-    } catch (ise: IllegalStateException) {
-        logger.error(ise) { "Could not read 'prefixes' property; packages prefixes are empty" }
-        emptyList()
-    }
+    private val _packagesPrefixes = atomic(readPackages())
 
     suspend fun loadStoredData() {
         storeClient.findById<AdminDataSummary>(agentId).let { summary ->
             if (summary != null) {
                 packagesPrefixes = summary.packagesPrefixes
 
-                val builds = storeClient.findBy<StorableBuildInfo> {
-                    StorableBuildInfo::agentId eq agentId
-                }.map(StorableBuildInfo::toBuildInfo)
+                val builds = storeClient.findBy<AgentBuild> {
+                    AgentBuild::agentId eq agentId
+                }
                 _buildManager.value = AgentBuildManager(
                     agentId = agentId,
                     storeClient = storeClient,
@@ -68,7 +53,7 @@ class AdminPluginData(
     }
 
     suspend fun resetBuilds() {
-        storeClient.deleteBy<StorableBuildInfo> { StorableBuildInfo::agentId eq agentId }
+        storeClient.deleteBy<AgentBuild> { AgentBuild::agentId eq agentId }
         _buildManager.value = AgentBuildManager(agentId, storeClient)
         refreshStoredSummary()
     }
@@ -82,6 +67,24 @@ class AdminPluginData(
             )
         )
     }
+
+    private fun readPackages(): List<String> = Properties().run {
+        val propertiesFileName = if (devMode) "dev$APP_CONFIG" else "prod$APP_CONFIG"
+        getPackagesProperty(propertiesFileName)
+    }
+
+    private fun Properties.getPackagesProperty(fileName: String): List<String> = try {
+        load(AdminPluginData::class.java.getResourceAsStream("/$fileName"))
+        getProperty("prefixes").split(",")
+    } catch (e: Exception) {
+        when (e) {
+            is IOException -> logger.error(e) { "Could not open properties file; packages prefixes are empty" }
+            is IllegalStateException -> logger.error(e) { "Could not read 'prefixes' property; packages prefixes are empty" }
+            else -> throw e
+        }
+        emptyList()
+    }
+
 }
 
 @Serializable
@@ -89,36 +92,4 @@ data class AdminDataSummary(
     @Id val agentId: String,
     val packagesPrefixes: List<String>,
     val lastBuild: String
-)
-
-@Serializable
-data class StorableBuildInfo(
-    @Id val id: String,
-    val agentId: String,
-    val version: String = "",
-    val parentVersion: String = "",
-    val methodChanges: MethodChanges = MethodChanges(),
-    val classesBytes: Map<String, ByteArray> = emptyMap(),
-    val javaMethods: Map<String, List<Method>> = emptyMap(),
-    val new: Boolean
-) {
-    fun toBuildInfo() = BuildInfo(
-        version = version,
-        parentVersion = parentVersion,
-        methodChanges = methodChanges,
-        classesBytes = classesBytes,
-        javaMethods = javaMethods,
-        new = new
-    )
-}
-
-fun BuildInfo.toStorable(agentId: String) = StorableBuildInfo(
-    id = "$agentId:$version",
-    agentId = agentId,
-    version = version,
-    parentVersion = parentVersion,
-    methodChanges = methodChanges,
-    classesBytes = classesBytes,
-    javaMethods = javaMethods,
-    new = new
 )
