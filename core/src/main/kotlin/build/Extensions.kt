@@ -2,14 +2,19 @@ package com.epam.drill.admin.build
 
 import com.epam.drill.common.*
 
-fun BuildInfo.toBuildSummaryDto() = methodChanges.run {
-    val deleted = diffCount(DiffType.DELETED)
+fun AgentBuild.toBuildSummaryDto() = info.methodChanges.let { methodChanges ->
+    val deleted = methodChanges.diffCount(DiffType.DELETED)
     BuildSummaryDto(
-        buildVersion = version,
-        totalMethods = map.values.flatten().count() - deleted,
-        newMethods = diffCount(DiffType.NEW),
-        modifiedMethods = diffCount(DiffType.MODIFIED_NAME, DiffType.MODIFIED_BODY, DiffType.MODIFIED_DESC),
-        unaffectedMethods = diffCount(DiffType.UNAFFECTED),
+        buildVersion = info.version,
+        detectedAt = detectedAt,
+        totalMethods = methodChanges.map.values.flatten().count() - deleted,
+        newMethods = methodChanges.diffCount(DiffType.NEW),
+        modifiedMethods = methodChanges.diffCount(
+            DiffType.MODIFIED_NAME,
+            DiffType.MODIFIED_BODY,
+            DiffType.MODIFIED_DESC
+        ),
+        unaffectedMethods = methodChanges.diffCount(DiffType.UNAFFECTED),
         deletedMethods = deleted
     )
 }

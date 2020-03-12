@@ -1,34 +1,23 @@
 package com.epam.drill.admin.admindata
 
+import com.epam.drill.admin.build.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import org.jacoco.core.analysis.*
 import org.jacoco.core.data.*
-import java.util.concurrent.*
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.set
 
 class AgentBuildManager(
     val agentId: String,
     private val storeClient: StoreClient,
-    builds: Iterable<BuildInfo> = emptyList(),
+    builds: Iterable<AgentBuild> = emptyList(),
     lastBuild: String = ""
 ) : BuildManager {
 
-    private val _lastBuild = atomic(lastBuild)
-
-    private val buildMap = ConcurrentHashMap<String, BuildInfo>().apply {
-        builds.forEach { put(it.version, it) }
-    }
-
     override val builds: Collection<BuildInfo>
-        get() = buildMap.values
-
-    @Suppress("OverridingDeprecatedMember")
-    override val buildInfos = buildMap
+        get() = buildMap.values.map { it.info }
 
     var lastBuild: String
         get() = _lastBuild.value
@@ -36,54 +25,90 @@ class AgentBuildManager(
             _lastBuild.value = value
         }
 
-    override operator fun get(version: String) = buildMap[version]
+    private val _lastBuild = atomic(lastBuild)
+
+    private val _addedClasses = atomic(persistentListOf<Pair<String, ByteArray>>())
+
+    private val _buildMap = atomic(builds.associateBy { it.info.version }.toPersistentMap())
+
+    private val buildMap: PersistentMap<String, AgentBuild>
+        get() = _buildMap.value
+
+    override operator fun get(version: String) = buildMap[version]?.info
+
+    fun dtoList() = buildMap.values.map(AgentBuild::toBuildSummaryDto)
 
     fun setupBuildInfo(buildVersion: String) {
-        val buildVersionIsNew = buildMap[buildVersion] == null || buildMap[buildVersion]!!.new
-        val buildInfo = buildMap[buildVersion]
-            ?: BuildInfo(version = buildVersion)
-        val prevBuild = buildInfo.parentVersion
-        buildMap[buildVersion] = buildInfo.copy(
-            version = buildVersion,
-            parentVersion = if (buildVersionIsNew) lastBuild else prevBuild,
-            classesBytes = emptyMap()
-        )
-        if (buildVersionIsNew) {
+        val build = buildMap[buildVersion]
+        val prevBuild = if (build == null) {
+            val prev = lastBuild
             lastBuild = buildVersion
-            buildMap[buildVersion] = buildMap[buildVersion]!!.copy(new = false)
+            prev
+        } else build.info.parentVersion
+        updateAndGet(buildVersion) {
+            copy(
+                info = info.copy(
+                    classesBytes = emptyMap(),
+                    parentVersion = prevBuild
+                )
+            )
         }
     }
 
-    fun addClass(buildVersion: String, rawData: String) {
-        val buildInfo = buildMap[buildVersion] ?: BuildInfo(version = buildVersion)
-        val currentClasses = buildInfo.classesBytes
+    fun addClass(rawData: String) {
         val base64Class = Base64Class.serializer() parse rawData
-        buildMap[buildVersion] = buildInfo.copy(
-            classesBytes = currentClasses + (base64Class.className to decode(base64Class.encodedBytes))
-        )
+        _addedClasses.update { it + (base64Class.className to decode(base64Class.encodedBytes)) }
     }
 
     suspend fun compareToPrev(buildVersion: String) {
-        val currentMethods = buildMap[buildVersion]?.classesBytes?.mapValues { (className, bytes) ->
-            BcelClassParser(bytes, className).parseToJavaMethods()
-        } ?: emptyMap()
-        buildMap[buildVersion] = buildMap[buildVersion]?.copy(javaMethods = currentMethods)
-            ?: BuildInfo(version = buildVersion)
-        val buildInfo = buildMap[buildVersion] ?: BuildInfo(version = buildVersion)
-        val prevMethods = buildMap[buildInfo.parentVersion]?.javaMethods ?: mapOf()
-
+        val classesBytes = _addedClasses.getAndUpdate { persistentListOf() }.toMap()
+        val currentMethods = classesBytes
+            .mapValues { (className, bytes) ->
+                BcelClassParser(bytes, className).parseToJavaMethods()
+            }
+        val build = updateAndGet(buildVersion) {
+            copy(
+                info = info.copy(
+                    javaMethods = currentMethods,
+                    classesBytes = classesBytes
+                )
+            )
+        }
+        val parentVersion = build.info.parentVersion
+        val prevMethods = buildMap[parentVersion]?.info?.javaMethods ?: mapOf()
         val coverageBuilder = CoverageBuilder()
         val analyzer = Analyzer(ExecutionDataStore(), coverageBuilder)
-        buildMap[buildVersion]?.classesBytes?.map { (className, bytes) -> analyzer.analyzeClass(bytes, className) }
+        build.info.classesBytes.map { (className, bytes) ->
+            analyzer.analyzeClass(
+                bytes,
+                className
+            )
+        }
         val bundleCoverage = coverageBuilder.getBundle("")
-
-        buildMap[buildVersion] = buildMap[buildVersion]?.copy(
-            methodChanges = MethodsComparator(bundleCoverage).compareClasses(prevMethods, currentMethods)
-        ) ?: BuildInfo(version = buildVersion)
-
-        val processedBuildInfo = buildMap[buildVersion]!!
-        storeClient.store(processedBuildInfo.toStorable(agentId))
+        val result = updateAndGet(buildVersion) {
+            copy(
+                info = info.copy(
+                    methodChanges = bundleCoverage.compareClasses(prevMethods, currentMethods)
+                )
+            )
+        }
+        storeClient.store(result)
     }
+
+    private fun updateAndGet(
+        version: String,
+        mutate: AgentBuild.() -> AgentBuild
+    ): AgentBuild = _buildMap.updateAndGet { map ->
+        val build = map[version] ?: AgentBuild(
+            id = "$agentId:$version",
+            agentId = agentId,
+            info = BuildInfo(
+                version = version
+            ),
+            detectedAt = System.currentTimeMillis()
+        )
+        map.put(version, build.mutate())
+    }[version]!!
 
 }
 

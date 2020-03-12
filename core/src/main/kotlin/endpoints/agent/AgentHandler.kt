@@ -2,10 +2,10 @@
 
 package com.epam.drill.admin.endpoints.agent
 
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -79,7 +79,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         MessageType.CLASSES_DATA -> {
                             agentManager.adminData(agentInfo.id)
                                 .buildManager
-                                .addClass(agentInfo.buildVersion, message.data)
+                                .addClass(message.data)
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
