@@ -31,7 +31,7 @@ class Signal(
 }
 
 suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> Boolean) {
-    val expirationMark = MonoClock.markNow() + timeout
+    val expirationMark = kotlin.time.TimeSource.Monotonic.markNow() + timeout
     while (state()) {
         if (expirationMark.hasPassedNow()) throw WsAwaitException("did't get signal by $timeout for '$description' destination")
         delay(200)

@@ -29,7 +29,7 @@ dependencies {
     testImplementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
     testImplementation("com.epam.drill:common-jvm:$drillApiVersion")
 
-    testImplementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
+    testImplementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     testImplementation("org.jetbrains.kotlinx:atomicfu:$atomicFuVersion")
 
     testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
@@ -46,17 +46,17 @@ dependencies {
     testImplementation(ktor("serialization"))
 
     testImplementation("com.epam.drill:kodux-jvm:$koduxVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 
     testImplementation("org.jacoco:org.jacoco.core:$jacocoVersion")
     testImplementation("org.apache.bcel:bcel:$bcelVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.3")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
-    testImplementation("io.mockk:mockk:1.9.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testImplementation("io.mockk:mockk:$mockkVersion")
 
     testData(project(":test-framework:test-data"))
 }

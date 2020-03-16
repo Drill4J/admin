@@ -1,17 +1,17 @@
 package com.epam.drill.e2e.plugin
 
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
+import io.ktor.util.*
 import io.mockk.*
 import kotlinx.coroutines.channels.*
-import org.apache.commons.codec.digest.*
 import java.io.*
 import java.util.*
 import java.util.jar.*
@@ -32,7 +32,7 @@ suspend fun AdminTest.loadPlugin(
 ) {
     lateinit var bs: ByteArray
     agentStreamer.getLoadedPlugin { _, file ->
-        DigestUtils.md5Hex(file)
+        hex(file)
         bs = file
 
         val memoryClassLoader = MemoryClassLoader()

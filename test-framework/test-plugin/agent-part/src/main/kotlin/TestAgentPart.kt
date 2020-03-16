@@ -2,7 +2,7 @@ package com.epam.drill.admin.plugins.coverage
 
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.processing.*
-import kotlinx.serialization.internal.*
+import kotlinx.serialization.builtins.*
 
 @Suppress("unused")
 class TestAgentPart constructor(
@@ -28,7 +28,7 @@ class TestAgentPart constructor(
     }
 
     override val id: String = payload.pluginId
-    override val serDe: SerDe<String> = SerDe(StringSerializer)
+    override val serDe: SerDe<String> = SerDe(String.serializer())
 
     override suspend fun doAction(action: String): Any {
         println(action)

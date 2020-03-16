@@ -5,10 +5,9 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import kotlinx.serialization.*
-import kotlinx.serialization.internal.*
+import kotlinx.serialization.builtins.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.lang.RuntimeException
 import java.util.concurrent.*
 import kotlin.collections.set
 import kotlin.reflect.*
@@ -90,21 +89,19 @@ class CallbackWrapper<T, R>(val block: suspend (R) -> T?) {
     }
 }
 
-@UseExperimental(ImplicitReflectionSerializer::class)
 fun serialize(value: Any?): String {
     if (value == null) return ""
     if (value is String) return value
     val serializer = when (value) {
-        is List<*> -> ArrayListSerializer(elementSerializer(value))
-        is Set<*> -> HashSetSerializer(elementSerializer(value))
-        is Map<*, *> -> HashMapSerializer(
+        is List<*> -> ListSerializer(elementSerializer(value))
+        is Set<*> -> SetSerializer(elementSerializer(value))
+        is Map<*, *> -> MapSerializer(
             elementSerializer(value.keys),
             elementSerializer(value.values)
         )
         is Array<*> -> {
             @Suppress("UNCHECKED_CAST")
-            (ReferenceArraySerializer(
-                value::class as KClass<Any>,
+            (ArraySerializer(
                 elementSerializer(value.asList()) as KSerializer<Any>
             ))
         }
@@ -114,5 +111,4 @@ fun serialize(value: Any?): String {
     return serializer as KSerializer<Any> stringify value
 }
 
-@UseExperimental(ImplicitReflectionSerializer::class)
 fun elementSerializer(collection: Collection<*>) = (collection.firstOrNull() ?: "")::class.serializer()

@@ -7,7 +7,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
-import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*

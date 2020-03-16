@@ -14,7 +14,7 @@ suspend fun AdminPluginPart<*>.getPluginData(type: String = ""): Any? {
 
 
 //TODO redesign plugin api
-@UseExperimental(InternalSerializationApi::class)
+@OptIn(InternalSerializationApi::class)
 @Suppress("UNCHECKED_CAST")
 fun AdminPluginPart<*>.stringifyAction(data: Any): String? {
     val serializer = serDe.actionSerializer as AbstractPolymorphicSerializer<Any>
