@@ -6,8 +6,6 @@ val atomicFuVersion = "0.14.1"
 
 val jacocoVersion = "0.8.5"
 
-val vavrVersion = "0.10.0"
-
 val bcelVersion = "6.3.1"
 
 val ktorVersion = "1.3.0"

@@ -25,7 +25,6 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging:1.7.8")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("org.jacoco:org.jacoco.core:$jacocoVersion")
-    implementation("io.vavr:vavr-kotlin:$vavrVersion")
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
