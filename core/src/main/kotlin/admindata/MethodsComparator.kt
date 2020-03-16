@@ -2,9 +2,8 @@ package com.epam.drill.admin.admindata
 
 import com.epam.drill.common.*
 import com.epam.drill.common.Method
-import io.vavr.collection.*
-import io.vavr.kotlin.*
 import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.persistentHashMapOf
 import org.apache.bcel.classfile.*
 import org.jacoco.core.analysis.*
 import java.io.*
@@ -87,11 +86,11 @@ fun Methods.uniqueByEveryField(other: Methods): Pair<Methods, Methods> {
 
 class IncrementalCache {
 
-    private val _map = atomic(LinkedHashMap.empty<DiffType, Methods>())
+    private val _map = atomic(persistentHashMapOf<DiffType, Methods>())
 
-    val map get() = _map.value!!
+    val map get() = _map.value
 
-    operator fun get(key: DiffType): Methods = map.getOrNull(key) ?: emptyList()
+    operator fun get(key: DiffType): Methods = map[key] ?: emptyList()
 
     fun subjoin(key: DiffType, value: Methods) {
         _map.update { it.put(key, this[key] + value) }
@@ -99,12 +98,12 @@ class IncrementalCache {
 
     fun filterMethods(bundle: IBundleCoverage?): MethodChanges = MethodChanges(
         (bundle?.toDataMap()?.run {
-            map.map { diffType, methods ->
+            map.entries.associate { (diffType, methods) ->
                 if (diffType != DiffType.DELETED) {
-                    tuple(diffType, methods!!.filter { this[it.ownerClass to it.sign] != null })
-                } else tuple(diffType, methods)
+                    diffType to methods.filter { this[it.ownerClass to it.sign] != null }
+                } else diffType to methods
             }
-        } ?: map).toJavaMap()
+        } ?: map)
     )
 }
 
