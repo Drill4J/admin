@@ -2,8 +2,8 @@ package com.epam.drill.admin.core
 
 import com.auth0.jwt.exceptions.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.jwt.config.*
+import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -20,7 +20,11 @@ fun Route.authWebSocket(
 ) {
     webSocket(path, protocol) {
         socketAuthentication()
-        handler(this)
+        try {
+            handler(this)
+        } catch (ex: Exception) {
+            closeExceptionally(ex)
+        }
     }
 }
 

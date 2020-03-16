@@ -3,7 +3,7 @@ package com.epam.drill.admin.admindata
 import com.epam.drill.common.*
 import com.epam.drill.common.Method
 import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.persistentHashMapOf
+import kotlinx.collections.immutable.*
 import org.apache.bcel.classfile.*
 import org.jacoco.core.analysis.*
 import java.io.*

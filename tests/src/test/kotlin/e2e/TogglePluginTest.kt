@@ -5,13 +5,14 @@ import com.epam.drill.e2e.*
 import com.epam.drill.testdata.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.apache.commons.codec.digest.*
+import io.ktor.util.*
 import kotlin.test.*
 
 class TogglePluginTest : E2ETest() {
 
     private val agentId = "togglePlugin"
 
+    @OptIn(KtorExperimentalAPI::class)
     @Ignore
     @Test
     fun `Plugin should be toggled`() {
@@ -29,7 +30,7 @@ class TogglePluginTest : E2ETest() {
                 addPlugin(agentId, testPlugin)
 
                 agent.getLoadedPlugin { metadata, file ->
-                    DigestUtils.md5Hex(file) shouldBe metadata.md5Hash
+                    hex(sha1(file)) shouldBe metadata.checkSum
                     ui.getAgent()?.status shouldBe AgentStatus.BUSY
 
                 }

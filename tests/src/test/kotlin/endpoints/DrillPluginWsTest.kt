@@ -3,17 +3,16 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
-import com.epam.drill.admin.common.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
-import com.epam.drill.common.*
+import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.features.*
-import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.serialization.*
@@ -31,7 +30,7 @@ class PluginWsTest {
         install(WebSockets)
 
         install(ContentNegotiation) {
-            serialization()
+            json()
         }
 
         enableSwaggerSupport()

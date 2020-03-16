@@ -18,14 +18,15 @@ dependencies {
     implementation(drill("drill-admin-part-jvm", drillApiVersion))
     implementation(drill("common-jvm", drillApiVersion))
     implementation(ktor("server-test-host"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
-    implementation("org.kodein.di:kodein-di-generic-jvm:6.2.0")
-    implementation("io.mockk:mockk:1.9.3")
+    implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
+    implementation("io.mockk:mockk:$mockkVersion")
     api(project(":core"))
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation(drill("drill-agent-part-jvm", drillApiVersion))
-    implementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    implementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     implementation(project(":test-framework:test-data"))
 }
 

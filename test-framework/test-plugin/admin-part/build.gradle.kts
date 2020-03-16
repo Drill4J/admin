@@ -18,7 +18,7 @@ dependencies {
     implementation(drill("drill-admin-part-jvm", drillApiVersion))
     implementation(drill("common-jvm", drillApiVersion))
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationRuntimeVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
 }
 
 tasks.withType<KotlinCompile> {

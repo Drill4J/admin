@@ -3,13 +3,11 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
-import com.epam.drill.admin.common.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
+import com.epam.drill.admin.common.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.dataclasses.*
-import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.jwt.config.*
@@ -18,6 +16,7 @@ import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websockets.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -29,7 +28,7 @@ import io.ktor.server.testing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*

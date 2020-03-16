@@ -9,7 +9,7 @@ import io.ktor.util.pipeline.*
 import io.ktor.utils.io.*
 
 fun ContentNegotiation.Configuration.converters() {
-    serialization()
+    json()
     register(ContentType.Any, EmptyContentConverter)
 }
 

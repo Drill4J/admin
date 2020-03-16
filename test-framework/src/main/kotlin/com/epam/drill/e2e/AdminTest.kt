@@ -77,7 +77,7 @@ fun TestApplicationEngine.toApiUri(location: Any): String = application.location
 
 @ExperimentalTime
 fun CoroutineScope.createTimeoutJob(timeout: Duration, context: Job) = launch {
-    val expirationMark = MonoClock.markNow() + timeout
+    val expirationMark = kotlin.time.TimeSource.Monotonic.markNow() + timeout
     while (true) {
         delay(50)
         if (expirationMark.hasPassedNow()) {

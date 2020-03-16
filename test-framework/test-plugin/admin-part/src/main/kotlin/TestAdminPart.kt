@@ -6,8 +6,7 @@ import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.kodux.*
-import kotlinx.serialization.*
-import kotlinx.serialization.internal.*
+import kotlinx.serialization.builtins.*
 
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
@@ -30,7 +29,7 @@ class TestAdminPart(
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override val serDe: SerDe<String> = SerDe(StringSerializer)
+    override val serDe: SerDe<String> = SerDe(String.serializer())
 
     override suspend fun doAction(action: String): Any {
         return when (action) {

@@ -14,11 +14,11 @@ import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import io.ktor.application.*
+import io.ktor.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import mu.*
-import org.apache.commons.codec.digest.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -324,7 +324,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             if (plugins.isEmpty()) return@apply
             plugins.forEach { pb ->
                 val data = this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
-                pb.md5Hash = DigestUtils.md5Hex(data)
+                pb.checkSum = hex(sha1(data))
                 sendBinary<Communication.Agent.PluginLoadEvent>(pb, data).await()
             }
         }
