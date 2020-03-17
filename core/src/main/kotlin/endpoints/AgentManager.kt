@@ -4,11 +4,11 @@ import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
@@ -41,7 +41,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val sender: Sender by instance()
     private val serviceGroupManager: ServiceGroupManager by instance()
     private val adminDataVault: AdminDataVault by instance()
-    private val notificationsManager: NotificationsManager by instance()
+    private val notificationsManager: NotificationManager by instance()
 
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 

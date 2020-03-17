@@ -1,4 +1,4 @@
-package com.epam.drill.admin.dataclasses
+package com.epam.drill.admin.notification
 
 import kotlinx.serialization.*
 

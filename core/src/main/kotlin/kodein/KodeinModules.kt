@@ -11,11 +11,11 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websockets.*
 import com.epam.kodux.*
 import io.ktor.application.*
@@ -34,7 +34,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>()) }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
-        bind<NotificationsManager>() with eagerSingleton { NotificationsManager(kodein) }
+        bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
     }
 
 val wsHandler: Kodein.Builder.(Application) -> Unit
@@ -52,13 +52,10 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<InfoController>() with eagerSingleton { InfoController(kodein) }
-        bind<LoginHandler>() with eagerSingleton {
-            LoginHandler(
-                kodein
-            )
-        }
+        bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
         bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
+        bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
         bind<AdminEndpointsHandler>() with eagerSingleton { AdminEndpointsHandler(kodein) }
     }

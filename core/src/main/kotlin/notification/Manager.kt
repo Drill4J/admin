@@ -1,7 +1,6 @@
-package com.epam.drill.admin.util
+package com.epam.drill.admin.notification
 
 import com.epam.drill.admin.admindata.*
-import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
@@ -14,12 +13,14 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.concurrent.*
 
-class NotificationsManager(override val kodein: Kodein) : KodeinAware {
+class NotificationManager(override val kodein: Kodein) : KodeinAware {
+
     private val topicResolver: TopicResolver by instance()
     private val plugins: Plugins by instance()
     private val agentManager: AgentManager by instance()
 
     private val notifications = ConcurrentHashMap<String, Notification>()
+
     private val logger = KotlinLogging.logger {}
 
     val allNotifications

@@ -3,9 +3,9 @@ package com.epam.drill.e2e
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*

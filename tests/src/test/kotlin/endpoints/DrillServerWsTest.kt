@@ -7,14 +7,13 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
 import io.ktor.application.*
@@ -38,7 +37,7 @@ import kotlin.test.*
 
 
 internal class DrillServerWsTest {
-    private lateinit var notificationsManager: NotificationsManager
+    private lateinit var notificationsManager: NotificationManager
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
@@ -65,8 +64,9 @@ internal class DrillServerWsTest {
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { pluginStorage }
-                    bind<NotificationsManager>() with eagerSingleton {
-                        notificationsManager = NotificationsManager(kodein)
+                    bind<NotificationManager>() with eagerSingleton {
+                        notificationsManager =
+                            NotificationManager(kodein)
                         notificationsManager
                     }
                     bind<LoginHandler>() with eagerSingleton {

@@ -4,11 +4,11 @@ package com.epam.drill.admin.endpoints
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
@@ -23,7 +23,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val plugins: Plugins by instance()
     private val app: Application by instance()
     private val sessionStorage: SessionStorage by instance()
-    private val notificationsManager: NotificationsManager by instance()
+    private val notificationManager: NotificationManager by instance()
 
     init {
 
@@ -93,7 +93,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.GetNotifications> {
-                    notificationsManager.allNotifications.sortedByDescending { it.date }
+                    notificationManager.allNotifications.sortedByDescending { it.date }
                 }
 
                 topic<WsRoutes.AgentBuilds> { (agentId) ->

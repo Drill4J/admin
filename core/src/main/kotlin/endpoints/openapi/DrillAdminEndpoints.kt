@@ -1,12 +1,11 @@
 package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.dataclasses.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
 import com.epam.drill.common.*
@@ -28,7 +27,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val agentManager: AgentManager by instance()
     private val plugins: Plugins by kodein.instance()
     private val topicResolver: TopicResolver by instance()
-    private val notificationsManager: NotificationsManager by instance()
+    private val notificationsManager: NotificationManager by instance()
     private val handler: AdminEndpointsHandler by instance()
 
     init {
