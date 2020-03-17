@@ -45,8 +45,8 @@ data class ArtifactoryPluginLoader(
         }
     }
 
-    private suspend fun HttpClient.getVersion(pluginId: String): String {
-        return when (val envVersion = pluginId.toEnvVersion()) {
+    private suspend fun HttpClient.getVersion(pluginId: String): String = run {
+        when (val envVersion = pluginId.toEnvVersion()) {
             "", "latest" -> get(baseUrl) {
                 url.path(basePath, "api/search/latestVersion")
                 url.parameters.apply {
@@ -60,15 +60,9 @@ data class ArtifactoryPluginLoader(
         }
     }
 
-
-
-    private fun String.toEnvVersion(): String {
+    private fun String.toEnvVersion(): String  = run {
         val normalizedId = replace(Regex("\\s|-"), "_").toUpperCase()
-        val envVersion = System.getenv("${normalizedId}_PLUGIN_VERSION")
-        if (envVersion == null && this == "test2code") { //TODO remove non-standard env var handling
-            return System.getenv("T2CM_VERSION") ?: ""
-        }
-        return envVersion ?: ""
+        System.getenv("${normalizedId}_PLUGIN_VERSION") ?: ""
     }
 
     private suspend fun HttpClient.downloadPlugin(artifactPath: String, targetFile: File) {
