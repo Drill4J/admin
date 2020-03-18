@@ -4,6 +4,7 @@ import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.plugin.api.end.*
 
 fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
     single = first.agentInfos.mapToDto(agentManager),
@@ -23,9 +24,6 @@ internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any
     data = data
 )
 
-fun Iterable<Any?>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
+fun Iterable<Reducible?>.aggregate(): Reducible? = filterIsInstance<Reducible>()
     .takeIf { it.any() }
-    ?.reduce { acc, aggregator ->
-        @Suppress("UNCHECKED_CAST")
-        aggregator(acc) as? (Any) -> Any ?: acc
-    }
+    ?.reduce { acc, it -> acc.reduce(it) as Reducible }

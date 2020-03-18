@@ -2,11 +2,9 @@ package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -14,7 +12,6 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -64,29 +61,8 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         .plugins()
                         .mapToDto()
                 }
-
-                topic<WsRoutes.ServiceGroupPlugin> { (groupId, pluginId) ->
-                    val summaries = agentStorage.values
-                        .filter { it.agent.serviceGroup == groupId && it.agent.status != AgentStatus.NOT_REGISTERED }
-                        .map {
-                            val adminData = agentManager.adminData(it.agent.id)
-                            val plugin = plugins[pluginId]
-                            val pluginData = plugin?.summaryOf(it) ?: JsonNull
-                            it.toPluginSummaryDto(adminData, pluginData)
-                        }
-                    val aggregatedData = summaries.map { it.data }.aggregate()
-                    ServiceGroupSummaryDto(
-                        name = serviceGroupManager[groupId]?.name ?: "",
-                        summaries = summaries,
-                        count = summaries.count(),
-                        aggregatedData = aggregatedData ?: JsonNull
-                    )
-                }
             }
         }
     }
 
-    private suspend fun Plugin.summaryOf(entry: AgentEntry): Any? {
-        return entry[pluginBean.id]?.getPluginData()
-    }
 }

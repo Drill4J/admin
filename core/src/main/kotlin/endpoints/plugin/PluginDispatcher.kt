@@ -160,7 +160,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     else -> {
                         val aggregatedData = serviceGroup.map {
                             val adminPart = agentManager.ensurePluginInstance(it, dp)
-                            adminPart.getPluginData(type = dataType)
+                            adminPart.getPluginData(type = dataType) as? Reducible
                         }.aggregate()
                         aggregatedData.toStatusResponsePair()
                     }
