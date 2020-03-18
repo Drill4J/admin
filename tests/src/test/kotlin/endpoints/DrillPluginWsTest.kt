@@ -130,7 +130,10 @@ class PluginWsTest {
                     UiMessage(
                         WsMessageType.SUBSCRIBE,
                         destination,
-                        SubscribeInfo.serializer() stringify SubscribeInfo(agentId, buildVersion)
+                        SubscribeInfo.serializer() stringify SubscribeInfo(
+                            agentId = agentId,
+                            buildVersion = buildVersion
+                        )
                     )
                 )
 
