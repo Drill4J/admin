@@ -2,12 +2,12 @@
 
 package com.epam.drill.admin.endpoints.plugin
 
-import com.epam.drill.admin.common.*
-import com.epam.drill.admin.core.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.type.*
-import com.epam.drill.common.*
+import com.epam.drill.admin.common.*
+import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
@@ -29,51 +29,65 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val cacheService: CacheService by instance()
     private val eventStorage: Cache<String, String> by cacheService
     private val sessionStorage: ConcurrentMap<String, MutableSet<SessionData>> = ConcurrentHashMap()
-    private val agentManager: AgentManager by instance()
+
+    override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
+        val dest = destination.toDestination(app)
+        val id = CacheId(
+            agentId = agentId,
+            destination = dest,
+            buildVersion = buildVersion
+        )
+
+        if (isRemoveMessage(message)) {
+            logger.info { "Removed message by id $id" }
+            eventStorage.remove(id.toString())
+            return
+        }
+
+        val webSocketMessage = toWebSocketMessage(message, dest)
+        sendSubscribes(id, webSocketMessage)
+    }
+
+    private fun isRemoveMessage(message: Any) = message.toString().isEmpty()
 
     @Suppress("UNCHECKED_CAST")
-    override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
-        val dest = destination as? String ?: app.toLocation(destination)
-        val id = "$agentId:$dest:$buildVersion"
-
-        if (message.toString().isEmpty()) {
-            logger.info { "Removed message by id $id" }
-            eventStorage.remove(id)
+    private fun toWebSocketMessage(message: Any, destination: String): String =
+        if (message is List<*>) {
+            WsSendMessageListData.serializer() stringify WsSendMessageListData(
+                WsMessageType.MESSAGE,
+                destination,
+                message as List<Any>
+            )
         } else {
-            val messageForSend = if (message is List<*>) {
-                WsSendMessageListData.serializer() stringify WsSendMessageListData(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    message as List<Any>
-                )
-            } else {
-                WsSendMessage.serializer() stringify WsSendMessage(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    message
-                )
-            }
-            logger.debug { "Send data to $id destination" }
-            eventStorage[id] = messageForSend
-            sessionStorage[dest]?.let { sessionDataSet ->
-                sessionDataSet.forEach { data ->
-                    try {
-
-                        if (data.subscribeInfo == SubscribeInfo(agentId, buildVersion)) {
-                            data.session.send(Frame.Text(messageForSend))
-                        }
-                    } catch (ex: Exception) {
-                        when (ex) {
-                            is ClosedSendChannelException, is CancellationException -> logger.debug { "Channel for websocket $id closed" }
-                            else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
-                        }
-                        sessionDataSet.removeIf { it == data }
-                    }
-                }
-            } ?: run {
-                logger.warn { "WS topic '$dest' not registered yet" }
-            }
+            WsSendMessage.serializer() stringify WsSendMessage(
+                WsMessageType.MESSAGE,
+                destination,
+                message
+            )
         }
+
+    private suspend fun sendSubscribes(cacheId: CacheId, webSocketMessage: String) {
+        logger.debug { "Send data to destination=${cacheId.destination}, message=$webSocketMessage" }
+        eventStorage[cacheId.toString()] = webSocketMessage
+        sessionStorage[cacheId.destination]?.let { sessionDataSet ->
+            val subscribeInfo = SubscribeInfo(
+                agentId = cacheId.agentId,
+                buildVersion = cacheId.buildVersion
+            )
+            sessionDataSet.forEach { data ->
+                try {
+                    if (data.subscribeInfo == subscribeInfo) {
+                        data.session.send(Frame.Text(webSocketMessage))
+                    }
+                } catch (ex: Exception) {
+                    when (ex) {
+                        is ClosedSendChannelException, is CancellationException -> logger.debug { "Channel for websocket ${cacheId.destination} closed" }
+                        else -> logger.error(ex) { "Sending data to ${cacheId.destination} destination was finished with exception" }
+                    }
+                    sessionDataSet.removeIf { it == data }
+                }
+            }
+        } ?: logger.warn { "WS topic '${cacheId.destination}' not registered yet" }
     }
 
     init {
@@ -92,26 +106,22 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                                     val subscribeInfo = SubscribeInfo.serializer() parse event.message
 
                                     saveSession(event.destination, subscribeInfo)
-                                    val buildVersion = subscribeInfo.buildVersion
 
-                                    val message =
-                                        eventStorage[
-                                                subscribeInfo.agentId + ":" +
-                                                        event.destination + ":" +
-                                                        if (buildVersion.isNullOrEmpty()) {
-                                                            agentManager.buildVersionByAgentId(subscribeInfo.agentId)
-                                                        } else buildVersion
-                                        ]
+                                    val cacheId = CacheId(
+                                        agentId = subscribeInfo.agentId,
+                                        destination = event.destination,
+                                        buildVersion = subscribeInfo.buildVersion
+                                    )
+                                    val message = eventStorage[cacheId.toString()]
 
                                     if (message.isNullOrEmpty()) {
-                                        this.send(
-                                            (WsSendMessage.serializer() stringify
+                                        val emptyWsMessage = (WsSendMessage.serializer() stringify
                                                 WsSendMessage(
                                                     WsMessageType.MESSAGE,
                                                     event.destination,
                                                     ""
                                                 )).textFrame()
-                                        )
+                                        this.send(emptyWsMessage)
                                     } else {
                                         this.send(Frame.Text(message))
                                     }
@@ -145,10 +155,19 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
 }
 
+data class CacheId(
+    val agentId: String = "",
+    val destination: String = "",
+    val buildVersion: String = ""
+) {
+    override fun toString(): String = "$agentId:$destination:$buildVersion"
+}
+
 @Serializable
 data class SubscribeInfo(
-    val agentId: String,
-    val buildVersion: String? = null
+    val agentId: String = "",
+    val serviceGroup: String = "",
+    val buildVersion: String = ""
 )
 
 data class SessionData(
@@ -158,3 +177,6 @@ data class SessionData(
     override fun equals(other: Any?) = other is SessionData && other.session == session
     override fun hashCode() = session.hashCode()
 }
+
+private fun Any.toDestination(app: Application): String =
+    this as? String ?: app.toLocation(this)
