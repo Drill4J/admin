@@ -75,7 +75,7 @@ class PluginWsTest {
     )
 
     @Test
-    fun `should return CloseFrame if we subscribe without SubscribeInfo`() {
+    fun `should return CloseFrame if we subscribe without subscriber`() {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
@@ -104,7 +104,12 @@ class PluginWsTest {
                     UiMessage(
                         WsMessageType.SUBSCRIBE,
                         destination,
-                        SubscribeInfo.serializer() stringify SubscribeInfo(agentId, buildVersion)
+                        jsonSubscribers.stringify(
+                            Subscriber.serializer(), AgentSubscriber(
+                                id = agentId,
+                                buildVersion = buildVersion
+                            )
+                        )
                     )
                 )
                 val receive = incoming.receive() as? Frame.Text ?: fail()
@@ -130,7 +135,12 @@ class PluginWsTest {
                     UiMessage(
                         WsMessageType.SUBSCRIBE,
                         destination,
-                        SubscribeInfo.serializer() stringify SubscribeInfo(agentId, buildVersion)
+                        jsonSubscribers.stringify(
+                            Subscriber.serializer(), AgentSubscriber(
+                                id = agentId,
+                                buildVersion = buildVersion
+                            )
+                        )
                     )
                 )
 

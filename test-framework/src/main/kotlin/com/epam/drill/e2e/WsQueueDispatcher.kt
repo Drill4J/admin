@@ -29,7 +29,7 @@ abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
     abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean = false)
-    abstract suspend fun subscribe(sinf: SubscribeInfo, destination: String = "")
+    abstract suspend fun subscribe(sinf: Subscriber, destination: String = "")
 }
 
 

@@ -1,10 +1,10 @@
 package com.epam.drill.admin.e2e.plugin
 
 import com.epam.drill.admin.common.*
-import com.epam.drill.common.*
-import com.epam.drill.e2e.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
+import com.epam.drill.common.*
+import com.epam.drill.e2e.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -35,8 +35,14 @@ class PTestStream : PluginStreams() {
     }
 
 
-    override suspend fun subscribe(sinf: SubscribeInfo, destination: String) {
-        iut.send(UiMessage(WsMessageType.SUBSCRIBE, destination, SubscribeInfo.serializer() stringify sinf))
+    override suspend fun subscribe(sinf: Subscriber, destination: String) {
+        iut.send(
+            UiMessage(
+                WsMessageType.SUBSCRIBE,
+                destination,
+                jsonSubscribers.stringify(Subscriber.serializer(), sinf)
+            )
+        )
     }
 
 }
