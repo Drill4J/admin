@@ -1,9 +1,9 @@
 package com.epam.drill.admin.cache.type
 
-interface Cache<T, U> {
-    operator fun get(key: T): U?
+interface Cache<K, V> {
+    operator fun get(key: K): V?
 
-    operator fun set(key: T, value: U)
+    operator fun set(key: K, value: V): V?
 
-    fun remove(key: T)
+    fun remove(key: K): V?
 }

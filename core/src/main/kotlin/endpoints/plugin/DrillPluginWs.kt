@@ -2,23 +2,24 @@
 
 package com.epam.drill.admin.endpoints.plugin
 
-import com.epam.drill.admin.common.*
-import com.epam.drill.admin.core.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.type.*
-import com.epam.drill.common.*
+import com.epam.drill.admin.common.*
+import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.*
 import java.util.concurrent.*
 
 private val logger = KotlinLogging.logger {}
@@ -26,25 +27,31 @@ private val logger = KotlinLogging.logger {}
 class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
     private val app: Application by instance()
+    private val agentManager: AgentManager by instance()
     private val cacheService: CacheService by instance()
     private val eventStorage: Cache<String, String> by cacheService
-    private val sessionStorage: ConcurrentMap<String, MutableSet<SessionData>> = ConcurrentHashMap()
-    private val agentManager: AgentManager by instance()
 
-    @Suppress("UNCHECKED_CAST")
+    private val sessionStorage get() = _sessionStorage.value
+    private val _sessionStorage = atomic(
+        persistentHashMapOf<String, PersistentSet<SessionData>>()
+    )
+
     override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
         val dest = destination as? String ?: app.toLocation(destination)
         val id = "$agentId:$dest:$buildVersion"
 
-        if (message.toString().isEmpty()) {
+        //TODO replace with normal event removal
+        if (message == "") {
             logger.info { "Removed message by id $id" }
             eventStorage.remove(id)
         } else {
             val messageForSend = if (message is List<*>) {
+                @Suppress("UNCHECKED_CAST")
+                val listMessage = message as List<Any>
                 WsSendMessageListData.serializer() stringify WsSendMessageListData(
                     WsMessageType.MESSAGE,
                     dest,
-                    message as List<Any>
+                    listMessage
                 )
             } else {
                 WsSendMessage.serializer() stringify WsSendMessage(
@@ -64,10 +71,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                         }
                     } catch (ex: Exception) {
                         when (ex) {
-                            is ClosedSendChannelException, is CancellationException -> logger.debug { "Channel for websocket $id closed" }
+                            is ClosedSendChannelException,
+                            is CancellationException -> logger.debug { "Channel for websocket $id closed" }
                             else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
                         }
-                        sessionDataSet.removeIf { it == data }
+                        data.session.removeSession(dest)
                     }
                 }
             } ?: run {
@@ -96,11 +104,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
                                     val message =
                                         eventStorage[
-                                                subscribeInfo.agentId + ":" +
-                                                        event.destination + ":" +
-                                                        if (buildVersion.isNullOrEmpty()) {
-                                                            agentManager.buildVersionByAgentId(subscribeInfo.agentId)
-                                                        } else buildVersion
+                                            subscribeInfo.agentId + ":" +
+                                                event.destination + ":" +
+                                                if (buildVersion.isNullOrEmpty()) {
+                                                    agentManager.buildVersionByAgentId(subscribeInfo.agentId)
+                                                } else buildVersion
                                         ]
 
                                     if (message.isNullOrEmpty()) {
@@ -118,12 +126,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                                     logger.debug { "${event.destination} is subscribed" }
                                 }
 
-                                WsMessageType.UNSUBSCRIBE -> {
-                                    sessionStorage[event.destination]?.let {
-                                        it.removeIf { data -> data.session == this }
-                                    }
-                                    logger.debug { "${event.destination} is unsubscribed" }
-                                }
+                                WsMessageType.UNSUBSCRIBE -> removeSession(event.destination)
                                 else -> {
                                     logger.warn { "Event '${event.type}' is not implemented yet" }
                                     close()
@@ -136,13 +139,30 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
         }
     }
 
-    private fun DefaultWebSocketServerSession.saveSession(destination: String, subscribeInfo: SubscribeInfo) {
-        val sessionSet = sessionStorage.getOrPut(destination) {
-            Collections.newSetFromMap(ConcurrentHashMap())
-        }
-        sessionSet.add(SessionData(this, subscribeInfo))
+    //TODO move session storage to a separate file
+    private fun DefaultWebSocketServerSession.saveSession(
+        destination: String,
+        subscribeInfo: SubscribeInfo
+    ) = _sessionStorage.update {
+        val sessionData = SessionData(this, subscribeInfo)
+        val sessions = it[destination]?.run {
+            add(sessionData)
+        } ?: persistentSetOf(sessionData)
+        it.put(destination, sessions)
     }
 
+    private fun DefaultWebSocketServerSession.removeSession(
+        destination: String
+    ) = _sessionStorage.update {
+        it[destination]?.let { sessions ->
+            sessions.removeAll { data ->
+                data.session == this
+            }.takeIf { updated -> updated.size != sessions.size }
+        }?.let { sessions ->
+            logger.debug { "$destination is unsubscribed" }
+            it.put(destination, sessions)
+        } ?: it
+    }
 }
 
 @Serializable
