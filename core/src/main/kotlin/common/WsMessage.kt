@@ -3,11 +3,24 @@ package com.epam.drill.admin.common
 import kotlinx.serialization.*
 
 @Serializable
-data class WsReceiveMessage(
-    val type: WsMessageType,
-    val destination: String = "",
-    val message: String = ""
-)
+sealed class WsReceiveMessage {
+    abstract val destination: String
+
+}
+
+@Serializable
+@SerialName("SUBSCRIBE")
+data class Subscribe(
+    override val destination: String,
+    val message: String = "" //TODO replace with Subscription
+) : WsReceiveMessage()
+
+@Serializable
+@SerialName("UNSUBSCRIBE")
+data class Unsubscribe(
+    override val destination: String
+) : WsReceiveMessage()
+
 
 @Serializable
 data class WsSendMessage(
@@ -15,11 +28,12 @@ data class WsSendMessage(
     val destination: String = "",
     @ContextualSerialization val message: Any = ""
 )
+
 @Serializable
 data class WsSendMessageListData(
     val type: WsMessageType,
     val destination: String = "",
-    val message: List<@ContextualSerialization  Any>
+    val message: List<@ContextualSerialization Any>
 )
 
 enum class WsMessageType {

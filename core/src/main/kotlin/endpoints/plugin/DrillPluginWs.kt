@@ -12,11 +12,11 @@ import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
-import io.ktor.websocket.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -29,20 +29,21 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val app: Application by instance()
     private val agentManager: AgentManager by instance()
     private val cacheService: CacheService by instance()
-    private val eventStorage: Cache<String, String> by cacheService
+    private val eventStorage: Cache<Any, String> by cacheService
 
     private val sessionStorage get() = _sessionStorage.value
     private val _sessionStorage = atomic(
-        persistentHashMapOf<String, PersistentSet<SessionData>>()
+        persistentHashMapOf<String, PersistentMap<String, DefaultWebSocketSession>>()
     )
 
     override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
         val dest = destination as? String ?: app.toLocation(destination)
-        val id = "$agentId:$dest:$buildVersion"
+        val subscription = AgentSubscription(agentId, buildVersion)
+        val id = subscription.toKey(dest)
 
         //TODO replace with normal event removal
         if (message == "") {
-            logger.info { "Removed message by id $id" }
+            logger.info { "Removed message by key $id" }
             eventStorage.remove(id)
         } else {
             val messageForSend = if (message is List<*>) {
@@ -62,25 +63,18 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             }
             logger.debug { "Send data to $id destination" }
             eventStorage[id] = messageForSend
-            sessionStorage[dest]?.let { sessionDataSet ->
-                sessionDataSet.forEach { data ->
-                    try {
-
-                        if (data.subscribeInfo == SubscribeInfo(agentId, buildVersion)) {
-                            data.session.send(Frame.Text(messageForSend))
-                        }
-                    } catch (ex: Exception) {
-                        when (ex) {
-                            is ClosedSendChannelException,
-                            is CancellationException -> logger.debug { "Channel for websocket $id closed" }
-                            else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
-                        }
-                        data.session.removeSession(dest)
+            sessionStorage[dest]?.let { it[subscription.toKey()] }?.let { session ->
+                try {
+                    session.send(Frame.Text(messageForSend))
+                } catch (ex: Exception) {
+                    when (ex) {
+                        is ClosedSendChannelException,
+                        is CancellationException -> logger.debug { "Channel for websocket $id closed" }
+                        else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
                     }
+                    session.remove(dest)
                 }
-            } ?: run {
-                logger.warn { "WS topic '$dest' not registered yet" }
-            }
+            } ?: logger.warn { "WS topic '$dest' not registered yet" }
         }
     }
 
@@ -93,44 +87,32 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                     when (frame) {
                         is Frame.Text -> {
                             val event = WsReceiveMessage.serializer() parse frame.readText()
-                            logger.debug { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
+                            logger.debug { "Receiving event $event" }
 
-                            when (event.type) {
-                                WsMessageType.SUBSCRIBE -> {
-                                    val subscribeInfo = SubscribeInfo.serializer() parse event.message
+                            when (event) {
+                                is Subscribe -> {
+                                    //TODO remove type field existence check after changes on front end
+                                    val subscription: Subscription = (JsonObject.serializer() parse event.message)
+                                        .let { json ->
+                                            Subscription.serializer().takeIf {
+                                                "type" in json
+                                            } ?: AgentSubscription.serializer()
+                                        }.parse(event.message).ensureBuildVersion()
+                                    save(event.destination, subscription)
 
-                                    saveSession(event.destination, subscribeInfo)
-                                    val buildVersion = subscribeInfo.buildVersion
-
-                                    val message =
-                                        eventStorage[
-                                            subscribeInfo.agentId + ":" +
-                                                event.destination + ":" +
-                                                if (buildVersion.isNullOrEmpty()) {
-                                                    agentManager.buildVersionByAgentId(subscribeInfo.agentId)
-                                                } else buildVersion
-                                        ]
-
-                                    if (message.isNullOrEmpty()) {
-                                        this.send(
-                                            (WsSendMessage.serializer() stringify
-                                                WsSendMessage(
-                                                    WsMessageType.MESSAGE,
-                                                    event.destination,
-                                                    ""
-                                                )).textFrame()
+                                    val message: String? = eventStorage[subscription.toKey(event.destination)]
+                                    val messageToSend = if (message.isNullOrEmpty()) {
+                                        WsSendMessage.serializer().stringify(
+                                            WsSendMessage(
+                                                type = WsMessageType.MESSAGE,
+                                                destination = event.destination
+                                            )
                                         )
-                                    } else {
-                                        this.send(Frame.Text(message))
-                                    }
+                                    } else message
+                                    send(messageToSend.textFrame())
                                     logger.debug { "${event.destination} is subscribed" }
                                 }
-
-                                WsMessageType.UNSUBSCRIBE -> removeSession(event.destination)
-                                else -> {
-                                    logger.warn { "Event '${event.type}' is not implemented yet" }
-                                    close()
-                                }
+                                is Unsubscribe -> remove(event.destination)
                             }
                         }
                     }
@@ -139,42 +121,58 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
         }
     }
 
+    private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {
+        copy(buildVersion = agentManager.buildVersionByAgentId(agentId))
+    } else this
+
     //TODO move session storage to a separate file
-    private fun DefaultWebSocketServerSession.saveSession(
-        destination: String,
-        subscribeInfo: SubscribeInfo
+    private fun DefaultWebSocketSession.save(
+        dest: String,
+        subscription: Subscription
     ) = _sessionStorage.update {
-        val sessionData = SessionData(this, subscribeInfo)
-        val sessions = it[destination]?.run {
-            add(sessionData)
-        } ?: persistentSetOf(sessionData)
-        it.put(destination, sessions)
+        val key = subscription.toKey()
+        val value = it[dest]?.put(key, this) ?: persistentHashMapOf(key to this)
+        it.put(dest, value)
     }
 
-    private fun DefaultWebSocketServerSession.removeSession(
-        destination: String
+    private fun DefaultWebSocketSession.remove(
+        dest: String
     ) = _sessionStorage.update {
-        it[destination]?.let { sessions ->
-            sessions.removeAll { data ->
-                data.session == this
-            }.takeIf { updated -> updated.size != sessions.size }
+        it[dest]?.let { sessions ->
+            //TODO this removal by session is strange - investigate whether it's necessary
+            val keysToRemove = sessions.entries
+                .filter { (_, v) -> v == this }
+                .map { (k, _) -> k }
+            (sessions - keysToRemove).takeIf { updated ->
+                sessions.size != updated.size
+            }
         }?.let { sessions ->
-            logger.debug { "$destination is unsubscribed" }
-            it.put(destination, sessions)
+            logger.debug { "$dest is unsubscribed" }
+            if (sessions.isNotEmpty()) {
+                it.put(dest, sessions)
+            } else it - dest
         } ?: it
     }
 }
 
 @Serializable
-data class SubscribeInfo(
+sealed class Subscription {
+    abstract fun toKey(destination: String = ""): String
+}
+
+@Serializable
+@SerialName("AGENT")
+data class AgentSubscription(
     val agentId: String,
     val buildVersion: String? = null
-)
+) : Subscription() {
+    override fun toKey(destination: String) = "agent::$agentId:$buildVersion/$destination"
+}
 
-data class SessionData(
-    val session: DefaultWebSocketServerSession,
-    val subscribeInfo: SubscribeInfo
-) {
-    override fun equals(other: Any?) = other is SessionData && other.session == session
-    override fun hashCode() = session.hashCode()
+@Serializable
+@SerialName("GROUP")
+data class GroupSubscription(
+    val groupId: String
+) : Subscription() {
+    override fun toKey(destination: String) = "group::$groupId/$destination"
 }

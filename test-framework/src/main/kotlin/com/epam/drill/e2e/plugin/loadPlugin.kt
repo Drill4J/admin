@@ -107,14 +107,14 @@ suspend fun AdminTest.loadPlugin(
         }
 
         st.subscribe(
-            SubscribeInfo(
+            AgentSubscription(
                 pluginTestInfo.agentId,
                 pluginTestInfo.buildVersionHash
             ),
             "new-destination"
         )
         st.subscribe(
-            SubscribeInfo(
+            AgentSubscription(
                 pluginTestInfo.agentId,
                 pluginTestInfo.buildVersionHash
             ),

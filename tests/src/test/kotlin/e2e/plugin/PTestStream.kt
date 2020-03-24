@@ -21,7 +21,7 @@ class PTestStream : PluginStreams() {
                 if (it is Frame.Text) {
                     val parseJson = json.parseJson(it.readText()) as JsonObject
                     val url = parseJson[WsReceiveMessage::destination.name]!!.content
-                    val content = parseJson[WsReceiveMessage::message.name]!!.toString()
+                    val content = parseJson[Subscribe::message.name]!!.toString()
                     when (url) {
                         "/packagesChangesCount" -> {
                             packagesChangesCount.send(content)
@@ -30,13 +30,12 @@ class PTestStream : PluginStreams() {
                     }
                 }
             }
-
         }
     }
 
 
-    override suspend fun subscribe(sinf: SubscribeInfo, destination: String) {
-        iut.send(UiMessage(WsMessageType.SUBSCRIBE, destination, SubscribeInfo.serializer() stringify sinf))
+    override suspend fun subscribe(sinf: AgentSubscription, destination: String) {
+        iut.send(uiMessage(Subscribe(destination, Subscription.serializer() stringify sinf)))
     }
 
 }

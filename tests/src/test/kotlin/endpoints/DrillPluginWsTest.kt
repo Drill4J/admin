@@ -18,6 +18,7 @@ import io.ktor.locations.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
+import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.test.*
@@ -79,13 +80,7 @@ class PluginWsTest {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
-                outgoing.send(
-                    UiMessage(
-                        WsMessageType.SUBSCRIBE,
-                        "/pluginTopic1",
-                        ""
-                    )
-                )
+                outgoing.send(uiMessage(Subscribe("/pluginTopic1", "")))
                 val receive = incoming.receive()
                 assertTrue(receive is Frame.Close)
                 assertEquals(CloseReason.Codes.INTERNAL_ERROR.code, receive.readReason()?.code)
@@ -101,18 +96,20 @@ class PluginWsTest {
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
                 val destination = "/pluginTopic2"
                 outgoing.send(
-                    UiMessage(
-                        WsMessageType.SUBSCRIBE,
-                        destination,
-                        SubscribeInfo.serializer() stringify SubscribeInfo(agentId, buildVersion)
+                    uiMessage(
+                        Subscribe(
+                            destination,
+                            AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                        )
+
                     )
                 )
                 val receive = incoming.receive() as? Frame.Text ?: fail()
                 val readText = receive.readText()
-                val fromJson = WsReceiveMessage.serializer() parse readText
-                assertEquals(destination, fromJson.destination)
-                assertEquals(WsMessageType.MESSAGE, fromJson.type)
-                assertTrue { fromJson.message.isEmpty() }
+                val fromJson = json.parseJson(readText) as JsonObject
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
+                assertEquals("", fromJson[WsSendMessage::message.name]?.content)
             }
         }
     }
@@ -127,30 +124,24 @@ class PluginWsTest {
                 val wsPluginService: DrillPluginWs by kodeinApplication.instance()
                 wsPluginService.send(agentInfo.id, agentInfo.buildVersion, destination, messageForTest)
                 outgoing.send(
-                    UiMessage(
-                        WsMessageType.SUBSCRIBE,
-                        destination,
-                        SubscribeInfo.serializer() stringify SubscribeInfo(agentId, buildVersion)
+                    uiMessage(
+                        Subscribe(
+                            destination,
+                            AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                        )
                     )
                 )
 
                 val receive = incoming.receive() as? Frame.Text ?: fail()
                 val readText = receive.readText()
-                val fromJson = WsReceiveMessage.serializer() parse readText
-                assertEquals(destination, fromJson.destination)
-                assertEquals(WsMessageType.MESSAGE, fromJson.type)
-                assertEquals(messageForTest, fromJson.message)
+                val fromJson = JsonObject.serializer() parse readText
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
+                assertEquals(messageForTest, fromJson[WsSendMessage::message.name]?.content)
 
-                outgoing.send(
-                    UiMessage(
-                        WsMessageType.SUBSCRIBE,
-                        destination,
-                        ""
-                    )
-                )
+                outgoing.send(uiMessage(Subscribe(destination, "")))
             }
         }
     }
 
 }
-

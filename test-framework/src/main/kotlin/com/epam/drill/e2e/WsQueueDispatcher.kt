@@ -29,7 +29,7 @@ abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
     abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean = false)
-    abstract suspend fun subscribe(sinf: SubscribeInfo, destination: String = "")
+    abstract suspend fun subscribe(sinf: AgentSubscription, destination: String = "")
 }
 
 
@@ -60,12 +60,12 @@ class UIEVENTLOOP(
         incoming.consumeEach {
             when (it) {
                 is Frame.Text -> {
-                    val parseJson = json.parseJson(it.readText()) as JsonObject
+                    val parsedJson = json.parseJson(it.readText()) as JsonObject
                     if (uiStreamDebug)
-                        println("UI: $parseJson")
-                    val messageType = WsMessageType.valueOf(parseJson[WsReceiveMessage::type.name]!!.content)
-                    val url = parseJson[WsReceiveMessage::destination.name]!!.content
-                    val content = parseJson[WsReceiveMessage::message.name]!!.toString()
+                        println("UI: $parsedJson")
+                    val messageType = WsMessageType.valueOf(parsedJson["type"]!!.content)
+                    val url = parsedJson[WsSendMessage::destination.name]!!.content
+                    val content = parsedJson[WsSendMessage::message.name]!!.toString()
                     val (_, type) = wsTopic.getParams(url)
                     val notEmptyResponse = content != "\"\""
                     when (messageType) {

@@ -4,8 +4,8 @@ package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -17,12 +17,14 @@ import org.kodein.di.generic.*
 
 class DrillServerWs(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
+
     private val app: Application by instance()
     private val topicResolver: TopicResolver by instance()
+
+    //FIXME Mutable set!
     private val sessionStorage: SessionStorage by instance()
 
     init {
-
         app.routing {
             authWebSocket("/ws/drill-admin-socket") {
                 val rawWsSession = this
@@ -32,24 +34,19 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
                     incoming.consumeEach { frame ->
                         val json = (frame as Frame.Text).readText()
                         val event = WsReceiveMessage.serializer() parse json
-                        logger.debug { "Receive event with: destination '${event.destination}', type '${event.type}' and message '${event.message}'" }
+                        logger.debug { "Receiving event $event" }
 
-                        when (event.type) {
-
-                            WsMessageType.SUBSCRIBE -> {
+                        when (event) {
+                            is Subscribe -> {
                                 val wsSession = DrillWsSession(event.destination, rawWsSession)
                                 subscribe(wsSession, event)
                                 logger.debug { "${event.destination} is subscribed" }
                             }
 
-                            WsMessageType.UNSUBSCRIBE -> {
+                            is Unsubscribe -> {
                                 if (sessionStorage.removeTopic(event.destination)) {
                                     logger.debug { "${event.destination} is unsubscribed" }
                                 }
-                            }
-
-                            else -> {
-                                logger.warn { "Event with type: '${event.type}' not supported yet" }
                             }
                         }
                     }

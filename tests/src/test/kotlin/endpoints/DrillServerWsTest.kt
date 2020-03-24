@@ -90,15 +90,15 @@ internal class DrillServerWsTest {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
-                outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, locations.href(PainRoutes.MyTopic()), ""))
+                outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic()), "")))
                 val actual = incoming.receive()
                 assertNotNull(actual)
                 assertEquals(1, pluginStorage.size)
-                outgoing.send(UiMessage(WsMessageType.UNSUBSCRIBE, locations.href(PainRoutes.MyTopic()), ""))
-                outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, locations.href(PainRoutes.MyTopic()), ""))
+                outgoing.send(uiMessage(Unsubscribe(locations.href(PainRoutes.MyTopic()))))
+                outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic()), "")))
                 assertNotNull(incoming.receive())
                 assertEquals(1, pluginStorage.size)
-                outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, locations.href(PainRoutes.MyTopic2()), ""))
+                outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic2()), "")))
                 assertNotNull(incoming.receive())
                 assertEquals(2, pluginStorage.size)
                 assertEquals(2, pluginStorage.map { it.url }.toSet().size)
@@ -128,11 +128,19 @@ internal class DrillServerWsTest {
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNull(currentNotifications.find { it.id == firstNotificationId })
                 assertNotificationsCounters(currentNotifications, 2, 2)
-                handleHttpPostRequest(locations.href(Routes.Api.ReadNotification()), NotificationId.serializer() stringify NotificationId(""), token)
+                handleHttpPostRequest(
+                    locations.href(Routes.Api.ReadNotification()),
+                    NotificationId.serializer() stringify NotificationId(""),
+                    token
+                )
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 2, 0)
-                handleHttpPostRequest(locations.href(Routes.Api.DeleteNotification()), NotificationId.serializer() stringify NotificationId(""), token)
+                handleHttpPostRequest(
+                    locations.href(Routes.Api.DeleteNotification()),
+                    NotificationId.serializer() stringify NotificationId(""),
+                    token
+                )
                 getCurrentNotifications(incoming, outgoing)
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertNotificationsCounters(currentNotifications, 0, 0)
@@ -159,11 +167,11 @@ internal class DrillServerWsTest {
         incoming: ReceiveChannel<Frame>,
         outgoing: SendChannel<Frame>
     ): List<Notification> {
-        outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, locations.href(WsRoutes.GetNotifications()), ""))
+        outgoing.send(uiMessage(Subscribe(locations.href(WsRoutes.GetNotifications()), "")))
         val frame = incoming.receive()
         val json = json.parseJson((frame as Frame.Text).readText()) as JsonObject
-        outgoing.send(UiMessage(WsMessageType.UNSUBSCRIBE, locations.href(WsRoutes.GetNotifications()), ""))
-        return Notification.serializer().list parse json[WsReceiveMessage::message.name].toString()
+        outgoing.send(uiMessage(Unsubscribe(locations.href(WsRoutes.GetNotifications()))))
+        return Notification.serializer().list parse json[WsSendMessage::message.name].toString()
     }
 
     @Test
@@ -172,12 +180,12 @@ internal class DrillServerWsTest {
             val token = handleRequest(HttpMethod.Post, "/api/login").run { response.headers[HttpHeaders.Authorization] }
             assertNotNull(token, "token can't be empty")
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
-                outgoing.send(UiMessage(WsMessageType.SUBSCRIBE, "/blabla/pathOfPain", ""))
+                outgoing.send(uiMessage(Subscribe("/blabla/pathOfPain", "")))
                 val tmp = incoming.receive()
                 assertNotNull(tmp)
                 val parseJson = json.parseJson((tmp as Frame.Text).readText())
                 val parsed =
-                    String.serializer() parse (parseJson as JsonObject)[WsReceiveMessage::message.name].toString()
+                    String.serializer() parse (parseJson as JsonObject)[WsSendMessage::message.name].toString()
                 assertEquals("testId", parsed)
             }
         }
@@ -191,8 +199,8 @@ internal class DrillServerWsTest {
             handleWebSocketConversation("/ws/drill-admin-socket?token=${invalidToken}") { incoming, _ ->
                 val tmp = incoming.receive()
                 assertTrue { tmp is Frame.Text }
-                val response = WsReceiveMessage.serializer() parse (tmp as Frame.Text).readText()
-                assertEquals(WsMessageType.UNAUTHORIZED, response.type)
+                val response = JsonObject.serializer() parse (tmp as Frame.Text).readText()
+                assertEquals(WsMessageType.UNAUTHORIZED.name, response[WsSendMessage::type.name]?.content)
             }
         }
     }
@@ -210,29 +218,21 @@ internal class DrillServerWsTest {
                 agentName,
                 NotificationType.BUILD,
                 NewBuildArrivedMessage.serializer() stringify
-                        NewBuildArrivedMessage(
-                            buildVersion,
-                            previousVersion,
-                            BuildDiff(1, 2, 3, 4, 5),
-                            listOf("recommendation_1", "recommendation_2")
-                        )
+                    NewBuildArrivedMessage(
+                        buildVersion,
+                        previousVersion,
+                        BuildDiff(1, 2, 3, 4, 5),
+                        listOf("recommendation_1", "recommendation_2")
+                    )
             )
             previousVersion = buildVersion
         }
     }
 }
 
-fun UiMessage(type: WsMessageType, destination: String, message: String) =
-    (WsSendMessage.serializer() stringify WsSendMessage(
-        type,
-        destination,
-        message
-    )).textFrame()
-
-
-fun AgentMessage(type: MessageType, destination: String, message: String) =
-    (Message.serializer() stringify Message(type, destination, message)).textFrame()
-
+fun uiMessage(message: WsReceiveMessage): Frame.Text = WsReceiveMessage.serializer().run {
+    stringify(message).textFrame()
+}
 
 class ServerStubTopics(override val kodein: Kodein) : KodeinAware {
     private val wsTopic: WsTopic by instance()
