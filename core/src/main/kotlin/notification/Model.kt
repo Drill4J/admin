@@ -6,10 +6,10 @@ import kotlinx.serialization.*
 data class Notification(
     val id: String,
     val agentId: String,
-    val date: Long,
+    val createdAt: Long,
     val type: NotificationType,
-    val read: Boolean,
-    val message: String
+    val read: Boolean = false,
+    val message: String = ""
 )
 
 enum class NotificationType {

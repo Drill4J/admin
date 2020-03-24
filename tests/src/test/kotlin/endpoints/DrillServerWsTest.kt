@@ -111,8 +111,8 @@ internal class DrillServerWsTest {
                 val firstNotificationId = currentNotifications.first().id
                 handleHttpPatchRequest(
                     locations.href(
-                        Notifications.Notification.Read(
-                            Notifications.Notification(
+                        ApiNotifications.Notification.Read(
+                            ApiNotifications.Notification(
                                 firstNotificationId
                             )
                         )
@@ -176,12 +176,11 @@ internal class DrillServerWsTest {
     fun generateNotification(agentId: String) {
         notificationsManager.save(
             Notification(
-                "id",
-                agentId,
-                System.currentTimeMillis(),
-                NotificationType.BUILD,
-                false,
-                NewBuildArrivedMessage.serializer() stringify
+                id = "id",
+                agentId = agentId,
+                createdAt = System.currentTimeMillis(),
+                type = NotificationType.BUILD,
+                message = NewBuildArrivedMessage.serializer() stringify
                         NewBuildArrivedMessage(
                             "0.2.0",
                             "0.1.0",
