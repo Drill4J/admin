@@ -37,46 +37,63 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     )
 
     override suspend fun send(context: SendContext, destination: Any, message: Any) {
-        val (agentId, buildVersion) = context as AgentSendContext
         val dest = destination as? String ?: app.toLocation(destination)
-        val subscription = AgentSubscription(agentId, buildVersion)
+        val subscription = when (context) {
+            is AgentSendContext -> AgentSubscription(context.agentId, context.buildVersion)
+            is GroupSendContext -> GroupSubscription(context.groupId)
+            else -> {
+                logger.warn { "can not handle context; context=$context, destination=$destination, message=$message" }
+                return
+            }
+        }
         val id = subscription.toKey(dest)
 
         //TODO replace with normal event removal
         if (message == "") {
             logger.info { "Removed message by key $id" }
             eventStorage.remove(id)
-        } else {
-            val messageForSend = if (message is List<*>) {
-                @Suppress("UNCHECKED_CAST")
-                val listMessage = message as List<Any>
-                WsSendMessageListData.serializer() stringify WsSendMessageListData(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    listMessage
-                )
-            } else {
-                WsSendMessage.serializer() stringify WsSendMessage(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    message
-                )
-            }
-            logger.debug { "Send data to $id destination" }
-            eventStorage[id] = messageForSend
-            sessionStorage[dest]?.let { it[subscription.toKey()] }?.let { session ->
-                try {
-                    session.send(Frame.Text(messageForSend))
-                } catch (ex: Exception) {
-                    when (ex) {
-                        is ClosedSendChannelException,
-                        is CancellationException -> logger.debug { "Channel for websocket $id closed" }
-                        else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
-                    }
-                    session.remove(dest)
-                }
-            } ?: logger.warn { "WS topic '$dest' not registered yet" }
+            return
         }
+        val messageForSend = toWebSocketMessage(message, dest)
+        sendToSubscribers(id, messageForSend, dest, subscription)
+    }
+
+    private fun toWebSocketMessage(message: Any, destination: String): String = if (message is List<*>) {
+        @Suppress("UNCHECKED_CAST")
+        val listMessage = message as List<Any>
+        WsSendMessageListData.serializer() stringify WsSendMessageListData(
+            WsMessageType.MESSAGE,
+            destination,
+            listMessage
+        )
+    } else {
+        WsSendMessage.serializer() stringify WsSendMessage(
+            WsMessageType.MESSAGE,
+            destination,
+            message
+        )
+    }
+
+    private suspend fun sendToSubscribers(
+        id: String,
+        messageForSend: String,
+        destination: String,
+        subscription: Subscription
+    ) {
+        logger.debug { "Send data to $id" }
+        eventStorage[id] = messageForSend
+        sessionStorage[destination]?.let { it[subscription.toKey()] }?.let { session ->
+            try {
+                session.send(Frame.Text(messageForSend))
+            } catch (ex: Exception) {
+                when (ex) {
+                    is ClosedSendChannelException,
+                    is CancellationException -> logger.debug { "Channel for websocket $id closed" }
+                    else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
+                }
+                session.remove(destination)
+            }
+        } ?: logger.warn { "WS topic '$destination' not registered yet" }
     }
 
     init {
@@ -128,18 +145,18 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
     //TODO move session storage to a separate file
     private fun DefaultWebSocketSession.save(
-        dest: String,
+        destination: String,
         subscription: Subscription
     ) = _sessionStorage.update {
         val key = subscription.toKey()
-        val value = it[dest]?.put(key, this) ?: persistentHashMapOf(key to this)
-        it.put(dest, value)
+        val value = it[destination]?.put(key, this) ?: persistentHashMapOf(key to this)
+        it.put(destination, value)
     }
 
     private fun DefaultWebSocketSession.remove(
-        dest: String
+        destination: String
     ) = _sessionStorage.update {
-        it[dest]?.let { sessions ->
+        it[destination]?.let { sessions ->
             //TODO this removal by session is strange - investigate whether it's necessary
             val keysToRemove = sessions.entries
                 .filter { (_, v) -> v == this }
@@ -148,10 +165,10 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                 sessions.size != updated.size
             }
         }?.let { sessions ->
-            logger.debug { "$dest is unsubscribed" }
+            logger.debug { "$destination is unsubscribed" }
             if (sessions.isNotEmpty()) {
-                it.put(dest, sessions)
-            } else it - dest
+                it.put(destination, sessions)
+            } else it - destination
         } ?: it
     }
 }
@@ -167,7 +184,7 @@ data class AgentSubscription(
     val agentId: String,
     val buildVersion: String? = null
 ) : Subscription() {
-    override fun toKey(destination: String) = "agent::$agentId:$buildVersion/$destination"
+    override fun toKey(destination: String) = "agent::$agentId:$buildVersion:$destination"
 }
 
 @Serializable
@@ -175,5 +192,5 @@ data class AgentSubscription(
 data class GroupSubscription(
     val groupId: String
 ) : Subscription() {
-    override fun toKey(destination: String) = "group::$groupId/$destination"
+    override fun toKey(destination: String) = "group::$groupId:$destination"
 }
