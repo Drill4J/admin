@@ -93,7 +93,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsNotifications> {
-                    notificationManager.notifications.values.reversed()
+                    notificationManager.notifications.valuesDesc
                 }
 
                 topic<WsRoutes.AgentBuilds> { (agentId) ->

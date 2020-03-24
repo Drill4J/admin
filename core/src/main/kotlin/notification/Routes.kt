@@ -4,7 +4,7 @@ import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
 @Location("/api/notifications")
-object Notifications {
+object ApiNotifications {
     @Location("/{id}")
     data class Notification(val id: String) {
         @Group("Notification Endpoints")
