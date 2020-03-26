@@ -36,7 +36,8 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
         persistentHashMapOf<String, PersistentMap<String, DefaultWebSocketSession>>()
     )
 
-    override suspend fun send(agentId: String, buildVersion: String, destination: Any, message: Any) {
+    override suspend fun send(context: SendContext, destination: Any, message: Any) {
+        val (agentId, buildVersion) = context as AgentSendContext
         val dest = destination as? String ?: app.toLocation(destination)
         val subscription = AgentSubscription(agentId, buildVersion)
         val id = subscription.toKey(dest)

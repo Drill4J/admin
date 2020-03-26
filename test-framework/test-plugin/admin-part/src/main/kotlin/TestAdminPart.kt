@@ -21,6 +21,7 @@ class TestAdminPart(
     var packagesChangesCount = 0
 
     override suspend fun processData(dm: DrillMessage): Any {
+        @Suppress("DEPRECATION")
         sender.send(agentInfo.id, agentInfo.buildVersion, "new-destination", dm)
         return ""
     }
@@ -46,6 +47,7 @@ class TestAdminPart(
 
     override suspend fun applyPackagesChanges() {
         packagesChangesCount++
+        @Suppress("DEPRECATION")
         sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
     }
 

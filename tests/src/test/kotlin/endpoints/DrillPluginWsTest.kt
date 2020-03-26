@@ -11,6 +11,7 @@ import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
+import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -122,6 +123,7 @@ class PluginWsTest {
                 val destination = "/pluginTopic1"
                 val messageForTest = "testMessage"
                 val wsPluginService: DrillPluginWs by kodeinApplication.instance()
+                @Suppress("DEPRECATION")
                 wsPluginService.send(agentInfo.id, agentInfo.buildVersion, destination, messageForTest)
                 outgoing.send(
                     uiMessage(
