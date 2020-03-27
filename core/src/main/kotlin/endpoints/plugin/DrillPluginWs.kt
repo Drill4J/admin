@@ -7,15 +7,14 @@ import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.*
 import kotlinx.coroutines.channels.*
-import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
@@ -31,15 +30,33 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val cacheService: CacheService by instance()
     private val eventStorage: Cache<Any, String> by cacheService
 
-    private val sessionStorage get() = _sessionStorage.value
-    private val _sessionStorage = atomic(
-        persistentHashMapOf<String, PersistentMap<String, DefaultWebSocketSession>>()
-    )
+    private val _sessions = atomic(emptyBiSetMap<String, WebSocketSession>())
+
+    init {
+        app.routing {
+            authWebSocket("/ws/drill-plugin-socket") {
+                logger.debug { "New session(hash=${hashCode()}) drill-plugin-socket" }
+                try {
+                    incoming.consumeEach { frame ->
+                        when (frame) {
+                            is Frame.Text -> {
+                                val event = WsReceiveMessage.serializer() parse frame.readText()
+                                consume(event)
+                            }
+                            else -> logger.error { "Unsupported frame type - ${frame.frameType}!" }
+                        }
+                    }
+                } finally {
+                    removeFromCache()
+                    logger.debug { "Removed session(hash=${hashCode()}) of drill-plugin-socket" }
+                }
+            }
+        }
+    }
 
     override suspend fun send(context: SendContext, destination: Any, message: Any) {
-        val (agentId, buildVersion) = context as AgentSendContext
         val dest = destination as? String ?: app.toLocation(destination)
-        val subscription = AgentSubscription(agentId, buildVersion)
+        val subscription = context.toSubscription()
         val id = subscription.toKey(dest)
 
         //TODO replace with normal event removal
@@ -64,116 +81,66 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             }
             logger.debug { "Send data to $id destination" }
             eventStorage[id] = messageForSend
-            sessionStorage[dest]?.let { it[subscription.toKey()] }?.let { session ->
-                try {
-                    session.send(Frame.Text(messageForSend))
-                } catch (ex: Exception) {
-                    when (ex) {
-                        is ClosedSendChannelException,
-                        is CancellationException -> logger.debug { "Channel for websocket $id closed" }
-                        else -> logger.error(ex) { "Sending data to $id destination was finished with exception" }
-                    }
-                    session.remove(dest)
-                }
-            } ?: logger.warn { "WS topic '$dest' not registered yet" }
+            val sessions = _sessions.value.first[dest]
+            if (sessions.any()) {
+                sessions.forEach { it.send(dest, messageForSend)  }
+            } else logger.warn { "WS topic '$dest' not registered yet" }
         }
     }
 
-    init {
-        app.routing {
-            authWebSocket("/ws/drill-plugin-socket") {
-                logger.debug { "New session drill-plugin-socket" }
-
-                incoming.consumeEach { frame ->
-                    when (frame) {
-                        is Frame.Text -> {
-                            val event = WsReceiveMessage.serializer() parse frame.readText()
-                            logger.debug { "Receiving event $event" }
-
-                            when (event) {
-                                is Subscribe -> {
-                                    //TODO remove type field existence check after changes on front end
-                                    val subscription: Subscription = (JsonObject.serializer() parse event.message)
-                                        .let { json ->
-                                            Subscription.serializer().takeIf {
-                                                "type" in json
-                                            } ?: AgentSubscription.serializer()
-                                        }.parse(event.message).ensureBuildVersion()
-                                    save(event.destination, subscription)
-
-                                    val message: String? = eventStorage[subscription.toKey(event.destination)]
-                                    val messageToSend = if (message.isNullOrEmpty()) {
-                                        WsSendMessage.serializer().stringify(
-                                            WsSendMessage(
-                                                type = WsMessageType.MESSAGE,
-                                                destination = event.destination
-                                            )
-                                        )
-                                    } else message
-                                    send(messageToSend.textFrame())
-                                    logger.debug { "${event.destination} is subscribed" }
-                                }
-                                is Unsubscribe -> remove(event.destination)
-                            }
-                        }
-                    }
-                }
-            }
+    private suspend fun WebSocketSession.send(
+        dest: String,
+        message: String
+    ) = try {
+        send(Frame.Text(message))
+    } catch (ex: Exception) {
+        when (ex) {
+            is ClosedSendChannelException,
+            is CancellationException -> logger.debug { "Sending data to $dest was cancelled." }
+            else -> logger.error(ex) { "Sending data to $dest finished with exception." }
         }
+        unsubscribe(dest)
+    }
+
+    private suspend fun WebSocketSession.consume(event: WsReceiveMessage) {
+        logger.debug { "Receiving event $event" }
+
+        when (event) {
+            is Subscribe -> {
+                //TODO remove type field existence check after changes on front end
+                val subscription: Subscription = (JsonObject.serializer() parse event.message)
+                    .let { json ->
+                        Subscription.serializer().takeIf {
+                            "type" in json
+                        } ?: AgentSubscription.serializer()
+                    }.parse(event.message).ensureBuildVersion()
+                _sessions.update { it.put(event.destination, this) }
+
+                val message: String? = eventStorage[subscription.toKey(event.destination)]
+                val messageToSend = if (message.isNullOrEmpty()) {
+                    WsSendMessage.serializer().stringify(
+                        WsSendMessage(
+                            type = WsMessageType.MESSAGE,
+                            destination = event.destination
+                        )
+                    )
+                } else message
+                send(messageToSend.textFrame())
+                logger.debug { "${event.destination} is subscribed" }
+            }
+            is Unsubscribe -> unsubscribe(event.destination)
+        }
+    }
+
+    private fun WebSocketSession.unsubscribe(destination: String) {
+        _sessions.update { it.remove(destination, this) }
+    }
+
+    private fun WebSocketSession.removeFromCache() {
+        _sessions.update { it.remove(this) }
     }
 
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {
         copy(buildVersion = agentManager.buildVersionByAgentId(agentId))
     } else this
-
-    //TODO move session storage to a separate file
-    private fun DefaultWebSocketSession.save(
-        dest: String,
-        subscription: Subscription
-    ) = _sessionStorage.update {
-        val key = subscription.toKey()
-        val value = it[dest]?.put(key, this) ?: persistentHashMapOf(key to this)
-        it.put(dest, value)
-    }
-
-    private fun DefaultWebSocketSession.remove(
-        dest: String
-    ) = _sessionStorage.update {
-        it[dest]?.let { sessions ->
-            //TODO this removal by session is strange - investigate whether it's necessary
-            val keysToRemove = sessions.entries
-                .filter { (_, v) -> v == this }
-                .map { (k, _) -> k }
-            (sessions - keysToRemove).takeIf { updated ->
-                sessions.size != updated.size
-            }
-        }?.let { sessions ->
-            logger.debug { "$dest is unsubscribed" }
-            if (sessions.isNotEmpty()) {
-                it.put(dest, sessions)
-            } else it - dest
-        } ?: it
-    }
-}
-
-@Serializable
-sealed class Subscription {
-    abstract fun toKey(destination: String = ""): String
-}
-
-@Serializable
-@SerialName("AGENT")
-data class AgentSubscription(
-    val agentId: String,
-    val buildVersion: String? = null
-) : Subscription() {
-    override fun toKey(destination: String) = "agent::$agentId:$buildVersion/$destination"
-}
-
-@Serializable
-@SerialName("GROUP")
-data class GroupSubscription(
-    val groupId: String
-) : Subscription() {
-    override fun toKey(destination: String) = "group::$groupId/$destination"
 }
