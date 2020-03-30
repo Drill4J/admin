@@ -7,19 +7,17 @@ import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.util.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
-import kotlinx.atomicfu.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.concurrent.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -30,25 +28,27 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val cacheService: CacheService by instance()
     private val eventStorage: Cache<Any, String> by cacheService
 
-    private val _sessions = atomic(emptyBiSetMap<String, WebSocketSession>())
+    private val sessionStorage = SessionStorage()
 
     init {
         app.routing {
-            authWebSocket("/ws/drill-plugin-socket") {
-                logger.debug { "New session(hash=${hashCode()}) drill-plugin-socket" }
+            val socketName = "drill-plugin-socket"
+            authWebSocket("/ws/$socketName") {
+                val session = this
+                logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {
                     incoming.consumeEach { frame ->
                         when (frame) {
                             is Frame.Text -> {
                                 val event = WsReceiveMessage.serializer() parse frame.readText()
-                                consume(event)
+                                session.consume(event)
                             }
                             else -> logger.error { "Unsupported frame type - ${frame.frameType}!" }
                         }
                     }
                 } finally {
-                    removeFromCache()
-                    logger.debug { "Removed session(hash=${hashCode()}) of drill-plugin-socket" }
+                    sessionStorage.release(session)
+                    logger.debug { "$socketName: released ${session.toDebugString()}" }
                 }
             }
         }
@@ -64,42 +64,14 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             logger.info { "Removed message by key $id" }
             eventStorage.remove(id)
         } else {
-            val messageForSend = if (message is List<*>) {
-                @Suppress("UNCHECKED_CAST")
-                val listMessage = message as List<Any>
-                WsSendMessageListData.serializer() stringify WsSendMessageListData(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    listMessage
-                )
-            } else {
-                WsSendMessage.serializer() stringify WsSendMessage(
-                    WsMessageType.MESSAGE,
-                    dest,
-                    message
-                )
-            }
+            val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE)
             logger.debug { "Send data to $id destination" }
             eventStorage[id] = messageForSend
-            val sessions = _sessions.value.first[dest]
-            if (sessions.any()) {
-                sessions.forEach { it.send(dest, messageForSend)  }
-            } else logger.warn { "WS topic '$dest' not registered yet" }
+            sessionStorage.sendTo(
+                destination = dest,
+                messageProvider = { messageForSend }
+            )
         }
-    }
-
-    private suspend fun WebSocketSession.send(
-        dest: String,
-        message: String
-    ) = try {
-        send(Frame.Text(message))
-    } catch (ex: Exception) {
-        when (ex) {
-            is ClosedSendChannelException,
-            is CancellationException -> logger.debug { "Sending data to $dest was cancelled." }
-            else -> logger.error(ex) { "Sending data to $dest finished with exception." }
-        }
-        unsubscribe(dest)
     }
 
     private suspend fun WebSocketSession.consume(event: WsReceiveMessage) {
@@ -114,7 +86,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                             "type" in json
                         } ?: AgentSubscription.serializer()
                     }.parse(event.message).ensureBuildVersion()
-                _sessions.update { it.put(event.destination, this) }
+                sessionStorage.subscribe(event.destination, this)
 
                 val message: String? = eventStorage[subscription.toKey(event.destination)]
                 val messageToSend = if (message.isNullOrEmpty()) {
@@ -125,19 +97,14 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                         )
                     )
                 } else message
-                send(messageToSend.textFrame())
-                logger.debug { "${event.destination} is subscribed" }
+                send(messageToSend)
+                logger.debug { "Subscribed to ${event.destination}, ${toDebugString()}" }
             }
-            is Unsubscribe -> unsubscribe(event.destination)
+            is Unsubscribe -> {
+                sessionStorage.unsubscribe(event.destination, this)
+                logger.debug { "Unsubscribed from ${event.destination}, ${toDebugString()}" }
+            }
         }
-    }
-
-    private fun WebSocketSession.unsubscribe(destination: String) {
-        _sessions.update { it.remove(destination, this) }
-    }
-
-    private fun WebSocketSession.removeFromCache() {
-        _sessions.update { it.remove(this) }
     }
 
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {

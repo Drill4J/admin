@@ -46,7 +46,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
             agentManager.agentStorage.onAdd += add(mutableSetOf()) { k, v ->
                 val destination = app.toLocation(WsRoutes.Agent(k))
-                if (sessionStorage.exists(destination)) {
+                if (destination in sessionStorage) {
                     sessionStorage.sendTo(
                         destination,
                         v.agent.toDto(agentManager)
@@ -57,8 +57,9 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
             agentManager.agentStorage.onRemove += remove(mutableSetOf()) { k ->
                 val destination = app.toLocation(WsRoutes.Agent(k))
-                if (sessionStorage.exists(destination))
+                if (destination in sessionStorage) {
                     sessionStorage.sendTo(destination, "", WsMessageType.DELETE)
+                }
             }
 
             wsTopic {

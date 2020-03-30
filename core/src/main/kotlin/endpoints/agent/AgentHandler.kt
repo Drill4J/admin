@@ -8,8 +8,8 @@ import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
+import io.ktor.request.*
 import io.ktor.routing.*
-import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.cbor.*
@@ -31,7 +31,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             agentWebsocket("/agent/attach") {
-                val (agentConfig, needSync) = retrieveParams()
+                val (agentConfig, needSync) = call.request.retrieveParams()
                 val agentInfo = agentManager.attach(agentConfig, needSync, this)
                 createWsLoop(agentInfo, agentConfig.instanceId)
             }
@@ -39,9 +39,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 
 
-    private fun DefaultWebSocketServerSession.retrieveParams(): Pair<AgentConfig, Boolean> {
-        val agentConfig = Cbor.loads(AgentConfig.serializer(), call.request.headers[AgentConfigParam]!!)
-        val needSync = call.request.headers[NeedSyncParam]!!.toBoolean()
+    private fun ApplicationRequest.retrieveParams(): Pair<AgentConfig, Boolean> {
+        val agentConfig = Cbor.loads(AgentConfig.serializer(), headers[AgentConfigParam]!!)
+        val needSync = headers[NeedSyncParam]!!.toBoolean()
         return agentConfig to needSync
     }
 

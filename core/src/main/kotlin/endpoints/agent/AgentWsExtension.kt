@@ -70,7 +70,7 @@ open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultW
                 MessageType.MESSAGE, topicName,
                 if (message is String) message else kClass.serializer() stringify message
             )
-            send(Frame.Text(text))
+            send(text)
         }
         return WsDeferred(this, callback, topicName).apply { call() }
     }

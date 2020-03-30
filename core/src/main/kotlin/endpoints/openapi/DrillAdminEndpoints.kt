@@ -26,8 +26,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app: Application by instance()
     private val agentManager: AgentManager by instance()
     private val plugins: Plugins by kodein.instance()
-    private val topicResolver: TopicResolver by instance()
-    private val notificationsManager: NotificationManager by instance()
     private val handler: AdminEndpointsHandler by instance()
 
     init {
@@ -54,12 +52,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }
                         else -> {
                             drillAgent.send(
-                                Frame.Text(
-                                    Message.serializer() stringify Message(
-                                        MessageType.MESSAGE,
-                                        "/plugins/unload",
-                                        pluginId
-                                    )
+                                Message.serializer() stringify Message(
+                                    MessageType.MESSAGE,
+                                    "/plugins/unload",
+                                    pluginId
                                 )
                             )
                             logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
@@ -138,7 +134,6 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     call.respond(statusCode, response)
                 }
             }
-
         }
     }
 }

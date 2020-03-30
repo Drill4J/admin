@@ -32,7 +32,11 @@ fun <K, V> BiSetMap<K, V>.remove(value: V): BiSetMap<K, V> = second[value].let {
 class SetMap<K, V>(
     private val m: PersistentMap<K, PersistentSet<V>> = persistentMapOf()
 ) {
+    val size get() = m.size
+
     operator fun get(key: K) = m[key] ?: persistentSetOf()
+
+    operator fun contains(key: K) = m.containsKey(key)
 
     fun any() = m.any()
 

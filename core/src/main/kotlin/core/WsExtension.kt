@@ -33,11 +33,7 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication() {
 
     if (token == null) {
         logger.warn { "Authentication token is empty" }
-        send(Frame.Text(
-            WsSendMessage.serializer() stringify WsSendMessage(
-                WsMessageType.UNAUTHORIZED
-            )
-        ))
+        send(WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.UNAUTHORIZED))
         close()
         return
     }
@@ -61,11 +57,13 @@ private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
             else -> logger.debug { "Token '$token' verified was finished with exception" }
         }
         try {
-            send(Frame.Text(
-                WsSendMessage.serializer() stringify WsSendMessage(
-                    WsMessageType.UNAUTHORIZED
+            send(
+                Frame.Text(
+                    WsSendMessage.serializer() stringify WsSendMessage(
+                        WsMessageType.UNAUTHORIZED
+                    )
                 )
-            ))
+            )
         } catch (ignored: ClosedSendChannelException) {
         }
         close()

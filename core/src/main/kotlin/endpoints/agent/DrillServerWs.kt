@@ -21,15 +21,14 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
     private val app: Application by instance()
     private val topicResolver: TopicResolver by instance()
 
-    //FIXME Mutable set!
     private val sessionStorage: SessionStorage by instance()
 
     init {
         app.routing {
-            authWebSocket("/ws/drill-admin-socket") {
-                val rawWsSession = this
-                logger.debug { "New session drill-admin-socket" }
-
+            val socketName = "drill-admin-socket"
+            authWebSocket("/ws/$socketName") {
+                val session = this
+                logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {
                     incoming.consumeEach { frame ->
                         val json = (frame as Frame.Text).readText()
@@ -38,28 +37,26 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
 
                         when (event) {
                             is Subscribe -> {
-                                val wsSession = DrillWsSession(event.destination, rawWsSession)
-                                subscribe(wsSession, event)
+                                sessionStorage.subscribe(event.destination, session)
+                                topicResolver.sendToAllSubscribed(event.destination)
                                 logger.debug { "${event.destination} is subscribed" }
                             }
 
                             is Unsubscribe -> {
-                                if (sessionStorage.removeTopic(event.destination)) {
+                                if (sessionStorage.unsubscribe(event.destination, session)) {
                                     logger.debug { "${event.destination} is unsubscribed" }
                                 }
                             }
                         }
                     }
-                } catch (ex: Exception) {
-                    logger.error(ex) { "Finished with exception and session was removed" }
-                    sessionStorage.remove(rawWsSession)
+                } catch (e: Exception) {
+                    logger.error(e) { "Finished with exception and session was removed" }
+
+                } finally {
+                    sessionStorage.release(session)
+                    logger.debug { "$socketName: released ${session.toDebugString()}" }
                 }
             }
         }
-    }
-
-    private suspend fun subscribe(wsSession: DrillWsSession, event: WsReceiveMessage) {
-        sessionStorage += (wsSession)
-        topicResolver.sendToAllSubscribed(event.destination)
     }
 }

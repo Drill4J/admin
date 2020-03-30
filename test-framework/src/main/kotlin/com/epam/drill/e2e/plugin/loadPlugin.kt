@@ -96,7 +96,7 @@ suspend fun AdminTest.loadPlugin(
                 println(this.args[0])
             val content: String = this.args[0].toString()
             out.send(
-                AgentMessage(
+                agentMessage(
                     MessageType.PLUGIN_DATA, "",
                     MessageWrapper.serializer() stringify MessageWrapper(
                         spykAgentPart.id,

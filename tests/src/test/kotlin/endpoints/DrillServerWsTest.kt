@@ -30,8 +30,6 @@ import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.*
-import java.util.concurrent.*
 import kotlin.test.*
 
 
@@ -62,7 +60,7 @@ internal class DrillServerWsTest {
                 kodeinModule("test") {
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<SessionStorage>() with eagerSingleton { pluginStorage }
+                    bind<SessionStorage>() with eagerSingleton { sessionStorage }
                     bind<NotificationManager>() with eagerSingleton {
                         notificationsManager = NotificationManager(kodein)
                         notificationsManager
@@ -78,27 +76,33 @@ internal class DrillServerWsTest {
         })
     }
 
-    private val pluginStorage = Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>())
+    private val sessionStorage = SessionStorage()
 
     @Test
     fun testConversation() {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
+                assertEquals(0, sessionStorage.sessionCount())
+                assertEquals(0, sessionStorage.destinationCount())
                 outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic()), "")))
                 val actual = incoming.receive()
                 assertNotNull(actual)
-                assertEquals(1, pluginStorage.size)
+                assertEquals(1, sessionStorage.sessionCount())
+                assertEquals(1, sessionStorage.destinationCount())
                 outgoing.send(uiMessage(Unsubscribe(locations.href(PainRoutes.MyTopic()))))
                 outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic()), "")))
                 assertNotNull(incoming.receive())
-                assertEquals(1, pluginStorage.size)
+                assertEquals(1, sessionStorage.sessionCount())
+                assertEquals(1, sessionStorage.destinationCount())
                 outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic2()), "")))
                 assertNotNull(incoming.receive())
-                assertEquals(2, pluginStorage.size)
-                assertEquals(2, pluginStorage.map { it.url }.toSet().size)
+                assertEquals(1, sessionStorage.sessionCount())
+                assertEquals(2, sessionStorage.destinationCount())
             }
         }
+        assertEquals(0, sessionStorage.destinationCount())
+        assertEquals(0, sessionStorage.sessionCount())
     }
 
     @Test
@@ -193,7 +197,7 @@ internal class DrillServerWsTest {
 }
 
 fun uiMessage(message: WsReceiveMessage): Frame.Text = WsReceiveMessage.serializer().run {
-    stringify(message).textFrame()
+    stringify(message).toTextFrame()
 }
 
 class ServerStubTopics(override val kodein: Kodein) : KodeinAware {

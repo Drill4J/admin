@@ -132,13 +132,13 @@ class Agent(
         val receive = plugins.receive()
         val pluginBinarys = getPluginBinary()
         block(receive, pluginBinarys)
-        outgoing.send(AgentMessage(MessageType.MESSAGE_DELIVERED, "/agent/load", ""))
+        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/agent/load", ""))
 
     }
 
     suspend fun sendPluginData(data: MessageWrapper) {
         outgoing.send(
-            AgentMessage(
+            agentMessage(
                 MessageType.PLUGIN_DATA, "",
                 MessageWrapper.serializer() stringify data
             )
@@ -149,7 +149,7 @@ class Agent(
     suspend fun `get-set-packages-prefixes`(): String {
         val receive = `set-packages-prefixes`.receive()
         outgoing.send(
-            AgentMessage(
+            agentMessage(
                 MessageType.MESSAGE_DELIVERED,
                 "/agent/set-packages-prefixes",
                 ""
@@ -161,7 +161,7 @@ class Agent(
     suspend fun `get-load-classes-datas`(vararg classes: String = emptyArray()): String {
         val receive = `load-classes-data`.receive()
 
-        outgoing.send(AgentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
 
 
         classes.forEach {
@@ -170,7 +170,7 @@ class Agent(
             val parse = ClassParser(ByteArrayInputStream(readBytes), "").parse()
 
             outgoing.send(
-                AgentMessage(
+                agentMessage(
                     MessageType.CLASSES_DATA, "", Base64Class.serializer() stringify Base64Class(
                         parse.className.replace(".", "/"),
                         readBytes.encodeBase64()
@@ -180,9 +180,9 @@ class Agent(
         }
 
 
-        outgoing.send(AgentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
         outgoing.send(
-            AgentMessage(
+            agentMessage(
                 MessageType.MESSAGE_DELIVERED,
                 "/agent/load-classes-data",
                 ""
@@ -193,10 +193,10 @@ class Agent(
 
     suspend fun `get-load-classes-data`(vararg classes: JavaClass = emptyArray()): String {
         val receive = `load-classes-data`.receive()
-        outgoing.send(AgentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
         classes.forEach { bclass ->
             outgoing.send(
-                AgentMessage(
+                agentMessage(
                     MessageType.CLASSES_DATA, "", Base64Class.serializer() stringify Base64Class(
                         bclass.className.replace(".", "/"),
                         bclass.bytes.encodeBase64()
@@ -206,9 +206,9 @@ class Agent(
         }
 
 
-        outgoing.send(AgentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
         outgoing.send(
-            AgentMessage(
+            agentMessage(
                 MessageType.MESSAGE_DELIVERED,
                 "/agent/load-classes-data",
                 ""
@@ -254,7 +254,7 @@ class Agent(
                             }
                             else -> {
                                 outgoing.send(
-                                    AgentMessage(
+                                    agentMessage(
                                         MessageType.MESSAGE_DELIVERED,
                                         url,
                                         ""

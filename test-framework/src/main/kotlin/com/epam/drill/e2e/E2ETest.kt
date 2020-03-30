@@ -8,7 +8,6 @@ import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
-import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -46,7 +45,7 @@ abstract class E2ETest : AdminTest() {
                 //create the 'drill-admin-socket' websocket connection
                 handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
                     block()
-                    ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/agents"))
+                    ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents"))
                     uiIncoming.receive()
                     val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
@@ -64,8 +63,8 @@ abstract class E2ETest : AdminTest() {
                                 with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
 
                                 //create the '/agent/attach' websocket connection
-                                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}"))
-                                ut.send(UiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}/builds"))
+                                ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}"))
+                                ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}/builds"))
 
                                 ui.getAgent()
                                 ui.getBuilds()

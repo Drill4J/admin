@@ -21,18 +21,16 @@ import com.epam.kodux.*
 import io.ktor.application.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.*
-import java.util.concurrent.*
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
         bind<StoreManager>() with eagerSingleton { StoreManager(drillWorkDir.resolve("agents")) }
         bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir) }
-        bind<AgentStorage>() with singleton { ObservableMapStorage<String, AgentEntry, MutableSet<AgentWsSession>>() }
+        bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
-        bind<SessionStorage>() with eagerSingleton { Collections.newSetFromMap(ConcurrentHashMap<DrillWsSession, Boolean>()) }
+        bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
     }
