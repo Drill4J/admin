@@ -2,8 +2,6 @@ package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.api.*

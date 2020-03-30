@@ -39,6 +39,8 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         notifications[id]?.run { copy(read = true) }?.let(notifications::replace) ?: notifications
     }
 
+    fun delete(id: String): Boolean = id in _notifications.updateAndGet { it.minus(id) }
+
     suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
@@ -68,7 +70,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         buildManager: AgentBuildManager,
         previousBuildVersion: String,
         agentInfo: AgentInfo
-    ): String {
+    ): NewBuildArrivedMessage {
         val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
         val buildDiff = BuildDiff(
             methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
@@ -78,13 +80,12 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
             methodChanges.map[DiffType.DELETED]?.count() ?: 0
         )
 
-        val newBuildArrivedMessage = NewBuildArrivedMessage(
+        return NewBuildArrivedMessage(
             agentInfo.buildVersion,
             previousBuildVersion,
             buildDiff,
             pluginsRecommendations(agentInfo)
         )
-        return NewBuildArrivedMessage.serializer() stringify newBuildArrivedMessage
     }
 
     private suspend fun pluginsRecommendations(

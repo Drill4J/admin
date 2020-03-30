@@ -9,7 +9,7 @@ data class Notification(
     val createdAt: Long,
     val type: NotificationType,
     val read: Boolean = false,
-    val message: String = ""
+    @ContextualSerialization val message: Any
 )
 
 enum class NotificationType {

@@ -5,6 +5,7 @@ import io.ktor.locations.*
 
 @Location("/api/notifications")
 object ApiNotifications {
+    @Group("Notification Endpoints")
     @Location("/{id}")
     data class Notification(val id: String) {
         @Group("Notification Endpoints")
