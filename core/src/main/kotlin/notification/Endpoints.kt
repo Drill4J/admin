@@ -32,5 +32,13 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
             notificationManager.read(notificationId)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
+
+        val deleteMeta = "".responds(ok<Unit>(), notFound())
+        delete<ApiNotifications.Notification>(deleteMeta) { payload ->
+            val notificationId = payload.id
+            logger.info { "Delete notification $notificationId" }
+            notificationManager.delete(notificationId)
+            call.respond(HttpStatusCode.OK, EmptyContent)
+        }
     }
 }

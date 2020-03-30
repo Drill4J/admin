@@ -28,6 +28,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.test.*
@@ -144,7 +145,13 @@ internal class DrillServerWsTest {
         val frame = incoming.receive()
         val json = json.parseJson((frame as Frame.Text).readText()) as JsonObject
         outgoing.send(uiMessage(Unsubscribe(locations.href(WsNotifications))))
-        return Notification.serializer().list parse json[WsSendMessage::message.name].toString()
+        return parseNotifications(json)
+    }
+
+    private fun parseNotifications(json: JsonObject): List<Notification> {
+        val module = serializersModuleOf(mapOf(Any::class to NewBuildArrivedMessage.serializer()))
+        val jsonWithContext = Json(context = module)
+        return jsonWithContext.parse(Notification.serializer().list, json[WsSendMessage::message.name].toString())
     }
 
     @Test
@@ -184,13 +191,12 @@ internal class DrillServerWsTest {
                 agentId = agentId,
                 createdAt = System.currentTimeMillis(),
                 type = NotificationType.BUILD,
-                message = NewBuildArrivedMessage.serializer() stringify
-                        NewBuildArrivedMessage(
-                            "0.2.0",
-                            "0.1.0",
-                            BuildDiff(1, 2, 3, 4, 5),
-                            listOf("recommendation_1", "recommendation_2")
-                        )
+                message = NewBuildArrivedMessage(
+                    "0.2.0",
+                    "0.1.0",
+                    BuildDiff(1, 2, 3, 4, 5),
+                    listOf("recommendation_1", "recommendation_2")
+                )
             )
         )
     }
