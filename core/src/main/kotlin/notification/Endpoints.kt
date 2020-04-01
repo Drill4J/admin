@@ -1,5 +1,6 @@
 package com.epam.drill.admin.notification
 
+import com.epam.drill.admin.endpoints.agent.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -16,6 +17,7 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val notificationManager: NotificationManager by instance()
+    private val topicResolver:TopicResolver by instance()
     private val app: Application by instance()
 
     init {
@@ -30,6 +32,7 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
             val notificationId = read.parent.id
             logger.info { "Read notification $notificationId" }
             notificationManager.read(notificationId)
+            topicResolver.sendToAllSubscribed(WsNotifications)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
 
@@ -38,6 +41,7 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
             val notificationId = payload.id
             logger.info { "Delete notification $notificationId" }
             notificationManager.delete(notificationId)
+            topicResolver.sendToAllSubscribed(WsNotifications)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
     }
