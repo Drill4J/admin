@@ -25,8 +25,6 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     private val serviceGroupManager: ServiceGroupManager by instance()
     private val wsTopic: WsTopic by instance()
     private val agentManager: AgentManager by instance()
-    private val plugins: Plugins by instance()
-    private val agentStorage: AgentStorage = agentManager.agentStorage
 
     init {
         app.routing {
@@ -65,28 +63,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         .mapToDto()
                 }
 
-                topic<WsRoutes.ServiceGroupPlugin> { (groupId, pluginId) ->
-                    val summaries = agentStorage.values
-                        .filter { it.agent.serviceGroup == groupId && it.agent.status != AgentStatus.NOT_REGISTERED }
-                        .map {
-                            val adminData = agentManager.adminData(it.agent.id)
-                            val plugin = plugins[pluginId]
-                            val pluginData = plugin?.summaryOf(it) ?: JsonNull
-                            it.toPluginSummaryDto(adminData, pluginData)
-                        }
-                    val aggregatedData = summaries.map { it.data }.aggregate()
-                    ServiceGroupSummaryDto(
-                        name = serviceGroupManager[groupId]?.name ?: "",
-                        summaries = summaries,
-                        count = summaries.count(),
-                        aggregatedData = aggregatedData ?: JsonNull
-                    )
-                }
             }
         }
-    }
-
-    private suspend fun Plugin.summaryOf(entry: AgentEntry): Any? {
-        return entry[pluginBean.id]?.getPluginData()
     }
 }
