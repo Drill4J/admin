@@ -1,5 +1,6 @@
 package com.epam.drill.admin.endpoints.agent
 
+import com.epam.drill.admin.config.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
@@ -25,7 +26,7 @@ class Signal(
     val callback: suspend (Any) -> Unit,
     private val topicName: String
 ) {
-    suspend fun await(timeout: Duration = 90.seconds) {
+    suspend fun await(timeout: Duration) {
         awaitWithExpr(timeout, topicName) { state }
     }
 }
@@ -38,7 +39,7 @@ suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> B
     }
 }
 
-class WsDeferred(asession: AgentWsSession, val clb: suspend () -> Unit, topicName: String) {
+class WsDeferred(val asession: AgentWsSession, val clb: suspend () -> Unit, topicName: String) {
     var signal: Signal = Signal(true, {}, topicName)
 
     init {
@@ -52,14 +53,14 @@ class WsDeferred(asession: AgentWsSession, val clb: suspend () -> Unit, topicNam
     }
 
     suspend fun await() {
-        signal.await()
+        signal.await(timeout = asession.timeout)
     }
 }
-
 
 open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultWebSocketServerSession by session {
 
     val subscribers = ConcurrentHashMap<String, Signal>()
+    val timeout = application.agentSocketTimeout
 
     suspend inline fun <reified TopicUrl : Any> sendToTopic(message: Any = ""): WsDeferred {
         val topicName = TopicUrl::class.topicUrl()
