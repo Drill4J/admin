@@ -38,7 +38,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-
     private fun ApplicationRequest.retrieveParams(): Pair<AgentConfig, Boolean> {
         val agentConfig = Cbor.loads(AgentConfig.serializer(), headers[AgentConfigParam]!!)
         val needSync = headers[NeedSyncParam]!!.toBoolean()

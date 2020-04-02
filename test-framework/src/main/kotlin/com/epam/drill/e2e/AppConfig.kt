@@ -30,6 +30,7 @@ class AppConfig(var projectDir: File) {
             put("ktor.deployment.sslPort", sslPort)
             put("drill.devMode", "true")
             put("drill.plugins.remote.enabled", "false")
+            put("drill.agents.socket.timeout", "90")
         }
         install(Locations)
         install(WebSockets)
