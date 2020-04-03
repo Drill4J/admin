@@ -16,19 +16,3 @@ data class GroupedAgentsDto(
     val single: List<AgentInfoDto>,
     val grouped: List<ServiceGroupDto>
 )
-
-@Serializable
-data class PluginSummaryDto(
-    val agentId: String,
-    val agentName: String,
-    val buildVersion: String,
-    @ContextualSerialization val data: Any
-)
-
-@Serializable
-data class ServiceGroupSummaryDto(
-    val name: String,
-    val summaries: List<PluginSummaryDto>,
-    val count: Int,
-    @ContextualSerialization val aggregatedData: Any
-)
