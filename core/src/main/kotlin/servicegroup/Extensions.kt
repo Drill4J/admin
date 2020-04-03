@@ -1,6 +1,5 @@
 package com.epam.drill.admin.servicegroup
 
-import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
@@ -14,13 +13,6 @@ internal fun AgentGroup.toDto(agentManager: AgentManager) = ServiceGroupDto(
     group = group,
     agents = agentInfos.mapToDto(agentManager),
     plugins = agentInfos.plugins().mapToDto()
-)
-
-internal fun AgentEntry.toPluginSummaryDto(adminData: AdminPluginData, data: Any) = PluginSummaryDto(
-    agentId = agent.id,
-    agentName = agent.name,
-    buildVersion = adminData.buildManager.lastBuild,
-    data = data
 )
 
 fun Iterable<Any?>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
