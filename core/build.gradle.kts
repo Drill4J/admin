@@ -76,8 +76,23 @@ jib {
 }
 
 tasks {
-    clean {
+    val cleanData by registering(Delete::class) {
+        group = "build"
         delete("work", "distr")
+    }
+
+    clean {
+        dependsOn(cleanData)
+
+    }
+
+    (run) {
+        mustRunAfter(cleanData)
+    }
+
+    register("firstRun") {
+        group = "application"
+        dependsOn(cleanData, run)
     }
 
     test {
