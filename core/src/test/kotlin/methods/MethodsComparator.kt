@@ -45,7 +45,7 @@ class MethodsComparatorTest {
     }
 
     private fun getMethods(bytes: ByteArray) = listOf(
-        "abc.Rst" to BcelClassParser(bytes, "abc.Rst").parseToJavaMethods()
+        "abc.Rst" to ParsedClass("abc.Rst", bytes).methods()
     ).toMap()
 }
 

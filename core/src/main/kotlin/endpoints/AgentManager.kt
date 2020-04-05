@@ -58,6 +58,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val existingEntry = agentStorage.targetMap[id]
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
+        val adminData = adminData(id)
         //TODO agent instances
         return if (
             (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds)
@@ -79,7 +80,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             val info = storedInfo ?: config.toAgentInfo()
             val entry = AgentEntry(info, session)
             agentStorage.put(id, entry)
-            adminData(id).loadStoredData()
+            adminData.loadStoredData()
             storedInfo?.initPlugins(entry)
             app.launch {
                 storedInfo?.sync(needSync) // sync only existing info!
@@ -240,11 +241,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-
-    fun adminData(agentId: String) = adminDataVault[agentId] ?: run {
-        val newAdminData = AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode)
-        adminDataVault[agentId] = newAdminData
-        newAdminData
+    fun adminData(agentId: String): AdminPluginData = adminDataVault.getOrPut(agentId) {
+        AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode)
     }
 
     suspend fun disableAllPlugins(agentId: String) {

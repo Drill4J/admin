@@ -47,10 +47,12 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String) {
 
         try {
+            val adminData = agentManager.adminData(agentInfo.id)
+            val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
             incoming.consumeEach { frame ->
                 if (frame is Frame.Text) {
                     val message = Message.serializer() parse frame.readText()
-                    logger.debug { "Processing message ${message.type} with data '${message.data}'" }
+                    logger.trace { "Processing message ${message.type} with data '${message.data}'" }
 
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
@@ -68,26 +70,20 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
-                            logger.debug { "Starting classes transfer" }
-                            agentManager.adminData(agentInfo.id).run {
-                                buildManager.setupBuildInfo(agentInfo.buildVersion)
-                                refreshStoredSummary()
-                            }
+                            logger.debug { "Starting classes transfer for $agentDebugStr..." }
+                            adminData.buildManager.initBuildInfo(agentInfo.buildVersion)
                         }
 
                         MessageType.CLASSES_DATA -> {
-                            agentManager.adminData(agentInfo.id)
-                                .buildManager
-                                .addClass(message.data)
+                            adminData.buildManager.addClass(message.data)
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
-                            agentManager.adminData(agentInfo.id)
-                                .buildManager
-                                .compareToPrev(agentInfo.buildVersion)
-                            topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
+                            val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
                             agentManager.enableAllPlugins(agentInfo.id)
-                            logger.debug { "Finished classes transfer" }
+                            topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
+                            adminData.store(agentBuild)
+                            logger.debug { "Finished classes transfer for $agentDebugStr" }
                         }
 
                         else -> {

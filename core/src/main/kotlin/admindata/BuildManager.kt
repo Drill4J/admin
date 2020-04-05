@@ -3,7 +3,6 @@ package com.epam.drill.admin.admindata
 import com.epam.drill.admin.build.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
-import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import org.jacoco.core.analysis.*
@@ -11,7 +10,6 @@ import org.jacoco.core.data.*
 
 class AgentBuildManager(
     val agentId: String,
-    private val storeClient: StoreClient,
     builds: Iterable<AgentBuild> = emptyList(),
     lastBuild: String = ""
 ) : BuildManager {
@@ -27,7 +25,7 @@ class AgentBuildManager(
 
     private val _lastBuild = atomic(lastBuild)
 
-    private val _addedClasses = atomic(persistentListOf<Pair<String, ByteArray>>())
+    private val _addedClasses = atomic(persistentListOf<String>())
 
     private val _buildMap = atomic(builds.associateBy { it.info.version }.toPersistentMap())
 
@@ -38,7 +36,7 @@ class AgentBuildManager(
 
     fun dtoList() = buildMap.values.map(AgentBuild::toBuildSummaryDto)
 
-    fun setupBuildInfo(buildVersion: String) {
+    fun initBuildInfo(buildVersion: String) {
         val build = buildMap[buildVersion]
         val prevBuild = if (build == null) {
             val prev = lastBuild
@@ -55,17 +53,17 @@ class AgentBuildManager(
         }
     }
 
-    fun addClass(rawData: String) {
-        val base64Class = Base64Class.serializer() parse rawData
-        _addedClasses.update { it + (base64Class.className to decode(base64Class.encodedBytes)) }
-    }
+    fun addClass(rawData: String) = _addedClasses.update { it + rawData }
 
-    suspend fun compareToPrev(buildVersion: String) {
-        val classesBytes = _addedClasses.getAndUpdate { persistentListOf() }.toMap()
-        val currentMethods = classesBytes
-            .mapValues { (className, bytes) ->
-                BcelClassParser(bytes, className).parseToJavaMethods()
-            }
+    fun initClasses(buildVersion: String): AgentBuild = run {
+        val addedClasses: List<String> = _addedClasses.getAndUpdate { persistentListOf() }
+        val parsedClasses: Map<String, ParsedClass> = addedClasses.asSequence()
+            .map { Base64Class.serializer() parse it }
+            .map { ParsedClass(it.className, decode(it.encodedBytes)) }
+            .filter { it.anyCode() }
+            .associateBy { it.name }
+        val classesBytes: Map<String, ByteArray> = parsedClasses.mapValues { it.value.bytes }
+        val currentMethods: Map<String, List<Method>> = parsedClasses.mapValues { it.value.methods() }
         val build = updateAndGet(buildVersion) {
             copy(
                 info = info.copy(
@@ -78,21 +76,18 @@ class AgentBuildManager(
         val prevMethods = buildMap[parentVersion]?.info?.javaMethods ?: mapOf()
         val coverageBuilder = CoverageBuilder()
         val analyzer = Analyzer(ExecutionDataStore(), coverageBuilder)
-        build.info.classesBytes.map { (className, bytes) ->
-            analyzer.analyzeClass(
-                bytes,
-                className
-            )
+        //TODO remove jacoco usage
+        classesBytes.map { (className, bytes) ->
+            analyzer.analyzeClass(bytes, className)
         }
         val bundleCoverage = coverageBuilder.getBundle("")
-        val result = updateAndGet(buildVersion) {
+        updateAndGet(buildVersion) {
             copy(
                 info = info.copy(
                     methodChanges = bundleCoverage.compareClasses(prevMethods, currentMethods)
                 )
             )
         }
-        storeClient.store(result)
     }
 
     private fun updateAndGet(
@@ -100,7 +95,7 @@ class AgentBuildManager(
         mutate: AgentBuild.() -> AgentBuild
     ): AgentBuild = _buildMap.updateAndGet { map ->
         val build = map[version] ?: AgentBuild(
-            id = "$agentId:$version",
+            id = AgentBuildId(agentId = agentId, version = version),
             agentId = agentId,
             info = BuildInfo(
                 version = version

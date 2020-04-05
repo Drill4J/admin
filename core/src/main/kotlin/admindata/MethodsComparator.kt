@@ -108,34 +108,37 @@ class IncrementalCache {
 }
 
 
-class BcelClassParser(
-    bytes: ByteArray,
-    private val className: String
+class ParsedClass(
+    val name: String,
+    val bytes: ByteArray
 ) {
-    private val methods = ClassParser(ByteArrayInputStream(bytes), className).parse().methods
+    private val javaClass: JavaClass = ClassParser(ByteArrayInputStream(bytes), name).parse()
 
-    fun parseToJavaMethods() = methods
-        .filter { !it.name.isNullOrEmpty() }
-        .map { method ->
-            Method(
-                ownerClass = className,
-                name = method.name,
-                desc = method.signature,
-                hash = computeHash(method.code)
-            )
-        }
+    private val suitableMethods = javaClass.methods.asSequence()
+        .filter { !it.name.isNullOrEmpty() && !it.isAbstract && !it.isSynthetic }
 
-    private fun computeHash(code: Code?) = code?.run {
-        crc64(
-            Utility.codeToString(
-                code.code,
-                code.constantPool,
-                0,
-                code.length,
-                false
-            )
+    fun anyCode(): Boolean = suitableMethods.any()
+
+    fun methods(): List<Method> = suitableMethods.map { method ->
+        Method(
+            ownerClass = name,
+            name = method.name,
+            desc = method.signature,
+            hash = computeHash(method.code)
         )
-    }
+    }.toList()
+}
+
+private fun computeHash(code: Code?) = code?.run {
+    crc64(
+        Utility.codeToString(
+            code.code,
+            code.constantPool,
+            0,
+            code.length,
+            false
+        )
+    )
 }
 
 private val Method.sign get() = "$name$desc"

@@ -9,7 +9,7 @@ private val logger = KotlinLogging.logger {}
 class PluginClassLoader(url: URL) : URLClassLoader(arrayOf(url)) {
 
     override fun findClass(name: String?): Class<*> {
-        logger.debug { "Search and loading class with name $name" }
+        logger.trace { "Loading $name" }
         return super.findClass(name)
     }
 }
