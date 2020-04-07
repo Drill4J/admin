@@ -86,14 +86,15 @@ abstract class E2ETest : AdminTest() {
 
                                 }
                                 thens.forEach { (ain, it) ->
+                                    glob.receive()
+                                    ui.getAgent()
+                                    ui.getBuilds()
+                                    delay(50)
 
                                     handleWebSocketConversation(
                                         "/agent/attach",
                                         wsRequestRequiredParams(ain)
                                     ) { inp, out ->
-                                        glob.receive()
-                                        ui.getAgent()
-                                        ui.getBuilds()
                                         val apply =
                                             Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
                                         it(
