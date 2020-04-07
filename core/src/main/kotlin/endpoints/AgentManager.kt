@@ -201,13 +201,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins?.map { it.id }
 
-    suspend fun addPlugins(agentInfo: AgentInfo, plugins: List<String>) {
-        val agentEntry = full(agentInfo.id)!!
+    suspend fun AgentInfo.addPlugins(plugins: List<String>) {
+        val agentEntry = full(id)!!
         plugins.forEach { pluginId ->
-            val dp: Plugin = this.plugins[pluginId]!!
+            val dp: Plugin = this@AgentManager.plugins[pluginId]!!
             ensurePluginInstance(agentEntry, dp)
         }
-        addPluginsToAgent(agentInfo, plugins)
+        addPluginsToAgent(this, plugins)
     }
 
     private fun addPluginsToAgent(agentInfo: AgentInfo, plugins: List<String>) {
@@ -347,7 +347,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Sent plugins for agent ${info.id}" }
     }
 
-    fun serviceGroup(serviceGroupId: String) = getAllAgents().filter { it.agent.serviceGroup == serviceGroupId }
+    fun serviceGroup(serviceGroupId: String): List<AgentEntry> = getAllAgents().filter {
+        it.agent.serviceGroup == serviceGroupId
+    }
 
     suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
         wrapBusy(agentInfo) {

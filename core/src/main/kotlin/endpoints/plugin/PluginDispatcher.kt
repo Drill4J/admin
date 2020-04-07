@@ -191,7 +191,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                         ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.apply {
-                                        addPlugins(agentInfo, listOf(pluginIdObject.pluginId))
+                                        agentInfo.addPlugins(listOf(pluginIdObject.pluginId))
                                         sendPluginsToAgent(agentInfo)
                                         agentInfo.sync(true)
                                     }
