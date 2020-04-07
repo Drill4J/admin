@@ -6,65 +6,80 @@ import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
-import java.util.concurrent.*
 import kotlin.reflect.*
 import kotlin.time.*
+import kotlin.time.TimeSource.*
 
 
 fun Route.agentWebsocket(path: String, protocol: String? = null, handler: suspend AgentWsSession.() -> Unit) {
     webSocket(path, protocol) {
-        handler(AgentWsSession(this))
+        handler(AgentWsSession(this, application.agentSocketTimeout))
     }
 }
 
 class WsAwaitException(message: String) : RuntimeException(message)
 
 class Signal(
-    var state: Boolean = false,
-    val callback: suspend (Any) -> Unit,
-    private val topicName: String
+    private val topicName: String,
+    val callback: suspend (Any) -> Unit
 ) {
+    private val _state = atomic(true)
+
+    suspend fun received(result: Any) {
+        _state.value = false
+        callback(result)
+    }
+
     suspend fun await(timeout: Duration) {
-        awaitWithExpr(timeout, topicName) { state }
+        if (_state.value) {
+            awaitWithExpr(timeout, topicName, _state::value)
+        }
     }
 }
 
 suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> Boolean) {
-    val expirationMark = kotlin.time.TimeSource.Monotonic.markNow() + timeout
+    val expirationMark = Monotonic.markNow() + timeout
     while (state()) {
-        if (expirationMark.hasPassedNow()) throw WsAwaitException("did't get signal by $timeout for '$description' destination")
+        if (expirationMark.hasPassedNow()) {
+            throw WsAwaitException("did't get signal by $timeout for '$description' destination")
+        }
         delay(200)
     }
 }
 
-class WsDeferred(val asession: AgentWsSession, val clb: suspend () -> Unit, topicName: String) {
-    var signal: Signal = Signal(true, {}, topicName)
+class WsDeferred(
+    val timeout: Duration,
+    topicName: String,
+    callback: suspend (Any) -> Unit = {},
+    val caller: suspend () -> Unit
+) {
+    val signal: Signal = Signal(topicName, callback)
 
-    init {
-        @Suppress("UNCHECKED_CAST")
-        asession.subscribers[topicName] = signal
-    }
-
-    suspend fun call(): WsDeferred {
-        clb()
-        return this
-    }
+    suspend fun call(): WsDeferred = apply { caller() }
 
     suspend fun await() {
-        signal.await(timeout = asession.timeout)
+        signal.await(timeout)
     }
 }
 
-open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultWebSocketServerSession by session {
+open class AgentWsSession(
+    private val session: DefaultWebSocketServerSession,
+    private val timeout: Duration
+) : DefaultWebSocketServerSession by session {
 
-    val subscribers = ConcurrentHashMap<String, Signal>()
-    val timeout = application.agentSocketTimeout
+    val subscribers get() = _subscribers.value
 
-    suspend inline fun <reified TopicUrl : Any> sendToTopic(message: Any = ""): WsDeferred {
-        val topicName = TopicUrl::class.topicUrl()
-        val callback: suspend () -> Unit = {
+    private val _subscribers = atomic(persistentMapOf<String, Signal>())
+
+    suspend inline fun <reified TopicUrl : Any> sendToTopic(
+        message: Any = "",
+        noinline callback: suspend (Any) -> Unit = {}
+    ): WsDeferred = TopicUrl::class.topicUrl().let { topicName ->
+        async(topicName, callback) {
             @Suppress("UNCHECKED_CAST")
             val kClass = message::class as KClass<Any>
             val text = Message.serializer() stringify Message(
@@ -73,23 +88,30 @@ open class AgentWsSession(val session: DefaultWebSocketServerSession) : DefaultW
             )
             send(text)
         }
-        return WsDeferred(this, callback, topicName).apply { call() }
     }
 
-
-    suspend inline fun <reified TopicUrl : Any> sendBinary(meta: Any = "", data: ByteArray): WsDeferred {
+    suspend inline fun <reified TopicUrl : Any> sendBinary(
+        meta: Any = "",
+        data: ByteArray
+    ): WsDeferred {
         sendToTopic<TopicUrl>(meta)
-        return WsDeferred(this, { send(Frame.Binary(false, data)) }, TopicUrl::class.topicUrl()).apply { call() }
+        return async(TopicUrl::class.topicUrl()) {
+            send(Frame.Binary(false, data))
+        }
     }
 
-
-    inline fun <reified T> subscribe(
+    suspend fun async(
         topicName: String,
-        noinline handler: suspend (T) -> Unit
-    ) {
-        @Suppress("UNCHECKED_CAST")
-        subscribers[topicName] = Signal(false, (handler as suspend (Any) -> Unit), topicName)
+        callback: suspend (Any) -> Unit = {},
+        caller: suspend () -> Unit
+    ) = WsDeferred(
+        timeout = timeout,
+        topicName = topicName,
+        callback = callback,
+        caller = caller
+    ).putSignal(topicName).call()
+
+    private fun WsDeferred.putSignal(topicName: String) = apply {
+        _subscribers.update { it.put(topicName, signal) }
     }
-
-
 }

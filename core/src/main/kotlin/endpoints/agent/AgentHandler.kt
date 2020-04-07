@@ -10,15 +10,13 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.cbor.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.concurrent.*
-import kotlin.reflect.full.*
-import kotlin.reflect.jvm.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -45,10 +43,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String) {
-
+        val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
         try {
             val adminData = agentManager.adminData(agentInfo.id)
-            val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
             incoming.consumeEach { frame ->
                 if (frame is Frame.Text) {
                     val message = Message.serializer() parse frame.readText()
@@ -60,13 +57,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.MESSAGE_DELIVERED -> {
-                            subscribers[message.destination]?.apply {
-                                if (callback.reflect()?.parameters?.get(0)?.type == Unit::class.starProjectedType)
-                                    (callback as suspend (Unit) -> Unit).invoke(Unit)
-                                else
-                                    callback.invoke(message.data)
-                                state = false
-                            }
+                            subscribers[message.destination]?.received(message.data)
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
@@ -80,7 +71,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
                             val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
-                            agentManager.enableAllPlugins(agentInfo.id)
                             topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
                             adminData.store(agentBuild)
                             logger.debug { "Finished classes transfer for $agentDebugStr" }
@@ -94,8 +84,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             }
         } catch (ex: Exception) {
             when (ex) {
-                is CancellationException -> logger.error { "Handle the agent was cancelled" }
-                else -> logger.error(ex) { "Handle with exception" }
+                is CancellationException -> logger.error { "Handling of $agentDebugStr was cancelled" }
+                else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
             agentManager.apply {

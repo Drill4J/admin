@@ -30,7 +30,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val agentStorage: AgentStorage by instance()
     val plugins: Plugins by instance()
 
-    val activeAgents
+    val activeAgents: List<AgentInfo>
         get() = agentStorage.values
             .map { it.agent }
             .filter { instanceIds(it.id).isNotEmpty() }
@@ -245,7 +245,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode)
     }
 
-    suspend fun disableAllPlugins(agentId: String) {
+    private suspend fun disableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSession(agentId)
@@ -254,10 +254,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
 
-    suspend fun enableAllPlugins(agentId: String) {
-        logger.debug { "Reset all plugins for agent with id $agentId" }
+    private suspend fun AgentWsSession.enableAllPlugins(agentId: String) {
+        logger.debug { "Enabling all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
-            agentSession(agentId)?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true))
+            logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
+            sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true)) {
+                logger.debug { "Enabled plugin $pluginId for agent $agentId" }
+            }
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
@@ -267,11 +270,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.targetMap[this.id]?.agent = this
     }
 
-    suspend fun configurePackages(prefixes: List<String>, agentId: String) {
+    private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
         if (prefixes.isNotEmpty()) {
-            agentSession(agentId)?.setPackagesPrefixes(PackagesPrefixes(prefixes))
+            setPackagesPrefixes(PackagesPrefixes(prefixes))
         }
-        agentSession(agentId)?.triggerClassesSending()
     }
 
     fun packagesPrefixes(agentId: String) = adminData(agentId).packagesPrefixes
@@ -281,9 +283,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (status != AgentStatus.NOT_REGISTERED) {
             if (needSync)
                 wrapBusy(this) {
-                    updateSessionHeader(this)
-                    configurePackages(packagesPrefixes(id), id)//thread sleep
-                    sendPlugins()
+                    val info = this
+                    agentSession(id)?.apply {
+                        updateSessionHeader(info)
+                        configurePackages(packagesPrefixes(id))//thread sleep
+                        triggerClassesSending()
+                        sendPlugins(info)
+                        enableAllPlugins(id)
+                    }
                     topicResolver.sendToAllSubscribed("/agents/$id/builds")
                 }
             logger.debug { "Agent with id $name sync was finished" }
@@ -296,49 +303,46 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(info.sessionIdHeaderName.toLowerCase())
     }
 
-    private suspend fun updateSessionHeader(info: AgentInfo) {
-        agentSession(info.id)?.updateSessionHeader(info)
-    }
-
     suspend fun updateSystemSettings(agentId: String, systemSettings: SystemSettingsDto) {
         val adminData = adminData(agentId)
         getOrNull(agentId)?.let {
             wrapBusy(it) {
-                if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
-                    adminData.resetBuilds()
-                    adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                    full(agentId)?.applyPackagesChanges()
-                    disableAllPlugins(agentId)
-                    configurePackages(systemSettings.packagesPrefixes, agentId)
+                agentSession(agentId)?.apply {
+                    if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                        adminData.resetBuilds()
+                        adminData.packagesPrefixes = systemSettings.packagesPrefixes
+                        full(agentId)?.applyPackagesChanges()
+                        disableAllPlugins(agentId)
+                        configurePackages(systemSettings.packagesPrefixes)
+                        agentSession(agentId)?.triggerClassesSending()
+                    }
+                    it.sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                    updateSessionHeader(it)
                 }
-                it.sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                updateSessionHeader(it)
             }
         }
     }
 
-    private suspend fun AgentInfo.sendPlugins() {
-        agentSession(id)?.apply {
-            if (plugins.isEmpty()) return@apply
-            plugins.forEach { pb ->
-                val data = this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
-                pb.checkSum = hex(sha1(data))
+    private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
+        logger.debug { "Sending ${info.plugins.count()} plugins to agent ${info.id}" }
+        info.plugins.forEach { pb ->
+            logger.debug { "Sending plugin ${pb.id} to agent ${info.id}" }
+            val data = this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
+            pb.checkSum = hex(sha1(data))
+            async("/plugin/${pb.id}") { //TODO move to the api
                 sendBinary<Communication.Agent.PluginLoadEvent>(pb, data).await()
-            }
+            }.await()
+            logger.debug { "Sent plugin ${pb.id} for agent ${info.id}" }
         }
+        logger.debug { "Sent plugins for agent ${info.id}" }
     }
 
     fun serviceGroup(serviceGroupId: String) = getAllAgents().filter { it.agent.serviceGroup == serviceGroupId }
 
     suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
         wrapBusy(agentInfo) {
-            sendPlugins()
+            agentSession(id)?.sendPlugins(this)
         }
-    }
-
-    private suspend fun updateBuildDataOnAllPlugins(agentId: String, buildVersion: String) {
-        val plugins = full(agentId)?.plugins
-        plugins?.forEach { it.updateDataOnBuildConfigChange(buildVersion) }
     }
 
     suspend fun ensurePluginInstance(
