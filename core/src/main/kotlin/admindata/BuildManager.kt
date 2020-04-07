@@ -27,7 +27,9 @@ class AgentBuildManager(
 
     private val _addedClasses = atomic(persistentListOf<String>())
 
-    private val _buildMap = atomic(builds.associateBy { it.info.version }.toPersistentMap())
+    private val _buildMap = atomic(
+        builds.associateBy { it.info.version }.toPersistentMap()
+    )
 
     private val buildMap: PersistentMap<String, AgentBuild>
         get() = _buildMap.value

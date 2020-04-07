@@ -307,17 +307,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val adminData = adminData(agentId)
         getOrNull(agentId)?.let {
             wrapBusy(it) {
+                val agentInfo = this
                 agentSession(agentId)?.apply {
+                    var modified = false
+                    if (agentInfo.sessionIdHeaderName != systemSettings.sessionIdHeaderName) {
+                        agentInfo.sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                        updateSessionHeader(agentInfo)
+                        modified = true
+                    }
                     if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
                         adminData.resetBuilds()
                         adminData.packagesPrefixes = systemSettings.packagesPrefixes
-                        full(agentId)?.applyPackagesChanges()
                         disableAllPlugins(agentId)
                         configurePackages(systemSettings.packagesPrefixes)
-                        agentSession(agentId)?.triggerClassesSending()
+                        triggerClassesSending()
+                        full(agentId)?.applyPackagesChanges()
+                        enableAllPlugins(id)
+                        modified = true
                     }
-                    it.sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                    updateSessionHeader(it)
+                    if (modified) {
+                        agentInfo.persistToDatabase()
+                    }
                 }
             }
         }
