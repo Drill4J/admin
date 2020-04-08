@@ -339,7 +339,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.debug { "Sending plugin ${pb.id} to agent ${info.id}" }
             val data = this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
             pb.checkSum = hex(sha1(data))
-            async("/plugin/${pb.id}") { //TODO move to the api
+            async("/agent/plugin/${pb.id}/loaded") { //TODO move to the api
                 sendBinary<Communication.Agent.PluginLoadEvent>(pb, data).await()
             }.await()
             logger.debug { "Sent plugin ${pb.id} for agent ${info.id}" }
