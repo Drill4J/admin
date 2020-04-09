@@ -57,18 +57,18 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     override suspend fun send(context: SendContext, destination: Any, message: Any) {
         val dest = destination as? String ?: app.toLocation(destination)
         val subscription = context.toSubscription()
-        val id = subscription.toKey(dest)
+        val subscriptionKey = subscription.toKey(dest)
 
         //TODO replace with normal event removal
         if (message == "") {
-            logger.info { "Removed message by key $id" }
-            eventStorage.remove(id)
+            logger.info { "Removed message by key $subscriptionKey" }
+            eventStorage.remove(subscriptionKey)
         } else {
             val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE)
-            logger.debug { "Send data to $id destination" }
-            eventStorage[id] = messageForSend
+            logger.debug { "Sending message to $subscriptionKey" }
+            eventStorage[subscriptionKey] = messageForSend
             sessionStorage.sendTo(
-                destination = dest,
+                destination = subscriptionKey,
                 messageProvider = { messageForSend }
             )
         }
@@ -79,16 +79,10 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
         when (event) {
             is Subscribe -> {
-                //TODO remove type field existence check after changes on front end
-                val subscription: Subscription = (JsonObject.serializer() parse event.message)
-                    .let { json ->
-                        Subscription.serializer().takeIf {
-                            "type" in json
-                        } ?: AgentSubscription.serializer()
-                    }.parse(event.message).ensureBuildVersion()
-                sessionStorage.subscribe(event.destination, this)
+                val subscriptionKey = event.message.toSubscriptionKey(event.destination)
+                sessionStorage.subscribe(subscriptionKey, this)
 
-                val message: String? = eventStorage[subscription.toKey(event.destination)]
+                val message: String? = eventStorage[subscriptionKey]
                 val messageToSend = if (message.isNullOrEmpty()) {
                     WsSendMessage.serializer().stringify(
                         WsSendMessage(
@@ -98,14 +92,26 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                     )
                 } else message
                 send(messageToSend)
-                logger.debug { "Subscribed to ${event.destination}, ${toDebugString()}" }
+                logger.debug { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
             is Unsubscribe -> {
-                sessionStorage.unsubscribe(event.destination, this)
-                logger.debug { "Unsubscribed from ${event.destination}, ${toDebugString()}" }
+                val subscriptionKey = event.message.toSubscriptionKey(event.destination)
+                sessionStorage.unsubscribe(subscriptionKey, this)
+                logger.debug { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }
     }
+
+    private fun String.toSubscriptionKey(dest: String): String = when (this) {
+        "" -> dest
+        else -> toSubscription().toKey(dest)
+    }
+
+    private fun String.toSubscription(): Subscription = (JsonObject.serializer() parse this).let { json ->
+        Subscription.serializer().takeIf {
+            "type" in json
+        } ?: AgentSubscription.serializer()
+    }.parse(this).ensureBuildVersion()
 
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {
         copy(buildVersion = agentManager.buildVersionByAgentId(agentId))

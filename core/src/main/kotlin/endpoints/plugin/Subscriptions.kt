@@ -14,7 +14,7 @@ data class AgentSubscription(
     val agentId: String,
     val buildVersion: String? = null
 ) : Subscription() {
-    override fun toKey(destination: String) = "agent::$agentId:$buildVersion/$destination"
+    override fun toKey(destination: String) = "agent::$agentId:$buildVersion$destination"
 }
 
 @Serializable
@@ -22,7 +22,7 @@ data class AgentSubscription(
 data class GroupSubscription(
     val groupId: String
 ) : Subscription() {
-    override fun toKey(destination: String) = "group::$groupId/$destination"
+    override fun toKey(destination: String) = "group::$groupId$destination"
 }
 
 internal fun SendContext.toSubscription(): Subscription = when (this) {

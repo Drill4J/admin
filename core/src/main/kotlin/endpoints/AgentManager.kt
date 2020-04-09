@@ -291,7 +291,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         sendPlugins(info)
                         enableAllPlugins(id)
                     }
-                    topicResolver.sendToAllSubscribed("/agents/$id/builds")
+                    topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
                 }
             logger.debug { "Agent with id $name sync was finished" }
         } else {

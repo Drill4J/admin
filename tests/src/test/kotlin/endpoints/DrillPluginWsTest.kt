@@ -77,21 +77,25 @@ class PluginWsTest {
     )
 
     @Test
-    fun `should return CloseFrame if we subscribe without SubscribeInfo`() {
+    fun `should return empty message on subscribing without info`() {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
-                outgoing.send(uiMessage(Subscribe("/pluginTopic1", "")))
-                val receive = incoming.receive()
-                assertTrue(receive is Frame.Close)
-                assertEquals(CloseReason.Codes.INTERNAL_ERROR.code, receive.readReason()?.code)
+                val destination = "/pluginTopic1"
+                outgoing.send(uiMessage(Subscribe(destination)))
+                val receive = incoming.receive() as? Frame.Text ?: fail()
+                val readText = receive.readText()
+                val fromJson = json.parseJson(readText) as JsonObject
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
+                assertEquals("", fromJson[WsSendMessage::message.name]?.content)
             }
         }
     }
 
 
     @Test
-    fun `should communicate with pluginWs and return the empty MESSAGE`() {
+    fun `should return empty message on subscribing with info`() {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->

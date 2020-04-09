@@ -5,20 +5,21 @@ import kotlinx.serialization.*
 @Serializable
 sealed class WsReceiveMessage {
     abstract val destination: String
-
+    abstract val message: String
 }
 
 @Serializable
 @SerialName("SUBSCRIBE")
 data class Subscribe(
     override val destination: String,
-    val message: String = "" //TODO replace with Subscription
+    override val message: String = ""
 ) : WsReceiveMessage()
 
 @Serializable
 @SerialName("UNSUBSCRIBE")
 data class Unsubscribe(
-    override val destination: String
+    override val destination: String,
+    override val message: String = ""
 ) : WsReceiveMessage()
 
 
