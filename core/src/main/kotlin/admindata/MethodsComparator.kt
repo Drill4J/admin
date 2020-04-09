@@ -115,7 +115,7 @@ class ParsedClass(
     private val javaClass: JavaClass = ClassParser(ByteArrayInputStream(bytes), name).parse()
 
     private val suitableMethods = javaClass.methods.asSequence()
-        .filter { !it.name.isNullOrEmpty() && !it.isAbstract && !it.isSynthetic }
+        .filter { !it.name.isNullOrEmpty() && !it.isAbstract }
 
     fun anyCode(): Boolean = suitableMethods.any()
 
