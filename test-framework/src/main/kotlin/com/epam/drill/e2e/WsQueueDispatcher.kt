@@ -129,11 +129,11 @@ class Agent(
 
     suspend fun getHeaders() = headers.receive()
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
-        val pluginMeta = plugins.receive()
+        val meta = plugins.receive()
         val pluginBinarys = getPluginBinary()
-        block(pluginMeta, pluginBinarys)
+        block(meta, pluginBinarys)
         outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/agent/load", ""))
-        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/plugin/${pluginMeta.id}", ""))
+        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/agent/plugin/${meta.id}/loaded", ""))
 
     }
 
