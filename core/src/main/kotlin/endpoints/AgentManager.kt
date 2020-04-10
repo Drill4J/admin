@@ -287,6 +287,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     agentSession(id)?.apply {
                         updateSessionHeader(info)
                         configurePackages(packagesPrefixes(id))//thread sleep
+                        delay(1500L) //quick fix class loading for Spring Boot Starter
                         triggerClassesSending()
                         sendPlugins(info)
                         enableAllPlugins(id)
