@@ -17,6 +17,7 @@ import org.junit.jupiter.api.*
 import java.io.*
 import java.util.*
 import kotlin.time.*
+import kotlin.time.TimeSource.*
 
 abstract class AdminTest {
     val mut = Mutex()
@@ -77,7 +78,7 @@ fun TestApplicationEngine.toApiUri(location: Any): String = application.location
 
 @ExperimentalTime
 fun CoroutineScope.createTimeoutJob(timeout: Duration, context: Job) = launch {
-    val expirationMark = kotlin.time.TimeSource.Monotonic.markNow() + timeout
+    val expirationMark = Monotonic.markNow() + timeout
     while (true) {
         delay(50)
         if (expirationMark.hasPassedNow()) {

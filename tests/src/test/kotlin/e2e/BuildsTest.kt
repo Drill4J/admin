@@ -3,8 +3,10 @@ package com.epam.drill.admin.e2e
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
+import kotlin.time.*
 import io.ktor.http.*
 import kotlin.test.*
+import kotlin.time.seconds as secs
 
 class BuildsTest : E2ETest() {
 
@@ -12,7 +14,11 @@ class BuildsTest : E2ETest() {
 
     @Test
     fun `can add new builds`() {
-        createSimpleAppWithUIConnection(agentStreamDebug = false, uiStreamDebug = false) {
+        createSimpleAppWithUIConnection(
+            agentStreamDebug = false,
+            uiStreamDebug = false,
+            timeout = 15.secs
+        ) {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED

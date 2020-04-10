@@ -14,7 +14,7 @@ val ktorVersion = "1.3.2"
 
 val swaggerVersion = "0.5.0-drill.2"
 
-val koduxVersion = "0.1.6"
+val koduxVersion = "0.1.8"
 
 val xodusVersion = "1.3.91"
 

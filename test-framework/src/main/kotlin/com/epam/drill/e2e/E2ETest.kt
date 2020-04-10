@@ -22,6 +22,7 @@ abstract class E2ETest : AdminTest() {
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
+        timeout: Duration = 7.seconds,
         block: suspend () -> Unit
     ) {
         var coroutineException: Throwable? = null
@@ -30,7 +31,7 @@ abstract class E2ETest : AdminTest() {
             coroutineException = exception
         } + context
         runBlocking(handler) {
-            val timeoutJob = createTimeoutJob(5.seconds, context)
+            val timeoutJob = createTimeoutJob(timeout, context)
             val appConfig = AppConfig(projectDir)
             val testApp = appConfig.testApp
             withApplication(
