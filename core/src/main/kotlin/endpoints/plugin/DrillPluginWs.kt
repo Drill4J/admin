@@ -13,6 +13,7 @@ import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.json.*
 import mu.*
@@ -46,7 +47,16 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                             else -> logger.error { "Unsupported frame type - ${frame.frameType}!" }
                         }
                     }
-                } finally {
+                } catch (e: Exception) {
+                    when(e) {
+                        is CancellationException -> logger.debug {
+                            "$socketName: ${session.toDebugString()} was cancelled."
+                        }
+                        else -> logger.error(e) {
+                            "$socketName: ${session.toDebugString()} finished with exception."
+                        }
+                    }
+                }  finally {
                     sessionStorage.release(session)
                     logger.debug { "$socketName: released ${session.toDebugString()}" }
                 }

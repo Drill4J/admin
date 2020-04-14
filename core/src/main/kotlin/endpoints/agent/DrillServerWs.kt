@@ -9,6 +9,7 @@ import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import mu.*
 import org.kodein.di.*
@@ -50,8 +51,14 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                 } catch (e: Exception) {
-                    logger.error(e) { "Finished with exception and session was removed" }
-
+                    when(e) {
+                        is CancellationException -> logger.debug {
+                            "$socketName: ${session.toDebugString()} was cancelled."
+                        }
+                        else -> logger.error(e) {
+                            "$socketName: ${session.toDebugString()} finished with exception."
+                        }
+                    }
                 } finally {
                     sessionStorage.release(session)
                     logger.debug { "$socketName: released ${session.toDebugString()}" }
