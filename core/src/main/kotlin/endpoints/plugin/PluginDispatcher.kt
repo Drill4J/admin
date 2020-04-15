@@ -37,14 +37,12 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {
         val message = MessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
-        try {
-            val plugin: Plugin = plugins[pluginId] ?: return
+        plugins[pluginId]?.let { plugin: Plugin ->
             val agentEntry = agentManager.full(agentInfo.id)!!
             val pluginInstance: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
             pluginInstance.processData(message.drillMessage)
-        } catch (ee: Exception) {
-            logger.error(ee) { "Processing plugin data was finished with exception" }
-        }
+
+        } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
 
@@ -87,10 +85,14 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = agentEntry?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(this, plugin)
-                            val result = adminPart.processSingleAction(action)
-                            val statusResponse = result.toStatusResponse()
-                            HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                            if (agentEntry.agent.status == AgentStatus.ONLINE) {
+                                val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(this, plugin)
+                                val result = adminPart.processSingleAction(action)
+                                val statusResponse = result.toStatusResponse()
+                                HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                            } else HttpStatusCode.BadRequest to ErrorResponse(
+                                message = "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
+                            )
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
                     logger.info { "$response" }

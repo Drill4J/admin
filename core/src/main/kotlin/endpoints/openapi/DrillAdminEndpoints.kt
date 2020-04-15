@@ -74,22 +74,27 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<Routes.Api.Agents.ToggleAgent>(agentToggleStandByResponds) { params ->
                     val (agentId) = params
                     logger.info { "Toggle agent $agentId" }
-                    agentManager[agentId]?.let { agentInfo ->
-                        agentInfo.status = when (agentInfo.status) {
+                    val (status, response) = agentManager[agentId]?.let { agentInfo ->
+                        when (agentInfo.status) {
                             AgentStatus.OFFLINE -> AgentStatus.ONLINE
                             AgentStatus.ONLINE -> AgentStatus.OFFLINE
-                            else -> {
-                                return@let
+                            else -> null
+                        }?.let { newStatus ->
+                            agentManager.agentSession(agentId)?.apply {
+                                val toggleValue = newStatus == AgentStatus.ONLINE
+                                agentInfo.plugins.filter { it.enabled }.map {
+                                    sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id, toggleValue))
+                                }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }
-                        }
-                        val agentSession = agentManager.agentSession(agentId)
-                        agentInfo.plugins.filter { it.enabled }.forEach {
-                            agentSession?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id))
-                        }
-                        with(agentManager) { agentInfo.commitChanges() }
-                        logger.info { "Agent $agentId toggled to status ${agentInfo.status.name} successfully" }
-                        call.respond(HttpStatusCode.OK, EmptyContent)
-                    }
+                            agentInfo.status = newStatus
+                            with(agentManager) { agentInfo.commitChanges() }
+                            logger.info { "Agent $agentId toggled, new status - $newStatus." }
+                            HttpStatusCode.OK to EmptyContent
+                        } ?: HttpStatusCode.Conflict to ErrorResponse(
+                            "Cannot toggle agent $agentId on status ${agentInfo.status}"
+                        )
+                    } ?:  HttpStatusCode.NotFound to EmptyContent
+                    call.respond(status, response)
                 }
             }
 
