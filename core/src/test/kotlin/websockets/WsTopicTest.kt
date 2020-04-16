@@ -24,13 +24,13 @@ internal class WsTopicKtTest {
         val serializedString = serialize(string)
         assertEquals(string, serializedString)
         val complexStructure1 = mapOf("key" to WsSendMessage(
-            WsMessageType.SUBSCRIBE,
-            "asd",
-            "vbn"
+            type = WsMessageType.SUBSCRIBE,
+            destination = "asd",
+            message = "vbn"
         )
         )
         val serializedStructure1 = serialize(complexStructure1)
-        val result1 = "{\"key\":{\"type\":\"SUBSCRIBE\",\"destination\":\"asd\",\"message\":\"vbn\"}}"
+        val result1 = "{\"key\":{\"type\":\"SUBSCRIBE\",\"destination\":\"asd\",\"to\":null,\"message\":\"vbn\"}}"
         assertEquals(result1, serializedStructure1)
         val complexStructure2 = arrayListOf(PluginConfig("1", "2"))
         val serializedStructure2 = serialize(complexStructure2)

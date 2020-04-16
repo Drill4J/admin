@@ -216,9 +216,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             example(
                                 "result",
                                 WsSendMessage(
-                                    WsMessageType.MESSAGE,
-                                    "some destination",
-                                    "some message"
+                                    type = WsMessageType.MESSAGE,
+                                    destination = "some destination",
+                                    message = "some message"
                                 )
                             )
                         ), notFound()

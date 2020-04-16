@@ -37,7 +37,8 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
         handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->
             val cont = TestContext<PS>()
             block(cont)
-            uts.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents"))
+            Subscribe("/agents")
+            uts.send(uiMessage(Subscribe("/agents")))
             frontIn.receive()
             val cs = mutableMapOf<String, AdminUiChannels>()
             val glob = Channel<GroupedAgentsDto>()
@@ -53,7 +54,7 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
                     val ui = AdminUiChannels()
                     cs[ag.id] = ui
                     with(UIEVENTLOOP(cs, uiStreamDebug, glob)) { application.queued(appConfig.wsTopic, frontIn) }
-                    uts.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}"))
+                    uts.send(uiMessage(Subscribe("/agents/${ag.id}")))
                     launch(handler) {
                         processFirstConnect<PS>(
                             build,

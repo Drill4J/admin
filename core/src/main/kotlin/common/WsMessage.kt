@@ -22,11 +22,11 @@ data class Unsubscribe(
     override val message: String = ""
 ) : WsReceiveMessage()
 
-
 @Serializable
 data class WsSendMessage(
     val type: WsMessageType,
     val destination: String = "",
+    @ContextualSerialization val to: Any? = null,
     @ContextualSerialization val message: Any = ""
 )
 
@@ -34,6 +34,7 @@ data class WsSendMessage(
 data class WsSendMessageListData(
     val type: WsMessageType,
     val destination: String = "",
+    @ContextualSerialization val to: Any? = null,
     val message: List<@ContextualSerialization Any>
 )
 

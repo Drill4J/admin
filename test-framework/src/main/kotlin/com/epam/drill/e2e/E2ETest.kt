@@ -46,7 +46,7 @@ abstract class E2ETest : AdminTest() {
                 //create the 'drill-admin-socket' websocket connection
                 handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
                     block()
-                    ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents"))
+                    ut.send(uiMessage(Subscribe("/agents")))
                     uiIncoming.receive()
                     val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
@@ -64,8 +64,8 @@ abstract class E2ETest : AdminTest() {
                                 with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
 
                                 //create the '/agent/attach' websocket connection
-                                ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}"))
-                                ut.send(uiMessage(WsMessageType.SUBSCRIBE, "/agents/${ag.id}/builds"))
+                                ut.send(uiMessage(Subscribe("/agents/${ag.id}")))
+                                ut.send(uiMessage(Subscribe("/agents/${ag.id}/builds")))
 
                                 ui.getAgent()
                                 ui.getBuilds()
