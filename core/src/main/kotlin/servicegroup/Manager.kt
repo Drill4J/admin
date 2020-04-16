@@ -15,8 +15,8 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
 
     private val logger = KotlinLogging.logger {}
 
-    private val commonStore: CommonStore by instance()
-    private val topicResolver: TopicResolver by instance()
+    private val commonStore by instance<CommonStore>()
+    private val topicResolver by instance<TopicResolver>()
 
     private val _state = atomic(persistentHashMapOf<String, ServiceGroup>())
 

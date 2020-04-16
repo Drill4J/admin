@@ -8,7 +8,7 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class InfoController(override val kodein: Kodein) : KodeinAware {
-    private val app: Application by instance()
+    private val app by instance<Application>()
 
     init {
         app.routing {

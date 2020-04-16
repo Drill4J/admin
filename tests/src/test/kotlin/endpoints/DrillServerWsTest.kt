@@ -207,7 +207,7 @@ fun uiMessage(message: WsReceiveMessage): Frame.Text = WsReceiveMessage.serializ
 }
 
 class ServerStubTopics(override val kodein: Kodein) : KodeinAware {
-    private val wsTopic: WsTopic by instance()
+    private val wsTopic by instance<WsTopic>()
 
     init {
         runBlocking {

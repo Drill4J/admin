@@ -19,10 +19,10 @@ import org.kodein.di.generic.*
 class DrillServerWs(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
-    private val app: Application by instance()
-    private val topicResolver: TopicResolver by instance()
+    private val app by instance<Application>()
+    private val topicResolver by instance<TopicResolver>()
 
-    private val sessionStorage: SessionStorage by instance()
+    private val sessionStorage by instance<SessionStorage>()
 
     init {
         app.routing {

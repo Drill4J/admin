@@ -28,10 +28,10 @@ import org.kodein.di.generic.*
 import java.util.*
 
 class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
-    private val app: Application by instance()
-    private val plugins: Plugins by instance()
-    private val agentManager: AgentManager by instance()
-    private val topicResolver: TopicResolver by instance()
+    private val app by instance<Application>()
+    private val plugins by instance<Plugins>()
+    private val agentManager by instance<AgentManager>()
+    private val topicResolver by instance<TopicResolver>()
     private val logger = KotlinLogging.logger {}
 
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {

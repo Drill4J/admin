@@ -21,10 +21,10 @@ import org.kodein.di.generic.*
 
 class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
 
-    private val app: Application by instance()
-    private val serviceGroupManager: ServiceGroupManager by instance()
-    private val wsTopic: WsTopic by instance()
-    private val agentManager: AgentManager by instance()
+    private val app by instance<Application>()
+    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val wsTopic by instance<WsTopic>()
+    private val agentManager by instance<AgentManager>()
 
     init {
         app.routing {

@@ -24,9 +24,9 @@ private val logger = KotlinLogging.logger {}
 
 class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
-    private val app: Application by instance()
-    private val agentManager: AgentManager by instance()
-    private val cacheService: CacheService by instance()
+    private val app by instance<Application>()
+    private val agentManager by instance<AgentManager>()
+    private val cacheService by instance<CacheService>()
     private val eventStorage: Cache<Any, String> by cacheService
 
     private val sessionStorage = SessionStorage()

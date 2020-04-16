@@ -26,9 +26,9 @@ private val logger = KotlinLogging.logger {}
 
 class AgentManager(override val kodein: Kodein) : KodeinAware {
 
-    val app: Application by instance()
-    val agentStorage: AgentStorage by instance()
-    val plugins: Plugins by instance()
+    val app by instance<Application>()
+    val agentStorage by instance<AgentStorage>()
+    val plugins by instance<Plugins>()
 
     val activeAgents: List<AgentInfo>
         get() = agentStorage.values
@@ -36,12 +36,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             .filter { instanceIds(it.id).isNotEmpty() }
             .sortedWith(compareBy(AgentInfo::id))
 
-    private val topicResolver: TopicResolver by instance()
-    private val store: StoreManager by instance()
-    private val sender: Sender by instance()
-    private val serviceGroupManager: ServiceGroupManager by instance()
-    private val adminDataVault: AdminDataVault by instance()
-    private val notificationsManager: NotificationManager by instance()
+    private val topicResolver by instance<TopicResolver>()
+    private val store by instance<StoreManager>()
+    private val sender by instance<Sender>()
+    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val adminDataVault by instance<AdminDataVault>()
+    private val notificationsManager by instance<NotificationManager>()
 
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 

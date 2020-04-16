@@ -10,7 +10,7 @@ import org.kodein.di.generic.*
 
 
 class AdminEndpointsHandler(override val kodein: Kodein) : KodeinAware {
-    private val agentManager: AgentManager by instance()
+    private val agentManager by instance<AgentManager>()
 
     suspend fun updateSystemSettings(
         agentId: String,

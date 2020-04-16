@@ -18,7 +18,7 @@ import org.kodein.di.generic.*
 
 class LoginHandler(override val kodein: Kodein) : KodeinAware {
 
-    val app: Application by instance()
+    val app by instance<Application>()
 
     private val logger = KotlinLogging.logger {}
 

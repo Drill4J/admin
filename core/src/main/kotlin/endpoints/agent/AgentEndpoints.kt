@@ -19,8 +19,8 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
-    private val app: Application by instance()
-    private val agentManager: AgentManager by instance()
+    private val app by instance<Application>()
+    private val agentManager by instance<AgentManager>()
 
     private val logger = KotlinLogging.logger {}
 

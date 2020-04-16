@@ -18,9 +18,9 @@ import java.util.*
 internal val logger = KotlinLogging.logger {}
 
 class NotificationManager(override val kodein: Kodein) : KodeinAware {
-    private val topicResolver: TopicResolver by instance()
-    private val plugins: Plugins by instance()
-    private val agentManager: AgentManager by instance()
+    private val topicResolver by instance<TopicResolver>()
+    private val plugins by instance<Plugins>()
+    private val agentManager by instance<AgentManager>()
     private val _notifications = atomic(Notifications())
 
     val notifications

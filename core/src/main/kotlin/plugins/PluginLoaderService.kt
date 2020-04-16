@@ -23,8 +23,8 @@ class PluginLoaderService(
     override val kodein: Kodein,
     val workDir: File = File(getenv("DRILL_HOME"), "work")
 ) : KodeinAware {
-    private val plugins: Plugins by instance()
-    private val application: Application by instance()
+    private val plugins by instance<Plugins>()
+    private val application by instance<Application>()
 
     private val pluginStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }

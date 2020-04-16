@@ -16,9 +16,9 @@ import org.kodein.di.generic.*
 class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
-    private val notificationManager: NotificationManager by instance()
+    private val notificationManager by instance<NotificationManager>()
     private val topicResolver:TopicResolver by instance()
-    private val app: Application by instance()
+    private val app by instance<Application>()
 
     init {
         app.routing {

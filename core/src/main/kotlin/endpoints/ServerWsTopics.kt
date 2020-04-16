@@ -17,13 +17,13 @@ import org.kodein.di.generic.*
 
 
 class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
-    private val wsTopic: WsTopic by instance()
-    private val serviceGroupManager: ServiceGroupManager by instance()
-    private val agentManager: AgentManager by instance()
-    private val plugins: Plugins by instance()
-    private val app: Application by instance()
-    private val sessionStorage: SessionStorage by instance()
-    private val notificationManager: NotificationManager by instance()
+    private val wsTopic by instance<WsTopic>()
+    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val agentManager by instance<AgentManager>()
+    private val plugins by instance<Plugins>()
+    private val app by instance<Application>()
+    private val sessionStorage by instance<SessionStorage>()
+    private val notificationManager by instance<NotificationManager>()
 
     init {
 

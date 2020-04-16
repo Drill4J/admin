@@ -126,7 +126,7 @@ class PluginWsTest {
             handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
                 val destination = "/pluginTopic1"
                 val messageForTest = "testMessage"
-                val wsPluginService: DrillPluginWs by kodeinApplication.instance()
+                val wsPluginService by kodeinApplication.instance<DrillPluginWs>()
                 @Suppress("DEPRECATION")
                 wsPluginService.send(agentInfo.id, agentInfo.buildVersion, destination, messageForTest)
                 outgoing.send(

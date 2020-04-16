@@ -21,10 +21,10 @@ import org.kodein.di.generic.*
 private val logger = KotlinLogging.logger {}
 
 class AgentHandler(override val kodein: Kodein) : KodeinAware {
-    private val app: Application by instance()
-    private val agentManager: AgentManager by instance()
-    private val pd: PluginDispatcher by kodein.instance()
-    private val topicResolver: TopicResolver by instance()
+    private val app by instance<Application>()
+    private val agentManager by instance<AgentManager>()
+    private val pd by instance<PluginDispatcher>()
+    private val topicResolver by instance<TopicResolver>()
 
     init {
         app.routing {
