@@ -173,7 +173,6 @@ data class PluginTestContext(
 class MemoryClassLoader : URLClassLoader(arrayOf()) {
     val sw: MutableList<Class<*>> = mutableListOf()
     private val definitions = mutableMapOf<String, ByteArray?>()
-    private val mainDefinitions = mutableMapOf<String, ByteArray?>()
 
     fun addDefinition(name: String, bytes: ByteArray) {
         definitions[name] = bytes

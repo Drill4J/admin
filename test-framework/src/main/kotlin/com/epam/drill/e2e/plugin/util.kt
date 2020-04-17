@@ -10,56 +10,56 @@ import java.util.jar.*
 
 @Suppress("UNCHECKED_CAST")
 fun MemoryClassLoader.clazz(
-    classSuffix: String,
+    pluginId: String,
+    suffix: String,
     entries: Set<JarEntry>,
     jarFile: JarFile
-): Class<AgentPart<*, *>> {
-    return this.loadClass(
-        entries
-            .filter { it.name.endsWith(".class") && !it.name.contains("module-info") }
-            .map {
-                val javaClass = jarFile.getInputStream(it).use { istream -> ClassParser(istream, "").parse() }
-                val coreName = it.name.removeSuffix(".class")
-                val regeneratedClass = ClassGen(javaClass)
-                if (javaClass.superclassName == "com.epam.drill.plugin.api.processing.AgentPart") {
-                    javaClass.className = "${javaClass.className}$classSuffix"
-                    regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
-                        if (constant is ConstantUtf8) {
-                            if (!constant.bytes.contains("$coreName$"))
-                                regeneratedClass.constantPool.setConstant(
-                                    idx,
-                                    ConstantUtf8(
-                                        constant.bytes
-                                            .replace(coreName, "$coreName$classSuffix")
-                                            .replace(
-                                                "/coverage/DrillProbeArrayProvider",
-                                                "com/epam/drill/plugins/coverage/DrillProbeArrayProvider$classSuffix"
-                                            )
-                                    )
-                                )
-                        }
-                    }
-                    regeneratedClass.constantPool
-                    regeneratedClass.update()
-                } else if (javaClass.className == "com.epam.drill.plugins.coverage.DrillProbeArrayProvider") {
-                    javaClass.className = "${javaClass.className}$classSuffix"
-                    regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
-                        if (constant is ConstantUtf8) {
-                            if (!constant.bytes.contains("$coreName$"))
-                                regeneratedClass.constantPool.setConstant(
-                                    idx,
-                                    ConstantUtf8(constant.bytes.replace(coreName, "$coreName$classSuffix"))
-                                )
-                        }
-                    }
-                    regeneratedClass.constantPool
-                    regeneratedClass.update()
-                }
-                this.addMainDefinition(javaClass.className, regeneratedClass.javaClass.bytes)
-                javaClass
-            }.find { it.superclassName == "com.epam.drill.plugin.api.processing.AgentPart" }!!.className
-    ) as Class<AgentPart<*, *>>
-}
+): Class<AgentPart<*, *>> = entries.asSequence().filter {
+    it.name.endsWith(".class") && !it.name.contains("module-info")
+}.map { jarEntry ->
+    jarEntry.name.removeSuffix(".class") to jarFile.getInputStream(jarEntry).use { inStream ->
+        ClassParser(inStream, "").parse()
+    }
+}.onEach { (coreName, javaClass) ->
+    val regeneratedClass = ClassGen(javaClass)
+    if (javaClass.superclassName == AgentPart::class.qualifiedName) {
+        javaClass.className = "${javaClass.className}$suffix"
+        val pluginPackage = "com/epam/drill/plugins/$pluginId"
+        regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
+            if (constant is ConstantUtf8 && "$coreName$" !in constant.bytes) {
+                regeneratedClass.constantPool.setConstant(
+                    idx,
+                    ConstantUtf8(
+                        constant.bytes
+                            .replace(coreName, "$coreName$suffix")
+                            .replace( //TODO this is needed only for test2code plugin, get rid of this
+                                "$pluginPackage/DrillProbeArrayProvider",
+                                "$pluginPackage/DrillProbeArrayProvider$suffix"
+                            )
+                    )
+                )
+            }
+        }
+        regeneratedClass.constantPool
+        regeneratedClass.update()
+    } else if (javaClass.className == "com.epam.drill.plugins.$pluginId.DrillProbeArrayProvider") {
+        //TODO this is needed only for test2code plugin, get rid of this
+        javaClass.className = "${javaClass.className}$suffix"
+        regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
+            if (constant is ConstantUtf8 && "$coreName$" !in constant.bytes) {
+                regeneratedClass.constantPool.setConstant(
+                    idx,
+                    ConstantUtf8(constant.bytes.replace(coreName, "$coreName$suffix"))
+                )
+            }
+        }
+        regeneratedClass.constantPool
+        regeneratedClass.update()
+    }
+    addMainDefinition(javaClass.className, regeneratedClass.javaClass.bytes)
+}.map { it.second }
+    .last { it.superclassName == "com.epam.drill.plugin.api.processing.AgentPart" }
+    .let { loadClass(it.className) as Class<AgentPart<*, *>> }
 
 class OutsSock(private val mainChannel: SendChannel<Frame>, private val withDebug: Boolean = false) :
     SendChannel<Frame> by mainChannel {
