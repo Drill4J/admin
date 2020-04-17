@@ -74,7 +74,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             logger.info { "Removed message by key $subscriptionKey" }
             eventStorage.remove(subscriptionKey)
         } else {
-            val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE)
+            val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
             logger.debug { "Sending message to $subscriptionKey" }
             eventStorage[subscriptionKey] = messageForSend
             sessionStorage.sendTo(
