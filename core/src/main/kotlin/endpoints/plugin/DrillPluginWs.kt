@@ -89,15 +89,17 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
         when (event) {
             is Subscribe -> {
-                val subscriptionKey = event.message.toSubscriptionKey(event.destination)
+                val subscription = event.message.parseSubscription()
+                val destination = event.destination
+                val subscriptionKey = destination.toKey(subscription)
                 sessionStorage.subscribe(subscriptionKey, this)
-
                 val message: String? = eventStorage[subscriptionKey]
                 val messageToSend = if (message.isNullOrEmpty()) {
                     WsSendMessage.serializer().stringify(
                         WsSendMessage(
                             type = WsMessageType.MESSAGE,
-                            destination = event.destination
+                            destination = destination,
+                            to = subscription
                         )
                     )
                 } else message
@@ -105,23 +107,25 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                 logger.debug { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
             is Unsubscribe -> {
-                val subscriptionKey = event.message.toSubscriptionKey(event.destination)
+                val subscription = event.message.parseSubscription()
+                val subscriptionKey = event.destination.toKey(subscription)
                 sessionStorage.unsubscribe(subscriptionKey, this)
                 logger.debug { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }
     }
 
-    private fun String.toSubscriptionKey(dest: String): String = when (this) {
-        "" -> dest
-        else -> toSubscription().toKey(dest)
-    }
+    private fun String.toKey(
+        subscription: Subscription?
+    ): String = subscription?.toKey(this) ?: this
 
-    private fun String.toSubscription(): Subscription = (JsonObject.serializer() parse this).let { json ->
-        Subscription.serializer().takeIf {
-            "type" in json
-        } ?: AgentSubscription.serializer()
-    }.parse(this).ensureBuildVersion()
+    private fun String.parseSubscription(): Subscription? = takeIf { it.any() }?.run {
+        (JsonObject.serializer() parse this).let { json ->
+            Subscription.serializer().takeIf {
+                "type" in json
+            } ?: AgentSubscription.serializer()
+        }.parse(this).ensureBuildVersion()
+    }
 
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {
         copy(buildVersion = agentManager.buildVersionByAgentId(agentId))
