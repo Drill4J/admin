@@ -62,8 +62,13 @@ dependencies {
 }
 
 tasks {
-    clean {
+    val cleanData by registering(Delete::class) {
+        group = "build"
         delete("work", "distr")
+    }
+
+    clean {
+        dependsOn(cleanData)
     }
 
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
@@ -82,7 +87,7 @@ tasks {
 
     val testBuildClassesTasks = testBuilds.map { named("${it}Classes") }
 
-    val prepareDist by registering(Copy::class) {
+    val prepareDist by registering(Sync::class) {
         val distZip by testPluginProject.tasks
         from(distZip)
         into(file("distr").resolve("adminStorage"))

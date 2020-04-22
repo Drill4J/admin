@@ -83,7 +83,6 @@ tasks {
 
     clean {
         dependsOn(cleanData)
-
     }
 
     (run) {
