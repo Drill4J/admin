@@ -249,8 +249,6 @@ class Agent(
 
                             is Communication.Plugin.UnloadEvent -> {
                             }
-                            is Communication.Plugin.ToggleEvent -> {
-                            }
                             is Communication.Plugin.ResetEvent -> {
                             }
                             else -> {

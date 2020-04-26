@@ -256,11 +256,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentWsSession.enableAllPlugins(agentId: String) {
         logger.debug { "Enabling all plugins for agent with id $agentId" }
-        getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
-            logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
-            sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true)) {
-                logger.debug { "Enabled plugin $pluginId for agent $agentId" }
-            }
+        getAllInstalledPluginBeanIds(agentId)?.let { pluginIds ->
+            pluginIds.map { pluginId ->
+                logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
+                sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true)) {
+                    logger.debug { "Enabled plugin $pluginId for agent $agentId" }
+                }
+            }.forEach { it.await() }
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
@@ -287,7 +289,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     agentSession(id)?.apply {
                         updateSessionHeader(info)
                         configurePackages(packagesPrefixes(id))//thread sleep
-                        delay(1700L) //quick fix class loading for Spring Boot Starter
+                        delay(500L)
                         triggerClassesSending()
                         sendPlugins(info)
                         enableAllPlugins(id)
