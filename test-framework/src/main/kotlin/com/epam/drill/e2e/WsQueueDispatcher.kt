@@ -132,8 +132,8 @@ class Agent(
         val meta = plugins.receive()
         val pluginBinarys = getPluginBinary()
         block(meta, pluginBinarys)
-        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/agent/load", ""))
-        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, "/agent/plugin/${meta.id}/loaded", ""))
+        sendDelivered("/agent/load")
+        sendDelivered("/agent/plugin/${meta.id}/loaded")
 
     }
 
@@ -149,13 +149,7 @@ class Agent(
     suspend fun getPluginBinary() = pluginBinary.receive()
     suspend fun `get-set-packages-prefixes`(): String {
         val receive = `set-packages-prefixes`.receive()
-        outgoing.send(
-            agentMessage(
-                MessageType.MESSAGE_DELIVERED,
-                "/agent/set-packages-prefixes",
-                ""
-            )
-        )
+        sendDelivered("/agent/set-packages-prefixes")
         return receive
     }
 
@@ -182,13 +176,7 @@ class Agent(
 
 
         outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
-        outgoing.send(
-            agentMessage(
-                MessageType.MESSAGE_DELIVERED,
-                "/agent/load-classes-data",
-                ""
-            )
-        )
+        sendDelivered("/agent/load-classes-data")
         return receive
     }
 
@@ -208,13 +196,7 @@ class Agent(
 
 
         outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
-        outgoing.send(
-            agentMessage(
-                MessageType.MESSAGE_DELIVERED,
-                "/agent/load-classes-data",
-                ""
-            )
-        )
+        sendDelivered("/agent/load-classes-data")
         return receive
     }
 
@@ -246,19 +228,13 @@ class Agent(
                             }
 
                             is Communication.Plugin.DispatchEvent -> plugin.doRawAction((PluginAction.serializer() parse content).message)
-
+                            is Communication.Plugin.ToggleEvent -> sendDelivered(url)
                             is Communication.Plugin.UnloadEvent -> {
                             }
                             is Communication.Plugin.ResetEvent -> {
                             }
                             else -> {
-                                outgoing.send(
-                                    agentMessage(
-                                        MessageType.MESSAGE_DELIVERED,
-                                        url,
-                                        ""
-                                    )
-                                )
+                                sendDelivered(url)
                                 TODO("$url is not implemented yet")
                             }
                         }
@@ -271,5 +247,8 @@ class Agent(
         }
     }
 
+    private suspend fun sendDelivered(url: String, msg: String = "") {
+        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, url, msg))
+    }
 }
 
