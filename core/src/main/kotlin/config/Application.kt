@@ -9,7 +9,9 @@ val Application.drillConfig: ApplicationConfig
     get() = environment.config.config("drill")
 
 val Application.drillDefaultPackages: List<String>
-    get() = drillConfig.property("defaultPackages").getString().split(",", ";", ":").map(String::trim)
+    get() = drillConfig.propertyOrNull("defaultPackages")?.run {
+        getString().split(",", ";", ":").map(String::trim)
+    } ?: emptyList()
 
 val Application.isDevMode: Boolean
     get() = drillConfig.property("devMode").getString().toBoolean()
