@@ -242,7 +242,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     fun adminData(agentId: String): AdminPluginData = adminDataVault.getOrPut(agentId) {
-        AdminPluginData(agentId, store.agentStore(agentId), app.isDevMode)
+        AdminPluginData(agentId, store.agentStore(agentId), app.drillDefaultPackages)
     }
 
     private suspend fun disableAllPlugins(agentId: String) {

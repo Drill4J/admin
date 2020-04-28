@@ -8,6 +8,8 @@ import kotlin.time.*
 val Application.drillConfig: ApplicationConfig
     get() = environment.config.config("drill")
 
+val Application.drillDefaultPackages: List<String>
+    get() = drillConfig.property("defaultPackages").getString().split(",", ";", ":").map(String::trim)
 
 val Application.isDevMode: Boolean
     get() = drillConfig.property("devMode").getString().toBoolean()

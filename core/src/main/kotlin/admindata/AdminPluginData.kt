@@ -6,12 +6,8 @@ import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import mu.*
-import java.io.*
-import java.util.*
-
-const val APP_CONFIG = ".application.properties"
 
 private val logger = KotlinLogging.logger {}
 
@@ -35,7 +31,7 @@ class AdminDataVault {
 class AdminPluginData(
     val agentId: String,
     private val storeClient: StoreClient,
-    private val devMode: Boolean
+    defaultPackages: List<String>
 ) : AdminData {
 
     override val buildManager get() = _buildManager.value
@@ -48,7 +44,7 @@ class AdminPluginData(
 
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
-    private val _packagesPrefixes = atomic(readPackages())
+    private val _packagesPrefixes = atomic(defaultPackages)
 
     suspend fun store(agentBuild: AgentBuild) = agentBuild.run {
         logger.debug { "Saving build ${agentBuild.id}..." }
@@ -117,23 +113,6 @@ class AdminPluginData(
             packagesPrefixes = packagesPrefixes,
             lastBuild = buildManager.lastBuild
         )
-    }
-
-    private fun readPackages(): List<String> = Properties().run {
-        val propertiesFileName = if (devMode) "dev$APP_CONFIG" else "prod$APP_CONFIG"
-        getPackagesProperty(propertiesFileName)
-    }
-
-    private fun Properties.getPackagesProperty(fileName: String): List<String> = try {
-        load(AdminPluginData::class.java.getResourceAsStream("/$fileName"))
-        getProperty("prefixes").split(",")
-    } catch (e: Exception) {
-        when (e) {
-            is IOException -> logger.error(e) { "Could not open properties file; packages prefixes are empty" }
-            is IllegalStateException -> logger.error(e) { "Could not read 'prefixes' property; packages prefixes are empty" }
-            else -> throw e
-        }
-        emptyList()
     }
 }
 

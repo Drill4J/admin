@@ -86,6 +86,8 @@ tasks {
     }
 
     (run) {
+        environment("DRILL_DEVMODE", true)
+        environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
         mustRunAfter(cleanData)
     }
 
