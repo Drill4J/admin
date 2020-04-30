@@ -1,9 +1,11 @@
 package com.epam.drill.admin.servicegroup
 
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.router.*
+import io.ktor.application.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
@@ -17,6 +19,7 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
 
     private val commonStore by instance<CommonStore>()
     private val topicResolver by instance<TopicResolver>()
+    private val app by instance<Application>()
 
     private val _state = atomic(persistentHashMapOf<String, ServiceGroup>())
 
@@ -59,7 +62,9 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun create(groupId: String): ServiceGroup {
         logger.debug { "Creating group $groupId" }
-        return commonStore.client.store(ServiceGroup(id = groupId, name = groupId))
+        return commonStore.client.store(
+            ServiceGroup(id = groupId, name = groupId, packages = app.drillDefaultPackages)
+        )
     }
 
     private suspend fun store(oldValue: ServiceGroup, group: ServiceGroup): ServiceGroup {
