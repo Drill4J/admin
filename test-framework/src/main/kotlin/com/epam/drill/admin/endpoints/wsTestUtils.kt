@@ -5,6 +5,7 @@ import com.epam.drill.common.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.server.testing.*
+import kotlinx.serialization.protobuf.*
 import kotlin.test.*
 
 //TODO move under com.epam.drill.e2e
@@ -17,7 +18,9 @@ fun TestApplicationEngine.requestToken(): String {
 
 fun uiMessage(message: WsReceiveMessage) = (WsReceiveMessage.serializer() stringify message).toTextFrame()
 
-fun agentMessage(type: MessageType, destination: String, message: String) =
-    (Message.serializer() stringify Message(type, destination, message)).toTextFrame()
+fun agentMessage(type: MessageType, destination: String, message: ByteArray= byteArrayOf()) =
+    ProtoBuf.dump(Message.serializer(), Message(type, destination, message)).toByteFrame()
 
 fun String.toTextFrame() = Frame.Text(this)
+
+fun ByteArray.toByteFrame() = Frame.Binary(true, this)

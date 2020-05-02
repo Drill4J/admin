@@ -308,8 +308,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         }?.let { agentPartMsg ->
             agentManager.agentSession(agentInfo.id)?.apply {
                 val agentAction = PluginAction(id, agentPartMsg)
-                val agentPluginMsg = PluginAction.serializer() stringify agentAction
-                sendToTopic<Communication.Plugin.DispatchEvent>(agentPluginMsg)
+                sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
             }
         }
         return result

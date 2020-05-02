@@ -99,10 +99,10 @@ suspend fun AdminTest.loadPlugin(
             out.send(
                 agentMessage(
                     MessageType.PLUGIN_DATA, "",
-                    MessageWrapper.serializer() stringify MessageWrapper(
+                    (MessageWrapper.serializer() stringify MessageWrapper(
                         spykAgentPart.id,
                         DrillMessage("test", content)
-                    )
+                    )).encodeToByteArray()
                 )
             )
         }

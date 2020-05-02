@@ -5,6 +5,7 @@ import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
+import kotlinx.serialization.protobuf.*
 import org.jacoco.core.analysis.*
 import org.jacoco.core.data.*
 
@@ -25,7 +26,7 @@ class AgentBuildManager(
 
     private val _lastBuild = atomic(lastBuild)
 
-    private val _addedClasses = atomic(persistentListOf<String>())
+    private val _addedClasses = atomic(persistentListOf<ByteArray>())
 
     private val _buildMap = atomic(
         builds.associateBy { it.info.version }.toPersistentMap()
@@ -55,13 +56,13 @@ class AgentBuildManager(
         }
     }
 
-    fun addClass(rawData: String) = _addedClasses.update { it + rawData }
+    fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
 
     fun initClasses(buildVersion: String): AgentBuild = run {
-        val addedClasses: List<String> = _addedClasses.getAndUpdate { persistentListOf() }
+        val addedClasses: List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
         val parsedClasses: Map<String, ParsedClass> = addedClasses.asSequence()
-            .map { Base64Class.serializer() parse it }
-            .map { ParsedClass(it.className, decode(it.encodedBytes)) }
+            .map { ProtoBuf.load(ByteClass.serializer(), it) }
+            .map { ParsedClass(it.className, it.bytes) }
             .filter { it.anyCode() }
             .associateBy { it.name }
         val classesBytes: Map<String, ByteArray> = parsedClasses.mapValues { it.value.bytes }
@@ -108,5 +109,3 @@ class AgentBuildManager(
     }[version]!!
 
 }
-
-fun decode(source: String): ByteArray = java.util.Base64.getDecoder().decode(source)
