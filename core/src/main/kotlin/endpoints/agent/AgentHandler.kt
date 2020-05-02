@@ -6,6 +6,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
+import com.epam.drill.admin.common.serialization.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
@@ -13,7 +14,7 @@ import io.ktor.routing.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
-import kotlinx.serialization.cbor.*
+import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -37,7 +38,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private fun ApplicationRequest.retrieveParams(): Pair<AgentConfig, Boolean> {
-        val agentConfig = Cbor.loads(AgentConfig.serializer(), headers[AgentConfigParam]!!)
+        val agentConfig = ProtoBuf.loads(AgentConfig.serializer(), headers[AgentConfigParam]!!)
         val needSync = headers[NeedSyncParam]!!.toBoolean()
         return agentConfig to needSync
     }
@@ -47,13 +48,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         try {
             val adminData = agentManager.adminData(agentInfo.id)
             incoming.consumeEach { frame ->
-                if (frame is Frame.Text) {
-                    val message = Message.serializer() parse frame.readText()
+                if (frame is Frame.Binary) {
+                    val message = ProtoBuf.load(Message.serializer(), frame.readBytes())
                     logger.trace { "Processing message ${message.type} with data '${message.data}'" }
 
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
-                            pd.processPluginData(message.data, agentInfo)
+                            pd.processPluginData(message.data.decodeToString(), agentInfo)
                         }
 
                         MessageType.MESSAGE_DELIVERED -> {
@@ -66,7 +67,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.CLASSES_DATA -> {
-                            adminData.buildManager.addClass(message.data)
+                            ProtoBuf.load(ByteArrayListWrapper.serializer(), message.data).bytesList.forEach {
+                                adminData.buildManager.addClass(it)
+                            }
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {

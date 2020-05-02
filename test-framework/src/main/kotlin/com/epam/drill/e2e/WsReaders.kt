@@ -3,7 +3,7 @@ package com.epam.drill.e2e
 import com.epam.drill.common.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.*
-import kotlinx.serialization.cbor.*
+import kotlinx.serialization.protobuf.*
 
 
 fun wsRequestRequiredParams(
@@ -12,7 +12,7 @@ fun wsRequestRequiredParams(
     return {
         this.addHeader(
             AgentConfigParam,
-            Cbor.dumps(
+            ProtoBuf.dumps(
                 AgentConfig.serializer(),
                 AgentConfig(ag.id, ag.instanceId, ag.buildVersion, ag.serviceGroupId, ag.agentType, ag.buildVersion, ag.needSync)
             )

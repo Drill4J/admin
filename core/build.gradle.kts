@@ -21,6 +21,7 @@ dependencies {
     implementation(drill("common-jvm", drillApiVersion))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$collectionImmutableVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
@@ -125,6 +126,7 @@ tasks {
                 "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI",
                 "-Xuse-experimental=io.ktor.util.InternalAPI",
                 "-Xuse-experimental=kotlin.Experimental",
+                "-Xuse-experimental=kotlin.ExperimentalStdlibApi",
                 "-Xuse-experimental=kotlin.time.ExperimentalTime",
                 "-Xuse-experimental=kotlinx.coroutines.ObsoleteCoroutinesApi",
                 "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"

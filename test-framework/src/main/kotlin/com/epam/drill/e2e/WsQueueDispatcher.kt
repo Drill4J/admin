@@ -11,16 +11,17 @@ import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.io.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
+import kotlinx.serialization.protobuf.*
 import org.apache.bcel.classfile.*
 import kotlin.reflect.full.*
 
@@ -123,15 +124,14 @@ class Agent(
     private val headers = Channel<Int>()
     private val `set-packages-prefixes` = Channel<String>()
     private val `load-classes-data` = Channel<String>()
-    private val plugins = Channel<PluginMetadata>()
+    private val plugins = Channel<PluginBinary>()
     private val pluginBinary = Channel<ByteArray>()
     lateinit var plugin: AgentPart<*, *>
 
     suspend fun getHeaders() = headers.receive()
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
-        val meta = plugins.receive()
-        val pluginBinarys = getPluginBinary()
-        block(meta, pluginBinarys)
+        val (meta, data) = plugins.receive()
+        block(meta, data)
         sendDelivered("/agent/load")
         sendDelivered("/agent/plugin/${meta.id}/loaded")
 
@@ -141,7 +141,7 @@ class Agent(
         outgoing.send(
             agentMessage(
                 MessageType.PLUGIN_DATA, "",
-                MessageWrapper.serializer() stringify data
+                (MessageWrapper.serializer() stringify data).encodeToByteArray()
             )
         )
     }
@@ -156,46 +156,58 @@ class Agent(
     suspend fun `get-load-classes-datas`(vararg classes: String = emptyArray()): String {
         val receive = `load-classes-data`.receive()
 
-        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
 
 
-        classes.forEach {
+        classes.map {
 
             val readBytes = this::class.java.getResourceAsStream("/classes/$it").readBytes()
             val parse = ClassParser(ByteArrayInputStream(readBytes), "").parse()
 
+            ProtoBuf.dump(
+                ByteClass.serializer(), ByteClass(
+                    parse.className.replace(".", "/"),
+                    readBytes
+                )
+            )
+        }.chunked(10).forEach {
             outgoing.send(
                 agentMessage(
-                    MessageType.CLASSES_DATA, "", Base64Class.serializer() stringify Base64Class(
-                        parse.className.replace(".", "/"),
-                        readBytes.encodeBase64()
+                    MessageType.CLASSES_DATA, "", ProtoBuf.dump(
+                        ByteArrayListWrapper.serializer(), ByteArrayListWrapper(it)
                     )
                 )
             )
         }
 
 
-        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, ""))
         sendDelivered("/agent/load-classes-data")
         return receive
     }
 
     suspend fun `get-load-classes-data`(vararg classes: JavaClass = emptyArray()): String {
         val receive = `load-classes-data`.receive()
-        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, "", ""))
-        classes.forEach { bclass ->
+        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
+        classes.map { parse ->
+            ProtoBuf.dump(
+                ByteClass.serializer(), ByteClass(
+                    parse.className.replace(".", "/"),
+                    parse.bytes
+                )
+            )
+        }.chunked(10).forEach {
             outgoing.send(
                 agentMessage(
-                    MessageType.CLASSES_DATA, "", Base64Class.serializer() stringify Base64Class(
-                        bclass.className.replace(".", "/"),
-                        bclass.bytes.encodeBase64()
+                    MessageType.CLASSES_DATA, "", ProtoBuf.dump(
+                        ByteArrayListWrapper.serializer(), ByteArrayListWrapper(it)
                     )
                 )
             )
         }
 
 
-        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, "", ""))
+        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, ""))
         sendDelivered("/agent/load-classes-data")
         return receive
     }
@@ -211,23 +223,37 @@ class Agent(
         }
         incoming.consumeEach {
             when (it) {
-                is Frame.Text -> {
-                    val parseJson = json.parseJson(it.readText()) as JsonObject
-                    val url = parseJson[Message::destination.name]!!.content
-                    val content = parseJson[Message::data.name]!!.content
+                is Frame.Binary -> {
+
+
+                    val load = ProtoBuf.load(Message.serializer(), it.readBytes())
+                    val url = load.destination
+                    val content = load.data
                     if (agentStreamDebug)
-                        println("AGENT $agentId IN: $parseJson")
+                        println("AGENT $agentId IN: $load")
 
                     app.launch {
                         when (mapw[url]) {
-                            is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content)
-                            is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content)
-                            is Communication.Agent.PluginLoadEvent -> plugins.send(PluginMetadata.serializer() parse content)
+                            is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content.decodeToString())
+                            is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content.decodeToString())
+                            is Communication.Agent.PluginLoadEvent -> plugins.send(
+                                ProtoBuf.load(
+                                    PluginBinary.serializer(),
+                                    content
+                                )
+                            )
                             is Communication.Agent.ChangeHeaderNameEvent -> {
                                 headers.send(0)
                             }
 
-                            is Communication.Plugin.DispatchEvent -> plugin.doRawAction((PluginAction.serializer() parse content).message)
+                            is Communication.Plugin.DispatchEvent -> {
+                                plugin.doRawAction(
+                                    (ProtoBuf.load(
+                                        PluginAction.serializer(),
+                                        content
+                                    )).message
+                                )
+                            }
                             is Communication.Plugin.ToggleEvent -> sendDelivered(url)
                             is Communication.Plugin.UnloadEvent -> {
                             }
@@ -240,15 +266,12 @@ class Agent(
                         }
                     }
                 }
-                is Frame.Binary -> {
-                    pluginBinary.send(it.readBytes())
-                }
             }
         }
     }
 
-    private suspend fun sendDelivered(url: String, msg: String = "") {
-        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, url, msg))
+    private suspend fun sendDelivered(url: String) {
+        outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, url))
     }
 }
 

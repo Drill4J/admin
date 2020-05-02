@@ -10,6 +10,7 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
+import kotlinx.serialization.protobuf.*
 import kotlin.reflect.*
 import kotlin.time.*
 import kotlin.time.TimeSource.*
@@ -82,11 +83,17 @@ open class AgentWsSession(
         async(topicName, callback) {
             @Suppress("UNCHECKED_CAST")
             val kClass = message::class as KClass<Any>
-            val text = Message.serializer() stringify Message(
-                MessageType.MESSAGE, topicName,
-                if (message is String) message else kClass.serializer() stringify message
+            val frame = ProtoBuf.dump(
+                Message(
+                    MessageType.MESSAGE, topicName,
+                    if (message is String) {
+                        message.encodeToByteArray()
+                    } else {
+                        ProtoBuf.dump(kClass.serializer(), message)
+                    }
+                )
             )
-            send(text)
+            send(Frame.Binary(false, frame))
         }
     }
 

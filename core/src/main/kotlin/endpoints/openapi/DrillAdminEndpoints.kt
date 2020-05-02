@@ -53,7 +53,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                                 Message.serializer() stringify Message(
                                     MessageType.MESSAGE,
                                     "/plugins/unload",
-                                    pluginId
+                                    pluginId.encodeToByteArray()
                                 )
                             )
                             logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
