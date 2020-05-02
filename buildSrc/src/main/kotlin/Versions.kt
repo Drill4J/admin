@@ -18,7 +18,7 @@ val koduxVersion = "0.1.8"
 
 val xodusVersion = "1.3.91"
 
-val collectionImmutableVersion = "0.3.1"
+val collectionImmutableVersion = "0.3.2"
 
 val junitVersion = "5.5.2"
 
