@@ -72,6 +72,7 @@ class PluginWsTest {
         ipAddress = "1.7.2.23",
         environment = "test",
         description = "test",
+        agentVersion = "0.0.0-test",
         buildVersion = buildVersion,
         agentType = AgentType.JAVA
     )

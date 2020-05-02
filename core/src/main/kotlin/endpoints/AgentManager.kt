@@ -387,6 +387,7 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     serviceGroup = serviceGroupId,
     environment = "",
     description = "",
+    agentVersion = agentVersion,
     buildVersion = buildVersion,
     agentType = agentType
 )
