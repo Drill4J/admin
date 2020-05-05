@@ -7,7 +7,9 @@ import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.*
+import kotlinx.serialization.protobuf.*
 import mu.*
+import kotlin.time.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -50,23 +52,29 @@ class AdminPluginData(
         logger.debug { "Saving build ${agentBuild.id}..." }
         val buildData = AgentBuildData(
             id = id,
-            agentId = agentId,
-            version = info.version,
+            agentId = id.agentId,
             parentVersion = info.parentVersion,
             detectedAt = detectedAt,
-            methodChanges = info.methodChanges,
-            classes = info.classesBytes.map { (name, bytes) ->
-                AgentBuildClass(
-                    name = name,
-                    methods = agentBuild.info.javaMethods[name] ?: emptyList(),
-                    bytes = bytes
+            codeData = ProtoBuf.dump(
+                CodeData.serializer(), CodeData(
+                    classBytes = info.classesBytes,
+                    methods = info.javaMethods,
+                    methodChanges = info.methodChanges.map.map {
+                        DiffTypeMethods(
+                            type = it.key,
+                            methods = it.value
+                        )
+                    }
                 )
-            }
+            )
         )
-        storeClient.executeInAsyncTransaction {
-            store(toSummary())
-            store(buildData)
-        }
+        measureTime {
+            storeClient.executeInAsyncTransaction {
+                store(toSummary())
+                store(buildData)
+            }
+        }.let { duration -> logger.debug { "Saved build ${agentBuild.id} in $duration." } }
+
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
@@ -77,16 +85,17 @@ class AdminPluginData(
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {
+                val codeData = ProtoBuf.load(CodeData.serializer(), codeData)
                 AgentBuild(
                     id = id,
                     agentId = agentId,
                     detectedAt = detectedAt,
                     info = BuildInfo(
-                        version = version,
+                        version = id.version,
                         parentVersion = parentVersion,
-                        methodChanges = methodChanges,
-                        javaMethods = classes.associate { it.name to it.methods },
-                        classesBytes = classes.associate { it.name to it.bytes }
+                        methodChanges = MethodChanges(codeData.methodChanges.associate { it.type to it.methods }),
+                        javaMethods = codeData.methods,
+                        classesBytes = codeData.classBytes
                     )
                 )
             }

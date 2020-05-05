@@ -25,11 +25,26 @@ data class AgentBuildId(
 data class AgentBuildData(
     @Id val id: AgentBuildId,
     val agentId: String,
-    val version: String,
     val parentVersion: String,
     val detectedAt: Long,
-    val methodChanges: MethodChanges,
-    val classes: List<AgentBuildClass>
+    val codeData: ByteArray
+) {
+    override fun equals(other: Any?) = other is AgentBuildData && id == other.id
+
+    override fun hashCode() = id.hashCode()
+}
+
+@Serializable
+data class CodeData(
+    val classBytes: Map<String, ByteArray>,
+    val methods: Map<String, Methods> = emptyMap(),
+    val methodChanges: List<DiffTypeMethods> = emptyList()
+)
+
+@Serializable
+data class DiffTypeMethods(
+    val type: DiffType,
+    val methods: List<Method> = emptyList()
 )
 
 @Serializable
