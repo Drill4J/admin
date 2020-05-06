@@ -107,7 +107,6 @@ class IncrementalCache {
     )
 }
 
-
 class ParsedClass(
     val name: String,
     val bytes: ByteArray
@@ -124,22 +123,12 @@ class ParsedClass(
             ownerClass = name,
             name = method.name,
             desc = method.signature,
-            hash = computeHash(method.code) ?: ""
+            hash = (method.code?.codeToString() ?: "").crc64()
         )
     }.toList()
 }
 
-private fun computeHash(code: Code?) = code?.run {
-    crc64(
-        Utility.codeToString(
-            code.code,
-            code.constantPool,
-            0,
-            code.length,
-            false
-        )
-    )
-}
+private fun Code.codeToString(): String = Utility.codeToString(code, constantPool, 0, length, false)
 
 private val Method.sign get() = "$name$desc"
 
