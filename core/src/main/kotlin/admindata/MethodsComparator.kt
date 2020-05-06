@@ -124,7 +124,7 @@ class ParsedClass(
             ownerClass = name,
             name = method.name,
             desc = method.signature,
-            hash = computeHash(method.code)
+            hash = computeHash(method.code) ?: ""
         )
     }.toList()
 }

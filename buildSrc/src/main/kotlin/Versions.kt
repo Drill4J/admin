@@ -1,4 +1,4 @@
-val drillApiVersion = "0.5.0-40"
+val drillApiVersion = "0.5.0-41"
 
 val drillLogger = "0.1.2"
 
