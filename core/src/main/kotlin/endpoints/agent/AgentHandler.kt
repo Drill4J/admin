@@ -12,6 +12,8 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.utils.io.*
+import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
@@ -54,7 +56,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
-                            pd.processPluginData(message.data.decodeToString(), agentInfo)
+                            withContext(Dispatchers.IO) {
+                                pd.processPluginData(message.data.decodeToString(), agentInfo)
+                            }
                         }
 
                         MessageType.MESSAGE_DELIVERED -> {
@@ -73,10 +77,12 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.FINISH_CLASSES_TRANSFER -> {
-                            val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
-                            topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
-                            adminData.store(agentBuild)
-                            logger.debug { "Finished classes transfer for $agentDebugStr" }
+                            withContext(Dispatchers.IO) {
+                                val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
+                                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
+                                adminData.store(agentBuild)
+                                logger.debug { "Finished classes transfer for $agentDebugStr" }
+                            }
                         }
 
                         else -> {
