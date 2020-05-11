@@ -23,7 +23,7 @@ class SessionStorage {
         destination: String,
         message: Any,
         type: WsMessageType = WsMessageType.MESSAGE
-    ): Unit = sendTo(
+    ): Set<WebSocketSession> = sendTo(
         destination = destination,
         messageProvider = { message.toWsMessageAsString(destination, type) }
     )
@@ -31,21 +31,19 @@ class SessionStorage {
     suspend fun sendTo(
         destination: String,
         messageProvider: () -> String
-    ): Unit = sessions.first[destination]
-        .takeIf { it.any() }
-        ?.let { sessions ->
+    ): Set<WebSocketSession> = sessions.first[destination].apply {
+        if (any()) {
             val messageStr = messageProvider()
-            sessions.forEach {
-                it.send(destination, messageStr)
-            }
-        } ?: logger.warn { "No subscription for '$destination'" }
+            forEach { it.send(destination, messageStr) }
+        }
+    }
 
     private suspend fun WebSocketSession.send(
         destination: String,
         messageStr: String
     ): Unit = try {
         send(messageStr)
-        logger.debug { "Sent $messageStr through admin socket" }
+        logger.trace { "Sent $messageStr through admin socket" }
     } catch (ex: Exception) {
         when (ex) {
             is ClosedSendChannelException,

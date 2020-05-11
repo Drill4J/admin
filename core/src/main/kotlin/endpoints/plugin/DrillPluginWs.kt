@@ -71,11 +71,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
         //TODO replace with normal event removal
         if (message == "") {
-            logger.info { "Removed message by key $subscriptionKey" }
+            logger.trace { "Removed message by key $subscriptionKey" }
             eventStorage.remove(subscriptionKey)
         } else {
             val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
-            logger.debug { "Sending message to $subscriptionKey" }
+            logger.trace { "Sending message to $subscriptionKey" }
             eventStorage[subscriptionKey] = messageForSend
             sessionStorage.sendTo(
                 destination = subscriptionKey,
@@ -85,7 +85,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     }
 
     private suspend fun WebSocketSession.consume(event: WsReceiveMessage) {
-        logger.debug { "Receiving event $event" }
+        logger.trace { "Receiving event $event" }
 
         when (event) {
             is Subscribe -> {
@@ -104,13 +104,13 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                     )
                 } else message
                 send(messageToSend)
-                logger.debug { "Subscribed to $subscriptionKey, ${toDebugString()}" }
+                logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
             is Unsubscribe -> {
                 val subscription = event.message.parseSubscription()
                 val subscriptionKey = event.destination.toKey(subscription)
                 sessionStorage.unsubscribe(subscriptionKey, this)
-                logger.debug { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
+                logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }
     }
