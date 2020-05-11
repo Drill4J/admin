@@ -60,8 +60,8 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 val classMap: Map<String, ByteArray> = bcelClasses.associate {
                     it.className.replace(".", "/") to it.bytes
                 }
-                assertEquals(null, ui.getAgent()?.status)
-                assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
+                val agent = ui.getAgent() ?: ui.getAgent()
+                assertEquals(AgentStatus.ONLINE, agent?.status)
                 assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
                 callAsync(asyncEngine.context) {
                     loadPlugin(
