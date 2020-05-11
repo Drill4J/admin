@@ -1,7 +1,6 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.builds.*
-import java.io.*
 import java.util.*
 import java.util.concurrent.*
 
@@ -12,14 +11,7 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
         ags: AgentWrap = AgentWrap(
             id = UUID.randomUUID().toString().replace("-", ""),
             instanceId = "1",
-            buildVersion = run {
-                val map =
-                    File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
-                        .filter { it.extension == "class" }.map {
-                            it.readBytes().sum()
-                        }
-                map.sum().toString()
-            },
+            buildVersion = B::class.objectInstance!!.version,
             needSync = true,
             serviceGroupId = serviceGroup
         ),
@@ -40,17 +32,10 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
     inline fun <reified B : Build> reconnect(
         serviceGroup: String = "",
         ags: AgentWrap = AgentWrap(
-            agents.keys.first(),
-            "1",
-            run {
-                val map =
-                    File("./build/classes/java/${B::class.objectInstance!!.name}").walkTopDown()
-                        .filter { it.extension == "class" }.map {
-                            it.readBytes().sum()
-                        }
-                map.sum().toString()
-            },
-            serviceGroup
+            id = agents.keys.first(),
+            instanceId = "1",
+            buildVersion = B::class.objectInstance!!.version,
+            serviceGroupId = serviceGroup
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {
