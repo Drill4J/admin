@@ -75,15 +75,19 @@ class UIEVENTLOOP(
                             when (type) {
                                 is WsRoutes.Agents -> glob.run {
                                     send(GroupedAgentsDto.serializer() parse content)
+                                    println("Processed $type")
                                 }
                                 is WsRoutes.Agent -> cs.getValue(type.agentId).agentChannel.run {
                                     send(response?.run { AgentInfoDto.serializer() parse content })
+                                    println("Processed $type")
                                 }
                                 is WsRoutes.AgentBuilds -> cs.getValue(type.agentId).buildsChannel.run {
                                     send(response?.run { BuildSummaryDto.serializer().list parse content })
+                                    println("Processed $type")
                                 }
                                 is WsRoutes.AgentPlugins -> cs.getValue(type.agentId).agentPluginInfoChannel.run {
                                     send(response?.run { PluginDto.serializer().set parse content })
+                                    println("Processed $type")
                                 }
                             }
                         }
@@ -95,7 +99,6 @@ class UIEVENTLOOP(
                 else -> throw RuntimeException(" read not FRAME.TEXT frame.")
             }
         }
-
     }
 }
 
