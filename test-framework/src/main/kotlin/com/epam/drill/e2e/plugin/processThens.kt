@@ -60,9 +60,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 val classMap: Map<String, ByteArray> = bcelClasses.associate {
                     it.className.replace(".", "/") to it.bytes
                 }
-                while (ui.getAgent() != null) {
-                    //do nothing
-                }
+                assertEquals(null, ui.getAgent()?.status)
                 assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
                 assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
                 callAsync(asyncEngine.context) {
