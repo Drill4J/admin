@@ -65,25 +65,29 @@ class AgentBuildManager(
             .map { ParsedClass(it.className, it.bytes) }
             .filter { it.anyCode() }
             .associateBy { it.name }
-        val classesBytes: Map<String, ByteArray> = parsedClasses.mapValues { it.value.bytes }
-        val currentMethods: Map<String, List<Method>> = parsedClasses.mapValues { it.value.methods() }
+        val bundleCoverage = parsedClasses.mapValues { it.value.bytes }.bundle()
+        val bundleClasses = bundleCoverage.packages.flatMap { it.classes }.associate { c ->
+            c.name to c.methods.map { m -> m.name to m.desc }.toSet()
+        }
+        val filteredClasses = parsedClasses.filterKeys { it in bundleClasses.keys }
+        val classBytes: Map<String, ByteArray> = filteredClasses.mapValues {
+            it.value.bytes
+        }
+        val currentMethods: Map<String, List<Method>> = filteredClasses.mapValues { (_, c) ->
+            val allowedMethods = bundleClasses.getValue(c.name)
+            c.methods().filter { (it.name to it.desc) in allowedMethods }
+        }
         val build = updateAndGet(buildVersion) {
             copy(
                 info = info.copy(
                     javaMethods = currentMethods,
-                    classesBytes = classesBytes
+                    classesBytes = classBytes
                 )
             )
         }
         val parentVersion = build.info.parentVersion
         val prevMethods = buildMap[parentVersion]?.info?.javaMethods ?: mapOf()
-        val coverageBuilder = CoverageBuilder()
-        val analyzer = Analyzer(ExecutionDataStore(), coverageBuilder)
-        //TODO remove jacoco usage
-        classesBytes.map { (className, bytes) ->
-            analyzer.analyzeClass(bytes, className)
-        }
-        val bundleCoverage = coverageBuilder.getBundle("")
+        bundleCoverage.packages.flatMap { it.classes }
         updateAndGet(buildVersion) {
             copy(
                 info = info.copy(
@@ -109,3 +113,10 @@ class AgentBuildManager(
     }[version]!!
 
 }
+
+fun Map<String, ByteArray>.bundle(): IBundleCoverage = CoverageBuilder().also { builder ->
+    val analyzer = Analyzer(ExecutionDataStore(), builder)
+    forEach { (className, bytes) ->
+        analyzer.analyzeClass(bytes, className)
+    }
+}.getBundle("")
