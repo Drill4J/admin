@@ -9,6 +9,7 @@ import com.epam.drill.testdata.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
+import kotlinx.serialization.json.*
 import java.io.*
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -45,8 +46,12 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
             val globLaunch = application.launch(handler) {
                 watcher?.invoke(asyncEngine, glob)
             }
-            val pluginMeta = (PluginMetadata.serializer() parse
-                    File(System.getProperty("plugin.config.path") ?: "./../plugin_config.json").readText())
+
+            val nonStrictJson = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true))
+            val pluginMeta = nonStrictJson.parse(
+                PluginMetadata.serializer(),
+                File(System.getProperty("plugin.config.path") ?: "./../plugin_config.json").readText()
+            )
             val pluginId = pluginMeta.id
             coroutineScope {
                 cont.agents.map { (_, agentAsyncStruct) ->
