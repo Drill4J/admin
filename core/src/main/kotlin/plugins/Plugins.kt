@@ -13,7 +13,8 @@ class Plugins(private val plugins: MutableMap<String, Plugin> = HashMap()) : Map
 data class Plugin(
     val pluginClass: Class<AdminPluginPart<*>>,
     val agentPartFiles: AgentPartFiles,
-    val pluginBean: PluginMetadata
+    val pluginBean: PluginMetadata,
+    val version: String = ""
 )
 
 data class AgentPartFiles(

@@ -16,6 +16,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websockets.*
 import com.epam.kodux.*
 import io.ktor.application.*
@@ -51,6 +52,7 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<InfoController>() with eagerSingleton { InfoController(kodein) }
         bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
+        bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
         bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
         bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }

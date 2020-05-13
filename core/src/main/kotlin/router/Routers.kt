@@ -13,10 +13,14 @@ private const val SERVICE_GROUP = "Service Group Endpoints"
 object Routes {
 
     @Location("/api")
-    object Api {
+    class Api {
         @Group(SYSTEM)
         @Location("/login")
         class Login
+
+        @Group(SYSTEM)
+        @Location("/version")
+        class Version
 
         @Group(AGENT)
         @Location("/agents")

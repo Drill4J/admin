@@ -21,7 +21,7 @@ private val logger = KotlinLogging.logger {}
 
 class PluginLoaderService(
     override val kodein: Kodein,
-    val workDir: File = File(getenv("DRILL_HOME"), "work")
+    private val workDir: File = File(getenv("DRILL_HOME"), "work")
 ) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val application by instance<Application>()
@@ -70,8 +70,9 @@ class PluginLoaderService(
 
                             if (configEntry != null) {
                                 val configText = jar.getInputStream(configEntry).reader().readText()
-                                @Suppress("EXPERIMENTAL_API_USAGE")
-                                val config = Json.parse(PluginMetadata.serializer(), configText)
+                                val configJson = nonStrictJson.parseJson(configText) as JsonObject
+                                val version = configJson["version"]?.contentOrNull ?: ""
+                                val config = nonStrictJson.fromJson(PluginMetadata.serializer(), configJson)
                                 val pluginId = config.id
 
                                 if (pluginId !in plugins.keys) {
@@ -85,16 +86,17 @@ class PluginLoaderService(
 
                                         if (adminPartClass != null) {
                                             val dp = Plugin(
-                                                adminPartClass,
-                                                AgentPartFiles(
+                                                pluginClass = adminPartClass,
+                                                agentPartFiles = AgentPartFiles(
                                                     agentFile,
                                                     jar.extractPluginEntry(pluginId, "native_plugin.dll"),
                                                     jar.extractPluginEntry(pluginId, "libnative_plugin.so")
                                                 ),
-                                                config
+                                                pluginBean = config,
+                                                version = version
                                             )
                                             plugins[pluginId] = dp
-                                            logger.info { "Plugin '$pluginId' was loaded successfully." }
+                                            logger.info { "Plugin '$pluginId' loaded, version '$version'" }
                                         } else {
                                             logger.warn { "Admin Plugin API class was not found for $pluginId" }
                                         }
@@ -143,3 +145,5 @@ class PluginLoaderService(
 
 
 }
+
+private val nonStrictJson = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true))

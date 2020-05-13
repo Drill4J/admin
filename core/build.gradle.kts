@@ -86,6 +86,15 @@ tasks {
         dependsOn(cleanData)
     }
 
+    processResources {
+        from(provider {
+            file("$buildDir/tmp/admin.version").apply {
+                parentFile.mkdirs()
+                writeText("${rootProject.version}")
+            }
+        }) { into("META-INF/drill") }
+    }
+
     (run) {
         environment("DRILL_DEVMODE", true)
         environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
