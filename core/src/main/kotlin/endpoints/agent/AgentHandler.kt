@@ -2,17 +2,19 @@
 
 package com.epam.drill.admin.endpoints.agent
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.config.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
-import io.ktor.utils.io.*
 import io.ktor.utils.io.CancellationException
+import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.*
@@ -33,14 +35,22 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         app.routing {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = call.request.retrieveParams()
-                val agentInfo = agentManager.attach(agentConfig, needSync, this)
-                createWsLoop(agentInfo, agentConfig.instanceId)
+                val frameType = when (agentConfig.agentType) {
+                    AgentType.NODEJS -> FrameType.TEXT
+                    else -> FrameType.BINARY
+                }
+                val agentSession = AgentWsSession(this, frameType, application.agentSocketTimeout)
+                val agentInfo = agentManager.attach(agentConfig, needSync, agentSession)
+                agentSession.createWsLoop(agentInfo, agentConfig.instanceId)
             }
         }
     }
 
     private fun ApplicationRequest.retrieveParams(): Pair<AgentConfig, Boolean> {
-        val agentConfig = ProtoBuf.loads(AgentConfig.serializer(), headers[AgentConfigParam]!!)
+        val configStr = headers[AgentConfigParam]!!
+        val agentConfig = if (configStr.startsWith('{')) {
+            AgentConfig.serializer() parse configStr
+        } else ProtoBuf.loads(AgentConfig.serializer(), configStr)
         val needSync = headers[NeedSyncParam]!!.toBoolean()
         return agentConfig to needSync
     }
@@ -50,19 +60,22 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         try {
             val adminData = agentManager.adminData(agentInfo.id)
             incoming.consumeEach { frame ->
-                if (frame is Frame.Binary) {
-                    val message = ProtoBuf.load(Message.serializer(), frame.readBytes())
-                    logger.trace { "Processing message ${message.type} with data '${message.data}'" }
+                when(frame) {
+                    is Frame.Binary -> BinaryMessage(ProtoBuf.load(Message.serializer(), frame.readBytes()))
+                    is Frame.Text -> JsonMessage.serializer() parse frame.readText()
+                    else -> null
+                }?.let { message ->
+                    logger.trace { "Processing message $message." }
 
                     when (message.type) {
                         MessageType.PLUGIN_DATA -> {
                             withContext(Dispatchers.IO) {
-                                pd.processPluginData(message.data.decodeToString(), agentInfo)
+                                pd.processPluginData(message.text, agentInfo)
                             }
                         }
 
                         MessageType.MESSAGE_DELIVERED -> {
-                            subscribers[message.destination]?.received(message.data)
+                            subscribers[message.destination]?.received(message)
                         }
 
                         MessageType.START_CLASSES_TRANSFER -> {
@@ -71,7 +84,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.CLASSES_DATA -> {
-                            ProtoBuf.load(ByteArrayListWrapper.serializer(), message.data).bytesList.forEach {
+                            ProtoBuf.load(ByteArrayListWrapper.serializer(), message.bytes).bytesList.forEach {
                                 adminData.buildManager.addClass(it)
                             }
                         }
