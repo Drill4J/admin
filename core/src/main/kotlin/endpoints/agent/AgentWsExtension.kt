@@ -1,6 +1,6 @@
 package com.epam.drill.admin.endpoints.agent
 
-import com.epam.drill.admin.config.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
@@ -10,17 +10,17 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
+import kotlinx.serialization.modules.*
 import kotlinx.serialization.protobuf.*
-import kotlin.reflect.*
 import kotlin.time.*
 import kotlin.time.TimeSource.*
 
 
-fun Route.agentWebsocket(path: String, protocol: String? = null, handler: suspend AgentWsSession.() -> Unit) {
-    webSocket(path, protocol) {
-        handler(AgentWsSession(this, application.agentSocketTimeout))
-    }
-}
+fun Route.agentWebsocket(
+    path: String,
+    protocol: String? = null,
+    handler: suspend DefaultWebSocketServerSession.() -> Unit
+) = webSocket(path, protocol, handler)
 
 class WsAwaitException(message: String) : RuntimeException(message)
 
@@ -68,9 +68,10 @@ class WsDeferred(
 }
 
 open class AgentWsSession(
-    private val session: DefaultWebSocketServerSession,
+    private val session: WebSocketServerSession,
+    val frameType: FrameType,
     private val timeout: Duration
-) : DefaultWebSocketServerSession by session {
+) : WebSocketServerSession by session {
 
     val subscribers get() = _subscribers.value
 
@@ -81,29 +82,32 @@ open class AgentWsSession(
         noinline callback: suspend (Any) -> Unit = {}
     ): WsDeferred = TopicUrl::class.topicUrl().let { topicName ->
         async(topicName, callback) {
-            @Suppress("UNCHECKED_CAST")
-            val kClass = message::class as KClass<Any>
-            val frame = ProtoBuf.dump(
-                Message(
-                    MessageType.MESSAGE, topicName,
-                    if (message is String) {
-                        message.encodeToByteArray()
-                    } else {
-                        ProtoBuf.dump(kClass.serializer(), message)
-                    }
+            when (frameType) {
+                FrameType.BINARY -> Frame.Binary(
+                    fin = false,
+                    data = ProtoBuf.dump(
+                        Message(
+                            MessageType.MESSAGE,
+                            topicName,
+                            data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(
+                                ProtoBuf.context.getContextualOrDefault(message),
+                                message
+                            )
+                        )
+                    )
                 )
-            )
-            send(Frame.Binary(false, frame))
-        }
-    }
-
-    suspend inline fun <reified TopicUrl : Any> sendBinary(
-        meta: Any = "",
-        data: ByteArray
-    ): WsDeferred {
-        sendToTopic<TopicUrl>(meta)
-        return async(TopicUrl::class.topicUrl()) {
-            send(Frame.Binary(false, data))
+                FrameType.TEXT -> Frame.Text(
+                    JsonMessage.serializer() stringify JsonMessage(
+                        type = MessageType.MESSAGE,
+                        destination = topicName,
+                        text = message as? String ?: json.stringify(
+                            json.context.getContextualOrDefault(message),
+                            message
+                        )
+                    )
+                )
+                else -> null
+            }?.let { send(it) }
         }
     }
 
