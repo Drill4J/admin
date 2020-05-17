@@ -1,8 +1,7 @@
 name: Build & publish drill artifacts
 on:
-  push:
-    tags:
-      - 'v[0-9]*.[0-9]*.[0-9]*'
+  release:
+    types: [published]
 
 jobs:
   build_and_publish:
@@ -10,19 +9,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Check
-        run: gradle test
-      - name: Publish
-        run: |
-          gradle -si publish
+      - id: cache-gradle
+        uses: actions/cache@v1
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Test
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: -s test
+      - name: Publish to Maven Repo
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: -s publish
         env:
           BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
           BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
       - name: Publish to DockerHub
-        run: |
-          gradle -si jib \
-          -Djib.to.auth.username=${DRILL_USERNAME} \
-          -Djib.to.auth.password=${DRILL_PASSWORD}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: -s jib
         env:
-          DRILL_USERNAME: ${{ secrets.DRILL_USERNAME }}
-          DRILL_PASSWORD: ${{ secrets.DRILL_PASSWORD }}
+          GRADLE_OPTS: >
+            -Djib.to.auth.username=${{ secrets.DRILL_USERNAME }}
+            -Djib.to.auth.password=${{ secrets.DRILL_PASSWORD }}
