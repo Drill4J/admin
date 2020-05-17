@@ -1,0 +1,47 @@
+name: Release
+on:
+  push:
+    branches:
+      - 'develop'
+      - 'release/*'
+      - 'feature/EPMDJ-2643-release-workflows'
+    paths:
+      - '**/src/main/**'
+      - '**.gradle.kts'
+      - 'gradle.properties'
+
+jobs:
+
+  stuff:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo '${{ toJSON(github.event) }}'
+  release:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 20
+      - run: git fetch
+      - id: semver_kind
+        uses: actions/github-script@0.9.0
+        with:
+          result-encoding: string
+          script: |
+            const branch = '${{ github.ref }}'.substring(11);
+            return branch.startsWith('release/') ? 'patch' : 'prerelease';
+      - name: Next SemVer
+        id: next_semver
+        uses: Drill4J/semver-tag-action@v0.1.0
+        with:
+          type: ${{ steps.semver_kind.outputs.result }}
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          tag_name: ${{ steps.next_semver.outputs.tag }}
+          release_name: ${{ steps.next_semver.outputs.tag }}
+          prerelease: ${{ steps.semver_kind.outputs.result == 'prerelease' }}
