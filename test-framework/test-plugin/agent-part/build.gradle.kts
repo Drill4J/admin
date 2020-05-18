@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm")
-    `kotlinx-serialization`
+    kotlin("plugin.serialization")
 }
 
 repositories {

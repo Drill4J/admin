@@ -1,10 +1,10 @@
 plugins {
-    `kotlin-platform-jvm`
-    `kotlinx-serialization`
+    kotlin("jvm")
+    kotlin("plugin.serialization")
     application
     `maven-publish`
-    id("com.google.cloud.tools.jib") version "1.7.0"
-    id("com.github.johnrengelman.shadow") version "5.1.0"
+    id("com.google.cloud.tools.jib")
+    id("com.github.johnrengelman.shadow")
 }
 
 dependencies {

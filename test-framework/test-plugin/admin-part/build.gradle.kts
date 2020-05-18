@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.*
 
 plugins {
     kotlin("jvm")
-    `kotlinx-serialization`
+    kotlin("plugin.serialization")
 }
 
 repositories {
