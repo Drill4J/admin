@@ -1,5 +1,23 @@
 rootProject.name = "admin"
 
+pluginManagement {
+    val kotlinVersion: String by extra
+    val drillGradlePluginVersion: String by extra
+    plugins {
+        kotlin("jvm") version kotlinVersion
+        kotlin("plugin.serialization") version kotlinVersion
+        id("com.epam.drill.version.plugin") version drillGradlePluginVersion
+        id("com.google.cloud.tools.jib") version "1.7.0"
+        id("com.github.johnrengelman.shadow") version "5.1.0"
+
+        repositories {
+            gradlePluginPortal()
+            maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
+        }
+
+    }
+}
+
 include(":core")
 include(":test-framework")
 include(":test-framework:test-data")

@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.*
 
 plugins {
-    `kotlin-platform-jvm`
-    `kotlinx-serialization`
+    kotlin("jvm")
+    kotlin("plugin.serialization")
     `maven-publish`
 }
 
