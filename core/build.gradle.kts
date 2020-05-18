@@ -48,6 +48,10 @@ val appJvmArgs = listOf(
     "-XX:MaxGCPauseMillis=100"
 )
 
+java {
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 application {
     mainClassName = appMainClassName
     applicationDefaultJvmArgs = appJvmArgs
