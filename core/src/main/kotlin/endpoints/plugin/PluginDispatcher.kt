@@ -278,10 +278,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     adminActionResult.toStatusResponse()
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
-                else -> StatusResponse(
-                    HttpStatusCode.Conflict.value,
-                    "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}"
-                )
+                else -> "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}".run {
+                    statusResponse(HttpStatusCode.Conflict.value)
+                }
             }
         }
         return HttpStatusCode.OK to statusesResponse
@@ -316,7 +315,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 }
 
 private fun Any.toStatusResponse(): StatusResponse = when (this) {
-    is StatusMessage -> StatusResponse(code, message)
+    is StatusMessage -> message.statusResponse(code)
     is String -> StatusResponse(HttpStatusCode.OK.value, this)
     Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
     else -> StatusResponse(HttpStatusCode.OK.value, this)
