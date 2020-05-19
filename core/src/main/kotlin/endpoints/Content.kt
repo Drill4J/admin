@@ -10,3 +10,8 @@ data class StatusResponse(
     val code: Int,
     @ContextualSerialization val data: Any
 )
+
+fun String.statusResponse(code: Int) = StatusResponse(
+    code = code,
+    data = ErrorResponse(this)
+)

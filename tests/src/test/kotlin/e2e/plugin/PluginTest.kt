@@ -29,7 +29,7 @@ class PluginTest : E2EPluginTest() {
             uiWatcher { channel ->
                 waitForMultipleAgents(channel)
                 println("1")
-                val statusResponse = StatusResponse(StatusCodes.OK, "act")
+                val statusResponse = "act".statusResponse(StatusCodes.OK)
                 val statusesResponse: List<StatusResponse> =
                     listOf(statusResponse, statusResponse, statusResponse)
                 pluginAction("myActionForAllAgents", serviceGroup) { status, content ->
