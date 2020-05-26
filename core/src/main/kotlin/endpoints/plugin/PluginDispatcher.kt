@@ -270,7 +270,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         action: String
     ): Pair<HttpStatusCode, Any> {
         val sessionId = UUID.randomUUID().toString()
-        val statusesResponse: List<StatusResponse> = agents.mapNotNull { entry: AgentEntry ->
+        val statusesResponse: List<WithStatusCode> = agents.mapNotNull { entry: AgentEntry ->
             when (entry.agent.status) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
                     val sessionAction = sessionSubstituting(action, sessionId)
@@ -279,7 +279,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
                 else -> "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}".run {
-                    statusResponse(HttpStatusCode.Conflict.value)
+                    statusMessageResponse(HttpStatusCode.Conflict.value)
                 }
             }
         }
@@ -314,8 +314,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     }
 }
 
-private fun Any.toStatusResponse(): StatusResponse = when (this) {
-    is StatusMessage -> message.statusResponse(code)
+private fun Any.toStatusResponse(): WithStatusCode = when (this) {
+    is StatusMessage -> message.statusMessageResponse(code)
     is String -> StatusResponse(HttpStatusCode.OK.value, this)
     Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
     else -> StatusResponse(HttpStatusCode.OK.value, this)

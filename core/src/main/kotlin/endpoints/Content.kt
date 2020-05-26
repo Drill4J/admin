@@ -5,13 +5,23 @@ import kotlinx.serialization.*
 @Serializable
 data class ErrorResponse(val message: String)
 
+interface WithStatusCode {
+    val code: Int
+}
+
+@Serializable
+data class StatusMessageResponse(
+    override val code: Int,
+    val message: String
+) : WithStatusCode
+
 @Serializable
 data class StatusResponse(
-    val code: Int,
+    override val code: Int,
     @ContextualSerialization val data: Any
-)
+) : WithStatusCode
 
-fun String.statusResponse(code: Int) = StatusResponse(
+fun String.statusMessageResponse(code: Int) = StatusMessageResponse(
     code = code,
-    data = this
+    message = this
 )
