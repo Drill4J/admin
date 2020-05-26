@@ -13,5 +13,5 @@ data class StatusResponse(
 
 fun String.statusResponse(code: Int) = StatusResponse(
     code = code,
-    data = ErrorResponse(this)
+    data = this
 )
