@@ -1,5 +1,3 @@
-@file:Suppress("EXPERIMENTAL_API_USAGE")
-
 package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.cache.*
@@ -27,7 +25,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val cacheService by instance<CacheService>()
-    private val eventStorage: Cache<Any, String> by cacheService
+    private val eventStorage: Cache<Any, Any> by cacheService
 
     private val sessionStorage = SessionStorage()
 
@@ -38,6 +36,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                 val session = this
                 logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {
+                    @Suppress("EXPERIMENTAL_API_USAGE")
                     incoming.consumeEach { frame ->
                         when (frame) {
                             is Frame.Text -> {
@@ -76,7 +75,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
         } else {
             val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
             logger.trace { "Sending message to $subscriptionKey" }
-            eventStorage[subscriptionKey] = messageForSend
+            eventStorage[subscriptionKey] = message
             sessionStorage.sendTo(
                 destination = subscriptionKey,
                 messageProvider = { messageForSend }
@@ -93,16 +92,8 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                 val destination = event.destination
                 val subscriptionKey = destination.toKey(subscription)
                 sessionStorage.subscribe(subscriptionKey, this)
-                val message: String? = eventStorage[subscriptionKey]
-                val messageToSend = if (message.isNullOrEmpty()) {
-                    WsSendMessage.serializer().stringify(
-                        WsSendMessage(
-                            type = WsMessageType.MESSAGE,
-                            destination = destination,
-                            to = subscription
-                        )
-                    )
-                } else message
+                val message = eventStorage[subscriptionKey] ?: ""
+                val messageToSend = message.toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
                 send(messageToSend)
                 logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
