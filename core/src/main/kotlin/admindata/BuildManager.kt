@@ -60,28 +60,26 @@ class AgentBuildManager(
 
     fun initClasses(buildVersion: String): AgentBuild = run {
         val addedClasses: List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
-        val parsedClasses: Map<String, ParsedClass> = addedClasses.asSequence()
-            .map { ProtoBuf.load(ByteClass.serializer(), it) }
-            .map { ParsedClass(it.className, it.bytes) }
-            .filter { it.anyCode() }
-            .associateBy { it.name }
-        val bundleCoverage = parsedClasses.mapValues { it.value.bytes }.bundle()
+        val classBytesSeq = addedClasses.asSequence().map {
+            ProtoBuf.load(ByteClass.serializer(), it)
+        }
+        val bundleCoverage = classBytesSeq.bundle()
         val bundleClasses = bundleCoverage.packages.flatMap { it.classes }.associate { c ->
             c.name to c.methods.map { m -> m.name to m.desc }.toSet()
         }
-        val filteredClasses = parsedClasses.filterKeys { it in bundleClasses.keys }
-        val classBytes: Map<String, ByteArray> = filteredClasses.mapValues {
-            it.value.bytes
+        val classBytes: Map<String, ByteArray> = classBytesSeq.filter { it.className in bundleClasses }.associate {
+            it.className to it.bytes
         }
-        val currentMethods: Map<String, List<Method>> = filteredClasses.mapValues { (_, c) ->
-            val allowedMethods = bundleClasses.getValue(c.name)
-            c.methods().filter { (it.name to it.desc) in allowedMethods }
+        val currentMethods: Map<String, List<Method>> = classBytes.mapValues { (name, bytes) ->
+            val parsedClass = ParsedClass(name, bytes)
+            val allowedMethods = bundleClasses.getValue(name)
+            parsedClass.methods().filter { (it.name to it.desc) in allowedMethods }
         }
         val build = updateAndGet(buildVersion) {
             copy(
                 info = info.copy(
-                    javaMethods = currentMethods,
-                    classesBytes = classBytes
+                    classesBytes = classBytes,
+                    javaMethods = currentMethods
                 )
             )
         }
@@ -114,7 +112,7 @@ class AgentBuildManager(
 
 }
 
-fun Map<String, ByteArray>.bundle(): IBundleCoverage = CoverageBuilder().also { builder ->
+fun Sequence<ByteClass>.bundle(): IBundleCoverage = CoverageBuilder().also { builder ->
     val analyzer = Analyzer(ExecutionDataStore(), builder)
     forEach { (className, bytes) ->
         analyzer.analyzeClass(bytes, className)
