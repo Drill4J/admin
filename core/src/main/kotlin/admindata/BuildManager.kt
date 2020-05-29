@@ -66,7 +66,7 @@ class AgentBuildManager(
         val bundleCoverage = classBytesSeq.bundle()
         val bundleClasses = bundleCoverage.packages.flatMap { it.classes }.associate { c ->
             c.name to c.methods.map { m -> m.name to m.desc }.toSet()
-        }
+        }.filterValues { it.any() }
         val classBytes: Map<String, ByteArray> = classBytesSeq.filter { it.className in bundleClasses }.associate {
             it.className to it.bytes
         }
