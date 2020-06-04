@@ -1,6 +1,7 @@
 package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
@@ -23,6 +24,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val loggingHandler by instance<LoggingHandler>()
     private val plugins by instance<Plugins>()
     private val handler by instance<AdminEndpointsHandler>()
 
@@ -93,20 +95,22 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         } ?: HttpStatusCode.Conflict to ErrorResponse(
                             "Cannot toggle agent $agentId on status ${agentInfo.status}"
                         )
-                    } ?:  HttpStatusCode.NotFound to EmptyContent
+                    } ?: HttpStatusCode.NotFound to EmptyContent
                     call.respond(status, response)
                 }
             }
 
             authenticate {
                 val loggingResponds = "Configure agent logging levels"
+                    .examples(
+                        example("Agent logging configuration", defaultLoggingConfig)
+                    )
                     .responds(
-                        ok<Unit>(), notFound()
+                        ok<Unit>(), notFound(), badRequest()
                     )
                 put<Routes.Api.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
-                    agentManager.agentSession(agentId)
-                        ?.sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig)?.await()
+                    loggingHandler.updateConfig(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }

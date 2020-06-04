@@ -2,6 +2,7 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
@@ -42,6 +43,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val adminDataVault by instance<AdminDataVault>()
     private val notificationsManager by instance<NotificationManager>()
+    private val loggingHandler by instance<LoggingHandler>()
 
     private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
 
@@ -59,6 +61,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
+        loggingHandler.sync(id, session)
         //TODO agent instances
         return if (
             (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds)
@@ -381,18 +384,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         notifySingleAgent(this.id)
     }
 }
-
-fun AgentConfig.toAgentInfo() = AgentInfo(
-    id = id,
-    name = id,
-    status = AgentStatus.NOT_REGISTERED,
-    serviceGroup = serviceGroupId,
-    environment = "",
-    description = "",
-    agentVersion = agentVersion,
-    buildVersion = buildVersion,
-    agentType = agentType
-)
 
 suspend fun AgentWsSession.setPackagesPrefixes(data: PackagesPrefixes) =
     sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(data).await()
