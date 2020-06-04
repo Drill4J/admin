@@ -36,7 +36,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
-                    AgentType.NODEJS -> FrameType.TEXT
+                    AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
                     else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(this, frameType, application.agentSocketTimeout)
