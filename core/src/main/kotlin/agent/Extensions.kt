@@ -12,3 +12,15 @@ fun Iterable<AgentInfo>.byPluginId(pluginId: String): List<AgentInfo> = filter {
 }
 
 fun Iterable<AgentInfo>.mapToDto(agentManager: AgentManager) = map { it.toDto(agentManager) }
+
+fun AgentConfig.toAgentInfo() = AgentInfo(
+    id = id,
+    name = id,
+    status = AgentStatus.NOT_REGISTERED,
+    serviceGroup = serviceGroupId,
+    environment = "",
+    description = "",
+    agentVersion = agentVersion,
+    buildVersion = buildVersion,
+    agentType = agentType
+)

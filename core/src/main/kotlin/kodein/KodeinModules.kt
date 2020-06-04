@@ -7,6 +7,7 @@ import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
@@ -34,6 +35,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
+        bind<LoggingHandler>() with eagerSingleton { LoggingHandler(kodein) }
     }
 
 val wsHandler: Kodein.Builder.(Application) -> Unit
