@@ -340,7 +340,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Sending ${info.plugins.count()} plugins to agent ${info.id}" }
         info.plugins.forEach { pb ->
             logger.debug { "Sending plugin ${pb.id} to agent ${info.id}" }
-            val data = if (info.agentType != AgentType.NODEJS) {
+            val data = if (info.agentType == AgentType.JAVA) {
                 this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
             } else byteArrayOf()
             pb.checkSum = hex(sha1(data))

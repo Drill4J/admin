@@ -116,8 +116,6 @@ class ParsedClass(
     private val suitableMethods = javaClass.methods.asSequence()
         .filter { !it.name.isNullOrEmpty() && !it.isAbstract }
 
-    fun anyCode(): Boolean = suitableMethods.any()
-
     fun methods(): List<Method> = suitableMethods.map { method ->
         Method(
             ownerClass = name,
