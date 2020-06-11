@@ -2,11 +2,8 @@ package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.storage.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -14,7 +11,6 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -57,10 +53,10 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
 
                 topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
-                    agentManager.activeAgents
-                        .filter { it.serviceGroup == groupId }
-                        .plugins()
-                        .mapToDto()
+                    agentManager.run {
+                        val agents = activeAgents.filter { it.serviceGroup == groupId }
+                        plugins.values.ofAgents(agents).mapToDto()
+                    }
                 }
 
             }

@@ -1,5 +1,6 @@
 package com.epam.drill.admin.version
 
+import com.epam.drill.admin.*
 import kotlinx.serialization.*
 
 @Serializable
@@ -14,4 +15,15 @@ data class VersionDto(
 data class ComponentVersion(
     val id: String,
     val version: String
+)
+
+@Serializable
+data class AdminVersionDto(
+    val admin: String,
+    val java: String = ""
+)
+
+val adminVersionDto = AdminVersionDto(
+    admin = adminVersion,
+    java = System.getProperty("java.version")
 )

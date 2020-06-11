@@ -26,4 +26,7 @@ object WsRoutes {
 
     @Location("/agents/{agentId}/builds")
     data class AgentBuilds(val agentId: String)
+
+    @Location("/version")
+    object WsVersion
 }

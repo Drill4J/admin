@@ -1,5 +1,6 @@
 package com.epam.drill.admin.version
 
+import com.epam.drill.admin.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
@@ -16,25 +17,19 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
 
-    private val adminVersion = ClassLoader.getSystemClassLoader().run {
-        getResourceAsStream("META-INF/drill/admin.version")?.readBytes()
-    }?.decodeToString() ?: ""
-
-    private val javaVersion = System.getProperty("java.version")
-
     init {
         app.routing { routes() }
     }
 
     private fun Routing.routes() {
         val versionMeta = "Get versions".responds(
-            ok<VersionDto>(example("sample", VersionDto("0.1.0", javaVersion)))
+            ok<VersionDto>(example("sample", VersionDto("0.1.0", adminVersion)))
         )
         get<Routes.Api.Version>(versionMeta) {
             call.respond(
                 VersionDto(
-                    admin = adminVersion,
-                    java = javaVersion,
+                    admin = adminVersionDto.admin,
+                    java = adminVersionDto.java,
                     plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
                     agents = agentManager.activeAgents.map {
                         ComponentVersion(

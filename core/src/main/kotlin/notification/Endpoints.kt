@@ -17,7 +17,7 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val notificationManager by instance<NotificationManager>()
-    private val topicResolver:TopicResolver by instance()
+    private val topicResolver by instance<TopicResolver>()
     private val app by instance<Application>()
 
     init {

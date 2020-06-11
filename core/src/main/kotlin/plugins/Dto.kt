@@ -13,23 +13,25 @@ data class PluginDto(
     var status: Boolean? = true,
     var config: String? = "",
     var installedAgentsCount: Int? = 0,
-    var relation: String?
+    val relation: String?,
+    val version: String = ""
 )
 
-fun PluginMetadata.toDto() = PluginDto(
-    id = id,
-    name = name,
-    description = description,
-    type = type,
-    status = enabled,
-    config = config,
+fun Plugin.toDto() = PluginDto(
+    id = pluginBean.id,
+    name = pluginBean.name,
+    description = pluginBean.description,
+    type = pluginBean.type,
+    status = pluginBean.enabled,
+    config = pluginBean.config,
     installedAgentsCount = 0,
-    relation = null
+    relation = null,
+    version = version
 )
 
-fun Iterable<PluginMetadata>.mapToDto() = map(PluginMetadata::toDto)
+fun Iterable<Plugin>.mapToDto() = map(Plugin::toDto)
 
-fun Iterable<PluginMetadata>.mapToDto(agents: Iterable<AgentInfo>) = map { pb ->
+fun Iterable<Plugin>.mapToDto(agents: Iterable<AgentInfo>) = map { pb ->
     return@map pb.toDto().apply {
         config = null
         status = null
