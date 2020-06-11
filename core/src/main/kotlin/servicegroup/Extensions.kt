@@ -12,7 +12,7 @@ fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
 internal fun AgentGroup.toDto(agentManager: AgentManager) = ServiceGroupDto(
     group = group,
     agents = agentInfos.mapToDto(agentManager),
-    plugins = agentInfos.plugins().mapToDto()
+    plugins = agentManager.plugins.values.ofAgents(agentInfos).mapToDto()
 )
 
 fun Iterable<Any?>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()

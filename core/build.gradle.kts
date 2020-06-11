@@ -7,6 +7,17 @@ plugins {
     id("com.github.johnrengelman.shadow")
 }
 
+kotlin.sourceSets.main {
+    kotlin.srcDir(
+        file("src/generated/kotlin").apply {
+            mkdirs()
+            resolve("Version.kt").writeText(
+                "package com.epam.drill.admin internal val adminVersion = \"${rootProject.version}\""
+            )
+        }
+    )
+}
+
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(ktor("auth"))

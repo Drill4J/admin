@@ -9,6 +9,7 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.version.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
@@ -72,19 +73,16 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.Plugins> {
-                    plugins.map { (_, dp) -> dp.pluginBean }
-                        .mapToDto(agentManager.agentStorage.values.map { it.agent })
+                    plugins.values.mapToDto(agentManager.agentStorage.values.map { it.agent })
                 }
 
                 topic<WsRoutes.AgentPlugins> { payload ->
-                    val installedPluginBeanIds = agentManager
-                        .getAllInstalledPluginBeanIds(payload.agentId)
-                    plugins.getAllPluginBeans().map { plug ->
-                        val pluginWebSocket = plug.toDto()
-                        if (plug partOf installedPluginBeanIds) {
-                            pluginWebSocket.relation = "Installed"
+                    agentManager.getAllInstalledPluginBeanIds(payload.agentId)?.let { ids ->
+                        plugins.values.mapToDto().map { plugin ->
+                            if (plugin.id in ids) {
+                                plugin.copy(relation = "Installed")
+                            } else plugin
                         }
-                        pluginWebSocket
                     }
                 }
 
@@ -100,6 +98,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoutes.AgentBuilds> { (agentId) ->
                     agentManager.adminData(agentId).buildManager.dtoList()
                 }
+
+                topic<WsRoutes.WsVersion> { adminVersionDto }
             }
 
         }
