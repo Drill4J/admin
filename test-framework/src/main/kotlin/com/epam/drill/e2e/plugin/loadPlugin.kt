@@ -53,7 +53,6 @@ suspend fun AdminTest.loadPlugin(
 
         val toSet = sequence.toSet()
         val clazz = memoryClassLoader.clazz(
-            pluginId,
             if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
             toSet,
             jarFile

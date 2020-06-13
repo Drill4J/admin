@@ -7,9 +7,9 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 
-fun Application.toLocation(rout: Any): String {
-    return this.locations.href(rout)
-}
+fun Application.toLocation(rout: Any): String = locations().href(rout)
+
+fun Application.locations() = featureOrNull(Locations) ?: Locations(this)
 
 fun WebSocketSession.toDebugString(): String = "session(${hashCode()})"
 
