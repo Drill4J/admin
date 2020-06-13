@@ -34,7 +34,7 @@ class WsTopic(override val kodein: Kodein) : KodeinAware {
         val (suitableRout, parameters) = pathToCallBackMapping.suitableRoutWithParameters(destination)
 
         val (routeClass, callback) = suitableRout.value
-        return callback to app.feature(Locations).resolve(routeClass, parameters)
+        return callback to app.locations().resolve(routeClass, parameters)
     }
 }
 

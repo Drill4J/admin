@@ -178,10 +178,6 @@ class MemoryClassLoader : URLClassLoader(arrayOf()) {
         definitions[name] = bytes
     }
 
-    fun addMainDefinition(name: String, bytes: ByteArray) {
-        definitions[name] = bytes
-    }
-
     override fun loadClass(name: String?, resolve: Boolean): Class<*> {
         val bytes = definitions[name]
         val clazz = if (bytes != null) {

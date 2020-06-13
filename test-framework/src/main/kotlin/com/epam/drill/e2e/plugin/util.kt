@@ -10,56 +10,44 @@ import java.util.jar.*
 
 @Suppress("UNCHECKED_CAST")
 fun MemoryClassLoader.clazz(
-    pluginId: String,
     suffix: String,
     entries: Set<JarEntry>,
     jarFile: JarFile
 ): Class<AgentPart<*, *>> = entries.asSequence().filter {
     it.name.endsWith(".class") && !it.name.contains("module-info")
 }.map { jarEntry ->
-    jarEntry.name.removeSuffix(".class") to jarFile.getInputStream(jarEntry).use { inStream ->
+    jarFile.getInputStream(jarEntry).use { inStream ->
         ClassParser(inStream, "").parse()
     }
-}.onEach { (coreName, javaClass) ->
-    val regeneratedClass = ClassGen(javaClass)
-    if (javaClass.superclassName == AgentPart::class.qualifiedName) {
-        javaClass.className = "${javaClass.className}$suffix"
-        val pluginPackage = "com/epam/drill/plugins/$pluginId"
-        regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
-            if (constant is ConstantUtf8 && "$coreName$" !in constant.bytes) {
-                regeneratedClass.constantPool.setConstant(
-                    idx,
-                    ConstantUtf8(
-                        constant.bytes
-                            .replace(coreName, "$coreName$suffix")
-                            .replace( //TODO this is needed only for test2code plugin, get rid of this
-                                "$pluginPackage/DrillProbeArrayProvider",
-                                "$pluginPackage/DrillProbeArrayProvider$suffix"
-                            )
-                    )
-                )
-            }
+}.run {
+    first { it.superclassName == AgentPart::class.qualifiedName }.also { pluginClass ->
+        val singletons = filter { c ->
+            !c.isSynthetic && !c.isNested && c.packageName == pluginClass.packageName &&
+                c.fields.any { it.isStatic && it.name == "INSTANCE" }
         }
-        regeneratedClass.constantPool
-        regeneratedClass.update()
-    } else if (javaClass.className == "com.epam.drill.plugins.$pluginId.DrillProbeArrayProvider") {
-        //TODO this is needed only for test2code plugin, get rid of this
-        javaClass.className = "${javaClass.className}$suffix"
-        regeneratedClass.constantPool.constantPool.constantPool.forEachIndexed { idx, constant ->
-            if (constant is ConstantUtf8 && "$coreName$" !in constant.bytes) {
-                regeneratedClass.constantPool.setConstant(
-                    idx,
-                    ConstantUtf8(constant.bytes.replace(coreName, "$coreName$suffix"))
-                )
+        val toBeRenamed = listOf(pluginClass) + singletons
+        val paths = toBeRenamed.map { it.className.replace('.', '/') }
+        println("MemoryClassLoader, classes to be renamed: $paths")
+        forEach { javaClass ->
+            val classGen = lazy(LazyThreadSafetyMode.NONE) { ClassGen(javaClass) }
+            toBeRenamed.firstOrNull { javaClass.className.startsWith(it.className) }?.let {
+                classGen.value.className = javaClass.className.replace(it.className, "${it.className}$suffix")
             }
+            javaClass.constantPool.constantPool.forEachIndexed { index, constant ->
+                if (constant is ConstantUtf8 && paths.any { it in constant.bytes }) {
+                    val modified = paths.fold(constant.bytes) { str, path ->
+                        str.replace(path, "$path$suffix")
+                    }
+                    classGen.value.constantPool.setConstant(index, ConstantUtf8(modified))
+                }
+            }
+            val defClass = classGen.takeIf(Lazy<*>::isInitialized)?.run {
+                value.apply(ClassGen::update).javaClass
+            } ?: javaClass
+            addDefinition(defClass.className, defClass.bytes)
         }
-        regeneratedClass.constantPool
-        regeneratedClass.update()
-    }
-    addMainDefinition(javaClass.className, regeneratedClass.javaClass.bytes)
-}.map { it.second }
-    .last { it.superclassName == "com.epam.drill.plugin.api.processing.AgentPart" }
-    .let { loadClass(it.className) as Class<AgentPart<*, *>> }
+    }.let { "${it.className}$suffix" }
+}.let { loadClass(it) as Class<AgentPart<*, *>> }
 
 class OutsSock(private val mainChannel: SendChannel<Frame>, private val withDebug: Boolean = false) :
     SendChannel<Frame> by mainChannel {
