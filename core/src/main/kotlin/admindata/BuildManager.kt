@@ -18,11 +18,10 @@ class AgentBuildManager(
     override val builds: Collection<BuildInfo>
         get() = buildMap.values.map { it.info }
 
-    var lastBuild: String
-        get() = _lastBuild.value
-        private set(value) {
-            _lastBuild.value = value
-        }
+    val lastBuild: String get() = _lastBuild.value
+
+    private val buildMap: PersistentMap<String, AgentBuild>
+        get() = _buildMap.value
 
     private val _lastBuild = atomic(lastBuild)
 
@@ -32,33 +31,28 @@ class AgentBuildManager(
         builds.associateBy { it.info.version }.toPersistentMap()
     )
 
-    private val buildMap: PersistentMap<String, AgentBuild>
-        get() = _buildMap.value
-
     override operator fun get(version: String) = buildMap[version]?.info
 
     fun dtoList() = buildMap.values.map(AgentBuild::toBuildSummaryDto)
 
-    fun initBuildInfo(buildVersion: String) {
-        val build = buildMap[buildVersion]
-        val prevBuild = if (build == null) {
-            val prev = lastBuild
-            lastBuild = buildVersion
-            prev
-        } else build.info.parentVersion
-        updateAndGet(buildVersion) {
-            copy(
-                info = info.copy(
-                    classesBytes = emptyMap(),
-                    parentVersion = prevBuild
-                )
+    fun initBuildInfo(version: String) = _buildMap.update { map ->
+        if (version !in map) {
+            val build = AgentBuild(
+                id = AgentBuildId(agentId, version),
+                agentId = agentId,
+                info = BuildInfo(
+                    version = version,
+                    parentVersion = _lastBuild.getAndUpdate { version }
+                ),
+                detectedAt = System.currentTimeMillis()
             )
-        }
+            map.put(version, build)
+        } else map
     }
 
     fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
 
-    fun initClasses(buildVersion: String): AgentBuild = run {
+    fun initClasses(buildVersion: String): AgentBuild = buildMap[buildVersion]?.let { build ->
         val addedClasses: List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
         val classBytesSeq = addedClasses.asSequence().map {
             ProtoBuf.load(ByteClass.serializer(), it)
@@ -75,41 +69,20 @@ class AgentBuildManager(
             val allowedMethods = bundleClasses.getValue(name)
             parsedClass.methods().filter { (it.name to it.desc) in allowedMethods }
         }
-        val build = updateAndGet(buildVersion) {
-            copy(
-                info = info.copy(
-                    classesBytes = classBytes,
-                    javaMethods = currentMethods
-                )
-            )
-        }
-        val parentVersion = build.info.parentVersion
-        val prevMethods = buildMap[parentVersion]?.info?.javaMethods ?: mapOf()
-        bundleCoverage.packages.flatMap { it.classes }
-        updateAndGet(buildVersion) {
-            copy(
-                info = info.copy(
-                    methodChanges = bundleCoverage.compareClasses(prevMethods, currentMethods)
-                )
-            )
-        }
-    }
+        val methodChanges = buildMap[build.info.parentVersion]?.run {
+            bundleCoverage.compareClasses(info.javaMethods, currentMethods)
+        } ?: MethodChanges()
 
-    private fun updateAndGet(
-        version: String,
-        mutate: AgentBuild.() -> AgentBuild
-    ): AgentBuild = _buildMap.updateAndGet { map ->
-        val build = map[version] ?: AgentBuild(
-            id = AgentBuildId(agentId = agentId, version = version),
-            agentId = agentId,
-            info = BuildInfo(
-                version = version
-            ),
-            detectedAt = System.currentTimeMillis()
+        val buildWithData = build.copy(
+            info = build.info.copy(
+                classesBytes = classBytes,
+                javaMethods = currentMethods,
+                methodChanges = methodChanges
+            )
         )
-        map.put(version, build.mutate())
-    }[version]!!
-
+        _buildMap.update { map -> map.put(buildVersion, buildWithData) }
+        buildWithData
+    } ?: error("Agent build is not initialized! agentId=$agentId, buildVersion=$buildVersion")
 }
 
 fun Sequence<ByteClass>.bundle(): IBundleCoverage = CoverageBuilder().also { builder ->
