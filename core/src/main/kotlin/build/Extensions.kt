@@ -2,21 +2,20 @@ package com.epam.drill.admin.build
 
 import com.epam.drill.common.*
 
-fun AgentBuild.toBuildSummaryDto() = info.methodChanges.let { methodChanges ->
-    val deleted = methodChanges.diffCount(DiffType.DELETED)
+fun AgentBuild.toBuildSummaryDto() = info.run {
     BuildSummaryDto(
-        buildVersion = info.version,
+        buildVersion = version,
         detectedAt = detectedAt,
-        totalMethods = methodChanges.map.values.flatten().count() - deleted,
-        newMethods = methodChanges.diffCount(DiffType.NEW),
-        modifiedMethods = methodChanges.diffCount(
+        totalMethods = javaMethods.values.sumBy { it.count() },
+        newMethods = methodChanges.count(DiffType.NEW),
+        modifiedMethods = methodChanges.count(
             DiffType.MODIFIED_NAME,
             DiffType.MODIFIED_BODY,
             DiffType.MODIFIED_DESC
         ),
-        unaffectedMethods = methodChanges.diffCount(DiffType.UNAFFECTED),
-        deletedMethods = deleted
+        unaffectedMethods = methodChanges.count(DiffType.UNAFFECTED),
+        deletedMethods = methodChanges.count(DiffType.DELETED)
     )
 }
 
-private fun MethodChanges.diffCount(vararg types: DiffType) = types.mapNotNull { map[it]?.count() }.sum()
+private fun MethodChanges.count(vararg types: DiffType): Int = types.mapNotNull(map::get).sumBy { it.count() }
