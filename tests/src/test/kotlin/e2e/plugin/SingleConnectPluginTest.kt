@@ -7,7 +7,7 @@ import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.message.*
 import io.kotlintest.*
 import io.ktor.http.*
-import org.junit.jupiter.api.*
+import kotlin.test.*
 
 class SingleConnectPluginTest : E2EPluginTest() {
 

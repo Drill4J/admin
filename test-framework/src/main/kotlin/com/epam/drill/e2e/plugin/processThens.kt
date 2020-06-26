@@ -55,14 +55,9 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 val bcelClasses = classes.map {
                     it.inputStream().use { fs -> ClassParser(fs, "").parse() }
                 }
-
-                apply.`get-load-classes-data`(*bcelClasses.toTypedArray())
                 val classMap: Map<String, ByteArray> = bcelClasses.associate {
                     it.className.replace(".", "/") to it.bytes
                 }
-                assertEquals(null, ui.getAgent()?.status)
-                assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
-                assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
                 callAsync(asyncEngine.context) {
                     loadPlugin(
                         apply,
@@ -78,6 +73,9 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                         true
                     )
                 }
+                assertEquals(null, ui.getAgent()?.status)
+                assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
+                assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
                 ui.getAgent()
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)
@@ -86,4 +84,3 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
         }
     }
 }
-

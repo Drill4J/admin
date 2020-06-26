@@ -15,7 +15,7 @@ class PluginLoadTest : E2ETest() {
 
     @OptIn(KtorExperimentalAPI::class)
     @Test
-    fun `Plugin Load Test`() {
+    fun `plugin loading `() {
         createSimpleAppWithUIConnection(true, true) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
@@ -34,6 +34,7 @@ class PluginLoadTest : E2ETest() {
 
                     ui.getAgent()?.status shouldBe AgentStatus.BUSY
 
+                    agent.loaded(metadata.id)
                 }
                 ui.getAgent()?.apply {
                     status shouldBe AgentStatus.ONLINE

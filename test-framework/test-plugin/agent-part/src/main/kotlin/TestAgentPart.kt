@@ -13,14 +13,13 @@ class TestAgentPart constructor(
     }
 
     override fun off() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override val confSerializer: kotlinx.serialization.KSerializer<String>
         get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
 
     override fun initPlugin() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        println("Plugin ${payload.pluginId} initialized.")
     }
 
     override fun destroyPlugin(unloadReason: UnloadReason) {

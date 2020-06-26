@@ -290,11 +290,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 wrapBusy(this) {
                     val info = this
                     agentSession(id)?.apply {
-                        updateSessionHeader(info)
-                        configurePackages(packagesPrefixes(id))//thread sleep
-                        delay(500L)
-                        triggerClassesSending()
+                        configurePackages(packagesPrefixes(id))
                         sendPlugins(info)
+                        updateSessionHeader(info)
+                        triggerClassesSending()
                         enableAllPlugins(id)
                     }
                     topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))

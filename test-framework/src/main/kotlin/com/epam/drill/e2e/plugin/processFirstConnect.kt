@@ -63,13 +63,10 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     plugins = listOf(pluginMeta.id)
                 )
             )
-            ui.getAgent()
-            ui.getAgent()
             apply.`get-set-packages-prefixes`()
             val bcelClasses = classes.map {
                 it.inputStream().use { fs -> ClassParser(fs, "").parse() }
             }
-            apply.`get-load-classes-data`(*bcelClasses.toTypedArray())
             val classMap: Map<String, ByteArray> = bcelClasses.associate {
                 it.className.replace(".", "/") to it.bytes
             }
@@ -88,9 +85,12 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                 )
             }
             ui.getAgent()
+            ui.getAgent()
+            ui.getAgent()
             connect(pluginTestInfo, st, build)
-            while (globLaunch.isActive)
+            while (globLaunch.isActive) {
                 delay(100)
+            }
         }
     }
 }
