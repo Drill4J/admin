@@ -120,9 +120,11 @@ class Agent(
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
         val (meta, data) = plugins.receive()
         block(meta, data)
-        sendDelivered("/agent/load")
-        sendDelivered("/agent/plugin/${meta.id}/loaded")
+    }
 
+    suspend fun loaded(pluginId: String) {
+        sendDelivered("/agent/load")
+        sendDelivered("/agent/plugin/$pluginId/loaded")
     }
 
     suspend fun sendPluginData(data: MessageWrapper) {
@@ -174,16 +176,11 @@ class Agent(
         return receive
     }
 
-    suspend fun `get-load-classes-data`(vararg classes: JavaClass = emptyArray()): String {
+    suspend fun `get-load-classes-data`(vararg classes: ByteClass = emptyArray()): String {
         val receive = `load-classes-data`.receive()
         outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
-        classes.map { parse ->
-            ProtoBuf.dump(
-                ByteClass.serializer(), ByteClass(
-                    parse.className.replace(".", "/"),
-                    parse.bytes
-                )
-            )
+        classes.map { byteClass ->
+            ProtoBuf.dump(ByteClass.serializer(), byteClass)
         }.chunked(10).forEach {
             outgoing.send(
                 agentMessage(

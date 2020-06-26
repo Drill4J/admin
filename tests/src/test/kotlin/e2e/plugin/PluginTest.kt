@@ -9,7 +9,7 @@ import com.epam.drill.plugin.api.message.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.channels.*
-import org.junit.jupiter.api.*
+import kotlin.test.*
 
 class PluginTest : E2EPluginTest() {
 

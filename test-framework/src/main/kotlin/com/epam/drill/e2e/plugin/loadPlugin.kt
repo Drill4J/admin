@@ -31,7 +31,7 @@ suspend fun AdminTest.loadPlugin(
     random: Boolean = false
 ) {
     lateinit var bs: ByteArray
-    agentStreamer.getLoadedPlugin { _, file ->
+    agentStreamer.getLoadedPlugin { meta, file ->
         hex(file)
         bs = file
 
@@ -123,6 +123,11 @@ suspend fun AdminTest.loadPlugin(
 
         spykAgentPart.enabled = true
         spykAgentPart.updateRawConfig(pluginMeta.config)
+        spykAgentPart.initPlugin()
+        agentStreamer.loaded(meta.id)
+
+        val classes = classMap.map { ByteClass(it.key, it.value) }.toTypedArray()
+        agentStreamer.`get-load-classes-data`(*classes)
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw
