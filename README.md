@@ -1,10 +1,14 @@
-# Drill admin back-end module
+# Drill4J Backend Server
 
-This module contains the back-end part of Drill4J administration services & test framework for Drill4J and it's plugins.
+The backend part of Drill4J, based on Ktor framework.
 
-Deployment port by default: 8090 | SSL port: 8443 | Debug port: 5006
+## How to Run
 
-Launching the admin services locally:
+Gradle command:
+```shell script
 ./gradlew run
+```
 
-New docker images are being published to drill4j/admin every time when 'delevop' branch receives changes.
+Default ports:
+* HTTP: 8090
+* Debug: 5006
