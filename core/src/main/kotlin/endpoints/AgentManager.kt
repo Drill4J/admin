@@ -276,9 +276,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
-        if (prefixes.isNotEmpty()) {
-            setPackagesPrefixes(PackagesPrefixes(prefixes))
-        }
+        setPackagesPrefixes(PackagesPrefixes(prefixes))
     }
 
     fun packagesPrefixes(agentId: String) = adminData(agentId).packagesPrefixes
