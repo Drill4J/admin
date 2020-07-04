@@ -1,7 +1,6 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.builds.*
-import com.epam.drill.plugin.api.*
 
 data class AgentAsyncStruct(
     val ag: AgentWrap,
@@ -17,4 +16,4 @@ data class ThenAgentAsyncStruct(
 )
 
 
-class AgentDatum(override val classMap: Map<String, ByteArray>) : AgentData
+class AgentDatum(val classMap: Map<String, ByteArray>)
