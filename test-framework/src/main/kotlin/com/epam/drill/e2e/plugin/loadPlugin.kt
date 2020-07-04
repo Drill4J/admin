@@ -5,7 +5,6 @@ import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
@@ -61,26 +60,26 @@ suspend fun AdminTest.loadPlugin(
 
 
         val agentData = AgentDatum(classMap)
-        val declaredConstructor =
-            clazz.getDeclaredConstructor(memoryClassLoader.loadClass(PluginPayload::class.java.name))
-        val pluginPayload = PluginPayload(pluginId, agentData)
-        val agentPart = declaredConstructor.newInstance(pluginPayload) as AgentPart<*, *>
+        val declaredConstructor = clazz.getDeclaredConstructor(
+            String::class.java,
+            AgentContext::class.java
+        )
+        val agentContext = AgentContext(SimpleLogging)
+        val agentPart = declaredConstructor.newInstance(pluginId, agentContext) as AgentPart<*, *>
         mut.lock()
         val spykAgentPart = spyk(agentPart, ag.id)
-        if (spykAgentPart is InstrumentationPlugin)
-            every { spykAgentPart.retransform() } answers {
-                agentData.classMap.forEach { (k, v) ->
-                    val clsName = k.replace("/", ".")
-                    val instrument = if (clsName.startsWith("com.epam.test"))
-                        spykAgentPart.instrument(k, v)
-                    else
-                        v
-                    memoryClassLoader.addDefinition(clsName, instrument!!)
+        if (spykAgentPart is Instrumenter) {
+            every { spykAgentPart["retransform"]() } answers {
+                agentData.classMap.forEach { (name, bytes) ->
+                    val clsName = name.replace("/", ".")
+                    val clsBytes = bytes.takeIf { clsName.startsWith("com.epam.test") }?.let {
+                        spykAgentPart.instrument(name, bytes)
+                    } ?: bytes
+                    memoryClassLoader.addDefinition(clsName, clsBytes)
                     memoryClassLoader.loadClass(clsName)
                 }
-
             }
-        else {
+        } else {
             agentData.classMap.forEach { (k, v) ->
                 val clsName = k.replace("/", ".")
                 memoryClassLoader.addDefinition(clsName, v)
