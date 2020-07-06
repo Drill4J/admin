@@ -1,5 +1,7 @@
 package com.epam.drill.admin.endpoints.plugin
 
+import com.epam.drill.admin.cache.*
+import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
@@ -7,7 +9,6 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
@@ -33,6 +34,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
     private val topicResolver by instance<TopicResolver>()
+    private val cacheService by instance<CacheService>()
+    private val eventStorage: Cache<Any, Any> by cacheService
     private val logger = KotlinLogging.logger {}
 
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {
@@ -161,11 +164,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         "data for serviceGroup '$serviceGroupId' not found"
                     )
                     else -> {
-                        val aggregatedData = serviceGroup.map {
-                            val adminPart = agentManager.ensurePluginInstance(it, dp)
-                            adminPart.getPluginData(type = dataType)
-                        }.aggregate()
-                        aggregatedData.toStatusResponsePair()
+                        val key = GroupSubscription(serviceGroupId).toKey("/service-group/data/$dataType")
+                        eventStorage[key].toStatusResponsePair()
                     }
                 }
                 logger.debug { response }

@@ -14,10 +14,3 @@ internal fun AgentGroup.toDto(agentManager: AgentManager) = ServiceGroupDto(
     agents = agentInfos.mapToDto(agentManager),
     plugins = agentManager.plugins.values.ofAgents(agentInfos).mapToDto()
 )
-
-fun Iterable<Any?>.aggregate(): Any? = filterIsInstance<(Any) -> Any>()
-    .takeIf { it.any() }
-    ?.reduce { acc, aggregator ->
-        @Suppress("UNCHECKED_CAST")
-        aggregator(acc) as? (Any) -> Any ?: acc
-    }

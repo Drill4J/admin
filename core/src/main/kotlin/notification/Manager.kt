@@ -8,8 +8,6 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.builtins.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -95,20 +93,10 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
             val connectedPlugins = plugins.filter {
                 agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
             }
-
-            //TODO rewrite this double parsing
-            val results = connectedPlugins.map { (_, plugin: Plugin) ->
+            connectedPlugins.flatMap { (_, plugin: Plugin) ->
                 val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
-                pluginInstance.getPluginData(type = "recommendations") as? String
-            }.filterNotNull()
-            results.mapNotNull { result ->
-                try {
-                    String.serializer().list parse result
-                } catch (exception: JsonDecodingException) {
-                    logger.error(exception) { "Parsing result '$result' finished with exception: " }
-                    null
-                }
-            }.flatten()
+                pluginInstance.getPluginData(type = "recommendations") as? Set<*> ?: emptySet<String>()
+            }.filterNotNull().map(Any::toString).distinct()
         } ?: emptyList()
     }
 }
