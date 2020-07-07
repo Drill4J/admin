@@ -1,5 +1,6 @@
 package com.epam.drill.admin.endpoints.plugin
 
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
@@ -49,7 +50,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             authenticate {
-                patch<Routes.Api.Agents.Plugin> { (agentId, pluginId) ->
+                patch<ApiRoot.Agents.Plugin> { (_, agentId, pluginId) ->
                     logger.debug { "Update plugin with id $pluginId for agent with id $agentId" }
                     val config = call.receive<String>()
                     val pc = PluginConfig(pluginId, config)
@@ -78,8 +79,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             example("")
                         ), notFound()
                     )
-                post<Routes.Api.Agents.DispatchPluginAction, String>(dispatchResponds) { payload, action ->
-                    val (agentId, pluginId) = payload
+                post<ApiRoot.Agents.DispatchPluginAction, String>(dispatchResponds) { payload, action ->
+                    val (_, agentId, pluginId) = payload
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
                     val agentEntry = agentManager.full(agentId)
                     val (statusCode, response) = agentEntry?.run {
@@ -110,9 +111,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             example("")
                         ), notFound()
                     )
-                post<Routes.Api.ServiceGroup.Plugin.DispatchAction, String>(dispatchPluginsResponds) { pluginParent, action ->
+                post<ApiRoot.ServiceGroup.Plugin.DispatchAction, String>(dispatchPluginsResponds) { pluginParent, action ->
                     val pluginId = pluginParent.parent.pluginId
-                    val serviceGroupId = pluginParent.parent.serviceGroupParent.serviceGroupId
+                    val serviceGroupId = pluginParent.parent.parent.serviceGroupId
                     val agents = agentManager.serviceGroup(serviceGroupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
                     val plugin: Plugin? = plugins[pluginId]
@@ -129,7 +130,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-            get<Routes.Api.Agents.PluginData> { (agentId, pluginId, dataType) ->
+            get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
                 logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
                 val agentInfo = agentManager[agentId]
@@ -147,9 +148,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 sendResponse(response, statusCode)
             }
 
-            get<Routes.Api.ServiceGroup.Plugin.Data> { (pluginParent, dataType) ->
+            get<ApiRoot.ServiceGroup.Plugin.Data> { (pluginParent, dataType) ->
                 val pluginId = pluginParent.pluginId
-                val serviceGroupId = pluginParent.serviceGroupParent.serviceGroupId
+                val serviceGroupId = pluginParent.parent.serviceGroupId
                 logger.debug { "Get plugin data, serviceGroupId=${serviceGroupId}serviceGroupId, pluginId=${pluginId}, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
                 val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
@@ -181,8 +182,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             example("result", "Plugin was added")
                         ), badRequest()
                     )
-                post<Routes.Api.Agents.Plugins, PluginId>(addNewPluginResponds) { params, pluginIdObject ->
-                    val (agentId) = params
+                post<ApiRoot.Agents.Plugins, PluginId>(addNewPluginResponds) { params, pluginIdObject ->
+                    val (_, agentId) = params
                     logger.debug { "Add new plugin for agent with id $agentId" }
                     val (status, msg) = when (pluginIdObject.pluginId) {
                         in plugins.keys -> {
@@ -223,8 +224,8 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             )
                         ), notFound()
                     )
-                post<Routes.Api.Agents.TogglePlugin>(togglePluginResponds) { params ->
-                    val (agentId, pluginId) = params
+                post<ApiRoot.Agents.TogglePlugin>(togglePluginResponds) { params ->
+                    val (_, agentId, pluginId) = params
                     logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
                     val dp: Plugin? = plugins[pluginId]
                     val session = agentManager.agentSession(agentId)

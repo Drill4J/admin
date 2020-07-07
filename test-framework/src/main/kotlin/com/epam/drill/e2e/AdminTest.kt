@@ -1,7 +1,7 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
@@ -63,7 +63,10 @@ abstract class AdminTest {
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync(context) {
         with(engine) {
-            handleRequest(HttpMethod.Patch, toApiUri(Routes.Api.Agents.Agent(agentId))) {
+            handleRequest(
+                HttpMethod.Patch,
+                toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
+            ) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody(AgentRegistrationDto.serializer() stringify payload)

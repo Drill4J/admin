@@ -2,9 +2,9 @@ package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
 import com.epam.drill.common.*
@@ -35,8 +35,8 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                delete<Routes.Api.Agents.Plugin>(unloadPluginResponds) { payload ->
-                    val (agentId, pluginId) = payload
+                delete<ApiRoot.Agents.Plugin>(unloadPluginResponds) { payload ->
+                    val (_, agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
                     val drillAgent = agentManager.agentSession(agentId)
                     val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
@@ -73,8 +73,8 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                post<Routes.Api.Agents.ToggleAgent>(agentToggleStandByResponds) { params ->
-                    val (agentId) = params
+                post<ApiRoot.Agents.ToggleAgent>(agentToggleStandByResponds) { params ->
+                    val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     val (status, response) = agentManager[agentId]?.let { agentInfo ->
                         when (agentInfo.status) {
@@ -108,7 +108,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                put<Routes.Api.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (agentId), loggingConfig ->
+                put<ApiRoot.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (_, agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
                     loggingHandler.updateConfig(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
@@ -128,8 +128,8 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         ok<String>(),
                         badRequest()
                     )
-                put<Routes.Api.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
-                    val (agentId) = params
+                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
+                    val (_, agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 
                     val response: Any = when (statusCode) {

@@ -1,9 +1,9 @@
 package com.epam.drill.admin.version
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.router.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.response.*
@@ -25,7 +25,7 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
         val versionMeta = "Get versions".responds(
             ok<VersionDto>(example("sample", VersionDto("0.1.0", adminVersion)))
         )
-        get<Routes.Api.Version>(versionMeta) {
+        get<ApiRoot.Version>(versionMeta) {
             call.respond(
                 VersionDto(
                     admin = adminVersionDto.admin,

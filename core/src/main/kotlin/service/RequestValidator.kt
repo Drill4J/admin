@@ -1,17 +1,15 @@
 package com.epam.drill.admin.service
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.router.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import io.ktor.util.*
-import io.ktor.util.pipeline.*
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -44,7 +42,9 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
                                 }
                             }
                             AgentStatus.BUSY -> {
-                                val agentPath = locations.href(Routes.Api.Agents.Agent(agentId))
+                                val agentPath = locations.href(
+                                    ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
+                                )
                                 with(context.request) {
                                     if (path() != agentPath && httpMethod != HttpMethod.Post) {
                                         logger.info { "Agent status is busy" }

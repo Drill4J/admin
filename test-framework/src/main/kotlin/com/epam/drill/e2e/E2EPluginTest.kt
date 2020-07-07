@@ -1,11 +1,10 @@
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.router.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
-import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import java.net.*
@@ -38,7 +37,7 @@ fun AdminTest.addPlugin(
 ) = callAsync(asyncEngine.context) {
     engine.handleRequest(
         HttpMethod.Post,
-        engine.toApiUri(Routes.Api.Agents.Plugins(agentId))
+        engine.toApiUri(agentApi { ApiRoot.Agents.Plugins(it, agentId) })
     ) {
         addHeader(HttpHeaders.Authorization, "Bearer $token")
         setBody(PluginId.serializer() stringify payload)
@@ -53,7 +52,7 @@ fun AdminTest.unRegister(
     callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Delete,
-            engine.toApiUri(Routes.Api.Agents.Agent(agentId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -68,7 +67,7 @@ fun AdminTest.unLoadPlugin(
     callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Delete,
-            engine.toApiUri(Routes.Api.Agents.Plugin(agentId, payload.pluginId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.Plugin(it, agentId, payload.pluginId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -84,7 +83,7 @@ fun AdminTest.togglePlugin(
     callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Post,
-            engine.toApiUri(Routes.Api.Agents.TogglePlugin(agentId, pluginId.pluginId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.TogglePlugin(it, agentId, pluginId.pluginId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -99,7 +98,7 @@ fun AdminTest.toggleAgent(
     callAsync(asyncEngine.context) {
         engine.handleRequest(
             HttpMethod.Patch,
-            engine.toApiUri(Routes.Api.Agents.ToggleAgent(agentId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.ToggleAgent(it, agentId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
         }.apply { resultBlock(response.status(), response.content) }
@@ -114,10 +113,8 @@ fun AdminTest.pluginAction(
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 
 ) = callAsync(asyncEngine.context) {
-    val location = Routes.Api.ServiceGroup(serviceGroupId).run {
-        Routes.Api.ServiceGroup.Plugin(this, pluginId).run {
-            Routes.Api.ServiceGroup.Plugin.DispatchAction(this)
-        }
+    val location = groupApi(serviceGroupId) {
+        ApiRoot.ServiceGroup.Plugin(it, pluginId).let(ApiRoot.ServiceGroup.Plugin::DispatchAction)
     }
     val uri = engine.toApiUri(location)
     engine.handleRequest(HttpMethod.Post, uri) {
@@ -146,7 +143,7 @@ data class PluginTestContext(
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
-            engine.toApiUri(Routes.Api.Agents.DispatchPluginAction(agentId, pluginId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.DispatchPluginAction(it, agentId, pluginId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
             setBody(payload)
@@ -161,7 +158,7 @@ data class PluginTestContext(
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
-            engine.toApiUri(Routes.Api.Agents.SystemSettings(agentId))
+            engine.toApiUri(agentApi { ApiRoot.Agents.SystemSettings(it, agentId) })
         ) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
             setBody(PackagesPrefixes.serializer() stringify payload)

@@ -1,10 +1,10 @@
 package com.epam.drill.admin.websockets
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.jwt.config.*
-import com.epam.drill.admin.router.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -33,7 +33,7 @@ class LoginHandler(override val kodein: Kodein) : KodeinAware {
 
                     )
                 )
-            post<Routes.Api.Login, String>(loginResponds) { _, userDataJson ->
+            post<ApiRoot.Login, String>(loginResponds) { _, userDataJson ->
                 var notEmptyUserDataJson = userDataJson
                 if (userDataJson.isBlank()) {
                     notEmptyUserDataJson = UserData.serializer() stringify UserData(

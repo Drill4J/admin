@@ -1,6 +1,7 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
@@ -38,7 +39,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         ok<Unit>(),
                         notFound()
                     )
-                put<Routes.Api.ServiceGroup, ServiceGroup>(meta) { _, group ->
+                put<ApiRoot.ServiceGroup, ServiceGroup>(meta) { _, group ->
                     val statusCode = when (serviceGroupManager.update(group)) {
                         null -> HttpStatusCode.NotFound
                         else -> HttpStatusCode.OK

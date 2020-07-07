@@ -1,9 +1,9 @@
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.testdata.*
@@ -149,7 +149,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Post,
-                    toApiUri(Routes.Api.Agents.Plugins(agentId))
+                    toApiUri(agentApi { ApiRoot.Agents.Plugins(it, agentId) })
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                     addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -167,7 +167,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Delete,
-                    toApiUri(Routes.Api.Agents.Agent(agentId))
+                    toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -184,7 +184,7 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Delete,
-                    toApiUri(Routes.Api.Agents.Plugin(agentId, payload.pluginId))
+                    toApiUri(agentApi { ApiRoot.Agents.Plugin(it, agentId, payload.pluginId) })
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -202,7 +202,9 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Post,
-                    toApiUri(Routes.Api.Agents.TogglePlugin(agentId, pluginId.pluginId))
+                    toApiUri(
+                        ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.TogglePlugin(it, agentId, pluginId.pluginId) }
+                    )
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -219,7 +221,9 @@ abstract class E2ETest : AdminTest() {
             with(engine) {
                 handleRequest(
                     HttpMethod.Post,
-                    toApiUri(Routes.Api.Agents.ToggleAgent(agentId))
+                    toApiUri(
+                        ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.ToggleAgent(it, agentId) }
+                    )
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
                 }.apply { resultBlock(response.status(), response.content) }
@@ -234,7 +238,10 @@ abstract class E2ETest : AdminTest() {
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
     ) = callAsync(context) {
         with(engine) {
-            handleRequest(HttpMethod.Put, toApiUri(Routes.Api.Agents.SystemSettings(agentId))) {
+            handleRequest(
+                HttpMethod.Put,
+                toApiUri(agentApi { ApiRoot.Agents.SystemSettings(it, agentId) })
+            ) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody(SystemSettingsDto.serializer() stringify payload)

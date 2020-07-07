@@ -3,8 +3,8 @@ package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -35,7 +35,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<Routes.Api.Agents.AgentInfo, AgentUpdateDto>(updateConfigResponds) { location, au ->
+                patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(updateConfigResponds) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
@@ -59,7 +59,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<Routes.Api.Agents.Agent, AgentRegistrationDto>(registerAgentResponds) { payload, regInfo ->
+                patch<ApiRoot.Agents.Agent, AgentRegistrationDto>(registerAgentResponds) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -83,7 +83,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                patch<Routes.Api.ServiceGroup, AgentRegistrationDto>(registrationResponds) { location, regInfo ->
+                patch<ApiRoot.ServiceGroup, AgentRegistrationDto>(registrationResponds) { location, regInfo ->
                     val serviceGroupId = location.serviceGroupId
                     logger.debug { "Service group $serviceGroupId: registering agents..." }
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
@@ -115,7 +115,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentRegistrationExample
                         )
                     )
-                post<Routes.Api.Agents, AgentRegistrationDto>(registerAllResponds) { _, regInfo ->
+                post<ApiRoot.Agents, AgentRegistrationDto>(registerAllResponds) { _, regInfo ->
                     logger.debug { "Registering all agents" }
                     val infos = agentManager.getAllAgents().map { it.agent }
                     val registeredIds = infos.register(regInfo)
@@ -134,7 +134,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                delete<Routes.Api.Agents.Agent>(unregisterAgentResponds) { payload ->
+                delete<ApiRoot.Agents.Agent>(unregisterAgentResponds) { payload ->
                     logger.debug { "Unregister agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
