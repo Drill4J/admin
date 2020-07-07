@@ -6,7 +6,7 @@ import kotlinx.serialization.*
 
 @Serializable
 data class SystemSettingsDto(
-    val packagesPrefixes: List<String> = emptyList(),
+    val packages: List<String> = emptyList(),
     val sessionIdHeaderName: String = ""
 )
 

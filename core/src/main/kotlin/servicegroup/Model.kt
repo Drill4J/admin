@@ -10,7 +10,8 @@ data class ServiceGroup(
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val packages: List<String> = emptyList()
+    val packages: List<String> = emptyList(),
+    val sessionIdHeaderName: String = ""
 )
 
 typealias GroupedAgents = Pair<SingleAgents, List<AgentGroup>>

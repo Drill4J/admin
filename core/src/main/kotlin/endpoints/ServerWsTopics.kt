@@ -100,6 +100,15 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.WsVersion> { adminVersionDto }
+
+                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
+
+                topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
+                    agentManager.run {
+                        val agents = activeAgents.filter { it.serviceGroup == groupId }
+                        plugins.values.ofAgents(agents).mapToDto()
+                    }
+                }
             }
 
         }
