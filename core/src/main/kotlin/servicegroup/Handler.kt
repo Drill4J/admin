@@ -6,7 +6,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.router.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -14,7 +14,6 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -25,7 +24,6 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
-    private val wsTopic by instance<WsTopic>()
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCache>()
     private val agentManager by instance<AgentManager>()
@@ -35,22 +33,19 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
             authenticate {
                 val meta = "Update service group"
                     .examples(
-                        example(
-                            "serviceGroup",
-                            ServiceGroup(
-                                id = "some-group",
-                                name = "Some Group"
+                        example("serviceGroup", ServiceGroupUpdateDto(name = "Some Group"))
+                    ).responds(ok<Unit>(), notFound())
+                put<ApiRoot.ServiceGroup, ServiceGroupUpdateDto>(meta) { (_, id), info ->
+                    val statusCode = serviceGroupManager[id]?.let { group ->
+                        serviceGroupManager.update(
+                            group.copy(
+                                name = info.name,
+                                description = info.description,
+                                environment = info.environment
                             )
                         )
-                    ).responds(
-                        ok<Unit>(),
-                        notFound()
-                    )
-                put<ApiRoot.ServiceGroup, ServiceGroup>(meta) { _, group ->
-                    val statusCode = when (serviceGroupManager.update(group)) {
-                        null -> HttpStatusCode.NotFound
-                        else -> HttpStatusCode.OK
-                    }
+                        HttpStatusCode.OK
+                    } ?: HttpStatusCode.NotFound
                     call.respond(statusCode)
                 }
             }
@@ -71,19 +66,37 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                 logger.trace { response }
                 call.respond(statusCode, response)
             }
-        }
 
-        runBlocking {
-            wsTopic {
-                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
-
-                topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
-                    agentManager.run {
-                        val agents = activeAgents.filter { it.serviceGroup == groupId }
-                        plugins.values.ofAgents(agents).mapToDto()
-                    }
+            authenticate {
+                val meta = "Update system settings of service group"
+                    .examples(
+                        example(
+                            "systemSettings",
+                            SystemSettingsDto(listOf("some package prefixes"), "some session header name")
+                        )
+                    ).responds(
+                        ok<Unit>(),
+                        notFound()
+                    )
+                put<ApiRoot.ServiceGroup.SystemSettings, SystemSettingsDto>(meta) { (group), systemSettings ->
+                    val id: String = group.serviceGroupId
+                    val status: HttpStatusCode = serviceGroupManager[id]?.let { serviceGroup ->
+                        if (systemSettings.packages.all { it.isNotBlank() }) {
+                            val agentInfos: List<AgentInfo> = agentManager.serviceGroup(id).map { it.agent }
+                            val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
+                            serviceGroupManager.updateSystemSettings(serviceGroup, systemSettings)
+                            if (updatedAgentIds.count() < agentInfos.count()) {
+                                logger.error {
+                                    """Service group $id: not all agents updated successfully.
+                                        |Failed agents: ${agentInfos - updatedAgentIds}.
+                                    """.trimMargin()
+                                }
+                            } else logger.debug { "Service group $id: updated agents $updatedAgentIds." }
+                            HttpStatusCode.OK
+                        } else HttpStatusCode.BadRequest
+                    } ?: HttpStatusCode.NotFound
+                    call.respond(status)
                 }
-
             }
         }
     }

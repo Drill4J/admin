@@ -318,11 +318,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         updateSessionHeader(agentInfo)
                         modified = true
                     }
-                    if (adminData.packagesPrefixes != systemSettings.packagesPrefixes) {
+                    if (adminData.packagesPrefixes != systemSettings.packages) {
                         adminData.resetBuilds()
-                        adminData.packagesPrefixes = systemSettings.packagesPrefixes
+                        adminData.packagesPrefixes = systemSettings.packages
                         disableAllPlugins(agentId)
-                        configurePackages(systemSettings.packagesPrefixes)
+                        configurePackages(systemSettings.packages)
                         triggerClassesSending()
                         full(agentId)?.applyPackagesChanges()
                         enableAllPlugins(id)
@@ -335,6 +335,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             }
         }
     }
+
+    suspend fun updateSystemSettings(
+        agentInfos: Iterable<AgentInfo>,
+        systemSettings: SystemSettingsDto
+    ): Set<String> = supervisorScope {
+        agentInfos.map { info ->
+            val agentId = info.id
+            val handler = CoroutineExceptionHandler { _, e ->
+                logger.error(e) { "Error updating agent $agentId" }
+            }
+            async(handler) {
+                updateSystemSettings(agentId, systemSettings)
+                agentId
+            }
+        }
+    }.filterNot { it.isCancelled }.mapTo(mutableSetOf()) { it.await() }
 
     private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
         logger.debug { "Sending ${info.plugins.count()} plugins to agent ${info.id}" }

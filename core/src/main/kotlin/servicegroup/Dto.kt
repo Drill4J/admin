@@ -16,3 +16,10 @@ data class GroupedAgentsDto(
     val single: List<AgentInfoDto>,
     val grouped: List<ServiceGroupDto>
 )
+
+@Serializable
+data class ServiceGroupUpdateDto(
+    val name: String,
+    val description: String = "",
+    val environment: String = ""
+)

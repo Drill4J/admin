@@ -1,10 +1,11 @@
 package com.epam.drill.admin.servicegroup
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.admin.store.*
-import com.epam.drill.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.store.*
+import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -71,5 +72,14 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Updating group ${group.id}, old: $oldValue new: $group" }
         commonStore.client.store(group)
         return group
+    }
+
+    suspend fun updateSystemSettings(serviceGroup: ServiceGroup, systemSettings: SystemSettingsDto) {
+        update(
+            serviceGroup.copy(
+                packages = systemSettings.packages,
+                sessionIdHeaderName = systemSettings.sessionIdHeaderName
+            )
+        )
     }
 }

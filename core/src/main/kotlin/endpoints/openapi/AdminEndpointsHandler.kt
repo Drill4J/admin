@@ -1,7 +1,6 @@
 package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.common.*
 
 import com.epam.drill.admin.endpoints.*
 import io.ktor.http.*
@@ -17,7 +16,7 @@ class AdminEndpointsHandler(override val kodein: Kodein) : KodeinAware {
         systemSettings: SystemSettingsDto
     ): HttpStatusCode {
         return when {
-            systemSettings.packagesPrefixes.any { it.isBlank() } -> HttpStatusCode.BadRequest
+            systemSettings.packages.any { it.isBlank() } -> HttpStatusCode.BadRequest
 
             else -> {
                 agentManager.updateSystemSettings(agentId, systemSettings)
