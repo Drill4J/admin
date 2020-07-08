@@ -23,7 +23,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
-    private val eventStorage by instance<PluginCache>()
+    private val pluginCache by instance<PluginCache>()
 
     private val sessionStorage = SessionStorage()
 
@@ -69,11 +69,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
         //TODO replace with normal event removal
         if (message == "") {
             logger.trace { "Removed message by key $subscriptionKey" }
-            eventStorage.remove(subscriptionKey)
+            pluginCache.remove(subscriptionKey)
         } else {
             val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
             logger.trace { "Sending message to $subscriptionKey" }
-            eventStorage[subscriptionKey] = message
+            pluginCache[subscriptionKey] = message
             sessionStorage.sendTo(
                 destination = subscriptionKey,
                 messageProvider = { messageForSend }
@@ -90,7 +90,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
                 val destination = event.destination
                 val subscriptionKey = destination.toKey(subscription)
                 sessionStorage.subscribe(subscriptionKey, this)
-                val message = eventStorage[subscriptionKey] ?: ""
+                val message = pluginCache[subscriptionKey] ?: ""
                 val messageToSend = message.toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
                 send(messageToSend)
                 logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }

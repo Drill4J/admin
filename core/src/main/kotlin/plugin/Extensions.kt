@@ -5,14 +5,6 @@ import kotlinx.serialization.*
 import kotlinx.serialization.internal.*
 import kotlin.reflect.full.*
 
-//TODO get rid of this thing
-suspend fun AdminPluginPart<*>.getPluginData(type: String = ""): Any? {
-    val params = if (type.isNotEmpty()) mapOf("type" to type) else emptyMap()
-    val data = getPluginData(params)
-    return data.takeIf { it != Unit && it != "" }
-}
-
-
 //TODO redesign plugin api
 @OptIn(InternalSerializationApi::class)
 @Suppress("UNCHECKED_CAST")

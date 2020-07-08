@@ -10,7 +10,6 @@ import com.epam.drill.admin.router.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.response.*
@@ -64,9 +63,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(groupId)
                     if (serviceGroup.any()) {
                         val key = GroupSubscription(groupId).toKey("/service-group/data/$dataType")
-                        pluginCache[key]?.let {
-                            HttpStatusCode.OK to it
-                        } ?: HttpStatusCode.NotFound to EmptyContent
+                        pluginCache[key].toStatusResponsePair()
                     } else HttpStatusCode.NotFound to ErrorResponse(
                         "service group $groupId not found"
                     )

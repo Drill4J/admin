@@ -1,11 +1,10 @@
 package com.epam.drill.admin.notification
 
 import com.epam.drill.admin.admindata.*
-import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -18,7 +17,7 @@ internal val logger = KotlinLogging.logger {}
 
 class NotificationManager(override val kodein: Kodein) : KodeinAware {
     private val topicResolver by instance<TopicResolver>()
-    private val plugins by instance<Plugins>()
+    private val pluginCache by instance<PluginCache>()
     private val agentManager by instance<AgentManager>()
     private val _notifications = atomic(Notifications())
 
@@ -65,7 +64,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         topicResolver.sendToAllSubscribed(WsNotifications)
     }
 
-    private suspend fun createNewBuildMessage(
+    private fun createNewBuildMessage(
         buildManager: AgentBuildManager,
         previousBuildVersion: String,
         agentInfo: AgentInfo
@@ -87,13 +86,14 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         )
     }
 
-    private suspend fun pluginsRecommendations(
+    private fun pluginsRecommendations(
         agentInfo: AgentInfo
-    ): Set<String> = agentManager.full(agentInfo.id)?.let { agentEntry ->
-        plugins.values.ofAgent(agentEntry.agent).mapNotNull { plugin ->
-            val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
-            pluginInstance.getPluginData(type = "recommendations") as? Iterable<*>
-        }.flatten().mapTo(mutableSetOf()) { "$it" }
+    ): Set<String> = AgentSubscription(agentInfo.id, agentInfo.buildVersion).let { subscription ->
+        //TODO handle multiple plugins
+        val dataType = "recommendations"
+        val key = subscription.toKey("/data/$dataType")
+        val fromCache = pluginCache[key] as? Iterable<*>
+        fromCache?.mapTo(mutableSetOf()) { "$it" }
     } ?: emptySet()
 }
 

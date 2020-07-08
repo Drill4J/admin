@@ -30,6 +30,7 @@ import java.util.*
 class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val plugins by instance<Plugins>()
+    private val pluginCache by instance<PluginCache>()
     private val agentManager by instance<AgentManager>()
     private val topicResolver by instance<TopicResolver>()
     private val logger = KotlinLogging.logger {}
@@ -138,10 +139,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
                     (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
                     (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
-                    else -> {
-                        val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, dp)
-                        val pluginData = adminPart.getPluginData(type = dataType)
-                        pluginData.toStatusResponsePair()
+                    else -> AgentSubscription(agentId, agentInfo.buildVersion).let { subscription ->
+                        val key = subscription.toKey("/data/$dataType")
+                        pluginCache[key].toStatusResponsePair()
                     }
                 }
                 sendResponse(response, statusCode)
