@@ -1,6 +1,7 @@
 package com.epam.drill.admin.notification
 
 import com.epam.drill.admin.admindata.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
@@ -8,8 +9,6 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.builtins.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -90,27 +89,12 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun pluginsRecommendations(
         agentInfo: AgentInfo
-    ): List<String> {
-        return agentManager.full(agentInfo.id)?.let { agentEntry ->
-            val connectedPlugins = plugins.filter {
-                agentInfo.plugins.map { pluginMetadata -> pluginMetadata.id }.contains(it.key)
-            }
-
-            //TODO rewrite this double parsing
-            val results = connectedPlugins.map { (_, plugin: Plugin) ->
-                val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
-                pluginInstance.getPluginData(type = "recommendations") as? String
-            }.filterNotNull()
-            results.mapNotNull { result ->
-                try {
-                    String.serializer().list parse result
-                } catch (exception: JsonDecodingException) {
-                    logger.error(exception) { "Parsing result '$result' finished with exception: " }
-                    null
-                }
-            }.flatten()
-        } ?: emptyList()
-    }
+    ): Set<String> = agentManager.full(agentInfo.id)?.let { agentEntry ->
+        plugins.values.ofAgent(agentEntry.agent).mapNotNull { plugin ->
+            val pluginInstance = agentManager.ensurePluginInstance(agentEntry, plugin)
+            pluginInstance.getPluginData(type = "recommendations") as? Iterable<*>
+        }.flatten().mapTo(mutableSetOf()) { "$it" }
+    } ?: emptySet()
 }
 
 class Notifications(

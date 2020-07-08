@@ -21,7 +21,7 @@ data class NewBuildArrivedMessage(
     val currentId: String,
     val prevId: String,
     val buildDiff: BuildDiff,
-    val recommendations: List<String>
+    val recommendations: Set<String>
 )
 
 @Serializable
