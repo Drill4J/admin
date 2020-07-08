@@ -8,6 +8,7 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
@@ -51,6 +52,7 @@ class PluginWsTest {
                         )
                     }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
+                    bind<PluginCache>() with eagerSingleton { PluginCache(instance()) }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<AgentManager>() with eagerSingleton {
                         AgentManager(

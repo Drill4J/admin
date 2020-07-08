@@ -13,6 +13,7 @@ import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
@@ -30,6 +31,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir) }
         bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
+        bind<PluginCache>() with eagerSingleton { PluginCache(instance()) }
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }

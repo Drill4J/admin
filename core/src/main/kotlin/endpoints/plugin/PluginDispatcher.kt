@@ -7,7 +7,6 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
@@ -145,30 +144,6 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         pluginData.toStatusResponsePair()
                     }
                 }
-                sendResponse(response, statusCode)
-            }
-
-            get<ApiRoot.ServiceGroup.Plugin.Data> { (pluginParent, dataType) ->
-                val pluginId = pluginParent.pluginId
-                val serviceGroupId = pluginParent.parent.serviceGroupId
-                logger.debug { "Get plugin data, serviceGroupId=${serviceGroupId}serviceGroupId, pluginId=${pluginId}, dataType=$dataType" }
-                val dp: Plugin? = plugins[pluginId]
-                val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
-
-                val (statusCode: HttpStatusCode, response: Any) = when {
-                    dp == null -> HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
-                    serviceGroup.isEmpty() -> HttpStatusCode.NotFound to ErrorResponse(
-                        "data for serviceGroup '$serviceGroupId' not found"
-                    )
-                    else -> {
-                        val aggregatedData = serviceGroup.map {
-                            val adminPart = agentManager.ensurePluginInstance(it, dp)
-                            adminPart.getPluginData(type = dataType)
-                        }.aggregate()
-                        aggregatedData.toStatusResponsePair()
-                    }
-                }
-                logger.debug { response }
                 sendResponse(response, statusCode)
             }
 

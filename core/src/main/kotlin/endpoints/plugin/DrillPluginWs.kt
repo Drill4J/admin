@@ -1,11 +1,10 @@
 package com.epam.drill.admin.endpoints.plugin
 
-import com.epam.drill.admin.cache.*
-import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
@@ -24,8 +23,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
-    private val cacheService by instance<CacheService>()
-    private val eventStorage: Cache<Any, Any> by cacheService
+    private val eventStorage by instance<PluginCache>()
 
     private val sessionStorage = SessionStorage()
 
