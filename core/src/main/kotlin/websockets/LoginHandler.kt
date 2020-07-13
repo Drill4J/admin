@@ -24,16 +24,14 @@ class LoginHandler(override val kodein: Kodein) : KodeinAware {
 
     init {
         app.routing {
-            val loginResponds = "Login as guest"
+            val meta = "Login as guest"
                 .examples(
                     example("user", UserData("guest", ""))
                 )
                 .responds(
-                    ok<String>(
-
-                    )
+                    ok<Unit>()
                 )
-            post<ApiRoot.Login, String>(loginResponds) { _, userDataJson ->
+            post<ApiRoot.Login, String>(meta) { _, userDataJson ->
                 var notEmptyUserDataJson = userDataJson
                 if (userDataJson.isBlank()) {
                     notEmptyUserDataJson = UserData.serializer() stringify UserData(

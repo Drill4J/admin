@@ -28,14 +28,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         app.routing {
 
             authenticate {
-                val updateConfigResponds = "Update agent configuration"
+                val meta = "Update agent configuration"
                     .examples(
                         example("Petclinic", agentUpdateExample)
                     )
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(updateConfigResponds) { location, au ->
+                patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(meta) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
@@ -52,14 +52,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val registerAgentResponds = "Register agent"
+                val meta = "Register agent"
                     .examples(
                         example("Petclinic", agentRegistrationExample)
                     )
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<ApiRoot.Agents.Agent, AgentRegistrationDto>(registerAgentResponds) { payload, regInfo ->
+                patch<ApiRoot.Agents.Agent, AgentRegistrationDto>(meta) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -76,14 +76,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val registrationResponds = "Register agent in defined service group"
+                val meta = "Register agent in defined service group"
                     .examples(
                         example(
                             "agentRegistrationInfo",
                             agentRegistrationExample
                         )
                     )
-                patch<ApiRoot.ServiceGroup, AgentRegistrationDto>(registrationResponds) { location, regInfo ->
+                patch<ApiRoot.ServiceGroup, AgentRegistrationDto>(meta) { location, regInfo ->
                     val serviceGroupId = location.serviceGroupId
                     logger.debug { "Service group $serviceGroupId: registering agents..." }
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
@@ -108,14 +108,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val registerAllResponds = "Register all"
+                val meta = "Register all"
                     .examples(
                         example(
                             "agentRegistrationInfo",
                             agentRegistrationExample
                         )
                     )
-                post<ApiRoot.Agents, AgentRegistrationDto>(registerAllResponds) { _, regInfo ->
+                post<ApiRoot.Agents, AgentRegistrationDto>(meta) { _, regInfo ->
                     logger.debug { "Registering all agents" }
                     val infos = agentManager.getAllAgents().map { it.agent }
                     val registeredIds = infos.register(regInfo)
@@ -130,11 +130,11 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val unregisterAgentResponds = "Unregister agent"
+                val meta = "Unregister agent"
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                delete<ApiRoot.Agents.Agent>(unregisterAgentResponds) { payload ->
+                delete<ApiRoot.Agents.Agent>(meta) { payload ->
                     logger.debug { "Unregister agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
