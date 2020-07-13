@@ -31,11 +31,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             authenticate {
-                val unloadPluginResponds = "Unload plugin"
+                val meta = "Unload plugin"
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                delete<ApiRoot.Agents.Plugin>(unloadPluginResponds) { payload ->
+                delete<ApiRoot.Agents.Plugin>(meta) { payload ->
                     val (_, agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
                     val drillAgent = agentManager.agentSession(agentId)
@@ -69,11 +69,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val agentToggleStandByResponds = "Agent Toggle StandBy"
+                val meta = "Agent Toggle StandBy"
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                post<ApiRoot.Agents.ToggleAgent>(agentToggleStandByResponds) { params ->
+                post<ApiRoot.Agents.ToggleAgent>(meta) { params ->
                     val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     val (status, response) = agentManager[agentId]?.let { agentInfo ->
@@ -101,14 +101,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val loggingResponds = "Configure agent logging levels"
+                val meta = "Configure agent logging levels"
                     .examples(
                         example("Agent logging configuration", defaultLoggingConfig)
                     )
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                put<ApiRoot.Agents.AgentLogging, LoggingConfig>(loggingResponds) { (_, agentId), loggingConfig ->
+                put<ApiRoot.Agents.AgentLogging, LoggingConfig>(meta) { (_, agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
                     loggingHandler.updateConfig(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
@@ -117,7 +117,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val systemSettingsResponds = "Update system settings"
+                val meta = "Update system settings"
                     .examples(
                         example(
                             "systemSettings",
@@ -125,10 +125,9 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         )
                     )
                     .responds(
-                        ok<String>(),
-                        badRequest()
+                        ok<String>(), badRequest()
                     )
-                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(systemSettingsResponds) { params, systemSettings ->
+                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(meta) { params, systemSettings ->
                     val (_, agentId) = params
                     val statusCode = handler.updateSystemSettings(agentId, systemSettings)
 
