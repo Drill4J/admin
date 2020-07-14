@@ -57,7 +57,7 @@ abstract class AdminTest {
         payload: AgentRegistrationDto = AgentRegistrationDto(
             name = "xz",
             description = "ad",
-            packagesPrefixes = listOf("testPrefix"),
+            packages = listOf("testPrefix"),
             plugins = emptyList()
         ),
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }

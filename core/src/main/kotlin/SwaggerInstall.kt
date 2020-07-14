@@ -1,7 +1,6 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import de.nielsfalk.ktor.swagger.version.v2.*
@@ -46,5 +45,5 @@ val agentRegistrationExample = AgentRegistrationDto(
     environment = "",
     sessionIdHeaderName = "",
     plugins = mutableListOf("test-to-code-mapping"),
-    packagesPrefixes = listOf("org/springframework/samples/petclinic")
+    packages = listOf("org/springframework/samples/petclinic")
 )
