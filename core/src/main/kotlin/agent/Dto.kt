@@ -25,7 +25,7 @@ data class AgentInfoDto(
     val activePluginsCount: Int = 0,
     val sessionIdHeaderName: String = "",
     val plugins: Set<PluginDto> = emptySet(),
-    val packagesPrefixes: List<String>,
+    val packages: List<String>,
     val agentType: String,
     val agentVersion: String
 )
@@ -35,7 +35,7 @@ data class AgentRegistrationDto(
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val packagesPrefixes: List<String>,
+    val packages: List<String>,
     val sessionIdHeaderName: String = "",
     val plugins: List<String> = emptyList()
 )
