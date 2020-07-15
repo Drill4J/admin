@@ -1,17 +1,13 @@
 package com.epam.drill.admin.agent.logging
 
-import com.epam.drill.api.dto.*
+import com.epam.drill.admin.api.*
 import com.epam.kodux.*
 import kotlinx.serialization.*
 
 @Serializable
 data class AgentLoggingConfig(
     @Id val agentId: String,
-    val config: LoggingConfig = defaultLoggingConfig
+    val config: LoggingConfigDto = defaultLoggingConfig
 )
 
-val defaultLoggingConfig = LoggingConfig(
-    info = true,
-    warn = true,
-    error = true
-)
+val defaultLoggingConfig = LoggingConfigDto(LogLevel.INFO)
