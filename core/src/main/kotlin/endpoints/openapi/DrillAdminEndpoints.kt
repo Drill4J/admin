@@ -2,11 +2,11 @@ package com.epam.drill.admin.endpoints.openapi
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
+import com.epam.drill.admin.api.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
-import com.epam.drill.api.dto.*
 import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -108,7 +108,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
                     )
-                put<ApiRoot.Agents.AgentLogging, LoggingConfig>(meta) { (_, agentId), loggingConfig ->
+                put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(meta) { (_, agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
                     loggingHandler.updateConfig(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
