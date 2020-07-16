@@ -44,11 +44,13 @@ fun AgentInfo.toDto(agentManager: AgentManager): AgentInfoDto = AgentInfoDto(
     adminUrl = adminUrl,
     ipAddress = ipAddress,
     activePluginsCount = plugins.activePluginsCount(),
-    sessionIdHeaderName = sessionIdHeaderName,
-    plugins = agentManager.plugins.values.ofAgent(this).mapToDto().toSet(),
-    packages = agentManager.adminData(id).packagesPrefixes,
     agentType = agentType.notation,
-    agentVersion = agentVersion
+    agentVersion = agentVersion,
+    systemSettings = SystemSettingsDto(
+        packages = agentManager.adminData(id).packagesPrefixes,
+        sessionIdHeaderName = sessionIdHeaderName
+    ),
+    plugins = agentManager.plugins.values.ofAgent(this).mapToDto().toSet()
 )
 
 private fun Iterable<AgentInfo>.plugins(): List<PluginMetadata> = run {

@@ -37,7 +37,9 @@ class AgentRegistrationTest : E2ETest() {
                     agentId,
                     payload = AgentRegistrationDto(
                         name = "without description",
-                        packages = listOf("testPrefix"),
+                        systemSettings = SystemSettingsDto(
+                            packages = listOf("testPrefix")
+                        ),
                         plugins = emptyList()
                     )
                 ) { status, _ ->

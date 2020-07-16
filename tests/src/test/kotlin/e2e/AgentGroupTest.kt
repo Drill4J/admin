@@ -23,7 +23,9 @@ class AgentGroupTest : E2ETest() {
                     payload = AgentRegistrationDto(
                         name = "first first",
                         description = "ad",
-                        packages = listOf("testPrefix"),
+                        systemSettings = SystemSettingsDto(
+                            packages = listOf("testPrefix")
+                        ),
                         plugins = emptyList()
                     )
                 ) { status, _ ->
@@ -42,7 +44,9 @@ class AgentGroupTest : E2ETest() {
                     payload = AgentRegistrationDto(
                         name = "first first",
                         description = "ad",
-                        packages = listOf("testPrefix"),
+                        systemSettings = SystemSettingsDto(
+                            packages = listOf("testPrefix")
+                        ),
                         plugins = emptyList()
                     )
                 ) { status, _ ->

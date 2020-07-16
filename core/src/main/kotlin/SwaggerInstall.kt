@@ -43,7 +43,8 @@ val agentRegistrationExample = AgentRegistrationDto(
     name = "Petclinic",
     description = "Simple web service",
     environment = "",
-    sessionIdHeaderName = "",
-    plugins = mutableListOf("test-to-code-mapping"),
-    packages = listOf("org/springframework/samples/petclinic")
+    systemSettings = SystemSettingsDto(
+        packages = listOf("org/springframework/samples/petclinic")
+    ),
+    plugins = mutableListOf("test-to-code-mapping")
 )
