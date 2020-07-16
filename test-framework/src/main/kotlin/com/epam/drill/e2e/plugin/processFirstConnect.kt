@@ -59,7 +59,9 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                 ag.id, payload = AgentRegistrationDto(
                     name = "xz",
                     description = "ad",
-                    packages = listOf("testPrefix"),
+                    systemSettings = SystemSettingsDto(
+                        packages = listOf("testPrefix")
+                    ),
                     plugins = listOf(pluginMeta.id)
                 )
             )

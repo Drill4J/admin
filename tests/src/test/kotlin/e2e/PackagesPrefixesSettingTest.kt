@@ -35,7 +35,7 @@ class PackagesPrefixesSettingTest : E2ETest() {
                 agent.`get-load-classes-datas`()
                 val agent2 = ui.getAgent()
                 agent2?.status shouldBe AgentStatus.ONLINE
-                agent2?.packages?.first() shouldBe "newTestPrefix"
+                agent2?.systemSettings?.packages?.first() shouldBe "newTestPrefix"
             }
         }
     }

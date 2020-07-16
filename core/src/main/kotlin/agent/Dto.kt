@@ -7,7 +7,8 @@ import kotlinx.serialization.*
 @Serializable
 data class SystemSettingsDto(
     val packages: List<String> = emptyList(),
-    val sessionIdHeaderName: String = ""
+    val sessionIdHeaderName: String = "",
+    val targetHost: String = ""
 )
 
 @Serializable
@@ -23,11 +24,10 @@ data class AgentInfoDto(
     val adminUrl: String = "",
     val ipAddress: String = "",
     val activePluginsCount: Int = 0,
-    val sessionIdHeaderName: String = "",
-    val plugins: Set<PluginDto> = emptySet(),
-    val packages: List<String>,
     val agentType: String,
-    val agentVersion: String
+    val agentVersion: String,
+    val systemSettings: SystemSettingsDto,
+    val plugins: Set<PluginDto> = emptySet()
 )
 
 @Serializable
@@ -35,8 +35,7 @@ data class AgentRegistrationDto(
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val packages: List<String>,
-    val sessionIdHeaderName: String = "",
+    val systemSettings: SystemSettingsDto,
     val plugins: List<String> = emptyList()
 )
 
