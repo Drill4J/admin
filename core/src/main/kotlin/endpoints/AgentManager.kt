@@ -37,6 +37,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             .filter { instanceIds(it.id).isNotEmpty() }
             .sortedWith(compareBy(AgentInfo::id))
 
+    val hostManager by instance<HostManager>()
     private val topicResolver by instance<TopicResolver>()
     private val store by instance<StoreManager>()
     private val sender by instance<Sender>()
@@ -62,6 +63,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
         loggingHandler.sync(id, session)
+        hostManager.sync(id)
         //TODO agent instances
         return if (
             (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds)
@@ -313,6 +315,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 val agentInfo = this
                 agentSession(agentId)?.apply {
                     var modified = false
+                    hostManager.update(agentId, systemSettings.targetHost)
                     if (agentInfo.sessionIdHeaderName != systemSettings.sessionIdHeaderName) {
                         agentInfo.sessionIdHeaderName = systemSettings.sessionIdHeaderName
                         updateSessionHeader(agentInfo)

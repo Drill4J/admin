@@ -175,6 +175,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         status = AgentStatus.ONLINE
         sessionIdHeaderName = regInfo.systemSettings.sessionIdHeaderName.toLowerCase()
         agentManager.apply {
+            hostManager.update(id, regInfo.systemSettings.targetHost)
             adminData(id).apply { packagesPrefixes = regInfo.systemSettings.packages }
             addPlugins(regInfo.plugins)
             sync(true)
