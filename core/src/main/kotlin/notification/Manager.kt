@@ -1,9 +1,7 @@
 package com.epam.drill.admin.notification
 
-import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import kotlinx.atomicfu.*
@@ -16,6 +14,7 @@ import java.util.*
 internal val logger = KotlinLogging.logger {}
 
 class NotificationManager(override val kodein: Kodein) : KodeinAware {
+
     private val topicResolver by instance<TopicResolver>()
     private val pluginCache by instance<PluginCache>()
     private val agentManager by instance<AgentManager>()
@@ -43,13 +42,12 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
         if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {
-            saveNewBuildNotification(agentInfo, buildManager, previousBuildVersion)
+            saveNewBuildNotification(agentInfo, previousBuildVersion)
         }
     }
 
     private suspend fun saveNewBuildNotification(
         agentInfo: AgentInfo,
-        buildManager: AgentBuildManager,
         previousBuildVersion: String
     ) {
         save(
@@ -58,44 +56,40 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
                 agentId = agentInfo.id,
                 createdAt = System.currentTimeMillis(),
                 type = NotificationType.BUILD,
-                message = createNewBuildMessage(buildManager, previousBuildVersion, agentInfo)
+                message = createNewBuildMessage(previousBuildVersion, agentInfo)
             )
         )
         topicResolver.sendToAllSubscribed(WsNotifications)
     }
 
     private fun createNewBuildMessage(
-        buildManager: AgentBuildManager,
         previousBuildVersion: String,
         agentInfo: AgentInfo
-    ): NewBuildArrivedMessage {
-        val methodChanges = buildManager[agentInfo.buildVersion]?.methodChanges ?: MethodChanges()
-        val buildDiff = BuildDiff(
-            methodChanges.map[DiffType.MODIFIED_BODY]?.count() ?: 0,
-            methodChanges.map[DiffType.MODIFIED_DESC]?.count() ?: 0,
-            methodChanges.map[DiffType.MODIFIED_NAME]?.count() ?: 0,
-            methodChanges.map[DiffType.NEW]?.count() ?: 0,
-            methodChanges.map[DiffType.DELETED]?.count() ?: 0
-        )
-
-        return NewBuildArrivedMessage(
-            agentInfo.buildVersion,
-            previousBuildVersion,
-            buildDiff,
-            pluginsRecommendations(agentInfo)
+    ): NewBuildArrivedMessage = pluginCache.getData(
+        agentInfo.id,
+        agentInfo.buildVersion,
+        type = "build"
+    ).let { buildInfo ->
+        NewBuildArrivedMessage(
+            currentId = agentInfo.buildVersion,
+            prevId = previousBuildVersion,
+            recommendations = recommendations(agentInfo),
+            buildDiff = buildInfo,
+            buildInfo = buildInfo
         )
     }
 
-    private fun pluginsRecommendations(
-        agentInfo: AgentInfo
-    ): Set<String> = AgentSubscription(agentInfo.id, agentInfo.buildVersion).let { subscription ->
-        //TODO handle multiple plugins
-        val dataType = "recommendations"
-        val key = subscription.toKey("/data/$dataType")
-        val fromCache = pluginCache[key] as? Iterable<*>
-        fromCache?.mapTo(mutableSetOf()) { "$it" }
-    } ?: emptySet()
+    private fun recommendations(agentInfo: AgentInfo): Set<String> = pluginCache.run {
+        getData(
+            agentInfo.id,
+            agentInfo.buildVersion,
+            type = "recommendations"
+        ).let { recommendations ->
+            (recommendations as? Iterable<*>)?.mapTo(mutableSetOf()) { "$it" }
+        } ?: emptySet()
+    }
 }
+
 
 class Notifications(
     private val asc: PersistentMap<String, Notification> = persistentMapOf(),

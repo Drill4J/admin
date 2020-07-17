@@ -25,7 +25,7 @@ dependencies {
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("io.mockk:mockk:$mockkVersion")
     api(project(":core"))
-    implementation("org.apache.bcel:bcel:$bcelVersion")
+    implementation("org.apache.bcel:bcel:6.3.1")
     implementation(drill("drill-agent-part-jvm", drillApiVersion))
     implementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     implementation(project(":test-framework:test-data"))

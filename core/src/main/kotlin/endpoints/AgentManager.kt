@@ -6,6 +6,7 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.plugin.PluginCache
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
@@ -40,6 +41,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val topicResolver by instance<TopicResolver>()
     private val store by instance<StoreManager>()
     private val sender by instance<Sender>()
+    private val pluginCache by instance<PluginCache>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val adminDataVault by instance<AdminDataVault>()
     private val notificationsManager by instance<NotificationManager>()
@@ -244,8 +246,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    fun adminData(agentId: String): AdminPluginData = adminDataVault.getOrPut(agentId) {
-        AdminPluginData(agentId, store.agentStore(agentId), app.drillDefaultPackages)
+    internal fun adminData(agentId: String): AdminPluginData = adminDataVault.getOrPut(agentId) {
+        AdminPluginData(
+            agentId,
+            pluginCache,
+            store.agentStore(agentId),
+            app.drillDefaultPackages
+        )
     }
 
     private suspend fun disableAllPlugins(agentId: String) {

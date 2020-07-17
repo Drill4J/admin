@@ -49,8 +49,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 
-    testImplementation("org.jacoco:org.jacoco.core:$jacocoVersion")
-    testImplementation("org.apache.bcel:bcel:$bcelVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
 
     testImplementation(kotlin("test-junit5"))

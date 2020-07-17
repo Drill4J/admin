@@ -1,6 +1,7 @@
 package com.epam.drill.admin.admindata
 
 import com.epam.drill.admin.build.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -13,7 +14,7 @@ import kotlin.time.*
 
 private val logger = KotlinLogging.logger {}
 
-class AdminDataVault {
+internal class AdminDataVault {
     private val _data = atomic(persistentMapOf<String, AdminPluginData>())
 
     operator fun get(key: String): AdminPluginData? = _data.value[key]
@@ -30,8 +31,9 @@ class AdminDataVault {
     }
 }
 
-class AdminPluginData(
+internal class AdminPluginData(
     val agentId: String,
+    private val pluginCache: PluginCache,
     private val storeClient: StoreClient,
     defaultPackages: List<String>
 ) : AdminData {
@@ -55,18 +57,7 @@ class AdminPluginData(
             agentId = id.agentId,
             parentVersion = info.parentVersion,
             detectedAt = detectedAt,
-            codeData = ProtoBuf.dump(
-                CodeData.serializer(), CodeData(
-                    classBytes = info.classesBytes,
-                    methods = info.javaMethods,
-                    methodChanges = info.methodChanges.map.map {
-                        DiffTypeMethods(
-                            type = it.key,
-                            methods = it.value
-                        )
-                    }
-                )
-            )
+            codeData = ProtoBuf.dump(CodeData.serializer(), CodeData(classBytes = info.classesBytes))
         )
         measureTime {
             storeClient.executeInAsyncTransaction {
@@ -93,8 +84,6 @@ class AdminPluginData(
                     info = BuildInfo(
                         version = id.version,
                         parentVersion = parentVersion,
-                        methodChanges = MethodChanges(codeData.methodChanges.associate { it.type to it.methods }),
-                        javaMethods = codeData.methods,
                         classesBytes = codeData.classBytes
                     )
                 )
@@ -114,6 +103,14 @@ class AdminPluginData(
             deleteBy<AgentBuild> { AgentBuild::agentId eq agentId }
             store(toSummary())
         }
+    }
+
+    internal fun toBuildSummaries(): List<BuildSummaryDto> = buildManager.agentBuilds.map { agentBuild ->
+        BuildSummaryDto(
+            buildVersion = agentBuild.info.version,
+            detectedAt = agentBuild.detectedAt,
+            summary = pluginCache.getData(agentId, agentBuild.info.version, type = "build")
+        )
     }
 
     private fun toSummary(): AdminDataSummary {

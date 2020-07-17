@@ -10,5 +10,6 @@ data class BuildSummaryDto(
     val newMethods: Int = 0,
     val modifiedMethods: Int = 0,
     val unaffectedMethods: Int = 0,
-    val deletedMethods: Int = 0
+    val deletedMethods: Int = 0,
+    @ContextualSerialization val summary: Any? = null
 )
