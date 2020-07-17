@@ -3,16 +3,19 @@
 package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.common.*
-import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.config.*
 import io.ktor.application.*
+import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
+import io.ktor.util.*
+import io.ktor.utils.io.*
 import io.ktor.utils.io.CancellationException
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -41,7 +44,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 }
                 val agentSession = AgentWsSession(this, frameType, application.agentSocketTimeout)
                 val agentInfo = agentManager.attach(agentConfig, needSync, agentSession)
-                agentSession.createWsLoop(agentInfo, agentConfig.instanceId)
+                agentSession.createWsLoop(
+                    agentInfo,
+                    agentConfig.instanceId,
+                    call.request.headers[ContentEncoding] == "deflate"
+                )
             }
         }
     }
@@ -55,13 +62,19 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         return agentConfig to needSync
     }
 
-    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String) {
+    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String, useCompression: Boolean) {
         val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
         try {
             val adminData = agentManager.adminData(agentInfo.id)
             incoming.consumeEach { frame ->
-                when(frame) {
-                    is Frame.Binary -> BinaryMessage(ProtoBuf.load(Message.serializer(), frame.readBytes()))
+                when (frame) {
+                    is Frame.Binary -> {
+                        val rawContent = frame.readBytes()
+                        val frameBytes = if (useCompression) {
+                            Deflate.run { decode( ByteReadChannel(rawContent)) }.toByteArray()
+                        } else rawContent
+                        BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
+                    }
                     is Frame.Text -> JsonMessage.serializer() parse frame.readText()
                     else -> null
                 }?.let { message ->
