@@ -37,8 +37,6 @@ dependencies {
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("org.jacoco:org.jacoco.core:$jacocoVersion")
-    implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")

@@ -96,7 +96,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.AgentBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).buildManager.dtoList()
+                    agentManager.adminData(agentId).toBuildSummaries()
                 }
 
                 topic<WsRoutes.WsVersion> { adminVersionDto }

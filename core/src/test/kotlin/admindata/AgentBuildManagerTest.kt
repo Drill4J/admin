@@ -1,6 +1,5 @@
 package com.epam.drill.admin.admindata
 
-import com.epam.drill.admin.methods.*
 import com.epam.drill.common.*
 import kotlinx.serialization.protobuf.*
 import kotlin.test.*
@@ -74,21 +73,19 @@ class AgentBuildManagerTest {
     }
 
     @Test
-    fun `dtoList - not initialized build info`() {
-        val summaries = buildManager.dtoList()
-        assertEquals(emptyList(), summaries)
-    }
-
-    @Test
     fun `dtoList - build without classes`() {
         buildManager.initBuildInfo("0.1.0")
-        val summaries = buildManager.dtoList()
-        assertNotEquals(emptyList(), summaries)
-        assertNotNull(summaries.find { it.buildVersion == "0.1.0" })
+        val builds = buildManager.builds
+        assertNotEquals(emptyList(), builds)
+        assertNotNull("0.1.0", builds.first().version)
     }
 
     private fun Class<*>.dump(): ByteArray = ProtoBuf.dump(
         ByteClass.serializer(),
-        ByteClass(name.replace(".", "/"), readBytes())
+        ByteClass(name, readBytes())
     )
 }
+
+private fun Class<*>.readBytes(): ByteArray = run {
+    getResourceAsStream("/${canonicalName.replace('.', '/')}.class")
+}.readBytes()

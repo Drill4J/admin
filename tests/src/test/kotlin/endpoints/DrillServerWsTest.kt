@@ -194,7 +194,6 @@ internal class DrillServerWsTest {
                 message = NewBuildArrivedMessage(
                     "0.2.0",
                     "0.1.0",
-                    BuildDiff(1, 2, 3, 4, 5),
                     setOf("recommendation_1", "recommendation_2")
                 )
             )

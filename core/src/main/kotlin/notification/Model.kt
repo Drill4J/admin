@@ -20,21 +20,7 @@ enum class NotificationType {
 data class NewBuildArrivedMessage(
     val currentId: String,
     val prevId: String,
-    val buildDiff: BuildDiff,
-    val recommendations: Set<String>
+    val recommendations: Set<String> = emptySet(),
+    @ContextualSerialization val buildDiff: Any? = null,
+    @ContextualSerialization val buildInfo: Any? = null
 )
-
-@Serializable
-data class BuildDiff(
-    @Transient
-    val modBody: Int = 0,
-    @Transient
-    val modDesc: Int = 0,
-    @Transient
-    val modName: Int = 0,
-
-    val new: Int,
-    val deleted: Int
-) {
-    val modified = modBody + modDesc + modName
-}
