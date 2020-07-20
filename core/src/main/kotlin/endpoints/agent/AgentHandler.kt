@@ -8,15 +8,13 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
-import io.ktor.util.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.CancellationException
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -37,18 +35,20 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             agentWebsocket("/agent/attach") {
-                val (agentConfig, needSync) = call.request.retrieveParams()
-                val frameType = when (agentConfig.agentType) {
-                    AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
-                    else -> FrameType.BINARY
+                withContext(Dispatchers.IO) {
+                    val (agentConfig, needSync) = call.request.retrieveParams()
+                    val frameType = when (agentConfig.agentType) {
+                        AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
+                        else -> FrameType.BINARY
+                    }
+                    val agentSession = AgentWsSession(this@agentWebsocket, frameType, application.agentSocketTimeout)
+                    val agentInfo = agentManager.attach(agentConfig, needSync, agentSession)
+                    agentSession.createWsLoop(
+                        agentInfo,
+                        agentConfig.instanceId,
+                        call.request.headers[ContentEncoding] == "deflate"
+                    )
                 }
-                val agentSession = AgentWsSession(this, frameType, application.agentSocketTimeout)
-                val agentInfo = agentManager.attach(agentConfig, needSync, agentSession)
-                agentSession.createWsLoop(
-                    agentInfo,
-                    agentConfig.instanceId,
-                    call.request.headers[ContentEncoding] == "deflate"
-                )
             }
         }
     }
@@ -69,11 +69,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             incoming.consumeEach { frame ->
                 when (frame) {
                     is Frame.Binary -> {
-                        val rawContent = frame.readBytes()
-                        val frameBytes = if (useCompression) {
-                            Deflate.run { decode( ByteReadChannel(rawContent)) }.toByteArray()
-                        } else rawContent
-                        BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
+                        withContext(Dispatchers.IO) {
+                            val rawContent = frame.readBytes()
+                            val frameBytes = if (useCompression) {
+                                Deflate.decode(rawContent)
+                            } else rawContent
+                            BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
+                        }
                     }
                     is Frame.Text -> JsonMessage.serializer() parse frame.readText()
                     else -> null
@@ -97,8 +99,10 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         }
 
                         MessageType.CLASSES_DATA -> {
-                            ProtoBuf.load(ByteArrayListWrapper.serializer(), message.bytes).bytesList.forEach {
-                                adminData.buildManager.addClass(it)
+                            withContext(Dispatchers.IO) {
+                                ProtoBuf.load(ByteArrayListWrapper.serializer(), message.bytes).bytesList.forEach {
+                                    adminData.buildManager.addClass(it)
+                                }
                             }
                         }
 
@@ -119,7 +123,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             }
         } catch (ex: Exception) {
             when (ex) {
-                is CancellationException -> logger.error { "Handling of $agentDebugStr was cancelled" }
+                is io.ktor.utils.io.CancellationException  -> logger.error { "Handling of $agentDebugStr was cancelled" }
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
