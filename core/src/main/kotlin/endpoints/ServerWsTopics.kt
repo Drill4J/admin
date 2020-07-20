@@ -2,6 +2,7 @@ package com.epam.drill.admin.endpoints
 
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
@@ -29,6 +30,10 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     init {
 
         runBlocking {
+            agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
+                val dest = app.toLocation(WsRoot.Agents())
+                sessionStorage.sendTo(dest, agentManager.registered())
+            }
             agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
                 val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
@@ -64,6 +69,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
 
             wsTopic {
+                topic<WsRoot.Agents> { agentManager.registered() }
+
                 topic<WsRoutes.Agents> {
                     serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
                 }
