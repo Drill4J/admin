@@ -64,7 +64,16 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
                     val (status, message) = if (agInfo != null) {
-                        agInfo.register(regInfo)
+                        //TODO remove after integration if system settings
+                        val regInfoWithSettings = regInfo.copy(
+                            systemSettings = regInfo.systemSettings.run {
+                                copy(
+                                    packages = packages.ifEmpty { regInfo.packages },
+                                    sessionIdHeaderName = sessionIdHeaderName.ifEmpty { regInfo.sessionIdHeaderName }
+                                )
+                            }
+                        )
+                        agInfo.register(regInfoWithSettings)
                         logger.debug { "Agent with id '$agentId' has been registered" }
                         HttpStatusCode.OK to EmptyContent
                     } else {
