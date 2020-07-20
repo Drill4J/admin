@@ -6,7 +6,7 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.plugin.PluginCache
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
@@ -23,6 +23,7 @@ import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import kotlin.time.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -294,13 +295,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             if (needSync)
                 wrapBusy(this) {
                     val info = this
-                    agentSession(id)?.apply {
-                        configurePackages(packagesPrefixes(id))
-                        sendPlugins(info)
-                        updateSessionHeader(info)
-                        triggerClassesSending()
-                        enableAllPlugins(id)
+                    val duration = measureTime {
+                        agentSession(id)?.apply {
+                            configurePackages(packagesPrefixes(id))
+                            sendPlugins(info)
+                            updateSessionHeader(info)
+                            triggerClassesSending()
+                            enableAllPlugins(id)
+                        }
                     }
+                    logger.info { "Agent sync took: $duration" }
                     topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
                 }
             logger.debug { "Agent with id $name sync was finished" }
