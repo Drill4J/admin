@@ -3,9 +3,11 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
@@ -23,6 +25,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val agentManager by instance<AgentManager>()
     private val plugins by instance<Plugins>()
+    private val pluginCache by instance<PluginCache>()
     private val app by instance<Application>()
     private val sessionStorage by instance<SessionStorage>()
     private val notificationManager by instance<NotificationManager>()
@@ -103,7 +106,13 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
 
                 topic<WsRoutes.AgentBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).toBuildSummaries()
+                    agentManager.adminData(agentId).buildManager.agentBuilds.map { agentBuild ->
+                        BuildSummaryDto(
+                            buildVersion = agentBuild.info.version,
+                            detectedAt = agentBuild.detectedAt,
+                            summary = pluginCache.getData(agentId, agentBuild.info.version, type = "build")
+                        )
+                    }
                 }
 
                 topic<WsRoutes.WsVersion> { adminVersionDto }

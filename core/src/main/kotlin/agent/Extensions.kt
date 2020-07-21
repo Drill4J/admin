@@ -50,10 +50,7 @@ fun AgentInfo.toDto(agentManager: AgentManager): AgentInfoDto = AgentInfoDto(
     activePluginsCount = plugins.activePluginsCount(),
     agentType = agentType.notation,
     agentVersion = agentVersion,
-    systemSettings = SystemSettingsDto(
-        packages = agentManager.adminData(id).packagesPrefixes,
-        sessionIdHeaderName = sessionIdHeaderName
-    ),
+    systemSettings = agentManager.adminData(id).settings,
     plugins = agentManager.plugins.values.ofAgent(this).mapToDto().toSet()
 )
 
