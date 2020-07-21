@@ -6,7 +6,6 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
@@ -42,9 +41,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val topicResolver by instance<TopicResolver>()
     private val store by instance<StoreManager>()
     private val sender by instance<Sender>()
-    private val pluginCache by instance<PluginCache>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
-    private val adminDataVault by instance<AdminDataVault>()
+    private val adminDataVault by instance<AgentDataCache>()
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
 
@@ -78,7 +76,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 currentInfo.sync(needSync) // sync only existing info!
             }
             currentInfo.persistToDatabase()
-            session.updateSessionHeader(currentInfo)
+            session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
         } else {
             val store = store.agentStore(id)
@@ -93,7 +91,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 notificationsManager.handleNewBuildNotification(info)
             }
             info.persistToDatabase()
-            session.updateSessionHeader(info)
+            session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             info
         }
     }
@@ -247,10 +245,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    internal fun adminData(agentId: String): AdminPluginData = adminDataVault.getOrPut(agentId) {
-        AdminPluginData(
+    internal fun adminData(agentId: String): AgentData = adminDataVault.getOrPut(agentId) {
+        AgentData(
             agentId,
-            pluginCache,
             store.agentStore(agentId),
             app.drillDefaultPackages
         )
@@ -287,8 +284,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         setPackagesPrefixes(PackagesPrefixes(prefixes))
     }
 
-    fun packagesPrefixes(agentId: String) = adminData(agentId).packagesPrefixes
-
     suspend fun AgentInfo.sync(needSync: Boolean) {
         logger.debug { "Agent with id $name starting sync, needSync is $needSync" }
         if (status != AgentStatus.NOT_REGISTERED) {
@@ -297,9 +292,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     val info = this
                     val duration = measureTime {
                         agentSession(id)?.apply {
-                            configurePackages(packagesPrefixes(id))
+                            val settings = adminData(id).settings
+                            configurePackages(settings.packages)
                             sendPlugins(info)
-                            updateSessionHeader(info)
+                            updateSessionHeader(settings.sessionIdHeaderName)
                             triggerClassesSending()
                             enableAllPlugins(id)
                         }
@@ -313,34 +309,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private suspend fun AgentWsSession.updateSessionHeader(info: AgentInfo) {
-        sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(info.sessionIdHeaderName.toLowerCase())
+    private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
+        sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(sessionIdHeaderName.toLowerCase())
     }
 
-    suspend fun updateSystemSettings(agentId: String, systemSettings: SystemSettingsDto) {
+    suspend fun updateSystemSettings(agentId: String, settings: SystemSettingsDto) {
         val adminData = adminData(agentId)
         getOrNull(agentId)?.let {
             wrapBusy(it) {
-                val agentInfo = this
                 agentSession(agentId)?.apply {
-                    var modified = false
-                    if (agentInfo.sessionIdHeaderName != systemSettings.sessionIdHeaderName) {
-                        agentInfo.sessionIdHeaderName = systemSettings.sessionIdHeaderName
-                        updateSessionHeader(agentInfo)
-                        modified = true
-                    }
-                    if (adminData.packagesPrefixes != systemSettings.packages) {
-                        adminData.resetBuilds()
-                        adminData.packagesPrefixes = systemSettings.packages
-                        disableAllPlugins(agentId)
-                        configurePackages(systemSettings.packages)
-                        triggerClassesSending()
-                        full(agentId)?.applyPackagesChanges()
-                        enableAllPlugins(id)
-                        modified = true
-                    }
-                    if (modified) {
-                        agentInfo.persistToDatabase()
+                    adminData.updateSettings(settings) { oldSettings ->
+                        if (oldSettings.sessionIdHeaderName != settings.sessionIdHeaderName) {
+                            updateSessionHeader(settings.sessionIdHeaderName)
+                        }
+                        if (oldSettings.packages != settings.packages) {
+                            adminData.resetBuilds()
+                            disableAllPlugins(agentId)
+                            configurePackages(settings.packages)
+                            triggerClassesSending()
+                            full(agentId)?.applyPackagesChanges()
+                            enableAllPlugins(id)
+                        }
                     }
                 }
             }

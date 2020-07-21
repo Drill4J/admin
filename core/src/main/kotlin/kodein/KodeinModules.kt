@@ -4,6 +4,8 @@ import com.epam.drill.admin.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.admindata.*
+import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.AgentDataCache
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
@@ -35,7 +37,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
-        bind<AdminDataVault>() with eagerSingleton { AdminDataVault() }
+        bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
         bind<LoggingHandler>() with eagerSingleton { LoggingHandler(kodein) }
     }

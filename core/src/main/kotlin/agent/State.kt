@@ -1,7 +1,7 @@
-package com.epam.drill.admin.admindata
+package com.epam.drill.admin.agent
 
+import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.build.*
-import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -12,17 +12,17 @@ import kotlinx.serialization.protobuf.*
 import mu.*
 import kotlin.time.*
 
-private val logger = KotlinLogging.logger {}
+internal class AgentDataCache {
 
-internal class AdminDataVault {
-    private val _data = atomic(persistentMapOf<String, AdminPluginData>())
+    private val _data =
+        atomic(persistentMapOf<String, AgentData>())
 
-    operator fun get(key: String): AdminPluginData? = _data.value[key]
+    operator fun get(key: String): AgentData? = _data.value[key]
 
     fun getOrPut(
         key: String,
-        provider: () -> AdminPluginData
-    ): AdminPluginData = get(key) ?: provider().let { data ->
+        provider: () -> AgentData
+    ): AgentData = get(key) ?: provider().let { data ->
         _data.updateAndGet {
             if (key !in it) {
                 it.put(key, data)
@@ -31,24 +31,38 @@ internal class AdminDataVault {
     }
 }
 
-internal class AdminPluginData(
+internal class AgentData(
     val agentId: String,
-    private val pluginCache: PluginCache,
     private val storeClient: StoreClient,
     defaultPackages: List<String>
 ) : AdminData {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     override val buildManager get() = _buildManager.value
 
-    var packagesPrefixes: List<String>
-        get() = _packagesPrefixes.value
-        set(value) {
-            _packagesPrefixes.value = value
+    val settings: SystemSettingsDto get() = _settings.value
+
+    private val _buildManager = atomic(
+        AgentBuildManager(agentId)
+    )
+
+    private val _settings = atomic(
+        SystemSettingsDto(packages = defaultPackages)
+    )
+
+    suspend fun updateSettings(
+        settings: SystemSettingsDto,
+        block: suspend (SystemSettingsDto) -> Unit = {}
+    ) {
+        val current = this.settings
+        if (current != settings) {
+            _settings.value = settings
+            storeClient.store(toSummary())
+            block(current)
         }
-
-    private val _buildManager = atomic(AgentBuildManager(agentId))
-
-    private val _packagesPrefixes = atomic(defaultPackages)
+    }
 
     suspend fun store(agentBuild: AgentBuild) = agentBuild.run {
         logger.debug { "Saving build ${agentBuild.id}..." }
@@ -57,7 +71,10 @@ internal class AdminPluginData(
             agentId = id.agentId,
             parentVersion = info.parentVersion,
             detectedAt = detectedAt,
-            codeData = ProtoBuf.dump(CodeData.serializer(), CodeData(classBytes = info.classesBytes))
+            codeData = ProtoBuf.dump(
+                CodeData.serializer(),
+                CodeData(classBytes = info.classesBytes)
+            )
         )
         measureTime {
             storeClient.executeInAsyncTransaction {
@@ -69,9 +86,9 @@ internal class AdminPluginData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun loadStoredData() = storeClient.findById<AdminDataSummary>(agentId)?.let { summary ->
+    suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
-        packagesPrefixes = summary.packagesPrefixes
+        _settings.value = summary.settings
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
@@ -99,32 +116,20 @@ internal class AdminPluginData(
 
     suspend fun resetBuilds() {
         _buildManager.value = AgentBuildManager(agentId)
-        storeClient.executeInAsyncTransaction {
-            deleteBy<AgentBuild> { AgentBuild::agentId eq agentId }
-            store(toSummary())
-        }
+        storeClient.deleteBy<AgentBuild> { AgentBuild::agentId eq agentId }
     }
 
-    internal fun toBuildSummaries(): List<BuildSummaryDto> = buildManager.agentBuilds.map { agentBuild ->
-        BuildSummaryDto(
-            buildVersion = agentBuild.info.version,
-            detectedAt = agentBuild.detectedAt,
-            summary = pluginCache.getData(agentId, agentBuild.info.version, type = "build")
-        )
-    }
-
-    private fun toSummary(): AdminDataSummary {
-        return AdminDataSummary(
+    private fun toSummary(): AgentDataSummary =
+        AgentDataSummary(
             agentId = agentId,
-            packagesPrefixes = packagesPrefixes,
+            settings = settings,
             lastBuild = buildManager.lastBuild
         )
-    }
 }
 
 @Serializable
-data class AdminDataSummary(
+internal data class AgentDataSummary(
     @Id val agentId: String,
-    val packagesPrefixes: List<String>,
+    val settings: SystemSettingsDto,
     val lastBuild: String
 )
