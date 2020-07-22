@@ -50,6 +50,4 @@ class TestAdminPart(
         @Suppress("DEPRECATION")
         sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
     }
-
-    override suspend fun getPluginData(params: Map<String, String>) = Unit
 }
