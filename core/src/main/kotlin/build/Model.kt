@@ -35,7 +35,7 @@ data class AgentBuildData(
 }
 
 @Serializable
-data class CodeData(val classBytes: Map<String, ByteArray>)
+data class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 
 @Serializable
 data class DiffTypeMethods(
