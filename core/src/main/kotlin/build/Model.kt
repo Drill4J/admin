@@ -36,20 +36,3 @@ data class AgentBuildData(
 
 @Serializable
 data class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
-
-@Serializable
-data class DiffTypeMethods(
-    val type: DiffType,
-    val methods: List<Method> = emptyList()
-)
-
-@Serializable
-data class AgentBuildClass(
-    val name: String,
-    val methods: Methods,
-    val bytes: ByteArray
-) {
-    override fun equals(other: Any?): Boolean = other is AgentBuildClass && name == other.name
-
-    override fun hashCode(): Int = name.hashCode()
-}
