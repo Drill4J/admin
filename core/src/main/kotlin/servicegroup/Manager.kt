@@ -64,7 +64,13 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun create(groupId: String): ServiceGroup {
         logger.debug { "Creating group $groupId" }
         return commonStore.client.store(
-            ServiceGroup(id = groupId, name = groupId, packages = app.drillDefaultPackages)
+            ServiceGroup(
+                id = groupId,
+                name = groupId,
+                systemSettings = SystemSettingsDto(
+                    packages = app.drillDefaultPackages
+                )
+            )
         )
     }
 
@@ -77,8 +83,11 @@ class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     suspend fun updateSystemSettings(serviceGroup: ServiceGroup, systemSettings: SystemSettingsDto) {
         update(
             serviceGroup.copy(
-                packages = systemSettings.packages,
-                sessionIdHeaderName = systemSettings.sessionIdHeaderName
+                systemSettings = SystemSettingsDto(
+                    packages = systemSettings.packages,
+                    sessionIdHeaderName = systemSettings.sessionIdHeaderName,
+                    targetHost = systemSettings.targetHost
+                )
             )
         )
     }
