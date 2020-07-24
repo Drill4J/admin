@@ -1,5 +1,6 @@
 package com.epam.drill.admin.servicegroup
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.common.*
 import com.epam.kodux.*
 import kotlinx.serialization.*
@@ -10,8 +11,7 @@ data class ServiceGroup(
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val packages: List<String> = emptyList(),
-    val sessionIdHeaderName: String = ""
+    val systemSettings: SystemSettingsDto
 )
 
 typealias GroupedAgents = Pair<SingleAgents, List<AgentGroup>>
