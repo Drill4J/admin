@@ -47,14 +47,17 @@ dependencies {
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")
 
-val appJvmArgs = listOf(
+val defaultAppJvmArgs = listOf(
     "-server",
-    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006",
     "-Djava.awt.headless=true",
-    "-Xms128m",
-    "-Xmx2g",
     "-XX:+UseG1GC",
     "-XX:MaxGCPauseMillis=100"
+)
+
+val devJvmArgs = listOf(
+    "-Xms128m",
+    "-Xmx2g",
+    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
 )
 
 java {
@@ -63,7 +66,7 @@ java {
 
 application {
     mainClassName = appMainClassName
-    applicationDefaultJvmArgs = appJvmArgs
+    applicationDefaultJvmArgs = defaultAppJvmArgs + devJvmArgs
 }
 
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
@@ -81,7 +84,7 @@ jib {
         mainClass = appMainClassName
         volumes = listOf("/work", "/distr")
 
-        jvmFlags = appJvmArgs
+        jvmFlags = defaultAppJvmArgs
     }
     extraDirectories {
         setPaths(jibExtraDirs)
