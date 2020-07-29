@@ -3,10 +3,9 @@ package com.epam.drill.admin.endpoints.plugin
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
-import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -19,77 +18,67 @@ import org.kodein.di.generic.*
 
 private val logger = KotlinLogging.logger {}
 
-class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
+class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
+    private val pluginCaches by instance<PluginCaches>()
+    private val pluginSessions by instance<PluginSessions>()
+    private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
-    private val pluginCache by instance<PluginCache>()
-
-    private val sessionStorage = SessionStorage()
 
     init {
         app.routing {
-            val socketName = "drill-plugin-socket"
-            authWebSocket("/ws/$socketName") {
-                val session = this
-                logger.debug { "$socketName: acquired ${session.toDebugString()}" }
-                try {
-                    @Suppress("EXPERIMENTAL_API_USAGE")
-                    incoming.consumeEach { frame ->
-                        when (frame) {
-                            is Frame.Text -> {
-                                val event = WsReceiveMessage.serializer() parse frame.readText()
-                                session.consume(event)
-                            }
-                            else -> logger.error { "Unsupported frame type - ${frame.frameType}!" }
-                        }
+            plugins.keys.forEach { pluginId ->
+                authWebSocket("/ws/plugins/$pluginId") { handle(pluginId) }
+            }
+            //TODO remove after changes on the frontend
+            authWebSocket("/ws/drill-plugin-socket") { handle("test2code") }
+        }
+    }
+
+    private suspend fun WebSocketSession.handle(pluginId: String) {
+        val session = this
+        val sessionCache = pluginSessions[pluginId]
+        logger.debug { "plugin $pluginId socket: acquired ${session.toDebugString()}" }
+        try {
+            @Suppress("EXPERIMENTAL_API_USAGE")
+            incoming.consumeEach { frame ->
+                when (frame) {
+                    is Frame.Text -> {
+                        val event = WsReceiveMessage.serializer() parse frame.readText()
+                        session.consume(pluginId, event)
                     }
-                } catch (e: Exception) {
-                    when(e) {
-                        is CancellationException -> logger.debug {
-                            "$socketName: ${session.toDebugString()} was cancelled."
-                        }
-                        else -> logger.error(e) {
-                            "$socketName: ${session.toDebugString()} finished with exception."
-                        }
-                    }
-                }  finally {
-                    sessionStorage.release(session)
-                    logger.debug { "$socketName: released ${session.toDebugString()}" }
+                    else -> logger.error { "Unsupported frame type - ${frame.frameType}!" }
                 }
             }
+        } catch (e: Exception) {
+            when (e) {
+                is CancellationException -> logger.debug {
+                    "plugin $pluginId session ${session.toDebugString()} was cancelled."
+                }
+                else -> logger.error(e) {
+                    "plugin $pluginId session ${session.toDebugString()} finished with exception."
+                }
+            }
+        } finally {
+            sessionCache.release(session)
+            logger.debug { "plugin $pluginId socket: released ${session.toDebugString()}" }
         }
     }
 
-    override suspend fun send(context: SendContext, destination: Any, message: Any) {
-        val dest = destination as? String ?: app.toLocation(destination)
-        val subscription = context.toSubscription()
-        val subscriptionKey = subscription.toKey(dest)
-
-        //TODO replace with normal event removal
-        if (message == "") {
-            logger.trace { "Removed message by key $subscriptionKey" }
-            pluginCache.remove(subscriptionKey)
-        } else {
-            val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
-            logger.trace { "Sending message to $subscriptionKey" }
-            pluginCache[subscriptionKey] = message
-            sessionStorage.sendTo(
-                destination = subscriptionKey,
-                messageProvider = { messageForSend }
-            )
-        }
-    }
-
-    private suspend fun WebSocketSession.consume(event: WsReceiveMessage) {
+    private suspend fun WebSocketSession.consume(
+        pluginId: String,
+        event: WsReceiveMessage
+    ) {
         logger.trace { "Receiving event $event" }
-
+        val sessionCache = pluginSessions[pluginId]
         when (event) {
             is Subscribe -> {
                 val subscription = event.message.parseSubscription()
                 val destination = event.destination
                 val subscriptionKey = destination.toKey(subscription)
-                sessionStorage.subscribe(subscriptionKey, this)
+                sessionCache.subscribe(subscriptionKey, this)
+                val pluginCache = pluginCaches[pluginId]
                 val message = pluginCache[subscriptionKey] ?: ""
                 val messageToSend = message.toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
                 send(messageToSend)
@@ -98,7 +87,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware, Sender {
             is Unsubscribe -> {
                 val subscription = event.message.parseSubscription()
                 val subscriptionKey = event.destination.toKey(subscription)
-                sessionStorage.unsubscribe(subscriptionKey, this)
+                sessionCache.unsubscribe(subscriptionKey, this)
                 logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }

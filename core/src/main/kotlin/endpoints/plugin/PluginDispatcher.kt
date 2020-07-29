@@ -29,7 +29,7 @@ import java.util.*
 class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val plugins by instance<Plugins>()
-    private val pluginCache by instance<PluginCache>()
+    private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
     private val topicResolver by instance<TopicResolver>()
     private val logger = KotlinLogging.logger {}

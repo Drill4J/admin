@@ -6,7 +6,6 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
-import com.epam.drill.admin.plugins.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -52,20 +51,10 @@ class AppConfig(var projectDir: File) {
 
         kodeinApplication(AppBuilder {
 
+            withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
-            withKModule {
-                kodeinModule("pluginServices") {
-                    bind<Plugins>() with singleton { Plugins() }
-                    bind<PluginLoaderService>() with eagerSingleton {
-                        PluginLoaderService(
-                            kodein,
-                            projectDir.resolve("work")
-                        )
-                    }
-                }
-            }
 
             val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
 

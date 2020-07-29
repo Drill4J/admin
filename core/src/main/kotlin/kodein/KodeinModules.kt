@@ -1,25 +1,23 @@
 package com.epam.drill.admin.kodein
 
 import com.epam.drill.admin.*
-import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.admin.store.*
-import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.agent.AgentDataCache
+import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.plugin.api.end.*
+import com.epam.drill.admin.plugin.PluginSessions
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websockets.*
 import com.epam.kodux.*
@@ -27,13 +25,21 @@ import io.ktor.application.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
+val pluginServices: Kodein.Builder.(Application) -> Unit
+    get() = { application ->
+        bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(application) }
+        bind<Plugins>() with singleton { instance<PluginLoaderService>().plugins }
+        bind<PluginCaches>() with singleton { PluginCaches(instance(), instance()) }
+        bind<PluginSessions>() with singleton { PluginSessions(instance()) }
+        bind<PluginSenders>() with singleton { PluginSenders(kodein) }
+    }
+
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
         bind<StoreManager>() with eagerSingleton { StoreManager(drillWorkDir.resolve("agents")) }
         bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir) }
         bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<PluginCache>() with eagerSingleton { PluginCache(instance()) }
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
@@ -45,7 +51,7 @@ val storage: Kodein.Builder.(Application) -> Unit
 val wsHandler: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
         bind<AgentEndpoints>() with eagerSingleton { AgentEndpoints(kodein) }
-        bind<Sender>() with eagerSingleton { DrillPluginWs(kodein) }
+        bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
         bind<DrillServerWs>() with eagerSingleton { DrillServerWs(kodein) }
         bind<TopicResolver>() with eagerSingleton { TopicResolver(kodein) }
         bind<ServerWsTopics>() with eagerSingleton { ServerWsTopics(kodein) }
@@ -64,10 +70,4 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
         bind<AdminEndpointsHandler>() with eagerSingleton { AdminEndpointsHandler(kodein) }
-    }
-
-val pluginServices: Kodein.Builder.(Application) -> Unit
-    get() = { _ ->
-        bind<Plugins>() with singleton { Plugins() }
-        bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(kodein) }
     }

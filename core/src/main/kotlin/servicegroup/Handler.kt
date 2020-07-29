@@ -25,7 +25,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val plugins by instance<Plugins>()
-    private val pluginCache by instance<PluginCache>()
+    private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
 
     init {

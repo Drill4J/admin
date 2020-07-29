@@ -25,7 +25,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val agentManager by instance<AgentManager>()
     private val plugins by instance<Plugins>()
-    private val pluginCache by instance<PluginCache>()
+    private val pluginCaches by instance<PluginCaches>()
     private val app by instance<Application>()
     private val sessionStorage by instance<SessionStorage>()
     private val notificationManager by instance<NotificationManager>()
@@ -110,7 +110,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         BuildSummaryDto(
                             buildVersion = agentBuild.info.version,
                             detectedAt = agentBuild.detectedAt,
-                            summary = pluginCache.getData(agentId, agentBuild.info.version, type = "build")
+                            summary = pluginCaches.getData(agentId, agentBuild.info.version, type = "build")
                         )
                     }
                 }

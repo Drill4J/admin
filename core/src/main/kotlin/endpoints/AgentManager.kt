@@ -1,11 +1,11 @@
 package com.epam.drill.admin.endpoints
 
-import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
@@ -40,7 +40,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver by instance<TopicResolver>()
     private val store by instance<StoreManager>()
-    private val sender by instance<Sender>()
+    private val pluginSenders by instance<PluginSenders>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val adminDataVault by instance<AgentDataCache>()
     private val notificationsManager by instance<NotificationManager>()
@@ -385,7 +385,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return agentEntry.get(plugin.pluginBean.id) {
             val adminPluginData = adminData(agent.id)
             val store = store.agentStore(agent.id)
-            val pluginInstance = plugin.createInstance(agent, adminPluginData, sender, store)
+            val pluginInstance = plugin.createInstance(
+                agentInfo = agent,
+                data = adminPluginData,
+                sender = pluginSenders.sender(plugin.pluginBean.id),
+                store = store
+            )
             pluginInstance.initialize()
             pluginInstance
         }
