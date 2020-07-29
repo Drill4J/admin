@@ -1,5 +1,3 @@
-@file:Suppress("UNUSED_PARAMETER", "FunctionName")
-
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
@@ -13,6 +11,7 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
+import com.epam.drill.testdata.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -25,9 +24,26 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.test.*
 
-
 class PluginWsTest {
-    lateinit var kodeinApplication: Kodein
+
+    private val pluginId = testPlugin.pluginId
+
+    private val agentId = "testAgent"
+    private val buildVersion = "1.0.0"
+    private val agentInfo = AgentInfo(
+        id = agentId,
+        name = "test",
+        status = AgentStatus.ONLINE,
+        ipAddress = "1.7.2.23",
+        environment = "test",
+        description = "test",
+        agentVersion = "0.0.0-test",
+        buildVersion = buildVersion,
+        agentType = AgentType.JAVA
+    )
+
+    private lateinit var kodeinApplication: Kodein
+
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
@@ -38,6 +54,7 @@ class PluginWsTest {
 
         enableSwaggerSupport()
         kodeinApplication = kodeinApplication(AppBuilder {
+            withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
                     bind<LoginHandler>() with eagerSingleton {
@@ -52,38 +69,18 @@ class PluginWsTest {
                         )
                     }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<PluginCache>() with eagerSingleton { PluginCache(instance()) }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
-                    bind<AgentManager>() with eagerSingleton {
-                        AgentManager(
-                            kodein
-                        )
-                    }
+                    bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
                 }
 
             }
         })
     }
 
-    val agentId = "testAgent"
-    val buildVersion = "1.0.0"
-    val agentInfo = AgentInfo(
-        id = agentId,
-        name = "test",
-        status = AgentStatus.ONLINE,
-        ipAddress = "1.7.2.23",
-        environment = "test",
-        description = "test",
-        agentVersion = "0.0.0-test",
-        buildVersion = buildVersion,
-        agentType = AgentType.JAVA
-    )
-
     @Test
     fun `should return empty message on subscribing without info`() {
         withTestApplication(testApp) {
-            val token = requestToken()
-            handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
+            handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic1"
                 outgoing.send(uiMessage(Subscribe(destination)))
                 val receive = incoming.receive() as? Frame.Text ?: fail()
@@ -100,8 +97,7 @@ class PluginWsTest {
     @Test
     fun `should return empty message on subscribing with info`() {
         withTestApplication(testApp) {
-            val token = requestToken()
-            handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
+            handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic2"
                 outgoing.send(
                     uiMessage(
@@ -125,13 +121,14 @@ class PluginWsTest {
     @Test
     fun `should return data from storage which was sent before via send()`() {
         withTestApplication(testApp) {
-            val token = requestToken()
-            handleWebSocketConversation("/ws/drill-plugin-socket?token=${token}") { incoming, outgoing ->
+            handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic1"
                 val messageForTest = "testMessage"
-                val wsPluginService by kodeinApplication.instance<DrillPluginWs>()
+                val wsPluginService by kodeinApplication.instance<PluginSenders>()
+                val sender = wsPluginService.sender(pluginId)
+                val sendContext = AgentSendContext(agentInfo.id, agentInfo.buildVersion)
                 @Suppress("DEPRECATION")
-                wsPluginService.send(agentInfo.id, agentInfo.buildVersion, destination, messageForTest)
+                sender.send(sendContext, destination, messageForTest)
                 outgoing.send(
                     uiMessage(
                         Subscribe(
@@ -153,4 +150,5 @@ class PluginWsTest {
         }
     }
 
+    private fun TestApplicationEngine.socketUrl() = "/ws/plugins/$pluginId?token=${requestToken()}"
 }

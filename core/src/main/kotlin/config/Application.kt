@@ -14,7 +14,7 @@ val Application.drillDefaultPackages: List<String>
     } ?: emptyList()
 
 val Application.isDevMode: Boolean
-    get() = drillConfig.property("devMode").getString().toBoolean()
+    get() = drillConfig.propertyOrNull("devMode")?.getString()?.toBoolean() ?: false
 
 val Application.agentSocketTimeout: Duration
     get() = drillConfig.config("agents")

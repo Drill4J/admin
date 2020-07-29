@@ -10,8 +10,6 @@ import io.ktor.application.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
-import org.kodein.di.*
-import org.kodein.di.generic.*
 import java.io.*
 import java.lang.System.*
 import java.util.jar.*
@@ -20,11 +18,10 @@ import java.util.zip.*
 private val logger = KotlinLogging.logger {}
 
 class PluginLoaderService(
-    override val kodein: Kodein,
-    private val workDir: File = File(getenv("DRILL_HOME"), "work")
-) : KodeinAware {
-    private val plugins by instance<Plugins>()
-    private val application by instance<Application>()
+    private val application: Application,
+    private val workDir: File = File(getenv("DRILL_HOME"), "work"),
+    val plugins: Plugins = Plugins()
+) {
 
     private val pluginStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }
@@ -35,9 +32,7 @@ class PluginLoaderService(
         runBlocking(Dispatchers.Default) {
             pluginStoragePath.mkdirs()
             val remoteEnabled = application.drillConfig
-                .config("plugins")
-                .config("remote")
-                .property("enabled").getString().toBoolean()
+                .propertyOrNull("plugins.remote.enabled")?.getString()?.toBoolean() ?: false
             if (remoteEnabled) {
                 val pluginLoader = ArtifactoryPluginLoader(
                     baseUrl = "https://oss.jfrog.org",

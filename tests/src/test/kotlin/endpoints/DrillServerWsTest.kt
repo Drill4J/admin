@@ -56,6 +56,7 @@ internal class DrillServerWsTest {
         enableSwaggerSupport()
 
         kodeinApplication(AppBuilder {
+            withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {

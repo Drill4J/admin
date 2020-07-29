@@ -3,10 +3,10 @@ package com.epam.drill.admin.plugins
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import java.io.*
-import java.util.*
 
-
-class Plugins(private val plugins: MutableMap<String, Plugin> = HashMap()) : Map<String, Plugin> by plugins {
+class Plugins(
+    private val plugins: MutableMap<String, Plugin> = mutableMapOf()
+) : Map<String, Plugin> by plugins {
     operator fun set(k: String, v: Plugin) = plugins.put(k, v)
 }
 
