@@ -33,7 +33,7 @@ class AgentBuildManager(
 
     override operator fun get(version: String) = buildMap[version]?.info
 
-    fun initBuildInfo(version: String) = _buildMap.update { map ->
+    fun init(version: String) = _buildMap.updateAndGet { map ->
         if (version !in map) {
             val build = AgentBuild(
                 id = AgentBuildId(agentId, version),
@@ -44,13 +44,18 @@ class AgentBuildManager(
                 ),
                 detectedAt = System.currentTimeMillis()
             )
-            map.put(version, build)
+            map.mutate {
+                map.forEach { (k, v) ->
+                    it[k] = v.copy(info = v.info.copy(classesBytes = emptyMap()))
+                }
+                it[version] = build
+            }
         } else map
-    }
+    }.getValue(version)
 
     fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
 
-    fun initClasses(buildVersion: String): AgentBuild = buildMap[buildVersion]?.let { build ->
+    fun initClasses(buildVersion: String): AgentBuild = init(buildVersion).let { build ->
         val addedClasses: List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
         val classBytes = addedClasses.asSequence().map {
             ProtoBuf.load(ByteClass.serializer(), it)
@@ -60,5 +65,5 @@ class AgentBuildManager(
         )
         _buildMap.update { map -> map.put(buildVersion, buildWithData) }
         buildWithData
-    } ?: error("Agent build is not initialized! agentId=$agentId, buildVersion=$buildVersion")
+    }
 }

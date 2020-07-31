@@ -62,6 +62,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
+        adminData.buildManager.init(buildVersion)
         loggingHandler.sync(id, session)
         //TODO agent instances
         return if (

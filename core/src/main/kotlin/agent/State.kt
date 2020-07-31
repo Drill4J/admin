@@ -22,13 +22,11 @@ internal class AgentDataCache {
     fun getOrPut(
         key: String,
         provider: () -> AgentData
-    ): AgentData = get(key) ?: provider().let { data ->
-        _data.updateAndGet {
-            if (key !in it) {
-                it.put(key, data)
-            } else it
-        }[key]!!
-    }
+    ): AgentData = _data.updateAndGet {
+        if (key !in it) {
+            it.put(key, provider())
+        } else it
+    }[key]!!
 }
 
 internal class AgentData(
