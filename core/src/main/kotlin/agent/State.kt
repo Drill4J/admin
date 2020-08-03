@@ -68,30 +68,37 @@ internal class AgentData(
             id = id,
             agentId = id.agentId,
             parentVersion = info.parentVersion,
-            detectedAt = detectedAt,
-            codeData = ProtoBuf.dump(
-                CodeData.serializer(),
-                CodeData(classBytes = info.classesBytes)
-            )
+            detectedAt = detectedAt
+        )
+        val codeData = StoredCodeData(
+            id = id,
+            data = ProtoBuf.dump(CodeData.serializer(), CodeData(classBytes = info.classesBytes))
         )
         measureTime {
             storeClient.executeInAsyncTransaction {
                 store(toSummary())
                 store(buildData)
+                store(codeData)
             }
         }.let { duration -> logger.debug { "Saved build ${agentBuild.id} in $duration." } }
 
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
+    suspend fun loadStoredData(
+        buildVersion: String
+    ) = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
         _settings.value = summary.settings
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {
-                val codeData = ProtoBuf.load(CodeData.serializer(), codeData)
+                val classBytes: Map<String, ByteArray> = id.takeIf { it.version == buildVersion }?.let {
+                    storeClient.findById<StoredCodeData>(it)
+                }?.let {
+                    ProtoBuf.load(CodeData.serializer(), it.data).classBytes
+                } ?: emptyMap()
                 AgentBuild(
                     id = id,
                     agentId = agentId,
@@ -99,7 +106,7 @@ internal class AgentData(
                     info = BuildInfo(
                         version = id.version,
                         parentVersion = parentVersion,
-                        classesBytes = codeData.classBytes
+                        classesBytes = classBytes
                     )
                 )
             }

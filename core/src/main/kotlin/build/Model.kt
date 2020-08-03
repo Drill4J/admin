@@ -26,8 +26,7 @@ data class AgentBuildData(
     @Id val id: AgentBuildId,
     val agentId: String,
     val parentVersion: String,
-    val detectedAt: Long,
-    val codeData: ByteArray
+    val detectedAt: Long
 ) {
     override fun equals(other: Any?) = other is AgentBuildData && id == other.id
 
@@ -36,3 +35,9 @@ data class AgentBuildData(
 
 @Serializable
 data class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
+
+@Serializable
+internal class StoredCodeData(
+    @Id val id: AgentBuildId,
+    val data: ByteArray
+)
