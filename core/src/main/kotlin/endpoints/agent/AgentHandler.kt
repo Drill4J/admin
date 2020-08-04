@@ -80,49 +80,47 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     is Frame.Text -> JsonMessage.serializer() parse frame.readText()
                     else -> null
                 }?.let { message ->
-                    logger.trace { "Processing message $message." }
+                    withContext(Dispatchers.IO) {
+                        logger.trace { "Processing message $message." }
 
-                    when (message.type) {
-                        MessageType.PLUGIN_DATA -> {
-                            withContext(Dispatchers.IO) {
+                        when (message.type) {
+                            MessageType.PLUGIN_DATA -> {
                                 pd.processPluginData(message.text, agentInfo)
                             }
-                        }
 
-                        MessageType.MESSAGE_DELIVERED -> {
-                            subscribers[message.destination]?.received(message)
-                        }
+                            MessageType.MESSAGE_DELIVERED -> {
+                                subscribers[message.destination]?.received(message)
+                            }
 
-                        MessageType.START_CLASSES_TRANSFER -> {
-                            logger.debug { "Starting classes transfer for $agentDebugStr..." }
-                        }
+                            MessageType.START_CLASSES_TRANSFER -> {
+                                logger.debug { "Starting classes transfer for $agentDebugStr..." }
+                            }
 
-                        MessageType.CLASSES_DATA -> {
-                            withContext(Dispatchers.IO) {
-                                ProtoBuf.load(ByteArrayListWrapper.serializer(), message.bytes).bytesList.forEach {
-                                    adminData.buildManager.addClass(it)
+                            MessageType.CLASSES_DATA -> {
+                                message.bytes.takeIf { it.isNotEmpty() }?.let { rawBytes ->
+                                    ProtoBuf.load(ByteArrayListWrapper.serializer(), rawBytes).bytesList.forEach {
+                                        adminData.buildManager.addClass(it)
+                                    }
                                 }
                             }
-                        }
 
-                        MessageType.FINISH_CLASSES_TRANSFER -> {
-                            withContext(Dispatchers.IO) {
+                            MessageType.FINISH_CLASSES_TRANSFER -> {
                                 val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
                                 topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
                                 adminData.store(agentBuild)
                                 logger.debug { "Finished classes transfer for $agentDebugStr" }
                             }
-                        }
 
-                        else -> {
-                            logger.warn { "Message with type '${message.type}' is not supported yet" }
+                            else -> {
+                                logger.warn { "Message with type '${message.type}' is not supported yet" }
+                            }
                         }
                     }
                 }
             }
         } catch (ex: Exception) {
             when (ex) {
-                is io.ktor.utils.io.CancellationException  -> logger.error { "Handling of $agentDebugStr was cancelled" }
+                is io.ktor.utils.io.CancellationException -> logger.error { "Handling of $agentDebugStr was cancelled" }
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
