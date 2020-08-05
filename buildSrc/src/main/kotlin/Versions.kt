@@ -1,4 +1,4 @@
-val drillApiVersion = "0.6.0-3"
+val drillApiVersion = "0.6.0-4"
 
 val drillLogger = "0.1.2"
 
@@ -21,3 +21,4 @@ val junitVersion = "5.5.2"
 val mockkVersion = "1.9.3"
 
 val kodeinVersion = "6.5.1"
+

@@ -62,7 +62,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
-        adminData.buildManager.init(buildVersion)
+        adminData.initBuild(buildVersion)
         loggingHandler.sync(id, session)
         //TODO agent instances
         return if (
@@ -85,7 +85,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             val info = storedInfo ?: config.toAgentInfo()
             val entry = AgentEntry(info, session)
             agentStorage.put(id, entry)
-            adminData.loadStoredData(buildVersion)
+            adminData.loadStoredData()
             storedInfo?.initPlugins(entry)
             app.launch {
                 storedInfo?.sync(needSync) // sync only existing info!

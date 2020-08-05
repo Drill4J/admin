@@ -56,14 +56,13 @@ class AgentBuildManagerTest {
         buildManager.init("0.1.0")
         buildManager.addClass(byteArray)
         buildManager.addClass(byteArray)
-        buildManager.initClasses("0.1.0")
-        assertEquals(1, buildManager["0.1.0"]?.classesBytes?.size)
+        assertEquals(2, buildManager.collectClasses().size)
     }
 
     @Test
     fun `initClasses - empty added classes list`() {
         buildManager.init("0.1.0")
-        buildManager.initClasses("0.1.0")
+        assertEquals(0, buildManager.collectClasses().size)
         assertEquals(emptyMap(), buildManager["0.1.0"]?.classesBytes)
     }
 

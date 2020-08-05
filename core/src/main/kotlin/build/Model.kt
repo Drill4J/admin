@@ -38,6 +38,6 @@ data class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 
 @Serializable
 internal class StoredCodeData(
-    @Id val id: AgentBuildId,
+    @Id val id: String,
     val data: ByteArray
 )

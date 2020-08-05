@@ -14,8 +14,7 @@ import kotlin.time.*
 
 internal class AgentDataCache {
 
-    private val _data =
-        atomic(persistentMapOf<String, AgentData>())
+    private val _data = atomic(persistentMapOf<String, AgentData>())
 
     operator fun get(key: String): AgentData? = _data.value[key]
 
@@ -40,15 +39,38 @@ internal class AgentData(
 
     override val buildManager get() = _buildManager.value
 
+    override val classBytes: Map<String, ByteArray> get() = _classBytes.value
+
     val settings: SystemSettingsDto get() = _settings.value
 
-    private val _buildManager = atomic(
-        AgentBuildManager(agentId)
-    )
+    private val _buildManager = atomic(AgentBuildManager(agentId))
+
+    private val _classBytes = atomic(emptyMap<String, ByteArray>())
 
     private val _settings = atomic(
         SystemSettingsDto(packages = defaultPackages)
     )
+
+    suspend fun initBuild(version: String) {
+        val agentBuild = buildManager.init(version)
+        store(agentBuild)
+    }
+
+    internal suspend fun initClasses() {
+        val addedClasses: List<ByteArray> = buildManager.collectClasses()
+        logger.debug { "Saving ${addedClasses.size} classes..." }
+        measureTime {
+            val classBytes = addedClasses.asSequence().map {
+                ProtoBuf.load(ByteClass.serializer(), it)
+            }.associate { it.className to it.bytes }
+            _classBytes.value = classBytes
+            val codeData = StoredCodeData(
+                id = agentId,
+                data = ProtoBuf.dump(CodeData.serializer(), CodeData(classBytes = classBytes))
+            )
+            storeClient.store(codeData)
+        }.let { duration -> logger.debug { "Saved ${addedClasses.size} classes in $duration." } }
+    }
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,
@@ -70,43 +92,34 @@ internal class AgentData(
             parentVersion = info.parentVersion,
             detectedAt = detectedAt
         )
-        val codeData = StoredCodeData(
-            id = id,
-            data = ProtoBuf.dump(CodeData.serializer(), CodeData(classBytes = info.classesBytes))
-        )
         measureTime {
             storeClient.executeInAsyncTransaction {
                 store(toSummary())
                 store(buildData)
-                store(codeData)
             }
         }.let { duration -> logger.debug { "Saved build ${agentBuild.id} in $duration." } }
 
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun loadStoredData(
-        buildVersion: String
-    ) = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
+    suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
         _settings.value = summary.settings
+        val classBytes: Map<String, ByteArray> = storeClient.findById<StoredCodeData>(agentId)?.let {
+            ProtoBuf.load(CodeData.serializer(), it.data).classBytes
+        } ?: emptyMap()
+        _classBytes.value = classBytes
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {
-                val classBytes: Map<String, ByteArray> = id.takeIf { it.version == buildVersion }?.let {
-                    storeClient.findById<StoredCodeData>(it)
-                }?.let {
-                    ProtoBuf.load(CodeData.serializer(), it.data).classBytes
-                } ?: emptyMap()
                 AgentBuild(
                     id = id,
                     agentId = agentId,
                     detectedAt = detectedAt,
                     info = BuildInfo(
                         version = id.version,
-                        parentVersion = parentVersion,
-                        classesBytes = classBytes
+                        parentVersion = parentVersion
                     )
                 )
             }

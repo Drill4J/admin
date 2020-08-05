@@ -33,7 +33,7 @@ class AgentBuildManager(
 
     override operator fun get(version: String) = buildMap[version]?.info
 
-    fun init(version: String) = _buildMap.updateAndGet { map ->
+    internal fun init(version: String) = _buildMap.updateAndGet { map ->
         if (version !in map) {
             val build = AgentBuild(
                 id = AgentBuildId(agentId, version),
@@ -44,26 +44,11 @@ class AgentBuildManager(
                 ),
                 detectedAt = System.currentTimeMillis()
             )
-            map.mutate {
-                map.forEach { (k, v) ->
-                    it[k] = v.copy(info = v.info.copy(classesBytes = emptyMap()))
-                }
-                it[version] = build
-            }
+            map.put(version, build)
         } else map
     }.getValue(version)
 
-    fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
+    internal fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
 
-    fun initClasses(buildVersion: String): AgentBuild = init(buildVersion).let { build ->
-        val addedClasses: List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
-        val classBytes = addedClasses.asSequence().map {
-            ProtoBuf.load(ByteClass.serializer(), it)
-        }.associate { it.className to it.bytes }
-        val buildWithData = build.copy(
-            info = build.info.copy(classesBytes = classBytes)
-        )
-        _buildMap.update { map -> map.put(buildVersion, buildWithData) }
-        buildWithData
-    }
+    internal fun collectClasses(): List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
 }

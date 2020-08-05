@@ -79,7 +79,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     }
                     is Frame.Text -> JsonMessage.serializer() parse frame.readText()
                     else -> null
-                }?.let { message ->
+                }?.also { message ->
                     withContext(Dispatchers.IO) {
                         logger.trace { "Processing message $message." }
 
@@ -104,10 +104,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 }
                             }
 
-                            MessageType.FINISH_CLASSES_TRANSFER -> {
-                                val agentBuild = adminData.buildManager.initClasses(agentInfo.buildVersion)
+                            MessageType.FINISH_CLASSES_TRANSFER -> adminData.apply {
+                                initClasses()
                                 topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
-                                adminData.store(agentBuild)
                                 logger.debug { "Finished classes transfer for $agentDebugStr" }
                             }
 
