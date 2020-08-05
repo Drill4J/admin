@@ -140,7 +140,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
                     else -> AgentSubscription(agentId, agentInfo.buildVersion).let { subscription ->
                         val key = subscription.toKey("/data/$dataType")
-                        pluginCache[key].toStatusResponsePair()
+                        pluginCache[pluginId][key].toStatusResponsePair()
                     }
                 }
                 sendResponse(response, statusCode)

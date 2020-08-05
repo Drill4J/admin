@@ -58,7 +58,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(groupId)
                     if (serviceGroup.any()) {
                         val key = GroupSubscription(groupId).toKey("/service-group/data/$dataType")
-                        pluginCache[key].toStatusResponsePair()
+                        pluginCache[pluginId][key].toStatusResponsePair()
                     } else HttpStatusCode.NotFound to ErrorResponse(
                         "service group $groupId not found"
                     )
