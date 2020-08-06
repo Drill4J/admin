@@ -132,11 +132,6 @@ internal class AgentData(
         logger.debug { "Loaded data for $agentId" }
     }
 
-    suspend fun resetBuilds() {
-        _buildManager.value = AgentBuildManager(agentId)
-        storeClient.deleteBy<AgentBuild> { AgentBuild::agentId eq agentId }
-    }
-
     private fun toSummary(): AgentDataSummary =
         AgentDataSummary(
             agentId = agentId,
