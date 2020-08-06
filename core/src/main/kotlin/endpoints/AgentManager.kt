@@ -59,7 +59,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val oldInstanceIds = instanceIds(id)
         addInstanceId(id, config.instanceId)
         val existingEntry = agentStorage.targetMap[id]
-        val currentInfo = existingEntry?.agent
+        val currentInfo = existingEntry?.agent?.copy(agentVersion = config.agentVersion)
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
         adminData.initBuild(buildVersion)
