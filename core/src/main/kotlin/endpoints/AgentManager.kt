@@ -324,7 +324,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                             updateSessionHeader(settings.sessionIdHeaderName)
                         }
                         if (oldSettings.packages != settings.packages) {
-                            adminData.resetBuilds()
                             disableAllPlugins(agentId)
                             configurePackages(settings.packages)
                             triggerClassesSending()
