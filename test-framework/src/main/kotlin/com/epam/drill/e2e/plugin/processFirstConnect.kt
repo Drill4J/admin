@@ -4,6 +4,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
+import com.epam.drill.testdata.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
@@ -19,7 +20,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
     noinline connect: suspend PluginTestContext.(Any, Any) -> Unit,
     globLaunch: Job
 ) {
-    engine.handleWebSocketConversation("/ws/drill-plugin-socket?token=${globToken}") { uiIncoming, ut ->
+    engine.handleWebSocketConversation("/ws/plugins/${testPlugin.pluginId}?token=${globToken}") { uiIncoming, ut ->
         val classes = File("./build/classes/java/${build.name}")
             .walkTopDown()
             .filter { it.extension == "class" }
