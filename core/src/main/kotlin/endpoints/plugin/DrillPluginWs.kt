@@ -31,8 +31,6 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
             plugins.keys.forEach { pluginId ->
                 authWebSocket("/ws/plugins/$pluginId") { handle(pluginId) }
             }
-            //TODO remove after changes on the frontend
-            authWebSocket("/ws/drill-plugin-socket") { handle("test2code") }
         }
     }
 
