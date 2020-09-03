@@ -5,6 +5,7 @@ import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -21,6 +22,7 @@ import org.kodein.di.generic.*
 class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val serviceGroupManager by instance<ServiceGroupManager>()
 
     private val logger = KotlinLogging.logger {}
 
@@ -89,6 +91,9 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
                     val agentInfos: List<AgentInfo> = serviceGroup.map { it.agent }
                     val (status: HttpStatusCode, message: Any) = if (serviceGroup.isNotEmpty()) {
+                        serviceGroupManager[serviceGroupId]?.let {
+                            serviceGroupManager.updateSystemSettings(it, regInfo.systemSettings)
+                        }
                         val registeredAgentIds: List<String> = agentInfos.register(regInfo)
                         if (registeredAgentIds.count() < agentInfos.count()) {
                             val agentIds = agentInfos.map { it.id }
