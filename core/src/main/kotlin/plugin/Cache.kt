@@ -7,12 +7,14 @@ import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.plugins.*
 
 
+typealias FrontMessage = Any
+
 class PluginCaches(
     private val cacheService: CacheService,
     private val plugins: Plugins
 ) {
 
-    internal operator fun get(pluginId: String): Cache<Any, Any> = cacheService.getOrCreate(pluginId)
+    internal operator fun get(pluginId: String): Cache<Any, FrontMessage> = cacheService.getOrCreate(pluginId)
 
     //TODO aggregate plugin data
     internal fun getData(

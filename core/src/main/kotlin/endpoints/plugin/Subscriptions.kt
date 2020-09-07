@@ -12,7 +12,9 @@ sealed class Subscription {
 @SerialName("AGENT")
 data class AgentSubscription(
     val agentId: String,
-    val buildVersion: String? = null
+    val buildVersion: String? = null,
+    val searchStatement: SearchStatement? = null,
+    val sortStatement: SortStatement? = null
 ) : Subscription() {
     override fun toKey(destination: String) = "agent::$agentId:$buildVersion$destination"
 }
