@@ -52,11 +52,17 @@ internal class AgentData(
     )
 
     suspend fun initBuild(version: String) {
-        val agentBuild = buildManager.init(version)
-        store(agentBuild)
+        if (buildManager.builds.none()) {
+            loadStoredData()
+        }
+        buildManager[version] ?: run {
+            val agentBuild = buildManager.init(version)
+            store(agentBuild)
+        }
     }
 
     internal suspend fun initClasses() {
+        kotlin.runCatching {  }
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
         logger.debug { "Saving ${addedClasses.size} classes..." }
         measureTime {
@@ -102,7 +108,7 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
+    private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
         _settings.value = summary.settings
         val classBytes: Map<String, ByteArray> = storeClient.findById<StoredCodeData>(agentId)?.let {
