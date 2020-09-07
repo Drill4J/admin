@@ -28,13 +28,16 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                 logger.trace { "Removed message by key $subscriptionKey" }
                 pluginCache.remove(subscriptionKey)
             } else {
-                val messageForSend = message.toWsMessageAsString(dest, WsMessageType.MESSAGE, subscription)
                 logger.trace { "Sending message to $subscriptionKey" }
                 pluginCache[subscriptionKey] = message
                 val sessionCache = pluginSessions[pluginId]
                 sessionCache.sendTo(
                     destination = subscriptionKey,
-                    messageProvider = { messageForSend }
+                    messageProvider = { sessionSubscription ->
+                        message
+                            .processWithSubscription(sessionSubscription)
+                            .toWsMessageAsString(dest, WsMessageType.MESSAGE, sessionSubscription)
+                    }
                 )
             }
         }

@@ -19,6 +19,8 @@ import io.ktor.locations.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.channels.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -116,6 +118,94 @@ class PluginWsTest {
                 assertEquals("", fromJson[WsSendMessage::message.name]?.content)
             }
         }
+    }
+
+    @Serializable
+    data class Data(val field1: String, val field2: Int)
+
+    @Test
+    fun `should apply filters to list topics`() {
+        withTestApplication(testApp) {
+            val fieldName = Data::field1.name
+            handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
+
+                val destination = "/ws/plugins/test-plugin"
+                val message = listOf(
+                    Data("x1", 10),
+                    Data("x2", 10),
+                    Data("x2", 10),
+                    Data("x3", 10)
+                )
+
+
+                subscribeWithFilter(outgoing, destination)
+                assertEquals("", readMessage(incoming)?.content, "first subscription should be empty")
+
+
+                sendListData(destination, message)
+                assertEquals(message.size, (readMessage(incoming) as JsonArray).size)
+
+
+                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x1"))
+                assertEquals(1, (readMessage(incoming) as JsonArray).size)
+
+                unsubscribe(outgoing, destination)
+
+                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x2"))
+                assertEquals(2, (readMessage(incoming) as JsonArray).size)
+
+                unsubscribe(outgoing, destination)
+
+                //cache value
+                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x2"))
+                assertEquals(2, (readMessage(incoming) as JsonArray).size)
+
+            }
+
+        }
+    }
+
+    private suspend fun unsubscribe(
+        outgoing: SendChannel<Frame>,
+        destination: String
+    ) {
+        outgoing.send(
+            uiMessage(
+                Unsubscribe(
+                    destination,
+                    AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                )
+
+            )
+        )
+    }
+
+    private suspend fun subscribeWithFilter(
+        outgoing: SendChannel<Frame>,
+        destination: String,
+        filter: SearchStatement? = null
+    ) {
+        outgoing.send(
+            uiMessage(
+                Subscribe(
+                    destination,
+                    AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion, searchStatement = filter)
+                )
+            )
+        )
+    }
+
+    private suspend fun sendListData(destination: String, message: List<Data>) {
+        val ps by kodeinApplication.kodein.instance<PluginSenders>()
+        val sender = ps.sender("test-plugin")
+        sender.send(AgentSendContext(agentId, buildVersion), destination, message)
+    }
+
+    private suspend fun readMessage(incoming: ReceiveChannel<Frame>): JsonElement? {
+        val receive = incoming.receive() as? Frame.Text ?: fail()
+        val readText = receive.readText()
+        val fromJson = json.parseJson(readText) as JsonObject
+        return fromJson[WsSendMessage::message.name]
     }
 
     @Test
