@@ -24,6 +24,21 @@ fun Iterable<Plugin>.ofAgents(agents: Iterable<AgentInfo>): List<Plugin> = run {
     filter { it.pluginBean.id in ids }
 }
 
+fun AgentCreationDto.toAgentInfo(allPlugins: Plugins) = AgentInfo(
+    id = id,
+    agentType = agentType,
+    name = name,
+    status = AgentStatus.OFFLINE,
+    serviceGroup = serviceGroup,
+    environment = environment,
+    description = description,
+    agentVersion = "",
+    buildVersion = "",
+    plugins = allPlugins.mapNotNullTo(mutableSetOf()) { (_, plugin) ->
+        plugin.pluginBean.takeIf { it.id in plugins }
+    }
+)
+
 fun AgentConfig.toAgentInfo() = AgentInfo(
     id = id,
     name = id,

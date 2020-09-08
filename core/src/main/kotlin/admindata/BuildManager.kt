@@ -5,7 +5,6 @@ import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.protobuf.*
 
 class AgentBuildManager(
     val agentId: String,
