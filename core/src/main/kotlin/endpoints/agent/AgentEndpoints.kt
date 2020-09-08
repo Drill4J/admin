@@ -30,6 +30,34 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         app.routing {
 
             authenticate {
+                val meta = "Create agent"
+                    .examples(
+                        example(
+                            "Petclinic", AgentCreationDto(
+                                id = "petclinic",
+                                agentType = AgentType.JAVA,
+                                name = "Petclinic"
+                            )
+                        )
+                    )
+                    .responds(
+                        ok<AgentInfo>(),
+                        HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
+                    )
+                post<ApiRoot.Agents, AgentCreationDto>(meta) { _, payload ->
+                    logger.debug { "Creating agent with id ${payload.id}..." }
+                    val agentId = payload.id
+                    agentManager.takeIf { it[agentId] == null }?.prepare(payload)?.run {
+                        logger.info { "Created agent ${payload.id}." }
+                        call.respond(HttpStatusCode.Created, this)
+                    } ?: run {
+                        logger.warn { "Agent ${payload.id} already exists." }
+                        call.respond(HttpStatusCode.Conflict, EmptyContent)
+                    }
+                }
+            }
+
+            authenticate {
                 val meta = "Update agent configuration"
                     .examples(
                         example("Petclinic", agentUpdateExample)

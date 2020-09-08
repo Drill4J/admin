@@ -11,7 +11,7 @@ import kotlinx.collections.immutable.*
 
 class AgentEntry(
     agent: AgentInfo,
-    agentSession: AgentWsSession
+    agentSession: AgentWsSession? = null
 ) {
     //TODO make agent immutable
     private val _agent = atomic(agent)
@@ -23,8 +23,8 @@ class AgentEntry(
         get() = _agent.value
         set(value) = _agent.update { value }
 
-    var agentSession: AgentWsSession
-        get() = _agentSession.value
+    var agentSession: AgentWsSession?
+        get() = _agentSession.value!!
         set(value) = _agentSession.update { value }
 
     val plugins get() = _instanceMap.value.values

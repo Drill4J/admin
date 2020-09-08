@@ -31,6 +31,18 @@ data class AgentInfoDto(
 )
 
 @Serializable
+data class AgentCreationDto(
+    val id: String,
+    val agentType: AgentType,
+    val name: String,
+    val serviceGroup: String = "",
+    val environment: String = "",
+    val description: String = "",
+    val systemSettings: SystemSettingsDto = SystemSettingsDto(),
+    val plugins: Set<String> = emptySet()
+)
+
+@Serializable
 data class AgentRegistrationDto(
     val name: String,
     val description: String = "",
