@@ -4,7 +4,6 @@ package com.epam.drill.e2e.plugin
 
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.testdata.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
@@ -24,7 +23,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
             .filter { it.extension == "class" }
             .toList()
             .toTypedArray()
-        engine.handleWebSocketConversation("/ws/plugins/${testPlugin.pluginId}?token=${globToken}") { uiIncoming, ut ->
+        engine.handleWebSocketConversation("/ws/plugins/${pluginMeta.id}?token=${globToken}") { uiIncoming, ut ->
             val st = X::class.java.constructors.single().newInstance() as PluginStreams
             val pluginTestInfo = PluginTestContext(
                 ag.id,
