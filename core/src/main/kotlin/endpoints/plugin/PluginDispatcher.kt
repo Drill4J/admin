@@ -20,11 +20,13 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*
+import kotlin.reflect.full.*
 
 class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
@@ -264,20 +266,30 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         } else action
     }
 
-    private suspend fun AdminPluginPart<*>.processSingleAction(action: String): Any {
-        val result = doRawAction(action)
+    private suspend fun AdminPluginPart<*>.processSingleAction(
+        action: String
+    ): Any = doRawAction(action).also { result ->
         when (result) {
             is StatusMessage -> null
-            Unit -> action
-            else -> stringifyAction(result)
-        }?.let { agentPartMsg ->
+            Unit -> action //TODO not straightforward, remove it
+            else -> result.stringify(serDe)
+        }?.also { agentPartMsg ->
             agentManager.agentSession(agentInfo.id)?.apply {
                 val agentAction = PluginAction(id, agentPartMsg)
                 sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
             }
         }
-        return result
     }
+}
+
+private fun Any.stringify(
+    format: StringFormat
+): String? = this::class.run {
+    superclasses.firstOrNull()?.run { serializerOrNull() } ?: serializerOrNull()
+}?.let {
+    @Suppress("UNCHECKED_CAST")
+    it as KSerializer<Any>
+    format.stringify(it, this)
 }
 
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
