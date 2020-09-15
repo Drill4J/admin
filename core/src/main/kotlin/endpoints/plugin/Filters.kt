@@ -26,7 +26,7 @@ private fun FrontMessage.applyFilter(statement: SearchStatement?): FrontMessage 
         @Suppress("UNCHECKED_CAST")
         (this as? Iterable<Any>)?.filter { fMessage ->
             val propertyValue = fMessage::class.getProperty(statement.fieldName).call(fMessage)
-            statement.value in propertyValue.toString()
+            "$propertyValue".contains(statement.value, ignoreCase = true)
         }
     }.getOrNull()
 } ?: this
