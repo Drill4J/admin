@@ -36,7 +36,13 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         notifications[id]?.run { copy(read = true) }?.let(notifications::replace) ?: notifications
     }
 
-    fun delete(id: String): Boolean = id in _notifications.updateAndGet { it.minus(id) }
+    fun readAll(): Notifications = _notifications.updateAndGet { notifications ->
+        notifications.updateAll { it.copy(read = true) }
+    }
+
+    fun delete(id: String): Boolean = id in _notifications.getAndUpdate { it.minus(id) }
+
+    fun deleteAll(): Notifications = _notifications.getAndUpdate { Notifications() }
 
     suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
@@ -122,4 +128,13 @@ class Notifications(
             desc = desc - id
         )
     } else this
+
+    fun updateAll(updater: (Notification) -> Notification) = Notifications(
+        asc = asc.mutate { map ->
+            asc.values.forEach { map[it.id] = updater(it) }
+        },
+        desc = desc.mutate { map ->
+            valuesDesc.forEach { map[it.id] = updater(it) }
+        }
+    )
 }
