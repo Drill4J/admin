@@ -44,5 +44,21 @@ class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
             topicResolver.sendToAllSubscribed(WsNotifications)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
+
+        val readAllMeta = "".responds(ok<Unit>(), notFound())
+        patch<ApiNotifications.Read>(readAllMeta) {
+            logger.info { "Read all notifications" }
+            notificationManager.readAll()
+            topicResolver.sendToAllSubscribed(WsNotifications)
+            call.respond(HttpStatusCode.OK, EmptyContent)
+        }
+
+        val deleteAllMeta = "".responds(ok<Unit>(), notFound())
+        delete<ApiNotifications>(deleteAllMeta) {
+            logger.info { "Delete all notification" }
+            notificationManager.deleteAll()
+            topicResolver.sendToAllSubscribed(WsNotifications)
+            call.respond(HttpStatusCode.OK, EmptyContent)
+        }
     }
 }
