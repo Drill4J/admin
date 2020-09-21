@@ -46,7 +46,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
 
-    private val _instanceIds = atomic(persistentHashMapOf<String, PersistentSet<String>>())
+    private val _instances = atomic(persistentHashMapOf<String, PersistentMap<String, AgentWsSession>>())
 
     suspend fun prepare(
         dto: AgentCreationDto
@@ -72,7 +72,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             serviceGroupManager.syncOnAttach(serviceGroup)
         }
         val oldInstanceIds = instanceIds(id)
-        addInstanceId(id, config.instanceId)
+        addInstanceId(id, config.instanceId, session)
         val existingEntry = agentStorage.targetMap[id]
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
@@ -86,8 +86,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.serviceGroup == serviceGroup &&
             currentInfo.agentVersion == config.agentVersion
         ) {
-            //TODO remove duplicated code
-            existingEntry.agentSession = session
             notifySingleAgent(id)
             notifyAllAgents()
             app.launch {
@@ -103,7 +101,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 agentVersion = config.agentVersion
             )
             val info = storedInfo ?: config.toAgentInfo()
-            val entry = AgentEntry(info, session)
+            val entry = AgentEntry(info)
             agentStorage.put(id, entry)
             storedInfo?.initPlugins(entry)
             app.launch {
@@ -132,12 +130,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun addInstanceId(agentId: String, instanceId: String) {
-        _instanceIds.update { it.put(agentId, instanceIds(agentId, it) + instanceId) }
+    private fun addInstanceId(agentId: String, instanceId: String, session: AgentWsSession) {
+        _instances.update { it.put(agentId, instanceIds(agentId, it) + (instanceId to session)) }
     }
 
     suspend fun AgentInfo.removeInstance(instanceId: String) {
-        _instanceIds.update { it.put(id, instanceIds(id, it) - instanceId) }
+        _instances.update { it.put(id, instanceIds(id, it) - instanceId) }
         if (instanceIds(id).isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
             agentStorage.handleRemove(id)
@@ -149,9 +147,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     fun instanceIds(
         agentId: String,
-        it: PersistentMap<String, PersistentSet<String>> = _instanceIds.value
-    ): PersistentSet<String> {
-        return it[agentId].orEmpty().toPersistentSet()
+        it: PersistentMap<String, PersistentMap<String, AgentWsSession>> = _instances.value
+    ): PersistentMap<String, AgentWsSession> {
+        return it[agentId].orEmpty().toPersistentMap()
     }
 
     suspend fun updateAgent(agentId: String, agentUpdateDto: AgentUpdateDto) {
@@ -201,7 +199,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.singleUpdate(agentId)
     }
 
-    fun agentSession(k: String) = agentStorage.targetMap[k]?.agentSession
+    fun agentSessions(k: String) = instanceIds(k).values
 
     fun buildVersionByAgentId(agentId: String) = getOrNull(agentId)?.buildVersion ?: ""
 
@@ -268,8 +266,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun disableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
-            agentSession(agentId)
-                ?.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))
+            agentSessions(agentId).applyEach {
+                sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))
+            }
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
@@ -303,7 +302,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 wrapBusy(this) {
                     val info = this
                     val duration = measureTime {
-                        agentSession(id)?.apply {
+                        agentSessions(id).applyEach {
                             val settings = adminData(id).settings
                             configurePackages(settings.packages)
                             sendPlugins(info)
@@ -329,7 +328,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val adminData = adminData(agentId)
         getOrNull(agentId)?.let {
             wrapBusy(it) {
-                agentSession(agentId)?.apply {
+                agentSessions(agentId).applyEach {
                     adminData.updateSettings(settings) { oldSettings ->
                         if (oldSettings.sessionIdHeaderName != settings.sessionIdHeaderName) {
                             updateSessionHeader(settings.sessionIdHeaderName)
@@ -385,7 +384,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
         wrapBusy(agentInfo) {
-            agentSession(id)?.sendPlugins(this)
+            agentSessions(id).applyEach { sendPlugins(this@wrapBusy) }
         }
     }
 

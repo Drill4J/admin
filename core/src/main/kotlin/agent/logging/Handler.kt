@@ -1,5 +1,6 @@
 package com.epam.drill.admin.agent.logging
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
@@ -14,7 +15,7 @@ class LoggingHandler(override val kodein: Kodein) : KodeinAware {
     private val agentManager by instance<AgentManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
-        agentManager.agentSession(agentId)?.apply {
+        agentManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
             val agentStore = store.agentStore(agentId)
             agentStore.store(AgentLoggingConfig(agentId, loggingConfig))

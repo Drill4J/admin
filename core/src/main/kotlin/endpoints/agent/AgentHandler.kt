@@ -125,7 +125,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         } finally {
             agentManager.apply {
                 agentInfo.removeInstance(instanceId)
-                full(agentInfo.id)?.agentSession = null
             }
         }
     }

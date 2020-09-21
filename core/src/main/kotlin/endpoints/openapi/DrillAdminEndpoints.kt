@@ -38,11 +38,11 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 delete<ApiRoot.Agents.Plugin>(meta) { payload ->
                     val (_, agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
-                    val drillAgent = agentManager.agentSession(agentId)
+                    val drillAgent = agentManager.agentSessions(agentId)
                     val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
 
                     val (status, response) = when {
-                        drillAgent == null -> {
+                        drillAgent.isEmpty() -> {
                             logger.warn { "Drill agent is absent" }
                             HttpStatusCode.NotFound to ErrorResponse("Can't find the agent '$agentId'")
                         }
@@ -51,13 +51,15 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             HttpStatusCode.NotFound to ErrorResponse("Can't find the plugin '$pluginId' in the agent '$agentId'")
                         }
                         else -> {
-                            drillAgent.send(
-                                Message.serializer() stringify Message(
-                                    MessageType.MESSAGE,
-                                    "/plugins/unload",
-                                    pluginId.encodeToByteArray()
+                            drillAgent.applyEach {
+                                send(
+                                    Message.serializer() stringify Message(
+                                        MessageType.MESSAGE,
+                                        "/plugins/unload",
+                                        pluginId.encodeToByteArray()
+                                    )
                                 )
-                            )
+                            }
                             logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
                             //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
                             HttpStatusCode.OK to EmptyContent
@@ -82,7 +84,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             AgentStatus.ONLINE -> AgentStatus.OFFLINE
                             else -> null
                         }?.let { newStatus ->
-                            agentManager.agentSession(agentId)?.apply {
+                            agentManager.agentSessions(agentId).applyEach {
                                 val toggleValue = newStatus == AgentStatus.ONLINE
                                 agentInfo.plugins.filter { it.enabled }.map {
                                     sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id, toggleValue))

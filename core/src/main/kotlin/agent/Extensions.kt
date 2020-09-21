@@ -1,6 +1,7 @@
 package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 
@@ -54,7 +55,7 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
 fun AgentInfo.toDto(agentManager: AgentManager): AgentInfoDto = AgentInfoDto(
     id = id,
     serviceGroup = serviceGroup,
-    instanceIds = agentManager.instanceIds(id),
+    instanceIds = agentManager.instanceIds(id).keys,
     name = name,
     description = description,
     environment = environment,
@@ -74,3 +75,7 @@ private fun Iterable<AgentInfo>.plugins(): List<PluginMetadata> = run {
 }
 
 private fun Set<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
+
+suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
+    block(it)
+}
