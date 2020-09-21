@@ -1,6 +1,5 @@
 package com.epam.drill.admin.endpoints
 
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
@@ -9,23 +8,15 @@ import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 
-class AgentEntry(
-    agent: AgentInfo,
-    agentSession: AgentWsSession? = null
-) {
+class AgentEntry(agent: AgentInfo) {
     //TODO make agent immutable
     private val _agent = atomic(agent)
-    private val _agentSession = atomic(agentSession)
 
     private val _instanceMap = atomic(persistentHashMapOf<String, AdminPluginPart<*>>())
 
     var agent: AgentInfo
         get() = _agent.value
         set(value) = _agent.update { value }
-
-    var agentSession: AgentWsSession?
-        get() = _agentSession.value!!
-        set(value) = _agentSession.update { value }
 
     val plugins get() = _instanceMap.value.values
 

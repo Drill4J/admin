@@ -69,7 +69,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
-                    val (status, message) = if (agentManager.agentSession(agentId) != null) {
+                    val (status, message) = if (agentManager.agentSessions(agentId).isNotEmpty()) {
                         agentManager.updateAgent(agentId, au)
                         logger.debug { "Agent with id'$agentId'was updated successfully" }
                         HttpStatusCode.OK to EmptyContent

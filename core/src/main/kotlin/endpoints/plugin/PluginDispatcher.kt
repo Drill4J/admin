@@ -1,5 +1,6 @@
 package com.epam.drill.admin.endpoints.plugin
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
@@ -56,14 +57,15 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val config = call.receive<String>()
                     val pc = PluginConfig(pluginId, config)
                     logger.debug { "Plugin config $config" }
-                    agentManager.agentSession(agentId)?.sendToTopic<Communication.Plugin.UpdateConfigEvent>(pc)
+                    agentManager.agentSessions(agentId)
+                        .applyEach { sendToTopic<Communication.Plugin.UpdateConfigEvent>(pc) }
                     val (statusCode, response) = if (agentManager.updateAgentPluginConfig(agentId, pc)) {
                         topicResolver.sendToAllSubscribed(WsRoutes.AgentPluginConfig(agentId, pluginId))
                         logger.debug { "Plugin with id $pluginId for agent with id $agentId was updated" }
                         HttpStatusCode.OK to EmptyContent
                     } else {
                         val errorMessage = "AgentInfo with associated with id $agentId" +
-                            " or plugin configuration associated with id $pluginId was not found"
+                                " or plugin configuration associated with id $pluginId was not found"
                         logger.warn { errorMessage }
                         HttpStatusCode.NotFound to ErrorResponse(errorMessage)
                     }
@@ -167,7 +169,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 val agentInfo = agentManager[agentId]!!
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
                                     HttpStatusCode.BadRequest to
-                                        ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
+                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.apply {
                                         agentInfo.addPlugins(listOf(pluginIdObject.pluginId))
@@ -195,12 +197,12 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (_, agentId, pluginId) = params
                     logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
                     val dp: Plugin? = plugins[pluginId]
-                    val session = agentManager.agentSession(agentId)
+                    val session = agentManager.agentSessions(agentId)
                     val (statusCode, response) = when {
                         (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
-                        (session == null) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
+                        (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
                         else -> {
-                            session.sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId))
+                            session.applyEach { sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId)) }
                             HttpStatusCode.OK to EmptyContent
                         }
                     }
@@ -274,10 +276,10 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             Unit -> action //TODO not straightforward, remove it
             else -> result.stringify(serDe)
         }?.also { agentPartMsg ->
-            agentManager.agentSession(agentInfo.id)?.apply {
+            agentManager.agentSessions(agentInfo.id).map {
                 val agentAction = PluginAction(id, agentPartMsg)
-                sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
-            }
+                it.sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
+            }.forEach { it.await() }
         }
     }
 }
