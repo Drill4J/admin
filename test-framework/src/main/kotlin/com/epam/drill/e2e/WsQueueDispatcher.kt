@@ -238,6 +238,7 @@ class Agent(
                                         content
                                     )).message
                                 )
+                                sendDelivered(url)
                             }
                             is Communication.Plugin.ToggleEvent -> sendDelivered(url)
                             is Communication.Plugin.UnloadEvent -> {
