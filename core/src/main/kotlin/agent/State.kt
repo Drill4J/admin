@@ -2,6 +2,7 @@ package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.build.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -145,6 +146,12 @@ internal class AgentData(
             lastBuild = buildManager.lastBuild
         )
 }
+
+data class AgentInstance(
+    val id: String,
+    val session: AgentWsSession,
+    val version: String
+)
 
 @Serializable
 internal data class AgentDataSummary(

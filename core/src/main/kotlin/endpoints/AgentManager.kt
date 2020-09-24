@@ -35,7 +35,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     val activeAgents: List<AgentInfo>
         get() = agentStorage.values
             .map { it.agent }
-            .filter { instanceIds(it.id).isNotEmpty() }
+            .filter { instances(it.id).isNotEmpty() }
             .sortedWith(compareBy(AgentInfo::id))
 
     private val topicResolver by instance<TopicResolver>()
@@ -46,7 +46,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
 
-    private val _instances = atomic(persistentHashMapOf<String, PersistentMap<String, AgentWsSession>>())
+    private val _instances = atomic(persistentHashMapOf<String, PersistentMap<String, AgentInstance>>())
 
     suspend fun prepare(
         dto: AgentCreationDto
@@ -71,8 +71,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (serviceGroup.isNotBlank()) {
             serviceGroupManager.syncOnAttach(serviceGroup)
         }
-        val oldInstanceIds = instanceIds(id)
-        addInstanceId(id, config.instanceId, session)
+        val oldInstances = instances(id)
+        addInstance(id, AgentInstance(config.instanceId, session, config.agentVersion))
         val existingEntry = agentStorage.targetMap[id]
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
@@ -81,7 +81,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         loggingHandler.sync(id, session)
         //TODO agent instances
         return if (
-            (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds) &&
+            (oldInstances.isEmpty() || config.instanceId in oldInstances) &&
             currentInfo?.buildVersion == buildVersion &&
             currentInfo.serviceGroup == serviceGroup &&
             currentInfo.agentVersion == config.agentVersion
@@ -130,13 +130,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun addInstanceId(agentId: String, instanceId: String, session: AgentWsSession) {
-        _instances.update { it.put(agentId, instanceIds(agentId, it) + (instanceId to session)) }
+    private fun addInstance(agentId: String, instance: AgentInstance) {
+        _instances.update { it.put(agentId, instances(agentId, it) + (instance.id to instance)) }
     }
 
     suspend fun AgentInfo.removeInstance(instanceId: String) {
-        _instances.update { it.put(id, instanceIds(id, it) - instanceId) }
-        if (instanceIds(id).isEmpty()) {
+        _instances.update { it.put(id, instances(id, it) - instanceId) }
+        if (instances(id).isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
             agentStorage.handleRemove(id)
         } else {
@@ -145,10 +145,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    fun instanceIds(
+    fun instances(
         agentId: String,
-        it: PersistentMap<String, PersistentMap<String, AgentWsSession>> = _instances.value
-    ): PersistentMap<String, AgentWsSession> {
+        it: PersistentMap<String, PersistentMap<String, AgentInstance>> = _instances.value
+    ): PersistentMap<String, AgentInstance> {
         return it[agentId].orEmpty().toPersistentMap()
     }
 
@@ -199,7 +199,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentStorage.singleUpdate(agentId)
     }
 
-    fun agentSessions(k: String) = instanceIds(k).values
+    fun agentSessions(k: String) = instances(k).map { it.value.session }
 
     fun buildVersionByAgentId(agentId: String) = getOrNull(agentId)?.buildVersion ?: ""
 

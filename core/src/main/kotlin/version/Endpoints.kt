@@ -31,12 +31,16 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
                     admin = adminVersionDto.admin,
                     java = adminVersionDto.java,
                     plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
-                    agents = agentManager.activeAgents.map {
-                        ComponentVersion(
-                            id = listOf(it.id, it.serviceGroup).filter(String::any).joinToString("@"),
-                            version = it.agentVersion
-                        )
-                    }
+                    agents = agentManager.activeAgents.map { agentInfo ->
+                        agentManager.instances(agentInfo.id).map {
+                            ComponentVersion(
+                                id = listOf("${agentInfo.id}/${it.value.id}", agentInfo.serviceGroup)
+                                    .filter(String::any)
+                                    .joinToString("@"),
+                                version = it.value.version
+                            )
+                        }
+                    }.flatten()
                 )
             )
         }
