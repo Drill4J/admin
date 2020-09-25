@@ -16,8 +16,8 @@ class NotificationsTest {
             type = NotificationType.BUILD,
             message = "some-message"
         )
-        notifications = notifications.plus(notification)
-        notifications = notifications.plus(notification)
+        notifications += notification
+        notifications += notification
         assertEquals(1, notifications.valuesDesc.size)
     }
 
@@ -31,25 +31,24 @@ class NotificationsTest {
             type = NotificationType.BUILD,
             message = "some-message"
         )
-        notifications = notifications.plus(notification)
+        notifications += notification
         assertEquals(1, notifications.valuesDesc.size)
         assertNotNull(notifications[notification.id])
-        assertTrue { notifications.valuesDesc.contains(notification) }
+        assertTrue { notification in notifications.valuesDesc }
     }
 
     @Test
     fun `replace - not existing notification`() {
         val notifications = Notifications()
-        val id = "not-existing"
         val notExisting = Notification(
-            id = id,
+            id = "not-existing",
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
             message = "some-message"
         )
         assertEquals(notifications, notifications.replace(notExisting))
-        assertNull(notifications[id])
+        assertNull(notifications[notExisting.id])
     }
 
     @Test
@@ -63,18 +62,18 @@ class NotificationsTest {
             message = "some-message"
         )
         val replacement = notification.copy(read = true)
-        notifications = notifications.plus(notification)
+        notifications += notification
         notifications = notifications.replace(replacement)
         assertNotEquals(notification, notifications[replacement.id])
         assertTrue { notifications[replacement.id]!!.read }
         assertNotNull(notifications[replacement.id])
-        assertTrue { notifications.valuesDesc.contains(replacement) }
+        assertTrue { replacement in notifications.valuesDesc }
     }
 
     @Test
     fun `minus - not existing notification`() {
         val notifications = Notifications()
-        assertEquals(notifications, notifications.minus("not-existing"))
+        assertEquals(notifications, notifications - "not-existing")
     }
 
     @Test
@@ -87,9 +86,35 @@ class NotificationsTest {
             type = NotificationType.BUILD,
             message = "some-message"
         )
-        notifications = notifications.plus(notification)
-        notifications = notifications.minus(notification.id)
+        notifications += notification
+        notifications -= notification.id
         assertNull(notifications[notification.id])
-        assertFalse { notifications.valuesDesc.contains(notification) }
+        assertFalse { notification in notifications.valuesDesc }
+    }
+
+    @Test
+    fun `updateAll - all tests must be updated`() {
+        var notifications = Notifications()
+        val notification = Notification(
+            id = "some-id",
+            agentId = agentId,
+            createdAt = System.currentTimeMillis(),
+            type = NotificationType.BUILD,
+            message = "some-message"
+        )
+        val secondNotification = Notification(
+            id = "second-notification",
+            agentId = agentId,
+            createdAt = System.currentTimeMillis(),
+            type = NotificationType.BUILD,
+            message = "another-message"
+        )
+        notifications += notification
+        notifications += secondNotification
+        notifications = notifications.updateAll { it.copy(read = true) }
+        assertEquals(2, notifications.valuesDesc.size)
+        assertTrue { notifications[notification.id]!!.read }
+        assertTrue { notifications[secondNotification.id]!!.read }
+        assertTrue { notifications.valuesDesc.map { it.read }.all { it } }
     }
 }
