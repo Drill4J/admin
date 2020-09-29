@@ -328,8 +328,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val adminData = adminData(agentId)
         getOrNull(agentId)?.let {
             wrapBusy(it) {
-                agentSessions(agentId).applyEach {
-                    adminData.updateSettings(settings) { oldSettings ->
+                adminData.updateSettings(settings) { oldSettings ->
+                    agentSessions(agentId).applyEach {
                         if (oldSettings.sessionIdHeaderName != settings.sessionIdHeaderName) {
                             updateSessionHeader(settings.sessionIdHeaderName)
                         }
