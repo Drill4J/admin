@@ -72,11 +72,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
         val sessionCache = pluginSessions[pluginId]
         when (event) {
             is Subscribe -> {
-                val subscription = event.message.parseSubscription()
                 val destination = event.destination
-                val subscriptionKey = destination.toKey(subscription)
-                sessionCache.subscribe(subscriptionKey, this)
-                sessionCache.subscriptions[this] = subscription
+                val subscription = event.message.parseSubscription()
+                val subscriptionKey = subscription?.let {
+                    sessionCache.subscribe(it, destination, this)
+                } ?: destination.also { sessionCache.subscribe(it, this) }
                 val pluginCache = pluginCaches[pluginId]
                 val message = pluginCache[subscriptionKey] ?: ""
                 val messageToSend = message
@@ -86,17 +86,13 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
             is Unsubscribe -> {
-                val subscription = event.message.parseSubscription()
-                val subscriptionKey = event.destination.toKey(subscription)
-                sessionCache.unsubscribe(subscriptionKey, this)
+                val subscriptionKey = event.message.parseSubscription()?.let {
+                    sessionCache.unsubscribe(it, event.destination, this)
+                } ?: event.destination.also { sessionCache.unsubscribe(it, this) }
                 logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }
     }
-
-    private fun String.toKey(
-        subscription: Subscription?
-    ): String = subscription?.toKey(this) ?: this
 
     private fun String.parseSubscription(): Subscription? = takeIf { it.any() }?.run {
         (JsonObject.serializer() parse this).let { json ->

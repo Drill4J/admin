@@ -16,10 +16,12 @@ private val logger = KotlinLogging.logger {}
 class SessionStorage {
 
     internal val sessions get() = _sessions.value
-    internal val subscriptions get() = _subscriptions.value
 
-    private val _sessions = atomic(emptyBiSetMap<String, WebSocketSession>())
-    private val _subscriptions = atomic(mutableMapOf<WebSocketSession, Subscription?>())
+    private val _sessions = atomic(emptyBiSetMap<Any, WebSocketSession>())
+
+    private val _subscriptions = atomic(
+        emptyBiSetMap<String, Subscription>()
+    )
 
     operator fun contains(destination: String): Boolean = destination in sessions.first
 
@@ -27,17 +29,22 @@ class SessionStorage {
         destination: String,
         message: FrontMessage,
         type: WsMessageType = WsMessageType.MESSAGE
-    ): Set<WebSocketSession> = sendTo(
-        destination = destination,
-        messageProvider = { message.toWsMessageAsString(destination, type) }
-    )
+    ): Set<WebSocketSession> = sessions.first[destination].apply {
+        forEach {
+            it.send(destination, message.toWsMessageAsString(destination, type))
+        }
+    }
 
     suspend fun sendTo(
         destination: String,
-        messageProvider: (Subscription?) -> String
-    ): Set<WebSocketSession> = sessions.first[destination].apply {
-        if (any()) {
-            forEach { it.send(destination,  messageProvider(subscriptions[it])) }
+        messageProvider: (Subscription) -> String
+    ) {
+        _subscriptions.value.first[destination].forEach { subscription ->
+            sessions.first[destination to subscription].apply {
+                forEach { session ->
+                    session.send(destination, messageProvider(subscription))
+                }
+            }
         }
     }
 
@@ -58,9 +65,27 @@ class SessionStorage {
     }
 
     fun subscribe(
+        subscription: Subscription,
+        destination: String,
+        session: WebSocketSession
+    ): String = subscription.toKey(destination).also { key ->
+        _subscriptions.update { it.put(key, subscription) }
+        _sessions.update { it.put(key to subscription, session) }
+    }
+
+    fun subscribe(
         destination: String,
         session: WebSocketSession
     ) = _sessions.update { it.put(destination, session) }
+
+    fun unsubscribe(
+        subscription: Subscription,
+        destination: String,
+        session: WebSocketSession
+    ): String = subscription.toKey(destination).also { key ->
+        _subscriptions.update { it.remove(key, subscription) }
+        _sessions.update { it.remove(key to subscription, session) }
+    }
 
     fun unsubscribe(
         destination: String,
