@@ -94,12 +94,8 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun String.parseSubscription(): Subscription? = takeIf { it.any() }?.run {
-        (JsonObject.serializer() parse this).let { json ->
-            Subscription.serializer().takeIf {
-                "type" in json
-            } ?: AgentSubscription.serializer()
-        }.parse(this).ensureBuildVersion()
+    private fun String.parseSubscription(): Subscription? = takeIf(String::any)?.run {
+        Subscription.serializer().parse(this).ensureBuildVersion()
     }
 
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {

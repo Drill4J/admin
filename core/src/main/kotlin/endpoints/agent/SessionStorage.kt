@@ -40,10 +40,8 @@ class SessionStorage {
         messageProvider: (Subscription) -> String
     ) {
         _subscriptions.value.first[destination].forEach { subscription ->
-            sessions.first[destination to subscription].apply {
-                forEach { session ->
-                    session.send(destination, messageProvider(subscription))
-                }
+            sessions.first[destination to subscription].forEach { session ->
+                session.send(destination, messageProvider(subscription))
             }
         }
     }

@@ -105,7 +105,7 @@ class PluginWsTest {
                     uiMessage(
                         Subscribe(
                             destination,
-                            AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                            Subscription.serializer() stringify AgentSubscription(agentId, buildVersion)
                         )
 
                     )
@@ -173,7 +173,7 @@ class PluginWsTest {
             uiMessage(
                 Unsubscribe(
                     destination,
-                    AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                    Subscription.serializer() stringify AgentSubscription(agentId, buildVersion)
                 )
 
             )
@@ -189,7 +189,7 @@ class PluginWsTest {
             uiMessage(
                 Subscribe(
                     destination,
-                    AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion, searchStatement = filter)
+                    Subscription.serializer() stringify AgentSubscription(agentId, buildVersion, searchStatement = filter)
                 )
             )
         )
@@ -223,7 +223,7 @@ class PluginWsTest {
                     uiMessage(
                         Subscribe(
                             destination,
-                            AgentSubscription.serializer() stringify AgentSubscription(agentId, buildVersion)
+                            Subscription.serializer() stringify AgentSubscription(agentId, buildVersion)
                         )
                     )
                 )
