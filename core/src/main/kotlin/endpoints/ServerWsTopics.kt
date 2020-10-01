@@ -35,7 +35,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
         runBlocking {
             agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
                 val dest = app.toLocation(WsRoot.Agents())
-                sessionStorage.sendTo(dest, agentManager.registered())
+                sessionStorage.sendTo(dest, agentManager.all())
             }
             agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
                 val destination = app.toLocation(WsRoutes.Agents())
@@ -72,7 +72,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
 
             wsTopic {
-                topic<WsRoot.Agents> { agentManager.registered() }
+                topic<WsRoot.Agents> { agentManager.all() }
 
                 topic<WsRoutes.Agents> {
                     serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)

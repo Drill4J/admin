@@ -11,9 +11,7 @@ fun Iterable<AgentInfo>.byPluginId(pluginId: String): List<AgentInfo> = filter {
 
 fun Iterable<AgentInfo>.mapToDto(agentManager: AgentManager) = map { it.toDto(agentManager) }
 
-fun AgentManager.registered() = agentStorage.values.mapNotNull {
-    it.agent.takeIf { it.status != AgentStatus.NOT_REGISTERED }
-}.mapToDto(this)
+fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map(AgentEntry::agent).mapToDto(this)
 
 fun Iterable<Plugin>.ofAgent(info: AgentInfo): List<Plugin> = run {
     val ids = info.plugins.mapTo(mutableSetOf()) { it.id }
