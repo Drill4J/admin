@@ -40,6 +40,7 @@ dependencies {
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
+    implementation("io.airlift:aircompressor:$aircompressorVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
