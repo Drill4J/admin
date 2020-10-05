@@ -72,7 +72,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         withContext(Dispatchers.IO) {
                             val rawContent = frame.readBytes()
                             val frameBytes = if (useCompression) {
-                                Zstd.decode(rawContent)
+                                Zstd.decompress(rawContent)
                             } else rawContent
                             BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
