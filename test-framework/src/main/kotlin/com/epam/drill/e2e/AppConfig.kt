@@ -2,10 +2,10 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.store.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -59,14 +59,21 @@ class AppConfig(var projectDir: File) {
             val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
 
             withKModule {
-                kodeinModule("addition") {
+                kodeinModule("addition") { app ->
                     bind<StoreManager>() with eagerSingleton {
-                        storeManager = StoreManager(baseLocation.resolve("agent"))
+                        storeManager = StoreManager(baseLocation.resolve("agent")).also {
+                            app.onStop { it.close() }
+                        }
                         storeManager
                     }
                     bind<CommonStore>() with eagerSingleton {
-                        commonStore = CommonStore(baseLocation.resolve("common"))
+                        commonStore = CommonStore(baseLocation.resolve("common")).also {
+                            app.closeOnStop(it)
+                        }
                         commonStore
+                    }
+                    bind<PluginStores>() with eagerSingleton {
+                        PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }
                     }
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(kodein)
@@ -75,5 +82,8 @@ class AppConfig(var projectDir: File) {
                 }
             }
         })
+        environment.monitor.subscribe(ApplicationStopped) {
+            projectDir.deleteRecursively()
+        }
     }
 }
