@@ -36,28 +36,29 @@ suspend fun AdminTest.loadPlugin(
 
         val memoryClassLoader = MemoryClassLoader()
 
-        val resolve1 = projectDir.resolve(ag.id)
-        resolve1.mkdirs()
-        val resolve = resolve1.resolve("ag-part.jar")
-        resolve.writeBytes(bs)
-        val jarFile = JarFile(resolve)
-        val jarInputStream = JarInputStream(FileInputStream(resolve))
-        val sequence = sequence {
-            var nextJarEntry = jarInputStream.nextJarEntry
-            do {
-                yield(nextJarEntry)
-                nextJarEntry = jarInputStream.nextJarEntry
-            } while (nextJarEntry != null)
+        val agentDir = projectDir.resolve(ag.id)
+        agentDir.mkdirs()
+        val agentJar = agentDir.resolve("ag-part.jar")
+        agentJar.writeBytes(bs)
+
+        val clazz = JarFile(agentJar).use { jarFile ->
+            JarInputStream(FileInputStream(agentJar)).use { jarInputStream ->
+                val sequence = sequence {
+                    var nextJarEntry = jarInputStream.nextJarEntry
+                    do {
+                        yield(nextJarEntry)
+                        nextJarEntry = jarInputStream.nextJarEntry
+                    } while (nextJarEntry != null)
+                }
+
+                val toSet = sequence.toSet()
+                memoryClassLoader.clazz(
+                    if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
+                    toSet,
+                    jarFile
+                )
+            }
         }
-
-        val toSet = sequence.toSet()
-        val clazz = memoryClassLoader.clazz(
-            if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
-            toSet,
-            jarFile
-        )
-        jarInputStream.close()
-
 
         val agentData = AgentDatum(classMap)
         val declaredConstructor = clazz.getDeclaredConstructor(

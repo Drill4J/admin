@@ -8,6 +8,7 @@ import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
@@ -24,9 +25,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.io.*
+import java.util.*
 import kotlin.test.*
 
 class PluginWsTest {
+
+    @Serializable
+    data class TestMessage(val message: String)
 
     private val pluginId = testPlugin.pluginId
 
@@ -43,6 +49,8 @@ class PluginWsTest {
         buildVersion = buildVersion,
         agentType = AgentType.JAVA
     )
+
+    private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     private lateinit var kodeinApplication: Kodein
 
@@ -64,6 +72,7 @@ class PluginWsTest {
                             kodein
                         )
                     }
+                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
                     bind<WsTopic>() with singleton {
                         WsTopic(
@@ -77,6 +86,11 @@ class PluginWsTest {
 
             }
         })
+    }
+
+    @AfterTest
+    fun removeStore() {
+        storageDir.deleteRecursively()
     }
 
     @Test
@@ -213,7 +227,7 @@ class PluginWsTest {
         withTestApplication(testApp) {
             handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic1"
-                val messageForTest = "testMessage"
+                val messageForTest = TestMessage("testMessage")
                 val wsPluginService by kodeinApplication.instance<PluginSenders>()
                 val sender = wsPluginService.sender(pluginId)
                 val sendContext = AgentSendContext(agentInfo.id, agentInfo.buildVersion)
@@ -233,7 +247,9 @@ class PluginWsTest {
                 val fromJson = JsonObject.serializer() parse readText
                 assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
                 assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
-                assertEquals(messageForTest, fromJson[WsSendMessage::message.name]?.content)
+                assertEquals(
+                    json.toJson(TestMessage.serializer(), messageForTest),
+                    fromJson[WsSendMessage::message.name])
 
                 outgoing.send(uiMessage(Subscribe(destination, "")))
             }

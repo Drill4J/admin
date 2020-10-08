@@ -9,11 +9,10 @@ import com.epam.kodux.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
-import jetbrains.exodus.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.sync.*
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.fail
 import java.io.*
 import java.util.*
 import kotlin.time.*
@@ -22,7 +21,7 @@ import kotlin.time.TimeSource.*
 abstract class AdminTest {
     val mut = Mutex()
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
-    val projectDir = File(System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID())
+    val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     lateinit var asyncEngine: AsyncTestAppEngine
     val engine: TestApplicationEngine get() = asyncEngine.engine
@@ -33,22 +32,6 @@ abstract class AdminTest {
     fun uiWatcher(bl: suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit): AdminTest {
         this.watcher = bl
         return this
-    }
-
-    @AfterEach
-    fun closeResources() {
-        storeManager.storages.forEach {
-            try {
-                it.value.close()
-            } catch (ignored: ExodusException) {
-            }
-        }
-        storeManager.storages.clear()
-        try {
-            commonStore.client.close()
-        } catch (ignored: ExodusException) {
-        } catch (ignored: UninitializedPropertyAccessException) {//FIXME get rid of this lateinit complexity
-        }
     }
 
     fun AsyncTestAppEngine.register(

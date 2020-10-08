@@ -5,13 +5,13 @@ import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -21,6 +21,7 @@ private val logger = KotlinLogging.logger {}
 class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
+    private val pluginStores by instance<PluginStores>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
     private val plugins by instance<Plugins>()
@@ -77,8 +78,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 val subscriptionKey = subscription?.let {
                     sessionCache.subscribe(it, destination, this)
                 } ?: destination.also { sessionCache.subscribe(it, this) }
-                val pluginCache = pluginCaches[pluginId]
-                val message = pluginCache[subscriptionKey] ?: ""
+                val message = retrieveMessage(pluginId, subscriptionKey)
                 val messageToSend = message
                     .processWithSubscription(subscription)
                     .toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
@@ -91,6 +91,19 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 } ?: event.destination.also { sessionCache.unsubscribe(it, this) }
                 logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
+        }
+    }
+
+    private suspend fun retrieveMessage(
+        pluginId: String,
+        subscriptionKey: String
+    ): FrontMessage = pluginCaches[pluginId].let { pluginCache ->
+        pluginCache[subscriptionKey] ?: run {
+            val classLoader = plugins[pluginId]?.run {
+                pluginClass.classLoader
+            } ?: Thread.currentThread().contextClassLoader
+            val messageFromStore = pluginStores[pluginId].readMessage(subscriptionKey, classLoader) ?: ""
+            messageFromStore.also { pluginCache[subscriptionKey] = it }
         }
     }
 
