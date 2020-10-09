@@ -14,11 +14,12 @@ internal class Stored(
 internal suspend fun StoreClient.storeMessage(
     id: String,
     message: Any
-) {
+): Int {
     val storedMessage = message.toStoredMessage()
     val bytes = ProtoBuf.dump(StoredMessage.serializer(), storedMessage)
     val compressed = Zstd.compress(bytes)
     store(Stored(id, compressed))
+    return compressed.size
 }
 
 internal suspend fun StoreClient.readMessage(

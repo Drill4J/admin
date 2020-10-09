@@ -21,7 +21,6 @@ private val logger = KotlinLogging.logger {}
 class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
-    private val pluginStores by instance<PluginStores>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
     private val plugins by instance<Plugins>()
@@ -78,7 +77,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 val subscriptionKey = subscription?.let {
                     sessionCache.subscribe(it, destination, this)
                 } ?: destination.also { sessionCache.subscribe(it, this) }
-                val message = retrieveMessage(pluginId, subscriptionKey)
+                val message = pluginCaches.retrieveMessage(pluginId, subscriptionKey)
                 val messageToSend = message
                     .processWithSubscription(subscription)
                     .toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
@@ -91,19 +90,6 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 } ?: event.destination.also { sessionCache.unsubscribe(it, this) }
                 logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
-        }
-    }
-
-    private suspend fun retrieveMessage(
-        pluginId: String,
-        subscriptionKey: String
-    ): FrontMessage = pluginCaches[pluginId].let { pluginCache ->
-        pluginCache[subscriptionKey] ?: run {
-            val classLoader = plugins[pluginId]?.run {
-                pluginClass.classLoader
-            } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStores[pluginId].readMessage(subscriptionKey, classLoader) ?: ""
-            messageFromStore.also { pluginCache[subscriptionKey] = it }
         }
     }
 

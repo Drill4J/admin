@@ -68,7 +68,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         topicResolver.sendToAllSubscribed(WsNotifications)
     }
 
-    private fun createNewBuildMessage(
+    private suspend fun createNewBuildMessage(
         previousBuildVersion: String,
         agentInfo: AgentInfo
     ): NewBuildArrivedMessage = pluginCache.getData(
@@ -85,12 +85,12 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         )
     }
 
-    private fun recommendations(agentInfo: AgentInfo): Set<String> = pluginCache.run {
+    private suspend fun recommendations(agentInfo: AgentInfo): Set<String> = pluginCache.run {
         getData(
             agentInfo.id,
             agentInfo.buildVersion,
             type = "recommendations"
-        ).let { recommendations ->
+        )?.let { recommendations ->
             (recommendations as? Iterable<*>)?.mapTo(mutableSetOf()) { "$it" }
         } ?: emptySet()
     }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import kotlin.time.*
 
 class PluginSenders(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
@@ -39,7 +40,11 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                 logger.trace { "Sending message to $subscriptionKey" }
                 pluginStores[pluginId].let { store ->
                     withContext(Dispatchers.IO) {
-                        store.storeMessage(subscriptionKey, message)
+                        measureTimedValue {
+                            store.storeMessage(subscriptionKey, message)
+                        }.let {
+                            logger.trace { "Stored message (key=$subscriptionKey, size=${it.value}) in ${it.duration}" }
+                        }
                     }
                 }
                 pluginCache.remove(subscriptionKey)

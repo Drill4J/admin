@@ -29,7 +29,10 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
     get() = { application ->
         bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(application) }
         bind<Plugins>() with singleton { instance<PluginLoaderService>().plugins }
-        bind<PluginCaches>() with singleton { PluginCaches(instance(), instance()) }
+        bind<PluginStores>() with eagerSingleton {
+            PluginStores(drillWorkDir.resolve("plugins")).also { application.closeOnStop(it) }
+        }
+        bind<PluginCaches>() with singleton { PluginCaches(instance(), instance(), instance()) }
         bind<PluginSessions>() with singleton { PluginSessions(instance()) }
         bind<PluginSenders>() with singleton { PluginSenders(kodein) }
     }
@@ -40,9 +43,6 @@ val storage: Kodein.Builder.(Application) -> Unit
             StoreManager(drillWorkDir.resolve("agents")).also { app.onStop { it.close() } }
         }
         bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir).also { app.closeOnStop(it) } }
-        bind<PluginStores>() with eagerSingleton {
-            PluginStores(drillWorkDir.resolve("plugins")).also { app.closeOnStop(it) }
-        }
         bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
