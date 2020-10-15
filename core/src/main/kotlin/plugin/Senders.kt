@@ -48,16 +48,15 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                     }
                 }
                 pluginCache.remove(subscriptionKey)
-                val sessionCache = pluginSessions[pluginId]
-                sessionCache.sendTo(
-                    destination = subscriptionKey,
-                    messageProvider = { sessionSubscription ->
-                        message
-                            .processWithSubscription(sessionSubscription)
-                            .toWsMessageAsString(dest, WsMessageType.MESSAGE, sessionSubscription)
-                    }
-                )
             }
+            pluginSessions[pluginId].sendTo(
+                destination = subscriptionKey,
+                messageProvider = { sessionSubscription ->
+                    message
+                        .processWithSubscription(sessionSubscription)
+                        .toWsMessageAsString(dest, WsMessageType.MESSAGE, sessionSubscription)
+                }
+            )
         }
     }
 }
