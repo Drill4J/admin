@@ -4,7 +4,6 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.plugin.api.message.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
@@ -15,7 +14,7 @@ class SingleConnectPluginTest : E2EPluginTest() {
     fun `test e2e plugin API`() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>("myServiceGroup") { _, _ ->
-                val expectedContent = StatusMessageResponse.serializer() stringify "act".statusMessageResponse(StatusCodes.OK)
+                val expectedContent = StatusMessageResponse.serializer() stringify "act".statusMessageResponse(200)
                 pluginAction("x") { status, content ->
                     status shouldBe HttpStatusCode.OK
                     content shouldBe expectedContent

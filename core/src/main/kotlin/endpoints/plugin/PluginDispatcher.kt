@@ -271,10 +271,11 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private suspend fun AdminPluginPart<*>.processSingleAction(
         action: String
     ): Any = doRawAction(action).also { result ->
+        @Suppress("DEPRECATION")
         when (result) {
-            is StatusMessage -> null
-            Unit -> action //TODO not straightforward, remove it
-            else -> result.stringify(serDe)
+            is StatusMessage -> null //TODO remove after changes in plugins
+            is ActionResult -> result.agentAction?.run { stringify(serDe) }
+            else -> result.stringify(serDe) //TODO remove after changes in plugins
         }?.also { agentPartMsg ->
             agentManager.agentSessions(agentInfo.id).map {
                 val agentAction = PluginAction(id, agentPartMsg)
@@ -294,8 +295,13 @@ private fun Any.stringify(
     format.stringify(it, this)
 }
 
+@Suppress("DEPRECATION")
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
-    is StatusMessage -> message.statusMessageResponse(code)
+    is ActionResult -> when (val d = data) {
+        is String -> d.statusMessageResponse(code)
+        else -> StatusResponse(code, d)
+    }
+    is StatusMessage -> message.statusMessageResponse(code) //TODO remove after changes in plugins
     is String -> StatusResponse(HttpStatusCode.OK.value, this)
     Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
     else -> StatusResponse(HttpStatusCode.OK.value, this)

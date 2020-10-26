@@ -5,7 +5,6 @@ import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
-import com.epam.drill.plugin.api.message.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.channels.*
@@ -29,7 +28,7 @@ class PluginTest : E2EPluginTest() {
             uiWatcher { channel ->
                 waitForMultipleAgents(channel)
                 println("1")
-                val statusResponse = "act".statusMessageResponse(StatusCodes.OK)
+                val statusResponse = "act".statusMessageResponse(200)
                 val statusesResponse: List<WithStatusCode> =
                     listOf(statusResponse, statusResponse, statusResponse)
                 pluginAction("myActionForAllAgents", serviceGroup) { status, content ->

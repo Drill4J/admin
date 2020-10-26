@@ -36,11 +36,11 @@ class TestAdminPart(
         return when (action) {
             "packagesChangesCount" -> {
                 println(packagesChangesCount)
-                StatusMessage(StatusCodes.OK, packagesChangesCount.toString())
+                ActionResult(200, packagesChangesCount.toString())
             }
             else -> {
                 println(action)
-                StatusMessage(StatusCodes.OK, "act")
+                ActionResult(200, "act")
             }
         }
     }
