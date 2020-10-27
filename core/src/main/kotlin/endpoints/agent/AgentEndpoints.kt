@@ -52,7 +52,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         call.respond(HttpStatusCode.Created, this)
                     } ?: run {
                         logger.warn { "Agent ${payload.id} already exists." }
-                        call.respond(HttpStatusCode.Conflict, EmptyContent)
+                        call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))
                     }
                 }
             }
