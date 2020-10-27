@@ -12,11 +12,30 @@ import kotlinx.serialization.protobuf.*
 import mu.*
 import kotlin.time.*
 
+@Serializable
+internal class PreparedAgentData(
+    @Id val id: String,
+    val dto: AgentCreationDto
+)
+
+@Serializable
+internal data class AgentDataSummary(
+    @Id val agentId: String,
+    val settings: SystemSettingsDto,
+    val lastBuild: String
+)
+
 internal class AgentDataCache {
 
     private val _data = atomic(persistentMapOf<String, AgentData>())
 
     operator fun get(key: String): AgentData? = _data.value[key]
+
+    operator fun set(key: String, value: AgentData) {
+        _data.update {
+            it.put(key, value)
+        }
+    }
 
     fun getOrPut(
         key: String,
@@ -30,8 +49,8 @@ internal class AgentDataCache {
 
 internal class AgentData(
     val agentId: String,
-    private val storeClient: StoreClient,
-    defaultPackages: List<String>
+    agentStores: StoreManager,
+    initialSettings: SystemSettingsDto
 ) : AdminData {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -43,13 +62,13 @@ internal class AgentData(
 
     val settings: SystemSettingsDto get() = _settings.value
 
+    private val storeClient by lazy { agentStores.agentStore(agentId) }
+
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
     private val _classBytes = atomic(emptyMap<String, ByteArray>())
 
-    private val _settings = atomic(
-        SystemSettingsDto(packages = defaultPackages)
-    )
+    private val _settings = atomic(initialSettings)
 
     suspend fun initBuild(version: String) {
         if (buildManager.builds.none()) {
@@ -145,10 +164,3 @@ internal class AgentData(
             lastBuild = buildManager.lastBuild
         )
 }
-
-@Serializable
-internal data class AgentDataSummary(
-    @Id val agentId: String,
-    val settings: SystemSettingsDto,
-    val lastBuild: String
-)

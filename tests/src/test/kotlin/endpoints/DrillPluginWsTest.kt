@@ -11,8 +11,10 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
+import com.epam.drill.common.json
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
+import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -30,6 +32,9 @@ import java.util.*
 import kotlin.test.*
 
 class PluginWsTest {
+
+    private val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
+
 
     @Serializable
     data class TestMessage(val message: String)
@@ -64,9 +69,22 @@ class PluginWsTest {
 
         enableSwaggerSupport()
         kodeinApplication = kodeinApplication(AppBuilder {
+
+            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
+
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
+                    bind<StoreManager>() with eagerSingleton {
+                        StoreManager(baseLocation.resolve("agent")).also {
+                            app.onStop { it.close() }
+                        }
+                    }
+                    bind<CommonStore>() with eagerSingleton {
+                        CommonStore(baseLocation.resolve("common")).also {
+                            app.closeOnStop(it)
+                        }
+                    }
                     bind<LoginHandler>() with eagerSingleton {
                         LoginHandler(
                             kodein

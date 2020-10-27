@@ -46,8 +46,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     )
                 post<ApiRoot.Agents, AgentCreationDto>(meta) { _, payload ->
                     logger.debug { "Creating agent with id ${payload.id}..." }
-                    val agentId = payload.id
-                    agentManager.takeIf { it[agentId] == null }?.prepare(payload)?.run {
+                    agentManager.prepare(payload)?.run {
                         logger.info { "Created agent ${payload.id}." }
                         call.respond(HttpStatusCode.Created, this)
                     } ?: run {
