@@ -1,5 +1,6 @@
 package com.epam.drill.admin.endpoints
 
+import com.epam.drill.plugin.api.end.*
 import kotlinx.serialization.*
 
 @Serializable
@@ -10,18 +11,12 @@ interface WithStatusCode {
 }
 
 @Serializable
-data class StatusMessageResponse(
-    override val code: Int,
-    val message: String
-) : WithStatusCode
-
-@Serializable
 data class StatusResponse(
     override val code: Int,
     @ContextualSerialization val data: Any
 ) : WithStatusCode
 
-fun String.statusMessageResponse(code: Int) = StatusMessageResponse(
+fun ActionResult.statusResponse() = StatusResponse(
     code = code,
-    message = this
+    data = data
 )
