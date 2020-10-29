@@ -1,4 +1,4 @@
-package com.epam.drill.admin.endpoints.openapi
+package com.epam.drill.admin.endpoints.admin
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
@@ -22,11 +22,11 @@ import org.kodein.di.generic.*
 
 class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
+
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val loggingHandler by instance<LoggingHandler>()
     private val plugins by instance<Plugins>()
-    private val handler by instance<AdminEndpointsHandler>()
 
     init {
         app.routing {
@@ -129,17 +129,12 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<String>(), badRequest()
                     )
-                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(meta) { params, systemSettings ->
+                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(meta) { params, settingsDto ->
                     val (_, agentId) = params
-                    val statusCode = handler.updateSystemSettings(agentId, systemSettings)
-
-                    val response: Any = when (statusCode) {
-                        HttpStatusCode.OK -> EmptyContent
-                        HttpStatusCode.BadRequest -> ErrorResponse("Package prefixes contains empty value")
-                        else -> ErrorResponse("Request handle with exception")
-                    }
-                    logger.info { "System settings update was finished with result: $response" }
-                    call.respond(statusCode, response)
+                    settingsDto.takeIf { it.packages.none(String::isBlank) }?.let {
+                        agentManager.updateSystemSettings(agentId, it)
+                        call.respond(HttpStatusCode.OK, EmptyContent)
+                    } ?: call.respond(HttpStatusCode.BadRequest, "Package prefixes contain an empty value.")
                 }
             }
         }

@@ -1,7 +1,6 @@
 package com.epam.drill.admin.notification
 
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import kotlinx.atomicfu.*

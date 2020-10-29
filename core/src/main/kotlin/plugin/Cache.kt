@@ -2,10 +2,10 @@ package com.epam.drill.admin.plugin
 
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.type.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.websocket.*
 
 
 typealias FrontMessage = Any

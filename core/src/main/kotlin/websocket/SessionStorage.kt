@@ -1,4 +1,4 @@
-package com.epam.drill.admin.endpoints.agent
+package com.epam.drill.admin.websocket
 
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
@@ -11,19 +11,23 @@ import kotlinx.coroutines.channels.*
 import mu.*
 import java.util.concurrent.*
 
-private val logger = KotlinLogging.logger {}
-
 class SessionStorage {
+    private val logger = KotlinLogging.logger {}
 
     internal val sessions get() = _sessions.value
 
-    private val _sessions = atomic(emptyBiSetMap<Any, WebSocketSession>())
+    private val _sessions =
+        atomic(emptyBiSetMap<Any, WebSocketSession>())
 
     private val _subscriptions = atomic(
         emptyBiSetMap<String, Subscription>()
     )
 
     operator fun contains(destination: String): Boolean = destination in sessions.first
+
+    fun destinationCount() = sessions.first.size
+
+    fun sessionCount() = sessions.second.size
 
     suspend fun sendTo(
         destination: String,
@@ -96,7 +100,3 @@ class SessionStorage {
         it.remove(session)
     }.second
 }
-
-fun SessionStorage.sessionCount() = sessions.second.size
-
-fun SessionStorage.destinationCount() = sessions.first.size

@@ -5,11 +5,11 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.plugin.*
+import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.admin.websockets.*
 import com.epam.drill.common.*
 import com.epam.drill.common.json
 import com.epam.drill.plugin.api.end.*
@@ -85,11 +85,7 @@ class PluginWsTest {
                             app.closeOnStop(it)
                         }
                     }
-                    bind<LoginHandler>() with eagerSingleton {
-                        LoginHandler(
-                            kodein
-                        )
-                    }
+                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
                     bind<WsTopic>() with singleton {

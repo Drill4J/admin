@@ -2,7 +2,7 @@ package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.common.*

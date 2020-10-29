@@ -1,11 +1,11 @@
-package com.epam.drill.admin.endpoints
+package com.epam.drill.admin.endpoints.admin
 
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
@@ -13,6 +13,7 @@ import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.version.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.coroutines.*

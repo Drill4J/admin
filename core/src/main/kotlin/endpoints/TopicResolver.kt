@@ -1,7 +1,7 @@
-package com.epam.drill.admin.endpoints.agent
+package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -23,5 +23,4 @@ class TopicResolver(override val kodein: Kodein) : KodeinAware {
             WsMessageType.MESSAGE
         )
     }
-
 }

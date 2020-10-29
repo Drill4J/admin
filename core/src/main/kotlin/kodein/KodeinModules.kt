@@ -6,8 +6,8 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.endpoints.openapi.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.notification.*
@@ -19,7 +19,7 @@ import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
-import com.epam.drill.admin.websockets.*
+import com.epam.drill.admin.websocket.*
 import com.epam.kodux.*
 import io.ktor.application.*
 import org.kodein.di.*
@@ -55,24 +55,43 @@ val storage: Kodein.Builder.(Application) -> Unit
 
 val wsHandler: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
-        bind<AgentEndpoints>() with eagerSingleton { AgentEndpoints(kodein) }
+        bind<AgentEndpoints>() with eagerSingleton {
+            AgentEndpoints(
+                kodein
+            )
+        }
         bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
-        bind<DrillServerWs>() with eagerSingleton { DrillServerWs(kodein) }
-        bind<TopicResolver>() with eagerSingleton { TopicResolver(kodein) }
-        bind<ServerWsTopics>() with eagerSingleton { ServerWsTopics(kodein) }
+        bind<DrillServerWs>() with eagerSingleton {
+            DrillServerWs(
+                kodein
+            )
+        }
+        bind<TopicResolver>() with eagerSingleton {
+            TopicResolver(
+                kodein
+            )
+        }
+        bind<ServerWsTopics>() with eagerSingleton {
+            ServerWsTopics(
+                kodein
+            )
+        }
         bind<WsTopic>() with singleton { WsTopic(kodein) }
     }
 
 val handlers: Kodein.Builder.(Application) -> Unit
     get() = { _ ->
-        bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
+        bind<DrillAdminEndpoints>() with eagerSingleton {
+            DrillAdminEndpoints(
+                kodein
+            )
+        }
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<InfoController>() with eagerSingleton { InfoController(kodein) }
-        bind<LoginHandler>() with eagerSingleton { LoginHandler(kodein) }
+        bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
         bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
         bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
-        bind<AdminEndpointsHandler>() with eagerSingleton { AdminEndpointsHandler(kodein) }
     }

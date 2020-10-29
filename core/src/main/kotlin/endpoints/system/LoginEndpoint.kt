@@ -1,4 +1,4 @@
-package com.epam.drill.admin.websockets
+package com.epam.drill.admin.endpoints.system
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.routes.*
@@ -13,13 +13,8 @@ import io.ktor.http.content.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
-import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class LoginHandler(override val kodein: Kodein) : KodeinAware {
-
-    val app by instance<Application>()
-
+class LoginEndpoint(val app: Application) {
     private val logger = KotlinLogging.logger {}
 
     init {

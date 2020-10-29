@@ -1,6 +1,6 @@
 package com.epam.drill.admin.notification
 
-import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.endpoints.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*

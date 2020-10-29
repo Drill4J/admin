@@ -1,4 +1,4 @@
-package com.epam.drill.admin.endpoints.agent
+package com.epam.drill.admin.endpoints.admin
 
 
 import com.epam.drill.admin.*

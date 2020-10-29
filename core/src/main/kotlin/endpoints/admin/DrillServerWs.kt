@@ -1,10 +1,11 @@
 @file:Suppress("EXPERIMENTAL_API_USAGE")
 
-package com.epam.drill.admin.endpoints.agent
+package com.epam.drill.admin.endpoints.admin
 
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
