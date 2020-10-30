@@ -64,7 +64,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.OK to EmptyContent
                     } else {
                         val errorMessage = "AgentInfo with associated with id $agentId" +
-                                " or plugin configuration associated with id $pluginId was not found"
+                            " or plugin configuration associated with id $pluginId was not found"
                         logger.warn { errorMessage }
                         HttpStatusCode.NotFound to ErrorResponse(errorMessage)
                     }
@@ -168,7 +168,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 val agentInfo = agentManager[agentId]!!
                                 if (agentInfo.plugins.any { it.id == pluginIdObject.pluginId }) {
                                     HttpStatusCode.BadRequest to
-                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
+                                        ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.apply {
                                         agentInfo.addPlugins(listOf(pluginIdObject.pluginId))
@@ -270,14 +270,9 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private suspend fun AdminPluginPart<*>.processSingleAction(
         action: String
     ): Any = doRawAction(action).also { result ->
-        @Suppress("DEPRECATION")
-        when (result) {
-            is StatusMessage -> null //TODO remove after changes in plugins
-            is ActionResult -> result.agentAction?.run { stringify(serDe) }
-            else -> result.stringify(serDe) //TODO remove after changes in plugins
-        }?.also { agentPartMsg ->
+        (result as? ActionResult)?.agentAction?.stringify(serDe)?.let { agentActionStr ->
+            val agentAction = PluginAction(id, agentActionStr)
             agentManager.agentSessions(agentInfo.id).map {
-                val agentAction = PluginAction(id, agentPartMsg)
                 it.sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
             }.forEach { it.await() }
         }
@@ -294,14 +289,10 @@ private fun Any.stringify(
     format.stringify(it, this)
 }
 
-@Suppress("DEPRECATION")
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
     is ActionResult -> when (val d = data) {
         is String -> d.statusMessageResponse(code)
         else -> StatusResponse(code, d)
     }
-    is StatusMessage -> message.statusMessageResponse(code) //TODO remove after changes in plugins
-    is String -> StatusResponse(HttpStatusCode.OK.value, this)
-    Unit -> StatusResponse(HttpStatusCode.OK.value, JsonNull)
     else -> StatusResponse(HttpStatusCode.OK.value, this)
 }
