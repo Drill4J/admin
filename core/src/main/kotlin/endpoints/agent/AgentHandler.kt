@@ -24,9 +24,9 @@ import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
-private val logger = KotlinLogging.logger {}
-
 class AgentHandler(override val kodein: Kodein) : KodeinAware {
+    private val logger = KotlinLogging.logger {}
+
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val pd by instance<PluginDispatcher>()
@@ -68,16 +68,22 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             val adminData = agentManager.adminData(agentInfo.id)
             incoming.consumeEach { frame ->
                 when (frame) {
-                    is Frame.Binary -> {
+                    is Frame.Binary -> runCatching {
                         withContext(Dispatchers.IO) {
-                            val rawContent = frame.readBytes()
+                            val bytes = frame.readBytes()
                             val frameBytes = if (useCompression) {
-                                Zstd.decompress(rawContent)
-                            } else rawContent
+                                Zstd.decompress(bytes)
+                            } else bytes
                             BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
-                    }
-                    is Frame.Text -> JsonMessage.serializer() parse frame.readText()
+                    }.onFailure {
+                        logger.error(it) { "Error processing $frame." }
+                    }.getOrNull()
+                    is Frame.Text -> runCatching {
+                        JsonMessage.serializer() parse frame.readText()
+                    }.onFailure {
+                        logger.error(it) { "Error processing $frame." }
+                    }.getOrNull()
                     else -> null
                 }?.also { message ->
                     withContext(Dispatchers.IO) {
