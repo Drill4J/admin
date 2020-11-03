@@ -2,6 +2,7 @@ package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*

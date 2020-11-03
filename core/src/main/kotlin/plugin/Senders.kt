@@ -1,8 +1,8 @@
 package com.epam.drill.admin.plugin
 
+import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
@@ -52,11 +52,19 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             pluginSessions[pluginId].sendTo(
                 destination = subscriptionKey,
                 messageProvider = { sessionSubscription ->
-                    message
-                        .processWithSubscription(sessionSubscription)
-                        .toWsMessageAsString(dest, WsMessageType.MESSAGE, sessionSubscription)
+                    message.postProcess(sessionSubscription).toWsMessageAsString(
+                        destination = dest,
+                        type = WsMessageType.MESSAGE,
+                        to = sessionSubscription
+                    )
                 }
             )
         }
     }
+}
+
+internal fun SendContext.toSubscription(): Subscription = when (this) {
+    is AgentSendContext -> AgentSubscription(agentId, buildVersion)
+    is GroupSendContext -> GroupSubscription(groupId)
+    else -> error("Unknown send context $this")
 }

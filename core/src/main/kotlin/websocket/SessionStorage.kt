@@ -1,9 +1,8 @@
 package com.epam.drill.admin.websocket
 
+import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.plugin.*
-import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.util.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.atomicfu.*

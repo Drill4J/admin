@@ -1,6 +1,7 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
@@ -149,7 +150,10 @@ class PluginWsTest {
     }
 
     @Serializable
-    data class Data(val field1: String, val field2: Int)
+    data class Data(val field1: String, val field2: Int, val notSortable: Noncomparable = Noncomparable())
+
+    @Serializable
+    class Noncomparable(val s: String = "")
 
     @Test
     fun `should apply filters to list topics`() {
@@ -159,14 +163,14 @@ class PluginWsTest {
 
                 val destination = "/ws/plugins/test-plugin"
                 val message = listOf(
-                    Data("x1", 10),
-                    Data("x2", 10),
-                    Data("x2", 10),
-                    Data("x3", 10)
+                    Data("x11", 16),
+                    Data("x22", 14),
+                    Data("x31", 10),
+                    Data("x21", 12, Noncomparable("a"))
                 )
 
 
-                subscribeWithFilter(outgoing, destination)
+                subscribe(outgoing, destination)
                 assertEquals("", readMessage(incoming)?.content, "first subscription should be empty")
 
 
@@ -174,20 +178,44 @@ class PluginWsTest {
                 assertEquals(message.size, (readMessage(incoming) as JsonArray).size)
 
 
-                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x1"))
+                subscribe(outgoing, destination, setOf(FieldFilter(fieldName, "x11")))
                 assertEquals(1, (readMessage(incoming) as JsonArray).size)
 
                 unsubscribe(outgoing, destination)
 
-                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x2"))
-                assertEquals(2, (readMessage(incoming) as JsonArray).size)
+                subscribe(
+                    outgoing,
+                    destination,
+                    setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
+                    setOf(FieldOrder(fieldName))
+                )
+                (readMessage(incoming) as JsonArray).let { array ->
+                    assertEquals(2, array.size)
+                    assertEquals(listOf("x21", "x22"), array.map { it.jsonObject[fieldName]?.content })
+                }
 
                 unsubscribe(outgoing, destination)
-
-                //cache value
-                subscribeWithFilter(outgoing, destination, SearchStatement(fieldName, "x2"))
-                assertEquals(2, (readMessage(incoming) as JsonArray).size)
-
+                //cached value
+                subscribe(//filter: field1; sort: field2 desc
+                    outgoing,
+                    destination,
+                    setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
+                    setOf(FieldOrder(fieldName, OrderKind.DESC))
+                )
+                (readMessage(incoming) as JsonArray).let { array ->
+                    assertEquals(2, array.size)
+                    assertEquals(listOf("x22", "x21"), array.map { it.jsonObject[fieldName]?.content })
+                }
+                subscribe(//sort: field2 desc
+                    outgoing,
+                    destination,
+                    sorts = setOf(FieldOrder(Data::field2.name, OrderKind.DESC), FieldOrder(Data::notSortable.name))
+                )
+                (readMessage(incoming) as JsonArray).let { array ->
+                    assertEquals(message.size, array.size)
+                    val expected: List<String> = message.sortedByDescending { it.field2 }.map { it.field1 }
+                    assertEquals(expected, array.map { it.jsonObject[fieldName]?.content })
+                }
             }
 
         }
@@ -208,16 +236,22 @@ class PluginWsTest {
         )
     }
 
-    private suspend fun subscribeWithFilter(
+    private suspend fun subscribe(
         outgoing: SendChannel<Frame>,
         destination: String,
-        filter: SearchStatement? = null
+        filters: Set<FieldFilter> = emptySet(),
+        sorts: Set<FieldOrder> = emptySet()
     ) {
         outgoing.send(
             uiMessage(
                 Subscribe(
                     destination,
-                    Subscription.serializer() stringify AgentSubscription(agentId, buildVersion, searchStatement = filter)
+                    Subscription.serializer() stringify AgentSubscription(
+                        agentId,
+                        buildVersion,
+                        filters = filters,
+                        orderBy = sorts
+                    )
                 )
             )
         )

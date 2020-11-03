@@ -1,11 +1,11 @@
 package com.epam.drill.admin.endpoints.plugin
 
+import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
@@ -78,9 +78,11 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                     sessionCache.subscribe(it, destination, this)
                 } ?: destination.also { sessionCache.subscribe(it, this) }
                 val message = pluginCaches.retrieveMessage(pluginId, subscriptionKey)
-                val messageToSend = message
-                    .processWithSubscription(subscription)
-                    .toWsMessageAsString(destination, WsMessageType.MESSAGE, subscription)
+                val messageToSend = message.postProcess(subscription).toWsMessageAsString(
+                    destination,
+                    WsMessageType.MESSAGE,
+                    subscription
+                )
                 send(messageToSend)
                 logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
