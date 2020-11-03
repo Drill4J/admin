@@ -1,4 +1,4 @@
-package com.epam.drill.admin.endpoints
+package com.epam.drill.admin.websocket
 
 import com.epam.drill.admin.api.websocket.*
 import kotlin.reflect.*

@@ -4,6 +4,7 @@ import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import kotlinx.coroutines.*

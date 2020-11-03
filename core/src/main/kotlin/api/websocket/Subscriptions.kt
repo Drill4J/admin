@@ -22,8 +22,6 @@ data class SortStatement(val fieldName: String, val order: String) //TODO remove
 sealed class Subscription {
     abstract val filters: Set<FieldFilter>
     abstract val orderBy: Set<FieldOrder>
-
-    abstract fun toKey(destination: String = ""): String
 }
 
 @Serializable
@@ -35,9 +33,7 @@ data class AgentSubscription(
     val sortStatement: SortStatement? = null,//TODO remove
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet()
-) : Subscription() {
-    override fun toKey(destination: String) = "agent::$agentId:$buildVersion$destination"
-}
+) : Subscription()
 
 @Serializable
 @SerialName("GROUP")
@@ -45,6 +41,4 @@ data class GroupSubscription(
     val groupId: String,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet()
-) : Subscription() {
-    override fun toKey(destination: String) = "group::$groupId$destination"
-}
+) : Subscription()

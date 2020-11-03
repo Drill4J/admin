@@ -6,6 +6,7 @@ import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*

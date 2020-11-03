@@ -7,6 +7,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
