@@ -175,7 +175,7 @@ class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     agentManager.apply {
                                         agentInfo.addPlugins(listOf(pluginIdObject.pluginId))
                                         sendPluginsToAgent(agentInfo)
-                                        agentInfo.sync(true)
+                                        agentInfo.sync()
                                     }
                                     HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
                                 }

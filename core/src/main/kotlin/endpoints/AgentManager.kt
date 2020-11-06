@@ -78,7 +78,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         } else null
     }
 
-    suspend fun attach(config: AgentConfig, needSync: Boolean, session: AgentWsSession): AgentInfo {
+    suspend fun attach(
+        config: AgentConfig,
+        needSync: Boolean,
+        session: AgentWsSession
+    ): AgentInfo {
         logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
         val serviceGroup = config.serviceGroupId
@@ -103,8 +107,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         ) {
             notifySingleAgent(id)
             notifyAllAgents()
-            app.launch {
-                currentInfo.sync(needSync) // sync only existing info!
+            if (needSync) app.launch {
+                currentInfo.sync() // sync only existing info!
             }
             currentInfo.persistToDatabase()
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
@@ -126,7 +130,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             agentStorage.put(id, entry)
             existingInfo?.initPlugins(entry)
             app.launch {
-                existingInfo?.sync(needSync) // sync only existing info!
+                existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
                 notificationsManager.handleNewBuildNotification(info)
             }
             info.persistToDatabase()
@@ -319,28 +323,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         setPackagesPrefixes(PackagesPrefixes(prefixes))
     }
 
-    suspend fun AgentInfo.sync(needSync: Boolean) {
-        logger.debug { "Agent with id $name starting sync, needSync is $needSync" }
+    suspend fun AgentInfo.sync() {
         if (status != AgentStatus.NOT_REGISTERED) {
-            if (needSync)
-                wrapBusy(this) {
-                    val info = this
-                    val duration = measureTime {
-                        agentSessions(id).applyEach {
-                            val settings = adminData(id).settings
-                            configurePackages(settings.packages)
-                            sendPlugins(info)
-                            updateSessionHeader(settings.sessionIdHeaderName)
-                            triggerClassesSending()
-                            enableAllPlugins(id)
-                        }
+            logger.debug { "Agent $id: starting sync..." }
+            wrapBusy(this) {
+                val info = this
+                val duration = measureTime {
+                    agentSessions(id).applyEach {
+                        val settings = adminData(id).settings
+                        configurePackages(settings.packages)
+                        sendPlugins(info)
+                        updateSessionHeader(settings.sessionIdHeaderName)
+                        triggerClassesSending()
+                        enableAllPlugins(id)
                     }
-                    logger.info { "Agent sync took: $duration" }
-                    topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
                 }
-            logger.debug { "Agent with id $name sync was finished" }
+                logger.info { "Agent $id: sync took: $duration." }
+                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
+            }
+            logger.debug { "Agent $id: sync finished." }
         } else {
-            logger.warn { "Agent status is not registered" }
+            logger.warn { "Agent $id: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
         }
     }
 

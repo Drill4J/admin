@@ -35,20 +35,20 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             agentWebsocket("/agent/attach") {
-                withContext(Dispatchers.IO) {
-                    val (agentConfig, needSync) = call.request.retrieveParams()
-                    val frameType = when (agentConfig.agentType) {
-                        AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
-                        else -> FrameType.BINARY
-                    }
-                    val agentSession = AgentWsSession(this@agentWebsocket, frameType, application.agentSocketTimeout)
-                    val agentInfo = agentManager.attach(agentConfig, needSync, agentSession)
-                    agentSession.createWsLoop(
-                        agentInfo,
-                        agentConfig.instanceId,
-                        call.request.headers[ContentEncoding] == "deflate"
-                    )
+                val (agentConfig, needSync) = call.request.retrieveParams()
+                val frameType = when (agentConfig.agentType) {
+                    AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
+                    else -> FrameType.BINARY
                 }
+                val agentSession = AgentWsSession(this@agentWebsocket, frameType, application.agentSocketTimeout)
+                val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
+                    agentManager.attach(agentConfig, needSync, agentSession)
+                }
+                agentSession.createWsLoop(
+                    agentInfo,
+                    agentConfig.instanceId,
+                    call.request.headers[ContentEncoding] == "deflate"
+                )
             }
         }
     }

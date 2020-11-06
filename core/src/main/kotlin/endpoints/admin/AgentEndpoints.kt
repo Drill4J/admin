@@ -208,7 +208,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
         agentManager.apply {
             adminData(id).updateSettings(regInfo.systemSettings)
             addPlugins(regInfo.plugins)
-            sync(true)
+            sync()
         }
     }
 }
