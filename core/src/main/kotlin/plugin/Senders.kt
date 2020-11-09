@@ -26,12 +26,12 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             val dest = destination as? String ?: app.toLocation(destination)
             val subscription = context.toSubscription()
             val subscriptionKey = subscription.toKey(dest)
-            val pluginCache = pluginCaches[pluginId]
+            val pluginCache = pluginCaches.get(pluginId, subscription)
 
             //TODO replace with normal event removal
             if (message == "") {
                 logger.trace { "Removed message by key $subscriptionKey" }
-                pluginCache[subscriptionKey] = ""
+                pluginCache[dest] = ""
                 pluginStores[pluginId].let { store ->
                     withContext(Dispatchers.IO) {
                         store.deleteMessage(subscriptionKey)
@@ -48,7 +48,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                         }
                     }
                 }
-                pluginCache.remove(subscriptionKey)
+                pluginCache.remove(dest)
             }
             pluginSessions[pluginId].sendTo(
                 destination = subscriptionKey,

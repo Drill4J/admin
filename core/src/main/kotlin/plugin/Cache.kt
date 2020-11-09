@@ -12,8 +12,22 @@ class PluginCaches(
     private val plugins: Plugins,
     private val pluginStores: PluginStores
 ) {
+    private data class AgentKey(val pluginId: String, val agentId: String)
+    private data class GroupKey(val pluginId: String, val groupId: String)
 
-    internal operator fun get(pluginId: String): Cache<Any, FrontMessage> = cacheService.getOrCreate(pluginId)
+    internal fun get(
+        pluginId: String,
+        subscription: Subscription?
+    ): Cache<Any, FrontMessage> = when (subscription) {
+        is AgentSubscription -> cacheService.getOrCreate(
+            AgentKey(pluginId, subscription.agentId),
+            subscription.buildVersion ?: ""
+        )
+        is GroupSubscription -> cacheService.getOrCreate(
+            GroupKey(pluginId, subscription.groupId)
+        )
+        null -> cacheService.getOrCreate(pluginId)
+    }
 
     //TODO aggregate plugin data
     internal suspend fun getData(
@@ -21,20 +35,25 @@ class PluginCaches(
         buildVersion: String,
         type: String
     ): Any? = plugins.keys.firstOrNull()?.let { pluginId ->
-        val key = AgentSubscription(agentId, buildVersion).toKey("/data/$type")
-        retrieveMessage(pluginId, key)
-    }.takeIf { it  != "" }
+        retrieveMessage(
+            pluginId,
+            AgentSubscription(agentId, buildVersion),
+            "/data/$type"
+        )
+    }.takeIf { it != "" }
 
     internal suspend fun retrieveMessage(
         pluginId: String,
-        subscriptionKey: String
-    ): FrontMessage = this[pluginId].let { cache ->
-        cache[subscriptionKey] ?: run {
+        subscription: Subscription?,
+        destination: String
+    ): FrontMessage = get(pluginId, subscription).let { cache ->
+        cache[destination] ?: run {
+            val messageKey = subscription.toKey(destination)
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStores[pluginId].readMessage(subscriptionKey, classLoader) ?: ""
-            messageFromStore.also { cache[subscriptionKey] = it }
+            val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            messageFromStore.also { cache[messageKey] = it }
         }
     }
 }

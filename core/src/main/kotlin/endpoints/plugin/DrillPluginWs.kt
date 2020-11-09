@@ -78,7 +78,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
                 val subscriptionKey = subscription?.let {
                     sessionCache.subscribe(it, destination, this)
                 } ?: destination.also { sessionCache.subscribe(it, this) }
-                val message = pluginCaches.retrieveMessage(pluginId, subscriptionKey)
+                val message = pluginCaches.retrieveMessage(pluginId, subscription, destination)
                 val messageToSend = message.postProcess(subscription).toWsMessageAsString(
                     destination,
                     WsMessageType.MESSAGE,

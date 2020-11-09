@@ -6,17 +6,25 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 
 class JvmCacheService : CacheService {
-    private val _caches = atomic(persistentHashMapOf<String, Cache<*, *>>())
+    private val _caches = atomic(persistentHashMapOf<Any, Cache<*, *>>())
 
-    override fun <K, V> getOrCreate(name: String): Cache<K, V> = _caches.updateAndGet {
-        it.takeIf { name !in it }?.put(name, PersistentMapCache<K, V>()) ?: it
-    }[name].let {
+    override fun <K, V> getOrCreate(
+        id: Any,
+        qualifier: Any
+    ): Cache<K, V> = _caches.updateAndGet {
+        it.takeIf { it[id]?.qualifier == qualifier } ?: it.put(
+            id,
+            PersistentMapCache<K, V>(qualifier)
+        )
+    }[id].let {
         @Suppress("UNCHECKED_CAST")
         it as Cache<K, V>
     }
 }
 
-private class PersistentMapCache<K, V> : Cache<K, V> {
+private class PersistentMapCache<K, V>(
+    override val qualifier: Any
+) : Cache<K, V> {
     private val _values = atomic(persistentHashMapOf<K, V>())
 
     override fun get(key: K): V? = _values.value[key]

@@ -5,6 +5,7 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
@@ -53,13 +54,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         else -> {
                             drillAgent.applyEach {
                                 send(
-                                    com.epam.drill.common.json.stringify(
-                                        com.epam.drill.common.Message.serializer(),
-                                        com.epam.drill.common.Message(
-                                            com.epam.drill.common.MessageType.MESSAGE,
-                                            "/plugins/unload",
-                                            pluginId.encodeToByteArray()
-                                        )
+                                    Message.serializer() stringify Message(
+                                        MessageType.MESSAGE,
+                                        "/plugins/unload",
+                                        pluginId.encodeToByteArray()
                                     )
                                 )
                             }

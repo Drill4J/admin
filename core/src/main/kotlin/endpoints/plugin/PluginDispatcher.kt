@@ -9,7 +9,6 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
@@ -122,8 +121,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
                     (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
                     else -> AgentSubscription(agentId, agentInfo.buildVersion).let { subscription ->
-                        val key = subscription.toKey("/data/$dataType")
-                        pluginCache.retrieveMessage(pluginId, key).toStatusResponsePair()
+                        pluginCache.retrieveMessage(
+                            pluginId,
+                            subscription,
+                            "/data/$dataType"
+                        ).toStatusResponsePair()
                     }
                 }
                 sendResponse(response, statusCode)

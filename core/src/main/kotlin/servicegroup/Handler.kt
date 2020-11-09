@@ -7,7 +7,6 @@ import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.websocket.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -58,8 +57,11 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                 val (statusCode, response) = if (pluginId in plugins) {
                     val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(groupId)
                     if (serviceGroup.any()) {
-                        val key = GroupSubscription(groupId).toKey("/service-group/data/$dataType")
-                        pluginCache.retrieveMessage(pluginId, key).toStatusResponsePair()
+                        pluginCache.retrieveMessage(
+                            pluginId,
+                            GroupSubscription(groupId),
+                            "/service-group/data/$dataType"
+                        ).toStatusResponsePair()
                     } else HttpStatusCode.NotFound to ErrorResponse(
                         "service group $groupId not found"
                     )
