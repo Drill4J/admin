@@ -7,13 +7,13 @@ data class PluginId(val pluginId: String)
 
 @Serializable
 data class PluginDto(
-    var id: String,
-    var name: String = "",
-    var description: String = "",
-    var type: String = "",
-    var status: Boolean? = true,
-    var config: String? = "",
-    var installedAgentsCount: Int? = 0,
-    val relation: String?,
-    val version: String = ""
+    val id: String,
+    val type: String = "",
+    val version: String = "",
+    val name: String = "",
+    val description: String = "",
+    val status: Boolean = true, //TODO rename to "enabled" or replace with an enum
+    val config: String = "",
+    val installedAgentsCount: Int = 0, //TODO remove
+    val relation: String = "" //TODO remove
 )

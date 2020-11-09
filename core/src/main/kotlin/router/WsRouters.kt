@@ -15,9 +15,6 @@ object WsRoutes {
     @Location("/agents/{agentId}/plugins")
     data class AgentPlugins(val agentId: String)
 
-    @Location("/agents/{agent}/plugins/{plugin}/config")
-    data class AgentPluginConfig(val agent: String, val plugin: String)
-
     @Location("/agents/{agentId}")
     data class Agent(val agentId: String)
 

@@ -10,17 +10,14 @@ internal fun Plugin.toDto() = PluginDto(
     type = pluginBean.type,
     status = pluginBean.enabled,
     config = pluginBean.config,
-    installedAgentsCount = 0,
-    relation = null,
     version = version
 )
 
 internal fun Iterable<Plugin>.mapToDto() = map(Plugin::toDto)
 
-internal fun Iterable<Plugin>.mapToDto(agents: Iterable<AgentInfo>) = map { pb ->
-    return@map pb.toDto().apply {
-        config = null
-        status = null
-        installedAgentsCount = agents.byPluginId(id).count()
-    }
+internal fun Iterable<Plugin>.mapToDto(
+    agents: Iterable<AgentInfo>
+): List<PluginDto> = map { pb ->
+    //TODO remove
+    pb.toDto().copy(installedAgentsCount = agents.byPluginId(pb.pluginBean.id).count())
 }
