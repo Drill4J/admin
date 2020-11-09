@@ -1,9 +1,9 @@
 package com.epam.drill.admin.e2e.plugin
 
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.builds.*
-import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
@@ -43,13 +43,12 @@ class PluginTest : E2EPluginTest() {
     }
 
     private suspend fun waitForMultipleAgents(channel: Channel<GroupedAgentsDto>) {
-        lateinit var message: GroupedAgentsDto
-        do {
-            message = channel.receive()
-            if (message.grouped.flatMap { it.agents }.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE })
+        while (true) {
+            val message = channel.receive()
+            val groupedAgents = message.grouped.flatMap { it.agents }
+            if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE }) {
                 break
-        } while (true)
+            }
+        }
     }
-
-
 }

@@ -1,7 +1,7 @@
 package com.epam.drill.admin.endpoints
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
@@ -9,16 +9,22 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 
 class AgentEntry(agent: AgentInfo) {
-    //TODO make agent immutable
+
     private val _agent = atomic(agent)
 
-    private val _instanceMap = atomic(persistentHashMapOf<String, AdminPluginPart<*>>())
+    private val _instanceMap = atomic(
+        persistentHashMapOf<String, AdminPluginPart<*>>()
+    )
 
     var agent: AgentInfo
         get() = _agent.value
         set(value) = _agent.update { value }
 
     val plugins get() = _instanceMap.value.values
+
+    fun updateAgent(
+        updater: (AgentInfo) -> AgentInfo
+    ): AgentInfo = _agent.updateAndGet(updater)
 
     operator fun get(pluginId: String): AdminPluginPart<*>? = _instanceMap.value[pluginId]
 
@@ -27,7 +33,7 @@ class AgentEntry(agent: AgentInfo) {
     }
 }
 
-fun Plugin.createInstance(
+internal fun Plugin.createInstance(
     agentInfo: AgentInfo,
     data: AdminData,
     sender: Sender,
@@ -37,20 +43,20 @@ fun Plugin.createInstance(
         AdminData::class.java,
         Sender::class.java,
         StoreClient::class.java,
-        AgentInfo::class.java,
+        CommonAgentInfo::class.java,
         String::class.java
     )
     return constructor.newInstance(
         data,
         sender,
         store,
-        agentInfo,
+        agentInfo.toCommonInfo(),
         pluginBean.id
     )
 }
 
-suspend fun AgentEntry.applyPackagesChanges() {
-    for (pluginMeta in agent.plugins) {
-        this[pluginMeta.id]?.applyPackagesChanges()
+internal suspend fun AgentEntry.applyPackagesChanges() {
+    for (pluginId in agent.plugins) {
+        this[pluginId]?.applyPackagesChanges()
     }
 }

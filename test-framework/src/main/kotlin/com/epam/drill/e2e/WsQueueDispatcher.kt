@@ -1,18 +1,17 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
-import com.epam.drill.common.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.application.*
@@ -62,7 +61,7 @@ class UIEVENTLOOP(
         incoming.consumeEach { frame ->
             when (frame) {
                 is Frame.Text -> {
-                    val parsedJson = json.parseJson(frame.readText()) as JsonObject
+                    val parsedJson = frame.readText().parseJson() as JsonObject
                     if (uiStreamDebug) {
                         println("UI: $parsedJson")
                     }
@@ -113,12 +112,12 @@ class Agent(
     private val headers = Channel<Int>()
     private val `set-packages-prefixes` = Channel<String>()
     private val `load-classes-data` = Channel<String>()
-    private val plugins = Channel<PluginBinary>()
+    private val plugins = Channel<com.epam.drill.common.PluginBinary>()
     private val pluginBinary = Channel<ByteArray>()
     lateinit var plugin: AgentPart<*, *>
 
     suspend fun getHeaders() = headers.receive()
-    suspend fun getLoadedPlugin(block: suspend (PluginMetadata, ByteArray) -> Unit) {
+    suspend fun getLoadedPlugin(block: suspend (com.epam.drill.common.PluginMetadata, ByteArray) -> Unit) {
         val (meta, data) = plugins.receive()
         block(meta, data)
     }
@@ -156,7 +155,7 @@ class Agent(
             val parse = ClassParser(ByteArrayInputStream(readBytes), "").parse()
 
             ProtoBuf.dump(
-                ByteClass.serializer(), ByteClass(
+                com.epam.drill.common.ByteClass.serializer(), com.epam.drill.common.ByteClass(
                     parse.className.replace(".", "/"),
                     readBytes
                 )
@@ -177,11 +176,11 @@ class Agent(
         return receive
     }
 
-    suspend fun `get-load-classes-data`(vararg classes: ByteClass = emptyArray()): String {
+    suspend fun `get-load-classes-data`(vararg classes: com.epam.drill.common.ByteClass = emptyArray()): String {
         val receive = `load-classes-data`.receive()
         outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
         classes.map { byteClass ->
-            ProtoBuf.dump(ByteClass.serializer(), byteClass)
+            ProtoBuf.dump(com.epam.drill.common.ByteClass.serializer(), byteClass)
         }.chunked(10).forEach {
             outgoing.send(
                 agentMessage(
@@ -224,7 +223,7 @@ class Agent(
                             is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content.decodeToString())
                             is Communication.Agent.PluginLoadEvent -> plugins.send(
                                 ProtoBuf.load(
-                                    PluginBinary.serializer(),
+                                    com.epam.drill.common.PluginBinary.serializer(),
                                     content
                                 )
                             )
@@ -235,7 +234,7 @@ class Agent(
                             is Communication.Plugin.DispatchEvent -> {
                                 plugin.doRawAction(
                                     (ProtoBuf.load(
-                                        PluginAction.serializer(),
+                                        com.epam.drill.common.PluginAction.serializer(),
                                         content
                                     )).message
                                 )

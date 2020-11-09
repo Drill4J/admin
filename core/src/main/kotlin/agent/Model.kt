@@ -1,36 +1,30 @@
 package com.epam.drill.admin.agent
 
-import com.epam.drill.common.*
-import io.ktor.util.*
+import com.epam.drill.admin.api.agent.*
+import com.epam.kodux.*
 import kotlinx.serialization.*
 
-sealed class AgentMessage {
-    abstract val type: MessageType
-    abstract val destination: String
-
-    abstract val text: String
-    abstract val bytes: ByteArray
-}
+typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
+typealias CommonAgentType = com.epam.drill.common.AgentType
+typealias CommonAgentStatus = com.epam.drill.common.AgentStatus
+typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
 
 @Serializable
-data class JsonMessage(
-    override val type: MessageType,
-    override val destination: String = "",
-    override val text: String = ""
-) : AgentMessage() {
-    override val bytes: ByteArray get() = text.decodeBase64Bytes()
+data class AgentInfo(
+    @Id val id: String,
+    val name: String,
+    val status: AgentStatus,
+    val serviceGroup: String = "",
+    val environment: String = "",
+    val description: String,
+    val buildVersion: String,
+    val agentType: AgentType,
+    val agentVersion: String = "",
+    val adminUrl: String = "",
+    val ipAddress: String = "",
+    val plugins: Set<String> = emptySet()
+) {
+    override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
-    override fun toString() = "Json(type=$type,destination=$destination,text=$text)"
-}
-
-class BinaryMessage(
-    val message: Message
-) : AgentMessage() {
-    override val type: MessageType get() = message.type
-    override val destination: String get() = message.destination
-
-    override val text get() = bytes.decodeToString()
-    override val bytes get() = message.data
-
-    override fun toString() = "Binary(type=$type,destination=$destination,size=${bytes.size})"
+    override fun hashCode(): Int = id.hashCode()
 }

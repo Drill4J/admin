@@ -1,29 +1,26 @@
 package com.epam.drill.admin.agent
 
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.common.*
 
-fun Iterable<AgentInfo>.byPluginId(pluginId: String): List<AgentInfo> = filter { agentInfo ->
-    agentInfo.plugins.any { plugin -> plugin.id == pluginId }
-}
+internal fun Iterable<AgentInfo>.byPluginId(
+    pluginId: String
+): List<AgentInfo> = filter { pluginId in it.plugins }
 
-fun Iterable<AgentInfo>.mapToDto(agentManager: AgentManager) = map { it.toDto(agentManager) }
+internal fun Iterable<AgentInfo>.mapToDto(agentManager: AgentManager) = map { it.toDto(agentManager) }
 
-fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map(AgentEntry::agent).mapToDto(this)
+internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map(AgentEntry::agent).mapToDto(this)
 
-fun Iterable<Plugin>.ofAgent(info: AgentInfo): List<Plugin> = run {
-    val ids = info.plugins.mapTo(mutableSetOf()) { it.id }
+internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
+
+internal fun Iterable<Plugin>.ofAgents(agents: Iterable<AgentInfo>): List<Plugin> = run {
+    val ids = agents.plugins()
     filter { it.pluginBean.id in ids }
 }
 
-fun Iterable<Plugin>.ofAgents(agents: Iterable<AgentInfo>): List<Plugin> = run {
-    val ids = agents.plugins().mapTo(mutableSetOf()) { it.id }
-    filter { it.pluginBean.id in ids }
-}
-
-fun AgentCreationDto.toAgentInfo(allPlugins: Plugins) = AgentInfo(
+internal fun AgentCreationDto.toAgentInfo(installedPlugins: Plugins) = AgentInfo(
     id = id,
     agentType = agentType,
     name = name,
@@ -33,12 +30,10 @@ fun AgentCreationDto.toAgentInfo(allPlugins: Plugins) = AgentInfo(
     description = description,
     agentVersion = "",
     buildVersion = "",
-    plugins = allPlugins.mapNotNullTo(mutableSetOf()) { (_, plugin) ->
-        plugin.pluginBean.takeIf { it.id in plugins }
-    }
+    plugins = plugins.filterTo(mutableSetOf()) { it in installedPlugins }
 )
 
-fun AgentConfig.toAgentInfo() = AgentInfo(
+internal fun CommonAgentConfig.toAgentInfo() = AgentInfo(
     id = id,
     name = id,
     status = AgentStatus.NOT_REGISTERED,
@@ -47,33 +42,50 @@ fun AgentConfig.toAgentInfo() = AgentInfo(
     description = "",
     agentVersion = agentVersion,
     buildVersion = buildVersion,
-    agentType = agentType
+    agentType = AgentType.valueOf(agentType.name)
 )
 
-fun AgentInfo.toDto(agentManager: AgentManager): AgentInfoDto = AgentInfoDto(
-    id = id,
-    serviceGroup = serviceGroup,
-    instanceIds = agentManager.instanceIds(id).keys,
-    name = name,
-    description = description,
-    environment = environment,
-    status = status,
-    buildVersion = buildVersion,
-    adminUrl = adminUrl,
-    ipAddress = ipAddress,
-    activePluginsCount = plugins.activePluginsCount(),
-    agentType = agentType.notation,
-    agentVersion = agentVersion,
-    systemSettings = agentManager.adminData(id).settings,
-    plugins = agentManager.plugins.values.ofAgent(this).mapToDto().toSet()
-)
-
-private fun Iterable<AgentInfo>.plugins(): List<PluginMetadata> = run {
-    flatMap(AgentInfo::plugins).distinctBy(PluginMetadata::id)
+internal fun AgentInfo.toDto(
+    agentManager: AgentManager
+): AgentInfoDto = run {
+    val plugins = agentManager.plugins.ofAgent(this)
+    AgentInfoDto(
+        id = id,
+        serviceGroup = serviceGroup,
+        instanceIds = agentManager.instanceIds(id).keys,
+        name = name,
+        description = description,
+        environment = environment,
+        status = status,
+        buildVersion = buildVersion,
+        adminUrl = adminUrl,
+        ipAddress = ipAddress,
+        activePluginsCount = plugins.activePluginsCount(),
+        agentType = agentType.notation,
+        agentVersion = agentVersion,
+        systemSettings = agentManager.adminData(id).settings,
+        plugins = plugins.mapToDto().toSet()
+    )
 }
 
-private fun Set<PluginMetadata>.activePluginsCount() = this.count { it.enabled }
+internal fun AgentInfo.toCommonInfo() = CommonAgentInfo(
+    id = id,
+    agentType = CommonAgentType.valueOf(agentType.name),
+    agentVersion = agentVersion,
+    serviceGroup = serviceGroup,
+    buildVersion = buildVersion,
+    name = name,
+    environment = environment,
+    description = description,
+    status = CommonAgentStatus.ONLINE
+)
 
-suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
+internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
     block(it)
 }
+
+private fun Iterable<AgentInfo>.plugins(): Set<String> = run {
+    flatMap(AgentInfo::plugins).toSet()
+}
+
+private fun Iterable<Plugin>.activePluginsCount(): Int = count { it.pluginBean.enabled }

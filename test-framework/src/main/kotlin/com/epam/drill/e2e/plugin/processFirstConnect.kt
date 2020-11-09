@@ -1,6 +1,6 @@
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*

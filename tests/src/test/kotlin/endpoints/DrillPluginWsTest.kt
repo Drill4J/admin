@@ -5,14 +5,13 @@ import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.common.*
-import com.epam.drill.common.json
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.kodux.*
@@ -44,17 +43,6 @@ class PluginWsTest {
 
     private val agentId = "testAgent"
     private val buildVersion = "1.0.0"
-    private val agentInfo = AgentInfo(
-        id = agentId,
-        name = "test",
-        status = AgentStatus.ONLINE,
-        ipAddress = "1.7.2.23",
-        environment = "test",
-        description = "test",
-        agentVersion = "0.0.0-test",
-        buildVersion = buildVersion,
-        agentType = AgentType.JAVA
-    )
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
@@ -150,10 +138,10 @@ class PluginWsTest {
     }
 
     @Serializable
-    data class Data(val field1: String, val field2: Int, val notSortable: Noncomparable = Noncomparable())
+    data class Data(val field1: String, val field2: Int, val notSortable: Noncomparable = Noncomparable(""))
 
     @Serializable
-    class Noncomparable(val s: String = "")
+    class Noncomparable(@Suppress("unused") val s: String = "")
 
     @Test
     fun `should apply filters to list topics`() {
@@ -278,7 +266,7 @@ class PluginWsTest {
                 val messageForTest = TestMessage("testMessage")
                 val wsPluginService by kodeinApplication.instance<PluginSenders>()
                 val sender = wsPluginService.sender(pluginId)
-                val sendContext = AgentSendContext(agentInfo.id, agentInfo.buildVersion)
+                val sendContext = AgentSendContext(agentId, buildVersion)
                 @Suppress("DEPRECATION")
                 sender.send(sendContext, destination, messageForTest)
                 outgoing.send(

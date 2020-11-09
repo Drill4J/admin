@@ -6,6 +6,7 @@ import com.epam.drill.admin.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.system.*
@@ -15,8 +16,6 @@ import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.*
-import com.epam.drill.common.json
 import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
