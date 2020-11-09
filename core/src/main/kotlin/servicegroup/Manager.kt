@@ -1,11 +1,11 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -14,7 +14,7 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 
-class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
+internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
 
     private val logger = KotlinLogging.logger {}
 

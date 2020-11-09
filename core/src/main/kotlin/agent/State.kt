@@ -1,6 +1,7 @@
 package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.admindata.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
@@ -157,10 +158,9 @@ internal class AgentData(
         logger.debug { "Loaded data for $agentId" }
     }
 
-    private fun toSummary(): AgentDataSummary =
-        AgentDataSummary(
-            agentId = agentId,
-            settings = settings,
-            lastBuild = buildManager.lastBuild
-        )
+    private fun toSummary() = AgentDataSummary(
+        agentId = agentId,
+        settings = settings,
+        lastBuild = buildManager.lastBuild
+    )
 }

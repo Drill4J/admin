@@ -1,7 +1,9 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.agent.logging.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.notification.*
@@ -12,7 +14,6 @@ import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
-import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import io.ktor.application.*
@@ -25,20 +26,20 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.time.*
 
-private val logger = KotlinLogging.logger {}
 
 class AgentManager(override val kodein: Kodein) : KodeinAware {
+    private val logger = KotlinLogging.logger {}
 
-    val app by instance<Application>()
-    val agentStorage by instance<AgentStorage>()
-    val plugins by instance<Plugins>()
+    internal val agentStorage by instance<AgentStorage>()
+    internal val plugins by instance<Plugins>()
 
-    val activeAgents: List<AgentInfo>
+    internal val activeAgents: List<AgentInfo>
         get() = agentStorage.values
             .map { it.agent }
             .filter { instanceIds(it.id).isNotEmpty() }
             .sortedWith(compareBy(AgentInfo::id))
 
+    private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
     private val commonStore by instance<CommonStore>()
     private val agentStores by instance<StoreManager>()
@@ -62,7 +63,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun prepare(
+    internal suspend fun prepare(
         dto: AgentCreationDto
     ): AgentInfo? = (get(dto.id) ?: loadAgentInfo(dto.id)).let { storedInfo ->
         if (storedInfo == null || storedInfo.agentVersion.none()) {
@@ -78,8 +79,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         } else null
     }
 
-    suspend fun attach(
-        config: AgentConfig,
+    internal suspend fun attach(
+        config: CommonAgentConfig,
         needSync: Boolean,
         session: AgentWsSession
     ): AgentInfo {
@@ -141,7 +142,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentInfo.initPlugins(agentEntry: AgentEntry) {
-        val enabledPlugins = plugins.filter { it.enabled }
+        val enabledPlugins = plugins.mapNotNull { this@AgentManager.plugins[it]?.pluginBean }
         for (pluginMeta in enabledPlugins) {
             val pluginId = pluginMeta.id
             val plugin = this@AgentManager.plugins[pluginId]
@@ -160,7 +161,26 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         _instances.update { it.put(agentId, instanceIds(agentId, it) + (instanceId to session)) }
     }
 
-    suspend fun AgentInfo.removeInstance(instanceId: String) {
+    suspend fun register(
+        agentId: String,
+        dto: AgentRegistrationDto
+    ) = entryOrNull(agentId)?.let { entry ->
+        val pluginsToAdd = dto.plugins.mapNotNull(plugins::get)
+        val info: AgentInfo = entry.updateAgent { info ->
+            info.copy(
+                name = dto.name,
+                environment = dto.environment,
+                description = dto.description,
+                status = AgentStatus.BUSY,
+                plugins = pluginsToAdd.mapTo(mutableSetOf()) { it.pluginBean.id }
+            )
+        }
+        adminData(agentId).updateSettings(dto.systemSettings)
+        pluginsToAdd.forEach { plugin -> ensurePluginInstance(entry, plugin) }
+        info.sync()
+    }
+
+    internal suspend fun AgentInfo.removeInstance(instanceId: String) {
         _instances.update { it.put(id, instanceIds(id, it) - instanceId) }
         if (instanceIds(id).isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
@@ -178,42 +198,31 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return it[agentId].orEmpty().toPersistentMap()
     }
 
-    suspend fun updateAgent(agentId: String, agentUpdateDto: AgentUpdateDto) {
-        logger.debug { "Agent with id $agentId update with agent info $agentUpdateDto" }
-        getOrNull(agentId)?.apply {
-            name = agentUpdateDto.name
-            environment = agentUpdateDto.environment
-            description = agentUpdateDto.description
-            commitChanges()
-        }
-        logger.debug { "Agent with id $agentId updated" }
+    internal suspend fun updateAgent(
+        agentId: String,
+        agentUpdateDto: AgentUpdateDto
+    ) = entryOrNull(agentId)?.also { entry ->
+        entry.updateAgent {
+            it.copy(
+                name = agentUpdateDto.name,
+                environment = agentUpdateDto.environment,
+                description = agentUpdateDto.description
+            )
+        }.commitChanges()
         topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentId))
     }
 
-    suspend fun updateAgentPluginConfig(agentId: String, pc: PluginConfig): Boolean {
-        logger.debug { "Update plugin config for agent with id $agentId" }
-        val result = getOrNull(agentId)?.let { agentInfo ->
-            agentInfo.plugins.find { it.id == pc.id }?.let { plugin ->
-                if (plugin.config != pc.data) {
-                    plugin.config = pc.data
-                    agentInfo.commitChanges()
-                }
-            }
-        } != null
-        logger.debug { "" }
-        return result
-    }
-
-    suspend fun resetAgent(agInfo: AgentInfo) {
-        logger.debug { "Reset agent with id ${agInfo.name}" }
-        getOrNull(agInfo.id)?.apply {
-            name = ""
-            environment = ""
-            description = ""
-            status = AgentStatus.NOT_REGISTERED
-            commitChanges()
-        }
-        logger.debug { "Agent with id ${agInfo.name} has been reset" }
+    internal suspend fun resetAgent(agInfo: AgentInfo) = entryOrNull(agInfo.id)?.also { entry ->
+        logger.debug { "Reset agent ${agInfo.id}" }
+        entry.updateAgent {
+            it.copy(
+                name = "",
+                environment = "",
+                description = "",
+                status = AgentStatus.NOT_REGISTERED
+            )
+        }.commitChanges()
+        logger.debug { "Agent ${agInfo.id} has been reset" }
         topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agInfo.id))
     }
 
@@ -231,53 +240,62 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     operator fun contains(k: String) = k in agentStorage.targetMap
 
-    fun getOrNull(agentId: String) = agentStorage.targetMap[agentId]?.agent
+    internal fun getOrNull(agentId: String) = agentStorage.targetMap[agentId]?.agent
 
-    operator fun get(agentId: String) = agentStorage.targetMap[agentId]?.agent
+    internal operator fun get(agentId: String) = agentStorage.targetMap[agentId]?.agent
 
-    fun full(agentId: String): AgentEntry? = agentStorage.targetMap[agentId]
+    internal fun entryOrNull(agentId: String): AgentEntry? = agentStorage.targetMap[agentId]
 
-    fun getAllAgents() = agentStorage.targetMap.values
+    internal fun allEntries(): Collection<AgentEntry> = agentStorage.targetMap.values
 
-    fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins?.map { it.id }
+    fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins
 
-    suspend fun AgentInfo.addPlugins(plugins: List<String>) {
-        val agentEntry = full(id)!!
-        plugins.forEach { pluginId ->
-            val dp: Plugin = this@AgentManager.plugins[pluginId]!!
-            ensurePluginInstance(agentEntry, dp)
-        }
-        addPluginsToAgent(this, plugins)
-    }
-
-    private fun addPluginsToAgent(agentInfo: AgentInfo, plugins: List<String>) {
-        plugins.forEach { pluginId ->
-            logger.debug { "Add plugin with id $pluginId from lib for agent with id ${agentInfo.id}" }
-            this.plugins[pluginId]?.pluginBean?.let { plugin ->
-                val existingPluginBeanDb = agentInfo.plugins.find { it.id == pluginId }
-                if (existingPluginBeanDb == null) {
-                    agentInfo.plugins += plugin
-                    logger.info { "Plugin $pluginId successfully added to agent with id ${agentInfo.id}!" }
+    suspend fun addPlugins(
+        agentId: String,
+        pluginIds: Set<String>
+    ) = entryOrNull(agentId)!!.let { entry ->
+        val existingIds = entry.agent.plugins
+        val pluginsToAdd = pluginIds.filter { it !in existingIds }.mapNotNull(plugins::get)
+        if (pluginsToAdd.any()) {
+            val updatedInfo = entry.updateAgent { agent ->
+                val updatedPlugins = agent.plugins + pluginsToAdd.map { it.pluginBean.id }
+                agent.copy(
+                    status = AgentStatus.BUSY,
+                    plugins = updatedPlugins
+                )
+            }
+            wrapBusy(updatedInfo) {
+                supervisorScope {
+                    agentSessions(id).forEach { session ->
+                        pluginsToAdd.forEach { plugin ->
+                            val pluginId = plugin.pluginBean.id
+                            launch {
+                                session.sendPlugin(plugin, updatedInfo).await()
+                                session.enablePlugin(pluginId, agentId).await()
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-
     private suspend fun wrapBusy(
         ai: AgentInfo,
         block: suspend AgentInfo.() -> Unit
-    ) {
-        logger.debug { "Agent with id ${ai.name} set busy status" }
-        ai.status = AgentStatus.BUSY
-        ai.commitChanges()
+    ) = entryOrNull(ai.id)?.also { entry ->
+        val busy = entry.updateAgent {
+            it.copy(status = AgentStatus.BUSY)
+        }.apply { commitChanges() }
+        logger.debug { "Agent ${ai.id} is busy." }
 
         try {
-            block(ai)
+            block(busy)
         } finally {
-            ai.status = AgentStatus.ONLINE
-            logger.debug { "Agent with id ${ai.name} set online status" }
-            ai.commitChanges()
+            entry.updateAgent {
+                it.copy(status = AgentStatus.ONLINE)
+            }.apply { commitChanges() }
+            logger.debug { "Agent ${ai.id} is online." }
         }
     }
 
@@ -293,7 +311,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
             agentSessions(agentId).applyEach {
-                sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, false))
+                sendToTopic<Communication.Plugin.ToggleEvent>(
+                    com.epam.drill.common.TogglePayload(pluginId, false)
+                )
             }
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
@@ -304,29 +324,35 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         getAllInstalledPluginBeanIds(agentId)?.let { pluginIds ->
             pluginIds.map { pluginId ->
                 logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
-                sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(pluginId, true)) {
-                    logger.debug { "Enabled plugin $pluginId for agent $agentId" }
-                }
+                enablePlugin(pluginId, agentId)
             }.forEach { it.await() }
         }
         logger.debug { "All plugins for agent with id $agentId were enabled" }
     }
 
-    private suspend fun loadAgentInfo(agentId: String) = commonStore.client.findById<AgentInfo>(agentId)
+    private suspend fun AgentWsSession.enablePlugin(
+        pluginId: String,
+        agentId: String
+    ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent>(
+        com.epam.drill.common.TogglePayload(pluginId, true)
+    ) {
+        logger.debug { "Enabled plugin $pluginId for agent $agentId" }
+    }
+
+    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
 
     private suspend fun AgentInfo.persistToDatabase() {
         commonStore.client.store(this)
-        agentStorage.targetMap[this.id]?.agent = this
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
-        setPackagesPrefixes(PackagesPrefixes(prefixes))
+        setPackagesPrefixes(prefixes)
     }
 
-    suspend fun AgentInfo.sync() {
+    private suspend fun AgentInfo.sync() {
         if (status != AgentStatus.NOT_REGISTERED) {
-            logger.debug { "Agent $id: starting sync..." }
             wrapBusy(this) {
+                logger.debug { "Agent $id: starting sync..." }
                 val info = this
                 val duration = measureTime {
                     agentSessions(id).applyEach {
@@ -340,8 +366,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
                 logger.info { "Agent $id: sync took: $duration." }
                 topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
+                logger.debug { "Agent $id: sync finished." }
             }
-            logger.debug { "Agent $id: sync finished." }
         } else {
             logger.warn { "Agent $id: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
         }
@@ -364,7 +390,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                             disableAllPlugins(agentId)
                             configurePackages(settings.packages)
                             triggerClassesSending()
-                            full(agentId)?.applyPackagesChanges()
+                            entryOrNull(agentId)?.applyPackagesChanges()
                             enableAllPlugins(id)
                         }
                     }
@@ -373,7 +399,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun updateSystemSettings(
+    internal suspend fun updateSystemSettings(
         agentInfos: Iterable<AgentInfo>,
         systemSettings: SystemSettingsDto
     ): Set<String> = supervisorScope {
@@ -391,31 +417,38 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
         logger.debug { "Sending ${info.plugins.count()} plugins to agent ${info.id}" }
-        info.plugins.forEach { pb ->
-            logger.debug { "Sending plugin ${pb.id} to agent ${info.id}" }
-            val data = if (info.agentType == AgentType.JAVA) {
-                this@AgentManager.plugins[pb.id]?.agentPluginPart!!.readBytes()
-            } else byteArrayOf()
-            pb.checkSum = hex(sha1(data))
-            async("/agent/plugin/${pb.id}/loaded") { //TODO move to the api
-                sendToTopic<Communication.Agent.PluginLoadEvent>(PluginBinary(pb, data)).await()
-            }.await()
-            logger.debug { "Sent plugin ${pb.id} for agent ${info.id}" }
-        }
-        logger.debug { "Sent plugins for agent ${info.id}" }
+        info.plugins.mapNotNull(plugins::get).map { pb ->
+            sendPlugin(pb, info)
+        }.forEach { it.await() }
+        logger.debug { "Sent plugins ${info.plugins} to agent ${info.id}" }
     }
 
-    fun serviceGroup(serviceGroupId: String): List<AgentEntry> = getAllAgents().filter {
+    private suspend fun AgentWsSession.sendPlugin(
+        plugin: Plugin,
+        agentInfo: AgentInfo
+    ): WsDeferred {
+        val pb = plugin.pluginBean
+        logger.debug { "Sending plugin ${pb.id} to agent ${agentInfo.id}" }
+        val data = if (agentInfo.agentType == AgentType.JAVA) {
+            plugin.agentPluginPart.readBytes()
+        } else byteArrayOf()
+        pb.checkSum = hex(sha1(data))
+        return async(
+            topicName = "/agent/plugin/${pb.id}/loaded",
+            callback = { logger.debug { "Sent plugin ${pb.id} to agent ${agentInfo.id}" } }
+        ) { //TODO move to the api
+            sendToTopic<Communication.Agent.PluginLoadEvent>(
+                com.epam.drill.common.PluginBinary(pb, data)
+            ).await()
+            logger.debug { "Sent data of plugin ${pb.id} to agent ${agentInfo.id}" }
+        }
+    }
+
+    internal fun serviceGroup(serviceGroupId: String): List<AgentEntry> = allEntries().filter {
         it.agent.serviceGroup == serviceGroupId
     }
 
-    suspend fun sendPluginsToAgent(agentInfo: AgentInfo) {
-        wrapBusy(agentInfo) {
-            agentSessions(id).applyEach { sendPlugins(this@wrapBusy) }
-        }
-    }
-
-    suspend fun ensurePluginInstance(
+    internal suspend fun ensurePluginInstance(
         agentEntry: AgentEntry,
         plugin: Plugin
     ): AdminPluginPart<*> {
@@ -433,15 +466,17 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun AgentInfo.commitChanges() {
+    internal suspend fun AgentInfo.commitChanges() {
         persistToDatabase()
         notifyAllAgents()
-        notifySingleAgent(this.id)
+        notifySingleAgent(id)
     }
 }
 
-suspend fun AgentWsSession.setPackagesPrefixes(data: PackagesPrefixes) =
-    sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(data).await()
+suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
+    sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(
+        com.epam.drill.common.PackagesPrefixes(prefixes)
+    ).await()
 
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent>().await()

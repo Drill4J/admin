@@ -1,8 +1,20 @@
-package com.epam.drill.admin.agent
+package com.epam.drill.admin.api.agent
 
-import com.epam.drill.admin.plugins.*
-import com.epam.drill.common.*
-import kotlinx.serialization.*
+import com.epam.drill.admin.api.plugin.*
+import kotlinx.serialization.Serializable
+
+enum class AgentType(val notation: String) {
+    JAVA("Java"),
+    DOTNET(".NET"),
+    NODEJS("Node.js")
+}
+
+enum class AgentStatus {
+    NOT_REGISTERED,
+    ONLINE,
+    OFFLINE,
+    BUSY;
+}
 
 @Serializable
 data class SystemSettingsDto(

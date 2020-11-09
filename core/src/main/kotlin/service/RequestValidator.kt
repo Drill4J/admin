@@ -1,8 +1,8 @@
 package com.epam.drill.admin.service
 
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -16,10 +16,11 @@ import org.kodein.di.generic.*
 
 const val agentIsBusyMessage =
     "Sorry, this agent is busy at the moment. Please try again later"
-class RequestValidator(override val kodein: Kodein) : KodeinAware {
-    val app by instance<Application>()
-    val am by instance<AgentManager>()
+internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger { }
+
+    val app by instance<Application>()
+    private val am by instance<AgentManager>()
 
     init {
         app.routing {
@@ -33,7 +34,7 @@ class RequestValidator(override val kodein: Kodein) : KodeinAware {
                         val agentInfo = am.getOrNull(agentId)
                         when(agentInfo?.status) {
                             null -> {
-                                if (am.getAllAgents().none { it.agent.serviceGroup == agentId }) {
+                                if (am.allEntries().none { it.agent.serviceGroup == agentId }) {
                                     call.respond(
                                         HttpStatusCode.BadRequest,
                                         ValidationResponse("Agent '$agentId' not found")

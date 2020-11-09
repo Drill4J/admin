@@ -1,8 +1,8 @@
 package com.epam.drill.admin.notification
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.common.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
@@ -10,9 +10,8 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.util.*
 
-internal val logger = KotlinLogging.logger {}
-
 class NotificationManager(override val kodein: Kodein) : KodeinAware {
+    private val logger = KotlinLogging.logger {}
 
     private val topicResolver by instance<TopicResolver>()
     private val pluginCache by instance<PluginCaches>()
@@ -43,7 +42,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
     fun deleteAll(): Notifications = _notifications.getAndUpdate { Notifications() }
 
-    suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
+    internal suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
         val buildManager = agentManager.adminData(agentInfo.id).buildManager
         val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
         if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {

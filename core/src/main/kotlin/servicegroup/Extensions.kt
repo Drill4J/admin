@@ -4,7 +4,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 
-fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
+internal fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
     single = first.agentInfos.mapToDto(agentManager),
     grouped = second.map { it.toDto(agentManager) }
 )

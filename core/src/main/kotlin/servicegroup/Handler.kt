@@ -1,13 +1,13 @@
 package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -73,7 +73,10 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                     .examples(
                         example(
                             "systemSettings",
-                            SystemSettingsDto(listOf("some package prefixes"), "some session header name")
+                            SystemSettingsDto(
+                                listOf("some package prefixes"),
+                                "some session header name"
+                            )
                         )
                     ).responds(
                         ok<Unit>(),

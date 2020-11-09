@@ -3,10 +3,10 @@ package com.epam.drill.admin.endpoints.admin
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -93,7 +93,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
                     val (status, message) = if (agInfo != null) {
-                        agInfo.register(regInfo)
+                        agentManager.register(agInfo.id, regInfo)
                         logger.debug { "Agent with id '$agentId' has been registered" }
                         HttpStatusCode.OK to EmptyContent
                     } else {
@@ -149,7 +149,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     )
                 post<ApiRoot.Agents, AgentRegistrationDto>(meta) { _, regInfo ->
                     logger.debug { "Registering all agents" }
-                    val infos = agentManager.getAllAgents().map { it.agent }
+                    val infos = agentManager.allEntries().map { it.agent }
                     val registeredIds = infos.register(regInfo)
                     if (registeredIds.count() < infos.count()) {
                         val ids = infos.map { it.id }
@@ -194,21 +194,9 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                 logger.error(e) { "Error registering agent $agentId" }
             }
             async(handler) {
-                info.register(regInfo.copy(name = agentId, description = agentId))
+                agentManager.register(info.id, regInfo.copy(name = agentId, description = agentId))
                 agentId
             }
         }
     }.filterNot { it.isCancelled }.map { it.await() }
-
-    suspend fun AgentInfo.register(regInfo: AgentRegistrationDto) {
-        name = regInfo.name
-        environment = regInfo.environment
-        description = regInfo.description
-        status = AgentStatus.ONLINE
-        agentManager.apply {
-            adminData(id).updateSettings(regInfo.systemSettings)
-            addPlugins(regInfo.plugins)
-            sync()
-        }
-    }
 }

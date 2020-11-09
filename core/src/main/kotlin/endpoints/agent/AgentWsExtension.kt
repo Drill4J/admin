@@ -1,8 +1,8 @@
 package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.api.*
-import com.epam.drill.common.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -46,7 +46,7 @@ suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> B
     val expirationMark = Monotonic.markNow() + timeout
     while (state()) {
         if (expirationMark.hasPassedNow()) {
-            throw WsAwaitException("did't get signal by $timeout for '$description' destination")
+            throw WsAwaitException("Haven't received a signal in $timeout for '$description' destination")
         }
         delay(200)
     }
@@ -97,14 +97,7 @@ open class AgentWsSession(
                     )
                 )
                 FrameType.TEXT -> Frame.Text(
-                    JsonMessage.serializer() stringify JsonMessage(
-                        type = MessageType.MESSAGE,
-                        destination = topicName,
-                        text = message as? String ?: json.stringify(
-                            json.context.getContextualOrDefault(message),
-                            message
-                        )
-                    )
+                    JsonMessage.serializer() stringify message.toJsonMessage(topicName)
                 )
                 else -> null
             }?.let { send(it) }

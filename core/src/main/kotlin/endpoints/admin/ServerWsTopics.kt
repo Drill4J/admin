@@ -14,7 +14,6 @@ import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
 import org.kodein.di.*
@@ -95,11 +94,6 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                             } else plugin
                         }
                     }
-                }
-
-                topic<WsRoutes.AgentPluginConfig> { payload ->
-                    agentManager.getOrNull(payload.agent)?.plugins?.find { it.id == payload.plugin }
-                        ?.config?.let { json.parseJson(it) } ?: ""
                 }
 
                 topic<WsNotifications> {

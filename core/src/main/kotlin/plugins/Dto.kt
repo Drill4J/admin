@@ -1,23 +1,9 @@
 package com.epam.drill.admin.plugins
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.common.*
-import kotlinx.serialization.*
+import com.epam.drill.admin.api.plugin.*
 
-@Serializable
-data class PluginDto(
-    var id: String,
-    var name: String = "",
-    var description: String = "",
-    var type: String = "",
-    var status: Boolean? = true,
-    var config: String? = "",
-    var installedAgentsCount: Int? = 0,
-    val relation: String?,
-    val version: String = ""
-)
-
-fun Plugin.toDto() = PluginDto(
+internal fun Plugin.toDto() = PluginDto(
     id = pluginBean.id,
     name = pluginBean.name,
     description = pluginBean.description,
@@ -29,9 +15,9 @@ fun Plugin.toDto() = PluginDto(
     version = version
 )
 
-fun Iterable<Plugin>.mapToDto() = map(Plugin::toDto)
+internal fun Iterable<Plugin>.mapToDto() = map(Plugin::toDto)
 
-fun Iterable<Plugin>.mapToDto(agents: Iterable<AgentInfo>) = map { pb ->
+internal fun Iterable<Plugin>.mapToDto(agents: Iterable<AgentInfo>) = map { pb ->
     return@map pb.toDto().apply {
         config = null
         status = null

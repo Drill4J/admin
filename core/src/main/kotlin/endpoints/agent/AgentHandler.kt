@@ -1,15 +1,15 @@
 @file:Suppress("EXPERIMENTAL_API_USAGE")
-
 package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
-import com.epam.drill.common.*
+import com.epam.drill.common.MessageType
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
@@ -37,7 +37,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
-                    AgentType.NODEJS, AgentType.DOTNET -> FrameType.TEXT
+                    com.epam.drill.common.AgentType.NODEJS,
+                    com.epam.drill.common.AgentType.DOTNET -> FrameType.TEXT
                     else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(this@agentWebsocket, frameType, application.agentSocketTimeout)
@@ -53,15 +54,6 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun ApplicationRequest.retrieveParams(): Pair<AgentConfig, Boolean> {
-        val configStr = headers[AgentConfigParam]!!
-        val agentConfig = if (configStr.startsWith('{')) {
-            AgentConfig.serializer() parse configStr
-        } else ProtoBuf.loads(AgentConfig.serializer(), configStr)
-        val needSync = headers[NeedSyncParam]!!.toBoolean()
-        return agentConfig to needSync
-    }
-
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String, useCompression: Boolean) {
         val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
         try {
@@ -74,7 +66,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             val frameBytes = if (useCompression) {
                                 Zstd.decompress(bytes)
                             } else bytes
-                            BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
+                            BinaryMessage(ProtoBuf.load(com.epam.drill.common.Message.serializer(), frameBytes))
                         }
                     }.onFailure {
                         logger.error(it) { "Error processing $frame." }
@@ -134,4 +126,13 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             }
         }
     }
+}
+
+private fun ApplicationRequest.retrieveParams(): Pair<com.epam.drill.common.AgentConfig, Boolean> {
+    val configStr = headers[com.epam.drill.common.AgentConfigParam]!!
+    val agentConfig = if (configStr.startsWith('{')) {
+        com.epam.drill.common.AgentConfig.serializer() parse  configStr
+    } else ProtoBuf.loads(com.epam.drill.common.AgentConfig.serializer(), configStr)
+    val needSync = headers[com.epam.drill.common.NeedSyncParam]!!.toBoolean()
+    return agentConfig to needSync
 }

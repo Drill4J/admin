@@ -3,11 +3,11 @@ package com.epam.drill.admin.endpoints.admin
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -53,10 +53,13 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         else -> {
                             drillAgent.applyEach {
                                 send(
-                                    Message.serializer() stringify Message(
-                                        MessageType.MESSAGE,
-                                        "/plugins/unload",
-                                        pluginId.encodeToByteArray()
+                                    com.epam.drill.common.json.stringify(
+                                        com.epam.drill.common.Message.serializer(),
+                                        com.epam.drill.common.Message(
+                                            com.epam.drill.common.MessageType.MESSAGE,
+                                            "/plugins/unload",
+                                            pluginId.encodeToByteArray()
+                                        )
                                     )
                                 )
                             }
@@ -86,12 +89,17 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         }?.let { newStatus ->
                             agentManager.agentSessions(agentId).applyEach {
                                 val toggleValue = newStatus == AgentStatus.ONLINE
-                                agentInfo.plugins.filter { it.enabled }.map {
-                                    sendToTopic<Communication.Plugin.ToggleEvent>(TogglePayload(it.id, toggleValue))
+                                agentInfo.plugins.map { pluginId ->
+                                    sendToTopic<Communication.Plugin.ToggleEvent>(
+                                        com.epam.drill.common.TogglePayload(pluginId, toggleValue)
+                                    )
                                 }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }
-                            agentInfo.status = newStatus
-                            with(agentManager) { agentInfo.commitChanges() }
+                            with(agentManager) {
+                                entryOrNull(agentId)!!.updateAgent {
+                                    it.copy(status = newStatus)
+                                }.commitChanges()
+                            }
                             logger.info { "Agent $agentId toggled, new status - $newStatus." }
                             HttpStatusCode.OK to EmptyContent
                         } ?: HttpStatusCode.Conflict to ErrorResponse(
@@ -123,7 +131,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     .examples(
                         example(
                             "systemSettings",
-                            SystemSettingsDto(listOf("some package prefixes"), "some session header name")
+                            SystemSettingsDto(
+                                listOf("some package prefixes"),
+                                "some session header name"
+                            )
                         )
                     )
                     .responds(

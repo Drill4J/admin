@@ -2,7 +2,7 @@
 
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
@@ -14,7 +14,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
     pluginId: String,
     agentStreamDebug: Boolean,
     ui: AdminUiChannels,
-    pluginMeta: PluginMetadata,
+    pluginMeta: com.epam.drill.common.PluginMetadata,
     globLaunch: Job
 ) {
     thens.forEach { (ag, build, it) ->
