@@ -280,6 +280,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
+    suspend fun addPlugins(
+        agentInfos: Iterable<AgentInfo>,
+        pluginIds: Set<String>
+    ): Set<String> = supervisorScope {
+        agentInfos.map { info ->
+            val agentId = info.id
+            agentId to async { addPlugins(agentId, pluginIds) }
+        }
+    }.mapNotNullTo(mutableSetOf()) { (agentId, deferred) ->
+        agentId.takeIf {
+            runCatching { deferred.await() }.onFailure {
+                logger.error(it) { "Error on adding plugins $pluginIds to agent $agentId" }
+            }.isSuccess
+        }
+    }
+
     private suspend fun wrapBusy(
         ai: AgentInfo,
         block: suspend AgentInfo.() -> Unit
