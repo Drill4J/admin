@@ -17,15 +17,15 @@ class PluginCaches(
 
     internal fun get(
         pluginId: String,
-        subscription: Subscription?
+        subscription: Subscription?,
+        replace: Boolean = false
     ): Cache<Any, FrontMessage> = when (subscription) {
         is AgentSubscription -> cacheService.getOrCreate(
-            AgentKey(pluginId, subscription.agentId),
-            subscription.buildVersion ?: ""
+            id = AgentKey(pluginId, subscription.agentId),
+            qualifier = subscription.buildVersion ?: "",
+            replace = replace
         )
-        is GroupSubscription -> cacheService.getOrCreate(
-            GroupKey(pluginId, subscription.groupId)
-        )
+        is GroupSubscription -> cacheService.getOrCreate(GroupKey(pluginId, subscription.groupId))
         null -> cacheService.getOrCreate(pluginId)
     }
 
@@ -53,7 +53,7 @@ class PluginCaches(
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
             val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
-            messageFromStore.also { cache[messageKey] = it }
+            messageFromStore.also { cache[destination] = it }
         }
     }
 }

@@ -25,33 +25,33 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
             val dest = destination as? String ?: app.toLocation(destination)
             val subscription = context.toSubscription()
-            val subscriptionKey = subscription.toKey(dest)
-            val pluginCache = pluginCaches.get(pluginId, subscription)
+            val messageKey = subscription.toKey(dest)
+            val pluginCache = pluginCaches.get(pluginId, subscription, true)
 
             //TODO replace with normal event removal
             if (message == "") {
-                logger.trace { "Removed message by key $subscriptionKey" }
+                logger.trace { "Removed message by key $messageKey" }
                 pluginCache[dest] = ""
                 pluginStores[pluginId].let { store ->
                     withContext(Dispatchers.IO) {
-                        store.deleteMessage(subscriptionKey)
+                        store.deleteMessage(messageKey)
                     }
                 }
             } else {
-                logger.trace { "Sending message to $subscriptionKey" }
+                logger.trace { "Sending message to $messageKey" }
                 pluginStores[pluginId].let { store ->
                     withContext(Dispatchers.IO) {
                         measureTimedValue {
-                            store.storeMessage(subscriptionKey, message)
+                            store.storeMessage(messageKey, message)
                         }.let {
-                            logger.trace { "Stored message (key=$subscriptionKey, size=${it.value}) in ${it.duration}" }
+                            logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
                         }
                     }
                 }
                 pluginCache.remove(dest)
             }
             pluginSessions[pluginId].sendTo(
-                destination = subscriptionKey,
+                destination = messageKey,
                 messageProvider = { sessionSubscription ->
                     message.postProcess(sessionSubscription).toWsMessageAsString(
                         destination = dest,
