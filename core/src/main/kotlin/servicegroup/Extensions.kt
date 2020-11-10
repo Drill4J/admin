@@ -12,5 +12,5 @@ internal fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
 internal fun AgentGroup.toDto(agentManager: AgentManager) = ServiceGroupDto(
     group = group,
     agents = agentInfos.mapToDto(agentManager),
-    plugins = agentManager.plugins.values.ofAgents(agentInfos).mapToDto()
+    plugins = agentManager.plugins.values.mapToDto(agentInfos)
 )

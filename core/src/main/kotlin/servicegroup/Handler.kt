@@ -2,6 +2,7 @@ package com.epam.drill.admin.servicegroup
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.endpoints.*
@@ -102,6 +103,36 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         } else HttpStatusCode.BadRequest
                     } ?: HttpStatusCode.NotFound
                     call.respond(status)
+                }
+            }
+
+            authenticate {
+                val meta = "Add plugin to service group".responds(ok<Unit>(), notFound(), badRequest())
+                post<ApiRoot.ServiceGroup.Plugins, PluginId>(meta) { (group), (pluginId) ->
+                    val groupId: String = group.serviceGroupId
+                    logger.debug { "Adding plugin to service group '$groupId'..." }
+                    val agentInfos: List<AgentInfo> = agentManager.serviceGroup(groupId).map { it.agent }
+                    val (status, msg) = if (agentInfos.isNotEmpty()) {
+                        if (pluginId in plugins.keys) {
+                            if (agentInfos.any { pluginId !in it.plugins }) {
+                                val updatedAgentIds = agentManager.addPlugins(agentInfos, setOf(pluginId))
+                                val errorAgentIds = agentInfos.map(AgentInfo::id) - updatedAgentIds
+                                if (errorAgentIds.any()) {
+                                    logger.error {
+                                        """Service group $groupId: not all agents updated successfully.
+                                        |Failed agents: $errorAgentIds.
+                                    """.trimMargin()
+                                    }
+                                } else logger.debug {
+                                    "Service group '$groupId': added plugin '$pluginId' to agents $updatedAgentIds."
+                                }
+                                HttpStatusCode.OK to "Plugin '$pluginId' added to agents $updatedAgentIds."
+                            } else HttpStatusCode.Conflict to ErrorResponse(
+                                "Plugin '$pluginId' already installed on all agents of service group '$groupId'."
+                            )
+                        } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found.")
+                    } else HttpStatusCode.BadRequest to ErrorResponse("No agents found for service group '$groupId'.")
+                    call.respond(status, msg)
                 }
             }
         }

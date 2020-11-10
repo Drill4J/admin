@@ -15,11 +15,6 @@ internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map(Ag
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
-internal fun Iterable<Plugin>.ofAgents(agents: Iterable<AgentInfo>): List<Plugin> = run {
-    val ids = agents.plugins()
-    filter { it.pluginBean.id in ids }
-}
-
 internal fun AgentCreationDto.toAgentInfo(installedPlugins: Plugins) = AgentInfo(
     id = id,
     agentType = agentType,

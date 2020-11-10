@@ -75,6 +75,10 @@ class ApiRoot(val prefix: String = "api") {
         data class SystemSettings(val parent: ServiceGroup)
 
         @Group(SERVICE_GROUP)
+        @Location("/plugins")
+        data class Plugins(val parent: ServiceGroup)
+
+        @Group(SERVICE_GROUP)
         @Location("/plugins/{pluginId}")
         data class Plugin(val parent: ServiceGroup, val pluginId: String) {
             @Group(SERVICE_GROUP)

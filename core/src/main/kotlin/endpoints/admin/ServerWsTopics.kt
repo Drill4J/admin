@@ -82,18 +82,10 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     agentManager.getOrNull(agentId)?.toDto(agentManager)
                 }
 
-                topic<WsRoutes.Plugins> {
-                    plugins.values.mapToDto(agentManager.agentStorage.values.map { it.agent })
-                }
+                topic<WsRoutes.Plugins> { plugins.values.mapToDto() }
 
-                topic<WsRoutes.AgentPlugins> { payload ->
-                    agentManager.getAllInstalledPluginBeanIds(payload.agentId)?.let { ids ->
-                        plugins.values.mapToDto().map { plugin ->
-                            if (plugin.id in ids) {
-                                plugin.copy(relation = "Installed")
-                            } else plugin
-                        }
-                    }
+                topic<WsRoutes.AgentPlugins> { (agentId) ->
+                    agentManager.getOrNull(agentId)?.let { plugins.values.mapToDto(listOf(it)) }
                 }
 
                 topic<WsNotifications> {
@@ -115,10 +107,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
 
                 topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
-                    agentManager.run {
-                        val agents = activeAgents.filter { it.serviceGroup == groupId }
-                        plugins.values.ofAgents(agents).mapToDto()
-                    }
+                    val agents = agentManager.activeAgents.filter { it.serviceGroup == groupId }
+                    plugins.values.mapToDto(agents)
                 }
             }
 
