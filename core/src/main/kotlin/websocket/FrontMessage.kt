@@ -12,16 +12,8 @@ internal fun FrontMessage.postProcess(
     @Suppress("UNCHECKED_CAST")
     val iterable = this as? Iterable<Any>
     iterable?.takeIf(Iterable<*>::any)?.run {
-        //TODO remove searchStatement, sortStatement handling
-        val (filters: Set<FieldFilter>, sorts: Set<FieldOrder>) = (subscription as? AgentSubscription)?.run {
-            val filter = searchStatement?.run {
-                setOf(FieldFilter(fieldName, value, FieldOp.CONTAINS))
-            }.orEmpty()
-            val sort = sortStatement?.run {
-                setOf(FieldOrder(fieldName, if (order == "ASC") OrderKind.ASC else OrderKind.DESC))
-            }.orEmpty()
-            filter + subscription.filters to sort + subscription.orderBy
-        } ?: subscription.filters to subscription.orderBy
+        val filters: Set<FieldFilter> = subscription.filters
+        val sorts: Set<FieldOrder> = subscription.orderBy
         takeIf { filters.any() || sorts.any() }?.run {
             val fields = sequenceOf(
                 filters.asSequence().map(FieldFilter::field),
