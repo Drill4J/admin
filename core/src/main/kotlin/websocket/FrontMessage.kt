@@ -45,7 +45,7 @@ private fun Sequence<FieldFilter>.toPredicate(
         acc && propMap.getValue(f.field).call(msg)?.toString().orEmpty().let {
             when (f.op) {
                 FieldOp.EQ -> it == f.value
-                FieldOp.CONTAINS -> f.value in it
+                FieldOp.CONTAINS -> it.contains(f.value, ignoreCase = true)
             }
         }
     }
