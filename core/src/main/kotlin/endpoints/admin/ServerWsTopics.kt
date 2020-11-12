@@ -11,7 +11,6 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.servicegroup.*
-import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
@@ -33,11 +32,11 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     init {
 
         runBlocking {
-            agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
+            agentManager.agentStorage.onUpdate += {
                 val dest = app.toLocation(WsRoot.Agents())
                 sessionStorage.sendTo(dest, agentManager.all())
             }
-            agentManager.agentStorage.onUpdate += update(mutableSetOf()) {
+            agentManager.agentStorage.onUpdate += {
                 val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
                 sessionStorage.sendTo(
@@ -53,7 +52,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     }
                 }
             }
-            agentManager.agentStorage.onAdd += add(mutableSetOf()) { k, v ->
+            agentManager.agentStorage.onAdd += { k, v ->
                 val destination = app.toLocation(WsRoutes.Agent(k))
                 if (destination in sessionStorage) {
                     sessionStorage.sendTo(
@@ -64,7 +63,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-            agentManager.agentStorage.onRemove += remove(mutableSetOf()) { k ->
+            agentManager.agentStorage.onRemove += { k ->
                 val destination = app.toLocation(WsRoutes.Agent(k))
                 if (destination in sessionStorage) {
                     sessionStorage.sendTo(destination, "", WsMessageType.DELETE)

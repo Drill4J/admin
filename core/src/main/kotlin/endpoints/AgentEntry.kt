@@ -7,6 +7,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
+import java.io.*
 
 class AgentEntry(agent: AgentInfo) {
 
@@ -28,8 +29,17 @@ class AgentEntry(agent: AgentInfo) {
 
     operator fun get(pluginId: String): AdminPluginPart<*>? = _instanceMap.value[pluginId]
 
-    suspend fun get(pluginId: String, updater: suspend AgentEntry.() -> AdminPluginPart<*>): AdminPluginPart<*> {
-        return get(pluginId) ?: _instanceMap.updateAndGet { it.put(pluginId, updater()) }[pluginId]!!
+    suspend fun get(
+        pluginId: String,
+        updater: suspend AgentEntry.() -> AdminPluginPart<*>
+    ): AdminPluginPart<*> = get(pluginId) ?: _instanceMap.updateAndGet {
+        it.takeIf { pluginId in it } ?: it.put(pluginId, updater())
+    }.getValue(pluginId)
+
+    fun close() {
+        plugins.forEach { plugin ->
+            runCatching { (plugin as? Closeable)?.close() }
+        }
     }
 }
 

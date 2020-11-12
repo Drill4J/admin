@@ -1,87 +1,59 @@
 package com.epam.drill.admin.storage
 
-import java.util.concurrent.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 
+class ObservableMapStorage<K, V>(map: Map<K, V> = emptyMap()) {
 
-class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = ConcurrentHashMap()) {
-    val onUpdate: MutableSet<Pair<ObservableContext<R>, suspend R.((MutableMap<K, V>)) -> Unit>> = mutableSetOf()
-    val onAdd: MutableSet<Pair<ObservableContext<R>, suspend R.(K, V) -> Unit>> = mutableSetOf()
-    val onRemove: MutableSet<Pair<ObservableContext<R>, suspend R.(K) -> Unit>> = mutableSetOf()
-    val onClear: MutableSet<Pair<ObservableContext<R>, suspend R.() -> Unit>> = mutableSetOf()
+    val onUpdate: MutableList<suspend (Map<K, V>) -> Unit> = mutableListOf()
+    val onAdd: MutableList<suspend (K, V) -> Unit> = mutableListOf()
+    val onRemove: MutableList<suspend (K) -> Unit> = mutableListOf()
 
+    private val _targetMap = atomic(map.toPersistentMap())
 
-    val keys: MutableSet<K>
+    val targetMap: PersistentMap<K, V> get() = _targetMap.value
+
+    val keys: Set<K>
         get() = targetMap.keys
 
-    val values: MutableCollection<V>
+    val values: Collection<V>
         get() = targetMap.values
 
-    val entries: MutableSet<MutableMap.MutableEntry<K, V>>
-        get() = targetMap.entries
+    fun init(map: Map<K, V>) {
+        _targetMap.value = map.toPersistentHashMap()
+    }
+
+    operator fun get(key: K): V? = targetMap[key]
 
     suspend fun put(key: K, value: V): V? {
-        val putValue: V? = if (targetMap.containsKey(key)) {
-            targetMap.remove(key)
-            targetMap.put(key, value)
-        } else {
-            targetMap.put(key, value)
-        }
+        val replaced: V? = _targetMap.getAndUpdate {
+            it.put(key, value)
+        }[key]
         handleAdd(key, value)
-        handleUpdate()
-        return putValue
+        handleUpdate(targetMap)
+        return replaced
     }
 
     suspend fun remove(key: K): V? {
-        val remove = targetMap.remove(key)
+        val removed = _targetMap.getAndUpdate { it.remove(key) }[key]
         handleRemove(key)
-        return remove
+        return removed
     }
 
-    suspend fun handleAdd(key: K, value: V) {
-        onAdd.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(key, value)
-            }
-        }
+    private suspend fun handleAdd(key: K, value: V) {
+        onAdd.forEach { it(key, value) }
     }
 
-    private suspend fun handleUpdate() {
-        onUpdate.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(targetMap)
-            }
-        }
+    private suspend fun handleUpdate(map: Map<K, V>) {
+        onUpdate.forEach { it(map) }
     }
 
     suspend fun handleRemove(key: K) {
-        onRemove.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second(key)
-            }
-        }
-        handleUpdate()
-    }
-
-    suspend fun clear() {
-        targetMap.clear()
-        onClear.forEach {
-            val first = it.first
-            val second = it.second
-            first {
-                second()
-            }
-        }
-        handleUpdate()
+        onRemove.forEach { it(key) }
     }
 
     suspend fun update() {
-        handleUpdate()
+        handleUpdate(targetMap)
 
     }
 
@@ -89,51 +61,5 @@ class ObservableMapStorage<K, V, R>(val targetMap: MutableMap<K, V> = Concurrent
         targetMap[key]?.let { value ->
             handleAdd(key, value)
         }
-
     }
 }
-
-class ObservableContext<R> {
-    var context: R? = null
-
-    constructor(context: R) {
-        this.context = context
-    }
-
-
-    suspend operator fun invoke(block: suspend R.() -> Unit) {
-        block(context!!)
-    }
-}
-
-
-fun <K, R> remove(
-    context: R,
-    block: suspend R.(K) -> Unit
-): Pair<ObservableContext<R>, suspend R.(K) -> Unit> {
-    return ObservableContext(context) to block
-}
-
-fun <K, V, R> add(
-    context: R,
-    block: suspend R.(K, V) -> Unit
-): Pair<ObservableContext<R>, suspend R.(K, V) -> Unit> {
-    return ObservableContext(context) to block
-}
-
-//fun <K, V, R> add(block: suspend R.(K, V) -> Unit): Pair<ObservableContext<R>, suspend R.(K, V) -> Unit> {
-//    return ObservableContext<R>(R) to block
-//}
-
-fun <K, V, R> update(
-    context: R,
-    block: suspend R.((MutableMap<K, V>)) -> Unit
-): Pair<ObservableContext<R>, suspend R.((MutableMap<K, V>)) -> Unit> {
-    return ObservableContext(context) to block
-}
-
-fun <R> clear(context: R, block: suspend R.() -> Unit): Pair<ObservableContext<R>, suspend R.() -> Unit> {
-    return ObservableContext(context) to block
-}
-
-

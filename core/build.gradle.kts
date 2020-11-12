@@ -52,7 +52,7 @@ val defaultAppJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
-    "-XX:MaxGCPauseMillis=100"
+    "-XX:+UseStringDeduplication"
 )
 
 val devJvmArgs = listOf(

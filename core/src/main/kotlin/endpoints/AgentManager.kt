@@ -56,9 +56,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     init {
         runBlocking {
             val prepared = commonStore.client.getAll<PreparedAgentData>()
-            for (data in prepared) {
+            val agentEntryMap = prepared.associate { data ->
                 agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
-                agentStorage.targetMap[data.id] = AgentEntry(data.dto.toAgentInfo(plugins))
+                data.id to AgentEntry(data.dto.toAgentInfo(plugins))
+            }
+            if (agentEntryMap.any()) {
+                agentStorage.init(agentEntryMap)
             }
         }
     }
@@ -93,7 +96,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
         val oldInstanceIds = instanceIds(id)
         addInstanceId(id, config.instanceId, session)
-        val existingEntry = agentStorage.targetMap[id]
+        val existingEntry = agentStorage[id]
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
@@ -128,7 +131,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             )
             val info: AgentInfo = existingInfo ?: config.toAgentInfo()
             val entry = AgentEntry(info)
-            agentStorage.put(id, entry)
+            agentStorage.put(id, entry)?.also { oldEntry ->
+                oldEntry.close()
+            }
             existingInfo?.initPlugins(entry)
             app.launch {
                 existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
@@ -248,8 +253,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     internal fun allEntries(): Collection<AgentEntry> = agentStorage.targetMap.values
 
-    fun getAllInstalledPluginBeanIds(agentId: String) = getOrNull(agentId)?.plugins
-
     suspend fun addPlugins(
         agentId: String,
         pluginIds: Set<String>
@@ -325,7 +328,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun disableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
-        getAllInstalledPluginBeanIds(agentId)?.forEach { pluginId ->
+        getOrNull(agentId)?.plugins?.forEach { pluginId ->
             agentSessions(agentId).applyEach {
                 sendToTopic<Communication.Plugin.ToggleEvent>(
                     com.epam.drill.common.TogglePayload(pluginId, false)
@@ -337,7 +340,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentWsSession.enableAllPlugins(agentId: String) {
         logger.debug { "Enabling all plugins for agent with id $agentId" }
-        getAllInstalledPluginBeanIds(agentId)?.let { pluginIds ->
+        getOrNull(agentId)?.plugins?.let { pluginIds ->
             pluginIds.map { pluginId ->
                 logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
                 enablePlugin(pluginId, agentId)
