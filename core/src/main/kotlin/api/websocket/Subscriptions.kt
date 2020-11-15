@@ -2,6 +2,8 @@ package com.epam.drill.admin.api.websocket
 
 import kotlinx.serialization.*
 
+enum class OutputType { LIST, DEFAULT }
+
 enum class FieldOp { EQ, CONTAINS }
 
 enum class OrderKind { ASC, DESC }
@@ -14,6 +16,7 @@ data class FieldOrder(val field: String, val order: OrderKind = OrderKind.ASC)
 
 @Serializable
 sealed class Subscription {
+    abstract val output: OutputType
     abstract val filters: Set<FieldFilter>
     abstract val orderBy: Set<FieldOrder>
 }
@@ -23,6 +26,7 @@ sealed class Subscription {
 data class AgentSubscription(
     val agentId: String,
     val buildVersion: String? = null,
+    override val output: OutputType = OutputType.DEFAULT,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet()
 ) : Subscription()
@@ -31,6 +35,7 @@ data class AgentSubscription(
 @SerialName("GROUP")
 data class GroupSubscription(
     val groupId: String,
+    override val output: OutputType = OutputType.DEFAULT,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet()
 ) : Subscription()

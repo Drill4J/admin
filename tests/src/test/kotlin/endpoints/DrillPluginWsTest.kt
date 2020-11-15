@@ -159,25 +159,29 @@ class PluginWsTest {
 
 
                 subscribe(outgoing, destination)
-                assertEquals("", readMessage(incoming)?.content, "first subscription should be empty")
+                assertEquals("", readMessageJson(incoming)?.content, "first subscription should be empty")
 
 
                 sendListData(destination, message)
-                assertEquals(message.size, (readMessage(incoming) as JsonArray).size)
+                assertEquals(message.size, (readMessageJson(incoming) as JsonArray).size)
 
 
-                subscribe(outgoing, destination, setOf(FieldFilter(fieldName, "x11")))
-                assertEquals(1, (readMessage(incoming) as JsonArray).size)
+                subscribe(outgoing, destination, filters = setOf(FieldFilter(fieldName, "x11")))
+                assertEquals(1, (readMessageJson(incoming) as JsonArray).size)
 
                 unsubscribe(outgoing, destination)
 
                 subscribe(
                     outgoing,
                     destination,
-                    setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
-                    setOf(FieldOrder(fieldName))
+                    output = OutputType.LIST,
+                    filters = setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
+                    orderBy = setOf(FieldOrder(fieldName))
                 )
-                (readMessage(incoming) as JsonArray).let { array ->
+                (readMessageJson(incoming) as JsonObject).let { jsonObj ->
+                    val array = jsonObj[ListOutput::items.name] as JsonArray
+                    assertEquals(message.size, jsonObj.getPrimitive(ListOutput::totalCount.name).int)
+                    assertEquals(2, jsonObj.getPrimitive(ListOutput::filteredCount.name).int)
                     assertEquals(2, array.size)
                     assertEquals(listOf("x21", "x22"), array.map { it.jsonObject[fieldName]?.content })
                 }
@@ -187,25 +191,24 @@ class PluginWsTest {
                 subscribe(//filter: field1; sort: field2 desc
                     outgoing,
                     destination,
-                    setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
-                    setOf(FieldOrder(fieldName, OrderKind.DESC))
+                    filters = setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
+                    orderBy = setOf(FieldOrder(fieldName, OrderKind.DESC))
                 )
-                (readMessage(incoming) as JsonArray).let { array ->
+                (readMessageJson(incoming) as JsonArray).let { array ->
                     assertEquals(2, array.size)
                     assertEquals(listOf("x22", "x21"), array.map { it.jsonObject[fieldName]?.content })
                 }
                 subscribe(//sort: field2 desc
                     outgoing,
                     destination,
-                    sorts = setOf(FieldOrder(Data::field2.name, OrderKind.DESC), FieldOrder(Data::notSortable.name))
+                    orderBy = setOf(FieldOrder(Data::field2.name, OrderKind.DESC), FieldOrder(Data::notSortable.name))
                 )
-                (readMessage(incoming) as JsonArray).let { array ->
+                (readMessageJson(incoming) as JsonArray).let { array ->
                     assertEquals(message.size, array.size)
                     val expected: List<String> = message.sortedByDescending { it.field2 }.map { it.field1 }
                     assertEquals(expected, array.map { it.jsonObject[fieldName]?.content })
                 }
             }
-
         }
     }
 
@@ -227,8 +230,9 @@ class PluginWsTest {
     private suspend fun subscribe(
         outgoing: SendChannel<Frame>,
         destination: String,
+        output: OutputType = OutputType.DEFAULT,
         filters: Set<FieldFilter> = emptySet(),
-        sorts: Set<FieldOrder> = emptySet()
+        orderBy: Set<FieldOrder> = emptySet()
     ) {
         outgoing.send(
             uiMessage(
@@ -237,8 +241,9 @@ class PluginWsTest {
                     Subscription.serializer() stringify AgentSubscription(
                         agentId,
                         buildVersion,
+                        output = output,
                         filters = filters,
-                        orderBy = sorts
+                        orderBy = orderBy
                     )
                 )
             )
@@ -251,7 +256,7 @@ class PluginWsTest {
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
     }
 
-    private suspend fun readMessage(incoming: ReceiveChannel<Frame>): JsonElement? {
+    private suspend fun readMessageJson(incoming: ReceiveChannel<Frame>): JsonElement? {
         val receive = incoming.receive() as? Frame.Text ?: fail()
         val readText = receive.readText()
         val fromJson = json.parseJson(readText) as JsonObject

@@ -8,33 +8,39 @@ typealias FrontMessage = Any
 
 internal fun FrontMessage.postProcess(
     subscription: Subscription?
-): Any = subscription?.let { _ ->
+): Any = subscription?.let {
     @Suppress("UNCHECKED_CAST")
     val iterable = this as? Iterable<Any>
-    iterable?.takeIf(Iterable<*>::any)?.run {
-        val filters: Set<FieldFilter> = subscription.filters
-        val sorts: Set<FieldOrder> = subscription.orderBy
-        takeIf { filters.any() || sorts.any() }?.run {
-            val fields = sequenceOf(
-                filters.asSequence().map(FieldFilter::field),
-                sorts.asSequence().map(FieldOrder::field)
-            ).flatten().toSet()
-            val clazz = first()::class
-            val propMap = clazz.memberProperties.asSequence()
-                .filter { it.name in fields }
-                .associateBy { it.name }
-            val predicate: ((Any) -> Boolean)? = filters.asSequence()
-                .filter { it.field in propMap }
-                .takeIf { it.any() }
-                ?.toPredicate(propMap)
-            val comparator = sorts.asSequence()
-                .filter { it.field in propMap }
-                .takeIf { it.any() }
-                ?.toComparator(propMap)
-            (predicate?.let { filter(it) } ?: this).run {
-                comparator?.let { sortedWith(it) } ?: this
+    iterable?.run {
+        val processed = takeIf(Iterable<*>::any)?.run {
+            val filters: Set<FieldFilter> = subscription.filters
+            val sorts: Set<FieldOrder> = subscription.orderBy
+            takeIf { filters.any() || sorts.any() }?.run {
+                val fields = sequenceOf(
+                    filters.asSequence().map(FieldFilter::field),
+                    sorts.asSequence().map(FieldOrder::field)
+                ).flatten().toSet()
+                val clazz = first()::class
+                val propMap = clazz.memberProperties.asSequence()
+                    .filter { it.name in fields }
+                    .associateBy { it.name }
+                val predicate: ((Any) -> Boolean)? = filters.asSequence()
+                    .filter { it.field in propMap }
+                    .takeIf { it.any() }
+                    ?.toPredicate(propMap)
+                val comparator = sorts.asSequence()
+                    .filter { it.field in propMap }
+                    .takeIf { it.any() }
+                    ?.toComparator(propMap)
+                (predicate?.let { filter(it) } ?: this).run {
+                    comparator?.let { sortedWith(it) } ?: this
+                }
             }
-        }
+        } ?: this
+        processed.toOutput(
+            subscription = subscription,
+            totalCount = iterable.count()
+        )
     }
 } ?: this
 
@@ -66,4 +72,16 @@ private fun Sequence<FieldOrder>.toComparator(
             }
         } else acc
     }
+}
+
+private fun Iterable<Any>.toOutput(
+    subscription: Subscription,
+    totalCount: Int
+): Any = when (subscription.output) {
+    OutputType.LIST -> ListOutput(
+        totalCount = totalCount,
+        filteredCount = count(),
+        items = this as? List<Any> ?: toList()
+    )
+    else -> this
 }
