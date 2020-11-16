@@ -100,7 +100,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val currentInfo = existingEntry?.agent
         val buildVersion = config.buildVersion
         val adminData = adminData(id)
-        adminData.initBuild(buildVersion)
+        val isNewBuild = adminData.initBuild(buildVersion)
         loggingHandler.sync(id, session)
         //TODO agent instances
         return if (
@@ -137,7 +137,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             existingInfo?.initPlugins(entry)
             app.launch {
                 existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
-                notificationsManager.handleNewBuildNotification(info)
+                if (isNewBuild && currentInfo != null) {
+                    notificationsManager.saveNewBuildNotification(info)
+                }
             }
             info.persistToDatabase()
             preparedInfo?.let { commonStore.client.deleteById<PreparedAgentData>(it.id) }

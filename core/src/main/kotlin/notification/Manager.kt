@@ -15,7 +15,6 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver by instance<TopicResolver>()
     private val pluginCache by instance<PluginCaches>()
-    private val agentManager by instance<AgentManager>()
     private val _notifications = atomic(Notifications())
 
     val notifications
@@ -42,32 +41,23 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
     fun deleteAll(): Notifications = _notifications.getAndUpdate { Notifications() }
 
-    internal suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
-        val buildManager = agentManager.adminData(agentInfo.id).buildManager
-        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
-        if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {
-            saveNewBuildNotification(agentInfo, previousBuildVersion)
-        }
-    }
-
-    private suspend fun saveNewBuildNotification(
-        agentInfo: AgentInfo,
-        previousBuildVersion: String
+    internal suspend fun saveNewBuildNotification(
+        agentInfo: AgentInfo
     ) {
+        logger.debug { "agent='${agentInfo.id}': create 'new build arrived' notification" }
         save(
             Notification(
                 id = UUID.randomUUID().toString(),
                 agentId = agentInfo.id,
                 createdAt = System.currentTimeMillis(),
                 type = NotificationType.BUILD,
-                message = createNewBuildMessage(previousBuildVersion, agentInfo)
+                message = createNewBuildMessage(agentInfo)
             )
         )
         topicResolver.sendToAllSubscribed(WsNotifications)
     }
 
     private suspend fun createNewBuildMessage(
-        previousBuildVersion: String,
         agentInfo: AgentInfo
     ): NewBuildArrivedMessage = pluginCache.getData(
         agentInfo.id,
@@ -76,9 +66,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
     ).let { buildInfo ->
         NewBuildArrivedMessage(
             currentId = agentInfo.buildVersion,
-            prevId = previousBuildVersion,
             recommendations = recommendations(agentInfo),
-            buildDiff = buildInfo,
             buildInfo = buildInfo
         )
     }

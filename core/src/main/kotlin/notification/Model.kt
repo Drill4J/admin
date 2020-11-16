@@ -19,8 +19,6 @@ enum class NotificationType {
 @Serializable
 data class NewBuildArrivedMessage(
     val currentId: String,
-    val prevId: String,
     val recommendations: Set<String> = emptySet(),
-    @ContextualSerialization val buildDiff: Any? = null,
     @ContextualSerialization val buildInfo: Any? = null
 )
