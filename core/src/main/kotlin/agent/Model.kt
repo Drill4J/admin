@@ -28,3 +28,9 @@ data class AgentInfo(
 
     override fun hashCode(): Int = id.hashCode()
 }
+
+@Serializable
+internal class AgentBuilds(
+    @Id val id: String,
+    val builds: List<String> = emptyList()
+)

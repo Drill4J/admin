@@ -3,6 +3,7 @@ package com.epam.drill.admin.notification
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
+import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
@@ -15,8 +16,8 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
     private val topicResolver by instance<TopicResolver>()
     private val pluginCache by instance<PluginCaches>()
-    private val agentManager by instance<AgentManager>()
     private val _notifications = atomic(Notifications())
+    private val agentStores by instance<StoreManager>()
 
     val notifications
         get() = _notifications.value
@@ -43,10 +44,20 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
     fun deleteAll(): Notifications = _notifications.getAndUpdate { Notifications() }
 
     internal suspend fun handleNewBuildNotification(agentInfo: AgentInfo) {
-        val buildManager = agentManager.adminData(agentInfo.id).buildManager
-        val previousBuildVersion = buildManager[agentInfo.buildVersion]?.parentVersion
-        if (!previousBuildVersion.isNullOrEmpty() && previousBuildVersion != agentInfo.buildVersion) {
-            saveNewBuildNotification(agentInfo, previousBuildVersion)
+        val agentId = agentInfo.id
+        val buildVersion = agentInfo.buildVersion
+        val agentStore = agentStores.agentStore(agentId)
+        val builds = agentStore.findById<AgentBuilds>(agentId)?.builds
+        logger.debug { "agent='$agentId': builds in db '$builds'" }
+        if (!builds.isNullOrEmpty()) {
+            if (!builds.contains(buildVersion)) {
+                logger.debug { "agent='$agentId': create a notification and save last build '$buildVersion' previous builds='$builds'" }
+                agentStore.store(AgentBuilds(agentId, builds.plus(buildVersion)))
+                saveNewBuildNotification(agentInfo, builds.last())
+            }
+        } else {
+            logger.debug { "agent='$agentId': save the first build '$buildVersion'" }
+            agentStore.store(AgentBuilds(agentId, persistentListOf(buildVersion)))
         }
     }
 
