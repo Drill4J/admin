@@ -87,7 +87,6 @@ val handlers: Kodein.Builder.(Application) -> Unit
             )
         }
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
-        bind<InfoController>() with eagerSingleton { InfoController(kodein) }
         bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
         bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
