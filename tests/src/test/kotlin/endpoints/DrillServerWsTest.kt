@@ -213,7 +213,6 @@ internal class DrillServerWsTest {
                 type = NotificationType.BUILD,
                 message = NewBuildArrivedMessage(
                     "0.2.0",
-                    "0.1.0",
                     setOf("recommendation_1", "recommendation_2")
                 )
             )

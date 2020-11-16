@@ -71,11 +71,11 @@ internal class AgentData(
 
     private val _settings = atomic(initialSettings)
 
-    suspend fun initBuild(version: String) {
+    suspend fun initBuild(version: String): Boolean {
         if (buildManager.builds.none()) {
             loadStoredData()
         }
-        buildManager[version] ?: run {
+        return (buildManager[version] == null).also {
             val agentBuild = buildManager.init(version)
             store(agentBuild)
         }
