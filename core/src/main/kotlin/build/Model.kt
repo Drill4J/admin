@@ -25,7 +25,6 @@ data class AgentBuildId(
 data class AgentBuildData(
     @Id val id: AgentBuildId,
     val agentId: String,
-    val parentVersion: String,
     val detectedAt: Long
 ) {
     override fun equals(other: Any?) = other is AgentBuildData && id == other.id

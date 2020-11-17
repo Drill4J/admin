@@ -109,6 +109,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.serviceGroup == serviceGroup &&
             currentInfo.agentVersion == config.agentVersion
         ) {
+            logger.debug { "agent($id, $buildVersion): attach a current build." }
             notifySingleAgent(id)
             notifyAllAgents()
             if (needSync) app.launch {
@@ -118,6 +119,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
         } else {
+            logger.debug { "agent($id, $buildVersion): attach a new build." }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
             val preparedInfo: AgentInfo? = if (storedInfo == null) {
                 commonStore.client.findById<PreparedAgentData>(id)?.let {
@@ -152,7 +154,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             val pluginId = pluginMeta.id
             val plugin = this@AgentManager.plugins[pluginId]
             if (plugin != null) {
-                if (agentDataCache[id]?.buildManager?.lastBuild == buildVersion) {
+                if (isNewBuild()) {
                     ensurePluginInstance(agentEntry, plugin)
                     logger.info { "Instance of plugin=$pluginId loaded from db, buildVersion=$buildVersion" }
                 } else {
@@ -160,6 +162,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
             } else logger.error { "plugin=$pluginId not loaded!" }
         }
+    }
+
+    private suspend fun AgentInfo.isNewBuild(): Boolean {
+        val builds = agentDataCache[id]?.storeClient?.findById<AgentBuilds>(id)?.builds
+        logger.debug { "agent '$id': cur build '$buildVersion' builds in db :$builds" }
+        return builds.isNullOrEmpty() || !builds.contains(buildVersion)
     }
 
     private fun addInstanceId(agentId: String, instanceId: String, session: AgentWsSession) {

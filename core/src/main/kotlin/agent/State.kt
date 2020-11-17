@@ -22,8 +22,7 @@ internal class PreparedAgentData(
 @Serializable
 internal data class AgentDataSummary(
     @Id val agentId: String,
-    val settings: SystemSettingsDto,
-    val lastBuild: String
+    val settings: SystemSettingsDto
 )
 
 internal class AgentDataCache {
@@ -63,7 +62,7 @@ internal class AgentData(
 
     val settings: SystemSettingsDto get() = _settings.value
 
-    private val storeClient by lazy { agentStores.agentStore(agentId) }
+    val storeClient by lazy { agentStores.agentStore(agentId) }
 
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
@@ -115,7 +114,6 @@ internal class AgentData(
         val buildData = AgentBuildData(
             id = id,
             agentId = id.agentId,
-            parentVersion = info.parentVersion,
             detectedAt = detectedAt
         )
         measureTime {
@@ -144,23 +142,20 @@ internal class AgentData(
                     agentId = agentId,
                     detectedAt = detectedAt,
                     info = BuildInfo(
-                        version = id.version,
-                        parentVersion = parentVersion
+                        version = id.version
                     )
                 )
             }
         }
         _buildManager.value = AgentBuildManager(
             agentId = agentId,
-            builds = builds,
-            lastBuild = summary.lastBuild
+            builds = builds
         )
         logger.debug { "Loaded data for $agentId" }
     }
 
     private fun toSummary() = AgentDataSummary(
         agentId = agentId,
-        settings = settings,
-        lastBuild = buildManager.lastBuild
+        settings = settings
     )
 }
