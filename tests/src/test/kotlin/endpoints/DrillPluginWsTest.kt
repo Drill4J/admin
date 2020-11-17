@@ -16,6 +16,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.kodux.*
 import io.ktor.application.*
+import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -49,6 +50,9 @@ class PluginWsTest {
     private lateinit var kodeinApplication: Kodein
 
     private val testApp: Application.() -> Unit = {
+        (environment.config as MapApplicationConfig).apply {
+            put("drill.cache.enabled", "true")
+        }
         install(Locations)
         install(WebSockets)
 

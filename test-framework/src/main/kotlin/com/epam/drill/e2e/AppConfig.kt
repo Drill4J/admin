@@ -28,6 +28,7 @@ class AppConfig(var projectDir: File) {
         (environment.config as MapApplicationConfig).apply {
             put("ktor.deployment.sslPort", sslPort)
             put("drill.devMode", "true")
+            put("drill.cache.enabled", "true")
             put("drill.plugins.remote.enabled", "false")
             put("drill.agents.socket.timeout", "90")
         }

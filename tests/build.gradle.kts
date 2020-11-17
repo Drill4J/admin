@@ -76,7 +76,8 @@ tasks {
             freeCompilerArgs = listOf(
                 "-Xuse-experimental=kotlin.Experimental",
                 "-Xuse-experimental=kotlin.time.ExperimentalTime",
-                "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
+                "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI",
+                "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI"
             )
         }
     }
