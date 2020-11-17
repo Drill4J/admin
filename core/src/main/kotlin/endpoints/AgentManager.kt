@@ -109,6 +109,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.serviceGroup == serviceGroup &&
             currentInfo.agentVersion == config.agentVersion
         ) {
+            logger.debug { "agent($id, $buildVersion): attach a current build." }
             notifySingleAgent(id)
             notifyAllAgents()
             if (needSync) app.launch {
@@ -118,6 +119,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
         } else {
+            logger.debug { "agent($id, $buildVersion): attach a new build." }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
             val preparedInfo: AgentInfo? = if (storedInfo == null) {
                 commonStore.client.findById<PreparedAgentData>(id)?.let {
@@ -134,7 +136,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             agentStorage.put(id, entry)?.also { oldEntry ->
                 oldEntry.close()
             }
-            existingInfo?.initPlugins(entry)
+            existingInfo?.initPlugins(entry, isNewBuild)
             app.launch {
                 existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
                 if (isNewBuild && currentInfo != null) {
@@ -148,13 +150,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private suspend fun AgentInfo.initPlugins(agentEntry: AgentEntry) {
+    private suspend fun AgentInfo.initPlugins(
+        agentEntry: AgentEntry,
+        isNewBuild: Boolean
+    ) {
         val enabledPlugins = plugins.mapNotNull { this@AgentManager.plugins[it]?.pluginBean }
         for (pluginMeta in enabledPlugins) {
             val pluginId = pluginMeta.id
             val plugin = this@AgentManager.plugins[pluginId]
             if (plugin != null) {
-                if (agentDataCache[id]?.buildManager?.lastBuild == buildVersion) {
+                if (isNewBuild) {
                     ensurePluginInstance(agentEntry, plugin)
                     logger.info { "Instance of plugin=$pluginId loaded from db, buildVersion=$buildVersion" }
                 } else {
