@@ -22,7 +22,7 @@ class PluginCaches(
 
     private val config: ApplicationConfig = app.drillConfig.config("cache")
 
-    private val enabled: Boolean = config.property("enabled").getString().toBoolean()
+    private val enabled: Boolean = config.propertyOrNull("enabled")?.getString()?.toBoolean() ?: true
 
     init {
         logger.info { "cache.enabled=$enabled" }
