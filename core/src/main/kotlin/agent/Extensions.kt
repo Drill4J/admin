@@ -79,8 +79,4 @@ internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSe
     block(it)
 }
 
-private fun Iterable<AgentInfo>.plugins(): Set<String> = run {
-    flatMap(AgentInfo::plugins).toSet()
-}
-
 private fun Iterable<Plugin>.activePluginsCount(): Int = count { it.pluginBean.enabled }
