@@ -26,7 +26,7 @@ class AgentBuildManagerTest {
         buildManager.init("0.2.0")
         assertNotNull(buildManager["0.1.0"])
         assertNotNull(buildManager["0.2.0"])
-        assertEquals("0.2.0", buildManager.lastBuild)
+        assertEquals(2, buildManager.builds.size)
     }
 
     @Test

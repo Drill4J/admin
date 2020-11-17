@@ -8,8 +8,7 @@ import kotlinx.collections.immutable.*
 
 class AgentBuildManager(
     val agentId: String,
-    builds: Iterable<AgentBuild> = emptyList(),
-    lastBuild: String = ""
+    builds: Iterable<AgentBuild> = emptyList()
 ) : BuildManager {
 
     override val builds: Collection<BuildInfo>
@@ -17,12 +16,8 @@ class AgentBuildManager(
 
     internal val agentBuilds get() = buildMap.values
 
-    val lastBuild: String get() = _lastBuild.value
-
     private val buildMap: PersistentMap<String, AgentBuild>
         get() = _buildMap.value
-
-    private val _lastBuild = atomic(lastBuild)
 
     private val _addedClasses = atomic(persistentListOf<ByteArray>())
 
@@ -38,8 +33,7 @@ class AgentBuildManager(
                 id = AgentBuildId(agentId, version),
                 agentId = agentId,
                 info = BuildInfo(
-                    version = version,
-                    parentVersion = _lastBuild.getAndUpdate { version }
+                    version = version
                 ),
                 detectedAt = System.currentTimeMillis()
             )
