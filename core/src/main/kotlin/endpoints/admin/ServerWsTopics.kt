@@ -51,6 +51,11 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         sessionStorage.sendTo(dest, group.plugins)
                     }
                 }
+                for (agent in groupedAgents.single) {
+                    val route = WsRoutes.AgentPlugins(agent.id)
+                    val dest = app.toLocation(route)
+                    sessionStorage.sendTo(dest, agent.plugins)
+                }
             }
             agentManager.agentStorage.onAdd += { k, v ->
                 val destination = app.toLocation(WsRoutes.Agent(k))
