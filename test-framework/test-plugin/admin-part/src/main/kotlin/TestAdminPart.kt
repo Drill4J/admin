@@ -6,8 +6,11 @@ import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.kodux.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.*
 
+@Serializable
+data class Stuff(val s: String)
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class TestAdminPart(
@@ -20,9 +23,10 @@ class TestAdminPart(
 
     var packagesChangesCount = 0
 
+    val sendContext = AgentSendContext(agentInfo.id, agentInfo.buildVersion)
+
     override suspend fun processData(dm: DrillMessage): Any {
-        @Suppress("DEPRECATION")
-        sender.send(agentInfo.id, agentInfo.buildVersion, "new-destination", dm)
+        sender.send(sendContext, "/processed-data", listOf("xx"))
         return ""
     }
 
@@ -47,7 +51,6 @@ class TestAdminPart(
 
     override suspend fun applyPackagesChanges() {
         packagesChangesCount++
-        @Suppress("DEPRECATION")
-        sender.send(agentInfo.id, agentInfo.buildVersion, "/packagesChangesCount", packagesChangesCount)
+        sender.send(sendContext, "/packagesChangesCount", packagesChangesCount)
     }
 }

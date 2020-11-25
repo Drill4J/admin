@@ -13,6 +13,41 @@ import kotlin.test.*
 class PluginTest : E2EPluginTest() {
 
     @Test
+    fun `reconnect - same build`() {
+        createSimpleAppWithPlugin<PTestStream> {
+            connectAgent<Build1> { plugUi, build ->
+                println(build)
+                pluginAction("myActionForAllAgents") { status, content ->
+                    println(content)
+                    status shouldBe HttpStatusCode.OK
+                }.join()
+            }.reconnect<Build1> { plugUi, build ->
+                println("Reconnected agentid=${plugUi.info.agentId}, buildVersion=${build.version}")
+            }
+        }
+    }
+
+    @Test
+    fun `reconnect - new build`() {
+        createSimpleAppWithPlugin<PTestStream>(
+            uiStreamDebug = true,
+            agentStreamDebug = true
+        ) {
+            connectAgent<Build1> { plugUi, build ->
+                plugUi.processedData.receive()
+                pluginAction("myActionForAllAgents") { status, content ->
+                    println(content)
+                    status shouldBe HttpStatusCode.OK
+                }.join()
+            }.reconnect<Build2> { plugUi, build ->
+                plugUi.processedData.receive()
+                println("Reconnected agentid=${plugUi.info.agentId}, buildVersion=${build.version}")
+            }
+        }
+    }
+
+
+    @Test
     fun `test e2e plugin API for service group`() {
         val serviceGroup = "myServiceGroup"
         createSimpleAppWithPlugin<PTestStream> {

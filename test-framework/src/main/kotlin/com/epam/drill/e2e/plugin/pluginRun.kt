@@ -14,9 +14,11 @@ import java.io.*
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
+import kotlin.reflect.*
 
-inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
-    noinline block: suspend TestContext<PS>.() -> Unit,
+fun <PS : PluginStreams> E2EPluginTest.pluginRun(
+    psClass: KClass<PS>,
+    block: suspend TestContext<PS>.() -> Unit,
     uiStreamDebug: Boolean,
     agentStreamDebug: Boolean,
     context: CompletableJob
@@ -61,7 +63,8 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
                     with(UIEVENTLOOP(cs, uiStreamDebug, glob)) { application.queued(appConfig.wsTopic, frontIn) }
                     uts.send(uiMessage(Subscribe("/agents/${ag.id}")))
                     launch(handler) {
-                        processFirstConnect<PS>(
+                        processFirstConnect(
+                            psClass,
                             build,
                             ui,
                             ag,
@@ -73,7 +76,8 @@ inline fun <reified PS : PluginStreams> E2EPluginTest.pluginRun(
                             globLaunch
                         )
 
-                        processThens<PS>(
+                        processThens(
+                            psClass,
                             reconnectionCallbacks,
                             pluginId,
                             agentStreamDebug,

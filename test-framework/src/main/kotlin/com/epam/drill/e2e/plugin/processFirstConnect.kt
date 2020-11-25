@@ -7,8 +7,10 @@ import com.epam.drill.e2e.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
+import kotlin.reflect.*
 
-inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
+fun AdminTest.processFirstConnect(
+    psClass: KClass<out PluginStreams>,
     build: Build,
     ui: AdminUiChannels,
     ag: AgentWrap,
@@ -16,7 +18,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
     uiStreamDebug: Boolean,
     agentStreamDebug: Boolean,
     pluginMeta: PluginMetadata,
-    noinline connect: suspend PluginTestContext.(Any, Any) -> Unit,
+    connect: suspend PluginTestContext.(Any, Any) -> Unit,
     globLaunch: Job
 ) {
     engine.handleWebSocketConversation("/ws/plugins/${pluginMeta.id}?token=${globToken}") { uiIncoming, ut ->
@@ -27,7 +29,7 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
             .toTypedArray()
         ui.getAgent()
 
-        val st = PS::class.java.constructors.single().newInstance() as PluginStreams
+        val st = psClass.java.constructors.single().newInstance() as PluginStreams
         val pluginTestInfo = PluginTestContext(
             ag.id,
             pluginId,
@@ -46,15 +48,14 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
             "/agent/attach",
             wsRequestRequiredParams(ag)
         ) { inp, out ->
-            val apply =
-                Agent(
-                    engine.application,
-                    ag.id,
-                    inp,
-                    OutsSock(out, agentStreamDebug),
-                    agentStreamDebug
-                ).apply { queued() }
-            apply.getHeaders()
+            val agent = Agent(
+                engine.application,
+                ag.id,
+                inp,
+                OutsSock(out, agentStreamDebug),
+                agentStreamDebug
+            ).apply { queued() }
+            agent.getHeaders()
             asyncEngine.register(
                 ag.id, payload = AgentRegistrationDto(
                     name = "xz",
@@ -65,27 +66,25 @@ inline fun <reified PS : PluginStreams> AdminTest.processFirstConnect(
                     plugins = listOf(pluginMeta.id)
                 )
             )
-            apply.`get-set-packages-prefixes`()
+            agent.`get-set-packages-prefixes`()
             val bcelClasses = classes.map {
                 it.inputStream().use { fs -> ClassParser(fs, "").parse() }
             }
             val classMap: Map<String, ByteArray> = bcelClasses.associate {
                 it.className.replace(".", "/") to it.bytes
             }
-            callAsync(asyncEngine.context) {
-                loadPlugin(
-                    apply,
-                    ag,
-                    classMap,
-                    pluginId,
-                    agentStreamDebug,
-                    out,
-                    st,
-                    pluginTestInfo,
-                    pluginMeta,
-                    build
-                )
-            }
+            loadPlugin(
+                agent,
+                ag,
+                classMap,
+                pluginId,
+                agentStreamDebug,
+                out,
+                st,
+                pluginTestInfo,
+                pluginMeta,
+                build
+            )
             ui.getAgent()
             ui.getAgent()
             ui.getAgent()

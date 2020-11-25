@@ -11,7 +11,6 @@ import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.coroutines.sync.*
 import org.junit.jupiter.api.fail
 import java.io.*
 import java.util.*
@@ -19,7 +18,6 @@ import kotlin.time.*
 import kotlin.time.TimeSource.*
 
 abstract class AdminTest {
-    val mut = Mutex()
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
     val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 

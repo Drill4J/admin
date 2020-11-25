@@ -67,7 +67,6 @@ suspend fun AdminTest.loadPlugin(
         )
         val agentContext = AgentContext(SimpleLogging)
         val agentPart = declaredConstructor.newInstance(pluginId, agentContext) as AgentPart<*, *>
-        mut.lock()
         val spykAgentPart = spyk(agentPart, ag.id)
         if (spykAgentPart is Instrumenter) {
             every { spykAgentPart["retransform"]() } answers {
@@ -106,19 +105,11 @@ suspend fun AdminTest.loadPlugin(
             )
         }
 
-        st.subscribe(
+        st.initSubscriptions(
             AgentSubscription(
                 pluginTestInfo.agentId,
                 pluginTestInfo.buildVersionHash
-            ),
-            "new-destination"
-        )
-        st.subscribe(
-            AgentSubscription(
-                pluginTestInfo.agentId,
-                pluginTestInfo.buildVersionHash
-            ),
-            "/packagesChangesCount"
+            )
         )
 
         spykAgentPart.enabled = true
@@ -137,6 +128,5 @@ suspend fun AdminTest.loadPlugin(
         } ?: fail("can't find classes for build")
         @Suppress("UNCHECKED_CAST")
         build.test = first as Class<Tst>
-        mut.unlock()
     }
 }

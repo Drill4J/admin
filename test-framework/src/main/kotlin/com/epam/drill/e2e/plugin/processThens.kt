@@ -7,9 +7,11 @@ import com.epam.drill.e2e.*
 import kotlinx.coroutines.*
 import org.apache.bcel.classfile.*
 import java.io.*
+import kotlin.reflect.*
 import kotlin.test.*
 
-inline fun <reified X : PluginStreams> AdminTest.processThens(
+fun AdminTest.processThens(
+    psClass: KClass<out PluginStreams>,
     thens: MutableList<ThenAgentAsyncStruct>,
     pluginId: String,
     agentStreamDebug: Boolean,
@@ -24,7 +26,7 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
             .toList()
             .toTypedArray()
         engine.handleWebSocketConversation("/ws/plugins/${pluginMeta.id}?token=${globToken}") { uiIncoming, ut ->
-            val st = X::class.java.constructors.single().newInstance() as PluginStreams
+            val st = psClass.java.constructors.single().newInstance() as PluginStreams
             val pluginTestInfo = PluginTestContext(
                 ag.id,
                 pluginId,
@@ -41,16 +43,14 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 "/agent/attach",
                 wsRequestRequiredParams(ag)
             ) { inp, out ->
-                val apply =
-                    Agent(
-                        application,
-                        ag.id,
-                        inp,
-                        out,
-                        agentStreamDebug
-                    ).apply { queued() }
+                val apply = Agent(
+                    application,
+                    ag.id,
+                    inp,
+                    out,
+                    agentStreamDebug
+                ).apply { queued() }
                 apply.getHeaders()
-                //
                 apply.`get-set-packages-prefixes`()
                 val bcelClasses = classes.map {
                     it.inputStream().use { fs -> ClassParser(fs, "").parse() }
@@ -58,25 +58,25 @@ inline fun <reified X : PluginStreams> AdminTest.processThens(
                 val classMap: Map<String, ByteArray> = bcelClasses.associate {
                     it.className.replace(".", "/") to it.bytes
                 }
-                callAsync(asyncEngine.context) {
-                    loadPlugin(
-                        apply,
-                        ag,
-                        classMap,
-                        pluginId,
-                        agentStreamDebug,
-                        out,
-                        st,
-                        pluginTestInfo,
-                        pluginMeta,
-                        build,
-                        true
-                    )
+                loadPlugin(
+                    apply,
+                    ag,
+                    classMap,
+                    pluginId,
+                    agentStreamDebug,
+                    out,
+                    st,
+                    pluginTestInfo,
+                    pluginMeta,
+                    build,
+                    true
+                )
+                for (i in 1..3) {
+                    if (ui.getAgent()?.status == AgentStatus.BUSY) {
+                        break
+                    }
                 }
-                assertEquals(null, ui.getAgent()?.status)
                 assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
-                assertEquals(AgentStatus.BUSY, ui.getAgent()?.status)
-                ui.getAgent()
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)
                     delay(100)

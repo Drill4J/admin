@@ -72,7 +72,6 @@ tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions {
             jvmTarget = "1.8"
-            allWarningsAsErrors = true
             freeCompilerArgs = listOf(
                 "-Xuse-experimental=kotlin.Experimental",
                 "-Xuse-experimental=kotlin.time.ExperimentalTime",
