@@ -30,17 +30,18 @@ abstract class PluginStreams {
     lateinit var app: Application
     lateinit var info: PluginTestContext
     abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean = false)
-    abstract suspend fun subscribe(sinf: AgentSubscription, destination: String = "")
+    open suspend fun initSubscriptions(subscription: AgentSubscription) {}
+    abstract suspend fun subscribe(subscription: AgentSubscription, destination: String)
 }
 
 
 class AdminUiChannels {
-    val agentChannel = Channel<AgentInfoDto?>(3)
-    val buildsChannel = Channel<List<BuildSummaryDto>?>()
-    val agentsChannel = Channel<GroupedAgentsDto?>()
-    val allPluginsChannel = Channel<Set<PluginDto>?>()
-    val notificationsChannel = Channel<Set<Notification>?>()
-    val agentPluginInfoChannel = Channel<Set<PluginDto>?>()
+    val agentChannel = Channel<AgentInfoDto?>(Channel.UNLIMITED)
+    val buildsChannel = Channel<List<BuildSummaryDto>?>(Channel.UNLIMITED)
+    val agentsChannel = Channel<GroupedAgentsDto?>(Channel.UNLIMITED)
+    val allPluginsChannel = Channel<Set<PluginDto>?>(Channel.UNLIMITED)
+    val notificationsChannel = Channel<Set<Notification>?>(Channel.UNLIMITED)
+    val agentPluginInfoChannel = Channel<Set<PluginDto>?>(Channel.UNLIMITED)
 
     suspend fun getAgent() = agentChannel.receive()
     suspend fun getBuilds() = buildsChannel.receive()
@@ -109,21 +110,21 @@ class Agent(
     val outgoing: SendChannel<Frame>,
     val agentStreamDebug: Boolean
 ) {
-    private val headers = Channel<Int>()
-    private val `set-packages-prefixes` = Channel<String>()
-    private val `load-classes-data` = Channel<String>()
-    private val plugins = Channel<com.epam.drill.common.PluginBinary>()
-    private val pluginBinary = Channel<ByteArray>()
+    private val headers = Channel<Int>(Channel.UNLIMITED)
+    private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
+    private val `load-classes-data` = Channel<String>(Channel.UNLIMITED)
+    private val plugins = Channel<com.epam.drill.common.PluginBinary>(Channel.UNLIMITED)
+
     lateinit var plugin: AgentPart<*, *>
 
     suspend fun getHeaders() = headers.receive()
+
     suspend fun getLoadedPlugin(block: suspend (com.epam.drill.common.PluginMetadata, ByteArray) -> Unit) {
         val (meta, data) = plugins.receive()
         block(meta, data)
     }
 
     suspend fun loaded(pluginId: String) {
-        sendDelivered("/agent/load")
         sendDelivered("/agent/plugin/$pluginId/loaded")
     }
 
@@ -136,12 +137,7 @@ class Agent(
         )
     }
 
-    suspend fun getPluginBinary() = pluginBinary.receive()
-    suspend fun `get-set-packages-prefixes`(): String {
-        val receive = `set-packages-prefixes`.receive()
-        sendDelivered("/agent/set-packages-prefixes")
-        return receive
-    }
+    suspend fun `get-set-packages-prefixes`(): String = `set-packages-prefixes`.receive()
 
     suspend fun `get-load-classes-datas`(vararg classes: String = emptyArray()): String {
         val receive = `load-classes-data`.receive()
@@ -160,7 +156,7 @@ class Agent(
                     readBytes
                 )
             )
-        }.chunked(10).forEach {
+        }.chunked(32768).forEach {
             outgoing.send(
                 agentMessage(
                     MessageType.CLASSES_DATA, "", ProtoBuf.dump(
@@ -181,7 +177,7 @@ class Agent(
         outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
         classes.map { byteClass ->
             ProtoBuf.dump(com.epam.drill.common.ByteClass.serializer(), byteClass)
-        }.chunked(10).forEach {
+        }.chunked(32768).forEach {
             outgoing.send(
                 agentMessage(
                     MessageType.CLASSES_DATA, "", ProtoBuf.dump(
@@ -206,51 +202,51 @@ class Agent(
             val newInstance = cls.createInstance()
             (cls.annotations[1] as Topic).url to newInstance
         }
-        incoming.consumeEach {
-            when (it) {
+        incoming.consumeEach { frame ->
+            when (frame) {
                 is Frame.Binary -> {
-
-
-                    val load = ProtoBuf.load(Message.serializer(), it.readBytes())
+                    val load = ProtoBuf.load(Message.serializer(), frame.readBytes())
                     val url = load.destination
                     val content = load.data
-                    if (agentStreamDebug)
-                        println("AGENT $agentId IN: $load")
-
-                    app.launch {
-                        when (mapw[url]) {
-                            is Communication.Agent.SetPackagePrefixesEvent -> `set-packages-prefixes`.send(content.decodeToString())
-                            is Communication.Agent.LoadClassesDataEvent -> `load-classes-data`.send(content.decodeToString())
-                            is Communication.Agent.PluginLoadEvent -> plugins.send(
+                    if (agentStreamDebug) {
+                        println("Agent $agentId <<< url=$url, size=${content.size}")
+                    }
+                    when (mapw[url]) {
+                        is Communication.Agent.SetPackagePrefixesEvent -> {
+                            `set-packages-prefixes`.send(content.decodeToString())
+                            sendDelivered(url)
+                        }
+                        is Communication.Agent.LoadClassesDataEvent -> {
+                            `load-classes-data`.send(content.decodeToString())
+                        }
+                        is Communication.Agent.PluginLoadEvent -> {
+                            plugins.send(
                                 ProtoBuf.load(
                                     com.epam.drill.common.PluginBinary.serializer(),
                                     content
                                 )
                             )
-                            is Communication.Agent.ChangeHeaderNameEvent -> {
-                                headers.send(0)
-                            }
-
-                            is Communication.Plugin.DispatchEvent -> {
-                                plugin.doRawAction(
-                                    (ProtoBuf.load(
-                                        com.epam.drill.common.PluginAction.serializer(),
-                                        content
-                                    )).message
-                                )
-                                sendDelivered(url)
-                            }
-                            is Communication.Plugin.ToggleEvent -> sendDelivered(url)
-                            is Communication.Plugin.UnloadEvent -> {
-                            }
-                            is Communication.Plugin.ResetEvent -> {
-                            }
-                            else -> {
-                                sendDelivered(url)
-                                TODO("$url is not implemented yet")
-                            }
+                            sendDelivered(url)
                         }
+                        is Communication.Agent.ChangeHeaderNameEvent -> {
+                            headers.send(0)
+                            sendDelivered(url)
+                        }
+
+                        is Communication.Plugin.DispatchEvent -> {
+                            plugin.doRawAction(
+                                (ProtoBuf.load(
+                                    com.epam.drill.common.PluginAction.serializer(),
+                                    content
+                                )).message
+                            )
+                            sendDelivered(url)
+                        }
+                        else -> sendDelivered(url)
                     }
+                }
+                else -> {
+                    println("!!!$frame not handled!")
                 }
             }
         }

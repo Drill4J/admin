@@ -12,8 +12,4 @@ subprojects {
         maven(url = "http://oss.jfrog.org/oss-release-local")
         jcenter()
     }
-
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions.allWarningsAsErrors = true
-    }
 }

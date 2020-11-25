@@ -23,7 +23,7 @@ abstract class E2EPluginTest : AdminTest() {
     ) = runBlocking {
         val context = SupervisorJob()
         val timeoutJob = createTimeoutJob(timeout.seconds, context)
-        pluginRun(block, uiStreamDebug, agentStreamDebug, context)
+        pluginRun(X::class, block, uiStreamDebug, agentStreamDebug, context)
         timeoutJob.cancel()
     }
 
