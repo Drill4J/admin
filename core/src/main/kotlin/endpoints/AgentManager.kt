@@ -192,9 +192,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         info.sync()
     }
 
-    internal suspend fun AgentInfo.removeInstance(instanceId: String) {
-        _instances.update { it.put(id, instanceIds(id, it) - instanceId) }
-        if (instanceIds(id).isEmpty()) {
+    internal suspend fun AgentInfo.removeInstance(instanceId: String, session: AgentWsSession) {
+        val instances = _instances.updateAndGet {
+            val instanceIds = it.getOrDefault(id, persistentHashMapOf())
+            if (instanceIds[instanceId] === session) {
+                it.put(id, instanceIds - instanceId)
+            } else it
+        }.getOrDefault(id, persistentHashMapOf())
+        if (instances.isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
             agentStorage.handleRemove(id)
         } else {
@@ -378,10 +383,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun AgentInfo.sync() {
         if (status != AgentStatus.NOT_REGISTERED) {
             wrapBusy(this) {
-                logger.debug { "Agent $id: starting sync..." }
+                val instanceIds = instanceIds(id)
+                logger.debug { "Agent $id: starting sync for instances ${instanceIds.keys}..." }
                 val info = this
                 val duration = measureTime {
-                    agentSessions(id).applyEach {
+                    instanceIds.values.applyEach {
                         val settings = adminData(id).settings
                         configurePackages(settings.packages)
                         sendPlugins(info)
