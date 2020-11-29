@@ -20,7 +20,6 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
-import com.epam.kodux.*
 import io.ktor.application.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -39,10 +38,8 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { app ->
-        bind<StoreManager>() with eagerSingleton {
-            StoreManager(drillWorkDir.resolve("agents")).also { app.onStop { it.close() } }
-        }
         bind<CommonStore>() with eagerSingleton { CommonStore(drillWorkDir).also { app.closeOnStop(it) } }
+        bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }

@@ -4,6 +4,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
 import com.epam.kodux.*
@@ -11,24 +12,23 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class LoggingHandler(override val kodein: Kodein) : KodeinAware {
-    private val store by instance<StoreManager>()
+    private val stores by instance<AgentStores>()
     private val agentManager by instance<AgentManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
         agentManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
-            val agentStore = store.agentStore(agentId)
-            agentStore.store(AgentLoggingConfig(agentId, loggingConfig))
+            stores[agentId].store(AgentLoggingConfig(agentId, loggingConfig))
         }
     }
 
     suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
-        store.getConfig(agentId)?.apply {
+        stores[agentId].loadConfig(agentId)?.apply {
             agentSession?.sendConfig(config)
         }
     }
 
-    private suspend fun StoreManager.getConfig(agentId: String) = agentStore(agentId).run {
+    private suspend fun StoreClient.loadConfig(agentId: String) = run {
         findById<AgentLoggingConfig>(agentId)
     }
 }

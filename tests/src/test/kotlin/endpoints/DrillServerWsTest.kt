@@ -69,16 +69,12 @@ internal class DrillServerWsTest {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {
-                    bind<StoreManager>() with eagerSingleton {
-                        StoreManager(baseLocation.resolve("agent")).also {
-                            app.onStop { it.close() }
-                        }
-                    }
                     bind<CommonStore>() with eagerSingleton {
                         CommonStore(baseLocation.resolve("common")).also {
                             app.closeOnStop(it)
                         }
                     }
+                    bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { sessionStorage }

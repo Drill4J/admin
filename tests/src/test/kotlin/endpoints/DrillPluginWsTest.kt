@@ -64,16 +64,12 @@ class PluginWsTest {
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
-                    bind<StoreManager>() with eagerSingleton {
-                        StoreManager(baseLocation.resolve("agent")).also {
-                            app.onStop { it.close() }
-                        }
-                    }
                     bind<CommonStore>() with eagerSingleton {
                         CommonStore(baseLocation.resolve("common")).also {
                             app.closeOnStop(it)
                         }
                     }
+                    bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }

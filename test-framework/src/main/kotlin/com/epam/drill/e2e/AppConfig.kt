@@ -6,7 +6,6 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.store.*
-import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -20,7 +19,7 @@ import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
-    lateinit var storeManager: StoreManager
+    lateinit var storeManager: AgentStores
     lateinit var commonStore: CommonStore
 
 
@@ -60,17 +59,17 @@ class AppConfig(var projectDir: File) {
 
             withKModule {
                 kodeinModule("addition") { app ->
-                    bind<StoreManager>() with eagerSingleton {
-                        storeManager = StoreManager(baseLocation.resolve("agent")).also {
-                            app.onStop { it.close() }
-                        }
-                        storeManager
-                    }
                     bind<CommonStore>() with eagerSingleton {
-                        commonStore = CommonStore(baseLocation.resolve("common")).also {
+                        CommonStore(baseLocation).also {
                             app.closeOnStop(it)
+                            commonStore = it
                         }
-                        commonStore
+                    }
+                    bind<AgentStores>() with eagerSingleton {
+                        AgentStores(baseLocation).also {
+                            app.closeOnStop(it)
+                            storeManager = it
+                        }
                     }
                     bind<PluginStores>() with eagerSingleton {
                         PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }

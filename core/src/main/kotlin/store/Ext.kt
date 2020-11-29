@@ -13,7 +13,3 @@ fun StoreClient.closeStore() {
         }
     }
 }
-
-fun StoreManager.close() {
-    storages.values.forEach(StoreClient::closeStore)
-}

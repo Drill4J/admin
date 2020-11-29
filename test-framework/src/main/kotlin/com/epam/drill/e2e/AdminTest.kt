@@ -24,7 +24,7 @@ abstract class AdminTest {
     lateinit var asyncEngine: AsyncTestAppEngine
     val engine: TestApplicationEngine get() = asyncEngine.engine
     lateinit var globToken: String
-    lateinit var storeManager: StoreManager
+    lateinit var storeManager: AgentStores
     lateinit var commonStore: CommonStore
 
     fun uiWatcher(bl: suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit): AdminTest {

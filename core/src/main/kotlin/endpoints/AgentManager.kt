@@ -42,7 +42,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
     private val commonStore by instance<CommonStore>()
-    private val agentStores by instance<StoreManager>()
+    private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
     private val serviceGroupManager by instance<ServiceGroupManager>()
     private val agentDataCache by instance<AgentDataCache>()
@@ -382,27 +382,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentInfo.sync() {
         if (status != AgentStatus.NOT_REGISTERED) {
-            wrapBusy(this) {
-                val instanceIds = instanceIds(id)
-                logger.debug { "Agent $id: starting sync for instances ${instanceIds.keys}..." }
-                val info = this
-                val duration = measureTime {
-                    instanceIds.values.applyEach {
-                        val settings = adminData(id).settings
-                        configurePackages(settings.packages)
-                        sendPlugins(info)
-                        updateSessionHeader(settings.sessionIdHeaderName)
-                        triggerClassesSending()
-                        enableAllPlugins(id)
+            val instanceIds = instanceIds(id)
+            if (instanceIds.any()) {
+                wrapBusy(this) {
+                    logger.debug { "Agent $id: starting sync for instances ${instanceIds.keys}..." }
+                    val info = this
+                    val duration = measureTime {
+                        instanceIds.values.applyEach {
+                            val settings = adminData(id).settings
+                            configurePackages(settings.packages)
+                            sendPlugins(info)
+                            updateSessionHeader(settings.sessionIdHeaderName)
+                            triggerClassesSending()
+                            enableAllPlugins(id)
+                        }
                     }
+                    logger.info { "Agent $id: sync took: $duration." }
+                    topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
+                    logger.debug { "Agent $id: sync finished." }
                 }
-                logger.info { "Agent $id: sync took: $duration." }
-                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
-                logger.debug { "Agent $id: sync finished." }
-            }
-        } else {
-            logger.warn { "Agent $id: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
-        }
+            } else logger.error { "Agent $id: no instances to sync!" }
+        } else logger.warn { "Agent $id: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
     }
 
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {

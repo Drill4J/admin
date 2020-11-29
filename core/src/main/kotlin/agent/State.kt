@@ -3,6 +3,7 @@ package com.epam.drill.admin.agent
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.kodux.*
@@ -49,7 +50,7 @@ internal class AgentDataCache {
 
 internal class AgentData(
     val agentId: String,
-    agentStores: StoreManager,
+    agentStores: AgentStores,
     initialSettings: SystemSettingsDto
 ) : AdminData {
     companion object {
@@ -62,7 +63,7 @@ internal class AgentData(
 
     val settings: SystemSettingsDto get() = _settings.value
 
-    private val storeClient by lazy { agentStores.agentStore(agentId) }
+    private val storeClient by lazy { agentStores[agentId] }
 
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
