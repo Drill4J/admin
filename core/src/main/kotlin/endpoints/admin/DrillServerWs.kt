@@ -21,7 +21,7 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val topicResolver by instance<TopicResolver>()
+    private val wsTopic by instance<WsTopic>()
 
     private val sessionStorage by instance<SessionStorage>()
 
@@ -37,22 +37,25 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
                         val event = WsReceiveMessage.serializer() parse json
                         logger.debug { "Receiving event $event" }
 
+                        val destination = event.destination
                         when (event) {
                             is Subscribe -> {
-                                sessionStorage.subscribe(event.destination, session)
-                                topicResolver.sendToAllSubscribed(event.destination)
-                                logger.debug { "${event.destination} is subscribed" }
+                                sessionStorage.subscribe(destination, session)
+                                val message = wsTopic.resolve(destination)
+                                val messageToSend = message.toWsMessageAsString(destination, WsMessageType.MESSAGE)
+                                session.send(messageToSend)
+                                logger.debug { "$destination is subscribed" }
                             }
 
                             is Unsubscribe -> {
-                                if (sessionStorage.unsubscribe(event.destination, session)) {
-                                    logger.debug { "${event.destination} is unsubscribed" }
+                                if (sessionStorage.unsubscribe(destination, session)) {
+                                    logger.debug { "$destination is unsubscribed" }
                                 }
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    when(e) {
+                    when (e) {
                         is CancellationException -> logger.debug {
                             "$socketName: ${session.toDebugString()} was cancelled."
                         }
