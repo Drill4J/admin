@@ -287,6 +287,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                             launch {
                                 session.sendPlugin(plugin, updatedInfo).await()
                                 session.enablePlugin(pluginId, agentId).await()
+                                topicResolver.sendToAllSubscribed(WsRoutes.AgentPlugins(id))
                             }
                         }
                     }
