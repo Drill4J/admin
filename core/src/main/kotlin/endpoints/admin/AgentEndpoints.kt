@@ -6,7 +6,6 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.servicegroup.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -14,17 +13,15 @@ import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
+    private val logger = KotlinLogging.logger {}
+
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
-    private val serviceGroupManager by instance<ServiceGroupManager>()
-
-    private val logger = KotlinLogging.logger {}
 
     init {
         app.routing {
@@ -105,63 +102,6 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val meta = "Register agent in defined service group"
-                    .examples(
-                        example(
-                            "agentRegistrationInfo",
-                            agentRegistrationExample
-                        )
-                    )
-                patch<ApiRoot.ServiceGroup, AgentRegistrationDto>(meta) { location, regInfo ->
-                    val serviceGroupId = location.serviceGroupId
-                    logger.debug { "Service group $serviceGroupId: registering agents..." }
-                    val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
-                    val agentInfos: List<AgentInfo> = serviceGroup.map { it.agent }
-                    val (status: HttpStatusCode, message: Any) = if (serviceGroup.isNotEmpty()) {
-                        serviceGroupManager[serviceGroupId]?.let {
-                            serviceGroupManager.updateSystemSettings(it, regInfo.systemSettings)
-                        }
-                        val registeredAgentIds: List<String> = agentInfos.register(regInfo)
-                        if (registeredAgentIds.count() < agentInfos.count()) {
-                            val agentIds = agentInfos.map { it.id }
-                            logger.error {
-                                """Service group $serviceGroupId: not all agents registered successfully.
-                                    |Failed agents: ${agentIds - registeredAgentIds}.
-                                """.trimMargin()
-                            }
-                        } else logger.debug { "Service group $serviceGroupId: registered agents $registeredAgentIds." }
-                        HttpStatusCode.OK to "$registeredAgentIds registered"
-                    } else "No agents found for service group $serviceGroupId".let {
-                        logger.error(it)
-                        HttpStatusCode.InternalServerError to it
-                    }
-                    call.respond(status, message)
-                }
-            }
-
-            authenticate {
-                val meta = "Register all"
-                    .examples(
-                        example(
-                            "agentRegistrationInfo",
-                            agentRegistrationExample
-                        )
-                    )
-                post<ApiRoot.Agents, AgentRegistrationDto>(meta) { _, regInfo ->
-                    logger.debug { "Registering all agents" }
-                    val infos = agentManager.allEntries().map { it.agent }
-                    val registeredIds = infos.register(regInfo)
-                    if (registeredIds.count() < infos.count()) {
-                        val ids = infos.map { it.id }
-                        logger.error {
-                            "Not all agents registered successfully. Failed agents: ${ids - registeredIds}."
-                        }
-                    }
-                    call.respond(HttpStatusCode.OK, "$registeredIds registered")
-                }
-            }
-
-            authenticate {
                 val meta = "Unregister agent"
                     .responds(
                         ok<Unit>(), badRequest()
@@ -184,19 +124,4 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
         }
     }
-
-    private suspend fun List<AgentInfo>.register(
-        regInfo: AgentRegistrationDto
-    ): List<String> = supervisorScope {
-        map { info ->
-            val agentId = info.id
-            val handler = CoroutineExceptionHandler { _, e ->
-                logger.error(e) { "Error registering agent $agentId" }
-            }
-            async(handler) {
-                agentManager.register(info.id, regInfo.copy(name = agentId, description = agentId))
-                agentId
-            }
-        }
-    }.filterNot { it.isCancelled }.map { it.await() }
 }

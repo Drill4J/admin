@@ -5,13 +5,13 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 
-internal fun Iterable<AgentInfo>.byPluginId(
-    pluginId: String
-): List<AgentInfo> = filter { pluginId in it.plugins }
+internal fun Iterable<AgentInfo>.mapToDto(
+    agentManager: AgentManager
+): List<AgentInfoDto> = map { it.toDto(agentManager) }
 
-internal fun Iterable<AgentInfo>.mapToDto(agentManager: AgentManager) = map { it.toDto(agentManager) }
-
-internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map(AgentEntry::agent).mapToDto(this)
+internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { entry ->
+    entry.agent.toDto(this)
+}
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
@@ -44,14 +44,15 @@ internal fun AgentInfo.toDto(
     agentManager: AgentManager
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
+    val instanceIds = agentManager.instanceIds(id).keys
     AgentInfoDto(
         id = id,
         serviceGroup = serviceGroup,
-        instanceIds = agentManager.instanceIds(id).keys,
+        instanceIds = instanceIds,
         name = name,
         description = description,
         environment = environment,
-        status = status,
+        status = status.takeIf { instanceIds.any() } ?: AgentStatus.OFFLINE,
         buildVersion = buildVersion,
         adminUrl = adminUrl,
         ipAddress = ipAddress,

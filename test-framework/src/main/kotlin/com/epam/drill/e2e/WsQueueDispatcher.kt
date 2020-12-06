@@ -2,6 +2,7 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
@@ -10,7 +11,6 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*

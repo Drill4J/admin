@@ -15,7 +15,6 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
@@ -55,13 +54,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     init {
         runBlocking {
-            val prepared = commonStore.client.getAll<PreparedAgentData>()
-            val agentEntryMap = prepared.associate { data ->
+            val store = commonStore.client
+            val registered = store.getAll<AgentInfo>()
+            val prepared = store.getAll<PreparedAgentData>().map { data ->
                 agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
-                data.id to AgentEntry(data.dto.toAgentInfo(plugins))
+                data.dto.toAgentInfo(plugins)
             }
-            if (agentEntryMap.any()) {
-                agentStorage.init(agentEntryMap)
+            (registered + prepared).takeIf { it.any() }?.let { agentInfos ->
+                val entryMap = agentInfos.associate { it.id to AgentEntry(it) }
+                agentStorage.init(entryMap)
             }
         }
     }
@@ -169,8 +170,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun addInstanceId(agentId: String, instanceId: String, session: AgentWsSession) {
-        _instances.update { it.put(agentId, instanceIds(agentId, it) + (instanceId to session)) }
+    private fun addInstanceId(
+        agentId: String,
+        instanceId: String,
+        session: AgentWsSession
+    ) {
+        _instances.update {
+            val existing = it[agentId] ?: persistentHashMapOf()
+            it.put(agentId, existing + (instanceId to session))
+        }
     }
 
     suspend fun register(
@@ -202,6 +210,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (instances.isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
             agentStorage.handleRemove(id)
+            agentStorage.update()
         } else {
             notifySingleAgent(id)
             logger.info { "Instance '$instanceId' of Agent '${id}' was disconnected" }
@@ -209,11 +218,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     fun instanceIds(
-        agentId: String,
-        it: PersistentMap<String, PersistentMap<String, AgentWsSession>> = _instances.value
-    ): PersistentMap<String, AgentWsSession> {
-        return it[agentId].orEmpty().toPersistentMap()
-    }
+        agentId: String
+    ): PersistentMap<String, AgentWsSession> = _instances.value[agentId] ?: persistentHashMapOf()
 
     internal suspend fun updateAgent(
         agentId: String,
