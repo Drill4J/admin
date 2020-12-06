@@ -1,8 +1,8 @@
 package com.epam.drill.admin.e2e.plugin
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.builds.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
@@ -15,14 +15,14 @@ class PluginTest : E2EPluginTest() {
     @Test
     fun `reconnect - same build`() {
         createSimpleAppWithPlugin<PTestStream> {
-            connectAgent<Build1> { plugUi, build ->
+            connectAgent<Build1> { _, build ->
                 println(build)
                 pluginAction("myActionForAllAgents") { status, content ->
                     println(content)
                     status shouldBe HttpStatusCode.OK
                 }.join()
             }.reconnect<Build1> { plugUi, build ->
-                println("Reconnected agentid=${plugUi.info.agentId}, buildVersion=${build.version}")
+                println("Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}")
             }
         }
     }
@@ -33,7 +33,7 @@ class PluginTest : E2EPluginTest() {
             uiStreamDebug = true,
             agentStreamDebug = true
         ) {
-            connectAgent<Build1> { plugUi, build ->
+            connectAgent<Build1> { plugUi, _ ->
                 plugUi.processedData.receive()
                 pluginAction("myActionForAllAgents") { status, content ->
                     println(content)
@@ -41,7 +41,7 @@ class PluginTest : E2EPluginTest() {
                 }.join()
             }.reconnect<Build2> { plugUi, build ->
                 plugUi.processedData.receive()
-                println("Reconnected agentid=${plugUi.info.agentId}, buildVersion=${build.version}")
+                println("Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}")
             }
         }
     }

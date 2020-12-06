@@ -33,9 +33,18 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
         runBlocking {
             agentManager.agentStorage.onUpdate += {
-                val dest = app.toLocation(WsRoot.Agents())
-                sessionStorage.sendTo(dest, agentManager.all())
+                WsRoot.Agents().send(agentManager.all())
+                WsRoot.Groups().send(serviceGroupManager.all())
             }
+            agentManager.agentStorage.onAdd += { agentId, agentEntry ->
+                WsRoot.Agent(agentId).send(agentEntry.agent.toDto(agentManager))
+            }
+            agentManager.agentStorage.onRemove += { agentId ->
+                agentManager[agentId]?.run {
+                    WsRoot.Agent(agentId).send(toDto(agentManager))
+                }
+            }
+
             agentManager.agentStorage.onUpdate += {
                 val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
@@ -59,7 +68,6 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         destination,
                         v.agent.toDto(agentManager)
                     )
-
                 }
             }
 
@@ -71,7 +79,15 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
 
             wsTopic {
+                topic<WsRoot.Version> { adminVersionDto }
+
                 topic<WsRoot.Agents> { agentManager.all() }
+
+                topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }
+
+                topic<WsRoot.Groups> { serviceGroupManager.all() }
+
+                topic<WsRoot.Group> { serviceGroupManager[it.groupId] }
 
                 topic<WsRoutes.Agents> {
                     serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
@@ -112,5 +128,10 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             }
 
         }
+    }
+
+    private suspend fun Any.send(message: Any) {
+        val destination = app.toLocation(this)
+        sessionStorage.sendTo(destination, message)
     }
 }

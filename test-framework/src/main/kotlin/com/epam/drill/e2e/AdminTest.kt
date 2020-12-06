@@ -2,10 +2,10 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
-import com.epam.kodux.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
