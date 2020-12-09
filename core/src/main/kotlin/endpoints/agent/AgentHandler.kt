@@ -83,7 +83,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 
                         when (message.type) {
                             MessageType.PLUGIN_DATA -> {
-                                pd.processPluginData(message.text, agentInfo)
+                                pd.processPluginData(agentInfo, instanceId, message.text)
                             }
 
                             MessageType.MESSAGE_DELIVERED -> {

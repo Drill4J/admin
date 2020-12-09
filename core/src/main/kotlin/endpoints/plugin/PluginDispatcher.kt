@@ -36,17 +36,20 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val agentManager by instance<AgentManager>()
     private val logger = KotlinLogging.logger {}
 
-    suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {
+    suspend fun processPluginData(
+        agentInfo: AgentInfo,
+        instanceId: String,
+        pluginData: String
+    ) {
         val message = MessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
-                processData(message.drillMessage)
+                processData(instanceId, message.drillMessage.content)
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
-
 
     init {
         app.routing {
