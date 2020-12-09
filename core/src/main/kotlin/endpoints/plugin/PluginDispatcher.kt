@@ -39,11 +39,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     suspend fun processPluginData(pluginData: String, agentInfo: AgentInfo) {
         val message = MessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
-        plugins[pluginId]?.let { plugin: Plugin ->
+        plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
-            val pluginInstance: AdminPluginPart<*> = agentManager.ensurePluginInstance(agentEntry, plugin)
-            pluginInstance.processData(message.drillMessage)
-
+            agentEntry[pluginId]?.run {
+                processData(message.drillMessage)
+            } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
@@ -68,12 +68,15 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
                             if (agentEntry.agent.status == AgentStatus.ONLINE) {
-                                val adminPart: AdminPluginPart<*> = agentManager.ensurePluginInstance(this, plugin)
-                                val result = adminPart.processSingleAction(action)
-                                val statusResponse = result.toStatusResponse()
-                                HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                this[pluginId]?.let { adminPart ->
+                                    val result = adminPart.processSingleAction(action)
+                                    val statusResponse = result.toStatusResponse()
+                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                } ?: HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
+                                )
                             } else HttpStatusCode.BadRequest to ErrorResponse(
-                                message = "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
                             )
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
@@ -97,16 +100,14 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val serviceGroupId = pluginParent.parent.parent.serviceGroupId
                     val agents = agentManager.serviceGroup(serviceGroupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
-                    val plugin: Plugin? = plugins[pluginId]
-                    val (statusCode, response) = if (plugin == null)
-                        HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    else
+                    val (statusCode, response) = plugins[pluginId]?.let {
                         processMultipleActions(
                             agents,
                             pluginId,
                             action
                         )
-                    logger.info { "$response" }
+                    } ?: HttpStatusCode.NotFound to ErrorResponse("Plugin $pluginId not found.")
+                    logger.trace { "$response" }
                     call.respond(statusCode, response)
                 }
             }

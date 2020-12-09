@@ -60,8 +60,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
                 data.dto.toAgentInfo(plugins)
             }
-            (registered + prepared).takeIf { it.any() }?.let { agentInfos ->
-                val entryMap = agentInfos.associate { it.id to AgentEntry(it) }
+            val registeredMap = registered.associate { agentInfo ->
+                val entry = AgentEntry(agentInfo)
+                adminData(agentInfo.id).initBuild(agentInfo.buildVersion)
+                agentInfo.plugins.initPlugins(entry)
+                agentInfo.id to entry
+            }
+            val preparedMap = prepared.filter { it.id !in registeredMap }.associate {
+                it.id to AgentEntry(it)
+            }
+            (registeredMap + preparedMap).takeIf { it.any() }?.let { entryMap ->
                 agentStorage.init(entryMap)
             }
         }
@@ -137,7 +145,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             agentStorage.put(id, entry)?.also { oldEntry ->
                 oldEntry.close()
             }
-            existingInfo?.initPlugins(entry, isNewBuild)
+            if (isNewBuild) {
+                existingInfo?.plugins?.initPlugins(entry)
+            }
             app.launch {
                 existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
                 if (isNewBuild && currentInfo != null) {
@@ -151,22 +161,18 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private suspend fun AgentInfo.initPlugins(
-        agentEntry: AgentEntry,
-        isNewBuild: Boolean
+    private suspend fun Collection<String>.initPlugins(
+        agentEntry: AgentEntry
     ) {
-        val enabledPlugins = plugins.mapNotNull { this@AgentManager.plugins[it]?.pluginBean }
-        for (pluginMeta in enabledPlugins) {
-            val pluginId = pluginMeta.id
-            val plugin = this@AgentManager.plugins[pluginId]
-            if (plugin != null) {
-                if (isNewBuild) {
-                    ensurePluginInstance(agentEntry, plugin)
-                    logger.info { "Instance of plugin=$pluginId loaded from db, buildVersion=$buildVersion" }
-                } else {
-                    logger.info { "Instance of plugin=$pluginId not loaded (no data), buildVersion=$buildVersion" }
-                }
-            } else logger.error { "plugin=$pluginId not loaded!" }
+        val agentInfo = agentEntry.agent
+        val logPrefix by lazy(LazyThreadSafetyMode.NONE) {
+            "Agent(id=${agentInfo.id}, buildVersion=${agentInfo.id}):"
+        }
+        forEach { pluginId ->
+            plugins[pluginId]?.let { plugin ->
+                ensurePluginInstance(agentEntry, plugin)
+                logger.info { "$logPrefix initialized plugin $pluginId" }
+            } ?: logger.error { "$logPrefix plugin $pluginId not loaded!" }
         }
     }
 
@@ -486,7 +492,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         it.agent.serviceGroup == serviceGroupId
     }
 
-    internal suspend fun ensurePluginInstance(
+    private suspend fun ensurePluginInstance(
         agentEntry: AgentEntry,
         plugin: Plugin
     ): AdminPluginPart<*> {
