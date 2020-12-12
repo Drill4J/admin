@@ -4,7 +4,6 @@ package com.epam.drill.admin.plugins.coverage
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.drill.plugin.api.message.*
 import com.epam.kodux.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.*
@@ -16,22 +15,18 @@ data class Stuff(val s: String)
 class TestAdminPart(
     adminData: AdminData,
     sender: Sender,
-    storeClient: StoreClient,
+    @Suppress("UNUSED_PARAMETER") storeClient: StoreClient,
     agentInfo: AgentInfo,
     id: String
-) : AdminPluginPart<String>(adminData, sender, storeClient, agentInfo, id) {
+) : AdminPluginPart<String>(adminData, sender, agentInfo, id) {
 
     var packagesChangesCount = 0
 
     val sendContext = AgentSendContext(agentInfo.id, agentInfo.buildVersion)
 
-    override suspend fun processData(dm: DrillMessage): Any {
+    override suspend fun processData(instanceId: String, content: String): Any {
         sender.send(sendContext, "/processed-data", listOf("xx"))
         return ""
-    }
-
-    override suspend fun dropData() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override val serDe: SerDe<String> = SerDe(String.serializer())
