@@ -8,6 +8,7 @@ import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import java.io.*
+import java.lang.reflect.*
 
 class AgentEntry(agent: AgentInfo) {
 
@@ -49,20 +50,22 @@ internal fun Plugin.createInstance(
     sender: Sender,
     store: StoreClient
 ): AdminPluginPart<*> {
-    val constructor = pluginClass.getConstructor(
-        AdminData::class.java,
-        Sender::class.java,
-        StoreClient::class.java,
-        CommonAgentInfo::class.java,
-        String::class.java
-    )
-    return constructor.newInstance(
-        data,
-        sender,
-        store,
-        agentInfo.toCommonInfo(),
-        pluginBean.id
-    )
+    @Suppress("UNCHECKED_CAST")
+    val constructor = pluginClass.constructors.run {
+        first() as Constructor<out AdminPluginPart<*>>
+    }
+    val classToArg: (Class<*>) -> Any = {
+        when (it) {
+            String::class.java -> pluginBean.id
+            CommonAgentInfo::class.java -> agentInfo.toCommonInfo()
+            AdminData::class.java -> data
+            Sender::class.java -> sender
+            StoreClient::class.java -> store
+            else -> error("${pluginClass.name}: unsupported constructor parameter type $it.")
+        }
+    }
+    val args: Array<Any> = constructor.parameterTypes.map(classToArg).toTypedArray()
+    return constructor.newInstance(*args)
 }
 
 internal suspend fun AgentEntry.applyPackagesChanges() {
