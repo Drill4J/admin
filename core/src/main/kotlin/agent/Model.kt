@@ -5,8 +5,6 @@ import com.epam.kodux.*
 import kotlinx.serialization.*
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
-typealias CommonAgentType = com.epam.drill.common.AgentType
-typealias CommonAgentStatus = com.epam.drill.common.AgentStatus
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
 
 @Serializable

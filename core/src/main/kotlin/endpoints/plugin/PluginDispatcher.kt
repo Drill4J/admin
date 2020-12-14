@@ -253,7 +253,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private suspend fun AdminPluginPart<*>.processSingleAction(
         action: String
     ): Any = doRawAction(action).also { result ->
-        (result as? ActionResult)?.agentAction?.stringify(serDe)?.let { agentActionStr ->
+        (result as? ActionResult)?.agentAction?.stringify(json)?.let { agentActionStr ->
             val agentAction = com.epam.drill.common.PluginAction(id, agentActionStr)
             agentManager.agentSessions(agentInfo.id).map {
                 it.sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)

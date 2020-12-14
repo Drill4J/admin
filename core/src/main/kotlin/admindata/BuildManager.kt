@@ -2,17 +2,13 @@ package com.epam.drill.admin.admindata
 
 import com.epam.drill.admin.build.*
 import com.epam.drill.common.*
-import com.epam.drill.plugin.api.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 
 class AgentBuildManager(
     val agentId: String,
     builds: Iterable<AgentBuild> = emptyList()
-) : BuildManager {
-
-    override val builds: Collection<BuildInfo>
-        get() = buildMap.values.map { it.info }
+) {
 
     internal val agentBuilds get() = buildMap.values
 
@@ -25,7 +21,7 @@ class AgentBuildManager(
         builds.associateBy { it.info.version }.toPersistentMap()
     )
 
-    override operator fun get(version: String) = buildMap[version]?.info
+    operator fun get(version: String) = buildMap[version]?.info
 
     internal fun init(version: String) = _buildMap.updateAndGet { map ->
         if (version !in map) {

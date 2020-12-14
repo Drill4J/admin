@@ -57,7 +57,7 @@ internal class AgentData(
         private val logger = KotlinLogging.logger {}
     }
 
-    override val buildManager get() = _buildManager.value
+    val buildManager get() = _buildManager.value
 
     override val classBytes: Map<String, ByteArray> get() = _classBytes.value
 
@@ -72,7 +72,7 @@ internal class AgentData(
     private val _settings = atomic(initialSettings)
 
     suspend fun initBuild(version: String): Boolean {
-        if (buildManager.builds.none()) {
+        if (buildManager.agentBuilds.none()) {
             loadStoredData()
         }
         return (buildManager[version] == null).also {

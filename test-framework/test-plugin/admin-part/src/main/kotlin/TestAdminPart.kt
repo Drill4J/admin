@@ -5,11 +5,6 @@ import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.*
-
-@Serializable
-data class Stuff(val s: String)
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class TestAdminPart(
@@ -18,7 +13,12 @@ class TestAdminPart(
     @Suppress("UNUSED_PARAMETER") storeClient: StoreClient,
     agentInfo: AgentInfo,
     id: String
-) : AdminPluginPart<String>(adminData, sender, agentInfo, id) {
+) : AdminPluginPart<String>(
+    id = id,
+    agentInfo = agentInfo,
+    adminData = adminData,
+    sender = sender
+) {
 
     var packagesChangesCount = 0
 
@@ -28,8 +28,6 @@ class TestAdminPart(
         sender.send(sendContext, "/processed-data", listOf("xx"))
         return ""
     }
-
-    override val serDe: SerDe<String> = SerDe(String.serializer())
 
     override suspend fun doAction(action: String): Any {
         return when (action) {
@@ -43,6 +41,8 @@ class TestAdminPart(
             }
         }
     }
+
+    override fun parseAction(rawAction: String): String = rawAction
 
     override suspend fun applyPackagesChanges() {
         packagesChangesCount++

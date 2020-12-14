@@ -66,14 +66,13 @@ internal fun AgentInfo.toDto(
 
 internal fun AgentInfo.toCommonInfo() = CommonAgentInfo(
     id = id,
-    agentType = CommonAgentType.valueOf(agentType.name),
+    agentType = agentType.name,
     agentVersion = agentVersion,
     serviceGroup = serviceGroup,
     buildVersion = buildVersion,
     name = name,
     environment = environment,
-    description = description,
-    status = CommonAgentStatus.ONLINE
+    description = description
 )
 
 internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
