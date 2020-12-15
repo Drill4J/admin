@@ -145,9 +145,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             agentStorage.put(id, entry)?.also { oldEntry ->
                 oldEntry.close()
             }
-            if (isNewBuild) {
-                existingInfo?.plugins?.initPlugins(entry)
-            }
+            existingInfo?.plugins?.initPlugins(entry)
             app.launch {
                 existingInfo?.takeIf { needSync }?.sync() // sync only existing info!
                 if (isNewBuild && currentInfo != null) {
