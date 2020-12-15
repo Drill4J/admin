@@ -21,6 +21,7 @@ internal fun AgentGroup.toDto(
 internal fun ServiceGroup.toDto() = ServiceGroupDto(
     id = id,
     name = name,
+    description = description,
     environment = environment,
     systemSettings = systemSettings
 )
@@ -28,6 +29,7 @@ internal fun ServiceGroup.toDto() = ServiceGroupDto(
 internal fun ServiceGroupDto.toModel() = ServiceGroup(
     id = id,
     name = name,
+    description = description,
     environment = environment,
     systemSettings = systemSettings
 )
