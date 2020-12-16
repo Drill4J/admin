@@ -22,11 +22,9 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.*
-import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.util.*
 import kotlin.reflect.full.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
@@ -221,12 +219,10 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         pluginId: String,
         action: String
     ): Pair<HttpStatusCode, Any> {
-        val sessionId = UUID.randomUUID().toString()
         val statusesResponse: List<WithStatusCode> = agents.mapNotNull { entry: AgentEntry ->
             when (entry.agent.status) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
-                    val sessionAction = sessionSubstituting(action, sessionId)
-                    val adminActionResult = processSingleAction(sessionAction)
+                    val adminActionResult = processSingleAction(action)
                     adminActionResult.toStatusResponse()
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
@@ -236,18 +232,6 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
         }
         return HttpStatusCode.OK to statusesResponse
-    }
-
-    private fun sessionSubstituting(action: String, sessionId: String): String {
-        val parseJson = action.parseJson() as? JsonObject ?: return action
-        if (parseJson["type"]?.contentOrNull != "START") return action
-        val mainContainer = parseJson["payload"] as? JsonObject ?: return action
-        val sessionIdContainer = mainContainer["sessionId"]
-        return if (sessionIdContainer == null || sessionIdContainer.content.isEmpty()) {
-            (mainContainer.content as MutableMap<String, JsonElement>)["sessionId"] =
-                JsonElement.serializer() parse sessionId
-            parseJson.toString()
-        } else action
     }
 
     private suspend fun AdminPluginPart<*>.processSingleAction(
