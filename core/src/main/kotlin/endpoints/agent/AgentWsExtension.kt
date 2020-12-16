@@ -84,7 +84,7 @@ open class AgentWsSession(
         async(topicName, callback) {
             when (frameType) {
                 FrameType.BINARY -> Frame.Binary(
-                    fin = false,
+                    fin = true,
                     data = ProtoBuf.dump(
                         Message(
                             MessageType.MESSAGE,
