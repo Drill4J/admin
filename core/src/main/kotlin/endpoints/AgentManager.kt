@@ -295,6 +295,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         pluginsToAdd.forEach { plugin ->
                             val pluginId = plugin.pluginBean.id
                             launch {
+                                ensurePluginInstance(entry, plugin)
                                 session.sendPlugin(plugin, updatedInfo).await()
                                 session.enablePlugin(pluginId, agentId).await()
                             }
