@@ -1,15 +1,17 @@
 plugins {
     base
-    id("com.epam.drill.version.plugin")
+}
+
+val scriptUrl: String by extra
+
+allprojects {
+    apply(from = rootProject.uri("$scriptUrl/git-version.gradle.kts"))
 }
 
 subprojects {
-    apply(plugin = "com.epam.drill.version.plugin")
-
     repositories {
         mavenLocal()
-        maven(url = "https://dl.bintray.com/kotlin/kotlinx/")
-        maven(url = "http://oss.jfrog.org/oss-release-local")
+        apply(from = "$scriptUrl/maven-repo.gradle.kts")
         jcenter()
     }
 }
