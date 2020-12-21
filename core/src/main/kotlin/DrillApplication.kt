@@ -32,7 +32,7 @@ fun Application.module() = kodeinApplication(
         withInstallation {
             @Suppress("UNUSED_VARIABLE") val jwtAudience = environment.config.property("jwt.audience").getString()
             val jwtRealm = environment.config.property("jwt.realm").getString()
-
+//some changes
             install(StatusPages) {
                 exception<Throwable> { cause ->
                     logger.error(cause) { "Build application finished with exception" }
