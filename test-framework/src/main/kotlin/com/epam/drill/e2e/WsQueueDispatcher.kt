@@ -115,7 +115,7 @@ class Agent(
     private val `load-classes-data` = Channel<String>(Channel.UNLIMITED)
     private val plugins = Channel<com.epam.drill.common.PluginBinary>(Channel.UNLIMITED)
 
-    lateinit var plugin: AgentPart<*, *>
+    lateinit var plugin: AgentPart<*>
 
     suspend fun getHeaders() = headers.receive()
 

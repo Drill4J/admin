@@ -1,12 +1,9 @@
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.plugin.api.processing.*
-import io.mockk.*
+import com.epam.drill.e2e.*
 
-fun runWithSession(sessionId: String, block: () -> Unit) {
-    mockkObject(DrillContext)
-    every { DrillContext[any()] } returns "xxxx"
-    every { DrillContext.invoke() } returns sessionId
-    block()
-    unmockkObject(DrillContext)
-}
+@Suppress("unused")
+fun AdminTest.runWithSession(
+    sessionId: String,
+    block: () -> Unit
+) = testAgentContext.runWithSession(sessionId, block)

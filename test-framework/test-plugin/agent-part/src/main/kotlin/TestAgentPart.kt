@@ -1,16 +1,15 @@
 package com.epam.drill.admin.plugins.coverage
 
-import com.epam.drill.plugin.api.*
+import com.epam.drill.logger.api.*
 import com.epam.drill.plugin.api.processing.*
-import kotlinx.serialization.builtins.*
 
 @Suppress("unused")
 class TestAgentPart constructor(
     id: String,
-    agentContext: AgentContext
-) : AgentPart<String, String>(id, agentContext) {
-
-    override val serDe: SerDe<String> = SerDe(String.serializer())
+    agentContext: AgentContext,
+    sender: Sender,
+    logging: LoggerFactory
+) : AgentPart<String>(id, agentContext, sender, logging) {
 
     override fun on() {
         send("xx")
@@ -18,9 +17,6 @@ class TestAgentPart constructor(
 
     override fun off() {
     }
-
-    override val confSerializer: kotlinx.serialization.KSerializer<String>
-        get() = TODO()
 
     override fun initPlugin() {
         println("Plugin $id initialized.")
@@ -34,4 +30,6 @@ class TestAgentPart constructor(
         println(action)
         return "action"
     }
+
+    override fun parseAction(rawAction: String) = rawAction
 }

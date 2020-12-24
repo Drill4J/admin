@@ -5,11 +5,13 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
+import com.epam.drill.logger.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import io.mockk.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import java.io.*
 import java.util.*
@@ -41,32 +43,41 @@ suspend fun AdminTest.loadPlugin(
         val agentJar = agentDir.resolve("ag-part.jar")
         agentJar.writeBytes(bs)
 
-        val clazz = JarFile(agentJar).use { jarFile ->
-            JarInputStream(FileInputStream(agentJar)).use { jarInputStream ->
-                val sequence = sequence {
-                    var nextJarEntry = jarInputStream.nextJarEntry
-                    do {
-                        yield(nextJarEntry)
-                        nextJarEntry = jarInputStream.nextJarEntry
-                    } while (nextJarEntry != null)
-                }
+        val clazz = withContext(Dispatchers.IO) {
+            JarFile(agentJar).use { jarFile ->
+                JarInputStream(FileInputStream(agentJar)).use { jarInputStream ->
+                    val sequence = sequence {
+                        var nextJarEntry = jarInputStream.nextJarEntry
+                        do {
+                            yield(nextJarEntry)
+                            nextJarEntry = jarInputStream.nextJarEntry
+                        } while (nextJarEntry != null)
+                    }
 
-                val toSet = sequence.toSet()
-                memoryClassLoader.clazz(
-                    if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
-                    toSet,
-                    jarFile
-                )
+                    val toSet = sequence.toSet()
+                    memoryClassLoader.clazz(
+                        if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
+                        toSet,
+                        jarFile
+                    )
+                }
             }
         }
 
         val agentData = AgentDatum(classMap)
         val declaredConstructor = clazz.getDeclaredConstructor(
             String::class.java,
-            AgentContext::class.java
+            AgentContext::class.java,
+            Sender::class.java,
+            LoggerFactory::class.java
         )
-        val agentContext = AgentContext(SimpleLogging)
-        val agentPart = declaredConstructor.newInstance(pluginId, agentContext) as AgentPart<*, *>
+        val sender = TestPluginSender(agentStreamDebug, out)
+        val agentPart = declaredConstructor.newInstance(
+            pluginId,
+            testAgentContext,
+            sender,
+            SimpleLogging
+        ) as AgentPart<*>
         val spykAgentPart = spyk(agentPart, ag.id)
         if (spykAgentPart is Instrumenter) {
             every { spykAgentPart["retransform"]() } answers {
@@ -88,23 +99,6 @@ suspend fun AdminTest.loadPlugin(
         }
         agentStreamer.plugin = spykAgentPart
 
-        every {
-            spykAgentPart.send(any())
-        } coAnswers {
-            if (agentStreamDebug)
-                println(this.args[0])
-            val content: String = this.args[0].toString()
-            out.send(
-                agentMessage(
-                    MessageType.PLUGIN_DATA, "",
-                    (MessageWrapper.serializer() stringify MessageWrapper(
-                        spykAgentPart.id,
-                        DrillMessage(content = content)
-                    )).encodeToByteArray()
-                )
-            )
-        }
-
         st.initSubscriptions(
             AgentSubscription(
                 pluginTestInfo.agentId,
@@ -112,7 +106,7 @@ suspend fun AdminTest.loadPlugin(
             )
         )
 
-        spykAgentPart.enabled = true
+        spykAgentPart.setEnabled(true)
         spykAgentPart.updateRawConfig(pluginMeta.config)
         spykAgentPart.initPlugin()
         agentStreamer.loaded(meta.id)
@@ -128,5 +122,27 @@ suspend fun AdminTest.loadPlugin(
         } ?: fail("can't find classes for build")
         @Suppress("UNCHECKED_CAST")
         build.test = first as Class<Tst>
+    }
+}
+
+class TestPluginSender(
+    private val trace: Boolean,
+    private val out: SendChannel<Frame>
+) : Sender {
+    override fun send(pluginId: String, message: String) {
+        runBlocking {
+            if (trace) {
+                println("Plugin $pluginId >> message:\n$message")
+            }
+            out.send(
+                agentMessage(
+                    MessageType.PLUGIN_DATA, "",
+                    (MessageWrapper.serializer() stringify MessageWrapper(
+                        pluginId,
+                        DrillMessage(content = message)
+                    )).encodeToByteArray()
+                )
+            )
+        }
     }
 }
