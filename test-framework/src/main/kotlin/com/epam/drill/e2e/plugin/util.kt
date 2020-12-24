@@ -13,7 +13,7 @@ fun MemoryClassLoader.clazz(
     suffix: String,
     entries: Set<JarEntry>,
     jarFile: JarFile
-): Class<AgentPart<*, *>> = entries.asSequence().filter {
+): Class<AgentPart<*>> = entries.asSequence().filter {
     it.name.endsWith(".class") && !it.name.contains("module-info")
 }.map { jarEntry ->
     jarFile.getInputStream(jarEntry).use { inStream ->
@@ -47,7 +47,7 @@ fun MemoryClassLoader.clazz(
             addDefinition(defClass.className, defClass.bytes)
         }
     }.let { "${it.className}$suffix" }
-}.let { loadClass(it) as Class<AgentPart<*, *>> }
+}.let { loadClass(it) as Class<AgentPart<*>> }
 
 class OutsSock(private val mainChannel: SendChannel<Frame>, private val withDebug: Boolean = false) :
     SendChannel<Frame> by mainChannel {

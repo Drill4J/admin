@@ -4,8 +4,8 @@ import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.e2e.plugin.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
@@ -26,6 +26,8 @@ abstract class AdminTest {
     lateinit var globToken: String
     lateinit var storeManager: AgentStores
     lateinit var commonStore: CommonStore
+
+    internal val testAgentContext = TestAgentContext()
 
     fun uiWatcher(bl: suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit): AdminTest {
         this.watcher = bl
