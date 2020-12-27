@@ -31,12 +31,3 @@ data class AgentBuildData(
 
     override fun hashCode() = id.hashCode()
 }
-
-@Serializable
-data class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
-
-@Serializable
-internal class StoredCodeData(
-    @Id val id: String,
-    val data: ByteArray
-)
