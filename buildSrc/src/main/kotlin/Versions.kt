@@ -22,4 +22,4 @@ val mockkVersion = "1.9.3"
 
 val kodeinVersion = "6.5.1"
 
-val aircompressorVersion = "0.17"
+val zstdJniVersion = "1.4.8-1"
