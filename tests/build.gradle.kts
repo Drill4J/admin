@@ -30,7 +30,6 @@ dependencies {
     testImplementation("com.epam.drill:common-jvm:$drillApiVersion")
 
     testImplementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
-    testImplementation("org.jetbrains.kotlinx:atomicfu:$atomicFuVersion")
 
     testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
 

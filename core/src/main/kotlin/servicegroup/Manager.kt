@@ -40,23 +40,35 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     operator fun get(groupId: String): ServiceGroupDto? = _state.value[groupId]
 
     suspend fun syncOnAttach(groupId: String) {
-        _state.update { groups ->
-            when (groups[groupId]) {
-                null -> groups.put(groupId, commonStore.ensureGroup(groupId))
-                else -> groups
-            }
+        val oldGroups = _state.getAndUpdate { groups ->
+            groups.takeIf { groupId in it } ?: groups.put(
+                key = groupId,
+                value = ServiceGroupDto(
+                    id = groupId,
+                    name = groupId,
+                    systemSettings = SystemSettingsDto(
+                        packages = app.drillDefaultPackages
+                    )
+
+                )
+            )
+        }
+        val groups = _state.value
+        if (groups !== oldGroups) {
+            groups[groupId]?.let { commonStore.storeGroup(it.toModel()) }
         }
     }
 
-    suspend fun update(group: ServiceGroupDto): ServiceGroupDto? {
-        val (id) = group
-        return _state.updateAndGet { groups ->
-            when (val oldValue: ServiceGroupDto? = groups[id] ?: commonStore.findDtoById(id)) {
-                null -> groups
-                group -> groups.put(id, group)
-                else -> groups.put(id, commonStore.store(oldValue, group))
+    suspend fun update(group: ServiceGroupDto): ServiceGroupDto? = group.id.let { id ->
+        val oldGroups = _state.getAndUpdate { groups ->
+            groups[id]?.takeIf { it != group }?.let { groups.put(id, group) } ?: groups
+        }
+        val groups = _state.value
+        groups[id]?.also {
+            if (oldGroups !== groups) {
+                oldGroups[id]?.also { commonStore.store(it, group) }
             }
-        }[id]
+        }
     }
 
     fun group(agents: Iterable<AgentInfo>): GroupedAgents {
@@ -82,23 +94,6 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
         )
     )
 
-    private suspend fun CommonStore.ensureGroup(groupId: String): ServiceGroupDto = run {
-        findDtoById(groupId) ?: create(groupId)
-    }
-
-    private suspend fun create(groupId: String): ServiceGroupDto = run {
-        logger.debug { "Creating group '$groupId'..." }
-        commonStore.storeGroup(
-            ServiceGroup(
-                id = groupId,
-                name = groupId,
-                systemSettings = SystemSettingsDto(
-                    packages = app.drillDefaultPackages
-                )
-            )
-        )
-    }.toDto()
-
     private suspend fun CommonStore.store(
         oldValue: ServiceGroupDto,
         groupDto: ServiceGroupDto
@@ -107,10 +102,6 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
         storeGroup(groupDto.toModel())
     }.toDto()
 }
-
-private suspend fun CommonStore.findDtoById(
-    groupId: String
-): ServiceGroupDto? = client.findById<ServiceGroup>(groupId)?.toDto()
 
 private suspend fun CommonStore.storeGroup(
     group: ServiceGroup

@@ -30,9 +30,9 @@ class AgentEntry(agent: AgentInfo) {
 
     operator fun get(pluginId: String): AdminPluginPart<*>? = _instanceMap.value[pluginId]
 
-    suspend fun get(
+    fun get(
         pluginId: String,
-        updater: suspend AgentEntry.() -> AdminPluginPart<*>
+        updater: AgentEntry.() -> AdminPluginPart<*>
     ): AdminPluginPart<*> = get(pluginId) ?: _instanceMap.updateAndGet {
         it.takeIf { pluginId in it } ?: it.put(pluginId, updater())
     }.getValue(pluginId)
