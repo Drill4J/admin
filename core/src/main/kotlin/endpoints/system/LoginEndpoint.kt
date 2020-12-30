@@ -3,8 +3,8 @@ package com.epam.drill.admin.endpoints.system
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.jwt.config.*
-import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*

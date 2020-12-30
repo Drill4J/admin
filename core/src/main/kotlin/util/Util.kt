@@ -1,6 +1,6 @@
 package com.epam.drill.admin.util
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.common.serialization.*
 import io.ktor.application.*
 import io.ktor.request.*
 import kotlinx.serialization.*
