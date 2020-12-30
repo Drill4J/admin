@@ -1,6 +1,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.testdata.*

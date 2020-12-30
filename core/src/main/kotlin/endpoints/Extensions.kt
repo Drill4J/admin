@@ -2,6 +2,7 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*

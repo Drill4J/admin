@@ -1,6 +1,7 @@
 package com.epam.drill.e2e.plugin
 
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
