@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    id("kotlinx-atomicfu")
     kotlin("plugin.serialization")
     application
     `maven-publish`

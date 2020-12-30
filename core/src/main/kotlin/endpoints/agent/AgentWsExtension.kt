@@ -37,7 +37,7 @@ class Signal(
 
     suspend fun await(timeout: Duration) {
         if (_state.value) {
-            awaitWithExpr(timeout, topicName, _state::value)
+            awaitWithExpr(timeout, topicName) { _state.value }
         }
     }
 }

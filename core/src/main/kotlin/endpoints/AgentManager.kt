@@ -494,19 +494,17 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun ensurePluginInstance(
         agentEntry: AgentEntry,
         plugin: Plugin
-    ): AdminPluginPart<*> {
-        return agentEntry.get(plugin.pluginBean.id) {
+    ): AdminPluginPart<*> = plugin.pluginBean.id.let { pluginId ->
+        agentEntry[pluginId] ?: agentEntry.get(pluginId) {
             val adminPluginData = adminData(agent.id)
             val store = agentStores.agentStore(agent.id)
-            val pluginInstance = plugin.createInstance(
+            plugin.createInstance(
                 agentInfo = agent,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
                 store = store
             )
-            pluginInstance.initialize()
-            pluginInstance
-        }
+        }.apply { initialize() }
     }
 
     internal suspend fun AgentInfo.commitChanges() {
