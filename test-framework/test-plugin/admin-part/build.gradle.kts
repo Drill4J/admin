@@ -12,11 +12,14 @@ repositories {
     jcenter()
 }
 
+val drillApiVersion: String by extra
+val koduxVersion: String by extra
+val serializationVersion: String by extra
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation(drill("drill-admin-part-jvm", drillApiVersion))
-    implementation(drill("common-jvm", drillApiVersion))
+    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
+    implementation("com.epam.drill:common-jvm:$drillApiVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
 }
@@ -25,7 +28,7 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
 tasks {
-    val jar by existing(Jar::class) {
+    jar {
         archiveFileName.set("admin-part.jar")
     }
 }
