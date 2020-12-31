@@ -6,18 +6,32 @@ plugins {
     `maven-publish`
 }
 
+val drillApiVersion: String by extra
+val drillLogger: String by extra
+val serializationVersion: String by extra
+val collectionImmutableVersion: String by extra
+val ktorVersion: String by extra
+val kodeinVersion: String by extra
+val swaggerVersion: String by extra
+val koduxVersion: String by extra
+val xodusVersion: String by extra
+val zstdJniVersion: String by extra
+
+val junitVersion: String by extra
+val mockkVersion: String by extra
+
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation(ktor("auth"))
-    implementation(ktor("auth-jwt"))
-    implementation(ktor("server-netty"))
-    implementation(ktor("locations"))
-    implementation(ktor("server-core"))
-    implementation(ktor("websockets"))
-    implementation(ktor("serialization"))
-    implementation(drill("drill-admin-part-jvm", drillApiVersion))
-    implementation(drill("common-jvm", drillApiVersion))
-    implementation(ktor("server-test-host"))
+    implementation("io.ktor:ktor-auth:$ktorVersion")
+    implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-locations:$ktorVersion")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-websockets:$ktorVersion")
+    implementation("io.ktor:ktor-serialization:$ktorVersion")
+    implementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
+    implementation("com.epam.drill:common-jvm:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("com.epam.drill:kodux-jvm:$koduxVersion")
@@ -26,7 +40,7 @@ dependencies {
     implementation("io.mockk:mockk:$mockkVersion")
     api(project(":core"))
     implementation("org.apache.bcel:bcel:6.3.1")
-    implementation(drill("drill-agent-part-jvm", drillApiVersion))
+    implementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
     implementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     implementation(project(":test-framework:test-data"))
 }

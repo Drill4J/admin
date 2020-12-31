@@ -21,6 +21,20 @@ configurations {
     }
 }
 
+val drillApiVersion: String by extra
+val drillLogger: String by extra
+val serializationVersion: String by extra
+val collectionImmutableVersion: String by extra
+val ktorVersion: String by extra
+val kodeinVersion: String by extra
+val swaggerVersion: String by extra
+val koduxVersion: String by extra
+val xodusVersion: String by extra
+val zstdJniVersion: String by extra
+
+val junitVersion: String by extra
+val mockkVersion: String by extra
+
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     testImplementation(project(":core"))
@@ -34,15 +48,15 @@ dependencies {
     testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
 
     testImplementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
-    testImplementation(ktor("server-test-host"))
-    testImplementation(ktor("auth"))
-    testImplementation(ktor("auth-jwt"))
-    testImplementation(ktor("server-netty"))
-    testImplementation(ktor("locations"))
-    testImplementation(ktor("server-core"))
-    testImplementation(ktor("websockets"))
-    testImplementation(ktor("client-cio"))
-    testImplementation(ktor("serialization"))
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.ktor:ktor-auth:$ktorVersion")
+    testImplementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-netty:$ktorVersion")
+    testImplementation("io.ktor:ktor-locations:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-core:$ktorVersion")
+    testImplementation("io.ktor:ktor-websockets:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
+    testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
     testImplementation("com.epam.drill:kodux-jvm:$koduxVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
@@ -103,7 +117,3 @@ tasks {
         dependsOn(integrationTest)
     }
 }
-
-@Suppress("unused")
-fun DependencyHandler.ktor(module: String, version: String? = ktorVersion): Any =
-    "io.ktor:ktor-$module:${version ?: "+"}"

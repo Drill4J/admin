@@ -19,18 +19,32 @@ kotlin.sourceSets.main {
     )
 }
 
+val drillApiVersion: String by extra
+val drillLogger: String by extra
+val serializationVersion: String by extra
+val collectionImmutableVersion: String by extra
+val ktorVersion: String by extra
+val kodeinVersion: String by extra
+val swaggerVersion: String by extra
+val koduxVersion: String by extra
+val xodusVersion: String by extra
+val zstdJniVersion: String by extra
+
+val junitVersion: String by extra
+val mockkVersion: String by extra
+
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation(ktor("auth"))
-    implementation(ktor("auth-jwt"))
-    implementation(ktor("server-netty"))
-    implementation(ktor("locations"))
-    implementation(ktor("server-core"))
-    implementation(ktor("websockets"))
-    implementation(ktor("client-cio"))
-    implementation(ktor("serialization"))
-    implementation(drill("drill-admin-part-jvm", drillApiVersion))
-    implementation(drill("common-jvm", drillApiVersion))
+    implementation("io.ktor:ktor-auth:$ktorVersion")
+    implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-locations:$ktorVersion")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-websockets:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-serialization:$ktorVersion")
+    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
+    implementation("com.epam.drill:common-jvm:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
