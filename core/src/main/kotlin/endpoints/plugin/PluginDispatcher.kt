@@ -22,17 +22,19 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import kotlin.reflect.full.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
+    private val logger = KotlinLogging.logger {}
+
     private val app by instance<Application>()
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
-    private val logger = KotlinLogging.logger {}
 
     suspend fun processPluginData(
         agentInfo: AgentInfo,
@@ -70,7 +72,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         if (plugin != null) {
                             if (agentEntry.agent.status == AgentStatus.ONLINE) {
                                 this[pluginId]?.let { adminPart ->
-                                    val result = adminPart.processSingleAction(action)
+                                    val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
                                     HttpStatusCode.fromValue(statusResponse.code) to statusResponse
                                 } ?: HttpStatusCode.BadRequest to ErrorResponse(
@@ -82,7 +84,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
                     logger.info { "$response" }
-                    call.respond(statusCode, response)
+                    sendResponse(response, statusCode)
                 }
             }
 
@@ -152,7 +154,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 val agentInfo = agentManager[agentId]!!
                                 if (pluginIdObject.pluginId in agentInfo.plugins) {
                                     HttpStatusCode.BadRequest to
-                                        ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
+                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
                                 } else {
                                     agentManager.addPlugins(agentInfo.id, setOf(pluginIdObject.pluginId))
                                     HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
@@ -181,8 +183,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
                         (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
                         else -> {
-                            val payload = com.epam.drill.common.TogglePayload(pluginId)
-                            session.applyEach { sendToTopic<Communication.Plugin.ToggleEvent>(payload) }
+                            session.applyEach {
+                                sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                                    message = TogglePayload(pluginId)
+                                )
+                            }
                             HttpStatusCode.OK to EmptyContent
                         }
                     }
@@ -222,44 +227,28 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val statusesResponse: List<WithStatusCode> = agents.mapNotNull { entry: AgentEntry ->
             when (entry.agent.status) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
-                    val adminActionResult = processSingleAction(action)
+                    val adminActionResult = processAction(action, agentManager::agentSessions)
                     adminActionResult.toStatusResponse()
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
                 else -> "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}".run {
-                    statusMessageResponse(HttpStatusCode.Conflict.value)
+                    StatusMessageResponse(
+                        code = HttpStatusCode.Conflict.value,
+                        message = this
+                    )
                 }
             }
         }
         return HttpStatusCode.OK to statusesResponse
     }
-
-    private suspend fun AdminPluginPart<*>.processSingleAction(
-        action: String
-    ): Any = doRawAction(action).also { result ->
-        (result as? ActionResult)?.agentAction?.stringify(json)?.let { agentActionStr ->
-            val agentAction = com.epam.drill.common.PluginAction(id, agentActionStr)
-            agentManager.agentSessions(agentInfo.id).map {
-                it.sendToTopic<Communication.Plugin.DispatchEvent>(agentAction)
-            }.forEach { it.await() }
-        }
-    }
-}
-
-private fun Any.stringify(
-    format: StringFormat
-): String? = this::class.run {
-    superclasses.firstOrNull()?.run { serializerOrNull() } ?: serializerOrNull()
-}?.let {
-    @Suppress("UNCHECKED_CAST")
-    it as KSerializer<Any>
-    format.stringify(it, this)
 }
 
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
     is ActionResult -> when (val d = data) {
-        is String -> d.statusMessageResponse(code)
-        else -> StatusResponse(code, d)
+        is String -> StatusMessageResponse(code, d)
+        else -> StatusResponse(code, d.actionToJson())
     }
-    else -> StatusResponse(HttpStatusCode.OK.value, this)
+    else -> StatusResponse(HttpStatusCode.OK.value, actionToJson())
 }
+
+private fun Any.actionToJson(): JsonElement = actionSerializerOrNull()!! toJson this

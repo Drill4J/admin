@@ -1,6 +1,7 @@
 package com.epam.drill.admin.common
 
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 
 @Serializable
 sealed class WsReceiveMessage {
@@ -26,16 +27,16 @@ data class Unsubscribe(
 data class WsSendMessage(
     val type: WsMessageType,
     val destination: String = "",
-    @ContextualSerialization val to: Any? = null,
-    @ContextualSerialization val message: Any = ""
+    val to: JsonElement = JsonNull,
+    val message: JsonElement = JsonPrimitive("")
 )
 
 @Serializable
 data class WsSendMessageListData(
     val type: WsMessageType,
     val destination: String = "",
-    @ContextualSerialization val to: Any? = null,
-    val message: List<@ContextualSerialization Any>
+    val to: JsonElement = JsonNull,
+    val message: List<JsonElement>
 )
 
 enum class WsMessageType {

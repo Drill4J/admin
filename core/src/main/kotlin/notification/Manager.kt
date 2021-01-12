@@ -1,6 +1,7 @@
 package com.epam.drill.admin.notification
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import kotlinx.atomicfu.*
@@ -51,7 +52,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
                 agentId = agentInfo.id,
                 createdAt = System.currentTimeMillis(),
                 type = NotificationType.BUILD,
-                message = createNewBuildMessage(agentInfo)
+                message = createNewBuildMessage(agentInfo).toJson()
             )
         )
         topicResolver.sendToAllSubscribed(WsNotifications)
@@ -67,7 +68,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         NewBuildArrivedMessage(
             currentId = agentInfo.buildVersion,
             recommendations = recommendations(agentInfo),
-            buildInfo = buildInfo
+            buildInfo = buildInfo.toJson()
         )
     }
 

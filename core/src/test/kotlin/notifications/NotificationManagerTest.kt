@@ -1,6 +1,7 @@
 package com.epam.drill.admin.notifications
 
 import com.epam.drill.admin.notification.*
+import kotlinx.serialization.json.*
 import org.kodein.di.*
 import kotlin.test.*
 
@@ -16,7 +17,7 @@ class NotificationManagerTest {
             System.currentTimeMillis(),
             NotificationType.BUILD,
             false,
-            "some message"
+            JsonPrimitive("some message")
         )
         notificationManager.save(notification)
     }

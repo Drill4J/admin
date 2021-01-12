@@ -34,7 +34,7 @@ class LoggingHandler(override val kodein: Kodein) : KodeinAware {
 }
 
 suspend fun AgentWsSession.sendConfig(loggingConfig: LoggingConfigDto) {
-    sendToTopic<Communication.Agent.UpdateLoggingConfigEvent>(loggingConfig.level.toConfig())
+    sendToTopic<Communication.Agent.UpdateLoggingConfigEvent, LoggingConfig>(loggingConfig.level.toConfig())
 }
 
 private fun LogLevel.toConfig(): LoggingConfig = LoggingConfig(

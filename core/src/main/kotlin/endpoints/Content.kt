@@ -1,6 +1,7 @@
 package com.epam.drill.admin.endpoints
 
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 
 @Serializable
 data class ErrorResponse(val message: String)
@@ -18,10 +19,5 @@ data class StatusMessageResponse(
 @Serializable
 data class StatusResponse(
     override val code: Int,
-    @ContextualSerialization val data: Any
+    val data: JsonElement
 ) : WithStatusCode
-
-fun String.statusMessageResponse(code: Int) = StatusMessageResponse(
-    code = code,
-    message = this
-)

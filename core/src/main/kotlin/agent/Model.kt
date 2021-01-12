@@ -6,6 +6,9 @@ import kotlinx.serialization.*
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
+typealias PackagesPrefixes = com.epam.drill.common.PackagesPrefixes
+typealias ByteClass = com.epam.drill.common.ByteClass
+typealias BuildInfo = com.epam.drill.common.BuildInfo
 
 @Serializable
 data class AgentInfo(

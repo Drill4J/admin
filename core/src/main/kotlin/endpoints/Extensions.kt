@@ -3,10 +3,10 @@ package com.epam.drill.admin.endpoints
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import kotlinx.serialization.json.*
 
 fun Application.toLocation(rout: Any): String = locations().href(rout)
 
@@ -21,18 +21,23 @@ fun Any.toWsMessageAsString(
 ): String = when (this) {
     is Iterable<*> -> {
         @Suppress("UNCHECKED_CAST")
-        val list = (this as Iterable<Any>).toList()
+        val iterable = this as Iterable<Any>
+        val list = (iterable as? List<Any>) ?: iterable.toList()
         WsSendMessageListData.serializer() stringify WsSendMessageListData(
             type = type,
             destination = destination,
-            to = to,
-            message = list
+            to = to.toJson(),
+            message = list.toJsonList()
         )
     }
     else -> WsSendMessage.serializer() stringify WsSendMessage(
         type = type,
         destination = destination,
-        to = to,
-        message = this
+        to = to.toJson(),
+        message = toJson()
     )
 }
+
+private fun Subscription?.toJson(): JsonElement = this?.let {
+    Subscription.serializer() toJson it
+} ?: JsonNull

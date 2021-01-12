@@ -209,7 +209,7 @@ internal class DrillServerWsTest {
                 message = NewBuildArrivedMessage(
                     "0.2.0",
                     setOf("recommendation_1", "recommendation_2")
-                )
+                ).toJson()
             )
         )
     }

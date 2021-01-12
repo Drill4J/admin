@@ -7,6 +7,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
 import de.nielsfalk.ktor.swagger.*
@@ -88,8 +89,8 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                             agentManager.agentSessions(agentId).applyEach {
                                 val toggleValue = newStatus == AgentStatus.ONLINE
                                 agentInfo.plugins.map { pluginId ->
-                                    sendToTopic<Communication.Plugin.ToggleEvent>(
-                                        com.epam.drill.common.TogglePayload(pluginId, toggleValue)
+                                    sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                                        TogglePayload(pluginId, toggleValue)
                                     )
                                 }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }

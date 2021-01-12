@@ -1,6 +1,7 @@
 package com.epam.drill.admin.websocket
 
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.common.serialization.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
@@ -81,7 +82,7 @@ private fun Iterable<Any>.toOutput(
     OutputType.LIST -> ListOutput(
         totalCount = totalCount,
         filteredCount = count(),
-        items = this as? List<Any> ?: toList()
+        items = (this as? List<Any> ?: toList()).toJsonList()
     )
     else -> this
 }

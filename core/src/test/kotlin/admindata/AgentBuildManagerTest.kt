@@ -1,6 +1,6 @@
 package com.epam.drill.admin.admindata
 
-import com.epam.drill.common.*
+import com.epam.drill.admin.agent.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
 import kotlin.test.*

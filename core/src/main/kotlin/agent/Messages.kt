@@ -1,12 +1,9 @@
 package com.epam.drill.admin.agent
 
-import com.epam.drill.admin.common.serialization.*
 import io.ktor.util.*
 import kotlinx.serialization.*
 
-
 typealias MessageType = com.epam.drill.common.MessageType
-
 typealias Message = com.epam.drill.common.Message
 
 sealed class AgentMessage {
@@ -39,9 +36,3 @@ class BinaryMessage(
 
     override fun toString() = "Binary(type=$type,destination=$destination,size=${bytes.size})"
 }
-
-fun Any.toJsonMessage(topic: String): JsonMessage = JsonMessage(
-    type = MessageType.MESSAGE,
-    destination = topic,
-    text = this as? String ?: jsonStringify()
-)
