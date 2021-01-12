@@ -1,6 +1,7 @@
 package com.epam.drill.admin.notification
 
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 
 @Serializable
 data class Notification(
@@ -9,7 +10,7 @@ data class Notification(
     val createdAt: Long,
     val type: NotificationType,
     val read: Boolean = false,
-    @ContextualSerialization val message: Any
+    val message: JsonElement
 )
 
 enum class NotificationType {
@@ -20,5 +21,5 @@ enum class NotificationType {
 data class NewBuildArrivedMessage(
     val currentId: String,
     val recommendations: Set<String> = emptySet(),
-    @ContextualSerialization val buildInfo: Any? = null
+    val buildInfo: JsonElement = JsonNull
 )

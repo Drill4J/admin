@@ -10,7 +10,6 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
-import kotlinx.serialization.modules.*
 import kotlinx.serialization.protobuf.*
 import kotlin.time.*
 import kotlin.time.TimeSource.*
@@ -77,8 +76,8 @@ open class AgentWsSession(
 
     private val _subscribers = atomic(persistentMapOf<String, Signal>())
 
-    suspend inline fun <reified TopicUrl : Any> sendToTopic(
-        message: Any = "",
+    suspend inline fun <reified TopicUrl : Any, reified T> sendToTopic(
+        message: T,
         noinline callback: suspend (Any) -> Unit = {}
     ): WsDeferred = TopicUrl::class.topicUrl().let { topicName ->
         async(topicName, callback) {
@@ -89,15 +88,16 @@ open class AgentWsSession(
                         Message(
                             MessageType.MESSAGE,
                             topicName,
-                            data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(
-                                ProtoBuf.context.getContextualOrDefault(message),
-                                message
-                            )
+                            data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(serializer(), message)
                         )
                     )
                 )
                 FrameType.TEXT -> Frame.Text(
-                    JsonMessage.serializer() stringify message.toJsonMessage(topicName)
+                    JsonMessage.serializer() stringify JsonMessage(
+                        type = MessageType.MESSAGE,
+                        destination = topicName,
+                        text = message as? String ?: (serializer<T>() stringify message)
+                    )
                 )
                 else -> null
             }?.let { send(it) }

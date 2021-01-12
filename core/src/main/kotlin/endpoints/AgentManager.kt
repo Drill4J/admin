@@ -353,8 +353,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getOrNull(agentId)?.plugins?.forEach { pluginId ->
             agentSessions(agentId).applyEach {
-                sendToTopic<Communication.Plugin.ToggleEvent>(
-                    com.epam.drill.common.TogglePayload(pluginId, false)
+                sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                    message = TogglePayload(pluginId, false)
                 )
             }
         }
@@ -375,8 +375,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun AgentWsSession.enablePlugin(
         pluginId: String,
         agentId: String
-    ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent>(
-        com.epam.drill.common.TogglePayload(pluginId, true)
+    ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+        message = TogglePayload(pluginId, true)
     ) {
         logger.debug { "Enabled plugin $pluginId for agent $agentId" }
     }
@@ -417,7 +417,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
-        sendToTopic<Communication.Agent.ChangeHeaderNameEvent>(sessionIdHeaderName.toLowerCase())
+        sendToTopic<Communication.Agent.ChangeHeaderNameEvent, String>(sessionIdHeaderName.toLowerCase())
     }
 
     suspend fun updateSystemSettings(agentId: String, settings: SystemSettingsDto) {
@@ -480,7 +480,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             topicName = "/agent/plugin/${pb.id}/loaded",
             callback = { logger.debug { "Sent plugin ${pb.id} to agent ${agentInfo.id}" } }
         ) { //TODO move to the api
-            sendToTopic<Communication.Agent.PluginLoadEvent>(
+            sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
                 com.epam.drill.common.PluginBinary(pb, data)
             ).await()
             logger.debug { "Sent data of plugin ${pb.id} to agent ${agentInfo.id}" }
@@ -515,9 +515,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 }
 
 suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
-    sendToTopic<Communication.Agent.SetPackagePrefixesEvent>(
-        com.epam.drill.common.PackagesPrefixes(prefixes)
+    sendToTopic<Communication.Agent.SetPackagePrefixesEvent, PackagesPrefixes>(
+        PackagesPrefixes(prefixes)
     ).await()
 
 suspend fun AgentWsSession.triggerClassesSending() =
-    sendToTopic<Communication.Agent.LoadClassesDataEvent>().await()
+    sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()

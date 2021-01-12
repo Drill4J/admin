@@ -5,6 +5,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
@@ -15,6 +16,7 @@ import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -112,7 +114,11 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                         BuildSummaryDto(
                             buildVersion = agentBuild.info.version,
                             detectedAt = agentBuild.detectedAt,
-                            summary = pluginCaches.getData(agentId, agentBuild.info.version, type = "build")
+                            summary = pluginCaches.getData(
+                                agentId,
+                                agentBuild.info.version,
+                                type = "build"
+                            ).toJson()
                         )
                     }
                 }

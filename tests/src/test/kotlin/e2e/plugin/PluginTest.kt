@@ -2,12 +2,14 @@ package com.epam.drill.admin.e2e.plugin
 
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.channels.*
+import kotlinx.serialization.builtins.*
 import kotlin.test.*
 
 class PluginTest : E2EPluginTest() {
@@ -63,13 +65,16 @@ class PluginTest : E2EPluginTest() {
             uiWatcher { channel ->
                 waitForMultipleAgents(channel)
                 println("1")
-                val statusResponse = "act".statusMessageResponse(200)
-                val statusesResponse: List<WithStatusCode> =
+                val statusResponse = StatusMessageResponse(
+                    code = 200,
+                    message = "act"
+                )
+                val statusResponses: List<StatusMessageResponse> =
                     listOf(statusResponse, statusResponse, statusResponse)
                 pluginAction("myActionForAllAgents", serviceGroup) { status, content ->
                     println("2")
                     status shouldBe HttpStatusCode.OK
-                    content shouldBe serialize(statusesResponse)
+                    content shouldBe (StatusMessageResponse.serializer().list stringify statusResponses)
                 }
                 println("3")
             }

@@ -1,6 +1,7 @@
 package com.epam.drill.admin.notifications
 
 import com.epam.drill.admin.notification.*
+import kotlinx.serialization.json.*
 import kotlin.test.*
 
 class NotificationsTest {
@@ -14,7 +15,7 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         notifications += notification
         notifications += notification
@@ -29,7 +30,7 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         notifications += notification
         assertEquals(1, notifications.valuesDesc.size)
@@ -45,7 +46,7 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         assertEquals(notifications, notifications.replace(notExisting))
         assertNull(notifications[notExisting.id])
@@ -59,7 +60,7 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         val replacement = notification.copy(read = true)
         notifications += notification
@@ -84,7 +85,7 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         notifications += notification
         notifications -= notification.id
@@ -100,14 +101,14 @@ class NotificationsTest {
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "some-message"
+            message = JsonPrimitive("some-message")
         )
         val secondNotification = Notification(
             id = "second-notification",
             agentId = agentId,
             createdAt = System.currentTimeMillis(),
             type = NotificationType.BUILD,
-            message = "another-message"
+            message = JsonPrimitive("another-message")
         )
         notifications += notification
         notifications += secondNotification

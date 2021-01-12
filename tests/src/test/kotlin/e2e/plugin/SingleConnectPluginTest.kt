@@ -14,7 +14,10 @@ class SingleConnectPluginTest : E2EPluginTest() {
     fun `test e2e plugin API`() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>("myServiceGroup") { _, _ ->
-                val expectedContent = StatusMessageResponse.serializer() stringify "act".statusMessageResponse(200)
+                val expectedContent = StatusMessageResponse.serializer() stringify StatusMessageResponse(
+                    code = 200,
+                    message = "act"
+                )
                 pluginAction("x") { status, content ->
                     status shouldBe HttpStatusCode.OK
                     content shouldBe expectedContent
