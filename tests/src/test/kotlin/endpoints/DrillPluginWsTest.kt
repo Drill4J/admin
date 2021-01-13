@@ -99,10 +99,10 @@ class PluginWsTest {
                 outgoing.send(uiMessage(Subscribe(destination)))
                 val receive = incoming.receive() as? Frame.Text ?: fail()
                 val readText = receive.readText()
-                val fromJson = json.parseJson(readText) as JsonObject
-                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
-                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
-                assertEquals("", fromJson[WsSendMessage::message.name]?.content)
+                val fromJson = readText.parseJson() as JsonObject
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.toContentString())
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.toContentString())
+                assertEquals("", fromJson[WsSendMessage::message.name]?.toContentString().orEmpty())
             }
         }
     }
@@ -124,10 +124,10 @@ class PluginWsTest {
                 )
                 val receive = incoming.receive() as? Frame.Text ?: fail()
                 val readText = receive.readText()
-                val fromJson = json.parseJson(readText) as JsonObject
-                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
-                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
-                assertEquals("", fromJson[WsSendMessage::message.name]?.content)
+                val fromJson = readText.parseJson() as JsonObject
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.toContentString())
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.toContentString())
+                assertEquals("", fromJson[WsSendMessage::message.name]?.toContentString().orEmpty())
             }
         }
     }
@@ -154,7 +154,7 @@ class PluginWsTest {
 
 
                 subscribe(outgoing, destination)
-                assertEquals("", readMessageJson(incoming)?.content, "first subscription should be empty")
+                assertEquals("", readMessageJson(incoming)?.toContentString().orEmpty(), "first subscription should be empty")
 
 
                 sendListData(destination, message)
@@ -175,10 +175,10 @@ class PluginWsTest {
                 )
                 (readMessageJson(incoming) as JsonObject).let { jsonObj ->
                     val array = jsonObj[ListOutput::items.name] as JsonArray
-                    assertEquals(message.size, jsonObj.getPrimitive(ListOutput::totalCount.name).int)
-                    assertEquals(2, jsonObj.getPrimitive(ListOutput::filteredCount.name).int)
+                    assertEquals(message.size, (jsonObj[ListOutput::totalCount.name] as JsonPrimitive).int)
+                    assertEquals(2, (jsonObj[ListOutput::filteredCount.name] as JsonPrimitive).int)
                     assertEquals(2, array.size)
-                    assertEquals(listOf("x21", "x22"), array.map { it.jsonObject[fieldName]?.content })
+                    assertEquals(listOf("x21", "x22"), array.map { it.jsonObject[fieldName]?.toContentString() })
                 }
 
                 unsubscribe(outgoing, destination)
@@ -191,7 +191,7 @@ class PluginWsTest {
                 )
                 (readMessageJson(incoming) as JsonArray).let { array ->
                     assertEquals(2, array.size)
-                    assertEquals(listOf("x22", "x21"), array.map { it.jsonObject[fieldName]?.content })
+                    assertEquals(listOf("x22", "x21"), array.map { it.jsonObject[fieldName]?.toContentString() })
                 }
                 subscribe(//sort: field2 desc
                     outgoing,
@@ -201,7 +201,7 @@ class PluginWsTest {
                 (readMessageJson(incoming) as JsonArray).let { array ->
                     assertEquals(message.size, array.size)
                     val expected: List<String> = message.sortedByDescending { it.field2 }.map { it.field1 }
-                    assertEquals(expected, array.map { it.jsonObject[fieldName]?.content })
+                    assertEquals(expected, array.map { it.jsonObject[fieldName]?.toContentString() })
                 }
             }
         }
@@ -254,7 +254,7 @@ class PluginWsTest {
     private suspend fun readMessageJson(incoming: ReceiveChannel<Frame>): JsonElement? {
         val receive = incoming.receive() as? Frame.Text ?: fail()
         val readText = receive.readText()
-        val fromJson = json.parseJson(readText) as JsonObject
+        val fromJson = readText.parseJson() as JsonObject
         return fromJson[WsSendMessage::message.name]
     }
 
@@ -281,10 +281,10 @@ class PluginWsTest {
                 val receive = incoming.receive() as? Frame.Text ?: fail()
                 val readText = receive.readText()
                 val fromJson = JsonObject.serializer() parse readText
-                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.content)
-                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.content)
+                assertEquals(destination, fromJson[WsSendMessage::destination.name]?.toContentString())
+                assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.toContentString())
                 assertEquals(
-                    json.toJson(TestMessage.serializer(), messageForTest),
+                    TestMessage.serializer() toJson messageForTest,
                     fromJson[WsSendMessage::message.name])
 
                 outgoing.send(uiMessage(Subscribe(destination, "")))

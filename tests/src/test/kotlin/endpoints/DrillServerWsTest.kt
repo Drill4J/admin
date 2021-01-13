@@ -29,7 +29,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
-import kotlinx.serialization.modules.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import java.io.*
@@ -158,15 +157,13 @@ internal class DrillServerWsTest {
     ): List<Notification> {
         outgoing.send(uiMessage(Subscribe(locations.href(WsNotifications), "")))
         val frame = incoming.receive()
-        val json = json.parseJson((frame as Frame.Text).readText()) as JsonObject
+        val json = (frame as Frame.Text).readText().parseJson() as JsonObject
         outgoing.send(uiMessage(Unsubscribe(locations.href(WsNotifications))))
         return parseNotifications(json)
     }
 
     private fun parseNotifications(json: JsonObject): List<Notification> {
-        val module = serializersModuleOf(mapOf(Any::class to NewBuildArrivedMessage.serializer()))
-        val jsonWithContext = Json(context = module)
-        return jsonWithContext.parse(Notification.serializer().list, json[WsSendMessage::message.name].toString())
+        return ListSerializer(Notification.serializer()) fromJson json.getValue(WsSendMessage::message.name)
     }
 
     @Test
@@ -178,7 +175,7 @@ internal class DrillServerWsTest {
                 outgoing.send(uiMessage(Subscribe("/blabla/pathOfPain", "")))
                 val tmp = incoming.receive()
                 assertNotNull(tmp)
-                val parseJson = json.parseJson((tmp as Frame.Text).readText())
+                val parseJson = (tmp as Frame.Text).readText().parseJson()
                 val parsed =
                     String.serializer() parse (parseJson as JsonObject)[WsSendMessage::message.name].toString()
                 assertEquals("testId", parsed)
@@ -194,7 +191,7 @@ internal class DrillServerWsTest {
                 val tmp = incoming.receive()
                 assertTrue { tmp is Frame.Text }
                 val response = JsonObject.serializer() parse (tmp as Frame.Text).readText()
-                assertEquals(WsMessageType.UNAUTHORIZED.name, response[WsSendMessage::type.name]?.content)
+                assertEquals(WsMessageType.UNAUTHORIZED.name, response[WsSendMessage::type.name]?.toContentString())
             }
         }
     }

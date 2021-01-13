@@ -74,7 +74,7 @@ class PluginTest : E2EPluginTest() {
                 pluginAction("myActionForAllAgents", serviceGroup) { status, content ->
                     println("2")
                     status shouldBe HttpStatusCode.OK
-                    content shouldBe (StatusMessageResponse.serializer().list stringify statusResponses)
+                    content shouldBe (ListSerializer(StatusMessageResponse.serializer()) stringify statusResponses)
                 }
                 println("3")
             }

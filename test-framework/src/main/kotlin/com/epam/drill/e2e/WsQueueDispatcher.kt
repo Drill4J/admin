@@ -18,11 +18,11 @@ import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.io.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import kotlinx.serialization.protobuf.*
 import org.apache.bcel.classfile.*
+import java.io.*
 import kotlin.reflect.full.*
 
 
@@ -66,28 +66,30 @@ class UIEVENTLOOP(
                     if (uiStreamDebug) {
                         println("UI: $parsedJson")
                     }
-                    val messageType = WsMessageType.valueOf(parsedJson["type"]!!.content)
-                    val url = parsedJson[WsSendMessage::destination.name]!!.content
-                    val content = parsedJson[WsSendMessage::message.name]!!.toString()
+                    val messageType = WsMessageType.valueOf((parsedJson["type"] as JsonPrimitive).content)
+                    val url = (parsedJson[WsSendMessage::destination.name] as JsonPrimitive).content
+                    val content = parsedJson[WsSendMessage::message.name]
                     val (_, type) = wsTopic.getParams(url)
-                    val response = content.takeIf { it != "\"\"" }
+                    val response = content?.takeIf { it != JsonPrimitive("") }
                     when (messageType) {
                         WsMessageType.MESSAGE, WsMessageType.DELETE -> launch {
                             when (type) {
                                 is WsRoutes.Agents -> glob.run {
-                                    send(GroupedAgentsDto.serializer() parse content)
+                                    response?.let {
+                                        send(GroupedAgentsDto.serializer() fromJson it)
+                                    }
                                     println("Processed $type")
                                 }
                                 is WsRoutes.Agent -> cs.getValue(type.agentId).agentChannel.run {
-                                    send(response?.run { AgentInfoDto.serializer() parse content })
+                                    send(response?.let { AgentInfoDto.serializer() fromJson it })
                                     println("Processed $type")
                                 }
                                 is WsRoutes.AgentBuilds -> cs.getValue(type.agentId).buildsChannel.run {
-                                    send(response?.run { BuildSummaryDto.serializer().list parse content })
+                                    send(response?.let { ListSerializer(BuildSummaryDto.serializer()) fromJson it })
                                     println("Processed $type")
                                 }
                                 is WsRoutes.AgentPlugins -> cs.getValue(type.agentId).agentPluginInfoChannel.run {
-                                    send(response?.run { PluginDto.serializer().set parse content })
+                                    send(response?.let { SetSerializer(PluginDto.serializer()) fromJson it })
                                     println("Processed $type")
                                 }
                             }
