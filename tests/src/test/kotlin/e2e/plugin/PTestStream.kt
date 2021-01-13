@@ -23,9 +23,9 @@ class PTestStream : PluginStreams() {
         app.launch {
             incoming.consumeEach {
                 if (it is Frame.Text) {
-                    val parseJson = json.parseJson(it.readText()) as JsonObject
-                    val url = parseJson[WsReceiveMessage::destination.name]!!.content
-                    val messageJson = parseJson[Subscribe::message.name]!!.toString()
+                    val parseJson = it.readText().parseJson() as JsonObject
+                    val url = (parseJson[WsReceiveMessage::destination.name] as JsonPrimitive).content
+                    val messageJson = parseJson[Subscribe::message.name].toString()
                     if (isDebugStream) {
                         println("Plugin << url=$url, content=$messageJson")
                     }
