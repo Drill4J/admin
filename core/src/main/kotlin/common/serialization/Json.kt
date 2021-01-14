@@ -3,15 +3,15 @@ package com.epam.drill.admin.common.serialization
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
-private val json = Json(JsonConfiguration.Stable)
+val json = Json { encodeDefaults = true }
 
-infix fun <T> KSerializer<T>.parse(rawData: String): T = json.parse(this, rawData)
-infix fun <T> KSerializer<T>.stringify(rawData: T) = json.stringify(this, rawData)
+infix fun <T> KSerializer<T>.parse(rawData: String): T = json.decodeFromString(this, rawData)
+infix fun <T> KSerializer<T>.stringify(rawData: T) = json.encodeToString(this, rawData)
 
-infix fun <T> KSerializer<T>.toJson(rawData: T): JsonElement = json.toJson(this, rawData)
-infix fun <T> KSerializer<T>.fromJson(jsonElem: JsonElement): T = json.fromJson(this, jsonElem)
+infix fun <T> KSerializer<T>.toJson(rawData: T): JsonElement = json.encodeToJsonElement(this, rawData)
+infix fun <T> KSerializer<T>.fromJson(jsonElem: JsonElement): T = json.decodeFromJsonElement(this, jsonElem)
 
-fun String.parseJson(): JsonElement = json.parseJson(this)
+fun String.parseJson(): JsonElement = json.parseToJsonElement(this)
 fun Any?.toJson(): JsonElement = this?.let { any ->
     any::class.serializer().cast().let { serializer ->
         serializer toJson any

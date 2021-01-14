@@ -11,9 +11,8 @@ repositories {
 val drillApiVersion: String by extra
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    implementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
-    implementation("com.epam.drill:common-jvm:$drillApiVersion")
+    implementation("com.epam.drill:drill-agent-part:$drillApiVersion")
+    implementation("com.epam.drill:common:$drillApiVersion")
 }
 
 tasks {

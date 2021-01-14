@@ -2,7 +2,6 @@ package com.epam.drill.e2e.plugin
 
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import com.epam.drill.admin.endpoints.*
@@ -50,8 +49,8 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
                 watcher?.invoke(asyncEngine, glob)
             }
 
-            val nonStrictJson = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true))
-            val pluginMeta = nonStrictJson.parse(
+            val nonStrictJson = Json { ignoreUnknownKeys = true }
+            val pluginMeta = nonStrictJson.decodeFromString(
                 PluginMetadata.serializer(),
                 File(System.getProperty("plugin.config.path") ?: "./../plugin_config.json").readText()
             )

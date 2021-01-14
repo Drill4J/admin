@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.*
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
+    id("kotlinx-atomicfu")
     `maven-publish`
 }
 
@@ -30,12 +31,11 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
-    implementation("com.epam.drill:common-jvm:$drillApiVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
+    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
+    implementation("com.epam.drill:common:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
-    implementation("com.epam.drill:kodux-jvm:$koduxVersion")
-    implementation("org.jetbrains.xodus:xodus-entity-store:1.3.91")
+    implementation("com.epam.drill:kodux:$koduxVersion")
+    implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("io.mockk:mockk:$mockkVersion")
     api(project(":core"))
@@ -50,6 +50,7 @@ tasks {
         kotlinOptions.jvmTarget = "1.8"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.InternalAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.ExperimentalStdlibApi"
+        kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlinx.serialization.ExperimentalSerializationApi"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI"
         kotlinOptions.freeCompilerArgs += "-Xuse-experimental=kotlin.time.ExperimentalTime"

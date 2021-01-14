@@ -15,10 +15,9 @@ val drillApiVersion: String by extra
 val koduxVersion: String by extra
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
-    implementation("com.epam.drill:common-jvm:$drillApiVersion")
-    implementation("com.epam.drill:kodux-jvm:$koduxVersion")
+    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
+    implementation("com.epam.drill:common:$drillApiVersion")
+    implementation("com.epam.drill:kodux:$koduxVersion")
 }
 
 tasks.withType<KotlinCompile> {
