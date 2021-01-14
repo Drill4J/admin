@@ -3,6 +3,7 @@ package com.epam.drill.admin.agent
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.plugin.api.*

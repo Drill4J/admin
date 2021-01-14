@@ -65,9 +65,9 @@ class PluginLoaderService(
 
                             if (configEntry != null) {
                                 val configText = jar.getInputStream(configEntry).reader().readText()
-                                val configJson = nonStrictJson.parseJson(configText) as JsonObject
-                                val version = configJson["version"]?.contentOrNull ?: ""
-                                val config = nonStrictJson.fromJson(PluginMetadata.serializer(), configJson)
+                                val configJson = nonStrictJson.parseToJsonElement(configText) as JsonObject
+                                val version = configJson["version"]?.jsonPrimitive?.contentOrNull ?: ""
+                                val config = nonStrictJson.decodeFromJsonElement(PluginMetadata.serializer(), configJson)
                                 val pluginId = config.id
 
                                 if (pluginId !in plugins.keys) {
@@ -141,4 +141,4 @@ class PluginLoaderService(
 
 }
 
-private val nonStrictJson = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true))
+private val nonStrictJson = Json { ignoreUnknownKeys = true }

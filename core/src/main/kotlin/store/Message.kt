@@ -1,5 +1,6 @@
 package com.epam.drill.admin.store
 
+import com.epam.drill.admin.common.serialization.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 import kotlin.reflect.*

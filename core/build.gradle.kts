@@ -43,16 +43,15 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
-    implementation("com.epam.drill:common-jvm:$drillApiVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
+    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
+    implementation("com.epam.drill:common:$drillApiVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$collectionImmutableVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill:kodux-jvm:$koduxVersion")
+    implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
@@ -163,6 +162,8 @@ tasks {
         kotlinOptions {
             jvmTarget = "1.8"
             freeCompilerArgs = listOf(
+                "-Xuse-experimental=kotlinx.serialization.ExperimentalSerializationApi",
+                "-Xuse-experimental=kotlinx.serialization.InternalSerializationApi",
                 "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI",
                 "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI",
                 "-Xuse-experimental=io.ktor.util.InternalAPI",

@@ -58,8 +58,8 @@ dependencies {
     testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
-    testImplementation("com.epam.drill:kodux-jvm:$koduxVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
+    testImplementation("com.epam.drill:kodux:$koduxVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
