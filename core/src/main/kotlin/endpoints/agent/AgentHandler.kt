@@ -1,8 +1,8 @@
 @file:Suppress("EXPERIMENTAL_API_USAGE")
+
 package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
@@ -41,7 +41,12 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     com.epam.drill.common.AgentType.DOTNET -> FrameType.TEXT
                     else -> FrameType.BINARY
                 }
-                val agentSession = AgentWsSession(this@agentWebsocket, frameType, application.agentSocketTimeout)
+                val agentSession = AgentWsSession(
+                    this@agentWebsocket,
+                    frameType,
+                    application.agentSocketTimeout,
+                    agentConfig.id
+                )
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig, needSync, agentSession)
                 }

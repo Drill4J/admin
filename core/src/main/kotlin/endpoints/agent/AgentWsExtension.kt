@@ -34,18 +34,23 @@ class Signal(
         callback(result)
     }
 
-    suspend fun await(timeout: Duration) {
+    suspend fun await(timeout: Duration, agentId: String) {
         if (_state.value) {
-            awaitWithExpr(timeout, topicName) { _state.value }
+            awaitWithExpr(timeout, agentId, topicName) { _state.value }
         }
     }
 }
 
-suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> Boolean) {
+suspend fun awaitWithExpr(
+    timeout: Duration,
+    agentId: String,
+    description: String,
+    state: () -> Boolean
+) {
     val expirationMark = Monotonic.markNow() + timeout
     while (state()) {
         if (expirationMark.hasPassedNow()) {
-            throw WsAwaitException("Haven't received a signal in $timeout for '$description' destination")
+            throw WsAwaitException("Haven't received a signal for agent '$agentId' in $timeout for '$description' destination")
         }
         delay(200)
     }
@@ -53,6 +58,7 @@ suspend fun awaitWithExpr(timeout: Duration, description: String, state: () -> B
 
 class WsDeferred(
     val timeout: Duration,
+    val agentId: String,
     topicName: String,
     callback: suspend (Any) -> Unit = {},
     val caller: suspend () -> Unit
@@ -62,14 +68,15 @@ class WsDeferred(
     suspend fun call(): WsDeferred = apply { caller() }
 
     suspend fun await() {
-        signal.await(timeout)
+        signal.await(timeout, agentId)
     }
 }
 
 open class AgentWsSession(
     private val session: WebSocketServerSession,
     val frameType: FrameType,
-    private val timeout: Duration
+    private val timeout: Duration,
+    private val agentId: String
 ) : WebSocketServerSession by session {
 
     val subscribers get() = _subscribers.value
@@ -110,6 +117,7 @@ open class AgentWsSession(
         caller: suspend () -> Unit
     ) = WsDeferred(
         timeout = timeout,
+        agentId = agentId,
         topicName = topicName,
         callback = callback,
         caller = caller
