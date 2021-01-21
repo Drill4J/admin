@@ -69,12 +69,12 @@ class PluginTest : E2EPluginTest() {
                     code = 200,
                     message = "act"
                 )
-                val statusResponses: List<StatusMessageResponse> =
+                val statusResponses: List<WithStatusCode> =
                     listOf(statusResponse, statusResponse, statusResponse)
                 pluginAction("myActionForAllAgents", serviceGroup) { status, content ->
                     println("2")
                     status shouldBe HttpStatusCode.OK
-                    content shouldBe (ListSerializer(StatusMessageResponse.serializer()) stringify statusResponses)
+                    content shouldBe (ListSerializer(WithStatusCode.serializer()) stringify statusResponses)
                 }
                 println("3")
             }
