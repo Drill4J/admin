@@ -6,18 +6,21 @@ import kotlinx.serialization.json.*
 @Serializable
 data class ErrorResponse(val message: String)
 
-interface WithStatusCode {
-    val code: Int
+@Serializable
+sealed class WithStatusCode {
+    abstract val code: Int
 }
 
 @Serializable
+@SerialName("STATUS_MESSAGE")
 data class StatusMessageResponse(
     override val code: Int,
     val message: String
-) : WithStatusCode
+) : WithStatusCode()
 
 @Serializable
+@SerialName("STATUS")
 data class StatusResponse(
     override val code: Int,
     val data: JsonElement
-) : WithStatusCode
+) : WithStatusCode()

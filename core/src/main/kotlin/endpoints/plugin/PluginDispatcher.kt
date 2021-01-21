@@ -223,8 +223,8 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         agents: List<AgentEntry>,
         pluginId: String,
         action: String
-    ): Pair<HttpStatusCode, Any> {
-        val statusesResponse: List<WithStatusCode> = agents.mapNotNull { entry: AgentEntry ->
+    ): Pair<HttpStatusCode, List<JsonElement>> {
+        val statusesResponse: List<JsonElement> = agents.mapNotNull { entry: AgentEntry ->
             when (entry.agent.status) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
                     val adminActionResult = processAction(action, agentManager::agentSessions)
@@ -238,7 +238,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     )
                 }
             }
-        }
+        }.map { WithStatusCode.serializer() toJson it }
         return HttpStatusCode.OK to statusesResponse
     }
 }
