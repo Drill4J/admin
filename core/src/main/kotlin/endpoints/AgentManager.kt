@@ -16,6 +16,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
+import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -128,7 +129,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
         } else {
-            logger.debug { "agent($id, $buildVersion): attaching to new or stored build..." }
+            logger.debug { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
+            oldInstanceIds.map { instance ->
+                logger.debug { "disconnecting WS for agent('$id', '${currentInfo?.buildVersion}') for instance ids ${oldInstanceIds.keys}..." }
+                val agentWsSession = instance.value
+                agentWsSession.close()
+                currentInfo?.removeInstance(instance.key, agentWsSession)
+            }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
             val preparedInfo: AgentInfo? = if (storedInfo == null) {
                 commonStore.client.findById<PreparedAgentData>(id)?.let {
@@ -495,16 +502,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentEntry: AgentEntry,
         plugin: Plugin
     ): AdminPluginPart<*> = plugin.pluginBean.id.let { pluginId ->
+        val buildVersion = agentEntry.agent.buildVersion
+        val agentId = agentEntry.agent.id
+        logger.debug { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
         agentEntry[pluginId] ?: agentEntry.get(pluginId) {
-            val adminPluginData = adminData(agent.id)
-            val store = agentStores.agentStore(agent.id)
+            val adminPluginData = adminData(agentId)
+            val store = agentStores.agentStore(agentId)
             plugin.createInstance(
                 agentInfo = agent,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
                 store = store
             )
-        }.apply { initialize() }
+        }.apply {
+            logger.debug { "initializing plugin, classes size=${adminData.classBytes.size} for agent(id=$agentId, version=$buildVersion)..." }
+            initialize()
+        }
     }
 
     internal suspend fun AgentInfo.commitChanges() {
