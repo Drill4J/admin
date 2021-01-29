@@ -73,7 +73,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         pluginCache.retrieveMessage(
                             pluginId,
                             GroupSubscription(groupId),
-                            "/service-group/data/$dataType"
+                            "/group/data/$dataType"
                         ).toStatusResponsePair()
                     } else HttpStatusCode.NotFound to ErrorResponse(
                         "service group $groupId not found"
