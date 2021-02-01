@@ -123,14 +123,14 @@ fun AdminTest.toggleAgent(
 
 fun AdminTest.pluginAction(
     payload: String,
-    serviceGroupId: String,
+    groupId: String,
     pluginId: String = testPlugin.pluginId,
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
 
 ) = callAsync(asyncEngine.context) {
-    val location = groupApi(serviceGroupId) {
-        ApiRoot.ServiceGroup.Plugin(it, pluginId).let(ApiRoot.ServiceGroup.Plugin::DispatchAction)
+    val location = groupApi(groupId) {
+        ApiRoot.AgentGroup.Plugin(it, pluginId).let(ApiRoot.AgentGroup.Plugin::DispatchAction)
     }
     val uri = engine.toApiUri(location)
     engine.handleRequest(HttpMethod.Post, uri) {

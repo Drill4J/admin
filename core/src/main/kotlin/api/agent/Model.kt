@@ -41,7 +41,7 @@ data class SystemSettingsDto(
 @Serializable
 data class AgentInfoDto(
     val id: String,
-    val serviceGroup: String,
+    val group: String,
     val instanceIds: Set<String>,
     val name: String,
     val description: String = "",
@@ -62,7 +62,7 @@ data class AgentCreationDto(
     val id: String,
     val agentType: AgentType,
     val name: String,
-    val serviceGroup: String = "",
+    val group: String = "",
     val environment: String = "",
     val description: String = "",
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),

@@ -22,7 +22,6 @@ import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -282,7 +281,7 @@ data class AgentWrap(
     val id: String,
     val instanceId: String = id + "1",
     val buildVersion: String = "0.1.0",
-    val serviceGroupId: String = "",
+    val groupId: String = "",
     val needSync: Boolean = true,
     val agentType: AgentType = AgentType.JAVA
 )

@@ -33,7 +33,7 @@ fun wsRequestRequiredParams(
                     ag.id,
                     ag.instanceId,
                     ag.buildVersion,
-                    ag.serviceGroupId,
+                    ag.groupId,
                     AgentType.valueOf(ag.agentType.name),
                     ag.buildVersion,
                     ag.needSync

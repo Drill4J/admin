@@ -22,13 +22,13 @@ import java.util.concurrent.*
 class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncStruct> = ConcurrentHashMap()) {
 
     inline fun <reified B : Build> connectAgent(
-        serviceGroup: String = "",
+        group: String = "",
         ags: AgentWrap = AgentWrap(
             id = UUID.randomUUID().toString().replace("-", ""),
             instanceId = "1",
             buildVersion = B::class.objectInstance!!.version,
             needSync = true,
-            serviceGroupId = serviceGroup
+            groupId = group
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {
@@ -45,12 +45,12 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
     }
 
     inline fun <reified B : Build> reconnect(
-        serviceGroup: String = "",
+        group: String = "",
         ags: AgentWrap = AgentWrap(
             id = agents.keys.first(),
             instanceId = "1",
             buildVersion = B::class.objectInstance!!.version,
-            serviceGroupId = serviceGroup
+            groupId = group
         ),
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {

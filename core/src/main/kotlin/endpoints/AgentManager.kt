@@ -16,16 +16,15 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
@@ -58,7 +57,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val commonStore by instance<CommonStore>()
     private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
-    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val groupManager by instance<GroupManager>()
     private val agentDataCache by instance<AgentDataCache>()
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
@@ -113,10 +112,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     ): AgentInfo {
         logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
-        val serviceGroup = config.serviceGroupId
-        logger.debug { "Service group id '$serviceGroup'" }
-        if (serviceGroup.isNotBlank()) {
-            serviceGroupManager.syncOnAttach(serviceGroup)
+        val groupId = config.serviceGroupId
+        logger.debug { "Group id '$groupId'" }
+        if (groupId.isNotBlank()) {
+            groupManager.syncOnAttach(groupId)
         }
         val oldInstanceIds = instanceIds(id)
         val buildVersion = config.buildVersion
@@ -130,7 +129,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return if (
             (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds) &&
             currentInfo?.buildVersion == buildVersion &&
-            currentInfo.serviceGroup == serviceGroup &&
+            currentInfo.groupId == groupId &&
             currentInfo.agentVersion == config.agentVersion
         ) {
             logger.debug { "agent($id, $buildVersion): reattaching to current build..." }
@@ -525,8 +524,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    internal fun serviceGroup(serviceGroupId: String): List<AgentEntry> = allEntries().filter {
-        it.agent.serviceGroup == serviceGroupId
+    internal fun agentsByGroup(groupId: String): List<AgentEntry> = allEntries().filter {
+        it.agent.groupId == groupId
     }
 
     private suspend fun ensurePluginInstance(

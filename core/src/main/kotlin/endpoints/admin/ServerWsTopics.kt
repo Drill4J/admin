@@ -22,23 +22,22 @@ import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
 
 class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val wsTopic by instance<WsTopic>()
-    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val groupManager by instance<GroupManager>()
     private val agentManager by instance<AgentManager>()
     private val plugins by instance<Plugins>()
     private val pluginCaches by instance<PluginCaches>()
@@ -51,7 +50,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
         runBlocking {
             agentManager.agentStorage.onUpdate += {
                 WsRoot.Agents().send(agentManager.all())
-                WsRoot.Groups().send(serviceGroupManager.all())
+                WsRoot.Groups().send(groupManager.all())
             }
             agentManager.agentStorage.onAdd += { agentId, agentEntry ->
                 WsRoot.Agent(agentId).send(agentEntry.agent.toDto(agentManager))
@@ -64,15 +63,15 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
             agentManager.agentStorage.onUpdate += {
                 val destination = app.toLocation(WsRoutes.Agents())
-                val groupedAgents = serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
+                val groupedAgents = groupManager.group(agentManager.activeAgents).toDto(agentManager)
                 sessionStorage.sendTo(
                     destination,
                     groupedAgents
                 )
-                val serviceGroups = groupedAgents.grouped
-                if (serviceGroups.any()) {
-                    for (group in serviceGroups) {
-                        val route = WsRoutes.ServiceGroupPlugins(group.group.id)
+                val groups = groupedAgents.grouped
+                if (groups.any()) {
+                    for (group in groups) {
+                        val route = WsRoutes.GroupPlugins(group.group.id)
                         val dest = app.toLocation(route)
                         sessionStorage.sendTo(dest, group.plugins)
                     }
@@ -102,12 +101,12 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }
 
-                topic<WsRoot.Groups> { serviceGroupManager.all() }
+                topic<WsRoot.Groups> { groupManager.all() }
 
-                topic<WsRoot.Group> { serviceGroupManager[it.groupId] }
+                topic<WsRoot.Group> { groupManager[it.groupId] }
 
                 topic<WsRoutes.Agents> {
-                    serviceGroupManager.group(agentManager.activeAgents).toDto(agentManager)
+                    groupManager.group(agentManager.activeAgents).toDto(agentManager)
                 }
 
                 topic<WsRoutes.Agent> { (agentId) ->
@@ -140,10 +139,10 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoutes.WsVersion> { adminVersionDto }
 
-                topic<WsRoutes.ServiceGroup> { (groupId) -> serviceGroupManager[groupId] }
+                topic<WsRoutes.Group> { (groupId) -> groupManager[groupId] }
 
-                topic<WsRoutes.ServiceGroupPlugins> { (groupId) ->
-                    val agents = agentManager.activeAgents.filter { it.serviceGroup == groupId }
+                topic<WsRoutes.GroupPlugins> { (groupId) ->
+                    val agents = agentManager.activeAgents.filter { it.groupId == groupId }
                     plugins.values.mapToDto(agents)
                 }
             }

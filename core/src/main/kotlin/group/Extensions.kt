@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.servicegroup
+package com.epam.drill.admin.group
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.group.*
@@ -27,13 +27,13 @@ internal fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
 
 internal fun AgentGroup.toDto(
     agentManager: AgentManager
-) = JoinedServiceGroupDto(
+) = JoinedGroupDto(
     group = group,
     agents = agentInfos.mapToDto(agentManager),
     plugins = agentManager.plugins.values.mapToDto(agentInfos)
 )
 
-internal fun ServiceGroup.toDto() = ServiceGroupDto(
+internal fun Group.toDto() = GroupDto(
     id = id,
     name = name,
     description = description,
@@ -41,7 +41,7 @@ internal fun ServiceGroup.toDto() = ServiceGroupDto(
     systemSettings = systemSettings
 )
 
-internal fun ServiceGroupDto.toModel() = ServiceGroup(
+internal fun GroupDto.toModel() = Group(
     id = id,
     name = name,
     description = description,

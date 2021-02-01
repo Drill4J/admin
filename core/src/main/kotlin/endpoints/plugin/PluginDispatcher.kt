@@ -104,7 +104,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val meta = "Dispatch defined plugin actions in defined service group"
+                val meta = "Dispatch defined plugin actions in defined group"
                     .examples(
                         example("action", "some action name")
                     )
@@ -113,11 +113,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             example("")
                         ), notFound()
                     )
-                post<ApiRoot.ServiceGroup.Plugin.DispatchAction, String>(meta) { pluginParent, action ->
+                post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(meta) { pluginParent, action ->
                     val pluginId = pluginParent.parent.pluginId
-                    val serviceGroupId = pluginParent.parent.parent.serviceGroupId
-                    val agents = agentManager.serviceGroup(serviceGroupId)
-                    logger.debug { "Dispatch action plugin with id $pluginId for agents with serviceGroupId $serviceGroupId" }
+                    val groupId = pluginParent.parent.parent.groupId
+                    val agents = agentManager.agentsByGroup(groupId)
+                    logger.debug { "Dispatch action plugin with id $pluginId for agents with groupId $groupId" }
                     val (statusCode, response) = plugins[pluginId]?.let {
                         processMultipleActions(
                             agents,
