@@ -28,7 +28,7 @@ class SingleConnectPluginTest : E2EPluginTest() {
     @Test
     fun `test e2e plugin API`() {
         createSimpleAppWithPlugin<PTestStream> {
-            connectAgent<Build1>("myServiceGroup") { _, _ ->
+            connectAgent<Build1>("myGroup") { _, _ ->
                 val expectedContent = StatusMessageResponse.serializer() stringify StatusMessageResponse(
                     code = 200,
                     message = "act"

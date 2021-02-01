@@ -26,7 +26,7 @@ class ApiRoot(val prefix: String = "api") {
         const val SYSTEM = "System operations"
         const val AGENT = "Agent Endpoints"
         const val AGENT_PLUGIN = "Agent Plugin Endpoints"
-        const val SERVICE_GROUP = "Service Group Endpoints"
+        const val GROUP = "Group Endpoints"
     }
 
     @Group(SYSTEM)
@@ -82,25 +82,25 @@ class ApiRoot(val prefix: String = "api") {
         data class PluginData(val parent: Agents, val agentId: String, val pluginId: String, val dataType: String)
     }
 
-    @Group(SERVICE_GROUP)
-    @Location("/service-groups/{serviceGroupId}")
-    data class ServiceGroup(val parent: ApiRoot, val serviceGroupId: String) {
-        @Group(SERVICE_GROUP)
+    @Group(GROUP)
+    @Location("/groups/{groupId}")
+    data class AgentGroup(val parent: ApiRoot, val groupId: String) {
+        @Group(GROUP)
         @Location("/system-settings")
-        data class SystemSettings(val parent: ServiceGroup)
+        data class SystemSettings(val parent: AgentGroup)
 
-        @Group(SERVICE_GROUP)
+        @Group(GROUP)
         @Location("/plugins")
-        data class Plugins(val parent: ServiceGroup)
+        data class Plugins(val parent: AgentGroup)
 
-        @Group(SERVICE_GROUP)
+        @Group(GROUP)
         @Location("/plugins/{pluginId}")
-        data class Plugin(val parent: ServiceGroup, val pluginId: String) {
-            @Group(SERVICE_GROUP)
+        data class Plugin(val parent: AgentGroup, val pluginId: String) {
+            @Group(GROUP)
             @Location("/dispatch-action")
             data class DispatchAction(val parent: Plugin)
 
-            @Group(SERVICE_GROUP)
+            @Group(GROUP)
             @Location("/data/{dataType}")
             data class Data(val parent: Plugin, val dataType: String)
         }

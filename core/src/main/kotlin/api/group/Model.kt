@@ -21,8 +21,8 @@ import kotlinx.serialization.*
 
 //TODO remove after frontend has moved to topics: api/agents, api/groups
 @Serializable
-data class JoinedServiceGroupDto(
-    val group: ServiceGroupDto,
+data class JoinedGroupDto(
+    val group: GroupDto,
     val agents: List<AgentInfoDto>,
     val plugins: List<PluginDto>
 )
@@ -31,11 +31,11 @@ data class JoinedServiceGroupDto(
 @Serializable
 data class GroupedAgentsDto(
     val single: List<AgentInfoDto>,
-    val grouped: List<JoinedServiceGroupDto>
+    val grouped: List<JoinedGroupDto>
 )
 
 @Serializable
-data class ServiceGroupDto(
+data class GroupDto(
     val id: String,
     val name: String,
     val description: String = "",
@@ -44,7 +44,7 @@ data class ServiceGroupDto(
 )
 
 @Serializable
-data class ServiceGroupUpdateDto(
+data class GroupUpdateDto(
     val name: String,
     val description: String = "",
     val environment: String = ""

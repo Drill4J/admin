@@ -25,12 +25,11 @@ import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
+import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.PluginSessions
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
-import com.epam.drill.admin.servicegroup.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
@@ -57,7 +56,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
         bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<ServiceGroupManager>() with eagerSingleton { ServiceGroupManager(kodein) }
+        bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
@@ -101,7 +100,7 @@ val handlers: Kodein.Builder.(Application) -> Unit
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
-        bind<ServiceGroupHandler>() with eagerSingleton { ServiceGroupHandler(kodein) }
+        bind<GroupHandler>() with eagerSingleton { GroupHandler(kodein) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
         bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }

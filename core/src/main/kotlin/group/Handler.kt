@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.servicegroup
+package com.epam.drill.admin.group
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
@@ -40,11 +40,11 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 
-class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
+class GroupHandler(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val serviceGroupManager by instance<ServiceGroupManager>()
+    private val groupManager by instance<GroupManager>()
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
@@ -59,13 +59,13 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
     init {
         app.routing {
             authenticate {
-                val meta = "Update service group"
+                val meta = "Update group"
                     .examples(
-                        example("serviceGroup", ServiceGroupUpdateDto(name = "Some Group"))
+                        example("group", GroupUpdateDto(name = "Some Group"))
                     ).responds(ok<Unit>(), notFound())
-                put<ApiRoot.ServiceGroup, ServiceGroupUpdateDto>(meta) { (_, id), info ->
-                    val statusCode = serviceGroupManager[id]?.let { group ->
-                        serviceGroupManager.update(
+                put<ApiRoot.AgentGroup, GroupUpdateDto>(meta) { (_, id), info ->
+                    val statusCode = groupManager[id]?.let { group ->
+                        groupManager.update(
                             group.copy(
                                 name = info.name,
                                 description = info.description,
@@ -78,20 +78,20 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-            get<ApiRoot.ServiceGroup.Plugin.Data> { (pluginParent, dataType) ->
+            get<ApiRoot.AgentGroup.Plugin.Data> { (pluginParent, dataType) ->
                 val (group, pluginId) = pluginParent
-                val groupId = group.serviceGroupId
+                val groupId = group.groupId
                 logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
                 val (statusCode, response) = if (pluginId in plugins) {
-                    val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(groupId)
-                    if (serviceGroup.any()) {
+                    val agents: List<AgentEntry> = agentManager.agentsByGroup(groupId)
+                    if (agents.any()) {
                         pluginCache.retrieveMessage(
                             pluginId,
                             GroupSubscription(groupId),
                             "/group/data/$dataType"
                         ).toStatusResponsePair()
                     } else HttpStatusCode.NotFound to ErrorResponse(
-                        "service group $groupId not found"
+                        "group $groupId not found"
                     )
                 } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
                 logger.trace { response }
@@ -99,21 +99,21 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val meta = "Register agent in defined service group"
+                val meta = "Register agent in defined group"
                     .examples(
                         example(
                             "agentRegistrationInfo",
                             agentRegistrationExample
                         )
                     )
-                patch<ApiRoot.ServiceGroup, AgentRegistrationDto>(meta) { location, regInfo ->
-                    val serviceGroupId = location.serviceGroupId
-                    logger.debug { "Service group $serviceGroupId: registering agents..." }
-                    val serviceGroup: List<AgentEntry> = agentManager.serviceGroup(serviceGroupId)
-                    val agentInfos: List<AgentInfo> = serviceGroup.map { it.agent }
-                    val (status: HttpStatusCode, message: Any) = if (serviceGroup.isNotEmpty()) {
-                        serviceGroupManager[serviceGroupId]?.let { groupDto ->
-                            serviceGroupManager.updateSystemSettings(
+                patch<ApiRoot.AgentGroup, AgentRegistrationDto>(meta) { location, regInfo ->
+                    val groupId = location.groupId
+                    logger.debug { "Group $groupId: registering agents..." }
+                    val agents: List<AgentEntry> = agentManager.agentsByGroup(groupId)
+                    val agentInfos: List<AgentInfo> = agents.map { it.agent }
+                    val (status: HttpStatusCode, message: Any) = if (agents.isNotEmpty()) {
+                        groupManager[groupId]?.let { groupDto ->
+                            groupManager.updateSystemSettings(
                                 groupDto,
                                 regInfo.systemSettings
                             )?.let { sendUpdates(listOf(it)) }
@@ -122,13 +122,13 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         if (registeredAgentIds.count() < agentInfos.count()) {
                             val agentIds = agentInfos.map { it.id }
                             logger.error {
-                                """Service group $serviceGroupId: not all agents registered successfully.
+                                """Group $groupId: not all agents registered successfully.
                                     |Failed agents: ${agentIds - registeredAgentIds}.
                                 """.trimMargin()
                             }
-                        } else logger.debug { "Service group $serviceGroupId: registered agents $registeredAgentIds." }
+                        } else logger.debug { "Group $groupId: registered agents $registeredAgentIds." }
                         HttpStatusCode.OK to "$registeredAgentIds registered"
-                    } else "No agents found for service group $serviceGroupId".let {
+                    } else "No agents found for group $groupId".let {
                         logger.error(it)
                         HttpStatusCode.InternalServerError to it
                     }
@@ -137,7 +137,7 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val meta = "Update system settings of service group"
+                val meta = "Update system settings of group"
                     .examples(
                         example(
                             "systemSettings",
@@ -150,20 +150,20 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                         ok<Unit>(),
                         notFound()
                     )
-                put<ApiRoot.ServiceGroup.SystemSettings, SystemSettingsDto>(meta) { (group), systemSettings ->
-                    val id: String = group.serviceGroupId
-                    val status: HttpStatusCode = serviceGroupManager[id]?.let { serviceGroup ->
+                put<ApiRoot.AgentGroup.SystemSettings, SystemSettingsDto>(meta) { (group), systemSettings ->
+                    val id: String = group.groupId
+                    val status: HttpStatusCode = groupManager[id]?.let { group ->
                         if (systemSettings.packages.all { it.isNotBlank() }) {
-                            val agentInfos: List<AgentInfo> = agentManager.serviceGroup(id).map { it.agent }
+                            val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.agent }
                             val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
-                            serviceGroupManager.updateSystemSettings(serviceGroup, systemSettings)
+                            groupManager.updateSystemSettings(group, systemSettings)
                             if (updatedAgentIds.count() < agentInfos.count()) {
                                 logger.error {
-                                    """Service group $id: not all agents updated successfully.
+                                    """Group $id: not all agents updated successfully.
                                         |Failed agents: ${agentInfos - updatedAgentIds}.
                                     """.trimMargin()
                                 }
-                            } else logger.debug { "Service group $id: updated agents $updatedAgentIds." }
+                            } else logger.debug { "Group $id: updated agents $updatedAgentIds." }
                             HttpStatusCode.OK
                         } else HttpStatusCode.BadRequest
                     } ?: HttpStatusCode.NotFound
@@ -172,11 +172,11 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-                val meta = "Add plugin to service group".responds(ok<Unit>(), notFound(), badRequest())
-                post<ApiRoot.ServiceGroup.Plugins, PluginId>(meta) { (group), (pluginId) ->
-                    val groupId: String = group.serviceGroupId
-                    logger.debug { "Adding plugin to service group '$groupId'..." }
-                    val agentInfos: List<AgentInfo> = agentManager.serviceGroup(groupId).map { it.agent }
+                val meta = "Add plugin to group".responds(ok<Unit>(), notFound(), badRequest())
+                post<ApiRoot.AgentGroup.Plugins, PluginId>(meta) { (group), (pluginId) ->
+                    val groupId: String = group.groupId
+                    logger.debug { "Adding plugin to group '$groupId'..." }
+                    val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(groupId).map { it.agent }
                     val (status, msg) = if (agentInfos.isNotEmpty()) {
                         if (pluginId in plugins.keys) {
                             if (agentInfos.any { pluginId !in it.plugins }) {
@@ -184,31 +184,31 @@ class ServiceGroupHandler(override val kodein: Kodein) : KodeinAware {
                                 val errorAgentIds = agentInfos.map(AgentInfo::id) - updatedAgentIds
                                 if (errorAgentIds.any()) {
                                     logger.error {
-                                        """Service group $groupId: not all agents updated successfully.
+                                        """Group $groupId: not all agents updated successfully.
                                         |Failed agents: $errorAgentIds.
                                     """.trimMargin()
                                     }
                                 } else logger.debug {
-                                    "Service group '$groupId': added plugin '$pluginId' to agents $updatedAgentIds."
+                                    "Group '$groupId': added plugin '$pluginId' to agents $updatedAgentIds."
                                 }
                                 HttpStatusCode.OK to "Plugin '$pluginId' added to agents $updatedAgentIds."
                             } else HttpStatusCode.Conflict to ErrorResponse(
-                                "Plugin '$pluginId' already installed on all agents of service group '$groupId'."
+                                "Plugin '$pluginId' already installed on all agents of group '$groupId'."
                             )
                         } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found.")
-                    } else HttpStatusCode.BadRequest to ErrorResponse("No agents found for service group '$groupId'.")
+                    } else HttpStatusCode.BadRequest to ErrorResponse("No agents found for group '$groupId'.")
                     call.respond(status, msg)
                 }
             }
         }
     }
 
-    private suspend fun sendUpdates(groups: Collection<ServiceGroupDto> = serviceGroupManager.all()) {
+    private suspend fun sendUpdates(groups: Collection<GroupDto> = groupManager.all()) {
         groups.forEach { group ->
             WsRoot.Group(group.id).send(group)
-            WsRoutes.ServiceGroup(group.id).send(group) //TODO remove
+            WsRoutes.Group(group.id).send(group) //TODO remove
         }
-        WsRoot.Groups().send(serviceGroupManager.all())
+        WsRoot.Groups().send(groupManager.all())
     }
 
     private suspend fun List<AgentInfo>.register(

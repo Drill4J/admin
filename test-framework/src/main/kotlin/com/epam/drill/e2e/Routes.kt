@@ -21,6 +21,6 @@ internal fun <T> agentApi(block: (ApiRoot.Agents) -> T): T = run {
     ApiRoot().let(ApiRoot::Agents).let(block)
 }
 
-internal fun <T> groupApi(id: String, block: (ApiRoot.ServiceGroup) -> T): T = run {
-    ApiRoot().let { ApiRoot.ServiceGroup(it, id) }.let(block)
+internal fun <T> groupApi(id: String, block: (ApiRoot.AgentGroup) -> T): T = run {
+    ApiRoot().let { ApiRoot.AgentGroup(it, id) }.let(block)
 }

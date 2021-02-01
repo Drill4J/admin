@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.servicegroup
+package com.epam.drill.admin.group
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
@@ -29,17 +29,17 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 
-internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
+internal class GroupManager(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val commonStore by instance<CommonStore>()
     private val app by instance<Application>()
 
-    private val _state = atomic(persistentHashMapOf<String, ServiceGroupDto>())
+    private val _state = atomic(persistentHashMapOf<String, GroupDto>())
 
     init {
         runBlocking {
-            val groups = commonStore.client.getAll<ServiceGroup>()
+            val groups = commonStore.client.getAll<Group>()
             _state.update {
                 it.mutate { map ->
                     for (group in groups) {
@@ -50,15 +50,15 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    fun all(): Collection<ServiceGroupDto> = _state.value.values
+    fun all(): Collection<GroupDto> = _state.value.values
 
-    operator fun get(groupId: String): ServiceGroupDto? = _state.value[groupId]
+    operator fun get(groupId: String): GroupDto? = _state.value[groupId]
 
     suspend fun syncOnAttach(groupId: String) {
         val oldGroups = _state.getAndUpdate { groups ->
             groups.takeIf { groupId in it } ?: groups.put(
                 key = groupId,
-                value = ServiceGroupDto(
+                value = GroupDto(
                     id = groupId,
                     name = groupId,
                     systemSettings = SystemSettingsDto(
@@ -74,7 +74,7 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    suspend fun update(group: ServiceGroupDto): ServiceGroupDto? = group.id.let { id ->
+    suspend fun update(group: GroupDto): GroupDto? = group.id.let { id ->
         val oldGroups = _state.getAndUpdate { groups ->
             groups[id]?.takeIf { it != group }?.let { groups.put(id, group) } ?: groups
         }
@@ -88,8 +88,8 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
 
     fun group(agents: Iterable<AgentInfo>): GroupedAgents {
         val groups = _state.value
-        val agentGroups = agents.filter { it.serviceGroup.isEmpty() || it.serviceGroup in groups }
-            .groupBy { it.serviceGroup }
+        val agentGroups = agents.filter { it.groupId.isEmpty() || it.groupId in groups }
+            .groupBy { it.groupId }
         val singleAgents = SingleAgents(agentGroups[""] ?: emptyList())
         val groupedAgents = agentGroups.filterKeys(String::isNotEmpty)
             .map { (key, value) -> AgentGroup(groups[key]!!, value) }
@@ -97,10 +97,10 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     }
 
     suspend fun updateSystemSettings(
-        serviceGroup: ServiceGroupDto,
+        group: GroupDto,
         systemSettings: SystemSettingsDto
-    ): ServiceGroupDto? =  update(
-        serviceGroup.copy(
+    ): GroupDto? =  update(
+        group.copy(
             systemSettings = SystemSettingsDto(
                 packages = systemSettings.packages,
                 sessionIdHeaderName = systemSettings.sessionIdHeaderName,
@@ -110,14 +110,14 @@ internal class ServiceGroupManager(override val kodein: Kodein) : KodeinAware {
     )
 
     private suspend fun CommonStore.store(
-        oldValue: ServiceGroupDto,
-        groupDto: ServiceGroupDto
-    ): ServiceGroupDto = run {
+        oldValue: GroupDto,
+        groupDto: GroupDto
+    ): GroupDto = run {
         logger.debug { "Updating group ${groupDto.id}, old: $oldValue new: $groupDto" }
         storeGroup(groupDto.toModel())
     }.toDto()
 }
 
 private suspend fun CommonStore.storeGroup(
-    group: ServiceGroup
-): ServiceGroup = client.store(group)
+    group: Group
+): Group = client.store(group)

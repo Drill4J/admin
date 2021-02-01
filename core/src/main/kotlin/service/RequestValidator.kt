@@ -49,7 +49,7 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
                         val agentInfo = am.getOrNull(agentId)
                         when(agentInfo?.status) {
                             null -> {
-                                if (am.allEntries().none { it.agent.serviceGroup == agentId }) {
+                                if (am.allEntries().none { it.agent.groupId == agentId }) {
                                     call.respond(
                                         HttpStatusCode.BadRequest,
                                         ValidationResponse("Agent '$agentId' not found")

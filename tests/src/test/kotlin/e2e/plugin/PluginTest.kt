@@ -65,16 +65,16 @@ class PluginTest : E2EPluginTest() {
 
 
     @Test
-    fun `test e2e plugin API for service group`() {
-        val serviceGroup = "myServiceGroup"
+    fun `test e2e plugin API for group`() {
+        val group = "myGroup"
         createSimpleAppWithPlugin<PTestStream> {
-            connectAgent<Build1>(serviceGroup) { _, _ ->
+            connectAgent<Build1>(group) { _, _ ->
                 println("hi ag1")
             }
-            connectAgent<Build1>(serviceGroup) { _, _ ->
+            connectAgent<Build1>(group) { _, _ ->
                 println("hi ag2")
             }
-            connectAgent<Build1>(serviceGroup) { _, _ ->
+            connectAgent<Build1>(group) { _, _ ->
                 println("hi ag3")
             }
             uiWatcher { channel ->
@@ -86,7 +86,7 @@ class PluginTest : E2EPluginTest() {
                 )
                 val statusResponses: List<WithStatusCode> =
                     listOf(statusResponse, statusResponse, statusResponse)
-                pluginAction("myActionForAllAgents", serviceGroup) { status, content ->
+                pluginAction("myActionForAllAgents", group) { status, content ->
                     println("2")
                     status shouldBe HttpStatusCode.OK
                     content shouldBe (ListSerializer(WithStatusCode.serializer()) stringify statusResponses)

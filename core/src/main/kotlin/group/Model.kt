@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.servicegroup
+package com.epam.drill.admin.group
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
@@ -22,7 +22,7 @@ import com.epam.kodux.*
 import kotlinx.serialization.*
 
 @Serializable
-internal data class ServiceGroup(
+internal data class Group(
     @Id val id: String,
     val name: String,
     val description: String = "",
@@ -36,4 +36,4 @@ internal sealed class AgentList
 
 internal class SingleAgents(val agentInfos: List<AgentInfo>) : AgentList()
 
-internal class AgentGroup(val group: ServiceGroupDto, val agentInfos: List<AgentInfo>) : AgentList()
+internal class AgentGroup(val group: GroupDto, val agentInfos: List<AgentInfo>) : AgentList()

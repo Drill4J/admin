@@ -30,7 +30,7 @@ data class AgentInfo(
     @Id val id: String,
     val name: String,
     val status: AgentStatus,
-    val serviceGroup: String = "",
+    val groupId: String = "",
     val environment: String = "",
     val description: String,
     val buildVersion: String,

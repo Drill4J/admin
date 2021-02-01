@@ -18,11 +18,11 @@ package com.epam.drill.admin.router
 import io.ktor.locations.*
 
 object WsRoutes {
-    @Location("/service-groups/{groupId}")
-    data class ServiceGroup(val groupId: String)
+    @Location("/groups/{groupId}")
+    data class Group(val groupId: String)
 
-    @Location("/service-groups/{groupId}/plugins")
-    data class ServiceGroupPlugins(val groupId: String)
+    @Location("/groups/{groupId}/plugins")
+    data class GroupPlugins(val groupId: String)
 
     @Location("/agents")
     class Agents
