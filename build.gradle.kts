@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") apply false
     id("kotlinx-atomicfu") apply false
     kotlin("plugin.serialization") apply false
+    id("com.github.hierynomus.license")
     base
 }
 
@@ -25,3 +26,13 @@ subprojects {
         jcenter()
     }
 }
+
+val licenseFormatSettings by tasks.registering(com.hierynomus.gradle.license.tasks.LicenseFormat::class) {
+    source = fileTree(project.projectDir).also {
+        include("**/*.kt", "**/*.java", "**/*.groovy")
+        exclude("**/.idea")
+    }.asFileTree
+    headerURI = java.net.URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
+}
+
+tasks["licenseFormat"].dependsOn(licenseFormatSettings)

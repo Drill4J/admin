@@ -3,12 +3,14 @@ rootProject.name = "admin"
 pluginManagement {
     val kotlinVersion: String by extra
     val atomicFuVersion: String by extra
+    val licenseVersion: String by extra
     plugins {
         kotlin("jvm") version kotlinVersion
         kotlin("plugin.serialization") version kotlinVersion
         id("kotlinx-atomicfu") version atomicFuVersion
         id("com.google.cloud.tools.jib") version "1.7.0"
         id("com.github.johnrengelman.shadow") version "5.1.0"
+        id("com.github.hierynomus.license") version licenseVersion
 
         repositories {
             gradlePluginPortal()
