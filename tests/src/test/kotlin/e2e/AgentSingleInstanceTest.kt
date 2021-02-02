@@ -41,7 +41,11 @@ class AgentSingleInstanceTest : E2ETest() {
                     status shouldBe AgentStatus.ONLINE
                     instanceIds.size shouldBe 1
                 }
-            }.reconnect(aw) { ui, _ ->
+            }.reconnect(aw) { ui, agent ->
+                ui.getAgent()?.status shouldBe AgentStatus.OFFLINE
+                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                agent.`get-set-packages-prefixes`()
+                agent.`get-load-classes-datas`()
                 ui.getAgent()?.apply {
                     status shouldBe AgentStatus.ONLINE
                     instanceIds.size shouldBe 1

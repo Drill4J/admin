@@ -110,9 +110,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                                 }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }
                             with(agentManager) {
-                                entryOrNull(agentId)!!.updateAgent {
-                                    it.copy(status = newStatus)
-                                }.commitChanges()
+                                entryOrNull(agentId)?.updateAgentStatus(newStatus)
                             }
                             logger.info { "Agent $agentId toggled, new status - $newStatus." }
                             HttpStatusCode.OK to EmptyContent

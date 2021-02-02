@@ -67,7 +67,7 @@ internal fun AgentInfo.toDto(
         name = name,
         description = description,
         environment = environment,
-        status = status.takeIf { instanceIds.any() } ?: AgentStatus.OFFLINE,
+        status = status,
         buildVersion = buildVersion,
         adminUrl = adminUrl,
         ipAddress = ipAddress,

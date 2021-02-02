@@ -118,7 +118,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (serviceGroup.isNotBlank()) {
             serviceGroupManager.syncOnAttach(serviceGroup)
         }
-        val oldInstanceIds = instanceIds(id)
         val buildVersion = config.buildVersion
         addInstanceId(id, buildVersion, config.instanceId, session)
         val existingEntry = agentStorage[id]
@@ -128,7 +127,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         loggingHandler.sync(id, session)
         //TODO agent instances
         return if (
-            (oldInstanceIds.isEmpty() || config.instanceId in oldInstanceIds) &&
             currentInfo?.buildVersion == buildVersion &&
             currentInfo.serviceGroup == serviceGroup &&
             currentInfo.agentVersion == config.agentVersion
@@ -218,13 +216,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 name = dto.name,
                 environment = dto.environment,
                 description = dto.description,
-                status = AgentStatus.BUSY,
+                status = AgentStatus.OFFLINE,
                 plugins = pluginsToAdd.mapTo(mutableSetOf()) { it.pluginBean.id }
             )
         }
         adminData(agentId).updateSettings(dto.systemSettings)
         pluginsToAdd.forEach { plugin -> ensurePluginInstance(entry, plugin) }
         info.sync()
+        info.persistToDatabase()
     }
 
     internal suspend fun AgentInfo.removeInstance(
@@ -240,6 +239,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }.getOrDefault(instancesKey, persistentHashMapOf())
         if (instances.isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
+            entryOrNull(id)?.updateAgent { it.copy(status = AgentStatus.OFFLINE) }
             agentStorage.handleRemove(id)
             agentStorage.update()
         } else {
@@ -363,17 +363,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         ai: AgentInfo,
         block: suspend AgentInfo.() -> Unit
     ) = entryOrNull(ai.id)?.also { entry ->
-        val busy = entry.updateAgent {
-            it.copy(status = AgentStatus.BUSY)
-        }.apply { commitChanges() }
+        val busy = entry.updateAgentStatus(AgentStatus.BUSY)
         logger.debug { "Agent ${ai.id} is busy." }
-
         try {
             block(busy)
         } finally {
-            entry.updateAgent {
-                it.copy(status = AgentStatus.ONLINE)
-            }.apply { commitChanges() }
+            entry.updateAgentStatus(AgentStatus.ONLINE)
             logger.debug { "Agent ${ai.id} is online." }
         }
     }
@@ -551,8 +546,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    internal suspend fun AgentInfo.commitChanges() {
+    private suspend fun AgentInfo.commitChanges() {
         persistToDatabase()
+        notifyAllAgents()
+        notifySingleAgent(id)
+    }
+
+    internal suspend fun AgentEntry.updateAgentStatus(status: AgentStatus) = updateAgent {
+        it.copy(status = status)
+    }.apply {
         notifyAllAgents()
         notifySingleAgent(id)
     }
