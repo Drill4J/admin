@@ -130,19 +130,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo
         } else {
             logger.debug { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
-            oldInstanceIds.map { instance ->
+            if (buildVersion != currentInfo?.buildVersion) {
                 logger.debug { "disconnecting WS for agent('$id', '${currentInfo?.buildVersion}') for instance ids ${oldInstanceIds.keys}..." }
-                val agentWsSession = instance.value
-                agentWsSession.close()
-                currentInfo?.removeInstance(instance.key, agentWsSession)
+                oldInstanceIds.map { instance ->
+                    val agentWsSession = instance.value
+                    agentWsSession.close()
+                    currentInfo?.removeInstance(instance.key, agentWsSession)
+                }
             }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
-            val preparedInfo: AgentInfo? = if (storedInfo == null) {
-                commonStore.client.findById<PreparedAgentData>(id)?.let {
-                    agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
-                    it.dto.toAgentInfo(plugins)
-                }
-            } else null
+            val preparedInfo: AgentInfo? = preparedInfo(storedInfo, id)
             val existingInfo = (storedInfo ?: preparedInfo)?.copy(
                 buildVersion = config.buildVersion,
                 agentVersion = config.agentVersion
@@ -165,6 +162,16 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             info
         }
     }
+
+    private suspend fun preparedInfo(
+        storedInfo: AgentInfo?,
+        id: String
+    ) = if (storedInfo == null) {
+        commonStore.client.findById<PreparedAgentData>(id)?.let {
+            agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
+            it.dto.toAgentInfo(plugins)
+        }
+    } else null
 
     private suspend fun Collection<String>.initPlugins(
         agentEntry: AgentEntry
