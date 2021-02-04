@@ -114,6 +114,7 @@ internal class AgentData(
         logger.debug { "Loading data for $agentId..." }
         _settings.value = summary.settings
         val classBytes: Map<String, ByteArray> = storeClient.loadClasses(agentId) ?: emptyMap()
+        logger.debug { "Loaded classes ${classBytes.size}" }
         _classBytes.value = classBytes
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId

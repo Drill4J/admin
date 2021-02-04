@@ -16,7 +16,6 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
-import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -50,7 +49,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val loggingHandler by instance<LoggingHandler>()
 
     private val _instances = atomic(
-        persistentHashMapOf<String, PersistentMap<String, AgentWsSession>>()
+        persistentHashMapOf<InstancesKey, PersistentMap<String, AgentWsSession>>()
     )
 
     init {
@@ -105,10 +104,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             serviceGroupManager.syncOnAttach(serviceGroup)
         }
         val oldInstanceIds = instanceIds(id)
-        addInstanceId(id, config.instanceId, session)
+        val buildVersion = config.buildVersion
+        addInstanceId(id, buildVersion, config.instanceId, session)
         val existingEntry = agentStorage[id]
         val currentInfo = existingEntry?.agent
-        val buildVersion = config.buildVersion
         val adminData = adminData(id)
         val isNewBuild = adminData.initBuild(buildVersion)
         loggingHandler.sync(id, session)
@@ -130,14 +129,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo
         } else {
             logger.debug { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
-            if (buildVersion != currentInfo?.buildVersion) {
-                logger.debug { "disconnecting WS for agent('$id', '${currentInfo?.buildVersion}') for instance ids ${oldInstanceIds.keys}..." }
-                oldInstanceIds.map { instance ->
-                    val agentWsSession = instance.value
-                    agentWsSession.close()
-                    currentInfo?.removeInstance(instance.key, agentWsSession)
-                }
-            }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
             val preparedInfo: AgentInfo? = preparedInfo(storedInfo, id)
             val existingInfo = (storedInfo ?: preparedInfo)?.copy(
@@ -190,12 +181,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private fun addInstanceId(
         agentId: String,
+        buildVersion: String,
         instanceId: String,
         session: AgentWsSession
     ) {
         _instances.update {
-            val existing = it[agentId] ?: persistentHashMapOf()
-            it.put(agentId, existing + (instanceId to session))
+            val instancesKey = InstancesKey(agentId, buildVersion)
+            val existing = it[instancesKey] ?: persistentHashMapOf()
+            logger.debug { "put new instance id '$instanceId' with key $instancesKey" }
+            it.put(instancesKey, existing + (instanceId to session))
         }
     }
 
@@ -218,13 +212,17 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         info.sync()
     }
 
-    internal suspend fun AgentInfo.removeInstance(instanceId: String, session: AgentWsSession) {
+    internal suspend fun AgentInfo.removeInstance(
+        instanceId: String,
+        session: AgentWsSession
+    ) {
+        val instancesKey = InstancesKey(id, buildVersion)
         val instances = _instances.updateAndGet {
-            val instanceIds = it.getOrDefault(id, persistentHashMapOf())
+            val instanceIds = it.getOrDefault(instancesKey, persistentHashMapOf())
             if (instanceIds[instanceId] === session) {
-                it.put(id, instanceIds - instanceId)
+                it.put(instancesKey, instanceIds - instanceId)
             } else it
-        }.getOrDefault(id, persistentHashMapOf())
+        }.getOrDefault(instancesKey, persistentHashMapOf())
         if (instances.isEmpty()) {
             logger.info { "Agent with id '${id}' was disconnected" }
             agentStorage.handleRemove(id)
@@ -236,8 +234,18 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     fun instanceIds(
-        agentId: String
-    ): PersistentMap<String, AgentWsSession> = _instances.value[agentId] ?: persistentHashMapOf()
+        agentId: String,
+        buildVersion: String = ""
+    ): PersistentMap<String, AgentWsSession> = if (buildVersion.isBlank()) {
+        _instances.value
+            .filter { it.key.agentId == agentId }
+            .values.takeIf { it.isNotEmpty() }
+            ?.reduce { acc, persistentMap -> acc + persistentMap }
+    } else {
+        _instances.value[InstancesKey(agentId, buildVersion)]
+    }.also {
+        logger.trace { "instances ids of agent(id=$agentId, version=$buildVersion): ${it?.keys}" }
+    } ?: persistentHashMapOf()
 
     internal suspend fun updateAgent(
         agentId: String,
@@ -356,6 +364,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     internal fun adminData(agentId: String): AgentData = agentDataCache.getOrPut(agentId) {
+        logger.debug { "put adminData with id=$agentId" }
         AgentData(
             agentId,
             agentStores,
@@ -407,10 +416,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentInfo.sync() {
         if (status != AgentStatus.NOT_REGISTERED) {
-            val instanceIds = instanceIds(id)
+            val instanceIds = instanceIds(id, buildVersion)
             if (instanceIds.any()) {
                 wrapBusy(this) {
-                    logger.debug { "Agent $id: starting sync for instances ${instanceIds.keys}..." }
+                    logger.debug { "Agent($id, $buildVersion): starting sync for instances ${instanceIds.keys}..." }
                     val info = this
                     val duration = measureTime {
                         instanceIds.values.applyEach {
@@ -541,3 +550,8 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
+
+private data class InstancesKey(
+    val agentId: String,
+    val buildVersion: String
+)

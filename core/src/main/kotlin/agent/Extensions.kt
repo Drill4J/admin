@@ -44,7 +44,7 @@ internal fun AgentInfo.toDto(
     agentManager: AgentManager
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
-    val instanceIds = agentManager.instanceIds(id).keys
+    val instanceIds = agentManager.instanceIds(id, buildVersion).keys
     AgentInfoDto(
         id = id,
         serviceGroup = serviceGroup,
