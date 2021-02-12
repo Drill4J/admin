@@ -34,7 +34,7 @@ internal fun AgentCreationDto.toAgentInfo(installedPlugins: Plugins) = AgentInfo
     id = id,
     agentType = agentType,
     name = name,
-    status = AgentStatus.OFFLINE,
+    isRegistered = true,
     groupId = group,
     environment = environment,
     description = description,
@@ -46,7 +46,7 @@ internal fun AgentCreationDto.toAgentInfo(installedPlugins: Plugins) = AgentInfo
 internal fun CommonAgentConfig.toAgentInfo() = AgentInfo(
     id = id,
     name = id,
-    status = AgentStatus.NOT_REGISTERED,
+    isRegistered = false,
     groupId = serviceGroupId,
     environment = "",
     description = "",
@@ -59,7 +59,8 @@ internal fun AgentInfo.toDto(
     agentManager: AgentManager,
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
-    val instanceIds = agentManager.instanceIds(id, buildVersion).keys
+    val instanceIds = agentManager.instanceIds(id, buildVersion).keys.map { it.instanceId }.toSet()
+    val agentStatus = agentManager.getStatus(id)
     AgentInfoDto(
         id = id,
         group = groupId,
@@ -67,7 +68,7 @@ internal fun AgentInfo.toDto(
         name = name,
         description = description,
         environment = environment,
-        status = status.takeIf { instanceIds.any() } ?: AgentStatus.OFFLINE,
+        status = agentStatus,
         buildVersion = buildVersion,
         adminUrl = adminUrl,
         ipAddress = ipAddress,

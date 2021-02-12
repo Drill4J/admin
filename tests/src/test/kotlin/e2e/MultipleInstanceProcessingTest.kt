@@ -43,7 +43,6 @@ class MultipleInstanceProcessingTest : E2ETest() {
             }
             for (i in 2..5) {
                 connectAgent(AgentWrap(agentName, "$i"), {}) { ui, _ ->
-                    ui.getAgent()
                     ui.getAgent()?.instanceIds?.size shouldBe i
                 }
             }
@@ -51,7 +50,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
     }
 
     @Test
-    fun `agent should be busy after new instance connect`() {
+    fun `agent should not be busy after new instance connect`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentName, "1"), {}) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
@@ -66,15 +65,14 @@ class MultipleInstanceProcessingTest : E2ETest() {
                 agentInfo?.instanceIds shouldBe setOf("1")
             }
             connectAgent(AgentWrap(agentName, "2"), {}) { ui, _ ->
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
                 ui.getAgent()?.apply {
-                    status shouldBe AgentStatus.BUSY
+                    status shouldBe AgentStatus.ONLINE
                     instanceIds shouldBe setOf("1", "2")
                 }
             }
             connectAgent(AgentWrap(agentName, "3"), {}) { ui, _ ->
                 ui.getAgent()?.apply {
-                    status shouldBe AgentStatus.BUSY
+                    status shouldBe AgentStatus.ONLINE
                     instanceIds shouldBe setOf("1", "2", "3")
                 }
             }
