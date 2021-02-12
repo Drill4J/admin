@@ -25,6 +25,7 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.AgentKey
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
@@ -101,7 +102,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = agentEntry?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (agentEntry.agent.status == AgentStatus.ONLINE) {
+                            if (agentManager.getStatus(agent.id) == AgentStatus.ONLINE) {
                                 this[pluginId]?.let { adminPart ->
                                     val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
@@ -361,13 +362,13 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
         val statusesResponse: List<JsonElement> = agents.mapNotNull { entry: AgentEntry ->
-            when (entry.agent.status) {
+            when (val status = agentManager.getStatus(entry.agent.id)) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
                     val adminActionResult = processAction(action, agentManager::agentSessions)
                     adminActionResult.toStatusResponse()
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
-                else -> "Agent ${entry.agent.id} is in the wrong state - ${entry.agent.status}".run {
+                else -> "Agent ${entry.agent.id} is in the wrong state - $status".run {
                     StatusMessageResponse(
                         code = HttpStatusCode.Conflict.value,
                         message = this

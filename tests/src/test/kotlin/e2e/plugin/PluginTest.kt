@@ -97,11 +97,11 @@ class PluginTest : E2EPluginTest() {
 
     }
 
-    private suspend fun waitForMultipleAgents(channel: Channel<GroupedAgentsDto>) {
+    private suspend fun waitForMultipleAgents(channel: Channel<GroupedAgentsDto>, instanceCount: Int = 3) {
         while (true) {
             val message = channel.receive()
             val groupedAgents = message.grouped.flatMap { it.agents }
-            if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE }) {
+            if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE } && groupedAgents.size == instanceCount) {
                 break
             }
         }

@@ -29,8 +29,8 @@ typealias BuildInfo = com.epam.drill.common.BuildInfo
 data class AgentInfo(
     @Id val id: String,
     val name: String,
-    val status: AgentStatus,
     val groupId: String = "",
+    val isRegistered: Boolean,
     val environment: String = "",
     val description: String,
     val buildVersion: String,

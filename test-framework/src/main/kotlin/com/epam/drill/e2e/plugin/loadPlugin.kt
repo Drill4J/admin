@@ -21,6 +21,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
+import com.epam.drill.e2e.Agent
 import com.epam.drill.logger.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
