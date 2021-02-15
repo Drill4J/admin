@@ -337,6 +337,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                             }
                         }
                     }
+                    topicResolver.sendToAllSubscribed(WsRoutes.AgentPlugins(id))
                 }
             }
         }
