@@ -113,9 +113,13 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                     val agentInfos: List<AgentInfo> = agents.map { it.agent }
                     val (status: HttpStatusCode, message: Any) = if (agents.isNotEmpty()) {
                         groupManager[groupId]?.let { groupDto ->
-                            groupManager.updateSystemSettings(
-                                groupDto,
-                                regInfo.systemSettings
+                            groupManager.update(
+                                groupDto.copy(
+                                    name = regInfo.name,
+                                    description = regInfo.description,
+                                    environment = regInfo.environment,
+                                    systemSettings = regInfo.systemSettings
+                                )
                             )?.let { sendUpdates(listOf(it)) }
                         }
                         val registeredAgentIds: List<String> = agentInfos.register(regInfo)
