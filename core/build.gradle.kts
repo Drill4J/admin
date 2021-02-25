@@ -88,7 +88,7 @@ val jibExtraDirs = "$buildDir/jib-extra-dirs"
 
 jib {
     from {
-        image = "gcr.io/distroless/java:8-debug"
+        image = "adoptopenjdk/openjdk11:latest"
     }
     to {
         image = "drill4j/admin"
