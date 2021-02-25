@@ -224,7 +224,10 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                 logger.error(e) { "Error registering agent $agentId" }
             }
             async(handler) {
-                agentManager.register(info.id, regInfo.copy(name = agentId, description = agentId))
+                agentManager.register(
+                    info.id,
+                    regInfo.copy(name = agentId, description = agentId, environment = info.environment)
+                )
                 agentId
             }
         }
