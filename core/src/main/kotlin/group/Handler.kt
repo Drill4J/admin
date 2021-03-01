@@ -160,7 +160,7 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                         if (systemSettings.packages.all { it.isNotBlank() }) {
                             val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.agent }
                             val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
-                            groupManager.updateSystemSettings(group, systemSettings)
+                            groupManager.updateSystemSettings(group, systemSettings)?.let { sendUpdates(listOf(it)) }
                             if (updatedAgentIds.count() < agentInfos.count()) {
                                 logger.error {
                                     """Group $id: not all agents updated successfully.
