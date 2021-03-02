@@ -490,7 +490,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 logger.error(e) { "Error updating agent $agentId" }
             }
             async(handler) {
-                updateSystemSettings(agentId, systemSettings)
+                updateSystemSettings(agentId, systemSettings.copy(targetHost = adminData(agentId).settings.targetHost))
                 agentId
             }
         }
