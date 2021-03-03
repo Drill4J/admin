@@ -18,6 +18,7 @@ package com.epam.drill.admin.plugin
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.plugin.api.end.*
@@ -35,10 +36,13 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
     private val pluginStores by instance<PluginStores>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
+    private val pluginDispatcher by instance<PluginDispatcher>()
 
     fun sender(pluginId: String): Sender = object : Sender {
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
             val dest = destination as? String ?: app.toLocation(destination)
+            logger.trace { "send destination $dest for $destination" }
+            pluginDispatcher.createSingleGetApi(dest)
             val subscription = context.toSubscription()
             val messageKey = subscription.toKey(dest)
             val pluginCache = pluginCaches.get(pluginId, subscription, true)

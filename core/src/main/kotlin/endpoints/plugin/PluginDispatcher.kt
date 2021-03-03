@@ -20,10 +20,12 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
@@ -36,12 +38,16 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import kotlin.math.*
 import kotlin.reflect.full.*
+import kotlin.reflect.jvm.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
@@ -50,6 +56,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
+    private val pluginCaches by instance<PluginCaches>()
+
+    private val pluginGetRoutes: PersistentSet<String>
+        get() = _pluginGetRoutes.value
+    private val _pluginGetRoutes = atomic(persistentSetOf<String>())
 
     suspend fun processPluginData(
         agentInfo: AgentInfo,
@@ -64,6 +75,12 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 processData(instanceId, message.drillMessage.content)
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
+    }
+
+    fun createSingleGetApi(destination: String) {
+        app.routing {
+            createSingleGet(destination)
+        }
     }
 
     init {
@@ -130,6 +147,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
+            //todo remove it cause it is duplicated in createGetApi
             get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
                 logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
@@ -211,6 +229,38 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
+        }
+    }
+
+    private fun Routing.createSingleGet(destination: String) {
+        if (destination !in pluginGetRoutes) {
+            logger.debug { "start registering GET for $destination..." }
+            _pluginGetRoutes.update { it.add(destination) }
+            get("/api/plugins/{pluginId}/$destination") {
+                val pluginId = call.parameters["pluginId"] ?: ""
+                val (statusCode, response) = if (pluginId in plugins) {
+                    val subscription = subscriptionByQueryParams(pluginId)
+                    pluginCaches.retrieveMessage(pluginId, subscription, destination).toStatusResponsePair()
+                } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                logger.debug { "for destination $destination response: $response" }
+                call.respond(statusCode, response)
+            }
+        }
+    }
+
+    private fun PipelineContext<Unit, ApplicationCall>.subscriptionByQueryParams(
+        pluginId: String
+    ): Subscription? {
+        val queryParameters = call.request.queryParameters
+        val type = queryParameters["type"]
+        val groupId = queryParameters["groupId"] ?: ""
+        val agentId = queryParameters["agentId"] ?: ""
+        val buildVersion = queryParameters["buildVersion"]
+        logger.debug { "plugin $pluginId type $type id $agentId $groupId buildVersion $buildVersion" }
+        return when (type) {
+            "AGENT" -> AgentSubscription(agentId = agentId, buildVersion = buildVersion)
+            "GROUP" -> GroupSubscription(groupId = groupId)
+            else -> null
         }
     }
 
