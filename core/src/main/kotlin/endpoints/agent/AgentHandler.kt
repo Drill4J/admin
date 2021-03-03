@@ -104,6 +104,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                         when (message.type) {
                             MessageType.PLUGIN_DATA -> {
                                 pd.processPluginData(agentInfo, instanceId, message.text)
+                                pd.createPluginGetApi()
                             }
 
                             MessageType.MESSAGE_DELIVERED -> {
@@ -152,7 +153,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
 private fun ApplicationRequest.retrieveParams(): Pair<com.epam.drill.common.AgentConfig, Boolean> {
     val configStr = headers[com.epam.drill.common.AgentConfigParam]!!
     val agentConfig = if (configStr.startsWith('{')) {
-        com.epam.drill.common.AgentConfig.serializer() parse  configStr
+        com.epam.drill.common.AgentConfig.serializer() parse configStr
     } else ProtoBuf.loads(com.epam.drill.common.AgentConfig.serializer(), configStr)
     val needSync = headers[com.epam.drill.common.NeedSyncParam]!!.toBoolean()
     return agentConfig to needSync
