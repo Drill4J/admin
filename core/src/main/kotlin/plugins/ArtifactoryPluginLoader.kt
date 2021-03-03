@@ -65,7 +65,7 @@ data class ArtifactoryPluginLoader(
             "", "latest" -> get(baseUrl) {
                 url.path(basePath, "api/search/latestVersion")
                 url.parameters.apply {
-                    append("g", "com.epam.drill.plugins")
+                    append("g", PLUGIN_PACKAGE)
                     append("a", "$pluginId-plugin")
                     append("v", " ")
                     append("repos", repo)

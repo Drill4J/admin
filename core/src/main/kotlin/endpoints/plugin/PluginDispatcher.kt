@@ -21,10 +21,12 @@ import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
+import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
@@ -37,17 +39,23 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import kotlin.math.*
+import kotlin.reflect.*
 import kotlin.reflect.full.*
+import kotlin.reflect.jvm.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
+    private val locationRouteService by instance<LocationRouteService>()
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
@@ -69,6 +77,13 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
     init {
         app.routing {
+            plugins.forEach { (pluginId, plugin) ->
+                val pluginRouters = pluginRoutes(pluginId, plugin.pluginClass.classLoader)
+                logger.debug { "start register routes for '$pluginId' size ${pluginRouters.size} $pluginRouters..." }
+                pluginRouters.forEach { destination ->
+                    createPluginGetRoute(destination)
+                }
+            }
             authenticate {
                 val meta = "Dispatch Plugin Action"
                     .examples(
@@ -131,6 +146,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
+            //todo remove it cause it is duplicated in another place. EPMDJ-6145
             get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
                 logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
                 val dp: Plugin? = plugins[pluginId]
@@ -232,6 +248,65 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 call.respond(status, message)
             }
 
+        }
+    }
+
+    private fun pluginRoutes(pluginId: String, classLoader: ClassLoader): List<String> {
+        runCatching {
+            Class.forName(
+                "$PLUGIN_PACKAGE.$pluginId.api.routes.Routes",//todo remove hardcode
+                true,
+                classLoader
+            )?.let { apiRoutesClass ->
+                return findPluginRoutes(apiRoutesClass.kotlin)
+            }
+        }
+        logger.warn { "Cannot find routes for plugin '$pluginId'" }
+        return emptyList()
+    }
+
+    private fun findPluginRoutes(
+        kClassRoute: KClass<out Any>,
+        pluginRoutes: List<String> = listOf(),
+        parentPath: String = "",
+    ): List<String> {
+        return kClassRoute.nestedClasses.mapNotNull { kClass: KClass<*> ->
+            locationRouteService.findRoute(kClass)?.let { path ->
+                val newPath = parentPath + path
+                val childRoutes = if (kClass.nestedClasses.any()) {
+                    findPluginRoutes(kClass, pluginRoutes, newPath)
+                } else emptyList()
+                childRoutes.plus(newPath)
+            }
+        }.flatten()
+    }
+
+    private fun Routing.createPluginGetRoute(destination: String) {
+        get("/api/plugins/{pluginId}$destination") {
+            val pluginId = call.parameters["pluginId"] ?: ""
+            val destinationWithValue = destination.replace(Regex("\\{[A-Za-z]*}")) {
+                call.parameters[it.value.removePrefix("{").removeSuffix("}")] ?: ""
+            }
+            val (statusCode, response) = if (pluginId in plugins) {
+                call.request.queryParameters.subscription(pluginId)?.let {
+                    pluginCache.retrieveMessage(pluginId, it, destinationWithValue).toStatusResponsePair()
+                } ?: HttpStatusCode.NotFound to ErrorResponse("not found subscription")
+            } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+            logger.debug { "for destination $destinationWithValue response: $response" }
+            call.respond(statusCode, response)
+        }
+    }
+
+    private fun Parameters.subscription(pluginId: String): Subscription? {
+        val type = this["type"]
+        val groupId = this["groupId"] ?: ""
+        val agentId = this["agentId"] ?: ""
+        val buildVersion = this["buildVersion"]
+        logger.debug { "plugin $pluginId type $type id $agentId $groupId buildVersion $buildVersion" }
+        return when (type) {
+            "AGENT" -> AgentSubscription(agentId = agentId, buildVersion = buildVersion)
+            "GROUP" -> GroupSubscription(groupId = groupId)
+            else -> null
         }
     }
 

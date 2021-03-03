@@ -38,6 +38,8 @@ data class AgentPartFiles(
     val linuxPart: File? = null
 )
 
+const val PLUGIN_PACKAGE = "com.epam.drill.plugins"
+
 val Plugin.agentPluginPart: File
     get() = agentPartFiles.jar
 val Plugin.windowsPart: File?

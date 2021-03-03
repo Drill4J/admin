@@ -86,7 +86,7 @@ internal class AgentData(
 
     internal suspend fun initClasses() {
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
-        logger.debug { "Saving ${addedClasses.size} classes..." }
+        logger.debug { "Saving ${addedClasses.size} classes for agentId='${buildManager.agentId}'..." }
         measureTime {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)

@@ -35,6 +35,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
+import io.ktor.locations.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
@@ -97,6 +98,7 @@ val handlers: Kodein.Builder.(Application) -> Unit
                 kodein
             )
         }
+        bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
         bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
