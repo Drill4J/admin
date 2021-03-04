@@ -20,6 +20,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
@@ -209,6 +210,26 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     logger.debug { response }
                     call.respond(statusCode, response)
                 }
+            }
+
+            get<ApiRoot.Agents.PluginBuildsSummary> { (_, agentId, pluginId) ->
+                logger.debug { "Get builds summary, agentId=$agentId, pluginId=$pluginId" }
+                val (status, message) = agentManager[agentId]?.let {
+                    val buildsSummary = agentManager.adminData(agentId).buildManager.agentBuilds.map { agentBuild ->
+                        val buildVersion = agentBuild.info.version
+                        BuildSummaryDto(
+                            buildVersion = buildVersion,
+                            detectedAt = agentBuild.detectedAt,
+                            summary = pluginCache.retrieveMessage(
+                                pluginId = pluginId,
+                                subscription = AgentSubscription(agentId = agentId, buildVersion = buildVersion),
+                                destination = "/build/summary"
+                            ).toJson()
+                        )
+                    }
+                    HttpStatusCode.OK to buildsSummary
+                } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found")
+                call.respond(status, message)
             }
 
         }

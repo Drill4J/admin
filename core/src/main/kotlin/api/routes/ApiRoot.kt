@@ -80,6 +80,10 @@ class ApiRoot(val prefix: String = "api") {
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/data/{dataType}")
         data class PluginData(val parent: Agents, val agentId: String, val pluginId: String, val dataType: String)
+
+        @Group(AGENT_PLUGIN)
+        @Location("/{agentId}/plugins/{pluginId}/builds/summary")
+        data class PluginBuildsSummary(val parent: Agents, val agentId: String, val pluginId: String)
     }
 
     @Group(GROUP)
