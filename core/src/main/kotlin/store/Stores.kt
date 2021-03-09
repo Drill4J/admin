@@ -33,7 +33,12 @@ sealed class Stores(
     operator fun get(id: String): StoreClient = _stores.updateAndGet { map ->
         map.takeIf { id in it } ?: map.put(id, lazy {
             val dir = baseDir.resolve(id).resolve(subDir)
-            StoreClient(PersistentEntityStores.newInstance(dir))
+            StoreClient(PersistentEntityStores.newInstance(dir)).apply {
+                environment.environmentConfig.apply {
+                    memoryUsagePercentage = 10
+                    logCacheUseSoftReferences = true
+                }
+            }
         })
     }.getValue(id).value
 
