@@ -20,5 +20,6 @@ import com.epam.drill.e2e.*
 @Suppress("unused")
 fun AdminTest.runWithSession(
     sessionId: String,
+    testName: String = "xxxx",
     block: () -> Unit
-) = testAgentContext.runWithSession(sessionId, block)
+) = testAgentContext.runWithSession(sessionId, testName, block)

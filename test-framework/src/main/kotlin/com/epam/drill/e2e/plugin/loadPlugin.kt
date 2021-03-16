@@ -32,7 +32,6 @@ import kotlinx.coroutines.channels.*
 import java.io.*
 import java.util.*
 import java.util.jar.*
-import kotlin.test.*
 
 suspend fun AdminTest.loadPlugin(
     agentStreamer: Agent,
@@ -132,12 +131,11 @@ suspend fun AdminTest.loadPlugin(
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw
-        val first = memoryClassLoader.sw.firstOrNull {
-            !it.isInterface &&
-                    it.interfaces.flatMap { it.interfaces.toSet() }.any { it == Tst::class.java }
-        } ?: fail("can't find classes for build")
+        val buildClasses: Array<Class<*>> = memoryClassLoader.sw.filter {
+            !it.isInterface && it.interfaces.flatMap { it.interfaces.toSet() }.any { it == Tst::class.java }
+        }.toTypedArray()
         @Suppress("UNCHECKED_CAST")
-        build.test = first as Class<Tst>
+        build.tests = buildClasses as Array<Class<Tst>>
     }
 }
 

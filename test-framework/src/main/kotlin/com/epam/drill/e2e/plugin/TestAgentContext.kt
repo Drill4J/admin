@@ -26,8 +26,8 @@ class TestAgentContext : AgentContext {
 
     override fun get(key: String): String? = _data.value?.second
 
-    fun runWithSession(sessionId: String, block: () -> Unit) {
-        _data.value = sessionId to "xxxx"
+    fun runWithSession(sessionId: String, testName: String, block: () -> Unit) {
+        _data.value = sessionId to testName
         try {
             block()
         } finally {
