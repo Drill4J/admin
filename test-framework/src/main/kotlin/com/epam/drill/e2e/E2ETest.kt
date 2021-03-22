@@ -31,9 +31,44 @@ import java.util.concurrent.*
 import kotlin.coroutines.*
 import kotlin.time.*
 
+typealias Instance = Pair<AgentKey, AgentStruct>
+
+typealias AgentId = String
 
 abstract class E2ETest : AdminTest() {
-    private val agents = ConcurrentHashMap<AgentKey, AgentStruct>()
+
+    private val agents = ConcurrentHashMap<AgentId, ConcurrentLinkedQueue<Instance>>()
+
+    fun connectAgent(
+        agent: AgentWrap,
+        initBlock: suspend () -> Unit = {},
+        connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
+    ): E2ETest {
+        if (agents[agent.id].isNullOrEmpty()) {
+            agents[agent.id] = ConcurrentLinkedQueue(
+                listOf(
+                    AgentKey(agent.id, agent.instanceId) to AgentStruct(
+                        agent,
+                        initBlock,
+                        connection,
+                        mutableListOf()
+                    )
+                )
+            )
+        } else {
+            agents[agent.id]?.add(
+                AgentKey(agent.id, agent.instanceId) to AgentStruct(
+                    agent,
+                    initBlock,
+                    connection,
+                    mutableListOf()
+                )
+            )
+        }
+        return this
+    }
+
+
 
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
@@ -68,66 +103,36 @@ abstract class E2ETest : AdminTest() {
                     val globLaunch = application.launch(handler) {
                         watcher?.invoke(asyncEngine, glob)
                     }
-                    val cs = mutableMapOf<String, AdminUiChannels>()
+
+                    val agentUiChannel = ConcurrentHashMap<AgentId, AdminUiChannels>()
                     coroutineScope {
-                        agents.map { (_, xx) ->
-                            val (ag, startClb, connect, thens) = xx
-                            val ui = AdminUiChannels()
-                            cs[ag.id] = ui
+                        agents.map { (_, queue) ->
                             launch(handler) {
-                                startClb()
-                                val uiE = UIEVENTLOOP(cs, uiStreamDebug, glob)
-                                with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
-
-                                //create the '/agent/attach' websocket connection
-                                ut.send(uiMessage(Subscribe("/agents/${ag.id}")))
-                                ut.send(uiMessage(Subscribe("/agents/${ag.id}/builds")))
-
-                                ui.getAgent()
-                                ui.getBuilds()
-                                delay(50)
-
-                                handleWebSocketConversation(
-                                    "/agent/attach",
-                                    wsRequestRequiredParams(ag)
-                                ) { inp, out ->
-                                    glob.receive()
-                                    val apply = Agent(application, ag.id, inp, out, agentStreamDebug).apply { queued() }
-                                    connect(
-                                        asyncEngine,
-                                        ui,
-                                        apply
-                                    )
-                                    while (globLaunch.isActive)
-                                        delay(100)
-
-                                }
-                                thens.forEach { (ain, it) ->
-                                    glob.receive()
+                                val currentInstance = queue.poll()
+                                val agentId = currentInstance.first.id
+                                if (agentUiChannel[agentId] == null) {
+                                    val ui = AdminUiChannels()
+                                    agentUiChannel[agentId] = ui
+                                    val uiE = UIEVENTLOOP(agentUiChannel, uiStreamDebug, glob)
+                                    with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
+                                    ut.send(uiMessage(Subscribe("/agents/$agentId")))
+                                    ut.send(uiMessage(Subscribe("/agents/$agentId/builds")))
                                     ui.getAgent()
                                     ui.getBuilds()
                                     delay(50)
-
-                                    handleWebSocketConversation(
-                                        "/agent/attach",
-                                        wsRequestRequiredParams(ain)
-                                    ) { inp, out ->
-                                        val apply =
-                                            Agent(application, ain.id, inp, out, agentStreamDebug).apply { queued() }
-                                        it(
-                                            asyncEngine,
-                                            ui,
-                                            apply
-                                        )
-                                        while (globLaunch.isActive)
-                                            delay(100)
-                                    }
                                 }
+                                createWsConversation(
+                                    currentInstance,
+                                    glob,
+                                    agentUiChannel[agentId]!!,
+                                    globLaunch,
+                                    agentStreamDebug,
+                                    queue
+                                )
                             }
-                        }.forEach { it.join() }
-                        globLaunch.join()
-                    }
-
+                        }
+                    }.forEach { it.join() }
+                    globLaunch.join()
                 }
             }
             timeoutJob.cancel()
@@ -137,21 +142,73 @@ abstract class E2ETest : AdminTest() {
         }
     }
 
-    fun connectAgent(
-        ags: AgentWrap,
-        startClb: suspend () -> Unit = {},
-        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
-    ): E2ETest {
-        agents[AgentKey(ags.id, ags.instanceId)] = AgentStruct(ags, startClb, bl, mutableListOf())
-        return this
-    }
+    private suspend fun TestApplicationEngine.createWsConversation(
+        currentInstance: Instance,
+        glob: Channel<GroupedAgentsDto>,
+        ui: AdminUiChannels,
+        globLaunch: Job,
+        agentStreamDebug: Boolean,
+        instances: ConcurrentLinkedQueue<Instance>
+    ): Unit = run {
+        val (agentKey, agentStruct) = currentInstance
+        agentStruct.intiBlock()
 
+        handleWebSocketConversation(
+            "/agent/attach",
+            wsRequestRequiredParams(agentStruct.agWrap)
+        ) { inp, out ->
+            glob.receive()
+            val agent = Agent(
+                application,
+                agentStruct.agWrap.id,
+                inp,
+                out,
+                agentStreamDebug
+            ).apply { queued() }
+            agentStruct.connection(
+                asyncEngine,
+                ui,
+                agent
+            )
+            val nextInstance = instances.poll()
+            if (nextInstance != null) {
+                createWsConversation(nextInstance, glob, ui, globLaunch, agentStreamDebug, instances)
+            }
+            while (globLaunch.isActive)
+                delay(100)
+        }
+
+        if (agentStreamDebug) println("Agent $agentKey disconnected")
+        agentStruct.reconnects.forEach { (agentWrap, reconnect) ->
+            if (agentStreamDebug) println("Agent $agentKey reconnected")
+            glob.receive()
+            ui.getAgent()
+            ui.getBuilds()
+            delay(50)
+
+            handleWebSocketConversation(
+                "/agent/attach",
+                wsRequestRequiredParams(agentWrap)
+            ) { inp, out ->
+                val apply = Agent(application, agentWrap.id, inp, out, agentStreamDebug).apply { queued() }
+                reconnect(
+                    asyncEngine,
+                    ui,
+                    apply
+                )
+                while (globLaunch.isActive)
+                    delay(100)
+            }
+        }
+    }
 
     fun reconnect(
         ags: AgentWrap,
         bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
     ): E2ETest {
-        agents[AgentKey(ags.id, ags.instanceId)]?.reconnects?.add(ags to bl)
+        agents[ags.id]?.filter {
+            it.first == AgentKey(ags.id, ags.instanceId)
+        }?.forEach { it.second.reconnects.add(ags to bl) }
         return this
     }
 
@@ -219,7 +276,9 @@ abstract class E2ETest : AdminTest() {
                 handleRequest(
                     HttpMethod.Post,
                     toApiUri(
-                        ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.TogglePlugin(it, agentId, pluginId.pluginId) }
+                        ApiRoot().let(ApiRoot::Agents).let {
+                            ApiRoot.Agents.TogglePlugin(it, agentId, pluginId.pluginId)
+                        }
                     )
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
@@ -264,7 +323,6 @@ abstract class E2ETest : AdminTest() {
             }.apply { resultBlock(response.status(), response.content) }
         }
     }
-
 }
 
 data class AsyncTestAppEngine(val context: CoroutineContext, val engine: TestApplicationEngine)
@@ -272,8 +330,8 @@ data class AsyncTestAppEngine(val context: CoroutineContext, val engine: TestApp
 data class AgentKey(val id: String, val instanceId: String)
 data class AgentStruct(
     val agWrap: AgentWrap,
-    val startClb: suspend () -> Unit = {},
-    val clbs: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
+    val intiBlock: suspend () -> Unit = {},
+    val connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
     val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit>>
 )
 
