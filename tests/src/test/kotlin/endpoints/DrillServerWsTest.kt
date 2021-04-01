@@ -89,7 +89,9 @@ internal class DrillServerWsTest {
                     }
                     bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
-                    bind<CacheService>() with eagerSingleton { JvmCacheService() }
+                    if (app.drillCacheType == "mapdb") {
+                        bind<CacheService>() with eagerSingleton { MapDBCacheService() }
+                    } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { sessionStorage }
                     bind<NotificationManager>() with eagerSingleton {
                         notificationsManager = NotificationManager(kodein)

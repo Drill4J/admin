@@ -20,6 +20,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
@@ -35,6 +36,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
+import io.ktor.config.*
 import io.ktor.locations.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -63,7 +65,9 @@ val storage: Kodein.Builder.(Application) -> Unit
         }
         bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
-        bind<CacheService>() with eagerSingleton { JvmCacheService() }
+        if (app.drillCacheType == "mapdb") {
+            bind<CacheService>() with eagerSingleton { MapDBCacheService() }
+        } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
