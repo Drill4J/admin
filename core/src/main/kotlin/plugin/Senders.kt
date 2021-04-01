@@ -47,7 +47,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             //TODO replace with normal event removal
             if (message == "") {
                 logger.trace { "Removed message by key $messageKey" }
-                pluginCache[dest] = ""
+                pluginCache.remove(dest)
                 pluginStores[pluginId].let { store ->
                     withContext(Dispatchers.IO) {
                         store.deleteMessage(messageKey)

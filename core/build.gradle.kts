@@ -29,6 +29,7 @@ val swaggerVersion: String by extra
 val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
+val cacheMapDB: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -55,6 +56,8 @@ dependencies {
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
+    implementation("org.mapdb:mapdb:$cacheMapDB")
+
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
@@ -66,7 +69,8 @@ val defaultAppJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
-    "-XX:+UseStringDeduplication"
+    "-XX:+UseStringDeduplication",
+    "-XX:MaxDirectMemorySize=10G"
 )
 
 val devJvmArgs = listOf(

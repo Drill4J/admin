@@ -21,6 +21,7 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
@@ -92,7 +93,9 @@ class PluginWsTest {
                             kodein
                         )
                     }
-                    bind<CacheService>() with eagerSingleton { JvmCacheService() }
+                    if (app.drillCacheType == "mapdb") {
+                        bind<CacheService>() with eagerSingleton { MapDBCacheService() }
+                    } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
                 }

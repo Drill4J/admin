@@ -36,6 +36,9 @@ val Application.agentSocketTimeout: Duration
         .config("socket")
         .property("timeout").getString().toInt().seconds
 
+val Application.drillCacheType: String
+    get() = drillConfig.config("cache").propertyOrNull("type")?.getString()?.toLowerCase() ?: "mapdb"
+
 fun ApplicationConfigValue.getDuration() = "_".let { k ->
     mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)
 }.toKotlinDuration()

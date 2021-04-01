@@ -19,6 +19,9 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.type.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
+import mu.*
+
+private val logger = KotlinLogging.logger {}
 
 class JvmCacheService : CacheService {
 
@@ -27,7 +30,7 @@ class JvmCacheService : CacheService {
     override fun <K, V> getOrCreate(
         id: Any,
         qualifier: Any,
-        replace: Boolean
+        replace: Boolean,
     ): Cache<K, V> = _caches.updateAndGet { map ->
         map[id]?.let { cache ->
             map.takeIf { !replace || cache.qualifier == qualifier }
@@ -41,15 +44,18 @@ class JvmCacheService : CacheService {
 internal fun <K, V> Cache<*, *>?.castUnchecked(): Cache<K, V> = this as Cache<K, V>
 
 internal class PersistentMapCache<K, V>(
-    override val qualifier: Any
+    override val qualifier: Any,
 ) : Cache<K, V> {
     private val _values = atomic(persistentHashMapOf<K, V>())
 
     override fun get(key: K): V? = _values.value[key]
+        .also { logger.trace { "get key $key value $it" } }
 
     override fun set(key: K, value: V): V? = _values.getAndUpdate { it.put(key, value) }[key]
+        .also { logger.trace { "set key $key value $it" } }
 
     override fun remove(key: K): V? = _values.getAndUpdate { it.remove(key) }[key]
+        .also { logger.trace { "remove key $key value $it" } }
 }
 
 internal object NullCache : Cache<Any, Any> {
