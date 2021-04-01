@@ -75,6 +75,7 @@ class PluginCaches(
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
             val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            logger.trace { "retrieveMessage set to cache $destination" }
             messageFromStore.also { cache[destination] = it }
         }
     }

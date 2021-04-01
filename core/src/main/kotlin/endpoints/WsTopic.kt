@@ -16,7 +16,6 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.common.*
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -108,23 +107,24 @@ class CallbackWrapper<T, R>(val block: suspend (R) -> T?) {
 fun serialize(value: Any?): String {
     if (value == null) return ""
     if (value is String) return value
-    val serializer = when (value) {
-        is List<*> -> ListSerializer(elementSerializer(value))
-        is Set<*> -> SetSerializer(elementSerializer(value))
-        is Map<*, *> -> MapSerializer(
-            elementSerializer(value.keys),
-            elementSerializer(value.values)
-        )
-        is Array<*> -> {
-            @Suppress("UNCHECKED_CAST")
-            (ArraySerializer(
-                elementSerializer(value.asList()) as KSerializer<Any>
-            ))
-        }
-        else -> value::class.serializer()
-    }
-    @Suppress("UNCHECKED_CAST")
-    return serializer as KSerializer<Any> stringify value
+    return getKSerializer(value) stringify value
 }
+
+@Suppress("UNCHECKED_CAST")
+fun getKSerializer(value: Any): KSerializer<Any> = when (value) {
+    is List<*> -> ListSerializer(elementSerializer(value))
+    is Set<*> -> SetSerializer(elementSerializer(value))
+    is Map<*, *> -> MapSerializer(
+        elementSerializer(value.keys),
+        elementSerializer(value.values)
+    )
+    is Array<*> -> {
+        @Suppress("UNCHECKED_CAST")
+        (ArraySerializer(
+            elementSerializer(value.asList()) as KSerializer<Any>
+        ))
+    }
+    else -> value::class.serializer()
+} as KSerializer<Any>
 
 fun elementSerializer(collection: Collection<*>) = (collection.firstOrNull() ?: "")::class.serializer()

@@ -45,7 +45,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             val messageKey = subscription.toKey(dest)
             val pluginCache = pluginCaches.get(pluginId, subscription, true)
 
-            //TODO replace with normal event removal
+            //TODO EPMDJ-6817 replace with normal event removal.
             if (message == "") {
                 logger.trace { "Removed message by key $messageKey" }
                 pluginCache[dest] = ""

@@ -24,25 +24,35 @@ class JvmCacheServiceTest {
 
     @Test
     fun `getOrCreate different qualifiers`() {
-        val cache: Cache<String, String> = cacheService.getOrCreate("1", "1")
-        cache["1"] = "2"
-        assertEquals("2", cache["1"])
+        val cacheId = "test2codeAgentId"
+        val cache: Cache<String, String> = cacheService.getOrCreate(cacheId, "build1")
+        val key = "dest/example"
+        val data = "2"
+        cache[key] = data
+        assertEquals(data, cache[key])
         assertNotEquals(NullCache.castUnchecked(), cache)
-        val cache2: Cache<String, String> = cacheService.getOrCreate("1", "2")
+        val cache2: Cache<String, String> = cacheService.getOrCreate(cacheId, "build2")
         assertEquals(NullCache.castUnchecked(), cache2)
         assertEquals("", cache2.qualifier)
-        assertNull(cache2["1"])
+        assertNull(cache2[key])
+        assertEquals(data, cache[key])
     }
 
     @Test
     fun `getOrCreate different qualifiers with replacing`() {
-        val cache: Cache<String, String> = cacheService.getOrCreate("1", "1")
-        cache["1"] = "2"
-        assertEquals("2", cache["1"])
-        val cache2: Cache<String, String> = cacheService.getOrCreate("1", "2", true)
+        val cacheId = "test2codeAgentId"
+        val cache: Cache<String, String> = cacheService.getOrCreate(cacheId, "build1")
+        val key = "dest/example"
+        val data = "2"
+        cache[key] = data
+        assertEquals(data, cache[key])
+        val cache2: Cache<String, String> = cacheService.getOrCreate(cacheId, "build2", true)
+        val actual = cacheService.getOrCreate<Any, Any>(cacheId, "build1")
+        assertEquals(NullCache.castUnchecked(), actual)
         assertNotEquals(NullCache.castUnchecked(), cache2)
         assertNotEquals(cache, cache2)
-        assertEquals("2", cache2.qualifier)
-        assertNull(cache2["1"])
+        assertEquals("build2", cache2.qualifier)
+        assertNull(cache2[key])
+        assertEquals(null, actual[key])
     }
 }
