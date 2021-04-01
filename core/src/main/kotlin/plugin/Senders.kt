@@ -22,6 +22,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
+import io.ktor.http.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
@@ -38,7 +39,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
 
     fun sender(pluginId: String): Sender = object : Sender {
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
-            val dest = destination as? String ?: app.toLocation(destination)
+            val dest = destination as? String ?: app.toLocation(destination).decodeURLPart()
             logger.trace { "send destination $dest for $destination" }
             val subscription = context.toSubscription()
             val messageKey = subscription.toKey(dest)
