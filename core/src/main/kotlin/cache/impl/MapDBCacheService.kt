@@ -69,7 +69,7 @@ internal class MapDBCache<K, V>(
             logger.trace { "set: key $key" }
             map[key] = ProtoBuf.dump(serializer, value)
             if (value != "") { //TODO EPMDJ-6817
-                serializer.store(key, serializers)
+                serializer.store(key)
             }
             return get(key)
         }
@@ -89,9 +89,9 @@ internal class MapDBCache<K, V>(
     }
 
     @Suppress("UNCHECKED_CAST", "TYPE_INFERENCE_ONLY_INPUT_TYPES_WARNING")
-    private fun <K> K.store(key: K, serStore: HashMap<Any, KSerializer<Any>>) {
-        if (serStore[key] == null)
-            serStore[key!!] = this as KSerializer<Any>
+    private fun <K> K.store(key: K) {
+        serializers[key!!] = this as KSerializer<Any>
+        logger.trace { "set ser $key $this" }
     }
 
     @Suppress("UNCHECKED_CAST", "TYPE_INFERENCE_ONLY_INPUT_TYPES_WARNING")
