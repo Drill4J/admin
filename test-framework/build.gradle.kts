@@ -17,6 +17,7 @@ val swaggerVersion: String by extra
 val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
+val cacheMapDB: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -37,6 +38,7 @@ dependencies {
     implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
+    implementation("org.mapdb:mapdb:$cacheMapDB")
     implementation("io.mockk:mockk:$mockkVersion")
     api(project(":core"))
     implementation("org.apache.bcel:bcel:6.3.1")

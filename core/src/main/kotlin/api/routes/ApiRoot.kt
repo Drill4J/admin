@@ -37,6 +37,9 @@ class ApiRoot(val prefix: String = "api") {
     @Location("/version")
     data class Version(val parent: ApiRoot)
 
+    @Location("/cache-stats")
+    data class CacheStats(val parent: ApiRoot)
+
     @Group(AGENT)
     @Location("/agents")
     data class Agents(val parent: ApiRoot) {
