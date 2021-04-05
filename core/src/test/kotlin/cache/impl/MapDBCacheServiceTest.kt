@@ -80,6 +80,18 @@ class MapDBCacheServiceTest {
     }
 
     @Test
+    fun `cache empty list object kotlin should set and get`() {
+        val cacheId = "test2codeAgentId"
+        val cache: Cache<String, List<Build>> = cacheService.getOrCreate(cacheId, "build1")
+        val key = "dest/build"
+        val data = Build("asd", 2)
+        cache[key] = emptyList()
+        cache[key] = listOf(data, data)
+        assertEquals(listOf(Build("asd", 2), Build("asd", 2)), cache[key])
+        assertNotEquals(NullCache.castUnchecked(), cache)
+    }
+
+    @Test
     fun `twice invoke getOrCreate it should same cache value`() {
         val cacheId = "test2codeAgentId"
         val cache: Cache<String, Build> = cacheService.getOrCreate(cacheId, "build1")
