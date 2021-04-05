@@ -20,6 +20,8 @@ import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.cache.*
+import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
@@ -31,6 +33,7 @@ import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
+import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
@@ -44,6 +47,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
     private val agentManager by instance<AgentManager>()
     private val loggingHandler by instance<LoggingHandler>()
     private val plugins by instance<Plugins>()
+    private val cacheService by instance<CacheService>()
 
     init {
         app.routing {
@@ -161,6 +165,10 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                         call.respond(HttpStatusCode.OK, EmptyContent)
                     } ?: call.respond(HttpStatusCode.BadRequest, "Package prefixes contain an empty value.")
                 }
+            }
+            get<ApiRoot.CacheStats> {
+                val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
+                call.respond(HttpStatusCode.OK, cacheStats)
             }
         }
     }

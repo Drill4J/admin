@@ -44,6 +44,7 @@ class AppConfig(var projectDir: File) {
             put("drill.devMode", "true")
             put("drill.plugins.remote.enabled", "false")
             put("drill.agents.socket.timeout", "90")
+            put("drill.cache.type", "jvm")
         }
         install(Locations)
         install(WebSockets)

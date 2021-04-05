@@ -51,6 +51,18 @@ class MapDBCacheService : CacheService {
         logger.debug { "create cache with $id$qualifier replace $replace" }
         return MapDBCache(qualifier, map as HTreeMap<K, ByteArray>, serializers)
     }
+
+    fun stats(): List<Pair<String, String>> = dbMemory.getAll().map {
+        @Suppress("UNCHECKED_CAST")
+        val cache = it.value as HTreeMap<Any, ByteArray>
+        val cacheBytesSize = cache
+            .mapNotNull { entry -> entry.value }
+            .sumBy { bytes -> bytes.size }
+        val kb = 1024.0
+        val stats = "size: ${cacheBytesSize / kb} KB (${cacheBytesSize / (kb * 1024)} MB)"
+        it.key to stats
+    }
+
 }
 
 internal class MapDBCache<K, V>(
