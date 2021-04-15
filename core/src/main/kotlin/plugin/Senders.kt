@@ -46,39 +46,51 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             val pluginCache = pluginCaches.get(pluginId, subscription, true)
 
             //TODO EPMDJ-6817 replace with normal event removal.
-            if (message == "") {
-                logger.trace { "Removed message by key $messageKey" }
-                pluginCache[dest] = ""
-                pluginStores[pluginId].let { store ->
-                    withContext(Dispatchers.IO) {
-                        store.deleteMessage(messageKey)
-                    }
-                }
-            } else {
-                logger.trace { "Sending message to $messageKey" }
-                pluginStores[pluginId].let { store ->
-                    withContext(Dispatchers.IO) {
-                        measureTimedValue {
-                            store.storeMessage(messageKey, message)
-                        }.let {
-                            logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
+            @Suppress("UNCHECKED_CAST")
+            when (message) {
+                is Lazy<*> -> pluginCaches.addLazyMessage(messageKey, message as Lazy<Any>)
+                "" -> {
+                    logger.trace { "Removed message by key $messageKey" }
+                    pluginCache[dest] = ""
+                    pluginStores[pluginId].let { store ->
+                        withContext(Dispatchers.IO) {
+                            store.deleteMessage(messageKey)
                         }
                     }
+                    message.sendToSubscribers(pluginId, messageKey, dest)
                 }
-                pluginCache.remove(dest)
+                else -> {
+                    logger.trace { "Sending message to $messageKey" }
+                    pluginStores[pluginId].let { store ->
+                        withContext(Dispatchers.IO) {
+                            measureTimedValue {
+                                store.storeMessage(messageKey, message)
+                            }.let {
+                                logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
+                            }
+                        }
+                    }
+                    pluginCache.remove(dest)
+                    message.sendToSubscribers(pluginId, messageKey, dest)
+                }
             }
-            pluginSessions[pluginId].sendTo(
-                destination = messageKey,
-                messageProvider = { sessionSubscription ->
-                    message.postProcess(sessionSubscription).toWsMessageAsString(
-                        destination = dest,
-                        type = WsMessageType.MESSAGE,
-                        to = sessionSubscription
-                    )
-                }
-            )
         }
     }
+
+    private suspend fun Any.sendToSubscribers(
+        pluginId: String,
+        messageKey: String,
+        dest: String
+    ) = pluginSessions[pluginId].sendTo(
+        destination = messageKey,
+        messageProvider = { sessionSubscription ->
+            postProcess(sessionSubscription).toWsMessageAsString(
+                destination = dest,
+                type = WsMessageType.MESSAGE,
+                to = sessionSubscription
+            )
+        }
+    )
 }
 
 internal fun SendContext.toSubscription(): Subscription = when (this) {

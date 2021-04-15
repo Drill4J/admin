@@ -19,6 +19,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlinx.coroutines.*
 import kotlin.test.*
 
 
@@ -73,6 +74,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
                 }
             }
             connectAgent(AgentWrap(agentName, "3"), {}) { ui, _ ->
+                delay(100L)
                 ui.getAgent()?.apply {
                     status shouldBe AgentStatus.BUSY
                     instanceIds shouldBe setOf("1", "2", "3")

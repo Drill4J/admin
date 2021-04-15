@@ -25,6 +25,8 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.config.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import mu.*
 
 class PluginCaches(
@@ -36,6 +38,7 @@ class PluginCaches(
     private val logger = KotlinLogging.logger {}
 
     private val config: ApplicationConfig = app.drillConfig.config("cache")
+    private val lazyPluginMessages = atomic(persistentMapOf<String, Lazy<Any>>())
 
     private val enabled: Boolean = config.propertyOrNull("enabled")?.getString()?.toBoolean() ?: true
 
@@ -69,16 +72,27 @@ class PluginCaches(
         subscription: Subscription?,
         destination: String
     ): FrontMessage = get(pluginId, subscription).let { cache ->
-        cache[destination] ?: run {
+        cache[destination] ?: (run {
             val messageKey = subscription.toKey(destination)
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            pluginStores[pluginId].readMessage(messageKey, classLoader)
+        } ?: run {
+            val messageKey = subscription.toKey(destination)
+            lazyPluginMessages.value[messageKey]?.also {
+                lazyPluginMessages.update { it - messageKey }
+            }?.value ?: ""
+        }).also {
             logger.trace { "retrieveMessage set to cache $destination" }
-            messageFromStore.also { cache[destination] = it }
+            cache[destination] = it
         }
     }
+
+    internal fun addLazyMessage(
+        messageKey: String,
+        message: Lazy<Any>
+    ) = lazyPluginMessages.update { it.put(messageKey, message) }
 }
 
 class PluginSessions(plugins: Plugins) {
