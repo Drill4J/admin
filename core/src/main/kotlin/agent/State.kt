@@ -54,7 +54,7 @@ internal class AgentDataCache {
 internal class AgentData(
     val agentId: String,
     agentStores: AgentStores,
-    initialSettings: SystemSettingsDto
+    initialSettings: SystemSettingsDto,
 ) : AdminData {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -62,15 +62,13 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override val classBytes: Map<String, ByteArray> get() = _classBytes.value
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(agentId)
 
     val settings: SystemSettingsDto get() = _settings.value
 
     private val storeClient by lazy { agentStores[agentId] }
 
     private val _buildManager = atomic(AgentBuildManager(agentId))
-
-    private val _classBytes = atomic(emptyMap<String, ByteArray>())
 
     private val _settings = atomic(initialSettings)
 
@@ -91,7 +89,6 @@ internal class AgentData(
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            _classBytes.value = classBytes
             storeClient.storeClasses(agentId, classBytes)
         }.let { duration -> logger.debug { "Saved ${addedClasses.size} classes in $duration." } }
     }
@@ -128,9 +125,6 @@ internal class AgentData(
     private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
         _settings.value = summary.settings
-        val classBytes: Map<String, ByteArray> = storeClient.loadClasses(agentId) ?: emptyMap()
-        logger.debug { "Loaded classes ${classBytes.size}" }
-        _classBytes.value = classBytes
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
@@ -160,20 +154,28 @@ internal class AgentData(
 
 private suspend fun StoreClient.storeClasses(
     agentId: String,
-    classBytes: Map<String, ByteArray>
+    classBytes: Map<String, ByteArray>,
 ) {
-    val storedData = StoredCodeData(
-        id = agentId,
-        data = ProtoBuf.dump(
-            CodeData.serializer(),
-            CodeData(classBytes = classBytes)
-        ).let(Zstd::compress)
-    )
-    store(storedData)
+    trackTime("storeClasses") {
+        logger.debug { "storing for agent(id=$agentId) class bytes ${classBytes.size}..." }
+        val storedData = StoredCodeData(
+            id = agentId,
+            data = ProtoBuf.dump(
+                CodeData.serializer(),
+                CodeData(classBytes = classBytes)
+            ).let(Zstd::compress)
+        )
+        store(storedData)
+    }
 }
 
 private suspend fun StoreClient.loadClasses(
-    agentId: String
-): Map<String, ByteArray>? = findById<StoredCodeData>(agentId)?.run {
-    ProtoBuf.load(CodeData.serializer(), Zstd.decompress(data)).classBytes
+    agentId: String,
+): Map<String, ByteArray> = trackTime("loadClasses") {
+    findById<StoredCodeData>(agentId)?.run {
+        ProtoBuf.load(CodeData.serializer(), Zstd.decompress(data)).classBytes
+    }?: let {
+        logger.warn { "can not find classBytes for agentId $agentId" }
+        emptyMap()
+    }
 }
