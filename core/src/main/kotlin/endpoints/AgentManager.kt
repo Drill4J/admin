@@ -546,7 +546,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 store = store
             )
         }.apply {
-            logger.debug { "initializing plugin, classes size=${adminData.classBytes.size} for agent(id=$agentId, version=$buildVersion)..." }
+            logger.debug { "initializing plugin for agent(id=$agentId, version=$buildVersion)..." }
             initialize()
         }
     }
