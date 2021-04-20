@@ -387,14 +387,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         )
     }
 
-    private suspend fun disableAllPlugins(agentId: String) {
+    private suspend fun AgentWsSession.disableAllPlugins(agentId: String) {
         logger.debug { "Reset all plugins for agent with id $agentId" }
         getOrNull(agentId)?.plugins?.forEach { pluginId ->
-            agentSessions(agentId).applyEach {
-                sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                    message = TogglePayload(pluginId, false)
-                )
-            }
+            sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                message = TogglePayload(pluginId, false)
+            )
         }
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
