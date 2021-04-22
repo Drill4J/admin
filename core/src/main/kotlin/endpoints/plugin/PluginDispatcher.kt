@@ -45,6 +45,7 @@ import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.io.*
 import kotlin.reflect.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
@@ -62,7 +63,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     suspend fun processPluginData(
         agentInfo: AgentInfo,
         instanceId: String,
-        pluginData: String
+        pluginData: String,
     ) {
         val message = MessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
@@ -266,7 +267,6 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found")
                 call.respond(status, message)
             }
-
         }
     }
 
@@ -331,7 +331,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun PipelineContext<Unit, ApplicationCall>.sendResponse(
         response: Any,
-        statusCode: HttpStatusCode
+        statusCode: HttpStatusCode,
     ) = when (response) {
         is String -> call.respondText(
             text = response,
@@ -343,6 +343,12 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             contentType = ContentType.MultiPart.Any,
             status = statusCode
         )
+        is FileResponse -> call.respondFile(
+            file = response.data
+        ).also {
+            if (!response.data.delete())
+                logger.warn { "File ${response.data} is not deleted" }
+        }
         else -> call.respond(
             status = statusCode,
             message = response
@@ -352,7 +358,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private suspend fun processMultipleActions(
         agents: List<AgentEntry>,
         pluginId: String,
-        action: String
+        action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
         val statusesResponse: List<JsonElement> = agents.mapNotNull { entry: AgentEntry ->
             when (entry.agent.status) {
@@ -376,6 +382,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
     is ActionResult -> when (val d = data) {
         is String -> StatusMessageResponse(code, d)
+        is File -> FileResponse(code, d)
         else -> StatusResponse(code, d.actionToJson())
     }
     else -> StatusResponse(HttpStatusCode.OK.value, actionToJson())

@@ -16,7 +16,9 @@
 package com.epam.drill.admin.endpoints
 
 import kotlinx.serialization.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import java.io.*
 
 @Serializable
 data class ErrorResponse(val message: String)
@@ -38,4 +40,9 @@ data class StatusMessageResponse(
 data class StatusResponse(
     override val code: Int,
     val data: JsonElement
+) : WithStatusCode()
+
+data class FileResponse(
+    override val code: Int,
+    val data: File
 ) : WithStatusCode()
