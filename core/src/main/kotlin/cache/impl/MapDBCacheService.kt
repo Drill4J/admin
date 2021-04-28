@@ -32,6 +32,7 @@ private val logger = KotlinLogging.logger {}
 class MapDBCacheService : CacheService {
 
     private val dbMemory = DBMaker.memoryDirectDB().make()
+    //TODO EPMDJ-7018
     val serializers = HashMap<Any, KSerializer<Any>>()
 
     @Suppress("UNCHECKED_CAST")
@@ -102,7 +103,9 @@ internal class MapDBCache<K, V>(
 
     @Suppress("UNCHECKED_CAST", "TYPE_INFERENCE_ONLY_INPUT_TYPES_WARNING")
     private fun <K> K.store(key: K) {
-        serializers[key!!] = this as KSerializer<Any>
+        serializers[key!!] = serializers[key]?.takeIf {
+            it.descriptor != ListSerializer(""::class.serializer()).descriptor
+        } ?: this as KSerializer<Any>
         logger.trace { "set ser $key $this" }
     }
 
