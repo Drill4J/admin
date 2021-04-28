@@ -52,8 +52,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
-                    com.epam.drill.common.AgentType.NODEJS,
-                    com.epam.drill.common.AgentType.DOTNET -> FrameType.TEXT
+                    com.epam.drill.common.AgentType.NODEJS -> FrameType.TEXT
                     else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(
