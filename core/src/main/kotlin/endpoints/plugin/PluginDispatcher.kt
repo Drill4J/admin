@@ -21,11 +21,13 @@ import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
-import com.epam.drill.admin.common.*
+import com.epam.drill.admin.cache.*
+import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
@@ -39,17 +41,11 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
-import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.*
-import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import kotlin.math.*
 import kotlin.reflect.*
-import kotlin.reflect.full.*
-import kotlin.reflect.jvm.*
 
 internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
@@ -59,6 +55,9 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
+    private val pluginStores by instance<PluginStores>()
+    private val agentStores by instance<AgentStores>()
+    private val cacheService by instance<CacheService>()
 
     suspend fun processPluginData(
         agentInfo: AgentInfo,
@@ -225,6 +224,26 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     }
                     logger.debug { response }
                     call.respond(statusCode, response)
+                }
+            }
+            authenticate {
+                delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
+                    logger.debug { "starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
+                    val (status, msg) = if (agentId in agentManager) {
+                        if (plugins[pluginId] != null) {
+                            val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
+                            if (buildVersion != curBuildVersion) {
+                                pluginStores[pluginId].deleteBy<Stored> {
+                                    (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
+                                }
+                                agentStores[agentId].deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
+                                agentManager.adminData(agentId).buildManager.delete(buildVersion)
+                                (cacheService as? MapDBCacheService)?.clear(AgentKey(pluginId, agentId), buildVersion)
+                                HttpStatusCode.OK to ""
+                            } else HttpStatusCode.BadRequest to ErrorResponse("Can not remove a current build")
+                        } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found")
+                    } else HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
+                    call.respond(status, msg)
                 }
             }
 

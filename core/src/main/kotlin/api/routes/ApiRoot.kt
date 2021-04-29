@@ -37,8 +37,15 @@ class ApiRoot(val prefix: String = "api") {
     @Location("/version")
     data class Version(val parent: ApiRoot)
 
-    @Location("/cache-stats")
-    data class CacheStats(val parent: ApiRoot)
+    @Group(SYSTEM)
+    @Location("/cache")
+    data class Cache(val parent: ApiRoot) {
+        @Location("/stats")
+        data class CacheStats(val parent: Cache)
+
+        @Location("/clear")
+        data class CacheClear(val parent: Cache)
+    }
 
     @Group(AGENT)
     @Location("/agents")
@@ -87,6 +94,10 @@ class ApiRoot(val prefix: String = "api") {
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/builds/summary")
         data class PluginBuildsSummary(val parent: Agents, val agentId: String, val pluginId: String)
+
+        @Group(AGENT_PLUGIN)
+        @Location("/{agentId}/plugins/{pluginId}/builds/{buildVersion}")
+        data class PluginBuild(val parent: Agents, val agentId: String, val pluginId: String, val buildVersion: String)
     }
 
     @Group(GROUP)

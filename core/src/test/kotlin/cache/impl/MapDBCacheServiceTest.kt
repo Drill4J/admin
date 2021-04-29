@@ -131,7 +131,6 @@ class MapDBCacheServiceTest {
         assertEquals(Build("asd", 2), cache[key])
     }
 
-
     @Test
     fun `cache empty list serializer should not be use on not empty list`() {
         val cacheId = "test2codeAgentId"
@@ -146,6 +145,18 @@ class MapDBCacheServiceTest {
         cache2[key] = ArrayList<Any>()
         assertEquals(data, cache[key])
         assertEquals("", cache2[key])
+    }
+
+    @Test
+    fun `cache can be clear`() {
+        val cacheId = "test2codeAgentId"
+        val qualifier = "build1"
+        val cache: Cache<Any, Any> = cacheService.getOrCreate(cacheId, qualifier)
+        val key = "dest/build"
+        cache[key] = "something"
+        assertEquals("something", cache[key])
+        cacheService.clear(cacheId, qualifier)
+        assertNull(cache[key])
     }
 
 }

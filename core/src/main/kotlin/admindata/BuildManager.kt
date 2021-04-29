@@ -38,6 +38,8 @@ class AgentBuildManager(
 
     operator fun get(version: String) = buildMap[version]?.info
 
+    internal fun delete(version: String) = _buildMap.update { it.remove(version) }
+
     internal fun init(version: String) = _buildMap.updateAndGet { map ->
         if (version !in map) {
             val build = AgentBuild(
