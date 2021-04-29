@@ -166,9 +166,14 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     } ?: call.respond(HttpStatusCode.BadRequest, "Package prefixes contain an empty value.")
                 }
             }
-            get<ApiRoot.CacheStats> {
+            get<ApiRoot.Cache.CacheStats> {
                 val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
                 call.respond(HttpStatusCode.OK, cacheStats)
+            }
+
+            get<ApiRoot.Cache.CacheClear> {
+                (cacheService as? MapDBCacheService)?.clear()
+                call.respond(HttpStatusCode.OK)
             }
         }
     }

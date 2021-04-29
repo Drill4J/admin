@@ -37,7 +37,7 @@ class MapDBCacheService : CacheService {
 
     @Suppress("UNCHECKED_CAST")
     override fun <K, V> getOrCreate(id: Any, qualifier: Any, replace: Boolean): Cache<K, V> {
-        val cacheId = "$id$qualifier"
+        val cacheId = cacheId(id, qualifier)
         dbMemory.get<Any?>(cacheId)?.let {
             logger.trace { "get cache $id$qualifier replace $replace" }
             return MapDBCache(qualifier, it as HTreeMap<K, ByteArray>, serializers)
@@ -54,15 +54,24 @@ class MapDBCacheService : CacheService {
     }
 
     fun stats(): List<Pair<String, String>> = dbMemory.getAll().map {
-        @Suppress("UNCHECKED_CAST")
-        val cache = it.value as HTreeMap<Any, ByteArray>
-        val cacheBytesSize = cache
+        val cacheBytesSize = hTreeMap(it)
             .mapNotNull { entry -> entry.value }
             .sumBy { bytes -> bytes.size }
         val kb = 1024.0
         val stats = "size: ${cacheBytesSize / kb} KB (${cacheBytesSize / (kb * 1024)} MB)"
         it.key to stats
     }
+
+    fun clear() = dbMemory.getAll().map {
+        hTreeMap(it).clear()
+    }
+
+    fun clear(id: Any, qualifier: Any) = dbMemory.get<HTreeMap<Any, ByteArray>>(cacheId(id, qualifier))?.clear()
+
+    private fun cacheId(id: Any, qualifier: Any) = "$id$qualifier"
+
+    @Suppress("UNCHECKED_CAST")
+    private fun hTreeMap(it: Map.Entry<String, Any?>): HTreeMap<Any, ByteArray> = it.value as HTreeMap<Any, ByteArray>
 
 }
 

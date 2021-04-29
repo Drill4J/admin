@@ -88,7 +88,7 @@ class PluginSessions(plugins: Plugins) {
     operator fun get(pluginId: String): SessionStorage = sessionCaches.getValue(pluginId)
 }
 
-private data class AgentKey(val pluginId: String, val agentId: String)
+internal data class AgentKey(val pluginId: String, val agentId: String)
 private data class GroupKey(val pluginId: String, val groupId: String)
 
 private fun CacheService.pluginCacheFor(
