@@ -31,7 +31,7 @@ data class ArtifactoryPluginLoader(
     val devMode: Boolean = true //TODO dev mode handling
 ) {
     suspend fun loadPlugins(pluginIds: Iterable<String>) {
-        logger.info { "Loading plugins $pluginIds from artifactory..." }
+        logger.info { "Loading plugins $pluginIds from artifactory '$baseUrl'..." }
         HttpClient(CIO).use { client ->
             for (pluginId in pluginIds) {
                 client.load(pluginId)
