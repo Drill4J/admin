@@ -49,14 +49,26 @@ class PluginLoaderService(
             val remoteEnabled = application.drillConfig
                 .propertyOrNull("plugins.remote.enabled")?.getString()?.toBoolean() ?: false
             if (remoteEnabled) {
-                val pluginLoader = ArtifactoryPluginLoader(
-                    baseUrl = "https://oss.jfrog.org",
-                    basePath = "artifactory",
-                    repo = "oss-release-local",
-                    storageDir = pluginStoragePath,
-                    devMode = application.isDevMode
-                )
-                pluginLoader.loadPlugins(allowedPlugins)
+                runCatching {
+                    val pluginLoaderJfrog = ArtifactoryPluginLoader(
+                        baseUrl = "https://drill4j.jfrog.io",
+                        basePath = "artifactory",
+                        repo = "drill",
+                        storageDir = pluginStoragePath,
+                        devMode = application.isDevMode
+                    )
+                    pluginLoaderJfrog.loadPlugins(allowedPlugins)
+                }.onFailure {
+                    logger.info { "Can't load from the new artifactory. Reason: ${it.message}" }
+                    val pluginLoader = ArtifactoryPluginLoader(
+                        baseUrl = "https://oss.jfrog.org",
+                        basePath = "artifactory",
+                        repo = "oss-release-local",
+                        storageDir = pluginStoragePath,
+                        devMode = application.isDevMode
+                    )
+                    pluginLoader.loadPlugins(allowedPlugins)
+                }
             }
 
             try {
