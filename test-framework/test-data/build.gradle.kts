@@ -17,22 +17,6 @@ tasks {
 }
 
 publishing {
-    repositories {
-        maven {
-            url = uri("https://drill4j.jfrog.io/artifactory/drill")
-            credentials {
-                username =
-                    if (project.hasProperty("bintrayUser"))
-                        project.property("bintrayUser").toString()
-                    else System.getenv("BINTRAY_USER")
-                password =
-                    if (project.hasProperty("bintrayApiKey"))
-                        project.property("bintrayApiKey").toString()
-                    else System.getenv("BINTRAY_API_KEY")
-            }
-        }
-    }
-
     publications {
         create<MavenPublication>(project.name) {
             artifact(tasks["jar"])
