@@ -69,7 +69,7 @@ val sourcesJar by tasks.registering(Jar::class) {
 publishing {
     repositories {
         maven {
-            url = uri("http://oss.jfrog.org/oss-release-local")
+            url = uri("https://drill4j.jfrog.io/artifactory/drill")
             credentials {
                 username =
                     if (project.hasProperty("bintrayUser"))
