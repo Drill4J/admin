@@ -17,6 +17,7 @@ val scriptUrl: String by extra
 
 allprojects {
     apply(from = rootProject.uri("$scriptUrl/git-version.gradle.kts"))
+    apply(from = rootProject.uri("$scriptUrl/maven-repo.gradle.kts"))
 }
 
 subprojects {
