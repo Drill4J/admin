@@ -25,7 +25,7 @@ data class Notification(
     val createdAt: Long,
     val type: NotificationType,
     val read: Boolean = false,
-    val message: JsonElement
+    val message: JsonElement,
 )
 
 enum class NotificationType {
@@ -36,5 +36,5 @@ enum class NotificationType {
 data class NewBuildArrivedMessage(
     val currentId: String,
     val recommendations: Set<String> = emptySet(),
-    val buildInfo: JsonElement = JsonNull
+    val buildInfo: JsonElement = JsonNull,
 )

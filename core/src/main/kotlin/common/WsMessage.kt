@@ -28,14 +28,14 @@ sealed class WsReceiveMessage {
 @SerialName("SUBSCRIBE")
 data class Subscribe(
     override val destination: String,
-    override val message: String = ""
+    override val message: String = "",
 ) : WsReceiveMessage()
 
 @Serializable
 @SerialName("UNSUBSCRIBE")
 data class Unsubscribe(
     override val destination: String,
-    override val message: String = ""
+    override val message: String = "",
 ) : WsReceiveMessage()
 
 @Serializable
@@ -43,7 +43,7 @@ data class WsSendMessage(
     val type: WsMessageType,
     val destination: String = "",
     val to: JsonElement = JsonNull,
-    val message: JsonElement = JsonPrimitive("")
+    val message: JsonElement = JsonPrimitive(""),
 )
 
 @Serializable
@@ -51,7 +51,7 @@ data class WsSendMessageListData(
     val type: WsMessageType,
     val destination: String = "",
     val to: JsonElement = JsonNull,
-    val message: List<JsonElement>
+    val message: List<JsonElement>,
 )
 
 enum class WsMessageType {

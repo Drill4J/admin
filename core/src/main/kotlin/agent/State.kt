@@ -43,7 +43,7 @@ internal class AgentDataCache {
 
     fun getOrPut(
         key: String,
-        provider: () -> AgentData
+        provider: () -> AgentData,
     ): AgentData = _data.updateAndGet {
         if (key !in it) {
             it.put(key, provider())
@@ -95,7 +95,7 @@ internal class AgentData(
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,
-        block: suspend (SystemSettingsDto) -> Unit = {}
+        block: suspend (SystemSettingsDto) -> Unit = {},
     ) {
         val current = this.settings
         if (current != settings) {
@@ -174,7 +174,7 @@ private suspend fun StoreClient.loadClasses(
 ): Map<String, ByteArray> = trackTime("loadClasses") {
     findById<StoredCodeData>(agentId)?.run {
         ProtoBuf.load(CodeData.serializer(), Zstd.decompress(data)).classBytes
-    }?: let {
+    } ?: let {
         logger.warn { "can not find classBytes for agentId $agentId" }
         emptyMap()
     }

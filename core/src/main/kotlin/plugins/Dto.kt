@@ -28,7 +28,7 @@ internal fun Plugin.toDto() = PluginDto(
 internal fun Iterable<Plugin>.mapToDto() = map(Plugin::toDto)
 
 internal fun Iterable<Plugin>.mapToDto(
-    agents: Iterable<AgentInfo>
+    agents: Iterable<AgentInfo>,
 ): List<PluginDto> = mapToDto().map { plugin ->
     val available = agents.any { plugin.id !in it.plugins }
     plugin.copy(

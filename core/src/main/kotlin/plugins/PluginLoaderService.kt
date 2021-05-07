@@ -35,7 +35,7 @@ private val logger = KotlinLogging.logger {}
 class PluginLoaderService(
     private val application: Application,
     private val workDir: File = File(getenv("DRILL_HOME"), "work"),
-    val plugins: Plugins = Plugins()
+    val plugins: Plugins = Plugins(),
 ) {
 
     private val pluginStoragePath = File("distr").resolve("adminStorage")
@@ -94,7 +94,10 @@ class PluginLoaderService(
                                 val configText = jar.getInputStream(configEntry).reader().readText()
                                 val configJson = nonStrictJson.parseToJsonElement(configText) as JsonObject
                                 val version = configJson["version"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val config = nonStrictJson.decodeFromJsonElement(PluginMetadata.serializer(), configJson)
+                                val config = nonStrictJson.decodeFromJsonElement(
+                                    PluginMetadata.serializer(),
+                                    configJson
+                                )
                                 val pluginId = config.id
 
                                 if (pluginId !in plugins.keys) {
@@ -143,7 +146,7 @@ class PluginLoaderService(
     }
 
     private fun processAdminPart(
-        adminPartFile: File, adminJar: JarFile
+        adminPartFile: File, adminJar: JarFile,
     ): Class<AdminPluginPart<*>>? {
         val pluginClassLoader = PluginClassLoader(adminPartFile.toURI().toURL())
         val entrySet = adminJar.entries().iterator().asSequence().toSet()

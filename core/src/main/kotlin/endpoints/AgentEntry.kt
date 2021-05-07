@@ -40,14 +40,14 @@ class AgentEntry(agent: AgentInfo) {
     val plugins get() = _instanceMap.value.values
 
     fun updateAgent(
-        updater: (AgentInfo) -> AgentInfo
+        updater: (AgentInfo) -> AgentInfo,
     ): AgentInfo = _agent.updateAndGet(updater)
 
     operator fun get(pluginId: String): AdminPluginPart<*>? = _instanceMap.value[pluginId]
 
     fun get(
         pluginId: String,
-        updater: AgentEntry.() -> AdminPluginPart<*>
+        updater: AgentEntry.() -> AdminPluginPart<*>,
     ): AdminPluginPart<*> = get(pluginId) ?: _instanceMap.updateAndGet {
         it.takeIf { pluginId in it } ?: it.put(pluginId, updater())
     }.getValue(pluginId)
@@ -63,7 +63,7 @@ internal fun Plugin.createInstance(
     agentInfo: AgentInfo,
     data: AdminData,
     sender: Sender,
-    store: StoreClient
+    store: StoreClient,
 ): AdminPluginPart<*> {
     @Suppress("UNCHECKED_CAST")
     val constructor = pluginClass.constructors.run {

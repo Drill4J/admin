@@ -24,12 +24,12 @@ import kotlinx.serialization.protobuf.*
 @Serializable
 internal class Stored(
     @Id val id: String,
-    val data: ByteArray
+    val data: ByteArray,
 )
 
 internal suspend fun StoreClient.storeMessage(
     id: String,
-    message: Any
+    message: Any,
 ): Int {
     val storedMessage = message.toStoredMessage()
     val bytes = ProtoBuf.dump(StoredMessage.serializer(), storedMessage)
@@ -40,7 +40,7 @@ internal suspend fun StoreClient.storeMessage(
 
 internal suspend fun StoreClient.readMessage(
     id: String,
-    classLoader: ClassLoader = Thread.currentThread().contextClassLoader
+    classLoader: ClassLoader = Thread.currentThread().contextClassLoader,
 ): Any? = findById<Stored>(id)?.let { stored ->
     val bytes = Zstd.decompress(stored.data)
     val storedMessage = ProtoBuf.load(StoredMessage.serializer(), bytes)

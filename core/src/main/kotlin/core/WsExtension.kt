@@ -32,7 +32,7 @@ private val logger = KotlinLogging.logger {}
 fun Route.authWebSocket(
     path: String,
     protocol: String? = null,
-    handler: suspend DefaultWebSocketServerSession.() -> Unit
+    handler: suspend DefaultWebSocketServerSession.() -> Unit,
 ) {
     webSocket(path, protocol) {
         socketAuthentication()

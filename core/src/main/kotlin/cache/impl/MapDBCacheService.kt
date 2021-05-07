@@ -32,6 +32,7 @@ private val logger = KotlinLogging.logger {}
 class MapDBCacheService : CacheService {
 
     private val dbMemory = DBMaker.memoryDirectDB().make()
+
     //TODO EPMDJ-7018
     val serializers = HashMap<Any, KSerializer<Any>>()
 

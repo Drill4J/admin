@@ -27,7 +27,7 @@ internal data class Group(
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val systemSettings: SystemSettingsDto = SystemSettingsDto()
+    val systemSettings: SystemSettingsDto = SystemSettingsDto(),
 )
 
 internal typealias GroupedAgents = Pair<SingleAgents, List<AgentGroup>>

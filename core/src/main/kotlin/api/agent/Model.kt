@@ -35,7 +35,7 @@ enum class AgentStatus {
 data class SystemSettingsDto(
     val packages: List<String> = emptyList(),
     val sessionIdHeaderName: String = "",
-    val targetHost: String = ""
+    val targetHost: String = "",
 )
 
 @Serializable
@@ -54,7 +54,7 @@ data class AgentInfoDto(
     val agentType: String,
     val agentVersion: String,
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),
-    val plugins: Set<PluginDto> = emptySet()
+    val plugins: Set<PluginDto> = emptySet(),
 )
 
 @Serializable
@@ -66,7 +66,7 @@ data class AgentCreationDto(
     val environment: String = "",
     val description: String = "",
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),
-    val plugins: Set<String> = emptySet()
+    val plugins: Set<String> = emptySet(),
 )
 
 @Serializable
@@ -75,12 +75,12 @@ data class AgentRegistrationDto(
     val description: String = "",
     val environment: String = "",
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),
-    val plugins: List<String> = emptyList()
+    val plugins: List<String> = emptyList(),
 )
 
 @Serializable
 data class AgentUpdateDto(
     val name: String,
     val description: String = "",
-    val environment: String = ""
+    val environment: String = "",
 )

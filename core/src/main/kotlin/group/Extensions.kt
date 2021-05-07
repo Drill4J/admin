@@ -26,7 +26,7 @@ internal fun GroupedAgents.toDto(agentManager: AgentManager) = GroupedAgentsDto(
 )
 
 internal fun AgentGroup.toDto(
-    agentManager: AgentManager
+    agentManager: AgentManager,
 ) = JoinedGroupDto(
     group = group,
     agents = agentInfos.mapToDto(agentManager),

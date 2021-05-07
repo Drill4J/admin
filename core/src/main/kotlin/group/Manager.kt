@@ -98,8 +98,8 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun updateSystemSettings(
         group: GroupDto,
-        systemSettings: SystemSettingsDto
-    ): GroupDto? =  update(
+        systemSettings: SystemSettingsDto,
+    ): GroupDto? = update(
         group.copy(
             systemSettings = SystemSettingsDto(
                 packages = systemSettings.packages,
@@ -111,7 +111,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun CommonStore.store(
         oldValue: GroupDto,
-        groupDto: GroupDto
+        groupDto: GroupDto,
     ): GroupDto = run {
         logger.debug { "Updating group ${groupDto.id}, old: $oldValue new: $groupDto" }
         storeGroup(groupDto.toModel())
@@ -119,5 +119,5 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
 }
 
 private suspend fun CommonStore.storeGroup(
-    group: Group
+    group: Group,
 ): Group = client.store(group)

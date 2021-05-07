@@ -216,7 +216,7 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun List<AgentInfo>.register(
-        regInfo: AgentRegistrationDto
+        regInfo: AgentRegistrationDto,
     ): List<String> = supervisorScope {
         map { info ->
             val agentId = info.id

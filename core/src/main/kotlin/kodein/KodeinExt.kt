@@ -44,7 +44,7 @@ class AppBuilder {
 
 fun Application.kodeinApplication(
     appConfig: AppBuilder,
-    kodeinMapper: Kodein.MainBuilder.(Application) -> Unit = {}
+    kodeinMapper: Kodein.MainBuilder.(Application) -> Unit = {},
 ): Kodein {
     val app = this
     return Kodein {

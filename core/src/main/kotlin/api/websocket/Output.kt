@@ -22,5 +22,5 @@ import kotlinx.serialization.json.*
 class ListOutput(
     val totalCount: Int,
     val filteredCount: Int,
-    val items: List<JsonElement>
+    val items: List<JsonElement>,
 )

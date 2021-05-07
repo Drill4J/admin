@@ -31,6 +31,7 @@ import org.kodein.di.generic.*
 
 const val agentIsBusyMessage =
     "Sorry, this agent is busy at the moment. Please try again later"
+
 internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger { }
 
@@ -47,7 +48,7 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
 
                     if (agentId != null) {
                         val agentInfo = am.getOrNull(agentId)
-                        when(agentInfo?.status) {
+                        when (agentInfo?.status) {
                             null -> {
                                 if (am.allEntries().none { it.agent.groupId == agentId }) {
                                     call.respond(

@@ -23,7 +23,7 @@ import java.io.*
 
 sealed class Stores(
     private val baseDir: File,
-    private val subDir: String = ""
+    private val subDir: String = "",
 ) : Closeable {
 
     private val _stores = atomic(

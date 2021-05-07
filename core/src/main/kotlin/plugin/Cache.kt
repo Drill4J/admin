@@ -31,7 +31,7 @@ class PluginCaches(
     app: Application,
     private val cacheService: CacheService,
     private val plugins: Plugins,
-    private val pluginStores: PluginStores
+    private val pluginStores: PluginStores,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -46,7 +46,7 @@ class PluginCaches(
     internal fun get(
         pluginId: String,
         subscription: Subscription?,
-        replace: Boolean = false
+        replace: Boolean = false,
     ): Cache<Any, FrontMessage> = if (enabled) {
         cacheService.pluginCacheFor(subscription, pluginId, replace)
     } else NullCache.castUnchecked()
@@ -55,7 +55,7 @@ class PluginCaches(
     internal suspend fun getData(
         agentId: String,
         buildVersion: String,
-        type: String
+        type: String,
     ): Any? = plugins.keys.firstOrNull()?.let { pluginId ->
         retrieveMessage(
             pluginId,
@@ -67,7 +67,7 @@ class PluginCaches(
     internal suspend fun retrieveMessage(
         pluginId: String,
         subscription: Subscription?,
-        destination: String
+        destination: String,
     ): FrontMessage = get(pluginId, subscription).let { cache ->
         cache[destination] ?: run {
             val messageKey = subscription.toKey(destination)
@@ -94,7 +94,7 @@ private data class GroupKey(val pluginId: String, val groupId: String)
 private fun CacheService.pluginCacheFor(
     subscription: Subscription?,
     pluginId: String,
-    replace: Boolean
+    replace: Boolean,
 ): Cache<Any, FrontMessage> = when (subscription) {
     is AgentSubscription -> getOrCreate(
         id = AgentKey(pluginId, subscription.agentId),

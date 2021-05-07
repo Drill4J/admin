@@ -82,7 +82,7 @@ class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun WebSocketSession.consume(
         pluginId: String,
-        event: WsReceiveMessage
+        event: WsReceiveMessage,
     ) {
         logger.trace { "Receiving event $event" }
         val sessionCache = pluginSessions[pluginId]

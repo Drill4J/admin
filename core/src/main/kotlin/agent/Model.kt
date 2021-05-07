@@ -38,7 +38,7 @@ data class AgentInfo(
     val agentVersion: String = "",
     val adminUrl: String = "",
     val ipAddress: String = "",
-    val plugins: Set<String> = emptySet()
+    val plugins: Set<String> = emptySet(),
 ) {
     override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
@@ -48,13 +48,13 @@ data class AgentInfo(
 @Serializable
 internal class PreparedAgentData(
     @Id val id: String,
-    val dto: AgentCreationDto
+    val dto: AgentCreationDto,
 )
 
 @Serializable
 internal data class AgentDataSummary(
     @Id val agentId: String,
-    val settings: SystemSettingsDto
+    val settings: SystemSettingsDto,
 )
 
 @Serializable
@@ -63,5 +63,5 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 @Serializable
 internal class StoredCodeData(
     @Id val id: String,
-    val data: ByteArray
+    val data: ByteArray,
 )
