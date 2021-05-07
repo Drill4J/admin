@@ -27,7 +27,7 @@ private val emptyByteArray = byteArrayOf()
 internal class StoredMessage(
     val kind: MessageKind,
     val className: String = "",
-    val data: ByteArray = emptyByteArray
+    val data: ByteArray = emptyByteArray,
 )
 
 internal enum class MessageKind {
@@ -38,7 +38,7 @@ internal enum class MessageKind {
 
 @Serializable
 internal class DataParts(
-    val list: List<ByteArray> = emptyList()
+    val list: List<ByteArray> = emptyList(),
 )
 
 private val emptyStoredList = StoredMessage(
@@ -83,7 +83,7 @@ internal fun Any.toStoredMessage(): StoredMessage = when (this) {
 }
 
 internal fun StoredMessage.toMessage(
-    classLoader: ClassLoader = Thread.currentThread().contextClassLoader
+    classLoader: ClassLoader = Thread.currentThread().contextClassLoader,
 ): Any = when {
     kind == MessageKind.OBJECT -> {
         ProtoBuf.load(className.classNameSerializer(classLoader), data)

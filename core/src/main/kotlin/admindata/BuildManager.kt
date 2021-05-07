@@ -22,7 +22,7 @@ import kotlinx.collections.immutable.*
 
 class AgentBuildManager(
     val agentId: String,
-    builds: Iterable<AgentBuild> = emptyList()
+    builds: Iterable<AgentBuild> = emptyList(),
 ) {
 
     internal val agentBuilds get() = buildMap.values

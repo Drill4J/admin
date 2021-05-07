@@ -45,7 +45,7 @@ fun <K, V> BiSetMap<K, V>.remove(value: V): BiSetMap<K, V> = second[value].let {
 }
 
 class SetMap<K, V>(
-    private val m: PersistentMap<K, PersistentSet<V>> = persistentMapOf()
+    private val m: PersistentMap<K, PersistentSet<V>> = persistentMapOf(),
 ) {
     val size get() = m.size
 
@@ -96,7 +96,7 @@ private val emptyBiSetMap = BiSetMap(
 
 private fun <K, V> biSetMap(
     newFirst: SetMap<K, V>,
-    newSecond: SetMap<V, K>
+    newSecond: SetMap<V, K>,
 ): BiSetMap<K, V> {
     return if (newFirst.any() || newSecond.any()) {
         newFirst to newSecond

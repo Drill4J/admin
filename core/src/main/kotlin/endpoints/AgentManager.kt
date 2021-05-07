@@ -90,7 +90,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     internal suspend fun prepare(
-        dto: AgentCreationDto
+        dto: AgentCreationDto,
     ): AgentInfo? = (get(dto.id) ?: loadAgentInfo(dto.id)).let { storedInfo ->
         if (storedInfo == null || storedInfo.agentVersion.none()) {
             logger.debug { "Preparing agent ${dto.id}..." }
@@ -108,7 +108,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     internal suspend fun attach(
         config: CommonAgentConfig,
         needSync: Boolean,
-        session: AgentWsSession
+        session: AgentWsSession,
     ): AgentInfo {
         logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
@@ -170,7 +170,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun preparedInfo(
         storedInfo: AgentInfo?,
-        id: String
+        id: String,
     ) = if (storedInfo == null) {
         commonStore.client.findById<PreparedAgentData>(id)?.let {
             agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
@@ -179,7 +179,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     } else null
 
     private suspend fun Collection<String>.initPlugins(
-        agentEntry: AgentEntry
+        agentEntry: AgentEntry,
     ) {
         val agentInfo = agentEntry.agent
         val logPrefix by lazy(LazyThreadSafetyMode.NONE) {
@@ -197,7 +197,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentId: String,
         buildVersion: String,
         instanceId: String,
-        session: AgentWsSession
+        session: AgentWsSession,
     ) {
         _instances.update {
             val instancesKey = InstancesKey(agentId, buildVersion)
@@ -209,7 +209,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun register(
         agentId: String,
-        dto: AgentRegistrationDto
+        dto: AgentRegistrationDto,
     ) = entryOrNull(agentId)?.let { entry ->
         val pluginsToAdd = dto.plugins.mapNotNull(plugins::get)
         val info: AgentInfo = entry.updateAgent { info ->
@@ -228,7 +228,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     internal suspend fun AgentInfo.removeInstance(
         instanceId: String,
-        session: AgentWsSession
+        session: AgentWsSession,
     ) {
         val instancesKey = InstancesKey(id, buildVersion)
         val instances = _instances.updateAndGet {
@@ -249,7 +249,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     fun instanceIds(
         agentId: String,
-        buildVersion: String = ""
+        buildVersion: String = "",
     ): PersistentMap<String, AgentWsSession> = if (buildVersion.isBlank()) {
         _instances.value
             .filter { it.key.agentId == agentId }
@@ -263,7 +263,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     internal suspend fun updateAgent(
         agentId: String,
-        agentUpdateDto: AgentUpdateDto
+        agentUpdateDto: AgentUpdateDto,
     ) = entryOrNull(agentId)?.also { entry ->
         entry.updateAgent {
             it.copy(
@@ -313,7 +313,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun addPlugins(
         agentId: String,
-        pluginIds: Set<String>
+        pluginIds: Set<String>,
     ) = entryOrNull(agentId)!!.let { entry ->
         val existingIds = entry.agent.plugins
         val pluginsToAdd = pluginIds.filter { it !in existingIds }.mapNotNull(plugins::get)
@@ -345,7 +345,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun addPlugins(
         agentInfos: Iterable<AgentInfo>,
-        pluginIds: Set<String>
+        pluginIds: Set<String>,
     ): Set<String> = supervisorScope {
         agentInfos.map { info ->
             val agentId = info.id
@@ -361,7 +361,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun wrapBusy(
         ai: AgentInfo,
-        block: suspend AgentInfo.() -> Unit
+        block: suspend AgentInfo.() -> Unit,
     ) = entryOrNull(ai.id)?.also { entry ->
         val busy = entry.updateAgent {
             it.copy(status = AgentStatus.BUSY)
@@ -410,7 +410,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentWsSession.enablePlugin(
         pluginId: String,
-        agentId: String
+        agentId: String,
     ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
         message = TogglePayload(pluginId, true)
     ) {
@@ -480,7 +480,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     internal suspend fun updateSystemSettings(
         agentInfos: Iterable<AgentInfo>,
-        systemSettings: SystemSettingsDto
+        systemSettings: SystemSettingsDto,
     ): Set<String> = supervisorScope {
         agentInfos.map { info ->
             val agentId = info.id
@@ -504,7 +504,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun AgentWsSession.sendPlugin(
         plugin: Plugin,
-        agentInfo: AgentInfo
+        agentInfo: AgentInfo,
     ): WsDeferred {
         val pb = plugin.pluginBean
         logger.debug { "Sending plugin ${pb.id} to agent ${agentInfo.id}" }
@@ -529,7 +529,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private suspend fun ensurePluginInstance(
         agentEntry: AgentEntry,
-        plugin: Plugin
+        plugin: Plugin,
     ): AdminPluginPart<*> = plugin.pluginBean.id.let { pluginId ->
         val buildVersion = agentEntry.agent.buildVersion
         val agentId = agentEntry.agent.id
@@ -566,5 +566,5 @@ suspend fun AgentWsSession.triggerClassesSending() =
 
 private data class InstancesKey(
     val agentId: String,
-    val buildVersion: String
+    val buildVersion: String,
 )

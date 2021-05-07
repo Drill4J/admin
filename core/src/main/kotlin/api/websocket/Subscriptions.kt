@@ -43,7 +43,7 @@ data class AgentSubscription(
     val buildVersion: String? = null,
     override val output: OutputType = OutputType.DEFAULT,
     override val filters: Set<FieldFilter> = emptySet(),
-    override val orderBy: Set<FieldOrder> = emptySet()
+    override val orderBy: Set<FieldOrder> = emptySet(),
 ) : Subscription()
 
 @Serializable
@@ -52,5 +52,5 @@ data class GroupSubscription(
     val groupId: String,
     override val output: OutputType = OutputType.DEFAULT,
     override val filters: Set<FieldFilter> = emptySet(),
-    override val orderBy: Set<FieldOrder> = emptySet()
+    override val orderBy: Set<FieldOrder> = emptySet(),
 ) : Subscription()

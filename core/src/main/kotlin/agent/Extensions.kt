@@ -21,7 +21,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 
 internal fun Iterable<AgentInfo>.mapToDto(
-    agentManager: AgentManager
+    agentManager: AgentManager,
 ): List<AgentInfoDto> = map { it.toDto(agentManager) }
 
 internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { entry ->
@@ -56,7 +56,7 @@ internal fun CommonAgentConfig.toAgentInfo() = AgentInfo(
 )
 
 internal fun AgentInfo.toDto(
-    agentManager: AgentManager
+    agentManager: AgentManager,
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
     val instanceIds = agentManager.instanceIds(id, buildVersion).keys

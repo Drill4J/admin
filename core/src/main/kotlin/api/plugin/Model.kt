@@ -27,5 +27,5 @@ data class PluginDto(
     val name: String = "",
     val description: String = "",
     val relation: String = "", //TODO remove
-    val available: Boolean = false
+    val available: Boolean = false,
 )

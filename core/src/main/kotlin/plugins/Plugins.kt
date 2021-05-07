@@ -20,7 +20,7 @@ import com.epam.drill.plugin.api.end.*
 import java.io.*
 
 class Plugins(
-    private val plugins: MutableMap<String, Plugin> = mutableMapOf()
+    private val plugins: MutableMap<String, Plugin> = mutableMapOf(),
 ) : Map<String, Plugin> by plugins {
     operator fun set(k: String, v: Plugin) = plugins.put(k, v)
 }
@@ -29,13 +29,13 @@ data class Plugin(
     val pluginClass: Class<AdminPluginPart<*>>,
     val agentPartFiles: AgentPartFiles,
     val pluginBean: PluginMetadata,
-    val version: String = ""
+    val version: String = "",
 )
 
 data class AgentPartFiles(
     val jar: File,
     val windowsPart: File? = null,
-    val linuxPart: File? = null
+    val linuxPart: File? = null,
 )
 
 const val PLUGIN_PACKAGE = "com.epam.drill.plugins"

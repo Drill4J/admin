@@ -23,7 +23,7 @@ import kotlin.reflect.full.*
 typealias FrontMessage = Any
 
 internal fun FrontMessage.postProcess(
-    subscription: Subscription?
+    subscription: Subscription?,
 ): Any = subscription?.let {
     @Suppress("UNCHECKED_CAST")
     val iterable = this as? Iterable<Any>
@@ -61,7 +61,7 @@ internal fun FrontMessage.postProcess(
 } ?: this
 
 private fun Sequence<FieldFilter>.toPredicate(
-    propMap: Map<String, KProperty1<out Any, Any?>>
+    propMap: Map<String, KProperty1<out Any, Any?>>,
 ): (Any) -> Boolean = { msg: Any ->
     fold(true) { acc, f ->
         acc && propMap.getValue(f.field).call(msg)?.toString().orEmpty().let {
@@ -74,7 +74,7 @@ private fun Sequence<FieldFilter>.toPredicate(
 }
 
 private fun Sequence<FieldOrder>.toComparator(
-    propMap: Map<String, KProperty1<out Any, Any?>>
+    propMap: Map<String, KProperty1<out Any, Any?>>,
 ) = Comparator<Any> { msg1, msg2 ->
     fold(0) { acc, sort ->
         if (acc == 0) {
@@ -92,7 +92,7 @@ private fun Sequence<FieldOrder>.toComparator(
 
 private fun Iterable<Any>.toOutput(
     subscription: Subscription,
-    totalCount: Int
+    totalCount: Int,
 ): Any = when (subscription.output) {
     OutputType.LIST -> ListOutput(
         totalCount = totalCount,

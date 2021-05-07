@@ -22,5 +22,5 @@ import kotlinx.serialization.json.*
 data class BuildSummaryDto(
     val buildVersion: String = "",
     val detectedAt: Long = 0L,
-    val summary: JsonElement = JsonNull
+    val summary: JsonElement = JsonNull,
 )

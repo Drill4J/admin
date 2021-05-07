@@ -32,7 +32,7 @@ fun WebSocketSession.toDebugString(): String = "session(${hashCode()})"
 fun Any.toWsMessageAsString(
     destination: String,
     type: WsMessageType,
-    to: Subscription? = null
+    to: Subscription? = null,
 ): String = when (this) {
     is Iterable<*> -> {
         @Suppress("UNCHECKED_CAST")

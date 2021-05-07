@@ -30,7 +30,7 @@ fun ContentNegotiation.Configuration.converters() {
 
 private object EmptyContentConverter : ContentConverter {
     override suspend fun convertForReceive(
-        context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>
+        context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>,
     ): Any? {
         val request = context.subject
         val readChannel = request.value as? ByteReadChannel
@@ -41,6 +41,6 @@ private object EmptyContentConverter : ContentConverter {
     override suspend fun convertForSend(
         context: PipelineContext<Any, ApplicationCall>,
         contentType: ContentType,
-        value: Any
+        value: Any,
     ): Any? = value
 }

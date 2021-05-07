@@ -33,14 +33,14 @@ import kotlin.time.TimeSource.*
 fun Route.agentWebsocket(
     path: String,
     protocol: String? = null,
-    handler: suspend DefaultWebSocketServerSession.() -> Unit
+    handler: suspend DefaultWebSocketServerSession.() -> Unit,
 ) = webSocket(path, protocol, handler)
 
 class WsAwaitException(message: String) : RuntimeException(message)
 
 class Signal(
     private val topicName: String,
-    val callback: suspend (Any) -> Unit
+    val callback: suspend (Any) -> Unit,
 ) {
     private val _state = atomic(true)
 
@@ -60,7 +60,7 @@ suspend fun awaitWithExpr(
     timeout: Duration,
     agentId: String,
     description: String,
-    state: () -> Boolean
+    state: () -> Boolean,
 ) {
     val expirationMark = Monotonic.markNow() + timeout
     while (state()) {
@@ -76,7 +76,7 @@ class WsDeferred(
     val agentId: String,
     topicName: String,
     callback: suspend (Any) -> Unit = {},
-    val caller: suspend () -> Unit
+    val caller: suspend () -> Unit,
 ) {
     val signal: Signal = Signal(topicName, callback)
 
@@ -91,7 +91,7 @@ open class AgentWsSession(
     private val session: WebSocketServerSession,
     val frameType: FrameType,
     private val timeout: Duration,
-    private val agentId: String
+    private val agentId: String,
 ) : WebSocketServerSession by session {
 
     val subscribers get() = _subscribers.value
@@ -100,7 +100,7 @@ open class AgentWsSession(
 
     suspend inline fun <reified TopicUrl : Any, reified T> sendToTopic(
         message: T,
-        noinline callback: suspend (Any) -> Unit = {}
+        noinline callback: suspend (Any) -> Unit = {},
     ): WsDeferred = TopicUrl::class.topicUrl().let { topicName ->
         async(topicName, callback) {
             when (frameType) {
@@ -129,7 +129,7 @@ open class AgentWsSession(
     suspend fun async(
         topicName: String,
         callback: suspend (Any) -> Unit = {},
-        caller: suspend () -> Unit
+        caller: suspend () -> Unit,
     ) = WsDeferred(
         timeout = timeout,
         agentId = agentId,

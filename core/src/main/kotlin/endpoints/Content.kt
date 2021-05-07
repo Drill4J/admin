@@ -32,17 +32,17 @@ sealed class WithStatusCode {
 @SerialName("STATUS_MESSAGE")
 data class StatusMessageResponse(
     override val code: Int,
-    val message: String
+    val message: String,
 ) : WithStatusCode()
 
 @Serializable
 @SerialName("STATUS")
 data class StatusResponse(
     override val code: Int,
-    val data: JsonElement
+    val data: JsonElement,
 ) : WithStatusCode()
 
 data class FileResponse(
     override val code: Int,
-    val data: File
+    val data: File,
 ) : WithStatusCode()

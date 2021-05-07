@@ -32,6 +32,7 @@ fun Any?.toJson(): JsonElement = this?.let { any ->
         serializer toJson any
     }
 } ?: JsonNull
+
 fun Iterable<Any>.toJsonList(): List<JsonElement> = firstOrNull()?.let { first ->
     val serializer = first::class.serializer().cast()
     map { serializer toJson it }

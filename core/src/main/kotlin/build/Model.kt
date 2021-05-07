@@ -24,13 +24,13 @@ data class AgentBuild(
     @Id val id: AgentBuildId,
     val agentId: String,
     val info: BuildInfo,
-    val detectedAt: Long = 0L
+    val detectedAt: Long = 0L,
 )
 
 @Serializable
 data class AgentBuildId(
     val agentId: String,
-    val version: String
+    val version: String,
 ) : Comparable<AgentBuildId> {
     override fun compareTo(other: AgentBuildId): Int = agentId.compareTo(other.agentId).takeIf { it != 0 }
         ?: version.compareTo(other.version)
@@ -40,7 +40,7 @@ data class AgentBuildId(
 data class AgentBuildData(
     @Id val id: AgentBuildId,
     val agentId: String,
-    val detectedAt: Long
+    val detectedAt: Long,
 ) {
     override fun equals(other: Any?) = other is AgentBuildData && id == other.id
 

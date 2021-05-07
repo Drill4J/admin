@@ -33,7 +33,7 @@ sealed class AgentMessage {
 data class JsonMessage(
     override val type: MessageType,
     override val destination: String = "",
-    override val text: String = ""
+    override val text: String = "",
 ) : AgentMessage() {
     override val bytes: ByteArray get() = text.decodeBase64Bytes()
 
@@ -41,7 +41,7 @@ data class JsonMessage(
 }
 
 class BinaryMessage(
-    val message: Message
+    val message: Message,
 ) : AgentMessage() {
     override val type: MessageType get() = message.type
     override val destination: String get() = message.destination

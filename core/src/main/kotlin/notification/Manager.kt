@@ -40,7 +40,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
         val notificationId = notification.id
         logger.info {
             "New notification with $notificationId associated with agent ${notification.agentId}." +
-                " Message: ${notification.message}"
+                    " Message: ${notification.message}"
         }
         _notifications.update { it + notification }
     }
@@ -58,7 +58,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
     fun deleteAll(): Notifications = _notifications.getAndUpdate { Notifications() }
 
     internal suspend fun saveNewBuildNotification(
-        agentInfo: AgentInfo
+        agentInfo: AgentInfo,
     ) {
         logger.debug { "agent='${agentInfo.id}': create 'new build arrived' notification" }
         save(
@@ -74,7 +74,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun createNewBuildMessage(
-        agentInfo: AgentInfo
+        agentInfo: AgentInfo,
     ): NewBuildArrivedMessage = pluginCache.getData(
         agentInfo.id,
         agentInfo.buildVersion,
@@ -101,7 +101,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
 
 class Notifications(
     private val asc: PersistentMap<String, Notification> = persistentMapOf(),
-    private val desc: PersistentMap<String, Notification> = persistentMapOf()
+    private val desc: PersistentMap<String, Notification> = persistentMapOf(),
 ) {
 
     val valuesDesc get() = desc.values

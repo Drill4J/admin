@@ -24,7 +24,7 @@ import kotlin.reflect.full.*
 
 internal suspend fun AdminPluginPart<*>.processAction(
     action: String,
-    agentSessions: (String) -> Iterable<AgentWsSession>
+    agentSessions: (String) -> Iterable<AgentWsSession>,
 ): Any = doRawAction(action).also { result ->
     (result as? ActionResult)?.agentAction?.let { action ->
         action.actionSerializerOrNull()?.let { serializer ->
