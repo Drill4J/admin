@@ -44,7 +44,7 @@ class TestAdminPart(
         return ""
     }
 
-    override suspend fun doAction(action: String): Any {
+    override suspend fun doAction(action: String, data: Any?): Any {
         return when (action) {
             "packagesChangesCount" -> {
                 println(packagesChangesCount)

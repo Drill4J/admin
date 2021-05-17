@@ -84,6 +84,10 @@ class ApiRoot(val prefix: String = "api") {
         data class DispatchPluginAction(val parent: Agents, val agentId: String, val pluginId: String)
 
         @Group(AGENT_PLUGIN)
+        @Location("/{agentId}/plugins/{pluginId}/process-data")
+        data class ProcessData(val parent: Agents, val agentId: String, val pluginId: String)
+
+        @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/toggle")
         data class TogglePlugin(val parent: Agents, val agentId: String, val pluginId: String)
 
