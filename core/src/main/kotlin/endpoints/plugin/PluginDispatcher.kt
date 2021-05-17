@@ -38,6 +38,7 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -122,6 +123,47 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
+                val meta = "Process plugin data"
+                    .examples(
+                        example(
+                            "Petclinic",
+                            """Multipart form-data with key-value pairs: 
+                                "action":{"type":"IMPORT_COVERAGE"},
+                                "data": File(jacoco.exec)
+                            """.trimIndent()
+                        )
+                    )
+                    .description("To try out this request, please use the Postman")
+                    .responds(ok<String>(), badRequest())
+                //TODO (EPMDJ-8151) Requests don't work from the swagger
+                post<ApiRoot.Agents.ProcessData, MultiPartData>(meta) { (_, agentId, pluginId), data ->
+                    val parts: List<PartData> = data.readAllParts()
+                    val action = (parts.find { it.name == "action" } as PartData.FormItem).value
+                    val inputStream = (parts.find { it.name == "data" } as PartData.FileItem).streamProvider()
+                    logger.debug { "Process data with plugin with id $pluginId for agent with id $agentId" }
+                    val agentEntry = agentManager.entryOrNull(agentId)
+                    val (statusCode, response) = agentEntry?.run {
+                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                        if (plugin != null) {
+                            if (agentManager.getStatus(agentId) == AgentStatus.ONLINE) {
+                                this[pluginId]?.let { adminPart ->
+                                    val result = adminPart.doRawAction(action, inputStream)
+                                    val statusResponse = result.toStatusResponse()
+                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                } ?: HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot process data: plugin $pluginId not initialized for agent $agentId."
+                                )
+                            } else HttpStatusCode.BadRequest to ErrorResponse(
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
+                            )
+                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                    } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
+                    logger.info { "$response" }
+                    sendResponse(response, statusCode)
+                }
+            }
+
+            authenticate {
                 val meta = "Dispatch defined plugin actions in defined group"
                     .examples(
                         example("action", "some action name")
@@ -187,8 +229,9 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             if (agentId in agentManager) {
                                 val agentInfo = agentManager[agentId]!!
                                 if (pluginIdObject.pluginId in agentInfo.plugins) {
-                                    HttpStatusCode.BadRequest to
-                                            ErrorResponse("Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'")
+                                    HttpStatusCode.BadRequest to ErrorResponse(
+                                        "Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'"
+                                    )
                                 } else {
                                     agentManager.addPlugins(agentInfo.id, setOf(pluginIdObject.pluginId))
                                     HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
