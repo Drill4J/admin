@@ -84,6 +84,7 @@ fun AdminTest.processThens(
                     pluginTestInfo,
                     pluginMeta,
                     build,
+                    true,
                     true
                 )
                 for (i in 1..3) {

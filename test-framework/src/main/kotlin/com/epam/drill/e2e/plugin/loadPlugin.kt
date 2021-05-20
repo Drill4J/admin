@@ -45,7 +45,8 @@ suspend fun AdminTest.loadPlugin(
     pluginTestInfo: PluginTestContext,
     pluginMeta: PluginMetadata,
     build: Build,
-    random: Boolean = false
+    random: Boolean = false,
+    reattach: Boolean = false
 ) {
     lateinit var bs: ByteArray
     agentStreamer.getLoadedPlugin { meta, file ->
@@ -128,7 +129,9 @@ suspend fun AdminTest.loadPlugin(
         agentStreamer.loaded(meta.id)
 
         val classes = classMap.map { ByteClass(it.key, it.value) }.toTypedArray()
-        agentStreamer.`get-load-classes-data`(*classes)
+        if (!reattach) {
+            agentStreamer.`get-load-classes-data`(*classes)
+        }
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw
