@@ -10,4 +10,5 @@
     </root>
     <logger name="org.eclipse.jetty" level="info"/>
     <logger name="io.netty" level="info"/>
+    <logger name="jetbrains.exodus" level="warn"/>
 </configuration>
