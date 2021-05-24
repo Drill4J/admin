@@ -550,8 +550,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         block: suspend AgentWsSession.() -> Unit,
     ): Unit = getInstanceState(instanceKey)?.let { instanceState ->
         val agentId = instanceKey.agentKey.agentId
-        updateInstanceStatus(instanceKey, AgentStatus.BUSY).also { instance ->
-            if (instance?.all { it.value.status == AgentStatus.BUSY } == true) {
+        updateInstanceStatus(instanceKey, AgentStatus.BUSY)?.also { instance ->
+            if (instance.all { it.value.status == AgentStatus.BUSY }) {
                 notifyAgents(agentId)
                 logger.debug { "Agent $agentId is busy." }
             }
@@ -582,17 +582,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private fun getInstanceState(instanceKey: InstanceKey) = _instances.value[instanceKey.agentKey]?.get(instanceKey)
 
-    fun getStatus(agentId: String): AgentStatus = instanceIds(agentId).let { instances ->
-        if (entryOrNull(agentId)?.agent?.isRegistered == true) {
-            AgentStatus.OFFLINE.takeIf {
-                instances.isEmpty() || instances.all { it.value.status == AgentStatus.OFFLINE }
-            } ?: AgentStatus.ONLINE.takeIf {
-                instances.any { it.value.status == AgentStatus.ONLINE }
-            } ?: AgentStatus.BUSY
-        } else {
-            AgentStatus.NOT_REGISTERED.takeIf { instances.any() } ?: AgentStatus.OFFLINE
-        }
-    }
+    fun getStatus(agentId: String): AgentStatus = instanceIds(agentId).takeIf { instances ->
+        instances.isNotEmpty() && instances.all { it.value.status != AgentStatus.OFFLINE }
+    }?.let { instances ->
+        entryOrNull(agentId)?.agent?.takeIf { it.isRegistered }?.let {
+            AgentStatus.ONLINE.takeIf { instances.any { it.value.status == AgentStatus.ONLINE } }
+                ?: AgentStatus.BUSY
+        } ?: AgentStatus.NOT_REGISTERED
+    } ?: AgentStatus.OFFLINE
+
 }
 
 suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
