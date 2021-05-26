@@ -73,6 +73,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
                 }
             }
             connectAgent(AgentWrap(agentName, "3"), {}) { ui, _ ->
+                ui.getAgent()
                 ui.getAgent()?.apply {
                     status shouldBe AgentStatus.BUSY
                     instanceIds shouldBe setOf("1", "2", "3")

@@ -47,10 +47,8 @@ class SessionStorage {
         destination: String,
         message: FrontMessage,
         type: WsMessageType = WsMessageType.MESSAGE,
-    ): Set<WebSocketSession> = sessions.first[destination].apply {
-        forEach {
-            it.send(destination, message.toWsMessageAsString(destination, type))
-        }
+    ): Set<WebSocketSession> = sessions.first[destination].onEach {
+        it.send(destination, message.toWsMessageAsString(destination, type))
     }
 
     suspend fun sendTo(

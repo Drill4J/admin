@@ -20,6 +20,7 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
@@ -69,14 +70,15 @@ class PluginCaches(
         subscription: Subscription?,
         destination: String,
     ): FrontMessage = get(pluginId, subscription).let { cache ->
-        cache[destination] ?: run {
-            val messageKey = subscription.toKey(destination)
+        val dest = destination.urlDecode()
+        cache[dest] ?: run {
+            val messageKey = subscription.toKey(dest)
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
             val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
-            logger.trace { "retrieveMessage set to cache $destination" }
-            messageFromStore.also { cache[destination] = it }
+            logger.trace { "retrieveMessage set to cache $dest" }
+            messageFromStore.also { cache[dest] = it }
         }
     }
 }
