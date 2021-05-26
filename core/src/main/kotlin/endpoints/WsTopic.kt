@@ -66,7 +66,7 @@ fun Routs.suitableRoutWithParameters(destination: String) = run {
     suitableRout to parametersOf(* pairsOfParam.toTypedArray())
 }
 
-fun Routs.routWithMinParametersCount() = this.entries.first { it.key == this.keys.min() }
+fun Routs.routWithMinParametersCount() = this.entries.first { it.key == this.keys.minOrNull() }
 
 fun Routs.filterRoutsByUrl(urlTokens: List<String>) = this.filter { it.key.isMatched(urlTokens) }
 

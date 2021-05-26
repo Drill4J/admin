@@ -17,6 +17,7 @@ package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
@@ -74,13 +75,21 @@ suspend fun awaitWithExpr(
 class WsDeferred(
     val timeout: Duration,
     val agentId: String,
-    topicName: String,
+    val topicName: String,
     callback: suspend (Any) -> Unit = {},
     val caller: suspend () -> Unit,
 ) {
     val signal: Signal = Signal(topicName, callback)
 
-    suspend fun call(): WsDeferred = apply { caller() }
+    suspend fun call() = runCatching { caller() }.onFailure {
+        val agentDebugStr = "agent(id=${this.agentId}), topicName=$topicName"
+        when (it) {
+            is java.util.concurrent.CancellationException -> logger.error {
+                "Sending a message to $agentDebugStr was cancelled"
+            }
+            else -> logger.error(it) { "Error in sending a message to $agentDebugStr" }
+        }
+    }.getOrNull()
 
     suspend fun await() {
         signal.await(timeout, agentId)
@@ -136,7 +145,7 @@ open class AgentWsSession(
         topicName = topicName,
         callback = callback,
         caller = caller
-    ).putSignal(topicName).call()
+    ).putSignal(topicName).apply { call() }
 
     private fun WsDeferred.putSignal(topicName: String) = apply {
         _subscribers.update { it.put(topicName, signal) }
