@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - 'develop'
-      - 'release/*'
     paths:
       - '**/src/main/**'
       - '**.gradle.kts'
