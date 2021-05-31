@@ -156,7 +156,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             }
             existingInfo?.plugins?.initPlugins(entry)
             app.launch {
-                existingInfo?.takeIf { needSync }?.sync(config.instanceId, isNewBuild) // sync only existing info!
+                existingInfo?.takeIf { needSync }?.sync(config.instanceId, true) // sync only existing info!
                 if (isNewBuild && currentInfo != null) {
                     notificationsManager.saveNewBuildNotification(info)
                 }
@@ -427,8 +427,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                     if (needClassSending) {
                         updateSessionHeader(settings.sessionIdHeaderName)
                         triggerClassesSending()
+                        enableAllPlugins(id)
                     }
-                    enableAllPlugins(id)
                 }
             }
             logger.info { "Agent $id, instance $instanceId: sync took: $duration." }
