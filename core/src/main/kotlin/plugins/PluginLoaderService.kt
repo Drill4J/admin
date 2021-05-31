@@ -48,27 +48,21 @@ class PluginLoaderService(
             pluginStoragePath.mkdirs()
             val remoteEnabled = application.drillConfig
                 .propertyOrNull("plugins.remote.enabled")?.getString()?.toBoolean() ?: false
+
+            val artifactoryName = application.drillConfig
+                .propertyOrNull("plugins.artifactory.name")?.getString() ?: ""
             if (remoteEnabled) {
-                runCatching {
-                    val pluginLoaderJfrog = ArtifactoryPluginLoader(
-                        baseUrl = "https://drill4j.jfrog.io",
-                        basePath = "artifactory",
-                        repo = "drill",
-                        storageDir = pluginStoragePath,
-                        devMode = application.isDevMode
-                    )
-                    pluginLoaderJfrog.loadPlugins(allowedPlugins)
+                val artifactory = runCatching {
+                    Artifactory.valueOf(artifactoryName)
                 }.onFailure {
-                    logger.info { "Can't load from the new artifactory. Reason: ${it.message}" }
-                    val pluginLoader = ArtifactoryPluginLoader(
-                        baseUrl = "https://oss.jfrog.org",
-                        basePath = "artifactory",
-                        repo = "oss-release-local",
-                        storageDir = pluginStoragePath,
-                        devMode = application.isDevMode
-                    )
-                    pluginLoader.loadPlugins(allowedPlugins)
-                }
+                    logger.warn {"Please make sure the artifactory name is correct:${ Artifactory.values().joinToString()}"}
+                }.getOrNull() ?: Artifactory.GITHUB
+                val pluginLoaderJfrog = ArtifactoryPluginLoader(
+                    artifactory = artifactory,
+                    storageDir = pluginStoragePath,
+                    devMode = application.isDevMode
+                )
+                pluginLoaderJfrog.loadPlugins(allowedPlugins)
             }
 
             try {
