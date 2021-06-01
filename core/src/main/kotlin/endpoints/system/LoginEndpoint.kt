@@ -27,6 +27,7 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.serialization.*
 import mu.*
 
 class LoginEndpoint(val app: Application) {
@@ -58,7 +59,7 @@ class LoginEndpoint(val app: Application) {
                 val token = JwtConfig.makeToken(user, app.jwtLifetime)
                 call.response.header(HttpHeaders.Authorization, token)
                 logger.debug { "Login user with name $username was successfully" }
-                call.respond(HttpStatusCode.OK, token)
+                call.respond(HttpStatusCode.OK, JWT(token))
             }
 
             static {
@@ -67,3 +68,6 @@ class LoginEndpoint(val app: Application) {
         }
     }
 }
+
+@Serializable
+private data class JWT(val token: String)
