@@ -58,7 +58,7 @@ class LoginEndpoint(val app: Application) {
                 val token = JwtConfig.makeToken(user, app.jwtLifetime)
                 call.response.header(HttpHeaders.Authorization, token)
                 logger.debug { "Login user with name $username was successfully" }
-                call.respond(HttpStatusCode.OK)
+                call.respond(HttpStatusCode.OK, token)
             }
 
             static {
