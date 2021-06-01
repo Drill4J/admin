@@ -30,10 +30,15 @@ data class ArtifactoryPluginLoader(
     val devMode: Boolean = true //TODO dev mode handling
 ) {
     suspend fun loadPlugins(pluginIds: Iterable<String>) {
-        logger.info { "Loading plugins $pluginIds from artifactory '${artifactory.baseUrl}'..." }
         HttpClient(CIO).use { client ->
             for (pluginId in pluginIds) {
-                client.load(pluginId)
+                val url = pluginId.downloadUrl()
+                if (url.isNotBlank()) {
+                    client.downloadPlugin(url)
+                } else {
+                    logger.info { "Loading plugin $pluginId from artifactory '${artifactory.baseUrl}' ..." }
+                    client.load(pluginId)
+                }
             }
         }
         logger.info { "Plugins loaded." }
@@ -89,6 +94,11 @@ data class ArtifactoryPluginLoader(
         System.getenv("${normalizedId}_PLUGIN_VERSION") ?: ""
     }
 
+    private fun String.downloadUrl(): String = run {
+        val normalizedId = replace(Regex("\\s|-"), "_").toUpperCase()
+        System.getenv("${normalizedId}_PLUGIN_URL") ?: ""
+    }
+
     private suspend fun HttpClient.downloadPlugin(pluginId: String, version: String, targetFile: File) {
         val pluginBytes: ByteArray = when (artifactory) {
             Artifactory.GITHUB -> run {
@@ -107,6 +117,13 @@ data class ArtifactoryPluginLoader(
             }
         }
         targetFile.writeBytes(pluginBytes)
+    }
+
+    private suspend fun HttpClient.downloadPlugin(url: String) {
+        val targetFilename = url.split("/").last()
+        logger.info { "Downloading $url to $targetFilename" }
+        val targetFile = storageDir.resolve(targetFilename)
+        targetFile.writeBytes(get(url))
     }
 }
 
