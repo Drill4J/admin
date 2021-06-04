@@ -27,6 +27,7 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
@@ -67,24 +68,24 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     )
 
     init {
-        runBlocking {
-            val store = commonStore.client
-            val registered = store.getAll<AgentInfo>()
-            val prepared = store.getAll<PreparedAgentData>().map { data ->
-                agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
-                data.dto.toAgentInfo(plugins)
-            }
-            val registeredMap = registered.associate { agentInfo ->
-                val entry = AgentEntry(agentInfo)
-                adminData(agentInfo.id).initBuild(agentInfo.buildVersion)
-                agentInfo.plugins.initPlugins(entry)
-                agentInfo.id to entry
-            }
-            val preparedMap = prepared.filter { it.id !in registeredMap }.associate {
-                it.id to AgentEntry(it)
-            }
-            (registeredMap + preparedMap).takeIf { it.any() }?.let { entryMap ->
-                agentStorage.init(entryMap)
+        trackTime("loadingAgents") {
+            runBlocking {
+                val store = commonStore.client
+                val registered = store.getAll<AgentInfo>()
+                val prepared = store.getAll<PreparedAgentData>().map { data ->
+                    agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
+                    data.dto.toAgentInfo(plugins)
+                }
+                val registeredMap = registered.associate {
+                    adminData(it.id).initBuild(it.buildVersion)
+                    it.id to AgentEntry(it)
+                }
+                val preparedMap = prepared.filter { it.id !in registeredMap }.associate {
+                    it.id to AgentEntry(it)
+                }
+                (registeredMap + preparedMap).takeIf { it.any() }?.let { entryMap ->
+                    agentStorage.init(entryMap)
+                }
             }
         }
     }
@@ -135,6 +136,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.debug { "agent($id, $buildVersion): reattaching to current build..." }
             notifySingleAgent(id)
             notifyAllAgents()
+            currentInfo.plugins.initPlugins(existingEntry)
             if (needSync) app.launch {
                 currentInfo.sync(config.instanceId) // sync only existing info!
             }
