@@ -41,8 +41,6 @@ class PluginLoaderService(
     private val pluginStoragePath = File("distr").resolve("adminStorage")
     private val pluginPaths: List<File> = listOf(pluginStoragePath).map { it.canonicalFile }
 
-    private val allowedPlugins = setOf("test2code")
-
     init {
         runBlocking(Dispatchers.Default) {
             pluginStoragePath.mkdirs()
@@ -51,6 +49,10 @@ class PluginLoaderService(
 
             val artifactoryName = application.drillConfig
                 .propertyOrNull("plugins.artifactory.name")?.getString() ?: ""
+
+            val allowedPlugins = application.drillConfig
+                .propertyOrNull("plugins.id")?.getString()?.split(",")?.toSet() ?: setOf("test2code")
+
             if (remoteEnabled) {
                 val artifactory = runCatching {
                     Artifactory.valueOf(artifactoryName)
