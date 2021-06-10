@@ -93,13 +93,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     internal suspend fun prepare(
         dto: AgentCreationDto,
     ): AgentInfo? = (get(dto.id) ?: loadAgentInfo(dto.id)).let { storedInfo ->
-        if (storedInfo == null || storedInfo.agentVersion.none()) {
+        if (storedInfo == null || storedInfo.agentVersion.none() || !storedInfo.isRegistered) {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
                 agentDataCache[dto.id] = AgentData(dto.id, agentStores, dto.systemSettings)
                 commonStore.client.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
+                commonStore.client.deleteById<AgentInfo>(dto.id)
                 agentStorage.put(dto.id, AgentEntry(info))
                 logger.debug { "Prepared agent ${dto.id}." }
             }
