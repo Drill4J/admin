@@ -34,7 +34,7 @@ fun AdminTest.processThens(
     pluginMeta: com.epam.drill.common.PluginMetadata,
     globLaunch: Job
 ) {
-    thens.forEach { (ag, build, it) ->
+    thens.forEach { (ag, build, needSync, it) ->
         val classes = File("./build/classes/java/${build.name}")
             .walkTopDown()
             .filter { it.extension == "class" }
@@ -85,7 +85,7 @@ fun AdminTest.processThens(
                     pluginMeta,
                     build,
                     true,
-                    true
+                    needSync
                 )
                 for (i in 1..3) {
                     if (ui.getAgent()?.status == AgentStatus.BUSY) {

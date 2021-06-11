@@ -38,7 +38,7 @@ class SingleConnectPluginTest : E2EPluginTest() {
                     content shouldBe expectedContent
                 }.join()
                 println("hi ag1")
-            }.connectAgent<Build2> { _, _ ->
+            }.reconnect<Build2> { _, _ ->
                 println("hi reconnected ag1")
             }
         }

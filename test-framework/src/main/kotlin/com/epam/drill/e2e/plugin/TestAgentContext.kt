@@ -26,8 +26,13 @@ class TestAgentContext : AgentContext {
 
     override fun get(key: String): String? = _data.value?.second
 
-    fun runWithSession(sessionId: String, testName: String, block: () -> Unit) {
+    fun runWithSession(
+        sessionId: String, testName: String,
+        agentPart: AgentPart<*>?,
+        block: () -> Unit,
+    ) {
         _data.value = sessionId to testName
+        agentPart?.javaClass?.getDeclaredMethod("fillProbes")?.invoke(agentPart)
         try {
             block()
         } finally {

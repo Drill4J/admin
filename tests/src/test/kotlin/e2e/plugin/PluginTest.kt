@@ -56,7 +56,7 @@ class PluginTest : E2EPluginTest() {
                     println(content)
                     status shouldBe HttpStatusCode.OK
                 }.join()
-            }.connectAgent<Build2> { plugUi, build ->
+            }.reconnect<Build2> { plugUi, build ->
                 plugUi.processedData.receive()
                 println("Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}")
             }

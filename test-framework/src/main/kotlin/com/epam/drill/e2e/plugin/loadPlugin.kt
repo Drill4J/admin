@@ -46,7 +46,7 @@ suspend fun AdminTest.loadPlugin(
     pluginMeta: PluginMetadata,
     build: Build,
     random: Boolean = false,
-    reattach: Boolean = false
+    needSync: Boolean = true
 ) {
     lateinit var bs: ByteArray
     agentStreamer.getLoadedPlugin { meta, file ->
@@ -95,6 +95,7 @@ suspend fun AdminTest.loadPlugin(
             sender,
             SimpleLogging
         ) as AgentPart<*>
+        this.agentPart = agentPart
         val spykAgentPart = spyk(agentPart, ag.id)
         if (spykAgentPart is Instrumenter) {
             every { spykAgentPart["retransform"]() } answers {
@@ -129,7 +130,7 @@ suspend fun AdminTest.loadPlugin(
         agentStreamer.loaded(meta.id)
 
         val classes = classMap.map { ByteClass(it.key, it.value) }.toTypedArray()
-        if (!reattach) {
+        if (needSync) {
             agentStreamer.`get-load-classes-data`(*classes)
         }
         spykAgentPart.on()
