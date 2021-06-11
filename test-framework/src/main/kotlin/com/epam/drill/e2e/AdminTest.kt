@@ -21,12 +21,13 @@ import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.e2e.plugin.*
+import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import org.junit.jupiter.api.fail
+import org.junit.jupiter.api.*
 import java.io.*
 import java.util.*
 import kotlin.time.*
@@ -41,6 +42,7 @@ abstract class AdminTest {
     lateinit var globToken: String
     lateinit var storeManager: AgentStores
     lateinit var commonStore: CommonStore
+    var agentPart: AgentPart<*>? = null
 
     internal val testAgentContext = TestAgentContext()
 

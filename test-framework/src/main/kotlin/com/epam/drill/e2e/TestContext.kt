@@ -55,10 +55,12 @@ class TestContext<T : PluginStreams>(val agents: MutableMap<String, AgentAsyncSt
         noinline bl: suspend PluginTestContext.(T, B) -> Unit
     ): TestContext<T> {
         @Suppress("UNCHECKED_CAST")
+        val needSync = agents[ags.id]?.build?.version != ags.buildVersion
         agents[ags.id]?.thenCallbacks?.add(
             ThenAgentAsyncStruct(
                 ags,
                 B::class.objectInstance!!,
+                needSync,
                 bl as suspend PluginTestContext.(Any, Any) -> Unit
             )
         )
