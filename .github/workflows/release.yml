@@ -4,6 +4,7 @@ on:
     branches:
       - 'develop'
       - 'release/*'
+      - 'bugfix/*'
     paths:
       - '**/src/main/**'
       - '**.gradle.kts'
