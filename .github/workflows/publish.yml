@@ -23,13 +23,6 @@ jobs:
         uses: eskatos/gradle-command-action@v1
         with:
           arguments: -s test
-      - name: Publish to Maven Repo
-        uses: eskatos/gradle-command-action@v1
-        with:
-          arguments: -s publish
-        env:
-          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
-          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
       - name: Publish to GitHub Container Registry
         uses: eskatos/gradle-command-action@v1
         with:
