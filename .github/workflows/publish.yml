@@ -30,11 +30,12 @@ jobs:
         env:
           BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
           BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-      - name: Publish to DockerHub
+      - name: Publish to GitHub Container Registry
         uses: eskatos/gradle-command-action@v1
         with:
           arguments: -s jib
         env:
           GRADLE_OPTS: >
+            -Djib.to.image='ghcr.io/Drill4J/admin'
             -Djib.to.auth.username=${{ secrets.DRILL_USERNAME }}
             -Djib.to.auth.password=${{ secrets.DRILL_PASSWORD }}
