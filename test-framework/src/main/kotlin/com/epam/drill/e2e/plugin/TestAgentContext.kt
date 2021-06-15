@@ -32,7 +32,7 @@ class TestAgentContext : AgentContext {
         block: () -> Unit,
     ) {
         _data.value = sessionId to testName
-        agentPart?.javaClass?.getDeclaredMethod("fillProbes")?.invoke(agentPart)
+        agentPart?.javaClass?.getDeclaredMethod("processServerRequest")?.invoke(agentPart)
         try {
             block()
         } finally {
