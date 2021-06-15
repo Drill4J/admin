@@ -29,6 +29,5 @@ jobs:
           arguments: -s jib
         env:
           GRADLE_OPTS: >
-            -Djib.to.image="ghcr.io/drill4j/admin:0.8.0-11"
             -Djib.to.auth.username=${{ secrets.GH_PACKAGE_USERNAME }}
             -Djib.to.auth.password=${{ secrets.GH_PACKAGE_TOKEN }}
