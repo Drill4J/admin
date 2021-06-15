@@ -36,5 +36,5 @@ jobs:
           arguments: -s jib
         env:
           GRADLE_OPTS: >
-            -Djib.to.auth.username=${{ secrets.DRILL_USERNAME }}
-            -Djib.to.auth.password=${{ secrets.DRILL_PASSWORD }}
+            -Djib.to.auth.username=${{ secrets.GH_PACKAGE_USERNAME }}
+            -Djib.to.auth.password=${{ secrets.GH_PACKAGE_TOKEN }}

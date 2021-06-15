@@ -95,7 +95,7 @@ jib {
         image = "adoptopenjdk/openjdk11:latest"
     }
     to {
-        image = "drill4j/admin"
+        image = "ghcr.io/drill4j/admin"
         tags = setOf("${project.version}")
     }
     container {
