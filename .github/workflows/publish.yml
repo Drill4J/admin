@@ -36,5 +36,15 @@ jobs:
           arguments: -s jib
         env:
           GRADLE_OPTS: >
+            -Djib.to.image=drill4j/admin
+            -Djib.to.auth.username=${{ secrets.DRILL_USERNAME }}
+            -Djib.to.auth.password=${{ secrets.DRILL_PASSWORD }}
+      - name: Publish to GitHub Container registry
+        uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: -s jib
+        env:
+          GRADLE_OPTS: >
+            -Djib.to.image=ghcr.io/drill4j/admin
             -Djib.to.auth.username=${{ secrets.GH_PACKAGE_USERNAME }}
             -Djib.to.auth.password=${{ secrets.GH_PACKAGE_TOKEN }}
