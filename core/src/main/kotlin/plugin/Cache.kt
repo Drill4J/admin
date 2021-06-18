@@ -22,6 +22,7 @@ import com.epam.drill.admin.cache.type.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.config.*
@@ -74,7 +75,9 @@ class PluginCaches(
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            val messageFromStore = trackTime("Read $messageKey") {
+                pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            }
             logger.trace { "retrieveMessage set to cache $destination" }
             messageFromStore.also { cache[destination] = it }
         }

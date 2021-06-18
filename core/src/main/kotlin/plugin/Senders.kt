@@ -19,6 +19,7 @@ import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
@@ -57,11 +58,13 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             } else {
                 logger.trace { "Sending message to $messageKey" }
                 pluginStores[pluginId].let { store ->
-                    withContext(Dispatchers.IO) {
-                        measureTimedValue {
-                            store.storeMessage(messageKey, message)
-                        }.let {
-                            logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
+                    trackTime("Store $messageKey") {
+                        withContext(Dispatchers.IO) {
+                            measureTimedValue {
+                                store.storeMessage(messageKey, message)
+                            }.let {
+                                logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
+                            }
                         }
                     }
                 }
