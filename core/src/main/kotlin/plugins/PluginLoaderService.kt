@@ -32,6 +32,8 @@ import java.util.zip.*
 
 private val logger = KotlinLogging.logger {}
 
+val defaultPlugins = setOf("test2code")
+
 class PluginLoaderService(
     private val application: Application,
     private val workDir: File = File(getenv("DRILL_HOME"), "work"),
@@ -51,13 +53,17 @@ class PluginLoaderService(
                 .propertyOrNull("plugins.artifactory.name")?.getString() ?: ""
 
             val allowedPlugins = application.drillConfig
-                .propertyOrNull("plugins.id")?.getString()?.split(",")?.toSet() ?: setOf("test2code")
+                .propertyOrNull("plugin.ids")?.getString()?.split(",")?.toSet() ?: defaultPlugins
 
             if (remoteEnabled) {
                 val artifactory = runCatching {
                     Artifactory.valueOf(artifactoryName)
                 }.onFailure {
-                    logger.warn {"Please make sure the artifactory name is correct:${ Artifactory.values().joinToString()}"}
+                    logger.warn {
+                        "Please make sure the artifactory name is correct:${
+                            Artifactory.values().joinToString()
+                        }"
+                    }
                 }.getOrNull() ?: Artifactory.GITHUB
                 val pluginLoaderJfrog = ArtifactoryPluginLoader(
                     artifactory = artifactory,

@@ -27,7 +27,7 @@ private val logger = KotlinLogging.logger {}
 data class ArtifactoryPluginLoader(
     val artifactory: Artifactory,
     val storageDir: File,
-    val devMode: Boolean = true //TODO dev mode handling
+    val devMode: Boolean = true, //TODO dev mode handling
 ) {
     private val versionRegex = "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9]+)?$".toRegex()
 
@@ -36,10 +36,18 @@ data class ArtifactoryPluginLoader(
             for (pluginId in pluginIds) {
                 val url = pluginId.downloadUrl()
                 if (url.isNotBlank()) {
-                    client.downloadPlugin(url)
+                    runCatching {
+                        client.downloadPlugin(url)
+                    }.onFailure {
+                        logger.warn { "Specified url $url is incorrect, plugin couldn't be downloaded" }
+                    }
                 } else {
-                    logger.info { "Loading plugin $pluginId from artifactory '${artifactory.baseUrl}' ..." }
-                    client.load(pluginId)
+                    runCatching {
+                        logger.info { "Loading plugin $pluginId from artifactory '${artifactory.baseUrl}' ..." }
+                        client.load(pluginId)
+                    }.onFailure {
+                        logger.warn { "Plugin $pluginId did not download, case: ${it.message}" }
+                    }
                 }
             }
         }
