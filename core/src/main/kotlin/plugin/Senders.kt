@@ -58,12 +58,12 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             } else {
                 logger.trace { "Sending message to $messageKey" }
                 pluginStores[pluginId].let { store ->
-                    trackTime("Store $messageKey") {
+                    trackTime("Store $messageKey", false) {
                         withContext(Dispatchers.IO) {
                             measureTimedValue {
                                 store.storeMessage(messageKey, message)
                             }.let {
-                                logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
+                                logger.trace { "Stored message (key=$messageKey) in ${it.duration}" }
                             }
                         }
                     }

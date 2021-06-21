@@ -3,6 +3,7 @@ plugins {
     id("kotlinx-atomicfu") apply false
     kotlin("plugin.serialization") apply false
     id("com.github.hierynomus.license")
+    id("org.jetbrains.kotlin.plugin.noarg")
     base
 }
 
@@ -18,6 +19,7 @@ val scriptUrl: String by extra
 allprojects {
     apply(from = rootProject.uri("$scriptUrl/git-version.gradle.kts"))
     apply(from = rootProject.uri("$scriptUrl/maven-repo.gradle.kts"))
+
 }
 
 subprojects {
@@ -25,6 +27,10 @@ subprojects {
         mavenLocal()
         apply(from = "$scriptUrl/maven-repo.gradle.kts")
         jcenter()
+    }
+    apply(plugin = "org.jetbrains.kotlin.plugin.noarg")
+    noArg {
+        annotation("kotlinx.serialization.Serializable")
     }
 }
 

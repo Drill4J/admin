@@ -42,6 +42,7 @@ class PluginCaches(
 
     init {
         logger.info { "cache.enabled=$enabled" }
+        println("Version 0.8.0-scratch-perf")
     }
 
     internal fun get(
@@ -75,7 +76,7 @@ class PluginCaches(
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = trackTime("Read $messageKey") {
+            val messageFromStore = trackTime("Read $messageKey", false) {
                 pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
             }
             logger.trace { "retrieveMessage set to cache $destination" }
