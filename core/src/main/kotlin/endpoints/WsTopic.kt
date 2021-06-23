@@ -21,14 +21,17 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.*
+import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import java.net.*
 import java.util.concurrent.*
 import kotlin.collections.set
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
 private val regexPathParam = "\\{(.*)}".toRegex()
+private val logger = KotlinLogging.logger {}
 
 class WsTopic(override val kodein: Kodein) : KodeinAware {
     val app by instance<Application>()
@@ -57,7 +60,7 @@ class WsTopic(override val kodein: Kodein) : KodeinAware {
 typealias Routs = Map<URLTopic, Pair<KClass<*>, CallbackWrapper<Any, Any>>>
 
 fun Routs.suitableRoutWithParameters(destination: String) = run {
-    val urlTokens = destination.split("/")
+    val urlTokens = destination.urlDecode().split("/")
     val filteredRouts = this.filterRoutsByLength(urlTokens).filterRoutsByUrl(urlTokens)
     if (filteredRouts.isEmpty()) throw RuntimeException("A destination '$destination' is not registered")
     val suitableRout = filteredRouts.routWithMinParametersCount()
@@ -128,3 +131,9 @@ fun getKSerializer(value: Any): KSerializer<Any> = when (value) {
 } as KSerializer<Any>
 
 fun elementSerializer(collection: Collection<*>) = (collection.firstOrNull() ?: "")::class.serializer()
+
+fun String.urlDecode() = takeIf { '%' in it }?.run {
+    runCatching {
+        URLDecoder.decode(this, Charsets.UTF_8.name())
+    }.onFailure { logger.error { "Failed to decode string $this" } }.getOrNull()
+} ?: this
