@@ -83,7 +83,7 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                 val groupId = group.groupId
                 logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
                 val (statusCode, response) = if (pluginId in plugins) {
-                    val agents: List<AgentEntry> = agentManager.agentsByGroup(groupId)
+                    val agents: List<Agent> = agentManager.agentsByGroup(groupId)
                     if (agents.any()) {
                         pluginCache.retrieveMessage(
                             pluginId,
@@ -109,8 +109,8 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                 patch<ApiRoot.AgentGroup, AgentRegistrationDto>(meta) { location, regInfo ->
                     val groupId = location.groupId
                     logger.debug { "Group $groupId: registering agents..." }
-                    val agents: List<AgentEntry> = agentManager.agentsByGroup(groupId)
-                    val agentInfos: List<AgentInfo> = agents.map { it.agent }
+                    val agents: List<Agent> = agentManager.agentsByGroup(groupId)
+                    val agentInfos: List<AgentInfo> = agents.map { it.info }
                     val (status: HttpStatusCode, message: Any) = if (agents.isNotEmpty()) {
                         groupManager[groupId]?.let { groupDto ->
                             groupManager.update(
@@ -158,7 +158,7 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                     val id: String = group.groupId
                     val status: HttpStatusCode = groupManager[id]?.let { group ->
                         if (systemSettings.packages.all { it.isNotBlank() }) {
-                            val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.agent }
+                            val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.info }
                             val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
                             groupManager.updateSystemSettings(group, systemSettings)?.let { sendUpdates(listOf(it)) }
                             if (updatedAgentIds.count() < agentInfos.count()) {
@@ -180,7 +180,7 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                 post<ApiRoot.AgentGroup.Plugins, PluginId>(meta) { (group), (pluginId) ->
                     val groupId: String = group.groupId
                     logger.debug { "Adding plugin to group '$groupId'..." }
-                    val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(groupId).map { it.agent }
+                    val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(groupId).map { it.info }
                     val (status, msg) = if (agentInfos.isNotEmpty()) {
                         if (pluginId in plugins.keys) {
                             if (agentInfos.any { pluginId !in it.plugins }) {

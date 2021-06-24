@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.service
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
@@ -46,8 +47,10 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
 
 
 
+
                     if (agentId != null) {
-                        when (am.getStatus(agentId)) {
+                        val agentInfo = am.getOrNull(agentId)
+                        when (agentInfo?.getStatus()) {
                             AgentStatus.BUSY -> {
                                 val agentPath = locations.href(
                                     ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
@@ -64,14 +67,16 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
                                     }
                                 }
                             }
-                            else -> if (am.getOrNull(agentId) == null &&
-                                am.allEntries().none { it.agent.groupId == agentId }
-                            ) {
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ValidationResponse("Agent '$agentId' not found")
-                                )
-                                return@intercept finish()
+                            else -> {
+                                if (agentInfo == null &&
+                                    am.allEntries().none { it.info.groupId == agentId }
+                                ) {
+                                    call.respond(
+                                        HttpStatusCode.BadRequest,
+                                        ValidationResponse("Agent '$agentId' not found")
+                                    )
+                                    return@intercept finish()
+                                }
                             }
                         }
                     }

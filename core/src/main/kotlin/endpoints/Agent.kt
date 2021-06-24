@@ -16,38 +16,42 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
+import mu.*
 import java.io.*
 import java.lang.reflect.*
 
-class AgentEntry(agent: AgentInfo) {
+class Agent(info: AgentInfo) {
+    private val logger = KotlinLogging.logger { }
 
-    private val _agent = atomic(agent)
+    private val _info = atomic(info)
 
     private val _instanceMap = atomic(
         persistentHashMapOf<String, AdminPluginPart<*>>()
     )
 
-    var agent: AgentInfo
-        get() = _agent.value
-        set(value) = _agent.update { value }
+    var info: AgentInfo
+        get() = _info.value
+        set(value) = _info.update { value }
 
     val plugins get() = _instanceMap.value.values
 
-    fun updateAgent(
+    fun update(
         updater: (AgentInfo) -> AgentInfo,
-    ): AgentInfo = _agent.updateAndGet(updater)
+    ): AgentInfo = _info.updateAndGet(updater)
 
     operator fun get(pluginId: String): AdminPluginPart<*>? = _instanceMap.value[pluginId]
 
     fun get(
         pluginId: String,
-        updater: AgentEntry.() -> AdminPluginPart<*>,
+        updater: Agent.() -> AdminPluginPart<*>,
     ): AdminPluginPart<*> = get(pluginId) ?: _instanceMap.updateAndGet {
         it.takeIf { pluginId in it } ?: it.put(pluginId, updater())
     }.getValue(pluginId)
@@ -56,6 +60,31 @@ class AgentEntry(agent: AgentInfo) {
         plugins.forEach { plugin ->
             runCatching { (plugin as? Closeable)?.close() }
         }
+    }
+
+    internal fun updateInstanceStatus(
+        instanceId: String,
+        status: AgentStatus
+    ) = update { info ->
+        info.instances[instanceId]?.let {
+            info.copy(
+                instances = info.instances.put(instanceId, it.copy(status = status))
+            )
+        } ?: info
+    }.instances
+
+    fun getInstanceState(
+        instanceId: String
+    ) = info.instances[instanceId]
+
+    fun addInstanceId(
+        instanceId: String,
+        session: AgentWsSession,
+    ) {
+        update {
+            it.copy(instances = it.instances + (instanceId to InstanceState(session, AgentStatus.ONLINE)))
+        }
+        logger.debug { "put new instance id '$instanceId' instance status is ${AgentStatus.ONLINE}" }
     }
 }
 
@@ -83,8 +112,8 @@ internal fun Plugin.createInstance(
     return constructor.newInstance(*args)
 }
 
-internal suspend fun AgentEntry.applyPackagesChanges() {
-    for (pluginId in agent.plugins) {
+internal suspend fun Agent.applyPackagesChanges() {
+    for (pluginId in info.plugins) {
         this[pluginId]?.applyPackagesChanges()
     }
 }

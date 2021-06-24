@@ -98,11 +98,11 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                 post<ApiRoot.Agents.DispatchPluginAction, String>(meta) { payload, action ->
                     val (_, agentId, pluginId) = payload
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
-                    val agentEntry = agentManager.entryOrNull(agentId)
-                    val (statusCode, response) = agentEntry?.run {
+                    val agent = agentManager.entryOrNull(agentId)
+                    val (statusCode, response) = agent?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (agentManager.getStatus(agent.id) == AgentStatus.ONLINE) {
+                            if (agent.info.getStatus() == AgentStatus.ONLINE) {
                                 this[pluginId]?.let { adminPart ->
                                     val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
@@ -357,18 +357,18 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun processMultipleActions(
-        agents: List<AgentEntry>,
+        agents: List<Agent>,
         pluginId: String,
         action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
-        val statusesResponse: List<JsonElement> = agents.mapNotNull { entry: AgentEntry ->
-            when (val status = agentManager.getStatus(entry.agent.id)) {
-                AgentStatus.ONLINE -> entry[pluginId]?.run {
+        val statusesResponse: List<JsonElement> = agents.mapNotNull { agent: Agent ->
+            when (val status = agent.info.getStatus()) {
+                AgentStatus.ONLINE -> agent[pluginId]?.run {
                     val adminActionResult = processAction(action, agentManager::agentSessions)
                     adminActionResult.toStatusResponse()
                 }
                 AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
-                else -> "Agent ${entry.agent.id} is in the wrong state - $status".run {
+                else -> "Agent ${agent.info.id} is in the wrong state - $status".run {
                     StatusMessageResponse(
                         code = HttpStatusCode.Conflict.value,
                         message = this
