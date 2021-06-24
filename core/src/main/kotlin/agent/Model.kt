@@ -16,7 +16,9 @@
 package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.kodux.*
+import kotlinx.collections.immutable.*
 import kotlinx.serialization.*
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
@@ -39,11 +41,18 @@ data class AgentInfo(
     val adminUrl: String = "",
     val ipAddress: String = "",
     val plugins: Set<String> = emptySet(),
+    @Transient
+    val instances: PersistentMap<String, InstanceState> = persistentMapOf(),
 ) {
     override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
     override fun hashCode(): Int = id.hashCode()
 }
+
+data class InstanceState(
+    val agentWsSession: AgentWsSession,
+    val status: AgentStatus,
+)
 
 @Serializable
 internal class PreparedAgentData(

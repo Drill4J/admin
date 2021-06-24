@@ -52,8 +52,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 WsRoot.Agents().send(agentManager.all())
                 WsRoot.Groups().send(groupManager.all())
             }
-            agentManager.agentStorage.onAdd += { agentId, agentEntry ->
-                WsRoot.Agent(agentId).send(agentEntry.agent.toDto(agentManager))
+            agentManager.agentStorage.onAdd += { agentId, agent ->
+                WsRoot.Agent(agentId).send(agent.info.toDto(agentManager))
             }
             agentManager.agentStorage.onRemove += { agentId ->
                 agentManager[agentId]?.run {
@@ -82,7 +82,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 if (destination in sessionStorage) {
                     sessionStorage.sendTo(
                         destination,
-                        v.agent.toDto(agentManager)
+                        v.info.toDto(agentManager)
                     )
                 }
             }

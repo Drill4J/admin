@@ -59,22 +59,22 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     this@agentWebsocket,
                     frameType,
                     application.agentSocketTimeout,
-                    agentConfig.id
+                    agentConfig.id,
+                    agentConfig.instanceId
                 )
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig, needSync, agentSession)
                 }
                 agentSession.createWsLoop(
                     agentInfo,
-                    agentConfig.instanceId,
                     call.request.headers[ContentEncoding] == "deflate"
                 )
             }
         }
     }
 
-    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, instanceId: String, useCompression: Boolean) {
-        val agentDebugStr = "agent(id=${agentInfo.id}, buildVersion=${agentInfo.buildVersion})"
+    private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
+        val agentDebugStr = agentInfo.debugString(instanceId)
         try {
             val adminData = agentManager.adminData(agentInfo.id)
             incoming.consumeEach { frame ->
@@ -140,10 +140,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
-            val session = this
-            agentManager.apply {
-                agentInfo.removeInstance(instanceId, session)
-            }
+            agentManager.removeInstance(agentInfo.id, instanceId)
         }
     }
 }
