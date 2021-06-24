@@ -20,21 +20,29 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import kotlinx.serialization.*
+import mu.*
 import kotlin.reflect.full.*
+
+private val logger = KotlinLogging.logger { }
 
 internal suspend fun AdminPluginPart<*>.processAction(
     action: String,
     agentSessions: (String) -> Iterable<AgentWsSession>,
-): Any = doRawAction(action).also { result ->
-    (result as? ActionResult)?.agentAction?.let { action ->
-        action.actionSerializerOrNull()?.let { serializer ->
-            val actionStr = serializer stringify action
-            val agentAction = PluginAction(id, actionStr)
-            agentSessions(agentInfo.id).map {
-                it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(agentAction)
-            }.forEach { it.await() }
+): Any = runCatching {
+    doRawAction(action).also { result ->
+        (result as? ActionResult)?.agentAction?.let { action ->
+            action.actionSerializerOrNull()?.let { serializer ->
+                val actionStr = serializer stringify action
+                val agentAction = PluginAction(id, actionStr)
+                agentSessions(agentInfo.id).map {
+                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(agentAction)
+                }.forEach { it.await() }
+            }
         }
     }
+}.getOrElse {
+    logger.error(it) { "Error while process action $action" }
+    ActionResult(500, "Error while process action on agent ${agentInfo.id}")
 }
 
 internal fun Any.actionSerializerOrNull(): KSerializer<Any>? = sequenceOf(

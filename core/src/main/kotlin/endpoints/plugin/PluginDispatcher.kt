@@ -42,6 +42,7 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
@@ -361,21 +362,28 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         pluginId: String,
         action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
-        val statusesResponse: List<JsonElement> = agents.mapNotNull { agent: Agent ->
-            when (val status = agent.info.getStatus()) {
-                AgentStatus.ONLINE -> agent[pluginId]?.run {
-                    val adminActionResult = processAction(action, agentManager::agentSessions)
-                    adminActionResult.toStatusResponse()
+        val statusesResponse: List<JsonElement> = supervisorScope {
+            agents.map { agent ->
+                val agentId = agent.info.id
+                async {
+                    when (val status = agent.info.getStatus()) {
+                        AgentStatus.ONLINE -> agent[pluginId]?.run {
+                            val adminActionResult = processAction(action, agentManager::agentSessions)
+                            adminActionResult.toStatusResponse()
+                        }
+                        AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
+                        else -> "Agent $agentId is in the wrong state - $status".run {
+                            StatusMessageResponse(
+                                code = HttpStatusCode.Conflict.value,
+                                message = this
+                            )
+                        }
+                    }
                 }
-                AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
-                else -> "Agent ${agent.info.id} is in the wrong state - $status".run {
-                    StatusMessageResponse(
-                        code = HttpStatusCode.Conflict.value,
-                        message = this
-                    )
-                }
-            }
-        }.map { WithStatusCode.serializer() toJson it }
+            }.mapNotNull { deferred ->
+                runCatching { deferred.await() }.getOrNull()
+            }.map { WithStatusCode.serializer() toJson it }
+        }
         return HttpStatusCode.OK to statusesResponse
     }
 }
