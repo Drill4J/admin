@@ -16,16 +16,20 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.kodux.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
+import mu.*
 import java.io.*
 import java.lang.reflect.*
 
 class AgentEntry(agent: AgentInfo) {
+    private val logger = KotlinLogging.logger { }
 
     private val _agent = atomic(agent)
 
@@ -56,6 +60,31 @@ class AgentEntry(agent: AgentInfo) {
         plugins.forEach { plugin ->
             runCatching { (plugin as? Closeable)?.close() }
         }
+    }
+
+    internal fun updateInstanceStatus(
+        instanceId: String,
+        status: AgentStatus
+    ) = updateAgent { info ->
+        info.instances[instanceId]?.let {
+            info.copy(
+                instances = info.instances.put(instanceId, it.copy(status = status))
+            )
+        } ?: info
+    }.instances
+
+    fun getInstanceState(
+        instanceId: String
+    ) = agent.instances[instanceId]
+
+    fun addInstanceId(
+        instanceId: String,
+        session: AgentWsSession,
+    ) {
+        updateAgent {
+            it.copy(instances = it.instances + (instanceId to InstanceState(session, AgentStatus.ONLINE)))
+        }
+        logger.debug { "put new instance id '$instanceId' instance status is ${AgentStatus.ONLINE}" }
     }
 }
 

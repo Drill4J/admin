@@ -27,6 +27,14 @@ internal fun Iterable<AgentInfo>.mapToDto(
 internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { entry ->
     entry.agent.toDto(this)
 }
+internal fun AgentInfo.getStatus(): AgentStatus = instances.takeIf { instances ->
+    instances.any { it.value.status != AgentStatus.OFFLINE }
+}?.let { instances ->
+    takeIf { it.isRegistered }?.let {
+        AgentStatus.ONLINE.takeIf { instances.any { it.value.status == AgentStatus.ONLINE } }
+            ?: AgentStatus.BUSY
+    } ?: AgentStatus.NOT_REGISTERED
+} ?: AgentStatus.OFFLINE
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
@@ -59,8 +67,7 @@ internal fun AgentInfo.toDto(
     agentManager: AgentManager,
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
-    val instanceIds = agentManager.instanceIds(id, buildVersion).keys.map { it.instanceId }.toSet()
-    val agentStatus = agentManager.getStatus(id)
+    val instanceIds = agentManager.instanceIds(id).keys
     AgentInfoDto(
         id = id,
         group = groupId,
@@ -68,7 +75,7 @@ internal fun AgentInfo.toDto(
         name = name,
         description = description,
         environment = environment,
-        status = agentStatus,
+        status = getStatus(),
         buildVersion = buildVersion,
         adminUrl = adminUrl,
         ipAddress = ipAddress,
@@ -96,3 +103,7 @@ internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSe
 }
 
 private fun Iterable<Plugin>.activePluginsCount(): Int = count { it.pluginBean.enabled }
+
+internal fun AgentInfo.debugString(
+    instanceId: String
+) = "Agent(id=$id, buildVersion=$buildVersion, instanceId=$instanceId)"

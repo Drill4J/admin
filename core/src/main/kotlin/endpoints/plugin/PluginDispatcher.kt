@@ -102,7 +102,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = agentEntry?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (agentManager.getStatus(agent.id) == AgentStatus.ONLINE) {
+                            if (agentEntry.agent.getStatus() == AgentStatus.ONLINE) {
                                 this[pluginId]?.let { adminPart ->
                                     val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
@@ -362,7 +362,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
         val statusesResponse: List<JsonElement> = agents.mapNotNull { entry: AgentEntry ->
-            when (val status = agentManager.getStatus(entry.agent.id)) {
+            when (val status = entry.agent.getStatus()) {
                 AgentStatus.ONLINE -> entry[pluginId]?.run {
                     val adminActionResult = processAction(action, agentManager::agentSessions)
                     adminActionResult.toStatusResponse()

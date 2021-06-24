@@ -99,17 +99,17 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<ApiRoot.Agents.ToggleAgent>(meta) { params ->
                     val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
-                    val (status, response) = agentManager[agentId]?.let { agentInfo ->
-                        val status = agentManager.getStatus(agentId)
+                    val (status, response) = agentManager.entryOrNull(agentId)?.run {
+                        val status = agent.getStatus()
                         when (status) {
                             AgentStatus.OFFLINE -> AgentStatus.ONLINE
                             AgentStatus.ONLINE -> AgentStatus.OFFLINE
                             else -> null
                         }?.let { newStatus ->
                             agentManager.instanceIds(agentId).forEach { (key, value) ->
-                                agentManager.updateInstanceStatus(key, newStatus)
+                                updateInstanceStatus(key, newStatus)
                                 val toggleValue = newStatus == AgentStatus.ONLINE
-                                agentInfo.plugins.map { pluginId ->
+                                agent.plugins.map { pluginId ->
                                     value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
                                         TogglePayload(pluginId, toggleValue)
                                     )

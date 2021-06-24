@@ -53,14 +53,14 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         )
                     )
                     .responds(
-                        ok<AgentInfo>(),
+                        ok<AgentInfoDto>(),
                         HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
                     )
                 post<ApiRoot.Agents, AgentCreationDto>(meta) { _, payload ->
                     logger.debug { "Creating agent with id ${payload.id}..." }
                     agentManager.prepare(payload)?.run {
                         logger.info { "Created agent ${payload.id}." }
-                        call.respond(HttpStatusCode.Created, this)
+                        call.respond(HttpStatusCode.Created, toDto(agentManager))
                     } ?: run {
                         logger.warn { "Agent ${payload.id} already exists." }
                         call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))

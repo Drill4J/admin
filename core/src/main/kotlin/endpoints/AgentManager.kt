@@ -63,10 +63,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
 
-    private val _instances = atomic(
-        persistentHashMapOf<AgentKey, PersistentMap<InstanceKey, InstanceState>>()
-    )
-
     init {
         trackTime("loadingAgents") {
             runBlocking {
@@ -121,7 +117,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
         val oldInstanceIds = instanceIds(id)
         val buildVersion = config.buildVersion
-        addInstanceId(id, buildVersion, config.instanceId, session)
         val existingEntry = agentStorage[id]
         val currentInfo = existingEntry?.agent
         val adminData = adminData(id)
@@ -135,6 +130,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.agentVersion == config.agentVersion
         ) {
             logger.debug { "agent($id, $buildVersion): reattaching to current build..." }
+            existingEntry.addInstanceId(config.instanceId, session)
             notifySingleAgent(id)
             notifyAllAgents()
             currentInfo.plugins.initPlugins(existingEntry)
@@ -154,6 +150,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             )
             val info: AgentInfo = existingInfo ?: config.toAgentInfo()
             val entry = AgentEntry(info)
+            entry.addInstanceId(config.instanceId, session)
             agentStorage.put(id, entry)?.also { oldEntry ->
                 oldEntry.close()
             }
@@ -196,21 +193,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
-    private fun addInstanceId(
-        agentId: String,
-        buildVersion: String,
-        instanceId: String,
-        session: AgentWsSession,
-        instanceStatus: AgentStatus = AgentStatus.ONLINE,
-    ) {
-        _instances.update {
-            val agent = AgentKey(agentId, buildVersion)
-            val existing = it[agent] ?: persistentHashMapOf()
-            logger.debug { "put new instance id '$instanceId' with key $agent instance status is $instanceStatus" }
-            it.put(agent, existing + (InstanceKey(agent, instanceId) to InstanceState(session, instanceStatus)))
-        }
-    }
-
     suspend fun register(
         agentId: String,
         dto: AgentRegistrationDto,
@@ -227,45 +209,36 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }.apply { persistToDatabase() }
         adminData(agentId).updateSettings(dto.systemSettings)
         pluginsToAdd.forEach { plugin -> ensurePluginInstance(entry, plugin) }
-        instanceIds(agentId).entries.mapIndexed { index, (instanceKey, _) ->
-            info.sync(instanceKey.instanceId, index == 0)
+        instanceIds(agentId).entries.mapIndexed { index, (instanceId, _) ->
+            info.sync(instanceId, index == 0)
         }
     }
 
-    internal suspend fun AgentInfo.removeInstance(
+    internal suspend fun removeInstance(
+        agentId: String,
         instanceId: String,
-        session: AgentWsSession,
     ) {
-        val agent = AgentKey(id, buildVersion)
-        val instancesKey = InstanceKey(agent, instanceId)
-        val instances = _instances.updateAndGet {
-            val instanceIds = it.getOrDefault(agent, persistentHashMapOf())
-            if (instanceIds[instancesKey]?.agentWsSession === session) {
-                it.put(agent, instanceIds - instancesKey)
-            } else it
-        }.getOrDefault(agent, persistentHashMapOf())
-        if (instances.isEmpty()) {
-            logger.info { "Agent with id '${id}' was disconnected" }
-            agentStorage.handleRemove(id)
-            agentStorage.update()
-        } else {
-            notifySingleAgent(id)
-            logger.info { "Instance '$instanceId' of Agent '${id}' was disconnected" }
+        entryOrNull(agentId)?.let { entry ->
+            val instances = entry.updateAgent {
+                it.copy(instances = it.instances - instanceId)
+            }.instances
+            if (instances.isEmpty()) {
+                logger.info { "Agent with id '${agentId}' was disconnected" }
+                agentStorage.handleRemove(agentId)
+                agentStorage.update()
+            } else {
+                notifySingleAgent(agentId)
+                logger.info { "Instance '$instanceId' of Agent '${agentId}' was disconnected" }
+            }
         }
     }
 
     internal fun instanceIds(
         agentId: String,
-        buildVersion: String = "",
-    ): PersistentMap<InstanceKey, InstanceState> = if (buildVersion.isBlank()) {
-        _instances.value
-            .filter { it.key.agentId == agentId }
-            .values.takeIf { it.isNotEmpty() }
-            ?.reduce { acc, persistentMap -> acc + persistentMap }
-    } else {
-        _instances.value[AgentKey(agentId, buildVersion)]
-    }.also {
-        logger.trace { "instances ids of agent(id=$agentId, version=$buildVersion): ${it?.keys}" }
+    ): PersistentMap<String, InstanceState> = getOrNull(agentId)?.let { agentInfo ->
+        agentInfo.instances.also {
+            logger.trace { "instances ids of agent(id=$agentId, version=${agentInfo.buildVersion}): ${it.keys}" }
+        }
     } ?: persistentHashMapOf()
 
     internal suspend fun updateAgent(
@@ -334,14 +307,14 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 )
             }
             supervisorScope {
-                instanceIds(updatedInfo.id).forEach { (instanceId, _) ->
+                instanceIds(agentId).forEach { (instanceId, _) ->
                     pluginsToAdd.forEach { plugin ->
                         val pluginId = plugin.pluginBean.id
-                        wrapInstanceBusy(instanceId) {
+                        wrapInstanceBusy(agentId, instanceId) {
                             launch {
                                 ensurePluginInstance(entry, plugin)
                                 sendPlugin(plugin, updatedInfo).await()
-                                enablePlugin(pluginId, agentId).await()
+                                enablePlugin(pluginId, updatedInfo).await()
                             }
                         }
                     }
@@ -387,24 +360,23 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "All plugins for agent with id $agentId were disabled" }
     }
 
-    private suspend fun AgentWsSession.enableAllPlugins(agentId: String) {
-        logger.debug { "Enabling all plugins for agent with id $agentId" }
-        getOrNull(agentId)?.plugins?.let { pluginIds ->
-            pluginIds.map { pluginId ->
-                logger.debug { "Enabling plugin $pluginId for agent $agentId..." }
-                enablePlugin(pluginId, agentId)
-            }.forEach { it.await() }
-        }
-        logger.debug { "All plugins for agent with id $agentId were enabled" }
+    private suspend fun AgentWsSession.enableAllPlugins(agentInfo: AgentInfo) {
+        val agentDebugStr = agentInfo.debugString(instanceId)
+        logger.debug { "Enabling all plugins for $agentDebugStr" }
+        agentInfo.plugins.map { pluginId ->
+            logger.debug { "Enabling plugin $pluginId for $agentDebugStr..." }
+            enablePlugin(pluginId, agentInfo)
+        }.forEach { it.await() }
+        logger.debug { "All plugins for $agentDebugStr were enabled" }
     }
 
     private suspend fun AgentWsSession.enablePlugin(
         pluginId: String,
-        agentId: String,
+        agentInfo: AgentInfo,
     ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
         message = TogglePayload(pluginId, true)
     ) {
-        logger.debug { "Enabled plugin $pluginId for agent $agentId" }
+        logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" }
     }
 
     private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
@@ -418,26 +390,27 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentInfo.sync(instanceId: String, needClassSending: Boolean = false) {
+        val agentDebugStr = debugString(instanceId)
         if (isRegistered) {
-            logger.debug { "Agent($id, $buildVersion): starting sync for instance $instanceId..." }
+            logger.debug { "$agentDebugStr: starting sync for instance $instanceId..." }
             val info = this
-            val instanceKey = InstanceKey(AgentKey(info.id, info.buildVersion), instanceId)
             val duration = measureTime {
-                wrapInstanceBusy(instanceKey) {
+                wrapInstanceBusy(id, instanceId) {
                     val settings = adminData(id).settings
                     configurePackages(settings.packages)
                     sendPlugins(info)
                     if (needClassSending) {
                         updateSessionHeader(settings.sessionIdHeaderName)
                         triggerClassesSending()
-                        enableAllPlugins(id)
+                        enableAllPlugins(info)
                     }
+                    enableAllPlugins(info)
                 }
             }
-            logger.info { "Agent $id, instance $instanceId: sync took: $duration." }
+            logger.info { "$agentDebugStr: sync took: $duration." }
             topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(id))
-            logger.debug { "Agent $id, instance $instanceId: sync finished." }
-        } else logger.warn { "Agent $id, instance $instanceId: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
+            logger.debug { "$agentDebugStr: sync finished." }
+        } else logger.warn { "$agentDebugStr: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
     }
 
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
@@ -446,10 +419,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     suspend fun updateSystemSettings(agentId: String, settings: SystemSettingsDto) {
         val adminData = adminData(agentId)
-        getOrNull(agentId)?.let {
+        getOrNull(agentId)?.let { info ->
             adminData.updateSettings(settings) { oldSettings ->
                 instanceIds(agentId).forEach { (instanceId, _) ->
-                    wrapInstanceBusy(instanceId) {
+                    wrapInstanceBusy(agentId, instanceId) {
                         if (oldSettings.sessionIdHeaderName != settings.sessionIdHeaderName) {
                             updateSessionHeader(settings.sessionIdHeaderName)
                         }
@@ -458,7 +431,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                             configurePackages(settings.packages)
                             triggerClassesSending()
                             entryOrNull(agentId)?.applyPackagesChanges()
-                            enableAllPlugins(agentId)
+                            enableAllPlugins(info)
                         }
                     }
                 }
@@ -484,11 +457,12 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }.filterNot { it.isCancelled }.mapTo(mutableSetOf()) { it.await() }
 
     private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
-        logger.debug { "Sending ${info.plugins.count()} plugins to agent ${info.id}" }
+        val debugStr = info.debugString(instanceId)
+        logger.debug { "Sending ${info.plugins.count()} plugins to $debugStr" }
         info.plugins.mapNotNull(plugins::get).map { pb ->
             sendPlugin(pb, info)
         }.forEach { it.await() }
-        logger.debug { "Sent plugins ${info.plugins} to agent ${info.id}" }
+        logger.debug { "Sent plugins ${info.plugins} to $debugStr" }
     }
 
     private suspend fun AgentWsSession.sendPlugin(
@@ -496,19 +470,20 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         agentInfo: AgentInfo,
     ): WsDeferred {
         val pb = plugin.pluginBean
-        logger.debug { "Sending plugin ${pb.id} to agent ${agentInfo.id}" }
+        val debugStr = agentInfo.debugString(instanceId)
+        logger.debug { "Sending plugin ${pb.id} to $debugStr" }
         val data = if (agentInfo.agentType == AgentType.JAVA) {
             plugin.agentPluginPart.readBytes()
         } else byteArrayOf()
         pb.checkSum = hex(sha1(data))
         return async(
             topicName = "/agent/plugin/${pb.id}/loaded",
-            callback = { logger.debug { "Sent plugin ${pb.id} to agent ${agentInfo.id}" } }
+            callback = { logger.debug { "Sent plugin ${pb.id} to $debugStr" } }
         ) { //TODO move to the api
             sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
                 com.epam.drill.common.PluginBinary(pb, data)
             ).await()
-            logger.debug { "Sent data of plugin ${pb.id} to agent ${agentInfo.id}" }
+            logger.debug { "Sent data of plugin ${pb.id} to $debugStr" }
         }
     }
 
@@ -549,53 +524,29 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun wrapInstanceBusy(
-        instanceKey: InstanceKey,
+        agentId: String,
+        instanceId: String,
         block: suspend AgentWsSession.() -> Unit,
-    ): Unit = getInstanceState(instanceKey)?.let { instanceState ->
-        val agentId = instanceKey.agentKey.agentId
-        updateInstanceStatus(instanceKey, AgentStatus.BUSY).also { instance ->
-            if (instance?.all { it.value.status == AgentStatus.BUSY } == true) {
-                notifyAgents(agentId)
-                logger.debug { "Agent $agentId is busy." }
+    ): Unit = entryOrNull(agentId)?.run {
+        getInstanceState(instanceId)?.let { instanceState ->
+            val id = agent.id
+            updateInstanceStatus(instanceId, AgentStatus.BUSY).also { instance ->
+                if (instance.all { it.value.status == AgentStatus.BUSY }) {
+                    notifyAgents(id)
+                    logger.debug { "Agent $id is busy." }
+                }
+                logger.trace { "Instance $instanceId of agent $id is busy." }
             }
-            logger.trace { "Instance $instanceKey of agent $agentId is busy." }
-        }
-        try {
-            block(instanceState.agentWsSession)
-        } finally {
-            updateInstanceStatus(instanceKey, AgentStatus.ONLINE).also {
-                notifyAgents(agentId)
-                logger.debug { "Agent $agentId is online." }
+            try {
+                block(instanceState.agentWsSession)
+            } finally {
+                updateInstanceStatus(instanceId, AgentStatus.ONLINE).also {
+                    notifyAgents(id)
+                    logger.debug { "Agent $id is online." }
+                }
             }
-        }
-    } ?: logger.warn { "Instance $instanceKey is not found" }
-
-    internal fun updateInstanceStatus(
-        instanceKey: InstanceKey,
-        status: AgentStatus,
-    ) = getInstanceState(instanceKey)?.let { instanceState ->
-        val agent = instanceKey.agentKey
-        _instances.updateAndGet { instances ->
-            instances[agent]?.let { instance ->
-                logger.trace { "instance $instanceKey changed status, new status is $status" }
-                instances.put(agent, instance.put(instanceKey, instanceState.copy(status = status)))
-            } ?: instances
-        }[agent]
-    }
-
-    private fun getInstanceState(instanceKey: InstanceKey) = _instances.value[instanceKey.agentKey]?.get(instanceKey)
-
-    fun getStatus(agentId: String): AgentStatus = instanceIds(agentId).let { instances ->
-        if (entryOrNull(agentId)?.agent?.isRegistered == true) {
-            AgentStatus.OFFLINE.takeIf {
-                instances.isEmpty() || instances.all { it.value.status == AgentStatus.OFFLINE }
-            } ?: AgentStatus.ONLINE.takeIf {
-                instances.any { it.value.status == AgentStatus.ONLINE }
-            } ?: AgentStatus.BUSY
-        } else {
-            AgentStatus.NOT_REGISTERED.takeIf { instances.any() } ?: AgentStatus.OFFLINE
-        }
-    }
+        } ?: logger.warn { "Instance $instanceId is not found" }
+    } ?: logger.warn { "Agent $agentId not found" }
 }
 
 suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
@@ -609,14 +560,4 @@ suspend fun AgentWsSession.triggerClassesSending() =
 internal data class AgentKey(
     val agentId: String,
     val buildVersion: String,
-)
-
-internal data class InstanceKey(
-    val agentKey: AgentKey,
-    val instanceId: String,
-)
-
-internal data class InstanceState(
-    val agentWsSession: AgentWsSession,
-    val status: AgentStatus,
 )
