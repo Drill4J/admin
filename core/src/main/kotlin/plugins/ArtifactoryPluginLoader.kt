@@ -29,6 +29,8 @@ data class ArtifactoryPluginLoader(
     val storageDir: File,
     val devMode: Boolean = true //TODO dev mode handling
 ) {
+    private val versionRegex = "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9]+)?$".toRegex()
+
     suspend fun loadPlugins(pluginIds: Iterable<String>) {
         HttpClient(CIO).use { client ->
             for (pluginId in pluginIds) {
@@ -72,7 +74,9 @@ data class ArtifactoryPluginLoader(
                         url.path(artifactory.basePath, artifactory.repo, "$pluginId-plugin", "releases")
                         url.parameters.append("prerelease", "true")
                     }.let { Json.parseToJsonElement(it) }
-                    releases.jsonArray.first().jsonObject["tag_name"]?.jsonPrimitive?.content?.replace("v", "") ?: ""
+                    releases.jsonArray.mapNotNull {
+                        it.jsonObject["tag_name"]?.jsonPrimitive?.content
+                    }.find { it.matches(versionRegex) }?.replace("v", "") ?: ""
                 }
                 else -> run {
                     get(artifactory.baseUrl) {
