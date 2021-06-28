@@ -52,6 +52,10 @@ class ApiRoot(val prefix: String = "api") {
     data class Agents(val parent: ApiRoot) {
 
         @Group(AGENT)
+        @Location("/ignore")
+        data class Ignore(val parent: Agents)
+
+        @Group(AGENT)
         @Location("/{agentId}")
         data class Agent(val parent: Agents, val agentId: String)
 

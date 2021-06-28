@@ -76,6 +76,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
+    //TODO Add endpoints to swagger
     init {
         app.routing {
             plugins.forEach { (pluginId, plugin) ->

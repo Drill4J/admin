@@ -47,7 +47,7 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
                     java = adminVersionDto.java,
                     plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
                     agents = agentManager.activeAgents.flatMap { agentInfo ->
-                        agentManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
+                        val activeInstances = agentManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
                             ComponentVersion(
                                 id = listOf("${agentInfo.id}/${instanceId}", agentInfo.groupId)
                                     .filter(String::any)
@@ -55,6 +55,15 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
                                 version = agentInfo.agentVersion
                             )
                         }
+                        val ignoredInstances = agentManager.ignoredInstances(agentInfo.id).map { instanceId ->
+                            ComponentVersion(
+                                id = listOf("${agentInfo.id}/${instanceId}", agentInfo.groupId, "ignored")
+                                    .filter(String::any)
+                                    .joinToString("@"),
+                                version = agentInfo.agentVersion
+                            )
+                        }
+                        activeInstances + ignoredInstances
                     }
                 )
             )

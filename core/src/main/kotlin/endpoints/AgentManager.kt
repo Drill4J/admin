@@ -63,6 +63,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
 
+    private val _ignoredInstances = atomic(
+        persistentHashMapOf<String, PersistentList<String>>()
+    )
+
     init {
         trackTime("loadingAgents") {
             runBlocking {
@@ -193,6 +197,18 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         }
     }
 
+    internal fun setIgnoredInstances(
+        ignoredInstances: List<InstanceDto>,
+    ) = _ignoredInstances.updateAndGet {
+        ignoredInstances.associate {
+            it.agentId to it.instanceId.toPersistentList()
+        }.toPersistentHashMap()
+    }
+
+    internal fun isInstanceIgnored(
+        agentId: String, instanceId: String,
+    ) = _ignoredInstances.value[agentId]?.contains(instanceId) ?: false
+
     suspend fun register(
         agentId: String,
         dto: AgentRegistrationDto,
@@ -240,6 +256,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.trace { "instances ids of agent(id=$agentId, version=${agentInfo.buildVersion}): ${it.keys}" }
         }
     } ?: persistentHashMapOf()
+
+    internal fun ignoredInstances(agentId: String) = _ignoredInstances.value[agentId] ?: emptyList()
 
     internal suspend fun updateAgent(
         agentId: String,
@@ -404,7 +422,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                         triggerClassesSending()
                         enableAllPlugins(info)
                     }
-                    enableAllPlugins(info)
                 }
             }
             logger.info { "$agentDebugStr: sync took: $duration." }

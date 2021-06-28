@@ -36,6 +36,8 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.atomicfu.*
+import kotlinx.collections.immutable.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -164,6 +166,28 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     } ?: call.respond(HttpStatusCode.BadRequest, "Package prefixes contain an empty value.")
                 }
             }
+            authenticate {
+                val meta = "Set ignored instances"
+                    .examples(
+                        example(
+                            "ignoredInstances",
+                            AgentIgnoredInstancesDto(
+                                listOf(
+                                    InstanceDto("Petclinic", listOf("instance1", "instance2"))
+                                )
+                            )
+                        )
+                    )
+                    .responds(
+                        ok<List<InstanceDto>>()
+                    )
+                put<ApiRoot.Agents.Ignore, AgentIgnoredInstancesDto>(meta) { _, ignoredInstances ->
+                    agentManager.setIgnoredInstances(ignoredInstances.data)
+                    call.respond(HttpStatusCode.OK, ignoredInstances)
+                }
+
+            }
+
             get<ApiRoot.Cache.CacheStats> {
                 val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
                 call.respond(HttpStatusCode.OK, cacheStats)

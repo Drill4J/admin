@@ -33,7 +33,6 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
@@ -62,7 +61,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     agentConfig.id,
                     agentConfig.instanceId
                 )
-                val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
+                val agentInfo: AgentInfo = agentConfig.toAgentInfo().takeIf {
+                    agentManager.isInstanceIgnored(agentConfig.id, agentConfig.instanceId)
+                }?.also {
+                    logger.info { "Instance ${agentConfig.instanceId} of ${agentConfig.id} is ignored " }
+                } ?: withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig, needSync, agentSession)
                 }
                 agentSession.createWsLoop(

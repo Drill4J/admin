@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*

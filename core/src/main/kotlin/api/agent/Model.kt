@@ -70,6 +70,14 @@ data class AgentCreationDto(
 )
 
 @Serializable
+data class AgentIgnoredInstancesDto(
+    val data: List<InstanceDto> = listOf(),
+)
+
+@Serializable
+data class InstanceDto(val agentId: String, val instanceId: List<String>)
+
+@Serializable
 data class AgentRegistrationDto(
     val name: String,
     val description: String = "",
