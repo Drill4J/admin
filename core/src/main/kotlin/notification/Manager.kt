@@ -92,7 +92,7 @@ class NotificationManager(override val kodein: Kodein) : KodeinAware {
             agentInfo.id,
             agentInfo.buildVersion,
             type = "recommendations"
-        )?.let { recommendations ->
+        ).let { recommendations ->
             (recommendations as? Iterable<*>)?.mapTo(mutableSetOf()) { "$it" }
         } ?: emptySet()
     }
