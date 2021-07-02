@@ -57,13 +57,12 @@ class PluginCaches(
         agentId: String,
         buildVersion: String,
         type: String,
-    ): Any? = plugins.keys.firstOrNull()?.let { pluginId ->
-        retrieveMessage(
-            pluginId,
-            AgentSubscription(agentId, buildVersion),
-            "/data/$type"
-        )
-    }.takeIf { it != "" }
+        pluginId: String = TEST2CODE
+    ): Any = retrieveMessage(
+        pluginId,
+        AgentSubscription(agentId, buildVersion),
+        "/data/$type"
+    )
 
     internal suspend fun retrieveMessage(
         pluginId: String,

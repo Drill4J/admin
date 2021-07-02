@@ -32,7 +32,8 @@ import java.util.zip.*
 
 private val logger = KotlinLogging.logger {}
 
-val defaultPlugins = setOf("test2code")
+const val TEST2CODE = "test2code"
+val defaultPlugins = setOf(TEST2CODE)
 
 class PluginLoaderService(
     private val application: Application,
