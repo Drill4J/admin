@@ -23,6 +23,7 @@ import com.epam.drill.builds.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlin.test.*
@@ -86,6 +87,7 @@ class PluginTest : E2EPluginTest() {
                 )
                 val statusResponses: List<WithStatusCode> =
                     listOf(statusResponse, statusResponse, statusResponse)
+                delay(50)
                 pluginAction("myActionForAllAgents", group) { status, content ->
                     println("2")
                     status shouldBe HttpStatusCode.OK

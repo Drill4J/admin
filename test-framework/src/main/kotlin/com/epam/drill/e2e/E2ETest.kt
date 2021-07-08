@@ -42,7 +42,7 @@ abstract class E2ETest : AdminTest() {
     fun connectAgent(
         agent: AgentWrap,
         initBlock: suspend () -> Unit = {},
-        connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
+        connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
         if (agents[agent.id].isNullOrEmpty()) {
             agents[agent.id] = ConcurrentLinkedQueue(
@@ -69,12 +69,11 @@ abstract class E2ETest : AdminTest() {
     }
 
 
-
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
         timeout: Duration = 7.seconds,
-        block: suspend () -> Unit
+        block: suspend () -> Unit,
     ) {
         var coroutineException: Throwable? = null
         val context = SupervisorJob()
@@ -148,7 +147,7 @@ abstract class E2ETest : AdminTest() {
         ui: AdminUiChannels,
         globLaunch: Job,
         agentStreamDebug: Boolean,
-        instances: ConcurrentLinkedQueue<Instance>
+        instances: ConcurrentLinkedQueue<Instance>,
     ): Unit = run {
         val (agentKey, agentStruct) = currentInstance
         agentStruct.intiBlock()
@@ -164,7 +163,10 @@ abstract class E2ETest : AdminTest() {
                 inp,
                 out,
                 agentStreamDebug
-            ).apply { queued() }
+            ).apply {
+                delay(40)
+                queued()
+            }
             agentStruct.connection(
                 asyncEngine,
                 ui,
@@ -204,7 +206,7 @@ abstract class E2ETest : AdminTest() {
 
     fun reconnect(
         ags: AgentWrap,
-        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit
+        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
         agents[ags.id]?.filter {
             it.first == AgentKey(ags.id, ags.instanceId)
@@ -216,7 +218,7 @@ abstract class E2ETest : AdminTest() {
         agentId: String,
         payload: PluginId,
         token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) =
         callAsync(context) {
             with(engine) {
@@ -234,7 +236,7 @@ abstract class E2ETest : AdminTest() {
     fun AsyncTestAppEngine.unregister(
         agentId: String,
         token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) =
         callAsync(context) {
             with(engine) {
@@ -251,7 +253,7 @@ abstract class E2ETest : AdminTest() {
         agentId: String,
         payload: PluginId,
         token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) {
         callAsync(context) {
             with(engine) {
@@ -269,7 +271,7 @@ abstract class E2ETest : AdminTest() {
         agentId: String,
         pluginId: PluginId,
         token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) {
         callAsync(context) {
             with(engine) {
@@ -290,7 +292,7 @@ abstract class E2ETest : AdminTest() {
     fun AsyncTestAppEngine.toggleAgent(
         agentId: String,
         token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) {
         callAsync(context) {
             with(engine) {
@@ -310,7 +312,7 @@ abstract class E2ETest : AdminTest() {
         agentId: String,
         token: String = globToken,
         payload: SystemSettingsDto,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) = callAsync(context) {
         with(engine) {
             handleRequest(
@@ -332,7 +334,7 @@ data class AgentStruct(
     val agWrap: AgentWrap,
     val intiBlock: suspend () -> Unit = {},
     val connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
-    val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit>>
+    val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit>>,
 )
 
 data class AgentWrap(
@@ -341,5 +343,5 @@ data class AgentWrap(
     val buildVersion: String = "0.1.0",
     val groupId: String = "",
     val needSync: Boolean = true,
-    val agentType: AgentType = AgentType.JAVA
+    val agentType: AgentType = AgentType.JAVA,
 )
