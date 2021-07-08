@@ -127,7 +127,6 @@ fun AdminTest.pluginAction(
     pluginId: String = testPlugin.pluginId,
     token: String = globToken,
     resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
-
 ) = callAsync(asyncEngine.context) {
     val location = groupApi(groupId) {
         ApiRoot.AgentGroup.Plugin(it, pluginId).let(ApiRoot.AgentGroup.Plugin::DispatchAction)
