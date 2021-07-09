@@ -33,7 +33,6 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
@@ -140,7 +139,8 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
-            agentManager.removeInstance(agentInfo.id, instanceId)
+            val agentKey = AgentKey(agentInfo.id, agentInfo.buildVersion)
+            agentManager.removeInstance(agentKey, instanceId)
         }
     }
 }

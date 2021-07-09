@@ -41,18 +41,11 @@ data class AgentInfo(
     val adminUrl: String = "",
     val ipAddress: String = "",
     val plugins: Set<String> = emptySet(),
-    @Transient
-    val instances: PersistentMap<String, InstanceState> = persistentMapOf(),
 ) {
     override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
     override fun hashCode(): Int = id.hashCode()
 }
-
-data class InstanceState(
-    val agentWsSession: AgentWsSession,
-    val status: AgentStatus,
-)
 
 @Serializable
 internal class PreparedAgentData(

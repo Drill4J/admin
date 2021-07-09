@@ -50,7 +50,7 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
 
                     if (agentId != null) {
                         val agentInfo = am.getOrNull(agentId)
-                        when (agentInfo?.getStatus()) {
+                        when (am.getStatus(agentId)) {
                             AgentStatus.BUSY -> {
                                 val agentPath = locations.href(
                                     ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
