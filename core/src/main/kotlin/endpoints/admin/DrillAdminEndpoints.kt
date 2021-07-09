@@ -24,6 +24,7 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.endpoints.AgentKey
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
@@ -99,17 +100,18 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 post<ApiRoot.Agents.ToggleAgent>(meta) { params ->
                     val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
-                    val (status, response) = agentManager.entryOrNull(agentId)?.run {
-                        val status = info.getStatus()
+                    val (status, response) = agentManager[agentId]?.let { agentInfo ->
+                        val status = agentManager.getStatus(agentId)
                         when (status) {
                             AgentStatus.OFFLINE -> AgentStatus.ONLINE
                             AgentStatus.ONLINE -> AgentStatus.OFFLINE
                             else -> null
                         }?.let { newStatus ->
-                            agentManager.instanceIds(agentId).forEach { (key, value) ->
-                                updateInstanceStatus(key, newStatus)
+                            agentManager.instanceIds(agentId).forEach { (id, value) ->
+                                val agentKey = AgentKey(agentId, agentInfo.buildVersion)
+                                agentManager.updateInstanceStatus(agentKey, id, newStatus)
                                 val toggleValue = newStatus == AgentStatus.ONLINE
-                                info.plugins.map { pluginId ->
+                                agentInfo.plugins.map { pluginId ->
                                     value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
                                         TogglePayload(pluginId, toggleValue)
                                     )

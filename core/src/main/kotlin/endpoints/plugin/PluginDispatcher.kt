@@ -25,8 +25,8 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.AgentKey
 import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.plugin.AgentKey
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
@@ -103,7 +103,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     val (statusCode, response) = agent?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (agent.info.getStatus() == AgentStatus.ONLINE) {
+                            if (agentManager.getStatus(agentId) == AgentStatus.ONLINE) {
                                 this[pluginId]?.let { adminPart ->
                                     val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
@@ -366,7 +366,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             agents.map { agent ->
                 val agentId = agent.info.id
                 async {
-                    when (val status = agent.info.getStatus()) {
+                    when (val status = agentManager.getStatus(agent.info.id)) {
                         AgentStatus.ONLINE -> agent[pluginId]?.run {
                             val adminActionResult = processAction(action, agentManager::agentSessions)
                             adminActionResult.toStatusResponse()

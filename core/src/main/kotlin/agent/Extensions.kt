@@ -27,14 +27,6 @@ internal fun Iterable<AgentInfo>.mapToDto(
 internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { entry ->
     entry.info.toDto(this)
 }
-internal fun AgentInfo.getStatus(): AgentStatus = instances.takeIf { instances ->
-    instances.any { it.value.status != AgentStatus.OFFLINE }
-}?.let { instances ->
-    takeIf { it.isRegistered }?.let {
-        AgentStatus.ONLINE.takeIf { instances.any { it.value.status == AgentStatus.ONLINE } }
-            ?: AgentStatus.BUSY
-    } ?: AgentStatus.NOT_REGISTERED
-} ?: AgentStatus.OFFLINE
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
@@ -68,6 +60,7 @@ internal fun AgentInfo.toDto(
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
     val instanceIds = agentManager.instanceIds(id).keys
+    val agentStatus = agentManager.getStatus(id)
     AgentInfoDto(
         id = id,
         group = groupId,
@@ -75,7 +68,7 @@ internal fun AgentInfo.toDto(
         name = name,
         description = description,
         environment = environment,
-        status = getStatus(),
+        status = agentStatus,
         buildVersion = buildVersion,
         adminUrl = adminUrl,
         ipAddress = ipAddress,

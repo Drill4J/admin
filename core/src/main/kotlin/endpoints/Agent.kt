@@ -61,31 +61,6 @@ class Agent(info: AgentInfo) {
             runCatching { (plugin as? Closeable)?.close() }
         }
     }
-
-    internal fun updateInstanceStatus(
-        instanceId: String,
-        status: AgentStatus
-    ) = update { info ->
-        info.instances[instanceId]?.let {
-            info.copy(
-                instances = info.instances.put(instanceId, it.copy(status = status))
-            )
-        } ?: info
-    }.instances
-
-    fun getInstanceState(
-        instanceId: String
-    ) = info.instances[instanceId]
-
-    fun addInstanceId(
-        instanceId: String,
-        session: AgentWsSession,
-    ) {
-        update {
-            it.copy(instances = it.instances + (instanceId to InstanceState(session, AgentStatus.ONLINE)))
-        }
-        logger.debug { "put new instance id '$instanceId' instance status is ${AgentStatus.ONLINE}" }
-    }
 }
 
 internal fun Plugin.createInstance(
