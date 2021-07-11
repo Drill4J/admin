@@ -17,6 +17,7 @@ package com.epam.drill.admin.kodein
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
@@ -36,7 +37,6 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
-import io.ktor.config.*
 import io.ktor.locations.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -74,6 +74,7 @@ val storage: Kodein.Builder.(Application) -> Unit
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
         bind<LoggingHandler>() with eagerSingleton { LoggingHandler(kodein) }
+        bind<ConfigHandler>() with eagerSingleton { ConfigHandler(kodein) }
     }
 
 val wsHandler: Kodein.Builder.(Application) -> Unit

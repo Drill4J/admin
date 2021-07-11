@@ -26,6 +26,7 @@ import com.epam.kodux.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
+//todo remove after testing EPMDJ-7890
 class LoggingHandler(override val kodein: Kodein) : KodeinAware {
     private val stores by instance<AgentStores>()
     private val agentManager by instance<AgentManager>()

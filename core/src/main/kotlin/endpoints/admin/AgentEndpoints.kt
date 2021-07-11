@@ -18,14 +18,19 @@ package com.epam.drill.admin.endpoints.admin
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.agent.AgentType
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.common.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
+import io.ktor.locations.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
@@ -37,6 +42,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val configHandler by instance<ConfigHandler>()
 
     init {
         app.routing {
@@ -69,6 +75,41 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
+                val meta = "Agent parameters"
+                    .examples()
+                    .responds(
+                        ok<String>(), badRequest()
+                    )
+                get<ApiRoot.Agents.Parameters>(meta) { params ->
+                    val (_, agentId) = params
+                    val map = configHandler.load(agentId) ?: emptyMap()
+                    call.respond(HttpStatusCode.OK, map)
+                }
+            }
+
+            authenticate {
+//                 todo error in swagger. EPMDJ-8151
+                patch<ApiRoot.Agents.Parameters> { location ->
+                    val agentId = location.agentId
+                    val parameters = call.receive<Map<String, String>>()
+                    logger.debug { "Update parameters for agent with id $agentId params: $parameters" }
+                    val (status, message) = configHandler.load(agentId)?.let { storageParameters ->
+                            val newParameters = HashMap(storageParameters)
+                            parameters.forEach { updateParameter ->
+                                newParameters[updateParameter.key]?.let {
+                                    newParameters[updateParameter.key] = it.copy(value = updateParameter.value)
+                                } ?: logger.warn { "cannot find and update the parameter '$updateParameter'" }
+                            }
+                            configHandler.store(agentId, newParameters)
+                            configHandler.updateAgent(agentId, parameters)
+                            logger.debug { "Agent with id '$agentId' was updated successfully" }
+                            HttpStatusCode.OK to EmptyContent
+                        } ?: HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
+                    call.respond(status, message)
+                }
+            }
+
+            authenticate {
                 val meta = "Update agent configuration"
                     .examples(
                         example("Petclinic", agentUpdateExample)
@@ -82,7 +123,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 
                     val (status, message) = if (agentManager.agentSessions(agentId).isNotEmpty()) {
                         agentManager.updateAgent(agentId, au)
-                        logger.debug { "Agent with id'$agentId'was updated successfully" }
+                        logger.debug { "Agent with id '$agentId' was updated successfully" }
                         HttpStatusCode.OK to EmptyContent
                     } else {
                         logger.warn { "Agent with id'$agentId' was not found" }
