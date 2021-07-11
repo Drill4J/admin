@@ -16,13 +16,18 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.AgentInfo
+import com.epam.drill.admin.agent.PackagesPrefixes
+import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.agent.AgentType
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
@@ -62,6 +67,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val agentDataCache by instance<AgentDataCache>()
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
+    private val configHandler by instance<ConfigHandler>()
 
     private val _instances = atomic(persistentHashMapOf<AgentKey, PersistentMap<String, InstanceState>>())
 
@@ -112,6 +118,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     ): AgentInfo {
         logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
+        configHandler.store(id, config.parameters)
+        //todo implement merge of params in EPMDJ-8124
         val groupId = config.serviceGroupId
         logger.debug { "Group id '$groupId'" }
         if (groupId.isNotBlank()) {

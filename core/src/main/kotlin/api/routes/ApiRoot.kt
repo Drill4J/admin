@@ -40,11 +40,13 @@ class ApiRoot(val prefix: String = "api") {
     @Group(SYSTEM)
     @Location("/cache")
     data class Cache(val parent: ApiRoot) {
+        @Group(SYSTEM)
         @Location("/stats")
-        data class CacheStats(val parent: Cache)
+        data class Stats(val parent: Cache)
 
+        @Group(SYSTEM)
         @Location("/clear")
-        data class CacheClear(val parent: Cache)
+        data class Clear(val parent: Cache)
     }
 
     @Group(AGENT)
@@ -70,6 +72,10 @@ class ApiRoot(val prefix: String = "api") {
         @Group(AGENT)
         @Location("/{agentId}/system-settings")
         data class SystemSettings(val parent: Agents, val agentId: String)
+
+        @Group(AGENT)
+        @Location("/{agentId}/parameters")
+        data class Parameters(val parent: Agents, val agentId: String)
 
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins")

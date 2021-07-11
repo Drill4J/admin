@@ -145,11 +145,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
     }
 }
 
-private fun ApplicationRequest.retrieveParams(): Pair<com.epam.drill.common.AgentConfig, Boolean> {
+private fun ApplicationRequest.retrieveParams(): Pair<CommonAgentConfig, Boolean> {
     val configStr = headers[com.epam.drill.common.AgentConfigParam]!!
     val agentConfig = if (configStr.startsWith('{')) {
-        com.epam.drill.common.AgentConfig.serializer() parse configStr
-    } else ProtoBuf.loads(com.epam.drill.common.AgentConfig.serializer(), configStr)
+        CommonAgentConfig.serializer() parse configStr
+    } else ProtoBuf.loads(CommonAgentConfig.serializer(), configStr)
     val needSync = headers[com.epam.drill.common.NeedSyncParam]!!.toBoolean()
     return agentConfig to needSync
 }

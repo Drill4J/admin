@@ -16,7 +16,7 @@
 package com.epam.drill.admin.api.agent
 
 import com.epam.drill.admin.api.plugin.*
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 
 enum class AgentType(val notation: String) {
     JAVA("Java"),
