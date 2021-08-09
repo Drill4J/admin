@@ -34,7 +34,7 @@ fun AdminTest.processFirstConnect(
     agentStreamDebug: Boolean,
     pluginMeta: PluginMetadata,
     connect: suspend PluginTestContext.(Any, Any) -> Unit,
-    globLaunch: Job
+    globLaunch: Job,
 ) {
     engine.handleWebSocketConversation("/ws/plugins/${pluginMeta.id}?token=${globToken}") { uiIncoming, ut ->
         val classes = File("./build/classes/java/${build.name}")

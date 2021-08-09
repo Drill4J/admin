@@ -70,7 +70,7 @@ class AdminUiChannels {
 class UIEVENTLOOP(
     val cs: Map<String, AdminUiChannels>,
     val uiStreamDebug: Boolean,
-    val glob: Channel<GroupedAgentsDto> = Channel()
+    val glob: Channel<GroupedAgentsDto> = Channel(),
 ) {
 
     fun Application.queued(wsTopic: WsTopic, incoming: ReceiveChannel<Frame>) = launch {
@@ -125,7 +125,7 @@ class Agent(
     val agentId: String,
     val incoming: ReceiveChannel<Frame>,
     val outgoing: SendChannel<Frame>,
-    val agentStreamDebug: Boolean
+    val agentStreamDebug: Boolean,
 ) {
     private val headers = Channel<Int>(Channel.UNLIMITED)
     private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
@@ -143,6 +143,10 @@ class Agent(
 
     suspend fun loaded(pluginId: String) {
         sendDelivered("/agent/plugin/$pluginId/loaded")
+    }
+
+    suspend fun toggled(pluginId: String) {
+        sendDelivered("/agent/plugin/${pluginId}/toggle")
     }
 
     suspend fun sendPluginData(data: MessageWrapper) {
@@ -257,6 +261,11 @@ class Agent(
                                     content
                                 )).message
                             )
+                            sendDelivered(url)
+                        }
+                        is Communication.Plugin.ToggleEvent -> {
+                            val pluginId = ProtoBuf.load(com.epam.drill.common.TogglePayload.serializer(), content).pluginId
+                            toggled(pluginId)
                             sendDelivered(url)
                         }
                         else -> sendDelivered(url)
