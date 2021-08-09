@@ -393,10 +393,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private suspend fun AgentWsSession.enablePlugin(
         pluginId: String,
         agentInfo: AgentInfo,
-    ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-        message = TogglePayload(pluginId, true)
-    ) {
-        logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" }
+    ): WsDeferred = async(
+        topicName = "/agent/plugin/${pluginId}/toggle",
+        callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
+    ) { //TODO EPMDJ-8233 move to the api
+        sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+            message = TogglePayload(pluginId, true)
+        ).await()
     }
 
     private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
@@ -498,7 +501,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         return async(
             topicName = "/agent/plugin/${pb.id}/loaded",
             callback = { logger.debug { "Sent plugin ${pb.id} to $debugStr" } }
-        ) { //TODO move to the api
+        ) { //TODO EPMDJ-8233 move to the api
             sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
                 com.epam.drill.common.PluginBinary(pb, data)
             ).await()
@@ -527,7 +530,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 store = store
             )
         }.apply {
-            logger.debug { "initializing plugin for agent(id=$agentId, version=$buildVersion)..." }
+            logger.debug { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
             initialize()
         }
     }
@@ -582,7 +585,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private fun getInstanceState(
         agentKey: AgentKey,
-        instanceId: String
+        instanceId: String,
     ) = _instances.value[agentKey]?.get(instanceId)
 
     fun getStatus(agentId: String): AgentStatus = instanceIds(agentId).let { instances ->
@@ -608,7 +611,7 @@ suspend fun AgentWsSession.triggerClassesSending() =
 
 internal data class AgentKey(
     val agentId: String,
-    val buildVersion: String
+    val buildVersion: String,
 )
 
 internal data class InstanceState(
