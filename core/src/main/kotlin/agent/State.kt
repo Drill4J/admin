@@ -19,6 +19,7 @@ import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.plugin.api.*
@@ -82,14 +83,16 @@ internal class AgentData(
         }
     }
 
-    internal suspend fun initClasses() {
+    internal suspend fun initClasses(buildVersion: String) {
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
-        logger.debug { "Saving ${addedClasses.size} classes for agentId='${buildManager.agentId}'..." }
+        val classBytesSize = addedClasses.sumBy { it.size } / 1024
+        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for agentId='${buildManager.agentId}'..." }
         measureTime {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
             storeClient.storeClasses(agentId, classBytes)
+            storeClient.storeMetadata(AgentKey(agentId, buildVersion), Metadata(addedClasses.size, classBytesSize))
         }.let { duration -> logger.debug { "Saved ${addedClasses.size} classes in $duration." } }
     }
 

@@ -17,17 +17,14 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
-import com.epam.drill.admin.agent.PackagesPrefixes
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.agent.AgentType
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
@@ -35,11 +32,13 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
+import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
@@ -609,6 +608,15 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
+internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
+    store(StoredMetadata(agentKey, metadata))
+}
+
+internal suspend fun StoreClient.loadMetadata(
+    agentKey: AgentKey
+): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
+
+@Serializable
 internal data class AgentKey(
     val agentId: String,
     val buildVersion: String,

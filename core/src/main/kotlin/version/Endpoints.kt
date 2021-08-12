@@ -49,7 +49,7 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
                     agents = agentManager.activeAgents.flatMap { agentInfo ->
                         agentManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
                             ComponentVersion(
-                                id = listOf("${agentInfo.id}/${instanceId}", agentInfo.groupId)
+                                id = listOf("${agentInfo.id}/${agentInfo.buildVersion}/${instanceId}", agentInfo.groupId)
                                     .filter(String::any)
                                     .joinToString("@"),
                                 version = agentInfo.agentVersion

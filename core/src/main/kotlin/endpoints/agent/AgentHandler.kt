@@ -18,6 +18,7 @@
 package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
@@ -121,7 +122,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             }
 
                             MessageType.FINISH_CLASSES_TRANSFER -> adminData.apply {
-                                initClasses()
+                                initClasses(agentInfo.buildVersion)
                                 topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
                                 logger.debug { "Finished classes transfer for $agentDebugStr" }
                             }
