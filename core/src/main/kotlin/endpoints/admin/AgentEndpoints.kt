@@ -20,10 +20,9 @@ import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.agent.AgentType
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.common.*
+import com.epam.drill.admin.store.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -43,6 +42,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val configHandler by instance<ConfigHandler>()
+    private val stores by instance<AgentStores>()
 
     init {
         app.routing {
@@ -75,6 +75,23 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
+                val meta = "Agents metadata"
+                    .examples()
+                    .responds(
+                        ok<String>()
+                    )
+                get<ApiRoot.Agents.Metadata>(meta) {
+                    val metadataAgents = agentManager.all().flatMap {
+                        agentManager.adminData(it.id).buildManager.agentBuilds.map { agentBuild ->
+                            val agentKey = AgentKey(it.id, agentBuild.info.version)
+                            mapOf(agentKey to stores[it.id].loadMetadata(agentKey))
+                        }
+                    }
+                    call.respond(HttpStatusCode.OK, metadataAgents)
+                }
+            }
+
+            authenticate {
                 val meta = "Agent parameters"
                     .examples()
                     .responds(
@@ -91,20 +108,20 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
 //                 todo error in swagger. EPMDJ-8151
                 patch<ApiRoot.Agents.Parameters> { location ->
                     val agentId = location.agentId
-                    val parameters = call.receive<Map<String, String>>()
-                    logger.debug { "Update parameters for agent with id $agentId params: $parameters" }
+                    val updatedValues = call.receive<Map<String, String>>()
+                    logger.debug { "Update parameters for agent with id $agentId params: $updatedValues" }
                     val (status, message) = configHandler.load(agentId)?.let { storageParameters ->
-                            val newParameters = HashMap(storageParameters)
-                            parameters.forEach { updateParameter ->
-                                newParameters[updateParameter.key]?.let {
-                                    newParameters[updateParameter.key] = it.copy(value = updateParameter.value)
-                                } ?: logger.warn { "cannot find and update the parameter '$updateParameter'" }
-                            }
-                            configHandler.store(agentId, newParameters)
-                            configHandler.updateAgent(agentId, parameters)
-                            logger.debug { "Agent with id '$agentId' was updated successfully" }
-                            HttpStatusCode.OK to EmptyContent
-                        } ?: HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
+                        val newStorageParameters = storageParameters.toMutableMap()
+                        updatedValues.forEach { (key, value) ->
+                            newStorageParameters[key]?.let {
+                                newStorageParameters[key] = it.copy(value = value)
+                            } ?: logger.warn { "Cannot find and update the parameter '$key'" }
+                        }
+                        configHandler.store(agentId, newStorageParameters)
+                        configHandler.updateAgent(agentId, updatedValues)
+                        logger.debug { "Agent with id '$agentId' was updated successfully" }
+                        HttpStatusCode.OK to EmptyContent
+                    } ?: HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
                     call.respond(status, message)
                 }
             }
