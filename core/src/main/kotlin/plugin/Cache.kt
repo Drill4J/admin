@@ -89,8 +89,8 @@ class PluginSessions(plugins: Plugins) {
     operator fun get(pluginId: String): SessionStorage = sessionCaches.getValue(pluginId)
 }
 
-internal data class AgentKey(val pluginId: String, val agentId: String)
-private data class GroupKey(val pluginId: String, val groupId: String)
+internal data class AgentCacheKey(val pluginId: String, val agentId: String)
+private data class GroupCacheKey(val pluginId: String, val groupId: String)
 
 private fun CacheService.pluginCacheFor(
     subscription: Subscription?,
@@ -98,10 +98,10 @@ private fun CacheService.pluginCacheFor(
     replace: Boolean,
 ): Cache<Any, FrontMessage> = when (subscription) {
     is AgentSubscription -> getOrCreate(
-        id = AgentKey(pluginId, subscription.agentId),
+        id = AgentCacheKey(pluginId, subscription.agentId),
         qualifier = subscription.buildVersion ?: "",
         replace = replace
     )
-    is GroupSubscription -> getOrCreate(GroupKey(pluginId, subscription.groupId))
+    is GroupSubscription -> getOrCreate(GroupCacheKey(pluginId, subscription.groupId))
     null -> getOrCreate(pluginId)
 }

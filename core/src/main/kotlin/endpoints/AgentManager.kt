@@ -76,7 +76,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 val store = commonStore.client
                 val registered = store.getAll<AgentInfo>()
                 val prepared = store.getAll<PreparedAgentData>().map { data ->
-                    agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
+                    agentDataCache[data.id] = AgentData(
+                        agentId = data.id,
+                        agentStores = agentStores,
+                        initialSettings = data.dto.systemSettings
+                    )
                     data.dto.toAgentInfo(plugins)
                 }
                 val registeredMap = registered.associate {
@@ -99,7 +103,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (storedInfo == null || storedInfo.agentVersion.none() || !storedInfo.isRegistered) {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
-                agentDataCache[dto.id] = AgentData(dto.id, agentStores, dto.systemSettings)
+                agentDataCache[dto.id] = AgentData(
+                    agentId = dto.id,
+                    agentStores = agentStores,
+                    initialSettings = dto.systemSettings
+                )
                 commonStore.client.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
@@ -182,7 +190,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         id: String,
     ) = if (storedInfo == null) {
         commonStore.client.findById<PreparedAgentData>(id)?.let {
-            agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
+            agentDataCache[id] = AgentData(
+                agentId = id,
+                agentStores = agentStores,
+                initialSettings = it.dto.systemSettings
+            )
             it.dto.toAgentInfo(plugins)
         }
     } else null
@@ -242,11 +254,24 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val instances = _instances.updateAndGet { instances ->
             instances[key]?.let { instances.put(key, it - instanceId) } ?: instances
         }[key] ?: persistentMapOf()
-        val id = key.agentId
+        val (id, build) = key.agentId to key.buildVersion
         if (instances.isEmpty()) {
-            logger.info { "Agent with id '${id}' was disconnected" }
-            agentStorage.handleRemove(id)
-            agentStorage.update()
+            //TODO EPMDJ-8250 
+            val agentKey = _instances.value.entries.find { it.key.agentId == key.agentId && it.value.any() }?.key
+            if (agentKey != null) {
+                loadAgentInfo(id)?.copy(buildVersion = agentKey.buildVersion)?.let {
+                    logger.info { "Build '${build}' of agent '${id}' was disconnected, but build '${it.buildVersion}' is still connected" }
+                    val agent = Agent(it)
+                    it.plugins.initPlugins(agent)
+                    adminData(it.id).initBuild(it.buildVersion)
+                    agentStorage.put(id, agent)
+                }
+            } else {
+                logger.info { "Agent with id '${id}' build '${build}' was disconnected" }
+                agentStorage.handleRemove(id)
+                agentStorage.update()
+            }
+
         } else {
             notifySingleAgent(id)
             logger.info { "Instance '${instanceId}' of Agent '${id}' was disconnected" }
@@ -363,9 +388,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     internal fun adminData(agentId: String): AgentData = agentDataCache.getOrPut(agentId) {
         logger.debug { "put adminData with id=$agentId" }
         AgentData(
-            agentId,
-            agentStores,
-            SystemSettingsDto(packages = app.drillDefaultPackages)
+            agentId = agentId,
+            agentStores = agentStores,
+            initialSettings = SystemSettingsDto(packages = app.drillDefaultPackages)
         )
     }
 

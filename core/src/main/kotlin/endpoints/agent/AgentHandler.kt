@@ -122,7 +122,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             }
 
                             MessageType.FINISH_CLASSES_TRANSFER -> adminData.apply {
-                                initClasses(agentInfo.buildVersion)
+                                initClasses(AgentKey(agentId, agentInfo.buildVersion))
                                 topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
                                 logger.debug { "Finished classes transfer for $agentDebugStr" }
                             }
