@@ -11,4 +11,5 @@
     <logger name="org.eclipse.jetty" level="info"/>
     <logger name="io.netty" level="info"/>
     <logger name="jetbrains.exodus" level="warn"/>
+    <logger name="Application" level="info"/>
 </configuration>
