@@ -31,7 +31,6 @@ import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
-import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.*
@@ -78,9 +77,12 @@ class GroupHandler(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
-            get<ApiRoot.AgentGroup.Plugin.Data> { (pluginParent, dataType) ->
-                val (group, pluginId) = pluginParent
-                val groupId = group.groupId
+            val metadata = "Get service group data"
+                .responds(
+                    ok<Any>(),
+                    notFound())
+            get<ApiRoot.AgentGroup.Plugin.Data>(metadata) { (pluginParent, pluginId, dataType) ->
+                val groupId = pluginParent.parent.groupId
                 logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
                 val (statusCode, response) = if (pluginId in plugins) {
                     val agents: List<Agent> = agentManager.agentsByGroup(groupId)

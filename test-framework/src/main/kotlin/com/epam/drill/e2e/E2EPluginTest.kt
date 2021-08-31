@@ -35,7 +35,7 @@ abstract class E2EPluginTest : AdminTest() {
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
         timeout: Long = 20,
-        noinline block: suspend TestContext<X>.() -> Unit
+        noinline block: suspend TestContext<X>.() -> Unit,
     ) = runBlocking {
         val context = SupervisorJob()
         val timeoutJob = createTimeoutJob(timeout.seconds, context)
@@ -49,7 +49,7 @@ fun AdminTest.addPlugin(
     agentId: String,
     payload: PluginId,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) = callAsync(asyncEngine.context) {
     engine.handleRequest(
         HttpMethod.Post,
@@ -63,7 +63,7 @@ fun AdminTest.addPlugin(
 fun AdminTest.unRegister(
     agentId: String,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) =
     callAsync(asyncEngine.context) {
         engine.handleRequest(
@@ -78,7 +78,7 @@ fun AdminTest.unLoadPlugin(
     agentId: String,
     payload: PluginId,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) {
     callAsync(asyncEngine.context) {
         engine.handleRequest(
@@ -94,7 +94,7 @@ fun AdminTest.togglePlugin(
     agentId: String,
     pluginId: PluginId,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) {
     callAsync(asyncEngine.context) {
         engine.handleRequest(
@@ -109,7 +109,7 @@ fun AdminTest.togglePlugin(
 fun AdminTest.toggleAgent(
     agentId: String,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) {
     callAsync(asyncEngine.context) {
         engine.handleRequest(
@@ -126,10 +126,10 @@ fun AdminTest.pluginAction(
     groupId: String,
     pluginId: String = testPlugin.pluginId,
     token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
 ) = callAsync(asyncEngine.context) {
-    val location = groupApi(groupId) {
-        ApiRoot.AgentGroup.Plugin(it, pluginId).let(ApiRoot.AgentGroup.Plugin::DispatchAction)
+    val location = groupApi(groupId) { group ->
+        ApiRoot.AgentGroup.Plugin(group).let { ApiRoot.AgentGroup.Plugin.DispatchAction(it, pluginId) }
     }
     val uri = engine.toApiUri(location)
     engine.handleRequest(HttpMethod.Post, uri) {
@@ -146,7 +146,7 @@ data class PluginTestContext(
     val classesCount: Int,
     val engine: TestApplicationEngine,
     val context: CoroutineContext,
-    var lis: MutableList<Class<*>> = mutableListOf()
+    var lis: MutableList<Class<*>> = mutableListOf(),
 ) {
 
     fun pluginAction(
@@ -154,7 +154,7 @@ data class PluginTestContext(
         pluginId: String = this.pluginId,
         agentId: String = this.agentId,
         token: String = this.token,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,
@@ -169,7 +169,7 @@ data class PluginTestContext(
         agentId: String = this.agentId,
         token: String = this.token,
         payload: PackagesPrefixes = PackagesPrefixes(),
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) = callAsync(context) {
         engine.handleRequest(
             HttpMethod.Post,

@@ -15,12 +15,16 @@
  */
 package com.epam.drill.admin.notification
 
+import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
+
 @Group("Notification Endpoints")
 @Location("/api/notifications")
+@Ignore(properties = ["parent"])
 object ApiNotifications {
+    // TODO EPMDJ-8438 param doesn't display in swagger
     @Group("Notification Endpoints")
     @Location("/{id}")
     data class Notification(val id: String) {

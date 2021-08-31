@@ -17,10 +17,12 @@
 
 package com.epam.drill.admin.api.routes
 
+import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
 @Location("/{prefix}")
+@Ignore(properties = ["parent"])
 class ApiRoot(val prefix: String = "api") {
     companion object {
         const val SYSTEM = "System operations"
@@ -114,6 +116,7 @@ class ApiRoot(val prefix: String = "api") {
         data class PluginBuild(val parent: Agents, val agentId: String, val pluginId: String, val buildVersion: String)
     }
 
+    // TODO EPMDJ-8438 param doesn't display in swagger
     @Group(GROUP)
     @Location("/groups/{groupId}")
     data class AgentGroup(val parent: ApiRoot, val groupId: String) {
@@ -126,15 +129,15 @@ class ApiRoot(val prefix: String = "api") {
         data class Plugins(val parent: AgentGroup)
 
         @Group(GROUP)
-        @Location("/plugins/{pluginId}")
-        data class Plugin(val parent: AgentGroup, val pluginId: String) {
+        @Location("/plugins")
+        data class Plugin(val parent: AgentGroup) {
             @Group(GROUP)
-            @Location("/dispatch-action")
-            data class DispatchAction(val parent: Plugin)
+            @Location("/{pluginId}/dispatch-action")
+            data class DispatchAction(val parent: Plugin, val pluginId: String)
 
             @Group(GROUP)
-            @Location("/data/{dataType}")
-            data class Data(val parent: Plugin, val dataType: String)
+            @Location("/{pluginId}/data/{dataType}")
+            data class Data(val parent: Plugin, val pluginId: String, val dataType: String)
         }
     }
 }
