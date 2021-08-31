@@ -28,8 +28,6 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
@@ -105,10 +103,19 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
             }
 
             authenticate {
-//                 todo error in swagger. EPMDJ-8151
-                patch<ApiRoot.Agents.Parameters> { location ->
+                val meta = "Update agent parameters"
+                    .examples(
+                        example(
+                            "Agent parameters", mapOf(
+                                "logLevel" to "DEBUG",
+                                "logFile" to "Directory"
+                            )
+                        )
+                    ).responds(
+                        ok<String>(), notFound()
+                    )
+                patch<ApiRoot.Agents.Parameters, Map<String, String>>(meta) { location, updatedValues ->
                     val agentId = location.agentId
-                    val updatedValues = call.receive<Map<String, String>>()
                     logger.debug { "Update parameters for agent with id $agentId params: $updatedValues" }
                     val (status, message) = configHandler.load(agentId)?.let { storageParameters ->
                         val newStorageParameters = storageParameters.toMutableMap()

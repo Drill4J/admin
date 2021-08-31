@@ -135,7 +135,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                     )
                     .description("To try out this request, please use the Postman")
                     .responds(ok<String>(), badRequest())
-                //TODO (EPMDJ-8151) Requests don't work from the swagger
+                // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
                 post<ApiRoot.Agents.ProcessData, MultiPartData>(meta) { (_, agentId, pluginId), data ->
                     val parts: List<PartData> = data.readAllParts()
                     val action = (parts.find { it.name == "action" } as PartData.FormItem).value
@@ -174,7 +174,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         ), notFound()
                     )
                 post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(meta) { pluginParent, action ->
-                    val pluginId = pluginParent.parent.pluginId
+                    val pluginId = pluginParent.pluginId
                     val groupId = pluginParent.parent.parent.groupId
                     val agents = agentManager.agentsByGroup(groupId)
                     logger.debug { "Dispatch action plugin with id $pluginId for agents with groupId $groupId" }
