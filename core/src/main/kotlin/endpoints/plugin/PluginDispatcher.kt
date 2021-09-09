@@ -405,28 +405,22 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         pluginId: String,
         action: String,
     ): Pair<HttpStatusCode, List<JsonElement>> {
-        val statusesResponse: List<JsonElement> = supervisorScope {
-            agents.map { agent ->
-                val agentId = agent.info.id
-                async {
-                    when (val status = agentManager.getStatus(agent.info.id)) {
-                        AgentStatus.ONLINE -> agent[pluginId]?.run {
-                            val adminActionResult = processAction(action, agentManager::agentSessions)
-                            adminActionResult.toStatusResponse()
-                        }
-                        AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
-                        else -> "Agent $agentId is in the wrong state - $status".run {
-                            StatusMessageResponse(
-                                code = HttpStatusCode.Conflict.value,
-                                message = this
-                            )
-                        }
-                    }
+        val statusesResponse: List<JsonElement> = agents.mapNotNull { agent ->
+            val agentId = agent.info.id
+            when (val status = agentManager.getStatus(agent.info.id)) {
+                AgentStatus.ONLINE -> agent[pluginId]?.run {
+                    val adminActionResult = processAction(action, agentManager::agentSessions)
+                    adminActionResult.toStatusResponse()
                 }
-            }.mapNotNull { deferred ->
-                runCatching { deferred.await() }.getOrNull()
-            }.map { WithStatusCode.serializer() toJson it }
-        }
+                AgentStatus.NOT_REGISTERED, AgentStatus.OFFLINE -> null
+                else -> "Agent $agentId is in the wrong state - $status".run {
+                    StatusMessageResponse(
+                        code = HttpStatusCode.Conflict.value,
+                        message = this
+                    )
+                }
+            }
+        }.map { WithStatusCode.serializer() toJson it }
         return HttpStatusCode.OK to statusesResponse
     }
 }
