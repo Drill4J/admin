@@ -106,7 +106,9 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             }
 
                             MessageType.MESSAGE_DELIVERED -> {
-                                subscribers[message.destination]?.received(message)
+                                subscribers[message.destination]?.received(message) ?: logger.error {
+                                    "A subscriber to destination '${message.destination}' is not found"
+                                }
                             }
 
                             MessageType.START_CLASSES_TRANSFER -> {
@@ -131,7 +133,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 logger.warn { "Message with type '${message.type}' is not supported yet" }
                             }
                         }
-                    }
+                    } ?: logger.warn { "Not supported frame type: ${frame.frameType}" }
                 }
             }
         } catch (ex: Exception) {

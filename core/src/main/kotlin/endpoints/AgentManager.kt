@@ -389,17 +389,15 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "All plugins for $agentDebugStr were enabled" }
     }
 
+    //TODO EPMDJ-8233 move to the api
     private suspend fun AgentWsSession.enablePlugin(
         pluginId: String,
         agentInfo: AgentInfo,
-    ): WsDeferred = async(
+    ): WsDeferred = sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+        message = TogglePayload(pluginId, true),
         topicName = "/agent/plugin/${pluginId}/toggle",
         callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
-    ) { //TODO EPMDJ-8233 move to the api
-        sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-            message = TogglePayload(pluginId, true)
-        ).await()
-    }
+    )
 
     private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
 
@@ -497,13 +495,13 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             plugin.agentPluginPart.readBytes()
         } else byteArrayOf()
         pb.checkSum = hex(sha1(data))
-        return async(
+        //TODO EPMDJ-8233 move to the api
+        return sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
+            message = com.epam.drill.common.PluginBinary(pb, data),
             topicName = "/agent/plugin/${pb.id}/loaded",
             callback = { logger.debug { "Sent plugin ${pb.id} to $debugStr" } }
-        ) { //TODO EPMDJ-8233 move to the api
-            sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
-                com.epam.drill.common.PluginBinary(pb, data)
-            ).await()
+        ).apply {
+            await()
             logger.debug { "Sent data of plugin ${pb.id} to $debugStr" }
         }
     }
