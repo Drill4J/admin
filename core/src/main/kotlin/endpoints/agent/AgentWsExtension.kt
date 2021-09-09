@@ -112,30 +112,29 @@ open class AgentWsSession(
 
     suspend inline fun <reified TopicUrl : Any, reified T> sendToTopic(
         message: T,
+        topicName: String = TopicUrl::class.topicUrl(),
         noinline callback: suspend (Any) -> Unit = {},
-    ): WsDeferred = TopicUrl::class.topicUrl().let { topicName ->
-        async(topicName, callback) {
-            when (frameType) {
-                FrameType.BINARY -> Frame.Binary(
-                    fin = true,
-                    data = ProtoBuf.dump(
-                        Message(
-                            MessageType.MESSAGE,
-                            topicName,
-                            data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(serializer(), message)
-                        )
+    ): WsDeferred = async(topicName, callback) {
+        when (frameType) {
+            FrameType.BINARY -> Frame.Binary(
+                fin = true,
+                data = ProtoBuf.dump(
+                    Message(
+                        MessageType.MESSAGE,
+                        TopicUrl::class.topicUrl(),
+                        data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(serializer(), message)
                     )
                 )
-                FrameType.TEXT -> Frame.Text(
-                    JsonMessage.serializer() stringify JsonMessage(
-                        type = MessageType.MESSAGE,
-                        destination = topicName,
-                        text = message as? String ?: (serializer<T>() stringify message)
-                    )
+            )
+            FrameType.TEXT -> Frame.Text(
+                JsonMessage.serializer() stringify JsonMessage(
+                    type = MessageType.MESSAGE,
+                    destination = TopicUrl::class.topicUrl(),
+                    text = message as? String ?: (serializer<T>() stringify message)
                 )
-                else -> null
-            }?.let { send(it) }
-        }
+            )
+            else -> null
+        }?.let { send(it) }
     }
 
     suspend fun async(
