@@ -22,6 +22,7 @@ import io.ktor.request.*
 import io.ktor.serialization.*
 import io.ktor.util.pipeline.*
 import io.ktor.utils.io.*
+import kotlin.reflect.jvm.*
 
 fun ContentNegotiation.Configuration.converters() {
     json()
@@ -35,7 +36,7 @@ private object EmptyContentConverter : ContentConverter {
         val request = context.subject
         val readChannel = request.value as? ByteReadChannel
         val discarded = readChannel?.discard()
-        return Unit.takeIf { discarded == 0L && request.type == it::class }
+        return Unit.takeIf { discarded == 0L && request.typeInfo.jvmErasure == it::class }
     }
 
     override suspend fun convertForSend(

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.kodein
+package com.epam.drill.admin.di
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
@@ -28,6 +28,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.group.*
+import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
@@ -39,71 +40,71 @@ import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.locations.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-val pluginServices: Kodein.Builder.(Application) -> Unit
+
+val pluginServices: DI.Builder.(Application) -> Unit
     get() = { application ->
         bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(application) }
         bind<Plugins>() with singleton { instance<PluginLoaderService>().plugins }
         bind<PluginCaches>() with singleton { PluginCaches(application, instance(), instance()) }
         bind<PluginSessions>() with singleton { PluginSessions(instance()) }
-        bind<PluginSenders>() with singleton { PluginSenders(kodein) }
+        bind<PluginSenders>() with singleton { PluginSenders(di) }
     }
 
-val storage: Kodein.Builder.(Application) -> Unit
+val storage: DI.Builder.(Application) -> Unit
     get() = { app ->
         bind<AgentStorage>() with singleton { AgentStorage() }
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }
         } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
-        bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+        bind<GroupManager>() with eagerSingleton { GroupManager(di) }
+        bind<AgentManager>() with eagerSingleton { AgentManager(di) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
-        bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }
-        bind<LoggingHandler>() with eagerSingleton { LoggingHandler(kodein) }
-        bind<ConfigHandler>() with eagerSingleton { ConfigHandler(kodein) }
+        bind<NotificationManager>() with eagerSingleton { NotificationManager(di) }
+        bind<LoggingHandler>() with eagerSingleton { LoggingHandler(di) }
+        bind<ConfigHandler>() with eagerSingleton { ConfigHandler(di) }
     }
 
-val wsHandler: Kodein.Builder.(Application) -> Unit
+val wsHandler: DI.Builder.(Application) -> Unit
     get() = { _ ->
         bind<AgentEndpoints>() with eagerSingleton {
             AgentEndpoints(
-                kodein
+                di
             )
         }
-        bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
+        bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
         bind<DrillServerWs>() with eagerSingleton {
             DrillServerWs(
-                kodein
+                di
             )
         }
         bind<TopicResolver>() with eagerSingleton {
             TopicResolver(
-                kodein
+                di
             )
         }
         bind<ServerWsTopics>() with eagerSingleton {
             ServerWsTopics(
-                kodein
+                di
             )
         }
-        bind<WsTopic>() with singleton { WsTopic(kodein) }
+        bind<WsTopic>() with singleton { WsTopic(di) }
     }
 
-val handlers: Kodein.Builder.(Application) -> Unit
+val handlers: DI.Builder.(Application) -> Unit
     get() = { _ ->
         bind<DrillAdminEndpoints>() with eagerSingleton {
             DrillAdminEndpoints(
-                kodein
+                di
             )
         }
         bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
-        bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(kodein) }
+        bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(di) }
         bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
-        bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(kodein) }
-        bind<GroupHandler>() with eagerSingleton { GroupHandler(kodein) }
-        bind<AgentHandler>() with eagerSingleton { AgentHandler(kodein) }
-        bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
-        bind<RequestValidator>() with eagerSingleton { RequestValidator(kodein) }
+        bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(di) }
+        bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
+        bind<AgentHandler>() with eagerSingleton { AgentHandler(di) }
+        bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
+        bind<RequestValidator>() with eagerSingleton { RequestValidator(di) }
     }

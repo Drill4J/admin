@@ -21,6 +21,7 @@ import io.ktor.client.request.*
 import kotlinx.serialization.json.*
 import mu.*
 import java.io.*
+import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -102,12 +103,12 @@ data class ArtifactoryPluginLoader(
     }
 
     private fun String.toEnvVersion(): String = run {
-        val normalizedId = replace(Regex("\\s|-"), "_").toUpperCase()
+        val normalizedId = replace(Regex("\\s|-"), "_").uppercase(Locale.getDefault())
         System.getenv("${normalizedId}_PLUGIN_VERSION") ?: ""
     }
 
     private fun String.downloadUrl(): String = run {
-        val normalizedId = replace(Regex("\\s|-"), "_").toUpperCase()
+        val normalizedId = replace(Regex("\\s|-"), "_").uppercase(Locale.getDefault())
         System.getenv("${normalizedId}_PLUGIN_URL") ?: ""
     }
 

@@ -28,12 +28,11 @@ import io.ktor.routing.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 const val agentIsBusyMessage =
     "Sorry, this agent is busy at the moment. Please try again later"
 
-internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
+internal class RequestValidator(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger { }
 
     val app by instance<Application>()

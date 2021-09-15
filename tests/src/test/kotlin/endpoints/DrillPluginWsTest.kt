@@ -22,6 +22,7 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
@@ -42,7 +43,6 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -59,7 +59,7 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
-    private lateinit var kodeinApplication: Kodein
+    private lateinit var kodeinApplication: DI
 
     private val testApp: Application.() -> Unit = {
         install(Locations)
@@ -77,17 +77,17 @@ class PluginWsTest {
             withKModule {
                 kodeinModule("test") {
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
-                    bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
+                    bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
                     bind<WsTopic>() with singleton {
                         WsTopic(
-                            kodein
+                            di
                         )
                     }
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }
                     } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
-                    bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+                    bind<AgentManager>() with eagerSingleton { AgentManager(di) }
                 }
 
             }
@@ -259,7 +259,7 @@ class PluginWsTest {
     }
 
     private suspend fun sendListData(destination: String, message: List<Data>) {
-        val ps by kodeinApplication.kodein.instance<PluginSenders>()
+        val ps by kodeinApplication.di.instance<PluginSenders>()
         val sender = ps.sender(pluginId)
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
     }

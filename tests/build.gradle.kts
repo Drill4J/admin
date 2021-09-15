@@ -46,7 +46,7 @@ dependencies {
     testImplementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
     testImplementation("com.epam.drill:common-jvm:$drillApiVersion")
 
-    testImplementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
+    testImplementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
 
     testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
 
@@ -70,11 +70,17 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
 
     testImplementation(kotlin("test-junit5"))
-    testImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
+    testImplementation("io.kotlintest:kotlintest-runner-junit5:3.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
 
     testData(project(":test-framework:test-data"))
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+    }
 }
 
 tasks {
@@ -91,9 +97,9 @@ tasks {
         kotlinOptions {
             jvmTarget = "1.8"
             freeCompilerArgs = listOf(
-                "-Xuse-experimental=kotlin.Experimental",
-                "-Xuse-experimental=kotlin.time.ExperimentalTime",
-                "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI"
+                "-Xopt-in=kotlin.Experimental",
+                "-Xopt-in=kotlin.time.ExperimentalTime",
+                "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI"
             )
         }
     }
@@ -116,6 +122,10 @@ tasks {
         mustRunAfter(test)
         useJUnitPlatform()
         systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
+    }
+
+    test {
+        useJUnitPlatform()
     }
 
     check {

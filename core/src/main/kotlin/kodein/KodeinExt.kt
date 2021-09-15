@@ -17,7 +17,6 @@ package com.epam.drill.admin.kodein
 
 import io.ktor.application.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
 fun AppBuilder(handler: AppBuilder.() -> Unit): AppBuilder {
@@ -27,14 +26,14 @@ fun AppBuilder(handler: AppBuilder.() -> Unit): AppBuilder {
 }
 
 class AppBuilder {
-    val kodeinModules = mutableSetOf<KodeinConf.() -> Kodein.Module>()
+    val kodeinModules = mutableSetOf<KodeinConf.() -> DI.Module>()
 
     fun Application.withInstallation(installHandler: Application.() -> Unit): AppBuilder {
         installHandler(this)
         return this@AppBuilder
     }
 
-    fun withKModule(kh: KodeinConf.() -> Kodein.Module): AppBuilder {
+    fun withKModule(kh: KodeinConf.() -> DI.Module): AppBuilder {
         kodeinModules.add(kh)
         return this@AppBuilder
     }
@@ -44,10 +43,10 @@ class AppBuilder {
 
 fun Application.kodeinApplication(
     appConfig: AppBuilder,
-    kodeinMapper: Kodein.MainBuilder.(Application) -> Unit = {},
-): Kodein {
+    kodeinMapper: DI.MainBuilder.(Application) -> Unit = {},
+): DI {
     val app = this
-    return Kodein {
+    return DI {
         bind<Application>() with singleton { app }
         appConfig.kodeinModules.forEach { import(kodeinConfig(this) { it(this) }, allowOverride = true) }
         appConfig.kodeinModules.clear()
@@ -56,15 +55,15 @@ fun Application.kodeinApplication(
 }
 
 
-fun Application.kodeinConfig(mainBuilder: Kodein.MainBuilder, hand: KodeinConf.(Kodein.MainBuilder) -> Kodein.Module) =
+fun Application.kodeinConfig(mainBuilder: DI.MainBuilder, hand: KodeinConf.(DI.MainBuilder) -> DI.Module) =
     KodeinConf(this, mainBuilder).run { hand(this, mainBuilder) }
 
 
-class KodeinConf(val app: Application, val mainBuilder: Kodein.MainBuilder) {
-    operator fun invoke(hand: KodeinConf.(Kodein.MainBuilder) -> Unit) {
+class KodeinConf(val app: Application, val mainBuilder: DI.MainBuilder) {
+    operator fun invoke(hand: KodeinConf.(DI.MainBuilder) -> Unit) {
         hand(this, mainBuilder)
     }
 
-    fun kodeinModule(name: String, block: Kodein.Builder.(Application) -> Unit) =
-        Kodein.Module(name = name, allowSilentOverride = true) { block(this, app) }
+    fun kodeinModule(name: String, block: DI.Builder.(Application) -> Unit) =
+        DI.Module(name = name, allowSilentOverride = true) { block(this, app) }
 }

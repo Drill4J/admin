@@ -23,7 +23,6 @@ import kotlinx.serialization.*
 import kotlinx.serialization.builtins.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 import java.net.*
 import java.util.concurrent.*
 import kotlin.collections.set
@@ -33,7 +32,7 @@ import kotlin.reflect.full.*
 private val regexPathParam = "\\{(.*)}".toRegex()
 private val logger = KotlinLogging.logger {}
 
-class WsTopic(override val kodein: Kodein) : KodeinAware {
+class WsTopic(override val di: DI) : DIAware {
     val app by instance<Application>()
     val pathToCallBackMapping: MutableMap<URLTopic, Pair<KClass<*>, CallbackWrapper<Any, Any>>> = ConcurrentHashMap()
 

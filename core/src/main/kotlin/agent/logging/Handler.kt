@@ -24,10 +24,9 @@ import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
 import com.epam.dsm.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 //todo remove after testing EPMDJ-7890
-class LoggingHandler(override val kodein: Kodein) : KodeinAware {
+class LoggingHandler(override val di: DI) : DIAware {
     private val agentManager by instance<AgentManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {

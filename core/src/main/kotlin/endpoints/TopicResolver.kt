@@ -19,9 +19,8 @@ import com.epam.drill.admin.common.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class TopicResolver(override val kodein: Kodein) : KodeinAware {
+class TopicResolver(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val wsTopic by instance<WsTopic>()
     private val sessionStorage by instance<SessionStorage>()
