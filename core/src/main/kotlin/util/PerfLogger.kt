@@ -20,8 +20,8 @@ import kotlin.time.*
 
 val logger = KotlinLogging.logger {}
 
-//TODO it duplicates in test2code
-inline fun <T> trackTime(tag: String = "", debug: Boolean = true, block: () -> T) =
+//TODO it duplicates in test2code EPMDJ-8568
+inline fun <T> trackTime(tag: String = "", debug: Boolean = false, block: () -> T) =
     measureTimedValue { block() }.apply {
         when {
             duration.inSeconds > 1 -> {

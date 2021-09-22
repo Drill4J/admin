@@ -63,7 +63,9 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(agentId)
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(AgentKey(agentId, buildVersion.value))
+
+    override suspend fun loadClassBytes(buildVersion: String) = storeClient.loadClasses(AgentKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -73,7 +75,11 @@ internal class AgentData(
 
     private val _settings = atomic(initialSettings)
 
+    //todo delete after removing of deprecated methods. EPMDJ-8608
+    private val buildVersion = atomic("")
+
     suspend fun initBuild(version: String): Boolean {
+        buildVersion.update { version }
         if (buildManager.agentBuilds.none()) {
             loadStoredData()
         }
@@ -86,14 +92,15 @@ internal class AgentData(
     internal suspend fun initClasses(buildVersion: String) {
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
         val classBytesSize = addedClasses.sumBy { it.size } / 1024
-        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for agentId='${buildManager.agentId}'..." }
-        measureTime {
+        val agentKey = AgentKey(agentId, buildVersion)
+        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentKey..." }
+        trackTime("initClasses") {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            storeClient.storeClasses(agentId, classBytes)
-            storeClient.storeMetadata(AgentKey(agentId, buildVersion), Metadata(addedClasses.size, classBytesSize))
-        }.let { duration -> logger.debug { "Saved ${addedClasses.size} classes in $duration." } }
+            storeClient.storeClasses(agentKey, classBytes)
+            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+        }
     }
 
     suspend fun updateSettings(
@@ -115,15 +122,17 @@ internal class AgentData(
             agentId = id.agentId,
             detectedAt = detectedAt
         )
-        measureTime {
+        trackTime("storeBuild") {
             storeClient.executeInAsyncTransaction {
                 store(toSummary())
                 store(buildData)
             }
-        }.let { duration -> logger.debug { "Saved build ${agentBuild.id} in $duration." } }
+        }
 
         logger.debug { "Saved build ${agentBuild.id}." }
     }
+
+    suspend fun deleteClassBytes(agentKey: AgentKey) = storeClient.deleteClasses(agentKey)
 
     private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.debug { "Loading data for $agentId..." }
@@ -156,13 +165,13 @@ internal class AgentData(
 }
 
 private suspend fun StoreClient.storeClasses(
-    agentId: String,
+    agentKey: AgentKey,
     classBytes: Map<String, ByteArray>,
 ) {
     trackTime("storeClasses") {
-        logger.debug { "storing for agent(id=$agentId) class bytes ${classBytes.size}..." }
+        logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
         val storedData = StoredCodeData(
-            id = agentId,
+            id = agentKey,
             data = ProtoBuf.dump(
                 CodeData.serializer(),
                 CodeData(classBytes = classBytes)
@@ -173,12 +182,19 @@ private suspend fun StoreClient.storeClasses(
 }
 
 private suspend fun StoreClient.loadClasses(
-    agentId: String,
+    agentKey: AgentKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
-    findById<StoredCodeData>(agentId)?.run {
+    findById<StoredCodeData>(agentKey)?.run {
         ProtoBuf.load(CodeData.serializer(), Zstd.decompress(data)).classBytes
     } ?: let {
-        logger.warn { "can not find classBytes for agentId $agentId" }
+        logger.warn { "Can not find classBytes for $agentKey" }
         emptyMap()
     }
+}
+
+private suspend fun StoreClient.deleteClasses(
+    agentKey: AgentKey,
+) = trackTime("deleteClasses") {
+    logger.debug { "Deleting class bytes for $agentKey..." }
+    deleteById<StoredCodeData>(agentKey)
 }
