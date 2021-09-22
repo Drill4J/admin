@@ -26,7 +26,7 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.AgentKey
+import com.epam.drill.admin.plugin.AgentCacheKey
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
@@ -274,7 +274,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             }
             authenticate {
                 delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
-                    logger.debug { "starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
+                    logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
                     val (status, msg) = if (agentId in agentManager) {
                         if (plugins[pluginId] != null) {
                             val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
@@ -283,9 +283,12 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }
                                 agentStores[agentId].deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
-                                agentManager.adminData(agentId).buildManager.delete(buildVersion)
-                                (cacheService as? MapDBCacheService)?.clear(AgentKey(pluginId, agentId), buildVersion)
-                                HttpStatusCode.OK to ""
+                                agentManager.adminData(agentId).run {
+                                    buildManager.delete(buildVersion)
+                                    deleteClassBytes(AgentKey(agentId, buildVersion))
+                                }
+                                (cacheService as? MapDBCacheService)?.clear(AgentCacheKey(pluginId, agentId), buildVersion)
+                                HttpStatusCode.OK to EmptyContent
                             } else HttpStatusCode.BadRequest to ErrorResponse("Can not remove a current build")
                         } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found")
                     } else HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
@@ -309,7 +312,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         )
                     }
                     HttpStatusCode.OK to buildsSummary
-                } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found")
+                } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found"))
                 call.respond(status, message)
             }
         }
