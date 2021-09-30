@@ -109,15 +109,15 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     val result = adminPart.processAction(action, agentManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
                                     HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                                } ?: HttpStatusCode.BadRequest to ErrorResponse(
+                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
                                     "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
-                                )
+                                ))
                             } else HttpStatusCode.BadRequest to ErrorResponse(
                                 "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
                             )
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
-                    logger.info { "$response" }
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                    logger.info { "response for '$agentId': $response" }
                     sendResponse(response, statusCode)
                 }
             }
@@ -150,15 +150,15 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     val result = adminPart.doRawAction(action, inputStream)
                                     val statusResponse = result.toStatusResponse()
                                     HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                                } ?: HttpStatusCode.BadRequest to ErrorResponse(
+                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
                                     "Cannot process data: plugin $pluginId not initialized for agent $agentId."
-                                )
+                                ))
                             } else HttpStatusCode.BadRequest to ErrorResponse(
                                 "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
                             )
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    } ?: HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found")
-                    logger.info { "$response" }
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                    logger.info { "response for '$agentId': $response" }
                     sendResponse(response, statusCode)
                 }
             }
@@ -184,8 +184,8 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             pluginId,
                             action
                         )
-                    } ?: HttpStatusCode.NotFound to ErrorResponse("Plugin $pluginId not found.")
-                    logger.trace { "$response" }
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Plugin $pluginId not found."))
+                    logger.trace { "response for '$groupId': $response" }
                     call.respond(statusCode, response)
                 }
             }
@@ -357,7 +357,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             val (statusCode, response) = if (pluginId in plugins) {
                 call.request.queryParameters.subscription(pluginId)?.let {
                     pluginCache.retrieveMessage(pluginId, it, destinationWithValue).toStatusResponsePair()
-                } ?: HttpStatusCode.NotFound to ErrorResponse("not found subscription")
+                } ?: (HttpStatusCode.NotFound to ErrorResponse("not found subscription"))
             } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
             logger.debug { "for destination $destinationWithValue response: $response" }
             call.respond(statusCode, response)

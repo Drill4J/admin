@@ -116,7 +116,7 @@ internal class AgentData(
     }
 
     suspend fun store(agentBuild: AgentBuild) = agentBuild.run {
-        logger.debug { "Saving build ${agentBuild.id}..." }
+        logger.info { "Saving build ${agentBuild.id}..." }
         val buildData = AgentBuildData(
             id = id,
             agentId = id.agentId,
@@ -135,7 +135,7 @@ internal class AgentData(
     suspend fun deleteClassBytes(agentKey: AgentKey) = storeClient.deleteClasses(agentKey)
 
     private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
-        logger.debug { "Loading data for $agentId..." }
+        logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings
         val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
