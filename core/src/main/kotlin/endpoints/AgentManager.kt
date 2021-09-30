@@ -115,7 +115,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         needSync: Boolean,
         session: AgentWsSession,
     ): AgentInfo {
-        logger.debug { "Attaching agent: needSync=$needSync, config=$config" }
+        logger.info { "Attaching agent: needSync=$needSync, config=$config" }
         val id = config.id
         configHandler.store(id, config.parameters)
         //todo implement merge of params in EPMDJ-8124
@@ -140,7 +140,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.groupId == groupId &&
             currentInfo.agentVersion == config.agentVersion
         ) {
-            logger.debug { "agent($id, $buildVersion): reattaching to current build..." }
+            logger.info { "agent($id, $buildVersion): reattaching to current build..." }
             notifySingleAgent(id)
             notifyAllAgents()
             currentInfo.plugins.initPlugins(existingAgent)
@@ -151,7 +151,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
         } else {
-            logger.debug { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
+            logger.info { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
             val storedInfo: AgentInfo? = loadAgentInfo(id)
             val preparedInfo: AgentInfo? = preparedInfo(storedInfo, id)
             val existingInfo = (storedInfo ?: preparedInfo)?.copy(
@@ -208,7 +208,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         session: AgentWsSession,
     ) {
         _instances.update {
-            logger.debug { "put new instance id '${instanceId}' with key $key instance status is ${AgentStatus.ONLINE}" }
+            logger.info { "put new instance id '${instanceId}' with key $key instance status is ${AgentStatus.ONLINE}" }
             val current = it[key] ?: persistentMapOf()
             it.put(key, current + (instanceId to InstanceState(session, AgentStatus.ONLINE)))
         }
@@ -490,7 +490,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     ): WsDeferred {
         val pb = plugin.pluginBean
         val debugStr = agentInfo.debugString(instanceId)
-        logger.debug { "Sending plugin ${pb.id} to $debugStr" }
+        logger.info { "Sending plugin ${pb.id} to $debugStr" }
         val data = if (agentInfo.agentType == AgentType.JAVA) {
             plugin.agentPluginPart.readBytes()
         } else byteArrayOf()
@@ -516,7 +516,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     ): AdminPluginPart<*> = plugin.pluginBean.id.let { pluginId ->
         val buildVersion = agent.info.buildVersion
         val agentId = agent.info.id
-        logger.debug { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
+        logger.info { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
         agent[pluginId] ?: agent.get(pluginId) {
             val adminPluginData = adminData(agentId)
             val store = agentStores.agentStore(agentId)
@@ -527,7 +527,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 store = store
             )
         }.apply {
-            logger.debug { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
+            logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
             initialize()
         }
     }

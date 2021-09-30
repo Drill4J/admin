@@ -41,7 +41,7 @@ class PluginCaches(
     private val enabled: Boolean = config.propertyOrNull("enabled")?.getString()?.toBoolean() ?: true
 
     init {
-        logger.info { "cache.enabled=$enabled" }
+        logger.info { "Admin cache is enabled: $enabled. Type: ${app.drillCacheType}" }
     }
 
     internal fun get(
