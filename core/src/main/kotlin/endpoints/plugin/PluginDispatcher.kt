@@ -26,7 +26,6 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.AgentCacheKey
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
@@ -74,6 +73,24 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
                 processData(instanceId, message.drillMessage.content)
+            } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
+        } ?: logger.error { "Plugin $pluginId not loaded!" }
+    }
+
+    suspend fun dispatchAction(
+        agentInfo: AgentInfo,
+        instanceId: String,
+        message: String,
+    ) = run {
+        val wrapper = MessageWrapper.serializer().parse(message)
+        val pluginId = wrapper.pluginId
+        val action = wrapper.drillMessage.content
+        logger.info { "Attempting to dispatch action: $action from agent ${agentInfo.debugString(instanceId)}" }
+        plugins[pluginId]?.let {
+            val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
+            agentEntry[pluginId]?.run {
+                val result = processAction(action, agentManager::agentSessions)
+                logger.info { "Response ${result.toStatusResponse()} " }
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }

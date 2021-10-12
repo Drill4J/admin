@@ -104,7 +104,11 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             MessageType.PLUGIN_DATA -> {
                                 pd.processPluginData(agentInfo, instanceId, message.text)
                             }
-
+                            MessageType.PLUGIN_ACTION -> {
+                                app.launch {
+                                    pd.dispatchAction(agentInfo, instanceId, message.text)
+                                }
+                            }
                             MessageType.MESSAGE_DELIVERED -> {
                                 subscribers[message.destination]?.received(message) ?: logger.error {
                                     "A subscriber to destination '${message.destination}' is not found for $agentDebugStr"
