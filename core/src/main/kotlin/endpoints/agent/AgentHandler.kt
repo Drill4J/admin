@@ -146,6 +146,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {
+            logger.info { "removing instance of $agentDebugStr..." }
             val agentKey = AgentKey(agentInfo.id, agentInfo.buildVersion)
             agentManager.removeInstance(agentKey, instanceId)
         }
