@@ -72,8 +72,8 @@ class SessionStorage {
         when (ex) {
             is ClosedSendChannelException,
             is CancellationException,
-            -> logger.warn { "The socket connection was aborted" }
-            else -> logger.error(ex) { "Processing drill ws session was finished with exception" }
+            -> logger.debug { "The socket connection was aborted. destination: $destination" }
+            else -> logger.error(ex) { "Processing drill ws session was finished with exception. destination: $destination" }
         }
         unsubscribe(destination, this)
         Unit
