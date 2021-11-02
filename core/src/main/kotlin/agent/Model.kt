@@ -17,7 +17,8 @@ package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.kodux.*
+import com.epam.dsm.*
+import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
@@ -64,18 +65,24 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 @Serializable
 internal class StoredCodeData(
     @Id val id: AgentKey,
-    @StreamSerialization(SerializationType.KRYO, CompressType.ZSTD, [])
-    val data: CodeData,
+    //todo after 1.5 kotlin use @stream and CodeData?
+    @Suppress("ArrayInDataClass")
+    @Serializable(with = BinarySerializer::class)
+    val data: ByteArray,
 )
 
 @Serializable
 internal data class Metadata(
     val countClass: Int = 0,
     val classBytesSizeKb: Int = 0,
-)
+) {
+    companion object {
+        val emptyMetadata = Metadata()
+    }
+}
 
 @Serializable
-internal class StoredMetadata(
+internal class AgentMetadata(
     @Id val id: AgentKey,
-    val data: Metadata,
+    val data: Metadata = Metadata.emptyMetadata,
 )

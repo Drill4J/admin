@@ -19,7 +19,7 @@ package com.epam.drill.admin.plugins.coverage
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class TestAdminPart(

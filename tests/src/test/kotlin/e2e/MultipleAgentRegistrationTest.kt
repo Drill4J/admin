@@ -19,8 +19,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
-import kotlin.test.*
-
+import kotlin.test.Test
 
 class MultipleAgentRegistrationTest : E2ETest() {
 
@@ -28,7 +27,7 @@ class MultipleAgentRegistrationTest : E2ETest() {
 
     @Test
     fun `4 Agents should be registered in parallel`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(delayBeforeClearData = 1_000) {
             repeat(4) {
                 connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { ui, agent ->
                     ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED

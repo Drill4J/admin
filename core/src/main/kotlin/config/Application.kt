@@ -31,6 +31,9 @@ val Application.drillDefaultPackages: List<String>
 val Application.isDevMode: Boolean
     get() = drillConfig.propertyOrNull("devMode")?.getString()?.toBoolean() ?: false
 
+val Application.isEmbeddedMode: Boolean
+    get() = drillConfig.propertyOrNull("embeddedMode")?.getString()?.toBoolean() ?: false
+
 val Application.agentSocketTimeout: Duration
     get() = drillConfig.config("agents")
         .config("socket")
@@ -42,3 +45,25 @@ val Application.drillCacheType: String
 fun ApplicationConfigValue.getDuration() = "_".let { k ->
     mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)
 }.toKotlinDuration()
+
+//database configs:
+val Application.drillDatabase: ApplicationConfig
+    get() = drillConfig.config("database")
+
+val Application.drillDatabaseHost: String
+    get() = drillDatabase.propertyOrNull("host")?.getString() ?: "localhost"
+
+val Application.drillDatabasePort: Int
+    get() = drillDatabase.propertyOrNull("port")?.getString()?.toInt() ?: 5432
+
+val Application.drillDatabaseName: String
+    get() = drillDatabase.propertyOrNull("dbName")?.getString() ?: "postgres"
+
+val Application.drillDatabaseUserName: String
+    get() = drillDatabase.propertyOrNull("userName")?.getString() ?: "postgres"
+
+val Application.drillDatabasePassword: String
+    get() = drillDatabase.propertyOrNull("password")?.getString() ?: "mysecretpassword"
+
+val Application.drillDatabaseMaxPoolSize: Int
+    get() = drillDatabase.propertyOrNull("maximumPoolSize")?.getString()?.toInt() ?: 3

@@ -36,7 +36,6 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val pluginStores by instance<PluginStores>()
     private val agentManager by instance<AgentManager>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
@@ -53,14 +52,14 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
             if (message == "") {
                 logger.trace { "Removed message by key $messageKey" }
                 pluginCache[dest] = ""
-                pluginStores[pluginId].let { store ->
+                pluginStoresDSM(pluginId).let { store ->
                     withContext(Dispatchers.IO) {
                         store.deleteMessage(messageKey)
                     }
                 }
             } else {
                 logger.trace { "Sending message to $messageKey" }
-                pluginStores[pluginId].let { store ->
+                pluginStoresDSM(pluginId).let { store ->
                     withContext(Dispatchers.IO) {
                         measureTimedValue {
                             store.storeMessage(messageKey, message)

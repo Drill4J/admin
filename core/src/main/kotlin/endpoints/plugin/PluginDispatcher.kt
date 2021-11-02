@@ -58,8 +58,6 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val plugins by instance<Plugins>()
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
-    private val pluginStores by instance<PluginStores>()
-    private val agentStores by instance<AgentStores>()
     private val cacheService by instance<CacheService>()
 
     suspend fun processPluginData(
@@ -296,10 +294,10 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         if (plugins[pluginId] != null) {
                             val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
                             if (buildVersion != curBuildVersion) {
-                                pluginStores[pluginId].deleteBy<Stored> {
+                                pluginStoresDSM(pluginId).deleteBy<Stored> {
                                     (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }
-                                agentStores[agentId].deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
+                                agentStores.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 agentManager.adminData(agentId).run {
                                     buildManager.delete(buildVersion)
                                     deleteClassBytes(AgentKey(agentId, buildVersion))

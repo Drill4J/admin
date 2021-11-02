@@ -64,23 +64,29 @@ class PluginTest : E2EPluginTest() {
         }
     }
 
-
     @Test
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
+        println("starting tests...")
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>(group) { _, _ ->
                 println("hi ag1")
+                com.epam.drill.admin.util.logger.info { "hi ag1" }
             }
             connectAgent<Build1>(group) { _, _ ->
                 println("hi ag2")
+                com.epam.drill.admin.util.logger.info { "hi ag2" }
             }
             connectAgent<Build1>(group) { _, _ ->
                 println("hi ag3")
+                com.epam.drill.admin.util.logger.info { "hi ag3" }
             }
+            com.epam.drill.admin.util.logger.info { "finish connected..." }
             uiWatcher { channel ->
+                com.epam.drill.admin.util.logger.info { "waiting..." }
                 waitForMultipleAgents(channel)
                 println("1")
+                com.epam.drill.admin.util.logger.info { "after waiting..." }
                 val statusResponse = StatusMessageResponse(
                     code = 200,
                     message = "act"
@@ -103,6 +109,9 @@ class PluginTest : E2EPluginTest() {
         while (true) {
             val message = channel.receive()
             val groupedAgents = message.grouped.flatMap { it.agents }
+            com.epam.drill.admin.util.logger.info { "groupedAgents: $groupedAgents" }
+            com.epam.drill.admin.util.logger.info { "groupedAgents activePluginsCount:  ${groupedAgents.all { it.activePluginsCount == 1}}" }
+            com.epam.drill.admin.util.logger.info { "groupedAgents status online:  ${groupedAgents.all { it.status == AgentStatus.ONLINE}}" }
             if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE } && groupedAgents.size == instanceCount) {
                 break
             }
