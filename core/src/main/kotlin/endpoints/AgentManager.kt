@@ -60,7 +60,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
-    private val commonStore by instance<CommonStore>()
+//    private val commonStore by instance<CommonStore>()
     private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
     private val groupManager by instance<GroupManager>()
@@ -74,8 +74,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     init {
         trackTime("loadingAgents") {
             runBlocking {
-                val store = commonStore.client
-                val registered = store.getAll<AgentInfo>()
+                val registered = commonStoreDsm.getAll<AgentInfo>()
                 val prepared = commonStoreDsm.getAll<PreparedAgentData>().map { data ->
                     agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
@@ -104,7 +103,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 commonStoreDsm.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
-                commonStore.client.deleteById<AgentInfo>(dto.id)
+                commonStoreDsm.deleteById<AgentInfo>(dto.id)
                 agentStorage.put(dto.id, Agent(info))
                 logger.debug { "Prepared agent ${dto.id}." }
             }
@@ -400,10 +399,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
     )
 
-    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
+    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStoreDsm.findById(agentId)
 
     private suspend fun AgentInfo.persistToDatabase() {
-        commonStore.client.store(this)
+        commonStoreDsm.store(this)
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
