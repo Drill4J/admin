@@ -23,6 +23,8 @@ configurations {
 
 val drillApiVersion: String by extra
 val drillLogger: String by extra
+val drillDsmVersion: String by extra
+
 val serializationVersion: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
@@ -31,6 +33,7 @@ val swaggerVersion: String by extra
 val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
+val testContainerVersion: String by project
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -59,6 +62,8 @@ dependencies {
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
     testImplementation("com.epam.drill:kodux:$koduxVersion")
+    testImplementation("com.epam.drill:dsm:$drillDsmVersion")
+    testImplementation("org.testcontainers:postgresql:$testContainerVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 

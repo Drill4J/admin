@@ -16,6 +16,25 @@ The backend part of Drill4J, based on Ktor framework.
 
 ## How to Run
 
+### Database
+
+#### docker
+```
+docker run --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+```
+
+custom configs see application.conf drill.database
+
+#### embedded
+set embeddedMode=true to use embedded database. 
+
+To clean data from it use:
+
+```shell script
+./gradlew cleanData
+```
+
+### Application
 Gradle command:
 ```shell script
 ./gradlew run

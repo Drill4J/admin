@@ -15,10 +15,10 @@
  */
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
@@ -73,6 +73,7 @@ abstract class E2ETest : AdminTest() {
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
         timeout: Duration = 7.seconds,
+        delayBeforeClearData: Long = 0,
         block: suspend () -> Unit,
     ) {
         var coroutineException: Throwable? = null
@@ -82,7 +83,7 @@ abstract class E2ETest : AdminTest() {
         } + context
         runBlocking(handler) {
             val timeoutJob = createTimeoutJob(timeout, context)
-            val appConfig = AppConfig(projectDir)
+            val appConfig = AppConfig(projectDir, delayBeforeClearData)
             val testApp = appConfig.testApp
             withApplication(
                 environment = createTestEnvironment { parentCoroutineContext = context },
@@ -90,8 +91,8 @@ abstract class E2ETest : AdminTest() {
             ) {
                 testApp(application, sslPort)
                 asyncEngine = AsyncTestAppEngine(handler, this)
-                storeManager = appConfig.storeManager
                 commonStore = appConfig.commonStore
+                storeManager = appConfig.storeManager
                 globToken = requestToken()
                 //create the 'drill-admin-socket' websocket connection
                 handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->

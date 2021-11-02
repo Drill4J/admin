@@ -15,31 +15,29 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.kodux.*
-import jetbrains.exodus.entitystore.*
+import com.epam.dsm.util.test.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.Serializable
-import java.io.*
-import java.util.*
+import kotlinx.serialization.*
+import org.junit.jupiter.api.*
 import kotlin.test.*
+import kotlin.test.Test
 
 class MessagePersistingTest {
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        public fun setUp() {
+            TestDatabaseContainer.startOnce()
+        }
+    }
 
     @Serializable
     data class SimpleMessage(val s: String)
 
-    private val storageDir = File("build/tmp/test/stores/${this::class.simpleName}-${UUID.randomUUID()}")
-
-    private val storeClient = StoreClient(PersistentEntityStores.newInstance(storageDir))
-
-    @AfterTest
-    fun cleanStore() {
-        storeClient.close()
-        storageDir.deleteRecursively()
-    }
-
     @Test
     fun `storeMessage - readMessage`() {
+        val storeClient = pluginStoresDSM("${MessagePersistingTest::class.simpleName}")
         val message = SimpleMessage("data")
         runBlocking {
             assertNull(storeClient.readMessage("1"))
@@ -47,4 +45,5 @@ class MessagePersistingTest {
             assertEquals(message, storeClient.readMessage("1"))
         }
     }
+
 }

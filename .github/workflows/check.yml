@@ -27,3 +27,9 @@ jobs:
       - uses: eskatos/gradle-command-action@v1
         with:
           arguments: -s check
+      - name: Publish test report to artifact
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: test-results
+          path: '~/**/test-results/**/*.xml'

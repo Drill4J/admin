@@ -9,6 +9,8 @@ plugins {
 
 val drillApiVersion: String by extra
 val drillLogger: String by extra
+val drillDsmVersion: String by extra
+
 val serializationVersion: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
@@ -18,6 +20,7 @@ val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
 val cacheMapDB: String by extra
+val testContainerVersion: String by project
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -36,6 +39,8 @@ dependencies {
     implementation("com.epam.drill:common:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("com.epam.drill:kodux:$koduxVersion")
+    implementation("com.epam.drill:dsm:$drillDsmVersion")
+    implementation("org.testcontainers:postgresql:$testContainerVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")

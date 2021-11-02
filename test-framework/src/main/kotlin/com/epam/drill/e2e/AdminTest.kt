@@ -19,9 +19,10 @@ import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
+import com.epam.dsm.*
+import com.epam.dsm.util.test.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
@@ -34,14 +35,18 @@ import kotlin.time.*
 import kotlin.time.TimeSource.*
 
 abstract class AdminTest {
+    init {
+        TestDatabaseContainer.startOnce()
+    }
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
     val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     lateinit var asyncEngine: AsyncTestAppEngine
     val engine: TestApplicationEngine get() = asyncEngine.engine
     lateinit var globToken: String
-    lateinit var storeManager: AgentStores
-    lateinit var commonStore: CommonStore
+    lateinit var storeManager: StoreClient
+    lateinit var commonStore: StoreClient
+
     var agentPart: AgentPart<*>? = null
 
     internal val testAgentContext = TestAgentContext()

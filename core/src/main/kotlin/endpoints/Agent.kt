@@ -16,12 +16,10 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*

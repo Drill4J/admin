@@ -21,4 +21,5 @@ const val agentId = "testAgent"
 
 const val sslPort = "8443"
 
-val testPlugin = PluginId("test-plugin")
+const val pluginId = "test-plugin"
+val testPlugin = PluginId(pluginId)

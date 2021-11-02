@@ -27,9 +27,10 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.store.*
+import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
+import com.epam.dsm.util.test.TestDatabaseContainer
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -47,9 +48,6 @@ import java.util.*
 import kotlin.test.*
 
 class PluginWsTest {
-
-    private val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
-
 
     @Serializable
     data class TestMessage(val message: String)
@@ -72,21 +70,13 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
+        TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
-
-            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
-                    bind<CommonStore>() with eagerSingleton {
-                        CommonStore(baseLocation.resolve("common")).also {
-                            app.closeOnStop(it)
-                        }
-                    }
-                    bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
-                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
                     bind<WsTopic>() with singleton {
                         WsTopic(
@@ -107,6 +97,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
+        TestDatabaseContainer.clearData(AppConfig.schemas)
     }
 
     @Test
@@ -172,7 +163,11 @@ class PluginWsTest {
 
 
                 subscribe(outgoing, destination)
-                assertEquals("", readMessageJson(incoming)?.toContentString().orEmpty(), "first subscription should be empty")
+                assertEquals(
+                    "",
+                    readMessageJson(incoming)?.toContentString().orEmpty(),
+                    "first subscription should be empty"
+                )
 
 
                 sendListData(destination, message)
@@ -265,7 +260,7 @@ class PluginWsTest {
 
     private suspend fun sendListData(destination: String, message: List<Data>) {
         val ps by kodeinApplication.kodein.instance<PluginSenders>()
-        val sender = ps.sender("test-plugin")
+        val sender = ps.sender(pluginId)
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
     }
 
@@ -303,7 +298,8 @@ class PluginWsTest {
                 assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.toContentString())
                 assertEquals(
                     TestMessage.serializer() toJson messageForTest,
-                    fromJson[WsSendMessage::message.name])
+                    fromJson[WsSendMessage::message.name]
+                )
 
                 outgoing.send(uiMessage(Subscribe(destination, "")))
             }

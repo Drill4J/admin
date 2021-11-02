@@ -16,7 +16,7 @@
 package com.epam.drill.admin.agent.logging
 
 import com.epam.drill.admin.api.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.serialization.*
 
 @Serializable

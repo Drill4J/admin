@@ -22,24 +22,23 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 
 //todo remove after testing EPMDJ-7890
 class LoggingHandler(override val kodein: Kodein) : KodeinAware {
-    private val stores by instance<AgentStores>()
     private val agentManager by instance<AgentManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
         agentManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
-            stores[agentId].store(AgentLoggingConfig(agentId, loggingConfig))
+            agentStores.store(AgentLoggingConfig(agentId, loggingConfig))
         }
     }
 
     suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
-        stores[agentId].loadConfig(agentId)?.apply {
+        agentStores.loadConfig(agentId)?.apply {
             agentSession?.sendConfig(config)
         }
     }
