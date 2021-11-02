@@ -62,8 +62,9 @@ class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
 class PluginStores(baseDir: File) : Stores(baseDir, "store")
 
 
-
+//pluginId = new schema? or
 val pluginStores = DsmStoreClient("plugins")
+
 //class AgentStoresPostgres() : DsmStoreClient("plugin"){
 //
 //}

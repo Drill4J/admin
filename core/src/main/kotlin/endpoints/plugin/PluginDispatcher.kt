@@ -296,6 +296,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                         if (plugins[pluginId] != null) {
                             val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
                             if (buildVersion != curBuildVersion) {
+                                //todo pluginId
                                 pluginStores[pluginId].deleteBy<Stored> {
                                     (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }

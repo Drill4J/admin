@@ -18,7 +18,7 @@ package com.epam.drill.admin.store
 import com.epam.kodux.*
 import jetbrains.exodus.entitystore.*
 import java.io.*
-
+//todo remove it
 class CommonStore(private val baseDir: File) : Closeable {
 
     val client: StoreClient get() = _client.value
