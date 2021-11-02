@@ -75,7 +75,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             runBlocking {
                 val store = commonStore.client
                 val registered = store.getAll<AgentInfo>()
-                val prepared = store.getAll<PreparedAgentData>().map { data ->
+                val prepared = commonStoreDsm.getAll<PreparedAgentData>().map { data ->
                     agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
                 }
@@ -100,7 +100,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
                 agentDataCache[dto.id] = AgentData(dto.id, agentStores, dto.systemSettings)
-                commonStore.client.store(
+                commonStoreDsm.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
                 commonStore.client.deleteById<AgentInfo>(dto.id)
@@ -171,7 +171,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
             }
             info.persistToDatabase()
-            preparedInfo?.let { commonStore.client.deleteById<PreparedAgentData>(it.id) }
+            preparedInfo?.let { commonStoreDsm.deleteById<PreparedAgentData>(it.id) }
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             info
         }
@@ -181,7 +181,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         storedInfo: AgentInfo?,
         id: String,
     ) = if (storedInfo == null) {
-        commonStore.client.findById<PreparedAgentData>(id)?.let {
+        commonStoreDsm.findById<PreparedAgentData>(id)?.let {
             agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
             it.dto.toAgentInfo(plugins)
         }
@@ -606,13 +606,24 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
-internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
+//internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
+//    store(StoredMetadata(agentKey, metadata))
+//}
+//
+//internal suspend fun StoreClient.loadMetadata(
+//    agentKey: AgentKey
+//): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
+
+
+internal suspend fun com.epam.dsm.StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
     store(StoredMetadata(agentKey, metadata))
 }
 
-internal suspend fun StoreClient.loadMetadata(
+
+internal suspend fun com.epam.dsm.StoreClient.loadMetadata(
     agentKey: AgentKey
 ): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
+
 
 @Serializable
 internal data class AgentKey(

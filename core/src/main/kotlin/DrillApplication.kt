@@ -29,6 +29,7 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.websocket.*
 import mu.*
+import org.jetbrains.exposed.sql.*
 import java.io.*
 import java.time.*
 
@@ -103,5 +104,11 @@ fun Application.module() = kodeinApplication(
         withKModule { kodeinModule("wsHandler", wsHandler) }
         withKModule { kodeinModule("handlers", handlers) }
         withKModule { kodeinModule("pluginServices", pluginServices) }
+        Database.connect( //todo move to API of dsm
+            "jdbc:postgresql://localhost:5432/postgres", driver = "org.postgresql.Driver",
+            user = "postgres", password = "mysecretpassword"
+        ).also{
+            logger.info { "Connected to db ${it.url}" }
+        }
     }
 )
