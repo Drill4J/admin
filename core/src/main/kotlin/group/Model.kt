@@ -18,7 +18,7 @@ package com.epam.drill.admin.group
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.serialization.*
 
 @Serializable

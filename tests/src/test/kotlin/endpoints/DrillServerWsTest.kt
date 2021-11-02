@@ -29,7 +29,6 @@ import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -46,14 +45,10 @@ import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import java.io.*
-import java.util.*
 import kotlin.test.*
 
 
 internal class DrillServerWsTest {
-
-    private val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     private lateinit var notificationsManager: NotificationManager
     private val testApp: Application.() -> Unit = {
@@ -75,19 +70,11 @@ internal class DrillServerWsTest {
 
         enableSwaggerSupport()
 
-        val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
-
         kodeinApplication(AppBuilder {
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {
-                    bind<CommonStore>() with eagerSingleton {
-                        CommonStore(baseLocation.resolve("common")).also {
-                            app.closeOnStop(it)
-                        }
-                    }
-                    bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }

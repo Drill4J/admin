@@ -45,25 +45,13 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
     get() = { application ->
         bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(application) }
         bind<Plugins>() with singleton { instance<PluginLoaderService>().plugins }
-        bind<PluginStores>() with eagerSingleton {
-            PluginStores(drillWorkDir.resolve("plugins")).also { application.closeOnStop(it) }
-        }
-        bind<PluginCaches>() with singleton { PluginCaches(application, instance(), instance(), instance()) }
+        bind<PluginCaches>() with singleton { PluginCaches(application, instance(), instance()) }
         bind<PluginSessions>() with singleton { PluginSessions(instance()) }
         bind<PluginSenders>() with singleton { PluginSenders(kodein) }
     }
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { app ->
-        bind<CommonStore>() with eagerSingleton {
-            CommonStore(drillWorkDir).apply {
-                client.environment.environmentConfig.apply {
-                    memoryUsagePercentage = 10
-                    logCacheUseSoftReferences = true
-                }
-            }.also { app.closeOnStop(it) }
-        }
-        bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }

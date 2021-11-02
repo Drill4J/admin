@@ -17,33 +17,34 @@ package com.epam.drill.admin.store
 
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.util.*
-import com.epam.kodux.*
+import com.epam.dsm.*
+import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 
 @Serializable
 internal class Stored(
     @Id val id: String,
+    @Suppress("ArrayInDataClass")
+    @Serializable(with = BinarySerializer::class)
     val data: ByteArray,
 )
 
+//todo do we need protobuf? in db clients cannot see an object
 internal suspend fun StoreClient.storeMessage(
     id: String,
     message: Any,
 ): Int {
     val storedMessage = message.toStoredMessage()
     val bytes = ProtoBuf.dump(StoredMessage.serializer(), storedMessage)
-    val compressed = Zstd.compress(bytes)
-    store(Stored(id, compressed))
-    return compressed.size
+    return store(Stored(id, bytes)).data.size
 }
 
 internal suspend fun StoreClient.readMessage(
     id: String,
     classLoader: ClassLoader = Thread.currentThread().contextClassLoader,
 ): Any? = findById<Stored>(id)?.let { stored ->
-    val bytes = Zstd.decompress(stored.data)
-    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), bytes)
+    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), stored.data)
     storedMessage.toMessage(classLoader)
 }
 

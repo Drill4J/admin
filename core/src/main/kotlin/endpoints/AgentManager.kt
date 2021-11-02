@@ -33,7 +33,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
@@ -60,8 +60,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
-    private val commonStore by instance<CommonStore>()
-    private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
     private val groupManager by instance<GroupManager>()
     private val agentDataCache by instance<AgentDataCache>()
@@ -74,10 +72,9 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     init {
         trackTime("loadingAgents") {
             runBlocking {
-                val store = commonStore.client
-                val registered = store.getAll<AgentInfo>()
-                val prepared = store.getAll<PreparedAgentData>().map { data ->
-                    agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
+                val registered = commonStore.getAll<AgentInfo>()
+                val prepared = commonStore.getAll<PreparedAgentData>().map { data ->
+                    agentDataCache[data.id] = AgentData(data.id, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
                 }
                 val registeredMap = registered.associate {
@@ -100,11 +97,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (storedInfo == null || storedInfo.agentVersion.none() || !storedInfo.isRegistered) {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
-                agentDataCache[dto.id] = AgentData(dto.id, agentStores, dto.systemSettings)
-                commonStore.client.store(
+                agentDataCache[dto.id] = AgentData(dto.id, dto.systemSettings)
+                commonStore.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
-                commonStore.client.deleteById<AgentInfo>(dto.id)
+                commonStore.deleteById<AgentInfo>(dto.id)
                 agentStorage.put(dto.id, Agent(info))
                 logger.debug { "Prepared agent ${dto.id}." }
             }
@@ -172,7 +169,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
             }
             info.persistToDatabase()
-            preparedInfo?.let { commonStore.client.deleteById<PreparedAgentData>(it.id) }
+            preparedInfo?.let { commonStore.deleteById<PreparedAgentData>(it.id) }
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             info
         }
@@ -182,8 +179,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         storedInfo: AgentInfo?,
         id: String,
     ) = if (storedInfo == null) {
-        commonStore.client.findById<PreparedAgentData>(id)?.let {
-            agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
+        commonStore.findById<PreparedAgentData>(id)?.let {
+            agentDataCache[id] = AgentData(id, it.dto.systemSettings)
             it.dto.toAgentInfo(plugins)
         }
     } else null
@@ -365,7 +362,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "put adminData with id=$agentId" }
         AgentData(
             agentId,
-            agentStores,
             SystemSettingsDto(packages = app.drillDefaultPackages)
         )
     }
@@ -400,10 +396,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
     )
 
-    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.client.findById(agentId)
+    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.findById(agentId)
 
     private suspend fun AgentInfo.persistToDatabase() {
-        commonStore.client.store(this)
+        commonStore.store(this)
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
@@ -520,12 +516,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.info { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
         agent[pluginId] ?: agent.get(pluginId) {
             val adminPluginData = adminData(agentId)
-            val store = agentStores.agentStore(agentId)
             plugin.createInstance(
                 agentInfo = info,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = store
+                store = pluginStoresDSM(pluginId)
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
@@ -608,12 +603,12 @@ suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
 internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
-    store(StoredMetadata(agentKey, metadata))
+    store(AgentMetadata(agentKey, metadata))
 }
 
-internal suspend fun StoreClient.loadMetadata(
-    agentKey: AgentKey
-): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
+internal suspend fun StoreClient.loadAgentMetadata(
+    agentKey: AgentKey,
+): AgentMetadata = findById(agentKey) ?: AgentMetadata(agentKey)
 
 @Serializable
 internal data class AgentKey(

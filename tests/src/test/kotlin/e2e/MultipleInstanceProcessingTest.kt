@@ -16,6 +16,7 @@
 package com.epam.drill.admin.e2e
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.util.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
@@ -28,8 +29,9 @@ class MultipleInstanceProcessingTest : E2ETest() {
 
     @Test
     fun `agent can have multiple instances`() {
+        val instance = "instanceAgent"
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentName, "1"), {}) { ui, agent ->
+            connectAgent(AgentWrap(agentName, "$instance:1"), {}) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(agentName) { status, _ ->
                     status shouldBe HttpStatusCode.OK
@@ -39,10 +41,13 @@ class MultipleInstanceProcessingTest : E2ETest() {
                 agent.`get-load-classes-datas`()
                 val agentInfo = ui.getAgent()
                 agentInfo?.status shouldBe AgentStatus.ONLINE
-                agentInfo?.instanceIds shouldBe setOf("1")
+                agentInfo?.instanceIds shouldBe setOf("$instance:1")
             }
             for (i in 2..5) {
-                connectAgent(AgentWrap(agentName, "$i"), {}) { ui, _ ->
+                connectAgent(AgentWrap(agentName, "$instance:$i"), {}) { ui, _ ->
+                    //todo if it doesn't invoke 'size' twice it will fail
+                    val size = ui.getAgent()?.instanceIds?.size
+                    logger.info {"Comparing count of instances '$i' cur $size..."}
                     ui.getAgent()?.instanceIds?.size shouldBe i
                 }
             }
@@ -78,7 +83,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
             }
         }
     }
-    
+
     @Test
     fun `not registered agent should not change status when new instance income `() {
         createSimpleAppWithUIConnection {
