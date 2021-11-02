@@ -20,6 +20,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.store.*
+import com.epam.dsm.*
 import io.ktor.application.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
@@ -32,14 +33,13 @@ import org.kodein.di.generic.*
 internal class GroupManager(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
-    private val commonStore by instance<CommonStore>()
     private val app by instance<Application>()
 
     private val _state = atomic(persistentHashMapOf<String, GroupDto>())
 
     init {
         runBlocking {
-            val groups = commonStore.client.getAll<Group>()
+            val groups = commonStoreDsm.getAll<Group>()
             _state.update {
                 it.mutate { map ->
                     for (group in groups) {
@@ -70,7 +70,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
         }
         val groups = _state.value
         if (groups !== oldGroups) {
-            groups[groupId]?.let { commonStore.storeGroup(it.toModel()) }
+            groups[groupId]?.let { commonStoreDsm.storeGroup(it.toModel()) }
         }
     }
 
@@ -81,7 +81,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
         val groups = _state.value
         groups[id]?.also {
             if (oldGroups !== groups) {
-                oldGroups[id]?.also { commonStore.store(it, group) }
+                oldGroups[id]?.also { commonStoreDsm.store(it, group) }
             }
         }
     }
@@ -109,7 +109,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
         )
     )
 
-    private suspend fun CommonStore.store(
+    private suspend fun StoreClient.store(
         oldValue: GroupDto,
         groupDto: GroupDto,
     ): GroupDto = run {
@@ -118,6 +118,6 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
     }.toDto()
 }
 
-private suspend fun CommonStore.storeGroup(
+private suspend fun StoreClient.storeGroup(
     group: Group,
-): Group = client.store(group)
+): Group = this.store(group)
