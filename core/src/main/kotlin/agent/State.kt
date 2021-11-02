@@ -106,7 +106,8 @@ internal class AgentData(
             agentStoresDSM.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
 //            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
         }
-    }//AgentKey(agentId=Petclinic1, buildVersion=0.5.0)
+    }
+    //AgentKey(agentId=Petclinic1, buildVersion=0.5.0)
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,

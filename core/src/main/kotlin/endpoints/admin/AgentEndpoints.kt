@@ -41,7 +41,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val configHandler by instance<ConfigHandler>()
-    private val stores by instance<AgentStores>()
+//    private val stores by instance<AgentStores>()
 
     init {
         app.routing {
@@ -129,7 +129,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         configHandler.updateAgent(agentId, updatedValues)
                         logger.debug { "Agent with id '$agentId' was updated successfully" }
                         HttpStatusCode.OK to EmptyContent
-                    } ?: HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found"))
                     call.respond(status, message)
                 }
             }

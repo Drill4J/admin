@@ -26,14 +26,14 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 class ConfigHandler(override val kodein: Kodein) : KodeinAware {
-    private val stores by instance<AgentStores>()
+//    private val stores by instance<AgentStores>()
     private val agentManager by instance<AgentManager>()
 
     suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {
-        stores[agentId].store(StoredAgentConfig(agentId, parameters))
+        agentStoresDSM.store(StoredAgentConfig(agentId, parameters))
     }
 
-    suspend fun load(agentId: String) = stores[agentId].findById<StoredAgentConfig>(agentId)?.params
+    suspend fun load(agentId: String) = agentStoresDSM.findById<StoredAgentConfig>(agentId)?.params
 
     suspend fun updateAgent(agentId: String, parameters: Map<String, String>) {
         agentManager.agentSessions(agentId).applyEach {

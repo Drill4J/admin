@@ -28,7 +28,7 @@ typealias BuildInfo = com.epam.drill.common.BuildInfo
 
 @Serializable
 data class AgentInfo(
-    @Id val id: String,
+    @IdDsm val id: String,
     val name: String,
     val groupId: String = "",
     val isRegistered: Boolean,
@@ -62,7 +62,7 @@ internal data class AgentDataSummary(
 internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 
 @Serializable
-internal class StoredCodeData(
+internal class StoredCodeData(//todo
     @Id val id: AgentKey,
     val data: ByteArray,
 )

@@ -59,7 +59,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
     private val pluginCache by instance<PluginCaches>()
     private val agentManager by instance<AgentManager>()
     private val pluginStores by instance<PluginStores>()
-    private val agentStores by instance<AgentStores>()
+//    private val agentStores by instance<AgentStores>()
     private val cacheService by instance<CacheService>()
 
     suspend fun processPluginData(

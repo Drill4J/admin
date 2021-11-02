@@ -21,7 +21,7 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import java.io.*
 import com.epam.dsm.StoreClient as DsmStoreClient
-
+//todo remove
 sealed class Stores(
     private val baseDir: File,
     private val subDir: String = "",
@@ -50,12 +50,20 @@ sealed class Stores(
     }
 }
 
+/**
+ * it duplicates as val agentStoresDSM = DsmStoreClient("agents")
+ * todo remove
+ */
 class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
     fun agentStore(agentId: String): StoreClient = get(agentId)
 }
 
+//todo remove
 class PluginStores(baseDir: File) : Stores(baseDir, "store")
 
+
+
+val pluginStores = DsmStoreClient("plugins")
 //class AgentStoresPostgres() : DsmStoreClient("plugin"){
 //
 //}
