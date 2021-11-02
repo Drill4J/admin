@@ -299,7 +299,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                 pluginStores[pluginId].deleteBy<Stored> {
                                     (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }
-                                agentStores[agentId].deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
+                                agentStoresDSM.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 agentManager.adminData(agentId).run {
                                     buildManager.delete(buildVersion)
                                     deleteClassBytes(AgentKey(agentId, buildVersion))

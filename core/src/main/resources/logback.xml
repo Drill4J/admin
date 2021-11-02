@@ -9,6 +9,8 @@
         <appender-ref ref="STDOUT"/>
     </root>
     <logger name="org.eclipse.jetty" level="info"/>
+<!--    todo check -->
+    <logger name="Exposed" level="debug"/>
     <logger name="io.netty" level="info"/>
     <logger name="jetbrains.exodus" level="warn"/>
     <logger name="Application" level="info"/>

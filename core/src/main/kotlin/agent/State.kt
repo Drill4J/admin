@@ -22,8 +22,11 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
+import com.epam.drill.admin.util.trackTime
 import com.epam.drill.plugin.api.*
+import com.epam.dsm.*
 import com.epam.kodux.*
+import com.epam.kodux.StoreClient
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
@@ -79,6 +82,7 @@ internal class AgentData(
     private val buildVersion = atomic("")
 
     suspend fun initBuild(version: String): Boolean {
+
         buildVersion.update { version }
         if (buildManager.agentBuilds.none()) {
             loadStoredData()
@@ -99,9 +103,10 @@ internal class AgentData(
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
             storeClient.storeClasses(agentKey, classBytes)
-            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            agentStoresDSM.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+//            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
         }
-    }
+    }//AgentKey(agentId=Petclinic1, buildVersion=0.5.0)
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,
@@ -110,7 +115,7 @@ internal class AgentData(
         val current = this.settings
         if (current != settings) {
             _settings.value = settings
-            storeClient.store(toSummary())
+            agentStoresDSM.store(toSummary())
             block(current)
         }
     }
@@ -123,9 +128,13 @@ internal class AgentData(
             detectedAt = detectedAt
         )
         trackTime("storeBuild") {
-            storeClient.executeInAsyncTransaction {
-                store(toSummary())
-                store(buildData)
+//            storeClient.executeInAsyncTransaction {
+//
+//                //                store(buildData)
+//            }
+            agentStoresDSM.executeInAsyncTransaction {
+                store(buildData, "agents")//todo schema?
+                store(toSummary(), "agents")
             }
         }
 
@@ -134,10 +143,10 @@ internal class AgentData(
 
     suspend fun deleteClassBytes(agentKey: AgentKey) = storeClient.deleteClasses(agentKey)
 
-    private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
+    private suspend fun loadStoredData() = agentStoresDSM.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings
-        val builds: List<AgentBuild> = storeClient.findBy<AgentBuildData> {
+        val builds: List<AgentBuild> = agentStoresDSM.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {
