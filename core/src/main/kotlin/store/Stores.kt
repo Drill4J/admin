@@ -20,6 +20,7 @@ import jetbrains.exodus.entitystore.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import java.io.*
+import com.epam.dsm.StoreClient as DsmStoreClient
 
 sealed class Stores(
     private val baseDir: File,
@@ -55,3 +56,8 @@ class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
 
 class PluginStores(baseDir: File) : Stores(baseDir, "store")
 
+//class AgentStoresPostgres() : DsmStoreClient("plugin"){
+//
+//}
+
+val agentStoresDSM = DsmStoreClient("agents")

@@ -35,3 +35,5 @@ class CommonStore(private val baseDir: File) : Closeable {
         }
     }
 }
+
+val commonStoreDsm = com.epam.dsm.StoreClient("common")
