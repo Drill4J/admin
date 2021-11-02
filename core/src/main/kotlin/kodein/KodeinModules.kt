@@ -55,14 +55,14 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { app ->
-        bind<CommonStore>() with eagerSingleton {
-            CommonStore(drillWorkDir).apply {
-                client.environment.environmentConfig.apply {
-                    memoryUsagePercentage = 10
-                    logCacheUseSoftReferences = true
-                }
-            }.also { app.closeOnStop(it) }
-        }
+//        bind<CommonStore>() with eagerSingleton {
+//            CommonStore(drillWorkDir).apply {
+//                client.environment.environmentConfig.apply {
+//                    memoryUsagePercentage = 10
+//                    logCacheUseSoftReferences = true
+//                }
+//            }.also { app.closeOnStop(it) }
+//        }
         bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
         if (app.drillCacheType == "mapdb") {

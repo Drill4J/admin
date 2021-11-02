@@ -16,13 +16,12 @@
 package com.epam.drill.admin.build
 
 import com.epam.drill.common.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.serialization.*
 
-import com.epam.dsm.Id as IdDsm
 @Serializable
 data class AgentBuild(
-    @IdDsm val id: AgentBuildId,
+    @Id val id: AgentBuildId,
     val agentId: String,
     val info: BuildInfo,
     val detectedAt: Long = 0L,
@@ -39,7 +38,7 @@ data class AgentBuildId(
 
 @Serializable
 data class AgentBuildData(
-    @IdDsm val id: AgentBuildId,
+    @Id val id: AgentBuildId,
     val agentId: String,
     val detectedAt: Long,
 ) {
