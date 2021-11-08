@@ -68,8 +68,6 @@ internal class AgentData(
 
     val settings: SystemSettingsDto get() = _settings.value
 
-//    private val storeClient by lazy { agentStores[agentId] }
-
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
     private val _settings = atomic(initialSettings)
