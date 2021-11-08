@@ -19,6 +19,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
+import io.ktor.util.*
 import kotlinx.serialization.*
 import mu.*
 import kotlin.reflect.full.*
@@ -35,7 +36,11 @@ internal suspend fun AdminPluginPart<*>.processAction(
                 val actionStr = serializer stringify action
                 val agentAction = PluginAction(id, actionStr)
                 agentSessions(agentInfo.id).map {
-                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(agentAction)
+                    //TODO EPMDJ-8233 move to the api
+                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
+                        agentAction,
+                        topicName = "/plugin/action/${actionStr.encodeBase64()}"
+                    )
                 }.forEach { it.await() }
             }
         }

@@ -110,7 +110,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                                 }
                             }
                             MessageType.MESSAGE_DELIVERED -> {
-                                subscribers[message.destination]?.received(message) ?: logger.error {
+                                subscribers[message.destination]?.received(message) ?: logger.debug {
                                     "A subscriber to destination '${message.destination}' is not found for $agentDebugStr"
                                 }
                             }
