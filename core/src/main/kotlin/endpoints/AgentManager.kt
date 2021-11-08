@@ -32,7 +32,6 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.kodux.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
@@ -75,7 +74,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             runBlocking {
                 val registered = commonStoreDsm.getAll<AgentInfo>()
                 val prepared = commonStoreDsm.getAll<PreparedAgentData>().map { data ->
-                    agentDataCache[data.id] = AgentData(data.id, agentStores, data.dto.systemSettings)
+                    agentDataCache[data.id] = AgentData(data.id, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
                 }
                 val registeredMap = registered.associate {
@@ -98,7 +97,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         if (storedInfo == null || storedInfo.agentVersion.none() || !storedInfo.isRegistered) {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
-                agentDataCache[dto.id] = AgentData(dto.id, agentStores, dto.systemSettings)
+                agentDataCache[dto.id] = AgentData(dto.id, dto.systemSettings)
                 commonStoreDsm.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
@@ -181,7 +180,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         id: String,
     ) = if (storedInfo == null) {
         commonStoreDsm.findById<PreparedAgentData>(id)?.let {
-            agentDataCache[id] = AgentData(id, agentStores, it.dto.systemSettings)
+            agentDataCache[id] = AgentData(id, it.dto.systemSettings)
             it.dto.toAgentInfo(plugins)
         }
     } else null
@@ -363,7 +362,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "put adminData with id=$agentId" }
         AgentData(
             agentId,
-            agentStores,
             SystemSettingsDto(packages = app.drillDefaultPackages)
         )
     }
