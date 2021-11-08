@@ -68,8 +68,6 @@ internal class AgentData(
 
     val settings: SystemSettingsDto get() = _settings.value
 
-//    private val storeClient by lazy { agentStores[agentId] }
-
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
     private val _settings = atomic(initialSettings)
@@ -181,7 +179,7 @@ private suspend fun StoreClient.storeClasses(
             data = ProtoBuf.dump(
                 CodeData.serializer(),
                 CodeData(classBytes = classBytes)
-            ).let(Zstd::compress)//todo use compress???
+            ).let(Zstd::compress)//todo use compress or not???
         )
         store(storedData)
     }

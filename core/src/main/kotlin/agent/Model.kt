@@ -17,9 +17,8 @@ package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.serialization.*
-import com.epam.dsm.Id as IdDsm
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
 typealias PackagesPrefixes = com.epam.drill.common.PackagesPrefixes
@@ -28,7 +27,7 @@ typealias BuildInfo = com.epam.drill.common.BuildInfo
 
 @Serializable
 data class AgentInfo(
-    @IdDsm val id: String,
+    @Id val id: String,
     val name: String,
     val groupId: String = "",
     val isRegistered: Boolean,
@@ -48,13 +47,13 @@ data class AgentInfo(
 
 @Serializable
 internal class PreparedAgentData(
-    @IdDsm val id: String,
+    @Id val id: String,
     val dto: AgentCreationDto,
 )
 
 @Serializable
 internal data class AgentDataSummary(
-    @IdDsm val agentId: String,
+    @Id val agentId: String,
     val settings: SystemSettingsDto,
 )
 
@@ -62,8 +61,8 @@ internal data class AgentDataSummary(
 internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 
 @Serializable
-internal class StoredCodeData(//todo
-    @IdDsm val id: AgentKey,
+internal class StoredCodeData(
+    @Id val id: AgentKey,
     val data: ByteArray,
 )
 
@@ -75,6 +74,6 @@ internal data class Metadata(
 
 @Serializable
 internal class StoredMetadata(
-    @IdDsm val id: AgentKey,//todo id
+    @Id val id: AgentKey,
     val data: Metadata,
 )

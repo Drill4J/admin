@@ -21,6 +21,7 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import java.io.*
 import com.epam.dsm.StoreClient as DsmStoreClient
+
 //todo remove
 sealed class Stores(
     private val baseDir: File,
@@ -64,7 +65,10 @@ class PluginStores(baseDir: File) : Stores(baseDir, "store")
 
 //pluginId = new schema? or
 val pluginStores = DsmStoreClient("plugins")
+//todo use singleton or smth else
+fun pluginStoresDSM(pluginId: String): DsmStoreClient = DsmStoreClient("plugins_$pluginId")
 
+//object pluguns : DsmStoreClient()
 //class AgentStoresPostgres() : DsmStoreClient("plugin"){
 //
 //}
