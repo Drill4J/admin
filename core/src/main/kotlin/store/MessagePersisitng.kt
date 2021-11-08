@@ -17,7 +17,7 @@ package com.epam.drill.admin.store
 
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.util.*
-import com.epam.kodux.*
+import com.epam.dsm.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 

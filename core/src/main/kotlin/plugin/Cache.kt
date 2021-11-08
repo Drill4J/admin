@@ -32,7 +32,6 @@ class PluginCaches(
     app: Application,
     private val cacheService: CacheService,
     private val plugins: Plugins,
-    private val pluginStores: PluginStores,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -75,7 +74,7 @@ class PluginCaches(
             val classLoader = plugins[pluginId]?.run {
                 pluginClass.classLoader
             } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStores[pluginId].readMessage(messageKey, classLoader) ?: ""
+            val messageFromStore = pluginStoresDSM(pluginId).readMessage(messageKey, classLoader) ?: ""
             logger.trace { "retrieveMessage set to cache $dest" }
             messageFromStore.also { cache[dest] = it }
         }
