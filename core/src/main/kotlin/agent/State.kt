@@ -25,13 +25,10 @@ import com.epam.drill.admin.util.*
 import com.epam.drill.admin.util.trackTime
 import com.epam.drill.plugin.api.*
 import com.epam.dsm.*
-import com.epam.kodux.*
-import com.epam.kodux.StoreClient
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
 import mu.*
-import kotlin.time.*
 
 internal class AgentDataCache {
 
@@ -57,7 +54,6 @@ internal class AgentDataCache {
 
 internal class AgentData(
     val agentId: String,
-    agentStores: AgentStores,
     initialSettings: SystemSettingsDto,
 ) : AdminData {
     companion object {
@@ -66,13 +62,13 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = agentStoresDSM.loadClasses(AgentKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = storeClient.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) = agentStoresDSM.loadClasses(AgentKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
-    private val storeClient by lazy { agentStores[agentId] }
+//    private val storeClient by lazy { agentStores[agentId] }
 
     private val _buildManager = atomic(AgentBuildManager(agentId))
 
@@ -102,7 +98,7 @@ internal class AgentData(
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            storeClient.storeClasses(agentKey, classBytes)
+            agentStoresDSM.storeClasses(agentKey, classBytes)
             agentStoresDSM.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
 //            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
         }
@@ -142,7 +138,7 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = storeClient.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentKey: AgentKey) = agentStoresDSM.deleteClasses(agentKey)
 
     private suspend fun loadStoredData() = agentStoresDSM.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
