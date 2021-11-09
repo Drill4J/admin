@@ -15,31 +15,23 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.kodux.*
-import jetbrains.exodus.entitystore.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
-import java.io.*
-import java.util.*
+import org.jetbrains.exposed.sql.*
+import org.junit.jupiter.api.*
+import ru.yandex.qatools.embed.postgresql.*
+import ru.yandex.qatools.embed.postgresql.distribution.*
 import kotlin.test.*
+import kotlin.test.Test
 
 class MessagePersistingTest {
 
     @Serializable
     data class SimpleMessage(val s: String)
 
-    private val storageDir = File("build/tmp/test/stores/${this::class.simpleName}-${UUID.randomUUID()}")
-
-    private val storeClient = StoreClient(PersistentEntityStores.newInstance(storageDir))
-
-    @AfterTest
-    fun cleanStore() {
-        storeClient.close()
-        storageDir.deleteRecursively()
-    }
-
     @Test
     fun `storeMessage - readMessage`() {
+        val storeClient = pluginStoresDSM("${MessagePersistingTest::class.simpleName}")
         val message = SimpleMessage("data")
         runBlocking {
             assertNull(storeClient.readMessage("1"))
@@ -47,4 +39,40 @@ class MessagePersistingTest {
             assertEquals(message, storeClient.readMessage("1"))
         }
     }
+
+    companion object {
+        lateinit var postgres: EmbeddedPostgres
+
+        @BeforeAll
+        @JvmStatic
+        fun connectDB() {
+            postgres = EmbeddedPostgres(Version.V10_6)
+            val host = "localhost"
+            val port = 5438
+            val dbName = "dbName"
+            val userName = "userName"
+            val password = "password"
+            postgres.start(
+                host,
+                port,
+                dbName,
+                userName,
+                password
+            )
+            Database.connect( //todo use hikaru?
+                "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
+                user = userName, password = password
+            ).also {
+                println { "Connected to db ${it.url}" }
+            }
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun close() {
+            postgres.close()
+        }
+    }
+
+
 }

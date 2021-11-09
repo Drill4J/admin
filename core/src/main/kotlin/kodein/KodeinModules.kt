@@ -45,9 +45,9 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
     get() = { application ->
         bind<PluginLoaderService>() with eagerSingleton { PluginLoaderService(application) }
         bind<Plugins>() with singleton { instance<PluginLoaderService>().plugins }
-        bind<PluginStores>() with eagerSingleton {
-            PluginStores(drillWorkDir.resolve("plugins")).also { application.closeOnStop(it) }
-        }
+//        bind<PluginStores>() with eagerSingleton {
+//            PluginStores(drillWorkDir.resolve("plugins")).also { application.closeOnStop(it) }
+//        }
         bind<PluginCaches>() with singleton { PluginCaches(application, instance(), instance()) }
         bind<PluginSessions>() with singleton { PluginSessions(instance()) }
         bind<PluginSenders>() with singleton { PluginSenders(kodein) }

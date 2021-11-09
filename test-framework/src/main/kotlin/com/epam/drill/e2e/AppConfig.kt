@@ -21,6 +21,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.store.*
+import com.epam.dsm.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -28,15 +29,19 @@ import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
+import org.jetbrains.exposed.sql.*
 import org.kodein.di.generic.*
+import ru.yandex.qatools.embed.postgresql.*
+import ru.yandex.qatools.embed.postgresql.distribution.*
 import java.io.*
 import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: AgentStores
-    lateinit var commonStore: CommonStore
-
+    lateinit var storeManagerDsm: StoreClient
+    lateinit var commonStoreDsm: StoreClient
+    lateinit var postgres: EmbeddedPostgres
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -57,7 +62,26 @@ class AppConfig(var projectDir: File) {
                 }
             }
         }
-
+        println { "epta embedded postgres" }
+        postgres = EmbeddedPostgres(Version.V10_6)
+        val host = "localhost"
+        val port = 5434
+        val dbName = "dbName"
+        val userName = "userName"
+        val password = "password"
+        postgres.start(
+            host,
+            port,
+            dbName,
+            userName,
+            password
+        )
+        Database.connect( //todo move to API of dsm
+            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
+            user = userName, password = password
+        ).also {
+            println { "Connected to db ${it.url}" }
+        }
         install(ContentNegotiation) {
             converters()
         }
@@ -75,21 +99,18 @@ class AppConfig(var projectDir: File) {
 
             withKModule {
                 kodeinModule("addition") { app ->
-                    bind<CommonStore>() with eagerSingleton {
-                        CommonStore(baseLocation).also {
-                            app.closeOnStop(it)
-                            commonStore = it
-                        }
-                    }
+                    commonStoreDsm = StoreClient("common")
+                    storeManagerDsm = StoreClient("agents")
                     bind<AgentStores>() with eagerSingleton {
                         AgentStores(baseLocation).also {
                             app.closeOnStop(it)
                             storeManager = it
                         }
                     }
-                    bind<PluginStores>() with eagerSingleton {
-                        PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }
-                    }
+//                    bind<PluginStores>() with eagerSingleton {
+//                        PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }
+//                    }
+                    StoreClient("plugins")
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(kodein)
                         wsTopic
@@ -99,6 +120,7 @@ class AppConfig(var projectDir: File) {
         })
         environment.monitor.subscribe(ApplicationStopped) {
             projectDir.deleteRecursively()
+            postgres.close()
         }
     }
 }

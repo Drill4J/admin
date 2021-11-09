@@ -40,8 +40,11 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import org.jetbrains.exposed.sql.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
+import ru.yandex.qatools.embed.postgresql.*
+import ru.yandex.qatools.embed.postgresql.distribution.*
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -61,6 +64,7 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
+    lateinit var postgres: EmbeddedPostgres
     private lateinit var kodeinApplication: Kodein
 
     private val testApp: Application.() -> Unit = {
@@ -72,6 +76,25 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
+        postgres = EmbeddedPostgres(Version.V10_6)
+        val host = "localhost"
+        val port = 5439
+        val dbName = "dbName"
+        val userName = "userName"
+        val password = "password"
+        postgres.start(
+            host,
+            port,
+            dbName,
+            userName,
+            password
+        )
+        Database.connect( //todo move to API of dsm
+            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
+            user = userName, password = password
+        ).also {
+            println { "Connected to db ${it.url}" }
+        }
         kodeinApplication = kodeinApplication(AppBuilder {
 
             val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
@@ -79,14 +102,14 @@ class PluginWsTest {
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
-                    bind<CommonStore>() with eagerSingleton {
-                        CommonStore(baseLocation.resolve("common")).also {
-                            app.closeOnStop(it)
-                        }
-                    }
+//                    bind<CommonStore>() with eagerSingleton {
+//                        CommonStore(baseLocation.resolve("common")).also {
+//                            app.closeOnStop(it)
+//                        }
+//                    }
                     bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
-                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
+//                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
                     bind<WsTopic>() with singleton {
                         WsTopic(
