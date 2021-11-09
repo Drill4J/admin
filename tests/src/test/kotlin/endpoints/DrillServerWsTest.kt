@@ -82,11 +82,11 @@ internal class DrillServerWsTest {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {
-                    bind<CommonStore>() with eagerSingleton {
-                        CommonStore(baseLocation.resolve("common")).also {
-                            app.closeOnStop(it)
-                        }
-                    }
+//                    bind<CommonStore>() with eagerSingleton {
+//                        CommonStore(baseLocation.resolve("common")).also {
+//                            app.closeOnStop(it)
+//                        }
+//                    }
                     bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     if (app.drillCacheType == "mapdb") {
