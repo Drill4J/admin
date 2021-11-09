@@ -64,6 +64,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
+    testImplementation("ru.yandex.qatools.embed:postgresql-embedded:2.10")
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")

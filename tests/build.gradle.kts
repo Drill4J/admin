@@ -23,6 +23,8 @@ configurations {
 
 val drillApiVersion: String by extra
 val drillLogger: String by extra
+val drillDsm: String by extra
+
 val serializationVersion: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
@@ -59,6 +61,9 @@ dependencies {
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
     testImplementation("com.epam.drill:kodux:$koduxVersion")
+    testImplementation("com.epam.drill:dsm:$drillDsm")
+    testImplementation("org.jetbrains.exposed:exposed-core:0.29.1")//todo remove it(move to API of dsm)
+    testImplementation("ru.yandex.qatools.embed:postgresql-embedded:2.10")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 

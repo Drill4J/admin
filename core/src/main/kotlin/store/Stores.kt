@@ -60,11 +60,11 @@ class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
 }
 
 //todo remove
-class PluginStores(baseDir: File) : Stores(baseDir, "store")
+//class PluginStores(baseDir: File) : Stores(baseDir, "store")
 
 
 //pluginId = new schema? or
-val pluginStores = DsmStoreClient("plugins")
+//val pluginStores = DsmStoreClient("plugins")
 //todo use singleton or smth else
 fun pluginStoresDSM(pluginId: String): DsmStoreClient = DsmStoreClient("plugins_$pluginId")
 
