@@ -1,5 +1,5 @@
 {
-  "id": "test_plugin",
+  "id": "test-plugin",
   "name": "Test plugin",
   "description": "This is the test plugin",
   "type": "Custom",
