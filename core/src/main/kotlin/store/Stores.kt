@@ -65,8 +65,14 @@ class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
 
 //pluginId = new schema? or
 //val pluginStores = DsmStoreClient("plugins")
+
 //todo use singleton or smth else
-fun pluginStoresDSM(pluginId: String): DsmStoreClient = DsmStoreClient("plugins_$pluginId")
+/*
+example: test-plugin
+it was error in DB (restrictions symbols)
+ */
+fun pluginStoresDSM(pluginId: String): DsmStoreClient =
+    DsmStoreClient("plugins_${pluginId.toLowerCase().replace('-', '_')}")
 
 //object pluguns : DsmStoreClient()
 //class AgentStoresPostgres() : DsmStoreClient("plugin"){

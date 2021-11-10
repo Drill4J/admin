@@ -130,6 +130,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
+        postgres.close()
     }
 
     @Test
