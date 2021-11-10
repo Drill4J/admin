@@ -65,10 +65,10 @@ class PluginTest : E2EPluginTest() {
     }
 
 
-    @Test
+    @Test//todo why?
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
-        createSimpleAppWithPlugin<PTestStream> {
+        createSimpleAppWithPlugin<PTestStream>(timeout = 60) {
             connectAgent<Build1>(group) { _, _ ->
                 println("hi ag1")
             }
