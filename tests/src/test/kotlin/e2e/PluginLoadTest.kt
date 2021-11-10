@@ -22,7 +22,7 @@ import io.kotlintest.*
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlin.test.*
-
+import kotlin.time.seconds as sec
 
 class PluginLoadTest : E2ETest() {
 
@@ -31,7 +31,7 @@ class PluginLoadTest : E2ETest() {
     @OptIn(KtorExperimentalAPI::class)
     @Test
     fun `plugin loading `() {
-        createSimpleAppWithUIConnection(true, true) {
+        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true, timeout = 20.sec) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(agentId) { status, _ ->

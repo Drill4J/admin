@@ -20,15 +20,15 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
-
+import kotlin.time.seconds as sec
 
 class MultipleAgentRegistrationTest : E2ETest() {
 
     private val agentIdPrefix = "parallelRegister"
 
-    @Test
+    @Test//todo why?
     fun `4 Agents should be registered in parallel`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(timeout = 60.sec) {
             repeat(4) {
                 connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { ui, agent ->
                     ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
