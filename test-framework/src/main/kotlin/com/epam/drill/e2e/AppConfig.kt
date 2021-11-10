@@ -119,6 +119,7 @@ class AppConfig(var projectDir: File) {
             }
         })
         environment.monitor.subscribe(ApplicationStopped) {
+            com.epam.drill.admin.util.logger.info { "app stopping22..." }//todo remove
             projectDir.deleteRecursively()
             postgres.close()
         }
