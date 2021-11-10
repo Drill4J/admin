@@ -128,8 +128,8 @@ internal class AgentData(
 //                //                store(buildData)
 //            }
             agentStoresDSM.executeInAsyncTransaction {
-                store(buildData, "agents")//todo schema?
-                store(toSummary(), "agents")
+                store(buildData, agentStoresDSM.schema)//todo move dsm
+                store(toSummary(), agentStoresDSM.schema)
             }
         }
 

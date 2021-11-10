@@ -59,7 +59,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
 //    private val commonStore by instance<CommonStore>()
-    private val agentStores by instance<AgentStores>()
+//    private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
     private val groupManager by instance<GroupManager>()
     private val agentDataCache by instance<AgentDataCache>()
@@ -516,12 +516,11 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         logger.info { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
         agent[pluginId] ?: agent.get(pluginId) {
             val adminPluginData = adminData(agentId)
-            val store = agentStores.agentStore(agentId)
             plugin.createInstance(
                 agentInfo = info,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = store
+                store = agentStoresDSM
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
