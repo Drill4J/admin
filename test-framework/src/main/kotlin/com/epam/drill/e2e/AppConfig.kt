@@ -61,7 +61,7 @@ class AppConfig(var projectDir: File) {
             }
         }
         com.epam.drill.admin.util.logger.info { "embedded postgres..." }
-        postgres = EmbeddedPostgres(Version.V10_6)
+        postgres = EmbeddedPostgres(embeddedVersion)
         val host = "localhost"
         val port = 5434
         val dbName = "dbName"

@@ -31,7 +31,8 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.websocket.*
 import mu.*
-import java.io.*
+import ru.yandex.qatools.embed.postgresql.*
+import ru.yandex.qatools.embed.postgresql.distribution.*
 import java.time.*
 
 
@@ -40,7 +41,7 @@ import java.time.*
 //val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
-
+val embeddedVersion = Version.V10_6
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
@@ -111,6 +112,21 @@ fun Application.module() = kodeinApplication(
         val userName = drillDatabaseUserName
         val password = drillDatabasePassword
         val maxPoolSize = drillDatabaseMaxPoolSize
+        if (isDevMode) {
+            logger.info { "starting dev mode for db..." }
+            val postgres = EmbeddedPostgres(embeddedVersion)
+            postgres.start(
+                host,
+                port,
+                dbName,
+                userName,
+                password
+            )
+            environment.monitor.subscribe(ApplicationStopped) {
+                logger.info { "close embedded db..." }
+                postgres.close()
+            }
+        }
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
             this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
@@ -121,15 +137,5 @@ fun Application.module() = kodeinApplication(
             this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             this.validate()
         }))
-        //todo add devMode
-//        if(isDevMode){
-//        postgres = EmbeddedPostgres(Version.V10_6)
-//        Database.connect(
-//            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
-//            user = userName, password = password
-//        ).also {
-//            println { "Connected to db ${it.url}" }
-//        }
-//        }
     }
 )
