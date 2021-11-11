@@ -31,6 +31,7 @@ import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
+import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
@@ -255,12 +256,12 @@ class Agent(
                         }
 
                         is Communication.Plugin.DispatchEvent -> {
-                            plugin.doRawAction(
-                                (ProtoBuf.load(
-                                    com.epam.drill.common.PluginAction.serializer(),
-                                    content
-                                )).message
-                            )
+                            val message = ProtoBuf.load(
+                                com.epam.drill.common.PluginAction.serializer(),
+                                content
+                            ).message
+                            plugin.doRawAction(message)
+                            sendDelivered("/plugin/action/${message.encodeBase64()}")
                             sendDelivered(url)
                         }
                         is Communication.Plugin.ToggleEvent -> {
@@ -282,4 +283,3 @@ class Agent(
         outgoing.send(agentMessage(MessageType.MESSAGE_DELIVERED, url))
     }
 }
-
