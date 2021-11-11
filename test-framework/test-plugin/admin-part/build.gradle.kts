@@ -13,11 +13,13 @@ repositories {
 
 val drillApiVersion: String by extra
 val koduxVersion: String by extra
+val drillDsmVersion: String by extra
 
 dependencies {
     implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
     implementation("com.epam.drill:common:$drillApiVersion")
     implementation("com.epam.drill:kodux:$koduxVersion")
+    implementation("com.epam.drill:dsm:$drillDsmVersion")
 }
 
 tasks.withType<KotlinCompile> {

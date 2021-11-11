@@ -21,7 +21,7 @@ kotlin.sourceSets.main {
 
 val drillApiVersion: String by extra
 val drillLogger: String by extra
-val drillDsm: String by extra
+val drillDsmVersion: String by extra
 val serializationVersion: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
@@ -34,6 +34,7 @@ val cacheMapDB: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
+val postgresEmbeddedVersion: String by extra
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -54,7 +55,7 @@ dependencies {
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill:kodux:$koduxVersion")
-    implementation("com.epam.drill:dsm:$drillDsm")
+    implementation("com.epam.drill:dsm:$drillDsmVersion")
     implementation("org.jetbrains.exposed:exposed-core:0.29.1")//todo remove it(move to API of dsm)
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
@@ -64,7 +65,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
-    testImplementation("ru.yandex.qatools.embed:postgresql-embedded:2.10")
+    testImplementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")

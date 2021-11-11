@@ -55,7 +55,7 @@ val pluginServices: Kodein.Builder.(Application) -> Unit
 
 val storage: Kodein.Builder.(Application) -> Unit
     get() = { app ->
-        bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
+//        bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }

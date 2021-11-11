@@ -107,7 +107,7 @@ class PluginWsTest {
 //                            app.closeOnStop(it)
 //                        }
 //                    }
-                    bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
+//                    bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
 //                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
