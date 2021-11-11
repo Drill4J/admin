@@ -19,9 +19,9 @@ import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
+import com.epam.dsm.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
@@ -40,9 +40,8 @@ abstract class AdminTest {
     lateinit var asyncEngine: AsyncTestAppEngine
     val engine: TestApplicationEngine get() = asyncEngine.engine
     lateinit var globToken: String
-//    lateinit var storeManager: AgentStores
-    lateinit var storeManagerDsm: com.epam.dsm.StoreClient
-    lateinit var commonStoreDsm: com.epam.dsm.StoreClient
+    lateinit var storeManager: StoreClient
+    lateinit var commonStore: StoreClient
 
     var agentPart: AgentPart<*>? = null
 

@@ -26,9 +26,9 @@ class MultipleAgentRegistrationTest : E2ETest() {
 
     private val agentIdPrefix = "parallelRegister"
 
-    @Test//todo why?
+    @Test
     fun `4 Agents should be registered in parallel`() {
-        createSimpleAppWithUIConnection(timeout = 60.sec) {
+        createSimpleAppWithUIConnection(timeout = 20.sec) {
             repeat(4) {
                 connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { ui, agent ->
                     ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED

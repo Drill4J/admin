@@ -15,68 +15,10 @@
  */
 package com.epam.drill.admin.store
 
-//import com.epam.kodux.*
-//import jetbrains.exodus.entitystore.*
-//import kotlinx.atomicfu.*
-//import kotlinx.collections.immutable.*
-//import java.io.*
-import com.epam.dsm.StoreClient as DsmStoreClient
+import com.epam.dsm.*
 
-//todo remove
-//sealed class Stores(
-//    private val baseDir: File,
-//    private val subDir: String = "",
-//) : Closeable {
-//
-//    private val _stores = atomic(
-//        persistentMapOf<String, Lazy<StoreClient>>()
-//    )
-//
-//    operator fun get(id: String): StoreClient = _stores.updateAndGet { map ->
-//        map.takeIf { id in it } ?: map.put(id, lazy {
-//            val dir = baseDir.resolve(id).resolve(subDir)
-//            StoreClient(PersistentEntityStores.newInstance(dir)).apply {
-//                environment.environmentConfig.apply {
-//                    memoryUsagePercentage = 10
-//                    logCacheUseSoftReferences = true
-//                }
-//            }
-//        })
-//    }.getValue(id).value
-//
-//    override fun close() {
-//        _stores.value.values.forEach {
-//            it.value.closeStore()
-//        }
-//    }
-//}
+fun pluginStoresDSM(pluginId: String): StoreClient =
+    StoreClient("plugins_${pluginId.toLowerCase().replace('-', '_')}")
 
-/**
- * it duplicates as val agentStoresDSM = DsmStoreClient("agents")
- * todo remove
- */
-//class AgentStores(baseDir: File) : Stores(baseDir.resolve("agents")) {
-//    fun agentStore(agentId: String): StoreClient = get(agentId)
-//}
-
-//todo remove
-//class PluginStores(baseDir: File) : Stores(baseDir, "store")
-
-
-//pluginId = new schema? or
-//val pluginStores = DsmStoreClient("plugins")
-
-//todo use singleton or smth else
-/*
-example: test-plugin
-it was error in DB (restrictions symbols)
- */
-fun pluginStoresDSM(pluginId: String): DsmStoreClient =
-    DsmStoreClient("plugins_${pluginId.toLowerCase().replace('-', '_')}")
-
-//object pluguns : DsmStoreClient()
-//class AgentStoresPostgres() : DsmStoreClient("plugin"){
-//
-//}
-
-val agentStoresDSM = DsmStoreClient("agents")
+val commonStore = StoreClient("common")
+val agentStores = StoreClient("agents")

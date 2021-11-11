@@ -97,19 +97,10 @@ class PluginWsTest {
         }
         kodeinApplication = kodeinApplication(AppBuilder {
 
-            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
-
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule {
                 kodeinModule("test") {
-//                    bind<CommonStore>() with eagerSingleton {
-//                        CommonStore(baseLocation.resolve("common")).also {
-//                            app.closeOnStop(it)
-//                        }
-//                    }
-//                    bind<AgentStores>() with eagerSingleton { AgentStores(storageDir).also { app.closeOnStop(it) } }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
-//                    bind<PluginStores>() with eagerSingleton { PluginStores(storageDir).also { app.closeOnStop(it) } }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(kodein) }
                     bind<WsTopic>() with singleton {
                         WsTopic(

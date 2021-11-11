@@ -39,7 +39,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
 
     init {
         runBlocking {
-            val groups = commonStoreDsm.getAll<Group>()
+            val groups = commonStore.getAll<Group>()
             _state.update {
                 it.mutate { map ->
                     for (group in groups) {
@@ -70,7 +70,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
         }
         val groups = _state.value
         if (groups !== oldGroups) {
-            groups[groupId]?.let { commonStoreDsm.storeGroup(it.toModel()) }
+            groups[groupId]?.let { commonStore.storeGroup(it.toModel()) }
         }
     }
 
@@ -81,7 +81,7 @@ internal class GroupManager(override val kodein: Kodein) : KodeinAware {
         val groups = _state.value
         groups[id]?.also {
             if (oldGroups !== groups) {
-                oldGroups[id]?.also { commonStoreDsm.store(it, group) }
+                oldGroups[id]?.also { commonStore.store(it, group) }
             }
         }
     }

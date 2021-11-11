@@ -32,7 +32,7 @@ class BuildsTest : E2ETest() {
         createSimpleAppWithUIConnection(
             agentStreamDebug = false,
             uiStreamDebug = false,
-            timeout = 20.secs
+            timeout = 15.secs
         ) {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
