@@ -19,6 +19,8 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
+import com.epam.dsm.*
+import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -29,14 +31,13 @@ import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.websocket.*
 import mu.*
-import org.jetbrains.exposed.sql.*
 import java.io.*
 import java.time.*
 
 
-val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
+//val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
 
-val drillWorkDir = drillHomeDir.resolve("work")
+//val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
 
@@ -104,11 +105,31 @@ fun Application.module() = kodeinApplication(
         withKModule { kodeinModule("wsHandler", wsHandler) }
         withKModule { kodeinModule("handlers", handlers) }
         withKModule { kodeinModule("pluginServices", pluginServices) }
-        Database.connect( //todo move to API of dsm
-            "jdbc:postgresql://localhost:5432/postgres", driver = "org.postgresql.Driver",
-            user = "postgres", password = "mysecretpassword"
-        ).also{
-            logger.info { "Connected to db ${it.url}" }
-        }
+        val host = drillDatabaseHost
+        val port = drillDatabasePort
+        val dbName = drillDatabaseName
+        val userName = drillDatabaseUserName
+        val password = drillDatabasePassword
+        val maxPoolSize = drillDatabaseMaxPoolSize
+        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
+            this.driverClassName = "org.postgresql.Driver"
+            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
+            this.username = userName
+            this.password = password
+            this.maximumPoolSize = maxPoolSize
+            this.isAutoCommit = false
+            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            this.validate()
+        }))
+        //todo add devMode
+//        if(isDevMode){
+//        postgres = EmbeddedPostgres(Version.V10_6)
+//        Database.connect(
+//            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
+//            user = userName, password = password
+//        ).also {
+//            println { "Connected to db ${it.url}" }
+//        }
+//        }
     }
 )

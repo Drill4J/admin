@@ -40,7 +40,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("com.epam.drill:dsm:$drillDsmVersion")
-    implementation("org.jetbrains.exposed:exposed-core:0.29.1")//todo remove it(move to API of dsm)
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
