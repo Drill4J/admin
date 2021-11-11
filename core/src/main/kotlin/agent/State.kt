@@ -62,9 +62,9 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = agentStoresDSM.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = agentStores.loadClasses(AgentKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = agentStoresDSM.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) = agentStores.loadClasses(AgentKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -96,12 +96,10 @@ internal class AgentData(
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            agentStoresDSM.storeClasses(agentKey, classBytes)
-            agentStoresDSM.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
-//            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            agentStores.storeClasses(agentKey, classBytes)
+            agentStores.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
         }
     }
-    //AgentKey(agentId=Petclinic1, buildVersion=0.5.0)
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,
@@ -110,7 +108,7 @@ internal class AgentData(
         val current = this.settings
         if (current != settings) {
             _settings.value = settings
-            agentStoresDSM.store(toSummary())
+            agentStores.store(toSummary())
             block(current)
         }
     }
@@ -123,25 +121,21 @@ internal class AgentData(
             detectedAt = detectedAt
         )
         trackTime("storeBuild") {
-//            storeClient.executeInAsyncTransaction {
-//
-//                //                store(buildData)
-//            }
-            agentStoresDSM.executeInAsyncTransaction {
-                store(buildData, agentStoresDSM.schema)//todo move dsm
-                store(toSummary(), agentStoresDSM.schema)
+            agentStores.executeInAsyncTransaction {
+                store(buildData, agentStores.schema)
+                store(toSummary(), agentStores.schema)
             }
         }
 
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = agentStoresDSM.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentKey: AgentKey) = agentStores.deleteClasses(agentKey)
 
-    private suspend fun loadStoredData() = agentStoresDSM.findById<AgentDataSummary>(agentId)?.let { summary ->
+    private suspend fun loadStoredData() = agentStores.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings
-        val builds: List<AgentBuild> = agentStoresDSM.findBy<AgentBuildData> {
+        val builds: List<AgentBuild> = agentStores.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {

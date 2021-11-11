@@ -31,7 +31,7 @@ class PluginLoadTest : E2ETest() {
     @OptIn(KtorExperimentalAPI::class)
     @Test
     fun `plugin loading `() {
-        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true, timeout = 20.sec) {
+        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true) {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(agentId) { status, _ ->
