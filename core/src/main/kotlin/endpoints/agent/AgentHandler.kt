@@ -17,7 +17,6 @@
 
 package com.epam.drill.admin.endpoints.agent
 
-import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.common.serialization.*
@@ -27,7 +26,6 @@ import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.common.MessageType
-import com.epam.dsm.*
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
@@ -38,7 +36,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.protobuf.*
 import mu.*
-import org.jetbrains.exposed.sql.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 

@@ -22,6 +22,7 @@ kotlin.sourceSets.main {
 val drillApiVersion: String by extra
 val drillLogger: String by extra
 val drillDsmVersion: String by extra
+val hikariVersion: String by project
 val serializationVersion: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
@@ -54,9 +55,8 @@ dependencies {
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill:kodux:$koduxVersion")
+    implementation("com.epam.drill:kodux:$koduxVersion")//todo remove?
     implementation("com.epam.drill:dsm:$drillDsmVersion")
-    implementation("org.jetbrains.exposed:exposed-core:0.29.1")//todo remove it(move to API of dsm)
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
@@ -80,7 +80,7 @@ val defaultAppJvmArgs = listOf(
 
 val devJvmArgs = listOf(
     "-Xms128m",
-    "-Xmx2g",
+    "-Xmx3g",
     "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
 )
 
@@ -136,8 +136,9 @@ tasks {
     }
 
     (run) {
+        jvmArgs = devJvmArgs
         environment("DRILL_DEVMODE", true)
-        environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
+        environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic,package,com/epam")
         mustRunAfter(cleanData)
     }
 

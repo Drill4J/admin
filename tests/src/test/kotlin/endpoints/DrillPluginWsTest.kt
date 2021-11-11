@@ -27,7 +27,6 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import io.ktor.application.*
