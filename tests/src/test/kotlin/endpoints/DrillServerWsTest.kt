@@ -87,7 +87,7 @@ internal class DrillServerWsTest {
 //                            app.closeOnStop(it)
 //                        }
 //                    }
-                    bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
+//                    bind<AgentStores>() with eagerSingleton { AgentStores(baseLocation).also { app.closeOnStop(it) } }
                     bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }

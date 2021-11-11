@@ -90,7 +90,7 @@ abstract class E2ETest : AdminTest() {
             ) {
                 testApp(application, sslPort)
                 asyncEngine = AsyncTestAppEngine(handler, this)
-                storeManager = appConfig.storeManager
+//                storeManager = appConfig.storeManager
                 commonStoreDsm = appConfig.commonStoreDsm
                 storeManagerDsm = appConfig.storeManagerDsm
                 globToken = requestToken()

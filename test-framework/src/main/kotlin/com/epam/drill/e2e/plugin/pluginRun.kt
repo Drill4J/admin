@@ -48,7 +48,7 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
     {
         asyncEngine = AsyncTestAppEngine(handler, this)
         testApp(application, sslPort)
-        storeManager = appConfig.storeManager
+//        storeManager = appConfig.storeManager
         storeManagerDsm = appConfig.storeManagerDsm
         commonStoreDsm = appConfig.commonStoreDsm
         globToken = requestToken()
