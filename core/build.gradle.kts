@@ -57,6 +57,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill:kodux:$koduxVersion")//todo remove?
     implementation("com.epam.drill:dsm:$drillDsmVersion")
+    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")

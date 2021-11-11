@@ -15,12 +15,12 @@
  */
 package com.epam.drill.admin.store
 
+import com.epam.drill.admin.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.junit.jupiter.api.*
 import ru.yandex.qatools.embed.postgresql.*
-import ru.yandex.qatools.embed.postgresql.distribution.*
 import kotlin.test.*
 import kotlin.test.Test
 
@@ -46,7 +46,7 @@ class MessagePersistingTest {
         @BeforeAll
         @JvmStatic
         fun connectDB() {
-            postgres = EmbeddedPostgres(Version.V10_6)
+            postgres = EmbeddedPostgres(embeddedVersion)
             val host = "localhost"
             val port = 5438
             val dbName = "dbName"
@@ -59,7 +59,7 @@ class MessagePersistingTest {
                 userName,
                 password
             )
-            Database.connect( //todo use hikaru?
+            Database.connect(
                 "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
                 user = userName, password = password
             ).also {
