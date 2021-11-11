@@ -30,7 +30,7 @@ class AgentGroupTest : E2ETest() {
     @Test
     fun `emulate microservices registration`() {
         val wit = 0
-        createSimpleAppWithUIConnection(timeout = 30.sec) {
+        createSimpleAppWithUIConnection(timeout = 20.sec) {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(

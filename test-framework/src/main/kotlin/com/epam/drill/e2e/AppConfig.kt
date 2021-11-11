@@ -20,7 +20,6 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
-import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -38,9 +37,8 @@ import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
-//    lateinit var storeManager: AgentStores
-    lateinit var storeManagerDsm: StoreClient
-    lateinit var commonStoreDsm: StoreClient
+    lateinit var storeManager: StoreClient
+    lateinit var commonStore: StoreClient
     lateinit var postgres: EmbeddedPostgres
 
     val testApp: Application.(String) -> Unit = { sslPort ->
@@ -62,7 +60,7 @@ class AppConfig(var projectDir: File) {
                 }
             }
         }
-        println { "epta embedded postgres" }
+        com.epam.drill.admin.util.logger.info { "embedded postgres..." }
         postgres = EmbeddedPostgres(Version.V10_6)
         val host = "localhost"
         val port = 5434
@@ -76,11 +74,11 @@ class AppConfig(var projectDir: File) {
             userName,
             password
         )
-        Database.connect( //todo move to API of dsm
+        Database.connect(
             "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
             user = userName, password = password
         ).also {
-            println { "Connected to db ${it.url}" }
+            com.epam.drill.admin.util.logger.info { "Connected to db ${it.url}" }//todo remove
         }
         install(ContentNegotiation) {
             converters()
@@ -95,21 +93,10 @@ class AppConfig(var projectDir: File) {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
 
-//            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
-
             withKModule {
                 kodeinModule("addition") { app ->
-                    commonStoreDsm = StoreClient("common")
-                    storeManagerDsm = StoreClient("agents")
-//                    bind<AgentStores>() with eagerSingleton {
-//                        AgentStores(baseLocation).also {
-//                            app.closeOnStop(it)
-//                            storeManager = it
-//                        }
-//                    }
-//                    bind<PluginStores>() with eagerSingleton {
-//                        PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }
-//                    }
+                    commonStore = StoreClient("common")
+                    storeManager = StoreClient("agents")
                     StoreClient("plugins")
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(kodein)

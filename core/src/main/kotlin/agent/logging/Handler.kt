@@ -28,18 +28,17 @@ import org.kodein.di.generic.*
 
 //todo remove after testing EPMDJ-7890
 class LoggingHandler(override val kodein: Kodein) : KodeinAware {
-//    private val stores by instance<AgentStores>()
     private val agentManager by instance<AgentManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
         agentManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
-            agentStoresDSM.store(AgentLoggingConfig(agentId, loggingConfig))
+            agentStores.store(AgentLoggingConfig(agentId, loggingConfig))
         }
     }
 
     suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
-        agentStoresDSM.loadConfig(agentId)?.apply {
+        agentStores.loadConfig(agentId)?.apply {
             agentSession?.sendConfig(config)
         }
     }

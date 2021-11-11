@@ -32,6 +32,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
+import com.epam.dsm.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.atomicfu.*
@@ -58,8 +59,6 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val topicResolver by instance<TopicResolver>()
-//    private val commonStore by instance<CommonStore>()
-//    private val agentStores by instance<AgentStores>()
     private val pluginSenders by instance<PluginSenders>()
     private val groupManager by instance<GroupManager>()
     private val agentDataCache by instance<AgentDataCache>()
@@ -72,8 +71,8 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     init {
         trackTime("loadingAgents") {
             runBlocking {
-                val registered = commonStoreDsm.getAll<AgentInfo>()
-                val prepared = commonStoreDsm.getAll<PreparedAgentData>().map { data ->
+                val registered = commonStore.getAll<AgentInfo>()
+                val prepared = commonStore.getAll<PreparedAgentData>().map { data ->
                     agentDataCache[data.id] = AgentData(data.id, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
                 }
@@ -98,10 +97,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
                 agentDataCache[dto.id] = AgentData(dto.id, dto.systemSettings)
-                commonStoreDsm.store(
+                commonStore.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
-                commonStoreDsm.deleteById<AgentInfo>(dto.id)
+                commonStore.deleteById<AgentInfo>(dto.id)
                 agentStorage.put(dto.id, Agent(info))
                 logger.debug { "Prepared agent ${dto.id}." }
             }
@@ -169,7 +168,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 }
             }
             info.persistToDatabase()
-            preparedInfo?.let { commonStoreDsm.deleteById<PreparedAgentData>(it.id) }
+            preparedInfo?.let { commonStore.deleteById<PreparedAgentData>(it.id) }
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             info
         }
@@ -179,7 +178,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         storedInfo: AgentInfo?,
         id: String,
     ) = if (storedInfo == null) {
-        commonStoreDsm.findById<PreparedAgentData>(id)?.let {
+        commonStore.findById<PreparedAgentData>(id)?.let {
             agentDataCache[id] = AgentData(id, it.dto.systemSettings)
             it.dto.toAgentInfo(plugins)
         }
@@ -396,10 +395,10 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
     )
 
-    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStoreDsm.findById(agentId)
+    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.findById(agentId)
 
     private suspend fun AgentInfo.persistToDatabase() {
-        commonStoreDsm.store(this)
+        commonStore.store(this)
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
@@ -520,7 +519,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 agentInfo = info,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = agentStoresDSM
+                store = agentStores
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
@@ -602,21 +601,13 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
-//internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
-//    store(StoredMetadata(agentKey, metadata))
-//}
-//
-//internal suspend fun StoreClient.loadMetadata(
-//    agentKey: AgentKey
-//): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
 
-
-internal suspend fun com.epam.dsm.StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
+internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
     store(StoredMetadata(agentKey, metadata))
 }
 
 
-internal suspend fun com.epam.dsm.StoreClient.loadMetadata(
+internal suspend fun StoreClient.loadMetadata(
     agentKey: AgentKey
 ): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
 

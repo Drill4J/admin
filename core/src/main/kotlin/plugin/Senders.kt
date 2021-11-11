@@ -33,7 +33,6 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-//    private val pluginStores by instance<PluginStores>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 

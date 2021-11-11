@@ -48,9 +48,8 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
     {
         asyncEngine = AsyncTestAppEngine(handler, this)
         testApp(application, sslPort)
-//        storeManager = appConfig.storeManager
-        storeManagerDsm = appConfig.storeManagerDsm
-        commonStoreDsm = appConfig.commonStoreDsm
+        storeManager = appConfig.storeManager
+        commonStore = appConfig.commonStore
         globToken = requestToken()
 
         handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->

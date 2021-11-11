@@ -23,7 +23,6 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
-import com.epam.dsm.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -41,7 +40,6 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
     private val configHandler by instance<ConfigHandler>()
-//    private val stores by instance<AgentStores>()
 
     init {
         app.routing {
@@ -83,7 +81,8 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val metadataAgents = agentManager.all().flatMap {
                         agentManager.adminData(it.id).buildManager.agentBuilds.map { agentBuild ->
                             val agentKey = AgentKey(it.id, agentBuild.info.version)
-                            mapOf(agentKey to agentStoresDSM.loadMetadata(agentKey))//todo maybe use StoredMetadata instead of map?
+                            //todo maybe use StoredMetadata instead of map?
+                            mapOf(agentKey to agentStores.loadMetadata(agentKey))
                         }
                     }
                     call.respond(HttpStatusCode.OK, metadataAgents)
