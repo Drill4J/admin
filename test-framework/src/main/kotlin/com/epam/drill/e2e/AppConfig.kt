@@ -38,7 +38,7 @@ import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
-    lateinit var storeManager: AgentStores
+//    lateinit var storeManager: AgentStores
     lateinit var storeManagerDsm: StoreClient
     lateinit var commonStoreDsm: StoreClient
     lateinit var postgres: EmbeddedPostgres
@@ -95,18 +95,18 @@ class AppConfig(var projectDir: File) {
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
 
-            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
+//            val baseLocation = projectDir.resolve(UUID.randomUUID().toString())
 
             withKModule {
                 kodeinModule("addition") { app ->
                     commonStoreDsm = StoreClient("common")
                     storeManagerDsm = StoreClient("agents")
-                    bind<AgentStores>() with eagerSingleton {
-                        AgentStores(baseLocation).also {
-                            app.closeOnStop(it)
-                            storeManager = it
-                        }
-                    }
+//                    bind<AgentStores>() with eagerSingleton {
+//                        AgentStores(baseLocation).also {
+//                            app.closeOnStop(it)
+//                            storeManager = it
+//                        }
+//                    }
 //                    bind<PluginStores>() with eagerSingleton {
 //                        PluginStores(baseLocation.resolve("plugins")).also { app.closeOnStop(it) }
 //                    }

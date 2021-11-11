@@ -40,7 +40,7 @@ abstract class AdminTest {
     lateinit var asyncEngine: AsyncTestAppEngine
     val engine: TestApplicationEngine get() = asyncEngine.engine
     lateinit var globToken: String
-    lateinit var storeManager: AgentStores
+//    lateinit var storeManager: AgentStores
     lateinit var storeManagerDsm: com.epam.dsm.StoreClient
     lateinit var commonStoreDsm: com.epam.dsm.StoreClient
 
