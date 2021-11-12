@@ -19,6 +19,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
+import com.epam.drill.admin.agent.plugin.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.agent.*
@@ -146,7 +147,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
             currentInfo.plugins.initPlugins(existingAgent)
             if (needSync) app.launch {
                 currentInfo.sync(config.instanceId) // sync only existing info!
-            }
+            } else session.syncPluginState()
             currentInfo.persistToDatabase()
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             currentInfo
