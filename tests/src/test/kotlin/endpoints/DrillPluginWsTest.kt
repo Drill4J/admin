@@ -43,15 +43,11 @@ import org.jetbrains.exposed.sql.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
 import ru.yandex.qatools.embed.postgresql.*
-import ru.yandex.qatools.embed.postgresql.distribution.*
 import java.io.*
 import java.util.*
 import kotlin.test.*
 
 class PluginWsTest {
-
-    private val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
-
 
     @Serializable
     data class TestMessage(val message: String)
@@ -88,7 +84,7 @@ class PluginWsTest {
             userName,
             password
         )
-        Database.connect( //todo move to API of dsm
+        Database.connect(
             "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
             user = userName, password = password
         ).also {
