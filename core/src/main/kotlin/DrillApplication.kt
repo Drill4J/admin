@@ -123,7 +123,7 @@ fun Application.module() = kodeinApplication(
                 password
             )
             environment.monitor.subscribe(ApplicationStopped) {
-                logger.info { "close embedded db..." }
+                logger.info { "close embedded db..." }//todo does it complete?
                 postgres.close()
             }
         }

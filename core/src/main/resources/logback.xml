@@ -9,9 +9,11 @@
         <appender-ref ref="STDOUT"/>
     </root>
     <logger name="org.eclipse.jetty" level="info"/>
-<!--    todo check -->
-    <logger name="Exposed" level="debug"/>
     <logger name="io.netty" level="info"/>
     <logger name="jetbrains.exodus" level="warn"/>
     <logger name="Application" level="info"/>
+    <!--    database logs: -->
+    <logger name="Exposed" level="info"/>
+    <logger name="com.epam.dsm" level="info"/>
+    <logger name="com.zaxxer.hikari" level="info"/>
 </configuration>

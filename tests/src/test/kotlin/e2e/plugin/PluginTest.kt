@@ -63,27 +63,8 @@ class PluginTest : E2EPluginTest() {
             }
         }
     }
-    @Test//todo why?
-    fun `test e2e plugin API for group easy`() {
-        val group = "myGroup"
-        createSimpleAppWithPlugin<PTestStream> {
-            connectAgent<Build1>(group) { ui: PTestStream, agent: Build1 ->
-                println("hi ag1")
-                com.epam.drill.admin.util.logger.info { "hi ag1"}
-//                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
-//                register(agentId) { status, _ ->
-//                    status shouldBe HttpStatusCode.OK
-//                }
-//                ui.getAgent()?.status shouldBe AgentStatus.BUSY
-//                agent.`get-set-packages-prefixes`()
-//                agent.`get-load-classes-datas`()
-//                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
-                //todo check that is online!
-            }
-        }
-    }
 
-    @Test
+    @Test//todo
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
         println("starting tests...")
