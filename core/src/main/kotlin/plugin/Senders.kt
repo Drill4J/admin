@@ -17,12 +17,15 @@ package com.epam.drill.admin.plugin
 
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
+import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.*
+import io.ktor.util.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
@@ -34,6 +37,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val pluginStores by instance<PluginStores>()
+    private val agentManager by instance<AgentManager>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 
@@ -77,6 +81,20 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                     )
                 }
             )
+        }
+
+        override suspend fun sendToAgent(agentId: String, message: Any) {
+            message.actionSerializerOrNull()?.let { serializer ->
+                val actionStr = serializer stringify message
+                val agentAction = PluginAction(pluginId, actionStr)
+                agentManager.agentSessions(agentId).map {
+                    //TODO EPMDJ-8233 move to the api
+                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
+                        agentAction,
+                        topicName = "/plugin/action/${actionStr.encodeBase64()}"
+                    ).await()
+                }
+            }
         }
     }
 }
