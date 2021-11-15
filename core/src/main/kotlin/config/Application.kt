@@ -31,6 +31,10 @@ val Application.drillDefaultPackages: List<String>
 val Application.isDevMode: Boolean
     get() = drillConfig.propertyOrNull("devMode")?.getString()?.toBoolean() ?: false
 
+val Application.isEmbeddedMode: Boolean
+    get() = drillConfig.propertyOrNull("embeddedMode")?.getString()?.toBoolean() ?: false
+
+
 val Application.agentSocketTimeout: Duration
     get() = drillConfig.config("agents")
         .config("socket")

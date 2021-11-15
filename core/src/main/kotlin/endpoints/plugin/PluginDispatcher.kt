@@ -28,6 +28,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.websocket.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugin.api.message.*
@@ -294,7 +295,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                             val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
                             if (buildVersion != curBuildVersion) {
                                 pluginStoresDSM(pluginId).deleteBy<Stored> {
-//                                    (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))//todo in dsm or fix in here
+                                    (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }
                                 agentStores.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 agentManager.adminData(agentId).run {
