@@ -88,7 +88,7 @@ class PluginWsTest {
             "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
             user = userName, password = password
         ).also {
-            println { "Connected to db ${it.url}" }
+            println("Connected to db ${it.url}")
         }
         kodeinApplication = kodeinApplication(AppBuilder {
 

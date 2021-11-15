@@ -18,6 +18,7 @@ package com.epam.drill.admin.agent
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.dsm.*
+import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
@@ -65,6 +66,11 @@ internal class StoredCodeData(
     @Id val id: AgentKey,
     val data: CodeData,
 )
+//todo check
+/*
+    @Suppress("ArrayInDataClass")
+    @Serializable(with = BinarySerializer::class)
+ */
 
 @Serializable
 internal data class Metadata(
