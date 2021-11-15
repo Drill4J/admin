@@ -18,12 +18,15 @@ package com.epam.drill.admin.store
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.util.*
 import com.epam.dsm.*
+import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 
 @Serializable
 internal class Stored(
     @Id val id: String,
+    @Suppress("ArrayInDataClass")
+    @Serializable(with = BinarySerializer::class)
     val data: ByteArray,
 )
 
