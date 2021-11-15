@@ -21,6 +21,8 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.junit.jupiter.api.*
 import ru.yandex.qatools.embed.postgresql.*
+import java.io.*
+import java.util.*
 import kotlin.test.*
 import kotlin.test.Test
 
@@ -42,11 +44,12 @@ class MessagePersistingTest {
 
     companion object {
         lateinit var postgres: EmbeddedPostgres
+        private val storageDir = File("build/tmp/test/stores/${this::class.simpleName}-${UUID.randomUUID()}")
 
         @BeforeAll
         @JvmStatic
         fun connectDB() {
-            postgres = EmbeddedPostgres(embeddedVersion)
+            postgres = EmbeddedPostgres(embeddedVersion, storageDir.absolutePath)
             val host = "localhost"
             val port = 5438
             val dbName = "dbName"
@@ -71,6 +74,7 @@ class MessagePersistingTest {
         @JvmStatic
         fun close() {
             postgres.close()
+            storageDir.deleteRecursively()
         }
     }
 
