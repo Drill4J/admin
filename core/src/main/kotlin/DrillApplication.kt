@@ -33,12 +33,13 @@ import io.ktor.websocket.*
 import mu.*
 import ru.yandex.qatools.embed.postgresql.*
 import ru.yandex.qatools.embed.postgresql.distribution.*
+import java.io.*
 import java.time.*
 
 
-//val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
+val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
 
-//val drillWorkDir = drillHomeDir.resolve("work")
+val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
 val embeddedVersion = Version.V10_6
@@ -112,9 +113,9 @@ fun Application.module() = kodeinApplication(
         val userName = drillDatabaseUserName
         val password = drillDatabasePassword
         val maxPoolSize = drillDatabaseMaxPoolSize
-        if (isDevMode) {
+        if (isEmbeddedMode) {
             logger.info { "starting dev mode for db..." }
-            val postgres = EmbeddedPostgres(embeddedVersion)
+            val postgres = EmbeddedPostgres(embeddedVersion, drillWorkDir.absolutePath)
             postgres.start(
                 host,
                 port,
@@ -122,10 +123,6 @@ fun Application.module() = kodeinApplication(
                 userName,
                 password
             )
-            environment.monitor.subscribe(ApplicationStopped) {
-                logger.info { "close embedded db..." }//todo does it complete?
-                postgres.close()
-            }
         }
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"

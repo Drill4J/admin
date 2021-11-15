@@ -71,7 +71,7 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
-        postgres = EmbeddedPostgres(embeddedVersion)
+        postgres = EmbeddedPostgres(embeddedVersion, storageDir.absolutePath)
         val host = "localhost"
         val port = 5439
         val dbName = "dbName"
