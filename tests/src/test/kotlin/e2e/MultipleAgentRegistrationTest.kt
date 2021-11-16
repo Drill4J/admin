@@ -19,13 +19,15 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
-import kotlin.test.*
+import org.junit.jupiter.api.*
+import kotlin.test.Test
 import kotlin.time.seconds as sec
 
 class MultipleAgentRegistrationTest : E2ETest() {
 
     private val agentIdPrefix = "parallelRegister"
 
+    @Disabled//todo EPMDJ-9082
     @Test
     fun `4 Agents should be registered in parallel`() {
         createSimpleAppWithUIConnection(timeout = 20.sec) {

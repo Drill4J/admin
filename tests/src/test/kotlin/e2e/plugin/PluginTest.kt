@@ -26,7 +26,8 @@ import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
-import kotlin.test.*
+import org.junit.jupiter.api.*
+import kotlin.test.Test
 
 class PluginTest : E2EPluginTest() {
 
@@ -64,12 +65,12 @@ class PluginTest : E2EPluginTest() {
         }
     }
 
-    @Test//todo
+    @Disabled//todo EPMDJ-9082
+    @Test
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
         println("starting tests...")
-        com.epam.drill.admin.util.logger.info { "starting tests222..."}
-        createSimpleAppWithPlugin<PTestStream>(timeout = 60) {
+        createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>(group) { _, _ ->
                 println("hi ag1")
                 com.epam.drill.admin.util.logger.info { "hi ag1" }

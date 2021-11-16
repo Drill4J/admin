@@ -20,6 +20,7 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
+import kotlin.time.seconds as sec
 
 class AgentSingleInstanceTest : E2ETest() {
 
@@ -27,7 +28,7 @@ class AgentSingleInstanceTest : E2ETest() {
 
     @Test
     fun `Agent shouldn't create more instances after reconnection`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(timeout = 20.sec) {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED

@@ -81,7 +81,6 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     val metadataAgents = agentManager.all().flatMap {
                         agentManager.adminData(it.id).buildManager.agentBuilds.map { agentBuild ->
                             val agentKey = AgentKey(it.id, agentBuild.info.version)
-                            //todo maybe use StoredMetadata instead of map?
                             mapOf(agentKey to agentStores.loadMetadata(agentKey))
                         }
                     }

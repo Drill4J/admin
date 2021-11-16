@@ -34,7 +34,6 @@ val Application.isDevMode: Boolean
 val Application.isEmbeddedMode: Boolean
     get() = drillConfig.propertyOrNull("embeddedMode")?.getString()?.toBoolean() ?: false
 
-
 val Application.agentSocketTimeout: Duration
     get() = drillConfig.config("agents")
         .config("socket")
