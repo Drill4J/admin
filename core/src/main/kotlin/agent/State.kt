@@ -173,7 +173,7 @@ private suspend fun StoreClient.storeClasses(
             data = ProtoBuf.dump(
                 CodeData.serializer(),
                 CodeData(classBytes = classBytes)
-            ).let(Zstd::compress)//todo use compress or not?
+            ).let(Zstd::compress)
         )
         store(storedData)
     }

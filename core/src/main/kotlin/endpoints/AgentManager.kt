@@ -601,16 +601,13 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
-
 internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
     store(StoredMetadata(agentKey, metadata))
 }
 
-
 internal suspend fun StoreClient.loadMetadata(
     agentKey: AgentKey
 ): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
-
 
 @Serializable
 internal data class AgentKey(
