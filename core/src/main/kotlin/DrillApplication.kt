@@ -42,6 +42,7 @@ val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
 val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
+
 val embeddedVersion = Version.V10_6
 private val logger = KotlinLogging.logger {}
 

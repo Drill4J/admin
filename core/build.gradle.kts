@@ -55,7 +55,7 @@ dependencies {
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill:kodux:$koduxVersion")//todo remove?
+    implementation("com.epam.drill:kodux:$koduxVersion")//todo EPMDJ-9089
     implementation("com.epam.drill:dsm:$drillDsmVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
@@ -66,7 +66,6 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
-    testImplementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")
@@ -81,7 +80,7 @@ val defaultAppJvmArgs = listOf(
 
 val devJvmArgs = listOf(
     "-Xms128m",
-    "-Xmx3g",
+    "-Xmx2g",
     "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
 )
 
@@ -137,9 +136,8 @@ tasks {
     }
 
     (run) {
-        jvmArgs = devJvmArgs
         environment("DRILL_DEVMODE", true)
-        environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic,package,com/epam")
+        environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
         mustRunAfter(cleanData)
     }
 
