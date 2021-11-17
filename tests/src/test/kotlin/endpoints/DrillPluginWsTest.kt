@@ -60,7 +60,7 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
-//    lateinit var postgres: EmbeddedPostgres
+    lateinit var postgresContainer: PostgreSQLContainer<Nothing>
     private lateinit var kodeinApplication: Kodein
 
     private val testApp: Application.() -> Unit = {
@@ -74,17 +74,17 @@ class PluginWsTest {
         enableSwaggerSupport()
         val port = 5432
         val dbName = "dbName"
-        val postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
+        postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
             withDatabaseName(dbName)
             withExposedPorts(port)
             start()
         }
         println("started container with id ${postgresContainer.containerId}.")
-        Thread.sleep(5000) //todo :) timeout
+        Thread.sleep(6_000) //todo :) timeout use wait in postgresContainer
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
             this.jdbcUrl =
-                "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+                "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/$dbName"
             this.username = postgresContainer.username
             this.password = postgresContainer.password
             this.maximumPoolSize = 3
@@ -118,7 +118,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-//        postgres.close()
+        postgresContainer.stop()
     }
 
     @Test
