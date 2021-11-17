@@ -21,6 +21,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.dsm.*
+import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -28,18 +29,15 @@ import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
-import org.jetbrains.exposed.sql.*
 import org.kodein.di.generic.*
-import ru.yandex.qatools.embed.postgresql.*
-import ru.yandex.qatools.embed.postgresql.distribution.*
+import org.testcontainers.containers.*
 import java.io.*
-import java.util.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
     lateinit var commonStore: StoreClient
-    lateinit var postgres: EmbeddedPostgres
+    lateinit var postgresContainer: PostgreSQLContainer<Nothing>
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -61,25 +59,26 @@ class AppConfig(var projectDir: File) {
             }
         }
         com.epam.drill.admin.util.logger.info { "embedded postgres..." }
-        postgres = EmbeddedPostgres(embeddedVersion)
-        val host = "localhost"
-        val port = 5434
+        val port = 5432
         val dbName = "dbName"
-        val userName = "userName"
-        val password = "password"
-        postgres.start(
-            host,
-            port,
-            dbName,
-            userName,
-            password
-        )
-        Database.connect(
-            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
-            user = userName, password = password
-        ).also {
-            com.epam.drill.admin.util.logger.info { "Connected to db ${it.url}" }//todo remove
+        postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
+            withDatabaseName(dbName)
+            withExposedPorts(port)
+            start()
         }
+        println("started container with id ${postgresContainer.containerId}.")
+        Thread.sleep(5000) //todo :) timeout
+        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
+            this.driverClassName = "org.postgresql.Driver"
+            this.jdbcUrl =
+                "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+            this.username = postgresContainer.username
+            this.password = postgresContainer.password
+            this.maximumPoolSize = 3
+            this.isAutoCommit = false
+            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            this.validate()
+        }))
         install(ContentNegotiation) {
             converters()
         }
@@ -107,8 +106,8 @@ class AppConfig(var projectDir: File) {
         })
         environment.monitor.subscribe(ApplicationStopped) {
             com.epam.drill.admin.util.logger.info { "app stopping22..." }//todo remove
-            postgres.close()
             projectDir.deleteRecursively()
+            postgresContainer.stop()
         }
     }
 }

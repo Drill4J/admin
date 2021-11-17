@@ -16,4 +16,6 @@
     <logger name="Exposed" level="info"/>
     <logger name="com.epam.dsm" level="info"/>
     <logger name="com.zaxxer.hikari" level="info"/>
+    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="com.github.dockerjava" level="WARN"/>
 </configuration>

@@ -15,14 +15,12 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.drill.admin.*
+import com.epam.dsm.*
+import com.zaxxer.hikari.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.sql.*
 import org.junit.jupiter.api.*
-import ru.yandex.qatools.embed.postgresql.*
-import java.io.*
-import java.util.*
+import org.testcontainers.containers.*
 import kotlin.test.*
 import kotlin.test.Test
 
@@ -43,38 +41,29 @@ class MessagePersistingTest {
     }
 
     companion object {
-        lateinit var postgres: EmbeddedPostgres
-        private val storageDir = File("build/tmp/test/stores/${this::class.simpleName}-${UUID.randomUUID()}")
-
         @BeforeAll
         @JvmStatic
         fun connectDB() {
-            postgres = EmbeddedPostgres(embeddedVersion, storageDir.absolutePath)
-            val host = "localhost"
-            val port = 5438
+            val port = 5432
             val dbName = "dbName"
-            val userName = "userName"
-            val password = "password"
-            postgres.start(
-                host,
-                port,
-                dbName,
-                userName,
-                password
-            )
-            Database.connect(
-                "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
-                user = userName, password = password
-            ).also {
-                println("Connected to db ${it.url}")
+            val postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
+                withDatabaseName(dbName)
+                withExposedPorts(port)
+                start()
             }
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun close() {
-            postgres.close()
-            storageDir.deleteRecursively()
+            println("started container with id ${postgresContainer.containerId}.")
+            Thread.sleep(5000) //todo :) timeout
+            DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
+                this.driverClassName = "org.postgresql.Driver"
+                this.jdbcUrl =
+                    "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+                this.username = postgresContainer.username
+                this.password = postgresContainer.password
+                this.maximumPoolSize = 3
+                this.isAutoCommit = false
+                this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+                this.validate()
+            }))
         }
     }
 

@@ -65,7 +65,7 @@ class PluginTest : E2EPluginTest() {
         }
     }
 
-    @Disabled//todo EPMDJ-9082
+//    @Disabled//todo EPMDJ-9082
     @Test
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
