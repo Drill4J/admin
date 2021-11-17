@@ -63,6 +63,7 @@ dependencies {
 
     testImplementation("com.epam.drill:kodux:$koduxVersion")
     testImplementation("com.epam.drill:dsm:$drillDsmVersion")
+    testImplementation("org.testcontainers:postgresql:1.16.2")
     testImplementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")

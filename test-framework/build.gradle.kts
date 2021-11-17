@@ -41,6 +41,7 @@ dependencies {
     implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("com.epam.drill:dsm:$drillDsmVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
+    implementation("org.testcontainers:postgresql:1.16.2")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")

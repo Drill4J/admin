@@ -29,6 +29,8 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
+import com.epam.dsm.*
+import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -39,10 +41,9 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import org.jetbrains.exposed.sql.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import ru.yandex.qatools.embed.postgresql.*
+import org.testcontainers.containers.*
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -59,7 +60,7 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
-    lateinit var postgres: EmbeddedPostgres
+//    lateinit var postgres: EmbeddedPostgres
     private lateinit var kodeinApplication: Kodein
 
     private val testApp: Application.() -> Unit = {
@@ -71,25 +72,26 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
-        postgres = EmbeddedPostgres(embeddedVersion, storageDir.absolutePath)
-        val host = "localhost"
-        val port = 5439
+        val port = 5432
         val dbName = "dbName"
-        val userName = "userName"
-        val password = "password"
-        postgres.start(
-            host,
-            port,
-            dbName,
-            userName,
-            password
-        )
-        Database.connect(
-            "jdbc:postgresql://$host:$port/$dbName", driver = "org.postgresql.Driver",
-            user = userName, password = password
-        ).also {
-            println("Connected to db ${it.url}")
+        val postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
+            withDatabaseName(dbName)
+            withExposedPorts(port)
+            start()
         }
+        println("started container with id ${postgresContainer.containerId}.")
+        Thread.sleep(5000) //todo :) timeout
+        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
+            this.driverClassName = "org.postgresql.Driver"
+            this.jdbcUrl =
+                "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+            this.username = postgresContainer.username
+            this.password = postgresContainer.password
+            this.maximumPoolSize = 3
+            this.isAutoCommit = false
+            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            this.validate()
+        }))
         kodeinApplication = kodeinApplication(AppBuilder {
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
@@ -116,7 +118,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-        postgres.close()
+//        postgres.close()
     }
 
     @Test
