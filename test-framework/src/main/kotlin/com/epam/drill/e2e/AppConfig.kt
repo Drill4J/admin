@@ -67,7 +67,7 @@ class AppConfig(var projectDir: File) {
             start()
         }
         println("started container with id ${postgresContainer.containerId}.")
-        Thread.sleep(5000) //todo :) timeout
+        Thread.sleep(6_000) //todo :) timeout use wait in postgresContainer
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
             this.jdbcUrl =
@@ -107,7 +107,7 @@ class AppConfig(var projectDir: File) {
         environment.monitor.subscribe(ApplicationStopped) {
             com.epam.drill.admin.util.logger.info { "app stopping22..." }//todo remove
             projectDir.deleteRecursively()
-            postgresContainer.stop()
+            postgresContainer.stop()//todo need?
         }
     }
 }
