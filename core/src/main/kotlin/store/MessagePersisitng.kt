@@ -36,17 +36,14 @@ internal suspend fun StoreClient.storeMessage(
 ): Int {
     val storedMessage = message.toStoredMessage()
     val bytes = ProtoBuf.dump(StoredMessage.serializer(), storedMessage)
-    val compressed = Zstd.compress(bytes)
-    store(Stored(id, compressed))
-    return compressed.size
+    return store(Stored(id, bytes)).data.size
 }
 
 internal suspend fun StoreClient.readMessage(
     id: String,
     classLoader: ClassLoader = Thread.currentThread().contextClassLoader,
 ): Any? = findById<Stored>(id)?.let { stored ->
-    val bytes = Zstd.decompress(stored.data)
-    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), bytes)
+    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), stored.data)
     storedMessage.toMessage(classLoader)
 }
 
