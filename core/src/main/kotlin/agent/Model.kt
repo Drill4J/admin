@@ -20,6 +20,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.dsm.*
 import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
+
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
 typealias PackagesPrefixes = com.epam.drill.common.PackagesPrefixes
@@ -76,10 +77,14 @@ internal class StoredCodeData(
 internal data class Metadata(
     val countClass: Int = 0,
     val classBytesSizeKb: Int = 0,
-)
+) {
+    companion object {
+        val emptyMetadata = Metadata()
+    }
+}
 
 @Serializable
-internal class StoredMetadata(
+internal class AgentMetadata(
     @Id val id: AgentKey,
-    val data: Metadata,
+    val data: Metadata = Metadata.emptyMetadata,
 )
