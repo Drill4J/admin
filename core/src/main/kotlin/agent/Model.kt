@@ -64,7 +64,8 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 @Serializable
 internal class StoredCodeData(
     @Id val id: AgentKey,
-    val data: ByteArray,
+    @StreamSerialization(SerializationType.KRYO, CompressType.ZSTD, [])
+    val data: CodeData,
 )
 
 @Serializable
