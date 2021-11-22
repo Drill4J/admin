@@ -31,6 +31,7 @@ import io.ktor.locations.*
 import io.ktor.websocket.*
 import org.kodein.di.generic.*
 import org.testcontainers.containers.*
+import org.testcontainers.containers.wait.strategy.*
 import java.io.*
 
 class AppConfig(var projectDir: File) {
@@ -64,10 +65,10 @@ class AppConfig(var projectDir: File) {
         postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
             withDatabaseName(dbName)
             withExposedPorts(port)
+            waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
             start()
         }
         println("started container with id ${postgresContainer.containerId}.")
-        Thread.sleep(6_000) //todo :) timeout use wait in postgresContainer
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
             this.jdbcUrl =
