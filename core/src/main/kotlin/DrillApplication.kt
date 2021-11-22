@@ -43,7 +43,6 @@ val drillWorkDir = drillHomeDir.resolve("work")
 
 val userSource: UserSource = UserSourceImpl()
 
-val embeddedVersion = Version.V10_6
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
@@ -116,7 +115,7 @@ fun Application.module() = kodeinApplication(
         val maxPoolSize = drillDatabaseMaxPoolSize
         if (isEmbeddedMode) {
             logger.info { "starting dev mode for db..." }
-            val postgres = EmbeddedPostgres(embeddedVersion, drillWorkDir.absolutePath)
+            val postgres = EmbeddedPostgres(Version.V11_1, drillWorkDir.absolutePath)
             postgres.start(
                 host,
                 port,

@@ -23,7 +23,6 @@ val cacheMapDB: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
-val postgresEmbeddedVersion: String by extra
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -40,7 +39,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("com.epam.drill:dsm:$drillDsmVersion")
-    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     implementation("org.testcontainers:postgresql:1.16.2")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")

@@ -59,7 +59,7 @@ class AppConfig(var projectDir: File) {
                 }
             }
         }
-        com.epam.drill.admin.util.logger.info { "embedded postgres..." }
+        println("embedded postgres...")
         val port = 5432
         val dbName = "dbName"
         postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
@@ -106,9 +106,9 @@ class AppConfig(var projectDir: File) {
             }
         })
         environment.monitor.subscribe(ApplicationStopped) {
-            com.epam.drill.admin.util.logger.info { "app stopping22..." }//todo remove
+            println("test app stoppin...")
             projectDir.deleteRecursively()
-            postgresContainer.stop()//todo need?
+            postgresContainer.stop()
         }
     }
 }
