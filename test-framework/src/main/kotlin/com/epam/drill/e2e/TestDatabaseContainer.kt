@@ -24,14 +24,14 @@ import org.jetbrains.exposed.sql.transactions.*
 import org.testcontainers.containers.*
 import org.testcontainers.containers.wait.strategy.*
 
-class ContainerDatabase {
+class TestDatabaseContainer {
     companion object {
         var isNeedStartContainer = true
 
         fun startOnce() {
             if (isNeedStartContainer) {
-                start()
                 isNeedStartContainer = false
+                start()
             }
         }
 

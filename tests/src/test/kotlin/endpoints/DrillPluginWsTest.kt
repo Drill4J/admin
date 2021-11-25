@@ -69,7 +69,7 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
-        ContainerDatabase.startOnce()
+        TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
@@ -96,7 +96,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-        ContainerDatabase.clearData()
+        TestDatabaseContainer.clearData()
     }
 
     @Test

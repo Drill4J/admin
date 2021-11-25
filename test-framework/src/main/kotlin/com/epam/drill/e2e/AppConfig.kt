@@ -83,7 +83,7 @@ class AppConfig(var projectDir: File) {
         environment.monitor.subscribe(ApplicationStopped) {
             println("test app stopping...")
             projectDir.deleteRecursively()
-            ContainerDatabase.clearData()
+            TestDatabaseContainer.clearData()
         }
     }
 }

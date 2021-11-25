@@ -37,10 +37,6 @@ typealias AgentId = String
 
 abstract class E2ETest : AdminTest() {
 
-    init {
-        ContainerDatabase.startOnce()
-    }
-
     private val agents = ConcurrentHashMap<AgentId, ConcurrentLinkedQueue<Instance>>()
 
     fun connectAgent(

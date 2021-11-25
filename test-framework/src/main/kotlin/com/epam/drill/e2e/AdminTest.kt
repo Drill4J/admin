@@ -34,6 +34,9 @@ import kotlin.time.*
 import kotlin.time.TimeSource.*
 
 abstract class AdminTest {
+    init {
+        TestDatabaseContainer.startOnce()
+    }
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
     val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 

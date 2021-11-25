@@ -26,8 +26,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
-import org.junit.jupiter.api.*
-import kotlin.test.Test
+import kotlin.test.*
 
 class PluginTest : E2EPluginTest() {
 
@@ -65,7 +64,6 @@ class PluginTest : E2EPluginTest() {
         }
     }
 
-//    @Disabled//todo EPMDJ-9082
     @Test
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
