@@ -27,7 +27,6 @@ class MultipleAgentRegistrationTest : E2ETest() {
 
     private val agentIdPrefix = "parallelRegister"
 
-//    @Disabled//todo EPMDJ-9082
     @Test
     fun `4 Agents should be registered in parallel`() {
         createSimpleAppWithUIConnection(timeout = 20.sec) {

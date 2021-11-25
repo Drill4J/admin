@@ -42,22 +42,22 @@ class MessagePersistingTest {
     }
 
     companion object {
+
+        lateinit var postgresContainer: PostgreSQLContainer<Nothing>
+
         @BeforeAll
         @JvmStatic
         fun connectDB() {
-            val port = 5432
-            val dbName = "dbName"
-            val postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
-                withDatabaseName(dbName)
-                withExposedPorts(port)
+            postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
+                withDatabaseName("dbName")
+                withExposedPorts(PostgreSQLContainer.POSTGRESQL_PORT)
                 waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
                 start()
             }
             println("started container with id ${postgresContainer.containerId}.")
             DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
-                this.driverClassName = "org.postgresql.Driver"
-                this.jdbcUrl =
-                    "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+                this.driverClassName = postgresContainer.driverClassName
+                this.jdbcUrl = postgresContainer.jdbcUrl
                 this.username = postgresContainer.username
                 this.password = postgresContainer.password
                 this.maximumPoolSize = 3
@@ -65,6 +65,12 @@ class MessagePersistingTest {
                 this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
                 this.validate()
             }))
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun shutDown() {
+            postgresContainer.stop()
         }
     }
 

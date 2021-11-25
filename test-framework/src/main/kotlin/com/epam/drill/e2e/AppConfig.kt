@@ -60,19 +60,16 @@ class AppConfig(var projectDir: File) {
             }
         }
         println("embedded postgres...")
-        val port = 5432
-        val dbName = "dbName"
         postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
-            withDatabaseName(dbName)
-            withExposedPorts(port)
+            withDatabaseName("dbName")
+            withExposedPorts(PostgreSQLContainer.POSTGRESQL_PORT)
             waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
             start()
         }
         println("started container with id ${postgresContainer.containerId}.")
         DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
-            this.driverClassName = "org.postgresql.Driver"
-            this.jdbcUrl =
-                "jdbc:postgresql://${postgresContainer.host}:${postgresContainer.getMappedPort(port)}/$dbName"
+            this.driverClassName = postgresContainer.driverClassName
+            this.jdbcUrl = postgresContainer.jdbcUrl
             this.username = postgresContainer.username
             this.password = postgresContainer.password
             this.maximumPoolSize = 3

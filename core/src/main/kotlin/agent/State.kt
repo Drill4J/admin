@@ -123,7 +123,7 @@ internal class AgentData(
         trackTime("storeBuild") {
             agentStores.store(buildData)
             agentStores.store(toSummary())
-            //todo do it in on transaction
+            //todo do it in on transaction EPMDJ-9090 MultipleAgentRegistrationTest
 //            agentStores.executeInAsyncTransaction {
 //                store(buildData, agentStores.schema)
 //                store(toSummary(), agentStores.schema)
