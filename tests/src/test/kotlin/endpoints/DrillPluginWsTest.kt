@@ -27,10 +27,9 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
-import com.epam.dsm.*
-import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -43,8 +42,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
 import org.kodein.di.generic.*
-import org.testcontainers.containers.*
-import org.testcontainers.containers.wait.strategy.*
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -61,7 +58,6 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
-    lateinit var postgresContainer: PostgreSQLContainer<Nothing>
     private lateinit var kodeinApplication: Kodein
 
     private val testApp: Application.() -> Unit = {
@@ -73,23 +69,7 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
-        postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
-            withDatabaseName("dbName")
-            withExposedPorts(PostgreSQLContainer.POSTGRESQL_PORT)
-            waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
-            start()
-        }
-        println("started container with id ${postgresContainer.containerId}.")
-        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
-            this.driverClassName = postgresContainer.driverClassName
-            this.jdbcUrl = postgresContainer.jdbcUrl
-            this.username = postgresContainer.username
-            this.password = postgresContainer.password
-            this.maximumPoolSize = 3
-            this.isAutoCommit = false
-            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-            this.validate()
-        }))
+        ContainerDatabase.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
@@ -116,7 +96,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-        postgresContainer.stop()
+        ContainerDatabase.clearData()
     }
 
     @Test
@@ -275,7 +255,7 @@ class PluginWsTest {
 
     private suspend fun sendListData(destination: String, message: List<Data>) {
         val ps by kodeinApplication.kodein.instance<PluginSenders>()
-        val sender = ps.sender("test-plugin")
+        val sender = ps.sender(pluginId)
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
     }
 

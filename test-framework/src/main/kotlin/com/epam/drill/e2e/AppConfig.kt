@@ -21,7 +21,6 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.dsm.*
-import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -30,15 +29,12 @@ import io.ktor.features.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
 import org.kodein.di.generic.*
-import org.testcontainers.containers.*
-import org.testcontainers.containers.wait.strategy.*
 import java.io.*
 
 class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
     lateinit var commonStore: StoreClient
-    lateinit var postgresContainer: PostgreSQLContainer<Nothing>
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -59,24 +55,6 @@ class AppConfig(var projectDir: File) {
                 }
             }
         }
-        println("embedded postgres...")
-        postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
-            withDatabaseName("dbName")
-            withExposedPorts(PostgreSQLContainer.POSTGRESQL_PORT)
-            waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
-            start()
-        }
-        println("started container with id ${postgresContainer.containerId}.")
-        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
-            this.driverClassName = postgresContainer.driverClassName
-            this.jdbcUrl = postgresContainer.jdbcUrl
-            this.username = postgresContainer.username
-            this.password = postgresContainer.password
-            this.maximumPoolSize = 3
-            this.isAutoCommit = false
-            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-            this.validate()
-        }))
         install(ContentNegotiation) {
             converters()
         }
@@ -103,9 +81,9 @@ class AppConfig(var projectDir: File) {
             }
         })
         environment.monitor.subscribe(ApplicationStopped) {
-            println("test app stoppin...")
+            println("test app stopping...")
             projectDir.deleteRecursively()
-            postgresContainer.stop()
+            ContainerDatabase.clearData()
         }
     }
 }

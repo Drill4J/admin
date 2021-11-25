@@ -15,10 +15,10 @@
  */
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
@@ -36,6 +36,10 @@ typealias Instance = Pair<AgentKey, AgentStruct>
 typealias AgentId = String
 
 abstract class E2ETest : AdminTest() {
+
+    init {
+        ContainerDatabase.startOnce()
+    }
 
     private val agents = ConcurrentHashMap<AgentId, ConcurrentLinkedQueue<Instance>>()
 
