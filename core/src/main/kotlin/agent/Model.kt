@@ -65,13 +65,10 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 @Serializable
 internal class StoredCodeData(
     @Id val id: AgentKey,
-    val data: CodeData,
-)
-//todo check
-/*
     @Suppress("ArrayInDataClass")
     @Serializable(with = BinarySerializer::class)
- */
+    val data: ByteArray,
+)
 
 @Serializable
 internal data class Metadata(

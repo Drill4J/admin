@@ -36,6 +36,7 @@ val cacheMapDB: String by extra
 val junitVersion: String by extra
 val mockkVersion: String by extra
 val postgresEmbeddedVersion: String by extra
+val testContainerVersion: String by project
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -63,7 +64,7 @@ dependencies {
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
 
-    testImplementation("org.testcontainers:postgresql:1.16.2")//todo
+    testImplementation("org.testcontainers:postgresql:$testContainerVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")

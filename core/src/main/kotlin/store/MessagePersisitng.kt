@@ -30,6 +30,7 @@ internal class Stored(
     val data: ByteArray,
 )
 
+//todo do we need protobuf? in db clients cannot see an object
 internal suspend fun StoreClient.storeMessage(
     id: String,
     message: Any,

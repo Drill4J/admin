@@ -33,6 +33,7 @@ val swaggerVersion: String by extra
 val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
+val testContainerVersion: String by project
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -62,7 +63,7 @@ dependencies {
 
     testImplementation("com.epam.drill:kodux:$koduxVersion")
     testImplementation("com.epam.drill:dsm:$drillDsmVersion")
-    testImplementation("org.testcontainers:postgresql:1.16.2")
+    testImplementation("org.testcontainers:postgresql:$testContainerVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
 
