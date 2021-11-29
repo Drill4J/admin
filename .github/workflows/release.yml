@@ -39,3 +39,17 @@ jobs:
           tag_name: ${{ steps.next_semver.outputs.tag }}
           release_name: ${{ steps.next_semver.outputs.tag }}
           prerelease: ${{ steps.semver_kind.outputs.result == 'prerelease' }}
+      # place this action LAST
+      - uses: Drill4J/vee-table@0.0.0
+        with:
+          # leave everything "as-is"
+          github-access-token: ${{ secrets.VEE_TABLE_TOKEN }}
+          action-type: 'add-version'
+          ledger-repo-url: 'https://github.com/Drill4J/vee-ledger'
+          ledger-repo-owner: 'Drill4J'
+          ledger-repo-name: 'vee-ledger'
+          version-component-id: ${{ github.event.repository.name }}
+          # leave everything "as-is"
+
+          # steps.build_artifact is your step, where new version tag is created
+          version-tag: ${{ steps.next_semver.outputs.tag }} # Pass new version tag
