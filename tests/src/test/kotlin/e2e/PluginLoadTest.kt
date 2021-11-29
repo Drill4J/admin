@@ -22,7 +22,6 @@ import io.kotlintest.*
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlin.test.*
-import kotlin.time.seconds as sec
 
 class PluginLoadTest : E2ETest() {
 

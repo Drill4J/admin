@@ -170,7 +170,10 @@ private suspend fun StoreClient.storeClasses(
         logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
         val storedData = StoredCodeData(
             id = agentKey,
-            data = CodeData(classBytes = classBytes)
+            data = ProtoBuf.dump(
+                CodeData.serializer(),
+                CodeData(classBytes = classBytes)
+            )
         )
         store(storedData)
     }
@@ -180,7 +183,7 @@ private suspend fun StoreClient.loadClasses(
     agentKey: AgentKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
     findById<StoredCodeData>(agentKey)?.run {
-        data.classBytes
+        ProtoBuf.load(CodeData.serializer(), data).classBytes
     } ?: let {
         logger.warn { "Can not find classBytes for $agentKey" }
         emptyMap()

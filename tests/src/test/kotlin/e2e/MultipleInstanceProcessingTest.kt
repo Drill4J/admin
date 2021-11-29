@@ -21,7 +21,6 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
-import kotlin.time.seconds as sec
 
 
 class MultipleInstanceProcessingTest : E2ETest() {
@@ -31,7 +30,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
     @Test
     fun `agent can have multiple instances`() {
         val instance = "instanceAgent"
-        createSimpleAppWithUIConnection(timeout = 20.sec) {
+        createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentName, "$instance:1"), {}) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(agentName) { status, _ ->
@@ -46,7 +45,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
             }
             for (i in 2..5) {
                 connectAgent(AgentWrap(agentName, "$instance:$i"), {}) { ui, _ ->
-                    //todo if it doesn't invoke twice it will fail
+                    //todo if it doesn't invoke 'size' twice it will fail
                     val size = ui.getAgent()?.instanceIds?.size
                     logger.info {"Comparing count of instances '$i' cur $size..."}
                     ui.getAgent()?.instanceIds?.size shouldBe i

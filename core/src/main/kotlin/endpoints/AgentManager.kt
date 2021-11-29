@@ -520,7 +520,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
                 agentInfo = info,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = agentStores
+                store = pluginStoresDSM(pluginId)
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }

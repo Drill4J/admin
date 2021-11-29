@@ -20,6 +20,7 @@ val koduxVersion: String by extra
 val xodusVersion: String by extra
 val zstdJniVersion: String by extra
 val cacheMapDB: String by extra
+val testContainerVersion: String by project
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -39,7 +40,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("com.epam.drill:dsm:$drillDsmVersion")
-    implementation("org.testcontainers:postgresql:1.16.2")
+    implementation("org.testcontainers:postgresql:$testContainerVersion")
     implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
     implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
