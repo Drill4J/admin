@@ -20,11 +20,7 @@ import org.kodein.di.*
 import org.kodein.di.generic.*
 
 
-fun AppBuilder(handler: AppBuilder.() -> Unit): AppBuilder {
-    val appBuilder = AppBuilder()
-    handler(appBuilder)
-    return appBuilder
-}
+fun AppBuilder(handler: AppBuilder.() -> Unit) = AppBuilder().apply { handler(this) }
 
 class AppBuilder {
     val kodeinModules = mutableSetOf<KodeinConf.() -> Kodein.Module>()

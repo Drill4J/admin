@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.service
 
-import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
@@ -44,10 +43,6 @@ internal class RequestValidator(override val kodein: Kodein) : KodeinAware {
             intercept(ApplicationCallPipeline.Call) {
                 if (context is RoutingApplicationCall) {
                     val agentId = context.parameters["agentId"]
-
-
-
-
                     if (agentId != null) {
                         val agentInfo = am.getOrNull(agentId)
                         when (am.getStatus(agentId)) {
