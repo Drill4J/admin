@@ -68,6 +68,8 @@ fun Application.module() = kodeinApplication(
                 converters()
             }
 
+            interceptorForApplicationJson()
+
             enableSwaggerSupport()
 
             install(Authentication) {

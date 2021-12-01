@@ -22,10 +22,34 @@ import io.ktor.request.*
 import io.ktor.serialization.*
 import io.ktor.util.pipeline.*
 import io.ktor.utils.io.*
+import io.ktor.utils.io.charsets.*
+import io.ktor.utils.io.streams.*
+import kotlin.reflect.jvm.*
+import kotlin.text.Charsets
 
 fun ContentNegotiation.Configuration.converters() {
     json()
     register(ContentType.Any, EmptyContentConverter)
+}
+
+/**
+ * Set UTF_8 as default charset for Content-Type application/json
+ * Use see[io.ktor.request.ApplicationReceivePipeline.Before] because can't override the default transformation see[io.ktor.server.engine.installDefaultTransformations]
+ */
+fun Application.interceptorForApplicationJson() {
+    receivePipeline.intercept(ApplicationReceivePipeline.Before) { query ->
+        if (call.request.contentType() != ContentType.Application.Json) return@intercept
+        val channel = query.value as? ByteReadChannel ?: return@intercept
+        val result = when (query.typeInfo.jvmErasure) {
+            String::class -> channel.readText(
+                charset = call.request.contentCharset()
+                    ?: Charsets.UTF_8
+            )
+            else -> null
+        }
+        if (result != null)
+            proceedWith(ApplicationReceiveRequest(query.typeInfo, result, true))
+    }
 }
 
 private object EmptyContentConverter : ContentConverter {
@@ -43,4 +67,22 @@ private object EmptyContentConverter : ContentConverter {
         contentType: ContentType,
         value: Any,
     ): Any? = value
+}
+
+/**
+ * Copied from here see[io.ktor.server.engine.readText]
+ */
+private suspend fun ByteReadChannel.readText(
+    charset: Charset,
+): String {
+    if (isClosedForRead) return ""
+
+    val content = readRemaining(Long.MAX_VALUE)
+
+    return try {
+        if (charset == Charsets.UTF_8) content.readText()
+        else content.inputStream().reader(charset).readText()
+    } finally {
+        content.release()
+    }
 }
