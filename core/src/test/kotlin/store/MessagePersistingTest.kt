@@ -15,17 +15,22 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.dsm.*
-import com.zaxxer.hikari.*
+import com.epam.dsm.util.test.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import org.junit.jupiter.api.*
-import org.testcontainers.containers.*
-import org.testcontainers.containers.wait.strategy.*
 import kotlin.test.*
 import kotlin.test.Test
 
 class MessagePersistingTest {
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        public fun setUp() {
+            TestDatabaseContainer.startOnce()
+        }
+    }
 
     @Serializable
     data class SimpleMessage(val s: String)
@@ -40,39 +45,5 @@ class MessagePersistingTest {
             assertEquals(message, storeClient.readMessage("1"))
         }
     }
-
-    companion object {
-
-        lateinit var postgresContainer: PostgreSQLContainer<Nothing>
-
-        @BeforeAll
-        @JvmStatic
-        fun connectDB() {
-            postgresContainer = PostgreSQLContainer<Nothing>("postgres:12").apply {
-                withDatabaseName("dbName")
-                withExposedPorts(PostgreSQLContainer.POSTGRESQL_PORT)
-                waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2))
-                start()
-            }
-            println("started container with id ${postgresContainer.containerId}.")
-            DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
-                this.driverClassName = postgresContainer.driverClassName
-                this.jdbcUrl = postgresContainer.jdbcUrl
-                this.username = postgresContainer.username
-                this.password = postgresContainer.password
-                this.maximumPoolSize = 3
-                this.isAutoCommit = false
-                this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-                this.validate()
-            }))
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun shutDown() {
-            postgresContainer.stop()
-        }
-    }
-
 
 }

@@ -65,6 +65,7 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 @Serializable
 internal class StoredCodeData(
     @Id val id: AgentKey,
+    //todo after 1.5 kotlin use @stream and CodeData?
     @Suppress("ArrayInDataClass")
     @Serializable(with = BinarySerializer::class)
     val data: ByteArray,
