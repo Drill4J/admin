@@ -30,6 +30,7 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
+import com.epam.dsm.util.test.TestDatabaseContainer
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -96,7 +97,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-        TestDatabaseContainer.clearData()
+        TestDatabaseContainer.clearData(AppConfig.schemas)
     }
 
     @Test
@@ -162,7 +163,11 @@ class PluginWsTest {
 
 
                 subscribe(outgoing, destination)
-                assertEquals("", readMessageJson(incoming)?.toContentString().orEmpty(), "first subscription should be empty")
+                assertEquals(
+                    "",
+                    readMessageJson(incoming)?.toContentString().orEmpty(),
+                    "first subscription should be empty"
+                )
 
 
                 sendListData(destination, message)
@@ -293,7 +298,8 @@ class PluginWsTest {
                 assertEquals(WsMessageType.MESSAGE.name, fromJson["type"]?.toContentString())
                 assertEquals(
                     TestMessage.serializer() toJson messageForTest,
-                    fromJson[WsSendMessage::message.name])
+                    fromJson[WsSendMessage::message.name]
+                )
 
                 outgoing.send(uiMessage(Subscribe(destination, "")))
             }

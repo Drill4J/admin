@@ -20,7 +20,11 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.store.*
+import com.epam.drill.testdata.*
 import com.epam.dsm.*
+import com.epam.dsm.util.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -35,6 +39,14 @@ class AppConfig(var projectDir: File) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
     lateinit var commonStore: StoreClient
+
+    companion object {
+        val schemas = listOf(
+            commonStore.schema, agentStores.schema,
+            pluginStoresDSM(TEST2CODE).schema,
+            pluginStoresDSM(pluginId).schema
+        )
+    }
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -83,7 +95,7 @@ class AppConfig(var projectDir: File) {
         environment.monitor.subscribe(ApplicationStopped) {
             println("test app stopping...")
             projectDir.deleteRecursively()
-            TestDatabaseContainer.clearData()
+            TestDatabaseContainer.clearData(schemas)
         }
     }
 }
