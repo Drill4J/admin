@@ -73,6 +73,7 @@ abstract class E2ETest : AdminTest() {
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
         timeout: Duration = 7.seconds,
+        delayBeforeClearData: Long = 0,
         block: suspend () -> Unit,
     ) {
         var coroutineException: Throwable? = null
@@ -82,7 +83,7 @@ abstract class E2ETest : AdminTest() {
         } + context
         runBlocking(handler) {
             val timeoutJob = createTimeoutJob(timeout, context)
-            val appConfig = AppConfig(projectDir)
+            val appConfig = AppConfig(projectDir, delayBeforeClearData)
             val testApp = appConfig.testApp
             withApplication(
                 environment = createTestEnvironment { parentCoroutineContext = context },

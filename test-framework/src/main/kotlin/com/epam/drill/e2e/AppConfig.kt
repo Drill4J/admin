@@ -35,7 +35,7 @@ import io.ktor.websocket.*
 import org.kodein.di.generic.*
 import java.io.*
 
-class AppConfig(var projectDir: File) {
+class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
     lateinit var commonStore: StoreClient
@@ -94,6 +94,8 @@ class AppConfig(var projectDir: File) {
         })
         environment.monitor.subscribe(ApplicationStopped) {
             println("test app stopping...")
+            Thread.sleep(delayBeforeClearData)//for parallel tests, example: MultipleAgentRegistrationTest
+            println("after sleep, clearing data...")
             projectDir.deleteRecursively()
             TestDatabaseContainer.clearData(schemas)
         }
