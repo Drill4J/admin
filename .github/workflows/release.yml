@@ -39,6 +39,13 @@ jobs:
           tag_name: ${{ steps.next_semver.outputs.tag }}
           release_name: ${{ steps.next_semver.outputs.tag }}
           prerelease: ${{ steps.semver_kind.outputs.result == 'prerelease' }}
+
+      - name: Extract tab without prefix
+        shell: bash
+        run: echo "::set-env name=TAG_WITHOUT_PREFIX::$(echo ${steps.next_semver.outputs.tag} | sed 's/v//g')"
+      - name: Echo TAG_WITHOUT_PREFIX
+        run: echo "${TAG_WITHOUT_PREFIX}"
+
       # place this action LAST
       - uses: Drill4J/vee-table@0.0.0
         with:
@@ -52,4 +59,4 @@ jobs:
           # leave everything "as-is"
 
           # steps.build_artifact is your step, where new version tag is created
-          version-tag: ${{ steps.next_semver.outputs.tag }} # Pass new version tag
+          version-tag: ${{ TAG_WITHOUT_PREFIX }} # Pass new version tag
