@@ -42,7 +42,7 @@ jobs:
 
       - name: Extract tab without prefix
         shell: bash
-        run: echo "::set-env name=TAG_WITHOUT_PREFIX::$(echo ${steps.next_semver.outputs.tag} | sed 's/v//g')"
+        run: echo "::set-env name=TAG_WITHOUT_PREFIX::$(echo ${steps.next_semver.outputs.tag} | sed -e 's/^v//' )"
       - name: Echo TAG_WITHOUT_PREFIX
         run: echo "${TAG_WITHOUT_PREFIX}"
 
