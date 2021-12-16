@@ -23,10 +23,9 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 import java.util.*
 
-class NotificationManager(override val kodein: Kodein) : KodeinAware {
+class NotificationManager(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val topicResolver by instance<TopicResolver>()

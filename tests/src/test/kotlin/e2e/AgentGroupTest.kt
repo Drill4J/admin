@@ -21,8 +21,8 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.channels.*
-import kotlin.test.*
-import kotlin.time.seconds as sec
+import org.junit.jupiter.api.*
+import kotlin.time.*
 
 
 class AgentGroupTest : E2ETest() {
@@ -30,7 +30,7 @@ class AgentGroupTest : E2ETest() {
     @Test
     fun `emulate microservices registration`() {
         val wit = 0
-        createSimpleAppWithUIConnection(timeout = 20.sec) {
+        createSimpleAppWithUIConnection(timeout = Duration.seconds(20)) {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
                 ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
                 register(

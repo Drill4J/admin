@@ -37,9 +37,8 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class AgentHandler(override val kodein: Kodein) : KodeinAware {
+class AgentHandler(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

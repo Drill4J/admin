@@ -25,10 +25,10 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
-class NotificationEndpoints(override val kodein: Kodein) : KodeinAware {
+
+class NotificationEndpoints(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val notificationManager by instance<NotificationManager>()

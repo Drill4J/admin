@@ -46,11 +46,10 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 import java.io.*
 import kotlin.reflect.*
 
-internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
+internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

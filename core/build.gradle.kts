@@ -53,7 +53,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$collectionImmutableVersion")
-    implementation("org.kodein.di:kodein-di-generic-jvm:$kodeinVersion")
+    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill:kodux:$koduxVersion")//todo EPMDJ-9089
@@ -173,16 +173,15 @@ tasks {
         kotlinOptions {
             jvmTarget = "1.8"
             freeCompilerArgs = listOf(
-                "-Xuse-experimental=kotlinx.serialization.ExperimentalSerializationApi",
-                "-Xuse-experimental=kotlinx.serialization.InternalSerializationApi",
-                "-Xuse-experimental=io.ktor.locations.KtorExperimentalLocationsAPI",
-                "-Xuse-experimental=io.ktor.util.KtorExperimentalAPI",
-                "-Xuse-experimental=io.ktor.util.InternalAPI",
-                "-Xuse-experimental=kotlin.Experimental",
-                "-Xuse-experimental=kotlin.ExperimentalStdlibApi",
-                "-Xuse-experimental=kotlin.time.ExperimentalTime",
-                "-Xuse-experimental=kotlinx.coroutines.ObsoleteCoroutinesApi",
-                "-Xuse-experimental=kotlinx.serialization.ImplicitReflectionSerializer"
+                "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
+                "-Xopt-in=kotlinx.serialization.InternalSerializationApi",
+                "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI",
+                "-Xopt-in=io.ktor.util.KtorExperimentalAPI",
+                "-Xopt-in=io.ktor.util.InternalAPI",
+                "-Xopt-in=kotlin.Experimental",
+                "-Xopt-in=kotlin.ExperimentalStdlibApi",
+                "-Xopt-in=kotlin.time.ExperimentalTime",
+                "-Xopt-in=kotlinx.coroutines.ObsoleteCoroutinesApi",
             )
         }
     }

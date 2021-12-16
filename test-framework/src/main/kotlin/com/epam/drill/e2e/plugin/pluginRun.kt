@@ -36,7 +36,7 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
     block: suspend TestContext<PS>.() -> Unit,
     uiStreamDebug: Boolean,
     agentStreamDebug: Boolean,
-    context: CompletableJob
+    context: CompletableJob,
 ) {
     val appConfig = AppConfig(projectDir)
     val testApp = appConfig.testApp

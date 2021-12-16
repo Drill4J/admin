@@ -27,10 +27,9 @@ import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
-internal class GroupManager(override val kodein: Kodein) : KodeinAware {
+internal class GroupManager(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

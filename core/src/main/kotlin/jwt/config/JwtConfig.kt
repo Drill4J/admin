@@ -29,7 +29,7 @@ val Application.jwtConfig: ApplicationConfig
 
 
 val Application.jwtLifetime: Duration
-    get() = jwtConfig.propertyOrNull("lifetime")?.getDuration() ?: 15.minutes
+    get() = jwtConfig.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(15)
 
 object JwtConfig {
     private const val secret = "HDZZh35d82zdzHJFF86tt"
@@ -49,5 +49,5 @@ object JwtConfig {
         .sign(algorithm)
 }
 
-private fun Duration.toExpiration() = Date(System.currentTimeMillis() + toLongMilliseconds())
+private fun Duration.toExpiration() = Date(System.currentTimeMillis() + inWholeMilliseconds)
 
