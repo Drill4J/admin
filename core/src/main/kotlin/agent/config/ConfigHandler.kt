@@ -23,9 +23,8 @@ import com.epam.drill.api.*
 import com.epam.drill.api.dto.*
 import com.epam.drill.common.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class ConfigHandler(override val kodein: Kodein) : KodeinAware {
+class ConfigHandler(override val di: DI) : DIAware {
     private val agentManager by instance<AgentManager>()
 
     suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {

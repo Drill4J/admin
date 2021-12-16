@@ -16,8 +16,6 @@
 package com.epam.drill.admin.endpoints.admin
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.agent.Message
-import com.epam.drill.admin.agent.MessageType
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.api.*
 import com.epam.drill.admin.api.agent.*
@@ -26,8 +24,8 @@ import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.endpoints.AgentKey
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
 import de.nielsfalk.ktor.swagger.*
@@ -40,9 +38,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
+class DrillAdminEndpoints(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

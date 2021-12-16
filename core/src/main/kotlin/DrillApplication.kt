@@ -16,6 +16,7 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.di.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*

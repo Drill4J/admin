@@ -57,7 +57,7 @@ class MapDBCacheService : CacheService {
     fun stats(): List<Pair<String, String>> = dbMemory.getAll().map {
         val cacheBytesSize = hTreeMap(it)
             .mapNotNull { entry -> entry.value }
-            .sumBy { bytes -> bytes.size }
+            .sumOf { bytes -> bytes.size }
         val kb = 1024.0
         val stats = "size: ${cacheBytesSize / kb} KB (${cacheBytesSize / (kb * 1024)} MB)"
         it.key to stats
@@ -124,7 +124,7 @@ internal class MapDBCache<K, V>(
         if (it.contentEquals(ProtoBuf.dump(""))) { //TODO EPMDJ-6817
             return ProtoBuf.load(String.serializer() as KSerializer<V>, it)
         }
-        return ProtoBuf.load(serializers[key] as KSerializer<V>, it)
+        return ProtoBuf.load((serializers as Map<K, V> )[key] as KSerializer<V>, it)
     }
 }
 

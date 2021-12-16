@@ -27,7 +27,7 @@ class PluginLoadTest : E2ETest() {
 
     private val agentId = "pluginLoad"
 
-    @OptIn(KtorExperimentalAPI::class)
+
     @Test
     fun `plugin loading `() {
         createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true) {

@@ -21,7 +21,7 @@ import org.kodein.di.*
 import kotlin.test.*
 
 class NotificationManagerTest {
-    private val notificationManager = NotificationManager(Kodein.invoke { })
+    private val notificationManager = NotificationManager(DI.invoke { })
     private lateinit var notification: Notification
 
     @BeforeTest

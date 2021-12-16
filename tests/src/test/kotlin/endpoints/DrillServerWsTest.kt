@@ -23,6 +23,7 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.jwt.config.*
@@ -44,7 +45,6 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 import kotlin.test.*
 
 
@@ -81,14 +81,14 @@ internal class DrillServerWsTest {
                     } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
                     bind<SessionStorage>() with eagerSingleton { sessionStorage }
                     bind<NotificationManager>() with eagerSingleton {
-                        notificationsManager = NotificationManager(kodein)
+                        notificationsManager = NotificationManager(di)
                         notificationsManager
                     }
-                    bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
+                    bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance())}
-                    bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
-                    bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(kodein) }
-                    bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
+                    bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+                    bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(di) }
+                    bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(di) }
                 }
 
             }
@@ -220,7 +220,7 @@ fun uiMessage(message: WsReceiveMessage): Frame.Text = WsReceiveMessage.serializ
     stringify(message).toTextFrame()
 }
 
-class ServerStubTopics(override val kodein: Kodein) : KodeinAware {
+class ServerStubTopics(override val di: DI) : DIAware {
     private val wsTopic by instance<WsTopic>()
 
     init {

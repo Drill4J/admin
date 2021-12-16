@@ -36,10 +36,9 @@ import io.ktor.routing.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
-class GroupHandler(override val kodein: Kodein) : KodeinAware {
+class GroupHandler(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
