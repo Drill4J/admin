@@ -24,9 +24,8 @@ import io.ktor.application.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
+class VersionEndpoints(override val di: DI) : DIAware {
 
     private val app by instance<Application>()
     private val plugins by instance<Plugins>()

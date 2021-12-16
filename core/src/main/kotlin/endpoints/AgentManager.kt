@@ -42,11 +42,11 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
+import java.util.*
 import kotlin.time.*
 
 
-class AgentManager(override val kodein: Kodein) : KodeinAware {
+class AgentManager(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     internal val agentStorage by instance<AgentStorage>()
@@ -430,7 +430,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     }
 
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
-        sendToTopic<Communication.Agent.ChangeHeaderNameEvent, String>(sessionIdHeaderName.toLowerCase())
+        sendToTopic<Communication.Agent.ChangeHeaderNameEvent, String>(sessionIdHeaderName.lowercase(Locale.getDefault()))
     }
 
     suspend fun updateSystemSettings(agentId: String, settings: SystemSettingsDto) {

@@ -17,6 +17,7 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
@@ -32,7 +33,7 @@ import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.locations.*
 import io.ktor.websocket.*
-import org.kodein.di.generic.*
+import org.kodein.di.*
 import java.io.*
 
 class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
@@ -86,7 +87,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
                     storeManager = StoreClient("agents")
                     StoreClient("plugins")
                     bind<WsTopic>() with singleton {
-                        wsTopic = WsTopic(kodein)
+                        wsTopic = WsTopic(di)
                         wsTopic
                     }
                 }

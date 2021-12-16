@@ -18,6 +18,7 @@ package com.epam.drill.admin.config
 import com.typesafe.config.*
 import io.ktor.application.*
 import io.ktor.config.*
+import java.util.*
 import kotlin.time.*
 
 val Application.drillConfig: ApplicationConfig
@@ -35,12 +36,12 @@ val Application.isEmbeddedMode: Boolean
     get() = drillConfig.propertyOrNull("embeddedMode")?.getString()?.toBoolean() ?: false
 
 val Application.agentSocketTimeout: Duration
-    get() = drillConfig.config("agents")
+    get() = Duration.seconds(drillConfig.config("agents")
         .config("socket")
-        .property("timeout").getString().toInt().seconds
+        .property("timeout").getString().toInt())
 
 val Application.drillCacheType: String
-    get() = drillConfig.config("cache").propertyOrNull("type")?.getString()?.toLowerCase() ?: "mapdb"
+    get() = drillConfig.config("cache").propertyOrNull("type")?.getString()?.lowercase(Locale.getDefault()) ?: "mapdb"
 
 fun ApplicationConfigValue.getDuration() = "_".let { k ->
     mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)

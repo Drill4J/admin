@@ -24,10 +24,10 @@ val logger = KotlinLogging.logger {}
 inline fun <T> trackTime(tag: String = "", debug: Boolean = false, block: () -> T) =
     measureTimedValue { block() }.apply {
         when {
-            duration.inSeconds > 1 -> {
+            duration.toDouble(DurationUnit.SECONDS) > 1 -> {
                 logger.warn { "[$tag] took: $duration" }
             }
-            duration.inSeconds > 30 -> {
+            duration.toDouble(DurationUnit.SECONDS) > 30 -> {
                 logger.error { "[$tag] took: $duration" }
             }
             else -> if (debug) logger.debug { "[$tag] took: $duration" } else logger.trace { "[$tag] took: $duration" }

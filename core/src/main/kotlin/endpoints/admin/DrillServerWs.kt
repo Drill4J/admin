@@ -29,10 +29,9 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
-class DrillServerWs(override val kodein: Kodein) : KodeinAware {
+class DrillServerWs(override val di:DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

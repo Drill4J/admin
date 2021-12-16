@@ -30,11 +30,10 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 private val logger = KotlinLogging.logger {}
 
-class DrillPluginWs(override val kodein: Kodein) : KodeinAware {
+class DrillPluginWs(override val di: DI) : DIAware {
 
     private val app by instance<Application>()
     private val pluginCaches by instance<PluginCaches>()

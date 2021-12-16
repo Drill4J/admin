@@ -28,6 +28,7 @@ import io.ktor.server.testing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import java.util.concurrent.*
+import kotlin.collections.set
 import kotlin.coroutines.*
 import kotlin.time.*
 
@@ -72,7 +73,7 @@ abstract class E2ETest : AdminTest() {
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
-        timeout: Duration = 7.seconds,
+        timeout: Duration = Duration.seconds(7),
         delayBeforeClearData: Long = 0,
         block: suspend () -> Unit,
     ) {

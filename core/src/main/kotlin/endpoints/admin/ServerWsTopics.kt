@@ -32,10 +32,9 @@ import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
 
-class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
+class ServerWsTopics(override val di: DI) : DIAware {
     private val wsTopic by instance<WsTopic>()
     private val groupManager by instance<GroupManager>()
     private val agentManager by instance<AgentManager>()

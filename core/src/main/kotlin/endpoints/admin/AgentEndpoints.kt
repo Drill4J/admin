@@ -32,9 +32,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
+class AgentEndpoints(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()

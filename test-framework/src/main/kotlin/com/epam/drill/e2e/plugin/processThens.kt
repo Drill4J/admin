@@ -32,7 +32,7 @@ fun AdminTest.processThens(
     agentStreamDebug: Boolean,
     ui: AdminUiChannels,
     pluginMeta: com.epam.drill.common.PluginMetadata,
-    globLaunch: Job
+    globLaunch: Job,
 ) {
     thens.forEach { (ag, build, needSync, it) ->
         val classes = File("./build/classes/java/${build.name}")
