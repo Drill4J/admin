@@ -21,5 +21,6 @@ import com.epam.drill.e2e.*
 fun AdminTest.runWithSession(
     sessionId: String,
     testName: String = "xxxx",
-    block: () -> Unit
-) = testAgentContext.runWithSession(sessionId, testName, agentPart, block)
+    testHash: String = "",
+    block: () -> Unit,
+) = testAgentContext.runWithSession(sessionId, testName, testHash, agentPart, block)

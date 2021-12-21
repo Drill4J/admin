@@ -20,25 +20,35 @@ import kotlinx.atomicfu.*
 
 class TestAgentContext : AgentContext {
 
-    private val _data = atomic<Pair<String, String>?>(null)
+    private val _data = atomic(emptyMap<String, String>())
 
-    override fun invoke(): String? = _data.value?.first
+    private val sessionIdHeader = "drill-session-id"
+    private val testNameHeader = "drill-test-name"
+    private val testHashHeader = "drill-test-id"
 
-    override fun get(key: String): String? = _data.value?.second
+    override fun invoke(): String? = _data.value[sessionIdHeader]
+
+    override fun get(key: String): String? = _data.value[key]
 
     fun runWithSession(
-        sessionId: String, testName: String,
+        sessionId: String,
+        testName: String,
+        testHash: String,
         agentPart: AgentPart<*>?,
         block: () -> Unit,
     ) {
-        _data.value = sessionId to testName
+        _data.value = mapOf(
+            sessionIdHeader to sessionId,
+            testNameHeader to testName,
+            testHashHeader to testHash,
+        )
         runCatching {
             agentPart?.javaClass?.getDeclaredMethod("processServerRequest")?.invoke(agentPart)
         }
         try {
             block()
         } finally {
-            _data.value = null
+            _data.value = emptyMap()
         }
 
     }
