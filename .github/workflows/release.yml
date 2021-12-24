@@ -68,4 +68,4 @@ jobs:
           # leave everything "as-is"
 
           # steps.build_artifact is your step, where new version tag is created
-          version-tag: ${{ steps.next_semver.outputs.tag }} # Pass new version tag
+          version-tag: ${{ steps.get_version.outputs.tag }} # Pass new version tag
