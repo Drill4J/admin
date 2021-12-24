@@ -40,6 +40,21 @@ jobs:
           release_name: ${{ steps.next_semver.outputs.tag }}
           prerelease: ${{ steps.semver_kind.outputs.result == 'prerelease' }}
 
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: echo ::set-output name=tag::$(echo ${steps.next_semver.outputs.tag} | sed -e 's/^v//')
+      - name: Echo steps.get_version.outputs.tag
+        run: echo "${steps.get_version.outputs.tag}"
+
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          repository: Drill4J/e2e
+          token: ${{ secrets.VEE_TABLE_TOKEN }}
+          event-type: run_test
+          client-payload: '{ "${{ github.event.repository.name }}": "${{ steps.get_version.outputs.tag }}" }'
+
       # place this action LAST
       - uses: Drill4J/vee-table@0.0.0
         with:
