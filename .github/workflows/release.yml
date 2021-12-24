@@ -43,7 +43,7 @@ jobs:
       - name: Get version
         id: get_version
         shell: bash
-        run: echo ::set-output name=tag::$(echo ${steps.next_semver.outputs.tag} | sed -e 's/^v//')
+        run: echo ::set-output name=tag::$(echo ${{ steps.next_semver.outputs.tag }} | sed -e 's/^v//')
       - name: Echo steps.get_version.outputs.tag
         run: echo "${{ steps.get_version.outputs.tag }}"
 
