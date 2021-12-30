@@ -30,8 +30,7 @@ val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
 val kodeinVersion: String by extra
 val swaggerVersion: String by extra
-val koduxVersion: String by extra
-val xodusVersion: String by extra
+val muLogger: String by extra
 val zstdJniVersion: String by extra
 val testContainerVersion: String by project
 
@@ -61,11 +60,11 @@ dependencies {
     testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
-    testImplementation("com.epam.drill:kodux:$koduxVersion")
     testImplementation("com.epam.drill:dsm:$drillDsmVersion")
     testImplementation("org.testcontainers:postgresql:$testContainerVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    testImplementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
+    //TODO remove logging - EPMDJ-9548
+    testImplementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
 
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
 

@@ -28,8 +28,7 @@ val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
 val kodeinVersion: String by extra
 val swaggerVersion: String by extra
-val koduxVersion: String by extra
-val xodusVersion: String by extra
+val muLogger: String by extra
 val zstdJniVersion: String by extra
 val cacheMapDB: String by extra
 
@@ -56,10 +55,10 @@ dependencies {
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill:kodux:$koduxVersion")//todo EPMDJ-9089
     implementation("com.epam.drill:dsm:$drillDsmVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
-    implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
+    //TODO remove logger - EPMDJ-9548
+    implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
     implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
