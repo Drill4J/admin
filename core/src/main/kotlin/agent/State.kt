@@ -121,13 +121,10 @@ internal class AgentData(
             detectedAt = detectedAt
         )
         trackTime("storeBuild") {
-            agentStores.store(buildData)
-            agentStores.store(toSummary())
-            //todo EPMDJ-9218 in one transaction MultipleAgentRegistrationTest
-//            agentStores.executeInAsyncTransaction {
-//                store(buildData, agentStores.schema)
-//                store(toSummary(), agentStores.schema)
-//            }
+            agentStores.executeInAsyncTransaction {
+                store(buildData, agentStores.schema)
+                store(toSummary(), agentStores.schema)
+            }
         }
 
         logger.debug { "Saved build ${agentBuild.id}." }
