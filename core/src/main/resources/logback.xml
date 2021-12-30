@@ -10,11 +10,10 @@
     </root>
     <logger name="org.eclipse.jetty" level="info"/>
     <logger name="io.netty" level="info"/>
-    <logger name="jetbrains.exodus" level="warn"/>
     <logger name="Application" level="info"/>
     <!--    database logs: -->
     <logger name="Exposed" level="info"/>
-    <logger name="com.epam.dsm" level="info"/>
+    <logger name="com.epam.dsm" level="${DB_LOG_LEVEL:-DEBUG}"/>
     <logger name="com.zaxxer.hikari" level="info"/>
     <logger name="org.testcontainers" level="INFO"/>
     <logger name="com.github.dockerjava" level="WARN"/>
