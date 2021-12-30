@@ -16,8 +16,7 @@ val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
 val kodeinVersion: String by extra
 val swaggerVersion: String by extra
-val koduxVersion: String by extra
-val xodusVersion: String by extra
+val muLogger: String by extra
 val zstdJniVersion: String by extra
 val cacheMapDB: String by extra
 val testContainerVersion: String by project
@@ -38,10 +37,9 @@ dependencies {
     implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
     implementation("com.epam.drill:common:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
-    implementation("com.epam.drill:kodux:$koduxVersion")
     implementation("com.epam.drill:dsm:$drillDsmVersion")
     implementation("org.testcontainers:postgresql:$testContainerVersion")
-    implementation("org.jetbrains.xodus:xodus-entity-store:$xodusVersion")
+    implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
     implementation("io.mockk:mockk:$mockkVersion")
