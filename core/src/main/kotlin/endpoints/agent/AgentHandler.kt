@@ -98,7 +98,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                     else -> null
                 }?.also { message ->
                     withContext(Dispatchers.IO) {
-                        logger.trace { "Processing message $message for $agentDebugStr" }
+                        logger.trace { "Processing message for $agentDebugStr: $message" }
 
                         when (message.type) {
                             MessageType.PLUGIN_DATA -> {
@@ -111,7 +111,7 @@ class AgentHandler(override val kodein: Kodein) : KodeinAware {
                             }
                             MessageType.MESSAGE_DELIVERED -> {
                                 subscribers[message.destination]?.received(message) ?: logger.debug {
-                                    "A subscriber to destination '${message.destination}' is not found for $agentDebugStr"
+                                    "A subscriber to destination for $agentDebugStr is not found: '${message.destination}'"
                                 }
                             }
 
