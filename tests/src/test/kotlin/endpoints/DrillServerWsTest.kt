@@ -31,6 +31,7 @@ import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
+import com.epam.dsm.util.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -70,6 +71,7 @@ internal class DrillServerWsTest {
 
         enableSwaggerSupport()
 
+        TestDatabaseContainer.startOnce()
         kodeinApplication(AppBuilder {
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
@@ -85,7 +87,7 @@ internal class DrillServerWsTest {
                         notificationsManager
                     }
                     bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
-                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance())}
+                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<AgentManager>() with eagerSingleton { AgentManager(di) }
                     bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(di) }
                     bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(di) }
