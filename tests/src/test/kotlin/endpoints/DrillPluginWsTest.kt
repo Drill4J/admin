@@ -31,6 +31,7 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
+import com.epam.dsm.*
 import com.epam.dsm.util.test.TestDatabaseContainer
 import io.ktor.application.*
 import io.ktor.features.*
@@ -71,6 +72,8 @@ class PluginWsTest {
 
         enableSwaggerSupport()
         TestDatabaseContainer.startOnce()
+        //TODO why schema doesn't created in Stores.kt
+        StoreClient("common")
         kodeinApplication = kodeinApplication(AppBuilder {
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
