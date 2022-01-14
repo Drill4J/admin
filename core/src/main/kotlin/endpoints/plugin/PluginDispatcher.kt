@@ -85,7 +85,7 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
         val wrapper = MessageWrapper.serializer().parse(message)
         val pluginId = wrapper.pluginId
         val action = wrapper.drillMessage.content
-        logger.info { "Attempting to dispatch action: $action from agent ${agentInfo.debugString(instanceId)}" }
+        logger.info { "Attempting to dispatch action from agent ${agentInfo.debugString(instanceId)} : $action" }
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
@@ -304,7 +304,10 @@ internal class PluginDispatcher(override val kodein: Kodein) : KodeinAware {
                                     buildManager.delete(buildVersion)
                                     deleteClassBytes(AgentKey(agentId, buildVersion))
                                 }
-                                (cacheService as? MapDBCacheService)?.clear(AgentCacheKey(pluginId, agentId), buildVersion)
+                                (cacheService as? MapDBCacheService)?.clear(
+                                    AgentCacheKey(pluginId, agentId),
+                                    buildVersion
+                                )
                                 HttpStatusCode.OK to EmptyContent
                             } else HttpStatusCode.BadRequest to ErrorResponse("Can not remove a current build")
                         } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found")

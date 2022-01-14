@@ -42,3 +42,5 @@ val Application.drillCacheType: String
 fun ApplicationConfigValue.getDuration() = "_".let { k ->
     mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)
 }.toKotlinDuration()
+
+val LOG_MESSAGE_MAX_LENGTH = System.getenv("LOG_MESSAGE_MAX_LENGTH")?.toIntOrNull() ?: 0
