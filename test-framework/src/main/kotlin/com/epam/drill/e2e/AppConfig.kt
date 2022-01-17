@@ -25,7 +25,7 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.testdata.*
 import com.epam.dsm.*
-import com.epam.dsm.util.test.*
+import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -40,14 +40,6 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
     lateinit var commonStore: StoreClient
-
-    companion object {
-        val schemas = listOf(
-            commonStore.schema, agentStores.schema,
-            pluginStoresDSM(TEST2CODE).schema,
-            pluginStoresDSM(pluginId).schema
-        )
-    }
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -98,7 +90,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
             Thread.sleep(delayBeforeClearData)//for parallel tests, example: MultipleAgentRegistrationTest
             println("after sleep, clearing data...")
             projectDir.deleteRecursively()
-            TestDatabaseContainer.clearData(schemas)
+            TestDatabaseContainer.clearData()
         }
     }
 }
