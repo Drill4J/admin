@@ -17,7 +17,7 @@ val drillDsmVersion: String by extra
 dependencies {
     implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
     implementation("com.epam.drill:common:$drillApiVersion")
-    implementation("com.epam.drill:dsm:$drillDsmVersion")
+    implementation("com.epam.drill.dsm:core:$drillDsmVersion")
 }
 
 tasks.withType<KotlinCompile> {

@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.dsm.util.test.*
+import com.epam.dsm.test.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import org.junit.jupiter.api.*
