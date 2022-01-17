@@ -32,7 +32,7 @@ import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.dsm.*
-import com.epam.dsm.util.test.TestDatabaseContainer
+import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -72,8 +72,6 @@ class PluginWsTest {
 
         enableSwaggerSupport()
         TestDatabaseContainer.startOnce()
-        //TODO why schema doesn't created in Stores.kt
-        StoreClient("common")
         kodeinApplication = kodeinApplication(AppBuilder {
 
             withKModule { kodeinModule("pluginServices", pluginServices) }
@@ -100,7 +98,7 @@ class PluginWsTest {
     @AfterTest
     fun removeStore() {
         storageDir.deleteRecursively()
-        TestDatabaseContainer.clearData(AppConfig.schemas)
+        TestDatabaseContainer.clearData()
     }
 
     @Test

@@ -22,7 +22,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
 import com.epam.dsm.*
-import com.epam.dsm.util.test.*
+import com.epam.dsm.test.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
@@ -38,6 +38,7 @@ abstract class AdminTest {
     init {
         TestDatabaseContainer.startOnce()
     }
+
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
     val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
