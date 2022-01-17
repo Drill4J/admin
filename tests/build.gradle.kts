@@ -60,8 +60,7 @@ dependencies {
     testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
-    testImplementation("com.epam.drill:dsm:$drillDsmVersion")
-    testImplementation("org.testcontainers:postgresql:$testContainerVersion")
+    testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     //TODO remove logging - EPMDJ-9548
     testImplementation("io.github.microutils:kotlin-logging-jvm:$muLogger")

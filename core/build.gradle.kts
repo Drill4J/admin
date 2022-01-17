@@ -55,7 +55,7 @@ dependencies {
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill:dsm:$drillDsmVersion")
+    implementation("com.epam.drill.dsm:core:$drillDsmVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     //TODO remove logger - EPMDJ-9548
     implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
@@ -63,7 +63,7 @@ dependencies {
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
 
-    testImplementation("org.testcontainers:postgresql:$testContainerVersion")
+    testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")

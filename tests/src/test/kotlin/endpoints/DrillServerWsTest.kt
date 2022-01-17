@@ -31,7 +31,8 @@ import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
-import com.epam.dsm.util.test.*
+import com.epam.drill.e2e.*
+import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -95,6 +96,11 @@ internal class DrillServerWsTest {
 
             }
         })
+    }
+
+    @AfterTest
+    fun removeStore() {
+        TestDatabaseContainer.clearData()
     }
 
     private val sessionStorage = SessionStorage()
