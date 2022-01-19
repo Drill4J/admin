@@ -514,13 +514,14 @@ class AgentManager(override val di: DI) : DIAware {
         val buildVersion = agent.info.buildVersion
         val agentId = agent.info.id
         logger.info { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
+        val pluginStore = pluginStoresDSM(pluginId)
         agent[pluginId] ?: agent.get(pluginId) {
             val adminPluginData = adminData(agentId)
             plugin.createInstance(
                 agentInfo = info,
                 data = adminPluginData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = pluginStoresDSM(pluginId)
+                store = pluginStore
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }
