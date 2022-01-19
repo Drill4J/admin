@@ -27,7 +27,7 @@ class MessagePersistingTest {
     companion object {
         @BeforeAll
         @JvmStatic
-        public fun setUp() {
+        fun setUp() {
             TestDatabaseContainer.startOnce()
         }
     }
@@ -36,7 +36,7 @@ class MessagePersistingTest {
     data class SimpleMessage(val s: String)
 
     @Test
-    fun `storeMessage - readMessage`() {
+    fun `storeMessage - readMessage`() = runBlocking {
         val storeClient = pluginStoresDSM("${MessagePersistingTest::class.simpleName}")
         val message = SimpleMessage("data")
         runBlocking {
