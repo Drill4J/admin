@@ -67,7 +67,8 @@ suspend fun awaitWithExpr(
     val expirationMark = Monotonic.markNow() + timeout
     while (state()) {
         if (expirationMark.hasPassedNow()) {
-            throw WsAwaitException("Haven't received a signal for Agent(id='$agentId', instanceId='$instanceId') in $timeout for '$description' destination")
+            //TODO remove limited() after EPMDJ-9807
+            throw WsAwaitException("Haven't received a signal for Agent(id='$agentId', instanceId='$instanceId') in $timeout for destination '${description.limited()}'")
         }
         delay(200)
     }
