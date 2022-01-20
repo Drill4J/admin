@@ -37,7 +37,7 @@ internal suspend fun AdminPluginPart<*>.processAction(
                 val actionStr = serializer stringify action
                 val agentAction = PluginAction(id, actionStr)
                 agentSessions(agentInfo.id).map {
-                    //TODO EPMDJ-8233 move to the api
+                    //TODO EPMDJ-8233 move to the api; EPMDJ-9807 Remove base64
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,
                         topicName = "/plugin/action/${actionStr.encodeBase64()}"

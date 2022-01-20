@@ -88,7 +88,7 @@ class PluginSenders(override val kodein: Kodein) : KodeinAware {
                 val actionStr = serializer stringify message
                 val agentAction = PluginAction(pluginId, actionStr)
                 agentManager.agentSessions(agentId).map {
-                    //TODO EPMDJ-8233 move to the api
+                    //TODO EPMDJ-8233 move to the api; EPMDJ-9807 Remove base64
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,
                         topicName = "/plugin/action/${actionStr.encodeBase64()}",

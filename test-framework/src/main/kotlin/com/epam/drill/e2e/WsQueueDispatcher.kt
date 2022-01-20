@@ -261,6 +261,7 @@ class Agent(
                                 content
                             ).message
                             plugin.doRawAction(message)
+                            //TODO EPMDJ-9807 Remove base64
                             sendDelivered("/plugin/action/${message.encodeBase64()}")
                             sendDelivered(url)
                         }
