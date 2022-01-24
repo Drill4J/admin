@@ -20,6 +20,8 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.junit.jupiter.api.*
+import java.util.concurrent.*
+import kotlin.time.*
 
 class PackagesPrefixesSettingTest : E2ETest() {
 
@@ -29,14 +31,17 @@ class PackagesPrefixesSettingTest : E2ETest() {
     fun `Packages prefixes changing Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
 
                 changePackages(
                     agentId = agentId,
@@ -47,12 +52,15 @@ class PackagesPrefixesSettingTest : E2ETest() {
                 ) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                val agent2 = ui.getAgent()
-                agent2?.status shouldBe AgentStatus.ONLINE
-                agent2?.systemSettings?.packages?.first() shouldBe "newTestPrefix"
+
+                ui.getBuild()?.run {
+                    buildStatus shouldBe BuildStatus.ONLINE
+                    systemSettings.packages.first() shouldBe "newTestPrefix"
+                }
             }
         }
     }

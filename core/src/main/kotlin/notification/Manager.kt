@@ -76,11 +76,11 @@ class NotificationManager(override val di: DI) : DIAware {
         agentInfo: AgentInfo,
     ): NewBuildArrivedMessage = pluginCache.getData(
         agentInfo.id,
-        agentInfo.buildVersion,
+        agentInfo.build.version,
         type = "build"
     ).let { buildInfo ->
         NewBuildArrivedMessage(
-            currentId = agentInfo.buildVersion,
+            currentId = agentInfo.build.version,
             recommendations = recommendations(agentInfo),
             buildInfo = buildInfo.toJson()
         )
@@ -89,7 +89,7 @@ class NotificationManager(override val di: DI) : DIAware {
     private suspend fun recommendations(agentInfo: AgentInfo): Set<String> = pluginCache.run {
         getData(
             agentInfo.id,
-            agentInfo.buildVersion,
+            agentInfo.build.version,
             type = "recommendations"
         ).let { recommendations ->
             (recommendations as? Iterable<*>)?.mapTo(mutableSetOf()) { "$it" }

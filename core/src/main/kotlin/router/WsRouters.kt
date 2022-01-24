@@ -17,6 +17,7 @@ package com.epam.drill.admin.router
 
 import io.ktor.locations.*
 
+//TODO Remove and refactor in EPMDJ-9842
 object WsRoutes {
     @Location("/groups/{groupId}")
     data class Group(val groupId: String)
@@ -36,8 +37,8 @@ object WsRoutes {
     @Location("/plugins")
     class Plugins
 
-    @Location("/agents/{agentId}/builds")
-    data class AgentBuilds(val agentId: String)
+    @Location("/agents/{agentId}/builds/summary")
+    data class AgentBuildsSummary(val agentId: String)
 
     @Location("/version")
     object WsVersion

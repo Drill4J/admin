@@ -38,6 +38,7 @@ class ServerWsTopics(override val di: DI) : DIAware {
     private val wsTopic by instance<WsTopic>()
     private val groupManager by instance<GroupManager>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val plugins by instance<Plugins>()
     private val pluginCaches by instance<PluginCaches>()
     private val app by instance<Application>()
@@ -50,6 +51,8 @@ class ServerWsTopics(override val di: DI) : DIAware {
             agentManager.agentStorage.onUpdate += {
                 WsRoot.Agents().send(agentManager.all())
                 WsRoot.Groups().send(groupManager.all())
+                //TODO remove after EPMDJ-8292
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
             }
             agentManager.agentStorage.onAdd += { agentId, agent ->
                 WsRoot.Agent(agentId).send(agent.info.toDto(agentManager))
@@ -60,13 +63,33 @@ class ServerWsTopics(override val di: DI) : DIAware {
                 }
             }
 
+            //TODO EPMDJ-8454 should send list, after multiple builds will be implemented
+            buildManager.buildStorage.onUpdate += { builds ->
+                builds.keys.forEach {
+                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { agentBuildInfoDto ->
+                        WsRoot.AgentBuild(it.agentId, agentBuildInfoDto.buildVersion).send(agentBuildInfoDto)
+                        WsRoot.AgentBuilds(it.agentId).send(listOf(agentBuildInfoDto))
+                    }
+                }
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
+            }
+
+            buildManager.buildStorage.onAdd += { agentBuildKey, _ ->
+                agentManager[agentBuildKey.agentId]?.toAgentBuildDto(buildManager)?.let { agentBuildInfoDto ->
+                    WsRoot.AgentBuild(agentBuildKey.agentId, agentBuildInfoDto.buildVersion).send(agentBuildInfoDto)
+                    WsRoot.AgentBuilds(agentBuildKey.agentId).send(listOf(agentBuildInfoDto))
+                }
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
+            }
+
+            buildManager.buildStorage.onRemove += { agentBuildKey ->
+                WsRoot.AgentBuild(agentBuildKey.agentId, agentBuildKey.buildVersion).removeMessage()
+                WsRoot.AgentBuilds(agentBuildKey.agentId).removeMessage()
+            }
+
             agentManager.agentStorage.onUpdate += {
-                val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = groupManager.group(agentManager.activeAgents).toDto(agentManager)
-                sessionStorage.sendTo(
-                    destination,
-                    groupedAgents
-                )
+                WsRoutes.Agents().send(groupedAgents)
                 val groups = groupedAgents.grouped
                 if (groups.any()) {
                     for (group in groups) {
@@ -87,10 +110,9 @@ class ServerWsTopics(override val di: DI) : DIAware {
             }
 
             agentManager.agentStorage.onRemove += { k ->
-                val destination = app.toLocation(WsRoutes.Agent(k))
-                if (destination in sessionStorage) {
-                    sessionStorage.sendTo(destination, "", WsMessageType.DELETE)
-                }
+                WsRoot.Agents().send(agentManager.all())
+                WsRoot.Groups().send(groupManager.all())
+                WsRoot.Agent(k).removeMessage()
             }
 
             wsTopic {
@@ -100,7 +122,16 @@ class ServerWsTopics(override val di: DI) : DIAware {
 
                 topic<WsRoot.Agents> { agentManager.all() }
 
+                topic<WsRoot.AgentsActiveBuild> { agentManager.agentsActiveBuild(buildManager) }
+
                 topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }
+
+                //TODO EPMDJ-8454 should send list, after multiple builds will be implemented
+                topic<WsRoot.AgentBuilds> {
+                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { listOf(it) }
+                }
+
+                topic<WsRoot.AgentBuild> { agentManager[it.agentId]?.toAgentBuildDto(buildManager) }
 
                 topic<WsRoot.Groups> { groupManager.all() }
 
@@ -124,8 +155,8 @@ class ServerWsTopics(override val di: DI) : DIAware {
                     notificationManager.notifications.valuesDesc
                 }
 
-                topic<WsRoutes.AgentBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).buildManager.agentBuilds.map { agentBuild ->
+                topic<WsRoutes.AgentBuildsSummary> { (agentId) ->
+                    buildManager.buildData(agentId).agentBuildManager.agentBuilds.map { agentBuild ->
                         BuildSummaryDto(
                             buildVersion = agentBuild.info.version,
                             detectedAt = agentBuild.detectedAt,
@@ -154,5 +185,10 @@ class ServerWsTopics(override val di: DI) : DIAware {
     private suspend fun Any.send(message: Any) {
         val destination = app.toLocation(this)
         sessionStorage.sendTo(destination, message)
+    }
+
+    private suspend fun Any.removeMessage() {
+        val destination = app.toLocation(this)
+        sessionStorage.sendTo(destination, "", WsMessageType.DELETE)
     }
 }

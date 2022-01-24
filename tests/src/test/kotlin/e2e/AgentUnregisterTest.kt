@@ -29,18 +29,21 @@ class AgentUnregisterTest : E2ETest() {
     fun unregistering() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 unregister(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
             }
         }
     }
