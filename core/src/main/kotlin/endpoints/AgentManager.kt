@@ -108,6 +108,22 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         } else null
     }
 
+    //TODO EPMDJ-9872 Add ability to remove offline agent
+    internal suspend fun removeAgent(
+        agentId: String,
+    ): Boolean = (get(agentId) ?: loadAgentInfo(agentId)).let { storedInfo ->
+        val agentStatus = storedInfo?.agentStatus
+        if (storedInfo == null || agentStatus == AgentStatus.NOT_REGISTERED || agentStatus == AgentStatus.PREREGISTERED) {
+            commonStore.client.deleteById<AgentInfo>(agentId)
+            commonStore.client.deleteById<PreparedAgentData>(agentId)
+            agentStorage.remove(agentId)
+            logger.debug { "Agent info for Agent $agentId was completely deleted." }
+            return true
+        }
+        return false
+    }
+
+
     internal suspend fun attach(
         config: CommonAgentConfig,
         needSync: Boolean,

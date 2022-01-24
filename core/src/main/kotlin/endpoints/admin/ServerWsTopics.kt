@@ -67,17 +67,18 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             //TODO EPMDJ-8454 should send list, after multiple builds will be implemented
             buildManager.buildStorage.onUpdate += { builds ->
                 builds.keys.forEach {
-                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { buildDto ->
-                        WsRoot.AgentBuild(it.agentId, it.buildVersion).send(buildDto)
-                        WsRoot.AgentBuilds(it.agentId).send(listOf(buildDto))
+                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { agentBuildInfoDto ->
+                        WsRoot.AgentBuild(it.agentId, it.buildVersion).send(agentBuildInfoDto)
+                        WsRoot.AgentBuilds(it.agentId).send(listOf(agentBuildInfoDto))
                     }
                 }
 
             }
 
-            buildManager.buildStorage.onAdd += { buildId, _ ->
-                agentManager.agentStorage[buildId.agentId]?.info?.let { info ->
-                    WsRoot.AgentBuild(buildId.agentId, buildId.buildVersion).send(info.toAgentBuildDto(buildManager))
+            buildManager.buildStorage.onAdd += { agentBuildKey, _ ->
+                agentManager[agentBuildKey.agentId]?.toAgentBuildDto(buildManager)?.let { buildDto ->
+                    WsRoot.AgentBuild(agentBuildKey.agentId, agentBuildKey.buildVersion).send(buildDto)
+                    WsRoot.AgentBuilds(agentBuildKey.agentId).send(listOf(buildDto))
                 }
             }
 
@@ -114,6 +115,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 topic<WsRoot.Version> { adminVersionDto }
 
                 topic<WsRoot.Agents> { agentManager.all() }
+
+                topic<WsRoot.AgentsActiveBuild> { agentManager.agentsActiveBuild(buildManager) }
 
                 topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }
 

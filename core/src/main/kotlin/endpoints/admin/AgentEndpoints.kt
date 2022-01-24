@@ -129,7 +129,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         configHandler.updateAgent(agentId, updatedValues)
                         logger.debug { "Agent with id '$agentId' was updated successfully" }
                         HttpStatusCode.OK to EmptyContent
-                    } ?: HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found")
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found"))
                     call.respond(status, message)
                 }
             }
@@ -166,7 +166,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                patch<ApiRoot.Agents.Agent, AgentRegistrationDto>(meta) { payload, regInfo ->
+                post<ApiRoot.Agents.Agent, AgentRegistrationDto>(meta) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -187,7 +187,7 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                     .responds(
                         ok<Unit>(), badRequest()
                     )
-                delete<ApiRoot.Agents.Agent>(meta) { payload ->
+                patch<ApiRoot.Agents.Agent>(meta) { payload ->
                     logger.debug { "Unregister agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -201,6 +201,26 @@ class AgentEndpoints(override val kodein: Kodein) : KodeinAware {
                         HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
                     }
                     call.respond(status, message)
+                }
+            }
+
+            //TODO EPMDJ-9872 Add ability to remove offline agent
+            authenticate {
+                val meta = "Remove all agent info"
+                    .responds(
+                        ok<Unit>(), notFound(), badRequest()
+                    )
+                delete<ApiRoot.Agents.Agent>(meta) { payload ->
+                    val agentId = payload.agentId
+                    if (agentManager.removeAgent(agentId)) {
+                        call.respond(HttpStatusCode.OK, EmptyContent)
+                    } else {
+                        logger.debug { "Deleting registered Agent '$agentId' isn't supported yet" }
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse("Deleting registered Agent '$agentId' isn't supported yet")
+                        )
+                    }
                 }
             }
         }
