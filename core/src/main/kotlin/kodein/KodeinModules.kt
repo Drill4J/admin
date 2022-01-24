@@ -65,11 +65,13 @@ val storage: Kodein.Builder.(Application) -> Unit
         }
         bind<AgentStores>() with eagerSingleton { AgentStores(drillWorkDir).also { app.closeOnStop(it) } }
         bind<AgentStorage>() with singleton { AgentStorage() }
+        bind<BuildStorage>() with singleton { BuildStorage() }
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }
         } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
         bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
         bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+        bind<BuildManager>() with eagerSingleton { BuildManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(kodein) }

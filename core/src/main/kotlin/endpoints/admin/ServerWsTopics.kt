@@ -39,6 +39,7 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
     private val wsTopic by instance<WsTopic>()
     private val groupManager by instance<GroupManager>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val plugins by instance<Plugins>()
     private val pluginCaches by instance<PluginCaches>()
     private val app by instance<Application>()
@@ -51,6 +52,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
             agentManager.agentStorage.onUpdate += {
                 WsRoot.Agents().send(agentManager.all())
                 WsRoot.Groups().send(groupManager.all())
+                //TODO remove after EPMDJ-8323
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
             }
             agentManager.agentStorage.onAdd += { agentId, agent ->
                 WsRoot.Agent(agentId).send(agent.info.toDto(agentManager))
@@ -61,13 +64,26 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                 }
             }
 
+            //TODO EPMDJ-8454 should send list, after multiple builds will be implemented
+            buildManager.buildStorage.onUpdate += { builds ->
+                builds.keys.forEach {
+                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { buildDto ->
+                        WsRoot.AgentBuild(it.agentId, it.buildVersion).send(buildDto)
+                        WsRoot.AgentBuilds(it.agentId).send(listOf(buildDto))
+                    }
+                }
+
+            }
+
+            buildManager.buildStorage.onAdd += { buildId, _ ->
+                agentManager.agentStorage[buildId.agentId]?.info?.let { info ->
+                    WsRoot.AgentBuild(buildId.agentId, buildId.buildVersion).send(info.toAgentBuildDto(buildManager))
+                }
+            }
+
             agentManager.agentStorage.onUpdate += {
-                val destination = app.toLocation(WsRoutes.Agents())
                 val groupedAgents = groupManager.group(agentManager.activeAgents).toDto(agentManager)
-                sessionStorage.sendTo(
-                    destination,
-                    groupedAgents
-                )
+                WsRoutes.Agents().send(groupedAgents)
                 val groups = groupedAgents.grouped
                 if (groups.any()) {
                     for (group in groups) {
@@ -101,6 +117,13 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
 
                 topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }
 
+                //TODO EPMDJ-8454 should send list, after multiple builds will be implemented
+                topic<WsRoot.AgentBuilds> {
+                    agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { listOf(it) }
+                }
+
+                topic<WsRoot.AgentBuild> { agentManager[it.agentId]?.toAgentBuildDto(buildManager) }
+
                 topic<WsRoot.Groups> { groupManager.all() }
 
                 topic<WsRoot.Group> { groupManager[it.groupId] }
@@ -123,8 +146,8 @@ class ServerWsTopics(override val kodein: Kodein) : KodeinAware {
                     notificationManager.notifications.valuesDesc
                 }
 
-                topic<WsRoutes.AgentBuilds> { (agentId) ->
-                    agentManager.adminData(agentId).buildManager.agentBuilds.map { agentBuild ->
+                topic<WsRoutes.AgentBuildsSummary> { (agentId) ->
+                    buildManager.buildData(agentId).buildManager.agentBuilds.map { agentBuild ->
                         BuildSummaryDto(
                             buildVersion = agentBuild.info.version,
                             detectedAt = agentBuild.detectedAt,

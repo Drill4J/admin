@@ -47,10 +47,7 @@ class PluginTest : E2EPluginTest() {
 
     @Test
     fun `reconnect - new build`() {
-        createSimpleAppWithPlugin<PTestStream>(
-            uiStreamDebug = true,
-            agentStreamDebug = true
-        ) {
+        createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1> { plugUi, _ ->
                 plugUi.processedData.receive()
                 pluginAction("myActionForAllAgents") { status, content ->
@@ -103,7 +100,7 @@ class PluginTest : E2EPluginTest() {
         while (true) {
             val message = channel.receive()
             val groupedAgents = message.grouped.flatMap { it.agents }
-            if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE } && groupedAgents.size == instanceCount) {
+            if (groupedAgents.all { it.activePluginsCount == 1 && it.agentStatus == AgentStatus.REGISTERED } && groupedAgents.size == instanceCount) {
                 break
             }
         }

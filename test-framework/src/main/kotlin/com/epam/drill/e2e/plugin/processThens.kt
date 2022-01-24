@@ -87,12 +87,6 @@ fun AdminTest.processThens(
                     true,
                     needSync
                 )
-                for (i in 1..3) {
-                    if (ui.getAgent()?.status == AgentStatus.BUSY) {
-                        break
-                    }
-                }
-                assertEquals(AgentStatus.ONLINE, ui.getAgent()?.status)
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)
                     delay(100)

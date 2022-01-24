@@ -61,7 +61,6 @@ class DrillServerWs(override val kodein: Kodein) : KodeinAware {
                                 session.send(messageToSend)
                                 logger.debug { "$destination is subscribed" }
                             }
-
                             is Unsubscribe -> {
                                 if (sessionStorage.unsubscribe(destination, session)) {
                                     logger.debug { "$destination is unsubscribed" }

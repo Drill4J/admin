@@ -28,30 +28,38 @@ internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { 
     entry.info.toDto(this)
 }
 
+//TODO remove after EPMDJ-8323
+internal fun AgentManager.agentsActiveBuild(
+    buildManager: BuildManager,
+) = activeAgents.filter {
+    it.agentStatus == AgentStatus.REGISTERED
+}.map { AgentBuildDto(it.id, it.toAgentBuildDto(buildManager)) }
+
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
 internal fun AgentCreationDto.toAgentInfo(installedPlugins: Plugins) = AgentInfo(
     id = id,
     agentType = agentType,
     name = name,
-    isRegistered = true,
+    agentStatus = AgentStatus.PREREGISTERED,
     groupId = group,
     environment = environment,
     description = description,
-    agentVersion = "",
-    buildVersion = "",
+    build = AgentBuildInfo(version = ""),
     plugins = plugins.filterTo(mutableSetOf()) { it in installedPlugins }
 )
 
 internal fun CommonAgentConfig.toAgentInfo() = AgentInfo(
     id = id,
     name = id,
-    isRegistered = false,
+    agentStatus = AgentStatus.NOT_REGISTERED,
     groupId = serviceGroupId,
     environment = "",
     description = "",
-    agentVersion = agentVersion,
-    buildVersion = buildVersion,
+    build = AgentBuildInfo(
+        version = buildVersion,
+        agentVersion = agentVersion,
+    ),
     agentType = AgentType.valueOf(agentType.name)
 )
 
@@ -59,37 +67,46 @@ internal fun AgentInfo.toDto(
     agentManager: AgentManager,
 ): AgentInfoDto = run {
     val plugins = agentManager.plugins.ofAgent(this)
-    val instanceIds = agentManager.instanceIds(id).keys
-    val agentStatus = agentManager.getStatus(id)
     AgentInfoDto(
         id = id,
         group = groupId,
-        instanceIds = instanceIds,
         name = name,
         description = description,
         environment = environment,
-        status = agentStatus,
-        buildVersion = buildVersion,
+        agentStatus = agentStatus,
         adminUrl = adminUrl,
-        ipAddress = ipAddress,
         activePluginsCount = plugins.activePluginsCount(),
         agentType = agentType.notation,
-        agentVersion = agentVersion,
-        systemSettings = agentManager.adminData(id).settings,
-        plugins = plugins.mapToDto().toSet()
+        plugins = plugins.mapToDto().toSet(),
     )
 }
+
+internal fun AgentInfo.toAgentBuildDto(
+    buildManager: BuildManager,
+): AgentBuildInfoDto = build.run {
+    AgentBuildInfoDto(
+        buildVersion = version,
+        buildStatus = buildManager.buildStatus(id),
+        ipAddress = ipAddress,
+        agentVersion = agentVersion,
+        systemSettings = buildManager.buildData(id).settings,
+        instanceIds = buildManager.instanceIds(id).keys
+    )
+}
+
 
 internal fun AgentInfo.toCommonInfo() = CommonAgentInfo(
     id = id,
     agentType = agentType.name,
-    agentVersion = agentVersion,
+    agentVersion = build.agentVersion,
     serviceGroup = groupId,
-    buildVersion = buildVersion,
+    buildVersion = build.version,
     name = name,
     environment = environment,
     description = description
 )
+
+internal fun AgentInfo.toAgentBuildKey() = AgentBuildKey(id, build.version)
 
 internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
     block(it)
@@ -98,5 +115,5 @@ internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSe
 private fun Iterable<Plugin>.activePluginsCount(): Int = count { it.pluginBean.enabled }
 
 internal fun AgentInfo.debugString(
-    instanceId: String
-) = "Agent(id=$id, buildVersion=$buildVersion, instanceId=$instanceId)"
+    instanceId: String,
+) = "Agent(id=$id, buildVersion=${build.version}, instanceId=$instanceId)"

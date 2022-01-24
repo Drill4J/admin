@@ -100,6 +100,8 @@ internal class DrillServerWsTest {
                     bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(kodein) }
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance())}
                     bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+                    bind<BuildStorage>() with eagerSingleton { BuildStorage() }
+                    bind<BuildManager>() with eagerSingleton { BuildManager(kodein) }
                     bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(kodein) }
                     bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(kodein) }
                 }

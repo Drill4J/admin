@@ -27,7 +27,6 @@ import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.TogglePayload
-import com.epam.drill.admin.endpoints.AgentKey
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.api.*
 import de.nielsfalk.ktor.swagger.*
@@ -47,6 +46,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val loggingHandler by instance<LoggingHandler>()
     private val plugins by instance<Plugins>()
     private val cacheService by instance<CacheService>()
@@ -61,7 +61,7 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                 delete<ApiRoot.Agents.Plugin>(meta) { payload ->
                     val (_, agentId, pluginId) = payload
                     logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
-                    val drillAgent = agentManager.agentSessions(agentId)
+                    val drillAgent = buildManager.agentSessions(agentId)
                     val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
 
                     val (status, response) = when {
@@ -102,29 +102,29 @@ class DrillAdminEndpoints(override val kodein: Kodein) : KodeinAware {
                     val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     val (status, response) = agentManager[agentId]?.let { agentInfo ->
-                        val status = agentManager.getStatus(agentId)
+                        val status = buildManager.buildStatus(agentId)
+                        val agentBuildKey = agentInfo.toAgentBuildKey()
                         when (status) {
-                            AgentStatus.OFFLINE -> AgentStatus.ONLINE
-                            AgentStatus.ONLINE -> AgentStatus.OFFLINE
+                            BuildStatus.OFFLINE -> BuildStatus.ONLINE
+                            BuildStatus.ONLINE -> BuildStatus.OFFLINE
                             else -> null
                         }?.let { newStatus ->
-                            agentManager.instanceIds(agentId).forEach { (id, value) ->
-                                val agentKey = AgentKey(agentId, agentInfo.buildVersion)
-                                agentManager.updateInstanceStatus(agentKey, id, newStatus)
-                                val toggleValue = newStatus == AgentStatus.ONLINE
+                            buildManager.instanceIds(agentId).forEach { (id, value) ->
+                                buildManager.updateInstanceStatus(agentBuildKey, id, newStatus)
+                                val toggleValue = newStatus == BuildStatus.ONLINE
                                 agentInfo.plugins.map { pluginId ->
                                     value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
                                         TogglePayload(pluginId, toggleValue)
                                     )
                                 }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }
-                            agentManager.notifyAgents(agentId)
-                            logger.info { "Agent $agentId toggled, new status - $newStatus." }
+                            buildManager.notifyBuild(agentBuildKey)
+                            logger.info { "Agent $agentId toggled, new build status - $newStatus." }
                             HttpStatusCode.OK to EmptyContent
-                        } ?: HttpStatusCode.Conflict to ErrorResponse(
+                        } ?: (HttpStatusCode.Conflict to ErrorResponse(
                             "Cannot toggle agent $agentId on status $status"
-                        )
-                    } ?: HttpStatusCode.NotFound to EmptyContent
+                        ))
+                    } ?: (HttpStatusCode.NotFound to EmptyContent)
                     call.respond(status, response)
                 }
             }

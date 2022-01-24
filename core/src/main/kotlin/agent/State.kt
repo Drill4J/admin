@@ -28,7 +28,6 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
 import mu.*
-import kotlin.time.*
 
 internal class AgentDataCache {
 
@@ -63,9 +62,9 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = storeClient.loadClasses(AgentBuildKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = storeClient.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) = storeClient.loadClasses(AgentBuildKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -92,14 +91,14 @@ internal class AgentData(
     internal suspend fun initClasses(buildVersion: String) {
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
         val classBytesSize = addedClasses.sumBy { it.size } / 1024
-        val agentKey = AgentKey(agentId, buildVersion)
-        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentKey..." }
+        val agentBuildKey = AgentBuildKey(agentId, buildVersion)
+        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentBuildKey..." }
         trackTime("initClasses") {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            storeClient.storeClasses(agentKey, classBytes)
-            storeClient.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            storeClient.storeClasses(agentBuildKey, classBytes)
+            storeClient.storeMetadata(agentBuildKey, Metadata(addedClasses.size, classBytesSize))
         }
     }
 
@@ -132,7 +131,7 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = storeClient.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentBuildKey: AgentBuildKey) = storeClient.deleteClasses(agentBuildKey)
 
     private suspend fun loadStoredData() = storeClient.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
@@ -165,13 +164,13 @@ internal class AgentData(
 }
 
 private suspend fun StoreClient.storeClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
     classBytes: Map<String, ByteArray>,
 ) {
     trackTime("storeClasses") {
-        logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
+        logger.debug { "Storing for $agentBuildKey class bytes ${classBytes.size}..." }
         val storedData = StoredCodeData(
-            id = agentKey,
+            id = agentBuildKey,
             data = CodeData(classBytes = classBytes)
         )
         store(storedData)
@@ -179,19 +178,19 @@ private suspend fun StoreClient.storeClasses(
 }
 
 private suspend fun StoreClient.loadClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
-    findById<StoredCodeData>(agentKey)?.run {
+    findById<StoredCodeData>(agentBuildKey)?.run {
         data.classBytes
     } ?: let {
-        logger.warn { "Can not find classBytes for $agentKey" }
+        logger.warn { "Can not find classBytes for $agentBuildKey" }
         emptyMap()
     }
 }
 
 private suspend fun StoreClient.deleteClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ) = trackTime("deleteClasses") {
-    logger.debug { "Deleting class bytes for $agentKey..." }
-    deleteById<StoredCodeData>(agentKey)
+    logger.debug { "Deleting class bytes for $agentBuildKey..." }
+    deleteById<StoredCodeData>(agentBuildKey)
 }

@@ -19,7 +19,9 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
+import java.util.concurrent.*
 import kotlin.test.*
+import kotlin.time.*
 
 class AgentSingleInstanceTest : E2ETest() {
 
@@ -27,23 +29,28 @@ class AgentSingleInstanceTest : E2ETest() {
 
     @Test
     fun `Agent shouldn't create more instances after reconnection`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(uiStreamDebug = true,
+            agentStreamDebug = true,
+            timeout = 120.0.toDuration(TimeUnit.SECONDS)) {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.apply {
-                    status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.apply {
+                    buildStatus shouldBe BuildStatus.ONLINE
                     instanceIds.size shouldBe 1
                 }
             }.reconnect(aw) { ui, _ ->
-                ui.getAgent()?.apply {
-                    status shouldBe AgentStatus.ONLINE
+                ui.getBuild()?.apply {
+                    buildStatus shouldBe BuildStatus.ONLINE
                     instanceIds.size shouldBe 1
                 }
             }

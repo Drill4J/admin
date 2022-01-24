@@ -16,6 +16,7 @@
 package com.epam.drill.admin.version
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.*
@@ -31,6 +32,7 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
     private val app by instance<Application>()
     private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
 
     init {
         app.routing { routes() }
@@ -47,12 +49,12 @@ class VersionEndpoints(override val kodein: Kodein) : KodeinAware {
                     java = adminVersionDto.java,
                     plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
                     agents = agentManager.activeAgents.flatMap { agentInfo ->
-                        agentManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
+                        buildManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
                             ComponentVersion(
-                                id = listOf("${agentInfo.id}/${agentInfo.buildVersion}/${instanceId}", agentInfo.groupId)
+                                id = listOf("${agentInfo.toAgentBuildKey()}/${instanceId}", agentInfo.groupId)
                                     .filter(String::any)
                                     .joinToString("@"),
-                                version = agentInfo.agentVersion
+                                version = agentInfo.build.agentVersion
                             )
                         }
                     }

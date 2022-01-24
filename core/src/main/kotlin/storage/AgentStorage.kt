@@ -15,6 +15,10 @@
  */
 package com.epam.drill.admin.storage
 
+import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
+import kotlinx.collections.immutable.*
 
 typealias AgentStorage = ObservableMapStorage<String, Agent>
+
+typealias BuildStorage = ObservableMapStorage<AgentBuildKey, PersistentMap<String, InstanceState>>
