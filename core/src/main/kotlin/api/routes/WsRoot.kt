@@ -24,8 +24,19 @@ object WsRoot {
     @Location("/api/agents")
     class Agents
 
-    @Location("/api/agents/{agentId}")
-    class Agent(val agentId: String)
+    //TODO remove after EPMDJ-8292
+    @Location("/api/agents/build")
+    class AgentsActiveBuild
+
+    @Location("/api/agent/{agentId}")
+    data class Agent(val agentId: String)
+
+    //TODO EPMDJ-9812 nested structure doesn't work
+    @Location("/api/agent/{agentId}/build/{buildVersion}")
+    data class AgentBuild(val agentId: String, val buildVersion: String)
+
+    @Location("/api/agent/{agentId}/builds")
+    data class AgentBuilds(val agentId: String)
 
     @Location("/api/groups")
     class Groups

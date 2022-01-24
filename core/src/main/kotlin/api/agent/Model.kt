@@ -26,9 +26,15 @@ enum class AgentType(val notation: String) {
 
 enum class AgentStatus {
     NOT_REGISTERED,
+    PREREGISTERED,
+    REGISTERING,
+    REGISTERED,
+}
+
+enum class BuildStatus {
     ONLINE,
     OFFLINE,
-    BUSY;
+    BUSY,
 }
 
 @Serializable
@@ -42,19 +48,31 @@ data class SystemSettingsDto(
 data class AgentInfoDto(
     val id: String,
     val group: String,
-    val instanceIds: Set<String>,
     val name: String,
     val description: String = "",
     val environment: String = "",
-    val status: AgentStatus,
-    val buildVersion: String,
+    val agentStatus: AgentStatus = AgentStatus.NOT_REGISTERED,
     val adminUrl: String = "",
-    val ipAddress: String = "",
     val activePluginsCount: Int = 0,
     val agentType: String,
+    val plugins: Set<PluginDto> = emptySet(),
+)
+
+@Serializable
+data class AgentBuildInfoDto(
+    val buildVersion: String,
+    val buildStatus: BuildStatus,
+    val ipAddress: String = "",
     val agentVersion: String,
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),
-    val plugins: Set<PluginDto> = emptySet(),
+    val instanceIds: Set<String> = emptySet(),
+)
+
+//TODO remove after EPMDJ-8323
+@Serializable
+data class AgentBuildDto(
+    val agentId: String,
+    val build: AgentBuildInfoDto,
 )
 
 @Serializable
