@@ -19,6 +19,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.common.*
@@ -53,14 +54,16 @@ abstract class PluginStreams {
 
 class AdminUiChannels {
     val agentChannel = Channel<AgentInfoDto?>(Channel.UNLIMITED)
-    val buildsChannel = Channel<List<BuildSummaryDto>?>(Channel.UNLIMITED)
+    val buildChannel = Channel<AgentBuildInfoDto?>(Channel.UNLIMITED)
+    val buildSummaryChannel = Channel<List<BuildSummaryDto>?>(Channel.UNLIMITED)
     val agentsChannel = Channel<GroupedAgentsDto?>(Channel.UNLIMITED)
     val allPluginsChannel = Channel<Set<PluginDto>?>(Channel.UNLIMITED)
     val notificationsChannel = Channel<Set<Notification>?>(Channel.UNLIMITED)
     val agentPluginInfoChannel = Channel<Set<PluginDto>?>(Channel.UNLIMITED)
 
     suspend fun getAgent() = agentChannel.receive()
-    suspend fun getBuilds() = buildsChannel.receive()
+    suspend fun getBuild() = buildChannel.receive()
+    suspend fun getBuildSummary() = buildSummaryChannel.receive()
     suspend fun getAllAgents() = agentsChannel.receive()
     suspend fun getAllPluginsInfo() = allPluginsChannel.receive()
     suspend fun getNotifications() = notificationsChannel.receive()
@@ -96,11 +99,15 @@ class UIEVENTLOOP(
                                     }
                                     println("Processed $type")
                                 }
-                                is WsRoutes.Agent -> cs.getValue(type.agentId).agentChannel.run {
+                                is WsRoot.Agent -> cs.getValue(type.agentId).agentChannel.run {
                                     send(response?.let { AgentInfoDto.serializer() fromJson it })
                                     println("Processed $type")
                                 }
-                                is WsRoutes.AgentBuilds -> cs.getValue(type.agentId).buildsChannel.run {
+                                is WsRoot.AgentBuild -> cs.getValue(type.agentId).buildChannel.run {
+                                    send(response?.let { AgentBuildInfoDto.serializer() fromJson it })
+                                    println("Processed $type")
+                                }
+                                is WsRoutes.AgentBuildsSummary -> cs.getValue(type.agentId).buildSummaryChannel.run {
                                     send(response?.let { ListSerializer(BuildSummaryDto.serializer()) fromJson it })
                                     println("Processed $type")
                                 }

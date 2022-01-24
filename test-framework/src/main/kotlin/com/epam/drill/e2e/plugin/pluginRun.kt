@@ -16,10 +16,12 @@
 package com.epam.drill.e2e.plugin
 
 import com.epam.drill.admin.api.group.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
@@ -54,8 +56,7 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
         handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { frontIn, uts ->
             val cont = TestContext<PS>()
             block(cont)
-            Subscribe("/agents")
-            uts.send(uiMessage(Subscribe("/agents")))
+            uts.send(uiMessage(Subscribe(toWsDestination(WsRoutes.Agents()))))
             frontIn.receive()
             val cs = mutableMapOf<String, AdminUiChannels>()
             val glob = Channel<GroupedAgentsDto>()
@@ -75,7 +76,7 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
                     val ui = AdminUiChannels()
                     cs[ag.id] = ui
                     with(UIEVENTLOOP(cs, uiStreamDebug, glob)) { application.queued(appConfig.wsTopic, frontIn) }
-                    uts.send(uiMessage(Subscribe("/agents/${ag.id}")))
+                    uts.send(uiMessage(Subscribe(toWsDestination(WsRoot.Agent(ag.id)))))
                     launch(handler) {
                         processFirstConnect(
                             psClass,

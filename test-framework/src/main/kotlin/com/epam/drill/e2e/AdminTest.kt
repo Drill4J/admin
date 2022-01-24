@@ -86,6 +86,8 @@ fun TestApplicationEngine.toApiUri(location: Any): String = application.location
     if (uri.startsWith("/api")) uri else "/api$uri"
 }
 
+fun TestApplicationEngine.toWsDestination(location: Any): String = application.toLocation(location)
+
 @ExperimentalTime
 fun CoroutineScope.createTimeoutJob(timeout: Duration, context: Job) = launch {
     val expirationMark = Monotonic.markNow() + timeout

@@ -54,11 +54,13 @@ val pluginServices: DI.Builder.(Application) -> Unit
 val storage: DI.Builder.(Application) -> Unit
     get() = { app ->
         bind<AgentStorage>() with singleton { AgentStorage() }
+        bind<BuildStorage>() with singleton { BuildStorage() }
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }
         } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<GroupManager>() with eagerSingleton { GroupManager(di) }
-        bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+        bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
+        bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
+        bind<BuildManager>() with eagerSingleton { BuildManager(kodein) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(di) }

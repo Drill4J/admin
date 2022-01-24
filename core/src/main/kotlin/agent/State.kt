@@ -90,8 +90,8 @@ internal class AgentData(
     internal suspend fun initClasses(buildVersion: String) {
         val addedClasses: List<ByteArray> = buildManager.collectClasses()
         val classBytesSize = addedClasses.sumBy { it.size } / 1024
-        val agentKey = AgentKey(agentId, buildVersion)
-        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentKey..." }
+        val agentBuildKey = AgentBuildKey(agentId, buildVersion)
+        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentBuildKey..." }
         trackTime("initClasses") {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
@@ -163,13 +163,13 @@ internal class AgentData(
 }
 
 private suspend fun StoreClient.storeClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
     classBytes: Map<String, ByteArray>,
 ) {
     trackTime("storeClasses") {
-        logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
+        logger.debug { "Storing for $agentBuildKey class bytes ${classBytes.size}..." }
         val storedData = StoredCodeData(
-            id = agentKey,
+            id = agentBuildKey,
             data = ProtoBuf.dump(
                 CodeData.serializer(),
                 CodeData(classBytes = classBytes)
@@ -180,19 +180,19 @@ private suspend fun StoreClient.storeClasses(
 }
 
 private suspend fun StoreClient.loadClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
     findById<StoredCodeData>(agentKey)?.run {
         ProtoBuf.load(CodeData.serializer(), data).classBytes
     } ?: let {
-        logger.warn { "Can not find classBytes for $agentKey" }
+        logger.warn { "Can not find classBytes for $agentBuildKey" }
         emptyMap()
     }
 }
 
 private suspend fun StoreClient.deleteClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ) = trackTime("deleteClasses") {
-    logger.debug { "Deleting class bytes for $agentKey..." }
-    deleteById<StoredCodeData>(agentKey)
+    logger.debug { "Deleting class bytes for $agentBuildKey..." }
+    deleteById<StoredCodeData>(agentBuildKey)
 }

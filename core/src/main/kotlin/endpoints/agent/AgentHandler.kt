@@ -43,6 +43,7 @@ class AgentHandler(override val di: DI) : DIAware{
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val pd by instance<PluginDispatcher>()
     private val topicResolver by instance<TopicResolver>()
 
@@ -75,7 +76,7 @@ class AgentHandler(override val di: DI) : DIAware{
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
         val agentDebugStr = agentInfo.debugString(instanceId)
         try {
-            val adminData = agentManager.adminData(agentInfo.id)
+            val buildData = buildManager.buildData(agentInfo.id)
             incoming.consumeEach { frame ->
                 when (frame) {
                     is Frame.Binary -> runCatching {
@@ -121,14 +122,14 @@ class AgentHandler(override val di: DI) : DIAware{
                             MessageType.CLASSES_DATA -> {
                                 message.bytes.takeIf { it.isNotEmpty() }?.let { rawBytes ->
                                     ProtoBuf.load(ByteArrayListWrapper.serializer(), rawBytes).bytesList.forEach {
-                                        adminData.buildManager.addClass(it)
+                                        buildData.buildManager.addClass(it)
                                     }
                                 }
                             }
 
-                            MessageType.FINISH_CLASSES_TRANSFER -> adminData.apply {
-                                initClasses(agentInfo.buildVersion)
-                                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuilds(agentInfo.id))
+                            MessageType.FINISH_CLASSES_TRANSFER -> buildData.apply {
+                                initClasses(agentInfo.build.version)
+                                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(agentInfo.id))
                                 logger.debug { "Finished classes transfer for $agentDebugStr" }
                             }
 
@@ -146,8 +147,7 @@ class AgentHandler(override val di: DI) : DIAware{
             }
         } finally {
             logger.info { "removing instance of $agentDebugStr..." }
-            val agentKey = AgentKey(agentInfo.id, agentInfo.buildVersion)
-            agentManager.removeInstance(agentKey, instanceId)
+            buildManager.removeInstance(agentInfo.toAgentBuildKey(), instanceId)
         }
     }
 }

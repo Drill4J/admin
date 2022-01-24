@@ -38,6 +38,7 @@ class AgentEndpoints(override val di: DI) : DIAware{
 
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val configHandler by instance<ConfigHandler>()
 
     init {
@@ -78,9 +79,9 @@ class AgentEndpoints(override val di: DI) : DIAware{
                     )
                 get<ApiRoot.Agents.Metadata>(meta) {
                     val metadataAgents = agentManager.all().flatMap {
-                        agentManager.adminData(it.id).buildManager.agentBuilds.map { agentBuild ->
-                            val agentKey = AgentKey(it.id, agentBuild.info.version)
-                            adminStore.loadAgentMetadata(agentKey)
+                        buildManager.buildData(it.id).buildManager.agentBuilds.map { agentBuild ->
+                            val agentBuildKey = AgentBuildKey(it.id, agentBuild.info.version)
+                            mapOf(agentBuildKey to stores[it.id].loadMetadata(agentBuildKey))
                         }
                     }
                     call.respond(HttpStatusCode.OK, metadataAgents)
@@ -143,7 +144,7 @@ class AgentEndpoints(override val di: DI) : DIAware{
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
-                    val (status, message) = if (agentManager.agentSessions(agentId).isNotEmpty()) {
+                    val (status, message) = if (buildManager.agentSessions(agentId).isNotEmpty()) {
                         agentManager.updateAgent(agentId, au)
                         logger.debug { "Agent with id '$agentId' was updated successfully" }
                         HttpStatusCode.OK to EmptyContent

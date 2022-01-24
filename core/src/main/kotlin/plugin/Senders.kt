@@ -35,7 +35,8 @@ class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val agentManager by instance<AgentManager>()
+    private val pluginStores by instance<PluginStores>()
+    private val buildManager by instance<BuildManager>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 
@@ -85,7 +86,7 @@ class PluginSenders(override val di: DI) : DIAware {
             message.actionSerializerOrNull()?.let { serializer ->
                 val actionStr = serializer stringify message
                 val agentAction = PluginAction(pluginId, actionStr)
-                agentManager.agentSessions(agentId).map {
+                buildManager.agentSessions(agentId).map {
                     //TODO EPMDJ-8233 move to the api; EPMDJ-9807 Remove base64
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,
