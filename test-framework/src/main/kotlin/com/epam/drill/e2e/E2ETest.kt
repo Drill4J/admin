@@ -247,7 +247,7 @@ abstract class E2ETest : AdminTest() {
         callAsync(context) {
             with(engine) {
                 handleRequest(
-                    HttpMethod.Delete,
+                    HttpMethod.Patch,
                     toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")

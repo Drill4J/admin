@@ -72,7 +72,7 @@ data class AgentBuildInfoDto(
 @Serializable
 data class AgentBuildDto(
     val agentId: String,
-    val builds: AgentBuildInfoDto,
+    val build: AgentBuildInfoDto,
 )
 
 @Serializable

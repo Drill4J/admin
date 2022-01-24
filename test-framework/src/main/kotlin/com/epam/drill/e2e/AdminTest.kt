@@ -71,7 +71,7 @@ abstract class AdminTest {
     ) = callAsync(context) {
         with(engine) {
             handleRequest(
-                HttpMethod.Patch,
+                HttpMethod.Post,
                 toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
             ) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
