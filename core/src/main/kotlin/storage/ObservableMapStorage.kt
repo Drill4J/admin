@@ -49,7 +49,7 @@ class ObservableMapStorage<K, V>(map: Map<K, V> = emptyMap()) {
         return replaced
     }
 
-    suspend fun updateValue(key: K, block: (PersistentMap<K, V>) -> PersistentMap<K, V>): V? {
+    fun updateValue(key: K, block: (PersistentMap<K, V>) -> PersistentMap<K, V>): V? {
         val updated = _targetMap.updateAndGet {
             block(it)
         }[key]
