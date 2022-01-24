@@ -157,11 +157,11 @@ class GroupHandler(override val di: DI) : DIAware{
                     )
                 put<ApiRoot.AgentGroup.SystemSettings, SystemSettingsDto>(meta) { (group), systemSettings ->
                     val id: String = group.groupId
-                    val status: HttpStatusCode = groupManager[id]?.let { group ->
+                    val status: HttpStatusCode = groupManager[id]?.let { groupDto ->
                         if (systemSettings.packages.all { it.isNotBlank() }) {
                             val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.info }
                             val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
-                            groupManager.updateSystemSettings(group, systemSettings)?.let { sendUpdates(listOf(it)) }
+                            groupManager.updateSystemSettings(groupDto, systemSettings)?.let { sendUpdates(listOf(it)) }
                             if (updatedAgentIds.count() < agentInfos.count()) {
                                 logger.error {
                                     """Group $id: not all agents updated successfully.

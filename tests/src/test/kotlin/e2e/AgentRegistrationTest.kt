@@ -19,7 +19,9 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
+import java.util.concurrent.*
 import kotlin.test.*
+import kotlin.time.*
 
 
 class AgentRegistrationTest : E2ETest() {
@@ -28,16 +30,19 @@ class AgentRegistrationTest : E2ETest() {
 
     @Test
     fun `agent should be registered`() {
-        createSimpleAppWithUIConnection {
+        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true, timeout = 120.0.toDuration(TimeUnit.SECONDS) ) {
             connectAgent(AgentWrap(agentId, "0.1.0")) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
         }
     }
@@ -46,7 +51,8 @@ class AgentRegistrationTest : E2ETest() {
     fun `agent must register without a description`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId, "0.1.0")) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(
                     agentId,
                     payload = AgentRegistrationDto(
@@ -59,10 +65,12 @@ class AgentRegistrationTest : E2ETest() {
                 ) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
         }
     }

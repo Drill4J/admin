@@ -27,10 +27,10 @@ import org.kodein.di.*
 
 //todo remove after testing EPMDJ-7890
 class LoggingHandler(override val di: DI) : DIAware {
-    private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
-        agentManager.agentSessions(agentId).applyEach {
+        buildManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
             adminStore.store(AgentLoggingConfig(agentId, loggingConfig))
         }
