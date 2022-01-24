@@ -35,7 +35,8 @@ internal class RequestValidator(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger { }
 
     val app by instance<Application>()
-    private val am by instance<AgentManager>()
+    private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
 
     init {
         app.routing {
@@ -43,9 +44,9 @@ internal class RequestValidator(override val di: DI) : DIAware {
                 if (context is RoutingApplicationCall) {
                     val agentId = context.parameters["agentId"]
                     if (agentId != null) {
-                        val agentInfo = am.getOrNull(agentId)
-                        when (am.getStatus(agentId)) {
-                            AgentStatus.BUSY -> {
+                        val agentInfo = agentManager.getOrNull(agentId)
+                        when (buildManager.buildStatus(agentId)) {
+                            BuildStatus.BUSY -> {
                                 val agentPath = locations.href(
                                     ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
                                 )
@@ -63,7 +64,7 @@ internal class RequestValidator(override val di: DI) : DIAware {
                             }
                             else -> {
                                 if (agentInfo == null &&
-                                    am.allEntries().none { it.info.groupId == agentId }
+                                    agentManager.allEntries().none { it.info.groupId == agentId }
                                 ) {
                                     call.respond(
                                         HttpStatusCode.BadRequest,

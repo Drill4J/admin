@@ -30,14 +30,17 @@ class MultipleAgentRegistrationTest : E2ETest() {
         createSimpleAppWithUIConnection(delayBeforeClearData = 1_000) {
             repeat(4) {
                 connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { ui, agent ->
-                    ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                    ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                    ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                     register("$agentIdPrefix$it") { status, _ ->
                         status shouldBe HttpStatusCode.OK
                     }
-                    ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                    ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                    ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                     agent.`get-set-packages-prefixes`()
                     agent.`get-load-classes-datas`()
-                    ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                    ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
+                    ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 }
             }
         }

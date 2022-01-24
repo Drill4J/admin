@@ -32,7 +32,8 @@ class AgentGroupTest : E2ETest() {
         val wit = 0
         createSimpleAppWithUIConnection(timeout = Duration.seconds(20)) {
             connectAgent(AgentWrap("ag$wit", "0.1.$wit", "micro")) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(
                     "ag$wit",
                     payload = AgentRegistrationDto(
@@ -46,14 +47,17 @@ class AgentGroupTest : E2ETest() {
                 ) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
             val it = 1
             connectAgent(AgentWrap("ag$it", "0.1.$it", "micro")) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(
                     "ag$it",
                     payload = AgentRegistrationDto(
@@ -67,10 +71,12 @@ class AgentGroupTest : E2ETest() {
                 ) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
 
 
@@ -90,6 +96,6 @@ class AgentGroupTest : E2ETest() {
     }
 
     private suspend fun receiveAgents(uiChannel: Channel<GroupedAgentsDto>) =
-        uiChannel.receive().grouped.flatMap { it.agents }.map { it.id to it.status to it.environment }
+        uiChannel.receive().grouped.flatMap { it.agents }.map { it.id to it.agentStatus to it.environment }
 
 }
