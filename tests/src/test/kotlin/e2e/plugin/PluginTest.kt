@@ -26,21 +26,23 @@ import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
+import mu.*
 import kotlin.test.*
 
 class PluginTest : E2EPluginTest() {
+    private val logger = KotlinLogging.logger {}
 
     @Test
     fun `reconnect - same build`() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1> { _, build ->
-                println(build)
+                logger.info { build }
                 pluginAction("myActionForAllAgents") { status, content ->
-                    println(content)
+                    logger.info { content }
                     status shouldBe HttpStatusCode.OK
                 }.join()
             }.reconnect<Build1> { plugUi, build ->
-                println("Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}")
+                logger.info { "Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}" }
             }
         }
     }
@@ -54,12 +56,12 @@ class PluginTest : E2EPluginTest() {
             connectAgent<Build1> { plugUi, _ ->
                 plugUi.processedData.receive()
                 pluginAction("myActionForAllAgents") { status, content ->
-                    println(content)
+                    logger.info { content }
                     status shouldBe HttpStatusCode.OK
                 }.join()
             }.reconnect<Build2> { plugUi, build ->
                 plugUi.processedData.receive()
-                println("Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}")
+                logger.info { "Reconnected agentId=${plugUi.info.agentId}, buildVersion=${build.version}" }
             }
         }
     }
@@ -67,26 +69,22 @@ class PluginTest : E2EPluginTest() {
     @Test
     fun `test e2e plugin API for group`() {
         val group = "myGroup"
-        println("starting tests...")
+        logger.info { "starting tests..." }
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1>(group) { _, _ ->
-                println("hi ag1")
-                com.epam.drill.admin.util.logger.info { "hi ag1" }
+                logger.info { "hi ag1" }
             }
             connectAgent<Build1>(group) { _, _ ->
-                println("hi ag2")
-                com.epam.drill.admin.util.logger.info { "hi ag2" }
+                logger.info { "hi ag2" }
             }
             connectAgent<Build1>(group) { _, _ ->
-                println("hi ag3")
-                com.epam.drill.admin.util.logger.info { "hi ag3" }
+                logger.info { "hi ag3" }
             }
-            com.epam.drill.admin.util.logger.info { "finish connected..." }
+            logger.info { "finish connected..." }
             uiWatcher { channel ->
-                com.epam.drill.admin.util.logger.info { "waiting..." }
+                logger.info { "waiting..." }
                 waitForMultipleAgents(channel)
-                println("1")
-                com.epam.drill.admin.util.logger.info { "after waiting..." }
+                logger.info { "after waiting..." }
                 val statusResponse = StatusMessageResponse(
                     code = 200,
                     message = "act"
@@ -95,11 +93,11 @@ class PluginTest : E2EPluginTest() {
                     listOf(statusResponse, statusResponse, statusResponse)
                 delay(50)
                 pluginAction("myActionForAllAgents", group) { status, content ->
-                    println("2")
+                    logger.info { "2" }
                     status shouldBe HttpStatusCode.OK
                     content shouldBe (ListSerializer(WithStatusCode.serializer()) stringify statusResponses)
                 }
-                println("3")
+                logger.info { "3" }
             }
         }
 
@@ -109,9 +107,9 @@ class PluginTest : E2EPluginTest() {
         while (true) {
             val message = channel.receive()
             val groupedAgents = message.grouped.flatMap { it.agents }
-            com.epam.drill.admin.util.logger.info { "groupedAgents: $groupedAgents" }
-            com.epam.drill.admin.util.logger.info { "groupedAgents activePluginsCount:  ${groupedAgents.all { it.activePluginsCount == 1}}" }
-            com.epam.drill.admin.util.logger.info { "groupedAgents status online:  ${groupedAgents.all { it.status == AgentStatus.ONLINE}}" }
+            logger.info { "groupedAgents: $groupedAgents" }
+            logger.info { "groupedAgents activePluginsCount:  ${groupedAgents.all { it.activePluginsCount == 1 }}" }
+            logger.info { "groupedAgents status online:  ${groupedAgents.all { it.status == AgentStatus.ONLINE }}" }
             if (groupedAgents.all { it.activePluginsCount == 1 && it.status == AgentStatus.ONLINE } && groupedAgents.size == instanceCount) {
                 break
             }

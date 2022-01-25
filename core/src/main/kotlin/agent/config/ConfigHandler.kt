@@ -28,10 +28,10 @@ class ConfigHandler(override val di: DI) : DIAware {
     private val agentManager by instance<AgentManager>()
 
     suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {
-        agentStores.store(StoredAgentConfig(agentId, parameters))
+        adminStore.store(StoredAgentConfig(agentId, parameters))
     }
 
-    suspend fun load(agentId: String) = agentStores.findById<StoredAgentConfig>(agentId)?.params
+    suspend fun load(agentId: String) = adminStore.findById<StoredAgentConfig>(agentId)?.params
 
     suspend fun updateAgent(agentId: String, parameters: Map<String, String>) {
         agentManager.agentSessions(agentId).applyEach {

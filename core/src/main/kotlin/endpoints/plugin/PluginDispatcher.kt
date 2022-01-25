@@ -296,7 +296,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                                 pluginStoresDSM(pluginId).deleteBy<Stored> {
                                     (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
                                 }
-                                agentStores.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
+                                adminStore.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 agentManager.adminData(agentId).run {
                                     buildManager.delete(buildVersion)
                                     deleteClassBytes(AgentKey(agentId, buildVersion))

@@ -22,7 +22,7 @@ import com.epam.dsm.*
 import kotlinx.serialization.*
 
 @Serializable
-internal data class Group(
+internal data class StoredGroup(
     @Id val id: String,
     val name: String,
     val description: String = "",

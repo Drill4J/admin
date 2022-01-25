@@ -15,9 +15,9 @@
  */
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
@@ -46,7 +46,6 @@ abstract class AdminTest {
     val engine: TestApplicationEngine get() = asyncEngine.engine
     lateinit var globToken: String
     lateinit var storeManager: StoreClient
-    lateinit var commonStore: StoreClient
 
     var agentPart: AgentPart<*>? = null
 
@@ -68,7 +67,7 @@ abstract class AdminTest {
             ),
             plugins = emptyList()
         ),
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> }
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) = callAsync(context) {
         with(engine) {
             handleRequest(
