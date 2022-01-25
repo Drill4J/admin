@@ -62,9 +62,9 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = agentStores.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = agentStores.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) = adminStore.loadClasses(AgentKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -96,8 +96,8 @@ internal class AgentData(
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            agentStores.storeClasses(agentKey, classBytes)
-            agentStores.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            adminStore.storeClasses(agentKey, classBytes)
+            adminStore.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
         }
     }
 
@@ -108,7 +108,7 @@ internal class AgentData(
         val current = this.settings
         if (current != settings) {
             _settings.value = settings
-            agentStores.store(toSummary())
+            adminStore.store(toSummary())
             block(current)
         }
     }
@@ -121,21 +121,21 @@ internal class AgentData(
             detectedAt = detectedAt
         )
         trackTime("storeBuild") {
-            agentStores.executeInAsyncTransaction {
-                store(buildData, agentStores.schema)
-                store(toSummary(), agentStores.schema)
+            adminStore.executeInAsyncTransaction {
+                store(buildData)
+                store(toSummary())
             }
         }
 
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = agentStores.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentKey: AgentKey) = adminStore.deleteClasses(agentKey)
 
-    private suspend fun loadStoredData() = agentStores.findById<AgentDataSummary>(agentId)?.let { summary ->
+    private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings
-        val builds: List<AgentBuild> = agentStores.findBy<AgentBuildData> {
+        val builds: List<AgentBuild> = adminStore.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
         }.map { data ->
             data.run {

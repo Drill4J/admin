@@ -72,8 +72,8 @@ class AgentManager(override val di: DI) : DIAware {
     init {
         trackTime("loadingAgents") {
             runBlocking {
-                val registered = commonStore.getAll<AgentInfo>()
-                val prepared = commonStore.getAll<PreparedAgentData>().map { data ->
+                val registered = adminStore.getAll<AgentInfo>()
+                val prepared = adminStore.getAll<PreparedAgentData>().map { data ->
                     agentDataCache[data.id] = AgentData(data.id, data.dto.systemSettings)
                     data.dto.toAgentInfo(plugins)
                 }
@@ -98,10 +98,10 @@ class AgentManager(override val di: DI) : DIAware {
             logger.debug { "Preparing agent ${dto.id}..." }
             dto.toAgentInfo(plugins).also { info: AgentInfo ->
                 agentDataCache[dto.id] = AgentData(dto.id, dto.systemSettings)
-                commonStore.store(
+                adminStore.store(
                     PreparedAgentData(id = dto.id, dto = dto)
                 )
-                commonStore.deleteById<AgentInfo>(dto.id)
+                adminStore.deleteById<AgentInfo>(dto.id)
                 agentStorage.put(dto.id, Agent(info))
                 logger.debug { "Prepared agent ${dto.id}." }
             }
@@ -169,7 +169,7 @@ class AgentManager(override val di: DI) : DIAware {
                 }
             }
             info.persistToDatabase()
-            preparedInfo?.let { commonStore.deleteById<PreparedAgentData>(it.id) }
+            preparedInfo?.let { adminStore.deleteById<PreparedAgentData>(it.id) }
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
             info
         }
@@ -179,7 +179,7 @@ class AgentManager(override val di: DI) : DIAware {
         storedInfo: AgentInfo?,
         id: String,
     ) = if (storedInfo == null) {
-        commonStore.findById<PreparedAgentData>(id)?.let {
+        adminStore.findById<PreparedAgentData>(id)?.let {
             agentDataCache[id] = AgentData(id, it.dto.systemSettings)
             it.dto.toAgentInfo(plugins)
         }
@@ -396,10 +396,10 @@ class AgentManager(override val di: DI) : DIAware {
         callback = { logger.debug { "Enabled plugin $pluginId for ${agentInfo.debugString(instanceId)}" } }
     )
 
-    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = commonStore.findById(agentId)
+    private suspend fun loadAgentInfo(agentId: String): AgentInfo? = adminStore.findById(agentId)
 
     private suspend fun AgentInfo.persistToDatabase() {
-        commonStore.store(this)
+        adminStore.store(this)
     }
 
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.store
 
+import com.epam.drill.admin.*
 import com.epam.dsm.test.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
@@ -37,6 +38,7 @@ class MessagePersistingTest {
 
     @Test
     fun `storeMessage - readMessage`() = runBlocking {
+        hikariConfig = TestDatabaseContainer.createDataSource()
         val storeClient = pluginStoresDSM("${MessagePersistingTest::class.simpleName}")
         val message = SimpleMessage("data")
         runBlocking {
