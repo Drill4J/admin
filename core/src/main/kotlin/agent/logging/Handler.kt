@@ -32,12 +32,12 @@ class LoggingHandler(override val di: DI) : DIAware {
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
         agentManager.agentSessions(agentId).applyEach {
             sendConfig(loggingConfig)
-            agentStores.store(AgentLoggingConfig(agentId, loggingConfig))
+            adminStore.store(AgentLoggingConfig(agentId, loggingConfig))
         }
     }
 
     suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
-        agentStores.loadConfig(agentId)?.apply {
+        adminStore.loadConfig(agentId)?.apply {
             agentSession?.sendConfig(config)
         }
     }

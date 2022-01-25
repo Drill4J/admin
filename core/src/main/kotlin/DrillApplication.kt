@@ -20,6 +20,7 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -127,15 +128,17 @@ fun Application.module() = kodeinApplication(
                 password
             )
         }
-        DatabaseFactory.init(HikariDataSource(HikariConfig().apply {
+        hikariConfig = HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
             this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
             this.username = userName
             this.password = password
             this.maximumPoolSize = maxPoolSize
-            this.isAutoCommit = false
+            this.isAutoCommit = true
             this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             this.validate()
-        }))
+        }
     }
 )
+
+lateinit var hikariConfig: HikariConfig

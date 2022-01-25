@@ -80,7 +80,7 @@ class AgentEndpoints(override val di: DI) : DIAware{
                     val metadataAgents = agentManager.all().flatMap {
                         agentManager.adminData(it.id).buildManager.agentBuilds.map { agentBuild ->
                             val agentKey = AgentKey(it.id, agentBuild.info.version)
-                            agentStores.loadAgentMetadata(agentKey)
+                            adminStore.loadAgentMetadata(agentKey)
                         }
                     }
                     call.respond(HttpStatusCode.OK, metadataAgents)

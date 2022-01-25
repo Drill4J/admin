@@ -15,19 +15,23 @@
  */
 package com.epam.drill.admin.store
 
+import com.epam.drill.admin.*
 import com.epam.dsm.*
+import com.zaxxer.hikari.*
 import kotlinx.coroutines.sync.*
 import mu.*
 import java.util.*
 
 private val logger = KotlinLogging.logger {}
-private val storeClientPlugins = mutableMapOf<String, StoreClient>()
+
+suspend fun pluginStoresDSM(pluginId: String, config: HikariConfig = hikariConfig): StoreClient =
+    storeClientPlugins[pluginId] ?: createOncePluginStore(pluginId, config)
+
+val storeClientPlugins = mutableMapOf<String, StoreClient>()
 
 private val mutex = Mutex()
-suspend fun pluginStoresDSM(pluginId: String): StoreClient =
-    storeClientPlugins[pluginId] ?: createOncePluginStore(pluginId)
 
-private suspend fun createOncePluginStore(pluginId: String): StoreClient {
+private suspend fun createOncePluginStore(pluginId: String, config: HikariConfig): StoreClient {
     mutex.withLock {
         val storeClient = storeClientPlugins[pluginId]
         if (storeClient != null) {
@@ -35,7 +39,7 @@ private suspend fun createOncePluginStore(pluginId: String): StoreClient {
             return storeClient
         }
         logger.info { "create a new store client $pluginId" }
-        val newStoreClient = StoreClient(pluginSchemaName(pluginId))
+        val newStoreClient = StoreClient(config.copyConfig(pluginSchemaName(pluginId)))
         storeClientPlugins[pluginId] = newStoreClient
         return newStoreClient
     }
@@ -44,5 +48,12 @@ private suspend fun createOncePluginStore(pluginId: String): StoreClient {
 fun pluginSchemaName(pluginId: String) =
     "plugins_${pluginId.lowercase(Locale.getDefault()).replace('-', '_')}"
 
-val commonStore = StoreClient("common")
-val agentStores = StoreClient("agents")
+fun HikariConfig.copyConfig(schema: String): HikariConfig {
+    logger.debug { "copy config with $schema" }
+    val hikariConfig = HikariConfig()
+    this.copyStateTo(hikariConfig)
+    hikariConfig.schema = schema
+    return hikariConfig
+}
+
+val adminStore = StoreClient(hikariConfig.copyConfig("admin"))

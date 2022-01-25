@@ -21,9 +21,7 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
-import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.testdata.*
 import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
@@ -39,7 +37,6 @@ import java.io.*
 class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
-    lateinit var commonStore: StoreClient
 
     val testApp: Application.(String) -> Unit = { sslPort ->
         (environment.config as MapApplicationConfig).apply {
@@ -74,10 +71,9 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
             withKModule { kodeinModule("handlers", handlers) }
 
             withKModule {
-                kodeinModule("addition") { app ->
-                    commonStore = StoreClient("common")
-                    storeManager = StoreClient("agents")
-                    StoreClient("plugins")
+                kodeinModule("addition") {
+                    hikariConfig = TestDatabaseContainer.createDataSource()
+                    storeManager = StoreClient(hikariConfig.copyConfig("admin_test"))
                     bind<WsTopic>() with singleton {
                         wsTopic = WsTopic(di)
                         wsTopic
@@ -91,6 +87,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
             println("after sleep, clearing data...")
             projectDir.deleteRecursively()
             TestDatabaseContainer.clearData()
+            storeManager.close()
         }
     }
 }

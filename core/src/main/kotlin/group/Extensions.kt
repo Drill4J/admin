@@ -33,7 +33,7 @@ internal fun AgentGroup.toDto(
     plugins = agentManager.plugins.values.mapToDto(agentInfos)
 )
 
-internal fun Group.toDto() = GroupDto(
+internal fun StoredGroup.toDto() = GroupDto(
     id = id,
     name = name,
     description = description,
@@ -41,7 +41,7 @@ internal fun Group.toDto() = GroupDto(
     systemSettings = systemSettings
 )
 
-internal fun GroupDto.toModel() = Group(
+internal fun GroupDto.toModel() = StoredGroup(
     id = id,
     name = name,
     description = description,

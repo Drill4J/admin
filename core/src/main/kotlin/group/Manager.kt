@@ -38,7 +38,7 @@ internal class GroupManager(override val di: DI) : DIAware {
 
     init {
         runBlocking {
-            val groups = commonStore.getAll<Group>()
+            val groups = adminStore.getAll<StoredGroup>()
             _state.update {
                 it.mutate { map ->
                     for (group in groups) {
@@ -69,7 +69,7 @@ internal class GroupManager(override val di: DI) : DIAware {
         }
         val groups = _state.value
         if (groups !== oldGroups) {
-            groups[groupId]?.let { commonStore.storeGroup(it.toModel()) }
+            groups[groupId]?.let { adminStore.storeGroup(it.toModel()) }
         }
     }
 
@@ -80,7 +80,7 @@ internal class GroupManager(override val di: DI) : DIAware {
         val groups = _state.value
         groups[id]?.also {
             if (oldGroups !== groups) {
-                oldGroups[id]?.also { commonStore.store(it, group) }
+                oldGroups[id]?.also { adminStore.store(it, group) }
             }
         }
     }
@@ -118,5 +118,5 @@ internal class GroupManager(override val di: DI) : DIAware {
 }
 
 private suspend fun StoreClient.storeGroup(
-    group: Group,
-): Group = this.store(group)
+    group: StoredGroup,
+): StoredGroup = this.store(group)
