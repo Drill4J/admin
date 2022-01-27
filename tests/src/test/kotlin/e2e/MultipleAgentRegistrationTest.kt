@@ -36,11 +36,10 @@ class MultipleAgentRegistrationTest : E2ETest() {
                         status shouldBe HttpStatusCode.OK
                     }
                     ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
-                    //TODO floating status
-                    ui.getBuild()//?.buildStatus shouldBe BuildStatus.BUSY
+                    ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                     agent.`get-set-packages-prefixes`()
                     agent.`get-load-classes-datas`()
-                    ui.getBuild()//?.buildStatus shouldBe BuildStatus.ONLINE
+                    ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                     ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 }
             }

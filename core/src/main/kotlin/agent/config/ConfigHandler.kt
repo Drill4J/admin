@@ -25,7 +25,6 @@ import com.epam.drill.common.*
 import org.kodein.di.*
 
 class ConfigHandler(override val di: DI) : DIAware {
-    private val stores by instance<AgentStores>()
     private val buildManager by instance<BuildManager>()
 
     suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {

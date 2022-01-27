@@ -19,6 +19,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
 import com.epam.dsm.*

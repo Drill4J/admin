@@ -25,16 +25,15 @@ import io.ktor.application.*
 import kotlinx.collections.immutable.*
 import mu.*
 import org.kodein.di.*
-import org.kodein.di.generic.*
 
-class BuildManager(override val kodein: Kodein) : KodeinAware {
+
+class BuildManager(override val di: DI) : DIAware {
 
     private val logger = KotlinLogging.logger {}
     internal val buildStorage by instance<BuildStorage>()
 
     private val agentStorage by instance<AgentStorage>()
     private val agentDataCache by instance<AgentDataCache>()
-    private val agentStores by instance<AgentStores>()
     private val app by instance<Application>()
 
     init {
@@ -127,7 +126,6 @@ class BuildManager(override val kodein: Kodein) : KodeinAware {
         logger.debug { "put adminData with id=$agentId" }
         AgentData(
             agentId,
-            agentStores,
             SystemSettingsDto(packages = app.drillDefaultPackages)
         )
     }

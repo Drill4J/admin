@@ -111,8 +111,8 @@ class AgentManager(override val di: DI) : DIAware {
     ): Boolean = (get(agentId) ?: loadAgentInfo(agentId)).let { storedInfo ->
         val agentStatus = storedInfo?.agentStatus
         if (storedInfo == null || agentStatus == AgentStatus.NOT_REGISTERED || agentStatus == AgentStatus.PREREGISTERED) {
-            commonStore.client.deleteById<AgentInfo>(agentId)
-            commonStore.client.deleteById<PreparedAgentData>(agentId)
+            adminStore.deleteById<AgentInfo>(agentId)
+            adminStore.deleteById<PreparedAgentData>(agentId)
             agentStorage.remove(agentId)
             logger.debug { "Agent info for Agent $agentId was completely deleted." }
             return true
@@ -189,7 +189,7 @@ class AgentManager(override val di: DI) : DIAware {
                 }
             }
             preparedInfo?.let {
-                commonStore.client.deleteById<PreparedAgentData>(it.id)
+                adminStore.deleteById<PreparedAgentData>(it.id)
                 entry.update { info.copy(agentStatus = AgentStatus.REGISTERED) }.commitChanges()
             } ?: info.persistToDatabase()
             session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
@@ -492,10 +492,10 @@ class AgentManager(override val di: DI) : DIAware {
         logger.info { "ensuring plugin with id $pluginId for agent(id=$agentId, version=$buildVersion)..." }
         val pluginStore = pluginStoresDSM(pluginId)
         agent[pluginId] ?: agent.get(pluginId) {
-            val adminPluginData = adminData(agentId)
+            val agentData = buildManager.buildData(agentId)
             plugin.createInstance(
                 agentInfo = info,
-                data = adminPluginData,
+                data = agentData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
                 store = pluginStore
             )
@@ -540,13 +540,13 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
-internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Metadata) {
-    store(AgentMetadata(agentKey, metadata))
+internal suspend fun StoreClient.storeMetadata(agentBuildKey: AgentBuildKey, metadata: Metadata) {
+    store(AgentMetadata(agentBuildKey, metadata))
 }
 
 internal suspend fun StoreClient.loadAgentMetadata(
-    agentKey: AgentKey,
-): AgentMetadata = findById(agentKey) ?: AgentMetadata(agentKey)
+    agentBuildKey: AgentBuildKey,
+): AgentMetadata = findById(agentBuildKey) ?: AgentMetadata(agentBuildKey)
 
 data class InstanceState(
     val agentWsSession: AgentWsSession,

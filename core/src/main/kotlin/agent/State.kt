@@ -62,9 +62,9 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentBuildKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = adminStore.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) = adminStore.loadClasses(AgentBuildKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -96,8 +96,8 @@ internal class AgentData(
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
                 ProtoBuf.load(ByteClass.serializer(), it)
             }.associate { it.className to it.bytes }
-            adminStore.storeClasses(agentKey, classBytes)
-            adminStore.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            adminStore.storeClasses(agentBuildKey, classBytes)
+            adminStore.storeMetadata(agentBuildKey, Metadata(addedClasses.size, classBytesSize))
         }
     }
 
@@ -130,7 +130,7 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = adminStore.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentBuildKey: AgentBuildKey) = adminStore.deleteClasses(agentBuildKey)
 
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
@@ -182,7 +182,7 @@ private suspend fun StoreClient.storeClasses(
 private suspend fun StoreClient.loadClasses(
     agentBuildKey: AgentBuildKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
-    findById<StoredCodeData>(agentKey)?.run {
+    findById<StoredCodeData>(agentBuildKey)?.run {
         ProtoBuf.load(CodeData.serializer(), data).classBytes
     } ?: let {
         logger.warn { "Can not find classBytes for $agentBuildKey" }

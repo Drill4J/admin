@@ -35,7 +35,6 @@ class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val pluginStores by instance<PluginStores>()
     private val buildManager by instance<BuildManager>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()

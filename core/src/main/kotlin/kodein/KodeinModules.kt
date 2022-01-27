@@ -58,9 +58,9 @@ val storage: DI.Builder.(Application) -> Unit
         if (app.drillCacheType == "mapdb") {
             bind<CacheService>() with eagerSingleton { MapDBCacheService() }
         } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<GroupManager>() with eagerSingleton { GroupManager(kodein) }
-        bind<AgentManager>() with eagerSingleton { AgentManager(kodein) }
-        bind<BuildManager>() with eagerSingleton { BuildManager(kodein) }
+        bind<GroupManager>() with eagerSingleton { GroupManager(di) }
+        bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+        bind<BuildManager>() with eagerSingleton { BuildManager(di) }
         bind<SessionStorage>() with eagerSingleton { SessionStorage() }
         bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
         bind<NotificationManager>() with eagerSingleton { NotificationManager(di) }

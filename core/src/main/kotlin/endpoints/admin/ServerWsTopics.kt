@@ -67,18 +67,19 @@ class ServerWsTopics(override val di: DI) : DIAware {
             buildManager.buildStorage.onUpdate += { builds ->
                 builds.keys.forEach {
                     agentManager[it.agentId]?.toAgentBuildDto(buildManager)?.let { agentBuildInfoDto ->
-                        WsRoot.AgentBuild(it.agentId, it.buildVersion).send(agentBuildInfoDto)
+                        WsRoot.AgentBuild(it.agentId, agentBuildInfoDto.buildVersion).send(agentBuildInfoDto)
                         WsRoot.AgentBuilds(it.agentId).send(listOf(agentBuildInfoDto))
                     }
                 }
-
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
             }
 
             buildManager.buildStorage.onAdd += { agentBuildKey, _ ->
-                agentManager[agentBuildKey.agentId]?.toAgentBuildDto(buildManager)?.let { buildDto ->
-                    WsRoot.AgentBuild(agentBuildKey.agentId, agentBuildKey.buildVersion).send(buildDto)
-                    WsRoot.AgentBuilds(agentBuildKey.agentId).send(listOf(buildDto))
+                agentManager[agentBuildKey.agentId]?.toAgentBuildDto(buildManager)?.let { agentBuildInfoDto ->
+                    WsRoot.AgentBuild(agentBuildKey.agentId, agentBuildInfoDto.buildVersion).send(agentBuildInfoDto)
+                    WsRoot.AgentBuilds(agentBuildKey.agentId).send(listOf(agentBuildInfoDto))
                 }
+                WsRoot.AgentsActiveBuild().send(agentManager.agentsActiveBuild(buildManager))
             }
 
             agentManager.agentStorage.onUpdate += {
