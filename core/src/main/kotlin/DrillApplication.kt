@@ -32,7 +32,9 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import mu.*
+import org.flywaydb.core.*
 import ru.yandex.qatools.embed.postgresql.*
 import ru.yandex.qatools.embed.postgresql.distribution.*
 import java.io.*
@@ -138,6 +140,13 @@ fun Application.module() = kodeinApplication(
             this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             this.validate()
         }
+        adminStore.createProcedureIfTableExist()
+        val flyway = Flyway.configure()
+            .dataSource(hikariConfig.jdbcUrl, hikariConfig.username, hikariConfig.password)
+            .schemas(adminStore.hikariConfig.schema)
+            .baselineOnMigrate(true)
+            .load()
+        flyway.migrate()
     }
 )
 

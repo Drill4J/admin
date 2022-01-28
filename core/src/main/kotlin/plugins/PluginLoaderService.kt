@@ -17,14 +17,18 @@ package com.epam.drill.admin.plugins
 
 
 import com.epam.drill.*
+import com.epam.drill.admin.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
+import com.epam.dsm.*
 import io.ktor.application.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
+import org.flywaydb.core.*
 import java.io.*
 import java.lang.System.*
 import java.util.jar.*
@@ -108,7 +112,12 @@ class PluginLoaderService(
                                     val agentFile = jar.extractPluginEntry(pluginId, "agent-part.jar")
 
                                     if (adminPartFile != null && agentFile != null) {
+                                        migratePluginDb(
+                                            pluginId = pluginId,
+                                            adminPartFile = adminPartFile,
+                                        )
                                         val adminPartClass = JarFile(adminPartFile).use { adminJar ->
+
                                             processAdminPart(adminPartFile, adminJar)
                                         }
 
@@ -159,6 +168,24 @@ class PluginLoaderService(
         return pluginApiClass as? Class<AdminPluginPart<*>>
     }
 
+    private suspend fun migratePluginDb(
+        pluginId: String,
+        adminPartFile: File,
+    ) {
+        val migrationDir = copyMigrationFilesFromJar(workDir, pluginId, adminPartFile)
+        val pluginStore = pluginStoresDSM(pluginId)
+        pluginStore.createProcedureIfTableExist()
+        val flyway = Flyway.configure()
+            .dataSource(hikariConfig.jdbcUrl, hikariConfig.username, hikariConfig.password)
+            .schemas(pluginStore.hikariConfig.schema)
+            .baselineOnMigrate(true)
+            .locations("filesystem:${migrationDir.absolutePath}")
+            .load()
+        flyway.migrate()
+        migrationDir.deleteRecursively()
+    }
+
+
     private fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
         val jarEntry: ZipEntry = getEntry(entry) ?: return null
         return getInputStream(jarEntry).use { istream ->
@@ -172,6 +199,29 @@ class PluginLoaderService(
     }
 
 
+}
+
+fun copyMigrationFilesFromJar(
+    workDir: File,
+    pluginId: String,
+    adminPartFile: File,
+): File {
+    val migrationDir = workDir.resolve("db-migration").resolve(pluginId)
+    migrationDir.mkdirs()
+
+    val zipAdminPart = ZipFile(adminPartFile)
+    val migrationFiles = JarFile(adminPartFile).entries().iterator()
+        .asSequence()
+        .toSet()
+        .filter { it.name.endsWith(".sql") }
+    migrationFiles.forEach {
+        File(migrationDir, it.name.substringAfterLast("/")).apply {
+            outputStream().use { outputStream ->
+                zipAdminPart.getInputStream(zipAdminPart.getEntry(it.name)).copyTo(outputStream)
+            }
+        }
+    }
+    return migrationDir
 }
 
 private val nonStrictJson = Json { ignoreUnknownKeys = true }

@@ -30,7 +30,7 @@ subprojects {
 
 val licenseFormatSettings by tasks.registering(com.hierynomus.gradle.license.tasks.LicenseFormat::class) {
     source = fileTree(project.projectDir).also {
-        include("**/*.kt", "**/*.java", "**/*.groovy")
+        include("**/*.kt", "**/*.java", "**/*.groovy", "**/*.sql")
         exclude("**/.idea")
     }.asFileTree
     headerURI = java.net.URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
