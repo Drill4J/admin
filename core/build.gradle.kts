@@ -31,6 +31,7 @@ val swaggerVersion: String by extra
 val muLogger: String by extra
 val zstdJniVersion: String by extra
 val cacheMapDB: String by extra
+val flywayVersion: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -56,6 +57,7 @@ dependencies {
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill.dsm:core:$drillDsmVersion")
+    implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     //TODO remove logger - EPMDJ-9548
     implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
