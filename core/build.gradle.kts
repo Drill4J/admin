@@ -65,6 +65,8 @@ dependencies {
     implementation("com.github.luben:zstd-jni:$zstdJniVersion")
     implementation("org.mapdb:mapdb:$cacheMapDB")
 
+    implementation(project(":analytics"))
+
     testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
@@ -141,6 +143,7 @@ tasks {
     (run) {
         environment("DRILL_DEVMODE", true)
         environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
+        environment("analytic.disable", true)
         mustRunAfter(cleanData)
     }
 
@@ -177,7 +180,6 @@ tasks {
                 "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
                 "-Xopt-in=kotlinx.serialization.InternalSerializationApi",
                 "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI",
-                "-Xopt-in=io.ktor.util.KtorExperimentalAPI",
                 "-Xopt-in=io.ktor.util.InternalAPI",
                 "-Xopt-in=kotlin.Experimental",
                 "-Xopt-in=kotlin.ExperimentalStdlibApi",

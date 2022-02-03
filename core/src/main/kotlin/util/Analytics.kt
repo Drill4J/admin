@@ -13,26 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.api.routes
 
-import io.ktor.locations.*
+package com.epam.drill.admin.util
 
-object WsRoot {
-    @Location("/api/version")
-    object Version
+import com.epam.drill.admin.agent.*
+import com.epam.drill.analytics.*
+import com.epam.drill.analytics.item.*
 
-    @Location("/api/agents")
-    class Agents
-
-    @Location("/api/agents/{agentId}")
-    class Agent(val agentId: String)
-
-    @Location("/api/groups")
-    class Groups
-
-    @Location("/api/groups/{groupId}")
-    class Group(val groupId: String)
-
-    @Location("/api/analytics/info")
-    object Analytics
+suspend fun AgentInfo.sendAgentRegisterAction() {
+    val event = StatisticsEvent.StatisticsEventBuilder()
+        .withCategory("Agents")
+        .withAction("Registration")
+        .withLabel("$id#$agentVersion#$agentType")
+        .build()
+    AnalyticService.sendEvent(event)
 }

@@ -16,6 +16,7 @@
 package com.epam.drill.admin.version
 
 import com.epam.drill.admin.*
+import com.epam.drill.analytics.*
 import kotlinx.serialization.*
 
 @Serializable
@@ -38,7 +39,18 @@ data class AdminVersionDto(
     val java: String = "",
 )
 
+@Serializable
+data class AnalyticsInfoDto(
+    val clientId: String,
+    val isAnalyticsDisabled: Boolean,
+)
+
 val adminVersionDto = AdminVersionDto(
     admin = adminVersion,
     java = System.getProperty("java.version")
+)
+
+val analyticsInfoDto = AnalyticsInfoDto(
+    clientId = AnalyticService.CLIENT_ID,
+    isAnalyticsDisabled = System.getenv(AnalyticService.ANALYTIC_DISABLE) != null
 )

@@ -231,6 +231,7 @@ class AgentManager(override val di: DI) : DIAware {
         instanceIds(agentId).keys.mapIndexed { index, instanceId ->
             info.sync(instanceId, index == 0)
         }
+        info.sendAgentRegisterAction()
     }
 
     internal suspend fun removeInstance(

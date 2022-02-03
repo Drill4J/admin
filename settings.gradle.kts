@@ -32,6 +32,7 @@ mapOf(
 }
 
 include(":core")
+include(":analytics")
 include(":test-framework")
 include(":test-framework:test-data")
 include(":test-framework:test-plugin")
