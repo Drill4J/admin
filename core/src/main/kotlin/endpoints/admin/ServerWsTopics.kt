@@ -96,6 +96,8 @@ class ServerWsTopics(override val di: DI) : DIAware {
             wsTopic {
                 topic<WsRoot.Version> { adminVersionDto }
 
+                topic<WsRoot.Analytics> { analyticsInfoDto }
+
                 topic<WsRoot.Agents> { agentManager.all() }
 
                 topic<WsRoot.Agent> { agentManager[it.agentId]?.toDto(agentManager) }

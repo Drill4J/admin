@@ -121,6 +121,7 @@ tasks {
         mustRunAfter(test)
         useJUnitPlatform()
         systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
+        environment("analytic.disable", true)
     }
 
     check {
