@@ -25,6 +25,7 @@ import com.epam.drill.admin.util.*
 import com.epam.drill.admin.util.trackTime
 import com.epam.drill.plugin.api.*
 import com.epam.dsm.*
+import com.epam.dsm.find.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
@@ -137,7 +138,7 @@ internal class AgentData(
         _settings.value = summary.settings
         val builds: List<AgentBuild> = adminStore.findBy<AgentBuildData> {
             AgentBuildData::agentId eq agentId
-        }.map { data ->
+        }.get().map { data ->
             data.run {
                 AgentBuild(
                     id = id,

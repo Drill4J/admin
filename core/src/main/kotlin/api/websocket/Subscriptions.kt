@@ -41,6 +41,7 @@ sealed class Subscription {
 data class AgentSubscription(
     val agentId: String,
     val buildVersion: String? = null,
+    val filterId: String = "",
     override val output: OutputType = OutputType.DEFAULT,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet(),

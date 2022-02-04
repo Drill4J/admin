@@ -56,7 +56,7 @@ class PluginCaches(
         agentId: String,
         buildVersion: String,
         type: String,
-        pluginId: String = TEST2CODE
+        pluginId: String = TEST2CODE,
     ): Any = retrieveMessage(
         pluginId,
         AgentSubscription(agentId, buildVersion),
@@ -98,7 +98,7 @@ private fun CacheService.pluginCacheFor(
 ): Cache<Any, FrontMessage> = when (subscription) {
     is AgentSubscription -> getOrCreate(
         id = AgentCacheKey(pluginId, subscription.agentId),
-        qualifier = subscription.buildVersion ?: "",
+        qualifier = "${subscription.buildVersion ?: ""}:${subscription.filterId}",
         replace = replace
     )
     is GroupSubscription -> getOrCreate(GroupCacheKey(pluginId, subscription.groupId))
