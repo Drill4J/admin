@@ -71,6 +71,7 @@ class PluginWsTest {
         }
 
         enableSwaggerSupport()
+        hikariConfig = TestDatabaseContainer.createDataSource()
         TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
@@ -79,11 +80,7 @@ class PluginWsTest {
                 kodeinModule("test") {
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
-                    bind<WsTopic>() with singleton {
-                        WsTopic(
-                            di
-                        )
-                    }
+                    bind<WsTopic>() with singleton { WsTopic(di) }
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }
                     } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
@@ -225,7 +222,7 @@ class PluginWsTest {
 
     private suspend fun unsubscribe(
         outgoing: SendChannel<Frame>,
-        destination: String
+        destination: String,
     ) {
         outgoing.send(
             uiMessage(
@@ -243,7 +240,7 @@ class PluginWsTest {
         destination: String,
         output: OutputType = OutputType.DEFAULT,
         filters: Set<FieldFilter> = emptySet(),
-        orderBy: Set<FieldOrder> = emptySet()
+        orderBy: Set<FieldOrder> = emptySet(),
     ) {
         outgoing.send(
             uiMessage(
@@ -275,7 +272,7 @@ class PluginWsTest {
     }
 
     @Test
-    fun `should return data from storage which was sent before via send()`() {
+    fun `should return data from storage which was sent before via send`() {
         withTestApplication(testApp) {
             handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic1"
