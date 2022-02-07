@@ -25,10 +25,10 @@ import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.util.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
+import java.util.*
 import kotlin.time.*
 
 class PluginSenders(override val di: DI) : DIAware {
@@ -84,12 +84,12 @@ class PluginSenders(override val di: DI) : DIAware {
         override suspend fun sendAgentAction(agentId: String, pluginId: String, message: Any) {
             message.actionSerializerOrNull()?.let { serializer ->
                 val actionStr = serializer stringify message
-                val agentAction = PluginAction(pluginId, actionStr)
+                val agentAction = PluginAction(pluginId, actionStr, "${UUID.randomUUID()}")
                 agentManager.agentSessions(agentId).map {
-                    //TODO EPMDJ-8233 move to the api; EPMDJ-9807 Remove base64
+                    //TODO EPMDJ-8233 move to the api
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,
-                        topicName = "/plugin/action/${actionStr.encodeBase64()}",
+                        topicName = "/plugin/action/${agentAction.confirmationKey}",
                         callback = { logger.info { "Action $actionStr was successfully performed on the agent" } }
                     ).await()
                 }

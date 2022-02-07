@@ -66,7 +66,6 @@ internal class CodeData(val classBytes: Map<String, ByteArray> = emptyMap())
 internal class StoredCodeData(
     @Id val id: AgentKey,
     //todo EPMDJ-9886 out of memory when use Protobuf
-    @Suppress("ArrayInDataClass")
     @Serializable(with = BinarySerializer::class)
     val data: ByteArray,
 )

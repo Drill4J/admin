@@ -16,13 +16,13 @@
 package com.epam.drill.admin.plugin
 
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
-import io.ktor.util.*
 import kotlinx.serialization.*
 import mu.*
+import java.util.*
 import kotlin.reflect.full.*
 
 private val logger = KotlinLogging.logger { }
@@ -35,12 +35,12 @@ internal suspend fun AdminPluginPart<*>.processAction(
         (result as? ActionResult)?.agentAction?.let { action ->
             action.actionSerializerOrNull()?.let { serializer ->
                 val actionStr = serializer stringify action
-                val agentAction = PluginAction(id, actionStr)
+                val agentAction = PluginAction(id, actionStr, "${UUID.randomUUID()}")
                 agentSessions(agentInfo.id).map {
-                    //TODO EPMDJ-8233 move to the api; EPMDJ-9807 Remove base64
+                    //TODO EPMDJ-8233 move to the api
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,
-                        topicName = "/plugin/action/${actionStr.encodeBase64()}"
+                        topicName = "/plugin/action/${agentAction.confirmationKey}"
                     )
                 }.forEach { it.await() }
             }

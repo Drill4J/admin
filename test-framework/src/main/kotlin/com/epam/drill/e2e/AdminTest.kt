@@ -15,6 +15,7 @@
  */
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.routes.*
@@ -37,6 +38,7 @@ import kotlin.time.TimeSource.*
 abstract class AdminTest {
     init {
         TestDatabaseContainer.startOnce()
+        hikariConfig = TestDatabaseContainer.createDataSource()
     }
 
     var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
