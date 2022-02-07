@@ -25,7 +25,6 @@ import kotlinx.serialization.protobuf.*
 @Serializable
 internal class Stored(
     @Id val id: String,
-    @Suppress("ArrayInDataClass")
     @Serializable(with = BinarySerializer::class)
     val data: ByteArray,
 )

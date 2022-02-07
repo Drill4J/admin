@@ -259,10 +259,9 @@ class Agent(
                             val message = ProtoBuf.load(
                                 com.epam.drill.common.PluginAction.serializer(),
                                 content
-                            ).message
-                            plugin.doRawAction(message)
-                            //TODO EPMDJ-9807 Remove base64
-                            sendDelivered("/plugin/action/${message.encodeBase64()}")
+                            )
+                            plugin.doRawAction(message.message)
+                            sendDelivered("/plugin/action/${message.confirmationKey}")
                             sendDelivered(url)
                         }
                         is Communication.Plugin.ToggleEvent -> {

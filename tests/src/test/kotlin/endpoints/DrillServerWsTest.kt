@@ -73,6 +73,7 @@ internal class DrillServerWsTest {
         enableSwaggerSupport()
 
         TestDatabaseContainer.startOnce()
+        hikariConfig = TestDatabaseContainer.createDataSource()
         kodeinApplication(AppBuilder {
             withKModule { kodeinModule("pluginServices", pluginServices) }
             withKModule { kodeinModule("wsHandler", wsHandler) }

@@ -60,6 +60,7 @@ dependencies {
     testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
 
+    testImplementation("com.epam.drill.dsm:core:$drillDsmVersion")
     testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     //TODO remove logging - EPMDJ-9548
