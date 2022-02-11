@@ -62,7 +62,8 @@ internal class AgentData(
 
     val buildManager get() = _buildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> =
+        adminStore.loadClasses(AgentKey(agentId, buildVersion.value))
 
     override suspend fun loadClassBytes(buildVersion: String) = adminStore.loadClasses(AgentKey(agentId, buildVersion))
 
@@ -88,16 +89,13 @@ internal class AgentData(
     }
 
     internal suspend fun initClasses(buildVersion: String) {
-        val addedClasses: List<ByteArray> = buildManager.collectClasses()
-        val classBytesSize = addedClasses.sumBy { it.size } / 1024
+        val classBytes: List<ByteArray> = buildManager.collectClasses()
+        val classBytesSize = classBytes.sumOf { it.size } / 1024
         val agentKey = AgentKey(agentId, buildVersion)
-        logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentKey..." }
+        logger.debug { "Saving ${classBytes.size} classes with $classBytesSize KB for $agentKey..." }
         trackTime("initClasses") {
-            val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
-                ProtoBuf.load(ByteClass.serializer(), it)
-            }.associate { it.className to it.bytes }
             adminStore.storeClasses(agentKey, classBytes)
-            adminStore.storeMetadata(agentKey, Metadata(addedClasses.size, classBytesSize))
+            adminStore.storeMetadata(agentKey, Metadata(classBytes.size, classBytesSize))
         }
     }
 
@@ -164,16 +162,13 @@ internal class AgentData(
 
 private suspend fun StoreClient.storeClasses(
     agentKey: AgentKey,
-    classBytes: Map<String, ByteArray>,
+    classBytes: List<ByteArray>,
 ) {
     trackTime("storeClasses") {
         logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
         val storedData = StoredCodeData(
             id = agentKey,
-            data = ProtoBuf.dump(
-                CodeData.serializer(),
-                CodeData(classBytes = classBytes)
-            )
+            data = classBytes
         )
         store(storedData)
     }
@@ -183,7 +178,9 @@ private suspend fun StoreClient.loadClasses(
     agentKey: AgentKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
     findById<StoredCodeData>(agentKey)?.run {
-        ProtoBuf.load(CodeData.serializer(), data).classBytes
+        data.asSequence().map {
+            ProtoBuf.load(ByteClass.serializer(), it)
+        }.associate { it.className to it.bytes }
     } ?: let {
         logger.warn { "Can not find classBytes for $agentKey" }
         emptyMap()
