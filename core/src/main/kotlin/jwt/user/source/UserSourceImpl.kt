@@ -20,7 +20,7 @@ import io.ktor.auth.*
 
 class UserSourceImpl : UserSource {
 
-    val testUser = User(1, "guest", "", "admin")
+    val testUser = User(1, System.getenv("DRILL_USERNAME") ?: "guest", System.getenv("DRILL_PASSWORD") ?: "", "admin")
 
     override fun findUserById(id: Int): User = users.getValue(id)
 
