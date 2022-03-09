@@ -35,7 +35,7 @@ class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
-    private val agentManager by instance<AgentManager>()
+    private val buildManager by instance<BuildManager>()
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 
@@ -85,7 +85,7 @@ class PluginSenders(override val di: DI) : DIAware {
             message.actionSerializerOrNull()?.let { serializer ->
                 val actionStr = serializer stringify message
                 val agentAction = PluginAction(pluginId, actionStr, "${UUID.randomUUID()}")
-                agentManager.agentSessions(agentId).map {
+                buildManager.agentSessions(agentId).map {
                     //TODO EPMDJ-8233 move to the api
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
                         agentAction,

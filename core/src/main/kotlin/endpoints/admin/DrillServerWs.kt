@@ -60,7 +60,6 @@ class DrillServerWs(override val di:DI) : DIAware {
                                 session.send(messageToSend)
                                 logger.debug { "$destination is subscribed" }
                             }
-
                             is Unsubscribe -> {
                                 if (sessionStorage.unsubscribe(destination, session)) {
                                     logger.debug { "$destination is unsubscribed" }

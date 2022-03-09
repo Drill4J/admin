@@ -84,8 +84,10 @@ class PluginWsTest {
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }
                     } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<AgentStorage>() with eagerSingleton { AgentStorage() }
                     bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+                    bind<BuildManager>() with eagerSingleton { BuildManager(di) }
+                    bind<AgentStorage>() with eagerSingleton { AgentStorage() }
+                    bind<BuildStorage>() with eagerSingleton { BuildStorage() }
                 }
 
             }

@@ -24,7 +24,7 @@ suspend fun AgentInfo.sendAgentRegisterAction() {
     val event = StatisticsEvent.StatisticsEventBuilder()
         .withCategory("Agents")
         .withAction("Registration")
-        .withLabel("$id#$agentVersion#$agentType")
+        .withLabel("$id#${build.agentVersion}#$agentType")
         .build()
     AnalyticService.sendEvent(event)
 }

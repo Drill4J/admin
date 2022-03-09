@@ -20,6 +20,7 @@ import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.e2e.plugin.*
 import com.epam.drill.plugin.api.processing.*
 import com.epam.dsm.*
@@ -73,7 +74,7 @@ abstract class AdminTest {
     ) = callAsync(context) {
         with(engine) {
             handleRequest(
-                HttpMethod.Patch,
+                HttpMethod.Post,
                 toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
             ) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
@@ -87,6 +88,8 @@ abstract class AdminTest {
 fun TestApplicationEngine.toApiUri(location: Any): String = application.locations.href(location).let { uri ->
     if (uri.startsWith("/api")) uri else "/api$uri"
 }
+
+fun TestApplicationEngine.toWsDestination(location: Any): String = application.toLocation(location)
 
 @ExperimentalTime
 fun CoroutineScope.createTimeoutJob(timeout: Duration, context: Job) = launch {

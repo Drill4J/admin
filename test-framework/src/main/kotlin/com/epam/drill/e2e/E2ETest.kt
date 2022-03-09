@@ -15,6 +15,8 @@
  */
 package com.epam.drill.e2e
 
+import com.epam.drill.admin.agent.*
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
@@ -22,6 +24,7 @@ import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -34,21 +37,21 @@ import kotlin.time.*
 
 typealias Instance = Pair<AgentKey, AgentStruct>
 
-typealias AgentId = String
 
 abstract class E2ETest : AdminTest() {
 
-    private val agents = ConcurrentHashMap<AgentId, ConcurrentLinkedQueue<Instance>>()
+    private val agents = ConcurrentHashMap<AgentBuildKey, ConcurrentLinkedQueue<Instance>>()
 
     fun connectAgent(
         agent: AgentWrap,
         initBlock: suspend () -> Unit = {},
         connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
-        if (agents[agent.id].isNullOrEmpty()) {
-            agents[agent.id] = ConcurrentLinkedQueue(
+        val agentBuildKey = AgentBuildKey(agent.id, agent.buildVersion)
+        if (agents[agentBuildKey].isNullOrEmpty()) {
+            agents[agentBuildKey] = ConcurrentLinkedQueue(
                 listOf(
-                    AgentKey(agent.id, agent.instanceId) to AgentStruct(
+                    AgentKey(agentBuildKey, agent.instanceId) to AgentStruct(
                         agent,
                         initBlock,
                         connection,
@@ -57,8 +60,8 @@ abstract class E2ETest : AdminTest() {
                 )
             )
         } else {
-            agents[agent.id]?.add(
-                AgentKey(agent.id, agent.instanceId) to AgentStruct(
+            agents[agentBuildKey]?.add(
+                AgentKey(agentBuildKey, agent.instanceId) to AgentStruct(
                     agent,
                     initBlock,
                     connection,
@@ -97,28 +100,30 @@ abstract class E2ETest : AdminTest() {
                 //create the 'drill-admin-socket' websocket connection
                 handleWebSocketConversation("/ws/drill-admin-socket?token=${globToken}") { uiIncoming, ut ->
                     block()
-                    ut.send(uiMessage(Subscribe("/agents")))
+                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoutes.Agents()))))
                     uiIncoming.receive()
                     val glob = Channel<GroupedAgentsDto>()
                     val globLaunch = application.launch(handler) {
                         watcher?.invoke(asyncEngine, glob)
                     }
 
-                    val agentUiChannel = ConcurrentHashMap<AgentId, AdminUiChannels>()
+                    val agentUiChannel = ConcurrentHashMap<String, AdminUiChannels>()
                     coroutineScope {
                         agents.map { (_, queue) ->
                             launch(handler) {
                                 val currentInstance = queue.poll()
-                                val agentId = currentInstance.first.id
+                                val (agentId, buildVersion) = currentInstance.first.id
                                 if (agentUiChannel[agentId] == null) {
                                     val ui = AdminUiChannels()
                                     agentUiChannel[agentId] = ui
                                     val uiE = UIEVENTLOOP(agentUiChannel, uiStreamDebug, glob)
                                     with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
-                                    ut.send(uiMessage(Subscribe("/agents/$agentId")))
-                                    ut.send(uiMessage(Subscribe("/agents/$agentId/builds")))
+                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.Agent(agentId)))))
+                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.AgentBuild(agentId, buildVersion)))))
+                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoutes.AgentBuildsSummary(agentId)))))
                                     ui.getAgent()
-                                    ui.getBuilds()
+                                    ui.getBuild()
+                                    ui.getBuildSummary()
                                     delay(50)
                                 }
                                 createWsConversation(
@@ -185,8 +190,8 @@ abstract class E2ETest : AdminTest() {
         agentStruct.reconnects.forEach { (agentWrap, reconnect) ->
             if (agentStreamDebug) println("Agent $agentKey reconnected")
             glob.receive()
-            ui.getAgent()
-            ui.getBuilds()
+            ui.getBuild()
+            ui.getBuildSummary()
             delay(50)
 
             handleWebSocketConversation(
@@ -209,8 +214,8 @@ abstract class E2ETest : AdminTest() {
         ags: AgentWrap,
         bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
-        agents[ags.id]?.filter {
-            it.first == AgentKey(ags.id, ags.instanceId)
+        agents[AgentBuildKey(ags.id, ags.buildVersion)]?.filter {
+            it.first == AgentKey(AgentBuildKey(ags.id, ags.buildVersion), ags.instanceId)
         }?.forEach { it.second.reconnects.add(ags to bl) }
         return this
     }
@@ -242,7 +247,7 @@ abstract class E2ETest : AdminTest() {
         callAsync(context) {
             with(engine) {
                 handleRequest(
-                    HttpMethod.Delete,
+                    HttpMethod.Patch,
                     toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
                 ) {
                     addHeader(HttpHeaders.Authorization, "Bearer $token")
@@ -330,7 +335,7 @@ abstract class E2ETest : AdminTest() {
 
 data class AsyncTestAppEngine(val context: CoroutineContext, val engine: TestApplicationEngine)
 
-data class AgentKey(val id: String, val instanceId: String)
+data class AgentKey(val id: AgentBuildKey, val instanceId: String)
 data class AgentStruct(
     val agWrap: AgentWrap,
     val intiBlock: suspend () -> Unit = {},

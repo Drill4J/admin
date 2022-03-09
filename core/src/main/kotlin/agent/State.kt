@@ -61,15 +61,16 @@ internal class AgentData(
         private val logger = KotlinLogging.logger {}
     }
 
-    val buildManager get() = _buildManager.value
+    val agentBuildManager get() = _agentBuildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentKey(agentId, buildVersion.value))
+    override suspend fun loadClassBytes(): Map<String, ByteArray> = adminStore.loadClasses(AgentBuildKey(agentId, buildVersion.value))
 
-    override suspend fun loadClassBytes(buildVersion: String) = adminStore.loadClasses(AgentKey(agentId, buildVersion))
+    override suspend fun loadClassBytes(buildVersion: String) =
+        adminStore.loadClasses(AgentBuildKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
-    private val _buildManager = atomic(AgentBuildManager(agentId))
+    private val _agentBuildManager = atomic(AgentBuildManager(agentId))
 
     private val _settings = atomic(initialSettings)
 
@@ -79,19 +80,19 @@ internal class AgentData(
     suspend fun initBuild(version: String): Boolean {
 
         buildVersion.update { version }
-        if (buildManager.agentBuilds.none()) {
+        if (agentBuildManager.agentBuilds.none()) {
             loadStoredData()
         }
-        return (buildManager[version] == null).also {
-            val agentBuild = buildManager.init(version)
+        return (agentBuildManager[version] == null).also {
+            val agentBuild = agentBuildManager.init(version)
             store(agentBuild)
         }
     }
 
     internal suspend fun initClasses(buildVersion: String) {
-        val addedClasses: List<ByteArray> = buildManager.collectClasses()
+        val addedClasses: List<ByteArray> = agentBuildManager.collectClasses()
         val classBytesSize = addedClasses.sumBy { it.size } / 1024
-        val agentKey = AgentKey(agentId, buildVersion)
+        val agentKey = AgentBuildKey(agentId, buildVersion)
         logger.debug { "Saving ${addedClasses.size} classes with $classBytesSize KB for $agentKey..." }
         trackTime("initClasses") {
             val classBytes: Map<String, ByteArray> = addedClasses.asSequence().map {
@@ -131,7 +132,7 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentKey: AgentKey) = adminStore.deleteClasses(agentKey)
+    suspend fun deleteClassBytes(agentBuildKey: AgentBuildKey) = adminStore.deleteClasses(agentBuildKey)
 
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
@@ -150,7 +151,7 @@ internal class AgentData(
                 )
             }
         }
-        _buildManager.value = AgentBuildManager(
+        _agentBuildManager.value = AgentBuildManager(
             agentId = agentId,
             builds = builds
         )
@@ -164,7 +165,7 @@ internal class AgentData(
 }
 
 private suspend fun StoreClient.storeClasses(
-    agentKey: AgentKey,
+    agentKey: AgentBuildKey,
     classBytes: Map<String, ByteArray>,
 ) {
     trackTime("storeClasses") {
@@ -181,19 +182,19 @@ private suspend fun StoreClient.storeClasses(
 }
 
 private suspend fun StoreClient.loadClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ): Map<String, ByteArray> = trackTime("loadClasses") {
-    findById<StoredCodeData>(agentKey)?.run {
+    findById<StoredCodeData>(agentBuildKey)?.run {
         ProtoBuf.load(CodeData.serializer(), data).classBytes
     } ?: let {
-        logger.warn { "Can not find classBytes for $agentKey" }
+        logger.warn { "Can not find classBytes for $agentBuildKey" }
         emptyMap()
     }
 }
 
 private suspend fun StoreClient.deleteClasses(
-    agentKey: AgentKey,
+    agentBuildKey: AgentBuildKey,
 ) = trackTime("deleteClasses") {
-    logger.debug { "Deleting class bytes for $agentKey..." }
-    deleteById<StoredCodeData>(agentKey)
+    logger.debug { "Deleting class bytes for $agentBuildKey..." }
+    deleteById<StoredCodeData>(agentBuildKey)
 }

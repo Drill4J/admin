@@ -30,30 +30,31 @@ class PluginLoadTest : E2ETest() {
 
     @Test
     fun `plugin loading `() {
-        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true) {
+        createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(agentId)) { ui, agent ->
-                ui.getAgent()?.status shouldBe AgentStatus.NOT_REGISTERED
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                ui.getAgent()?.status shouldBe AgentStatus.BUSY
+                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
                 agent.`get-load-classes-datas`()
-                ui.getAgent()?.status shouldBe AgentStatus.ONLINE
+
                 addPlugin(agentId, testPlugin) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
                 agent.getLoadedPlugin { metadata, file ->
                     hex(sha1(file)) shouldBe metadata.checkSum
-
-                    ui.getAgent()?.status shouldBe AgentStatus.BUSY
-
                     agent.loaded(metadata.id)
                 }
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getAgent()?.apply {
-                    status shouldBe AgentStatus.ONLINE
+                    agentStatus shouldBe AgentStatus.REGISTERED
                     activePluginsCount shouldBe 1
                 }
+                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
         }
     }
