@@ -182,7 +182,7 @@ internal class DrillServerWsTest {
     @Test
     fun `topic resolvation goes correctly`() {
         withTestApplication(testApp) {
-            val token = handleRequest(HttpMethod.Post, "/api/login").run { response.headers[HttpHeaders.Authorization] }
+            val token = requestToken()
             assertNotNull(token, "token can't be empty")
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
                 outgoing.send(uiMessage(Subscribe("/blabla/pathOfPain", "")))

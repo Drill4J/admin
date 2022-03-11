@@ -15,9 +15,11 @@
  */
 package com.epam.drill.admin.endpoints
 
+import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.common.*
+import com.epam.drill.e2e.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.server.testing.*
@@ -27,14 +29,18 @@ import kotlin.test.*
 //TODO move under com.epam.drill.e2e
 
 fun TestApplicationEngine.requestToken(): String {
-    val token = handleRequest(HttpMethod.Post, "/api/login").run { response.headers[HttpHeaders.Authorization] }
+    val loginUrl = toApiUri(ApiRoot().let { ApiRoot.Login(it) })
+    val token = handleRequest(HttpMethod.Post, loginUrl) {
+        addHeader(HttpHeaders.ContentType, "${ContentType.Application.Json}")
+        setBody(UserData.serializer() stringify UserData("guest", ""))
+    }.run { response.headers[HttpHeaders.Authorization] }
     assertNotNull(token, "token can't be empty")
     return token
 }
 
 fun uiMessage(message: WsReceiveMessage) = (WsReceiveMessage.serializer() stringify message).toTextFrame()
 
-fun agentMessage(type: MessageType, destination: String, message: ByteArray= byteArrayOf()) =
+fun agentMessage(type: MessageType, destination: String, message: ByteArray = byteArrayOf()) =
     ProtoBuf.dump(Message.serializer(), Message(type, destination, message)).toByteFrame()
 
 fun String.toTextFrame() = Frame.Text(this)

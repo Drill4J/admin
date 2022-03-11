@@ -18,7 +18,6 @@ package com.epam.drill.admin.endpoints.system
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.jwt.config.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -35,31 +34,23 @@ class LoginEndpoint(val app: Application) {
 
     init {
         app.routing {
-            val meta = "Login as guest"
+            val meta = "Login"
                 .examples(
                     example("user", UserData("guest", ""))
                 )
                 .responds(
-                    ok<Unit>()
+                    ok<Unit>(), badRequest()
                 )
-            post<ApiRoot.Login, String>(meta) { _, userDataJson ->
-                var notEmptyUserDataJson = userDataJson
-                if (userDataJson.isBlank()) {
-                    notEmptyUserDataJson = UserData.serializer() stringify UserData(
-                        "guest",
-                        ""
-                    )
-                }
-                val userData = UserData.serializer() parse notEmptyUserDataJson
+            post<ApiRoot.Login, UserData>(meta) { _, userData ->
                 val (username, password) = userData
-
                 val credentials = UserPasswordCredential(username, password)
                 logger.debug { "Login user with name $username" }
-                val user = userSource.findUserByCredentials(credentials)
-                val token = JwtConfig.makeToken(user, app.jwtLifetime)
-                call.response.header(HttpHeaders.Authorization, token)
-                logger.debug { "Login user with name $username was successfully" }
-                call.respond(HttpStatusCode.OK, JWT(token))
+                userSource.findUserByCredentials(credentials)?.let { user ->
+                    val token = JwtConfig.makeToken(user, app.jwtLifetime)
+                    call.response.header(HttpHeaders.Authorization, token)
+                    logger.debug { "Login user with name $username was successfully" }
+                    call.respond(HttpStatusCode.OK, JWT(token))
+                } ?: call.respond(HttpStatusCode.BadRequest, "Invalid credentials")
             }
 
             static {
