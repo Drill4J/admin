@@ -132,7 +132,7 @@ fun Application.module() = kodeinApplication(
         }
         hikariConfig = HikariConfig().apply {
             this.driverClassName = "org.postgresql.Driver"
-            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
+            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
             this.username = userName
             this.password = password
             this.maximumPoolSize = maxPoolSize
