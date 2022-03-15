@@ -18,6 +18,7 @@ package com.epam.drill.admin.endpoints.system
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.jwt.config.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -41,7 +42,17 @@ class LoginEndpoint(val app: Application) {
                 .responds(
                     ok<Unit>(), badRequest()
                 )
-            post<ApiRoot.Login, UserData>(meta) { _, userData ->
+            post<ApiRoot.Login, String>(meta) { _, userDataJson ->
+                //TODO EPMDJ-10038 remove after support login on all clients
+                var notEmptyUserDataJson = userDataJson
+                if (userDataJson.isBlank()) {
+                    logger.warn { "Body is empty, login as guest" }
+                    notEmptyUserDataJson = UserData.serializer() stringify UserData(
+                        "guest",
+                        ""
+                    )
+                }
+                val userData = UserData.serializer() parse notEmptyUserDataJson
                 val (username, password) = userData
                 val credentials = UserPasswordCredential(username, password)
                 logger.debug { "Login user with name $username" }
