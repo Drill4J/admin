@@ -15,5 +15,14 @@
  */
 package com.epam.drill.admin.plugin
 
+import kotlinx.serialization.*
+
 typealias PluginAction = com.epam.drill.common.PluginAction
 typealias TogglePayload = com.epam.drill.common.TogglePayload
+
+//todo EPMDJ-10291 remove additional action from admin
+@Serializable
+data class IsPossibleOffline(
+    val type: String = "IS_POSSIBLE_OFFLINE",
+    val payload: String,
+)

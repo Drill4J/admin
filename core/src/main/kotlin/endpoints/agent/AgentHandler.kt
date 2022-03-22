@@ -142,7 +142,7 @@ class AgentHandler(override val di: DI) : DIAware{
             }
         } catch (ex: Exception) {
             when (ex) {
-                is io.ktor.utils.io.CancellationException -> logger.error { "Handling of $agentDebugStr was cancelled" }
+                is CancellationException -> logger.error { "Handling of $agentDebugStr was cancelled" }
                 else -> logger.error(ex) { "Error handling $agentDebugStr" }
             }
         } finally {

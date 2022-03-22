@@ -16,7 +16,8 @@
 package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.agent.AgentStatus.*
+import com.epam.drill.admin.api.agent.BuildStatus.*
 import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
@@ -120,17 +121,25 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     val (statusCode, response) = agent?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (info.agentStatus == AgentStatus.REGISTERED && buildManager.buildStatus(agentId) == BuildStatus.ONLINE) {
-                                this[pluginId]?.let { adminPart ->
+                            val buildStatus = buildManager.buildStatus(agentId)
+                            val adminPluginPart = this[pluginId]
+                            val isActionPossibleOffline = adminPluginPart?.let { adminPart ->
+                                val offlineAction = IsPossibleOffline.serializer() stringify IsPossibleOffline(payload = action)
+                                val result = adminPart.processAction(offlineAction, buildManager::agentSessions)
+                                result.toStatusResponse().code == HttpStatusCode.OK.value
+                            } ?: false
+                            if (isReadyToAction(agentId) || (isActionPossibleOffline && buildStatus != BUSY)) {
+                                adminPluginPart?.let { adminPart ->
                                     val result = adminPart.processAction(action, buildManager::agentSessions)
                                     val statusResponse = result.toStatusResponse()
                                     HttpStatusCode.fromValue(statusResponse.code) to statusResponse
                                 } ?: (HttpStatusCode.BadRequest to ErrorResponse(
                                     "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
-                                ))
+                                )).also { logger.warn { "BadRequest with action: $action" } }
                             } else HttpStatusCode.BadRequest to ErrorResponse(
-                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not online."
-                            )
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
+                                        " status of build is $buildStatus."
+                            ).also { logger.warn { "BadRequest with action: $action" } }
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
                     logger.info { "response for '$agentId': $response" }
@@ -161,7 +170,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     val (statusCode, response) = agentEntry?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            if (info.agentStatus == AgentStatus.REGISTERED && buildManager.buildStatus(agentId) == BuildStatus.ONLINE) {
+                            if (isReadyToAction()) {
                                 this[pluginId]?.let { adminPart ->
                                     val result = adminPart.doRawAction(action, inputStream)
                                     val statusResponse = result.toStatusResponse()
@@ -337,6 +346,8 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
     }
 
+    private fun Agent.isReadyToAction(agentId: String = info.id) = info.agentStatus == REGISTERED && buildManager.buildStatus(agentId) == ONLINE
+
     private fun pluginRoutes(pluginId: String, classLoader: ClassLoader): List<String> {
         runCatching {
             Class.forName(
@@ -432,13 +443,13 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 val agentId = agent.info.id
                 val agentStatus = agent.info.agentStatus
                 async {
-                    val status = buildManager.buildStatus(agent.info.id)
-                    if (agentStatus == AgentStatus.REGISTERED && status == BuildStatus.ONLINE) {
+                    val status = buildManager.buildStatus(agentId)
+                    if (agent.isReadyToAction()) {
                         agent[pluginId]?.run {
                             val adminActionResult = processAction(action, buildManager::agentSessions)
                             adminActionResult.toStatusResponse()
                         }
-                    } else if (agentStatus == AgentStatus.NOT_REGISTERED || status == BuildStatus.OFFLINE) {
+                    } else if (agentStatus == NOT_REGISTERED || status == OFFLINE) {
                         null
                     } else {
                         "Agent $agentId is in the wrong state: Agent status: '$agentStatus', build status '$status'".run {
