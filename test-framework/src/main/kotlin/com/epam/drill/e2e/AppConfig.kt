@@ -34,7 +34,7 @@ import io.ktor.websocket.*
 import org.kodein.di.*
 import java.io.*
 
-class AppConfig(var projectDir: File, delayBeforeClearData: Long = 0) {
+class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
 
