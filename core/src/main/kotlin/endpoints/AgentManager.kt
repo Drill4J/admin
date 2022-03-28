@@ -400,8 +400,8 @@ class AgentManager(override val di: DI) : DIAware {
                     if (needClassSending) {
                         updateSessionHeader(settings.sessionIdHeaderName)
                         triggerClassesSending()
+                        enableAllPlugins(info)
                     }
-                    enableAllPlugins(info)
                 }
             }
             logger.info { "$agentDebugStr: sync took: $duration." }
