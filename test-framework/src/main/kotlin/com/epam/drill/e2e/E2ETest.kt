@@ -25,6 +25,7 @@ import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.version.*
 import com.epam.drill.testdata.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -45,7 +46,7 @@ abstract class E2ETest : AdminTest() {
     fun connectAgent(
         agent: AgentWrap,
         initBlock: suspend () -> Unit = {},
-        connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
+        connection: suspend AsyncTestAppEngine.(GlobalUiChannels, AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
         val agentBuildKey = AgentBuildKey(agent.id, agent.buildVersion)
         if (agents[agentBuildKey].isNullOrEmpty()) {
@@ -102,7 +103,7 @@ abstract class E2ETest : AdminTest() {
                     block()
                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoutes.Agents()))))
                     uiIncoming.receive()
-                    val glob = Channel<GroupedAgentsDto>()
+                    val glob = GlobalUiChannels()
                     val globLaunch = application.launch(handler) {
                         watcher?.invoke(asyncEngine, glob)
                     }
@@ -118,6 +119,7 @@ abstract class E2ETest : AdminTest() {
                                     agentUiChannel[agentId] = ui
                                     val uiE = UIEVENTLOOP(agentUiChannel, uiStreamDebug, glob)
                                     with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
+                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.Analytics))))
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.Agent(agentId)))))
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.AgentBuild(agentId, buildVersion)))))
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoutes.AgentBuildsSummary(agentId)))))
@@ -149,7 +151,7 @@ abstract class E2ETest : AdminTest() {
 
     private suspend fun TestApplicationEngine.createWsConversation(
         currentInstance: Instance,
-        glob: Channel<GroupedAgentsDto>,
+        glob: GlobalUiChannels,
         ui: AdminUiChannels,
         globLaunch: Job,
         agentStreamDebug: Boolean,
@@ -162,7 +164,7 @@ abstract class E2ETest : AdminTest() {
             "/agent/attach",
             wsRequestRequiredParams(agentStruct.agWrap)
         ) { inp, out ->
-            glob.receive()
+            glob.getGroupedAgents()
             val agent = Agent(
                 application,
                 agentStruct.agWrap.id,
@@ -175,6 +177,7 @@ abstract class E2ETest : AdminTest() {
             }
             agentStruct.connection(
                 asyncEngine,
+                glob,
                 ui,
                 agent
             )
@@ -189,7 +192,7 @@ abstract class E2ETest : AdminTest() {
         if (agentStreamDebug) println("Agent $agentKey disconnected")
         agentStruct.reconnects.forEach { (agentWrap, reconnect) ->
             if (agentStreamDebug) println("Agent $agentKey reconnected")
-            glob.receive()
+            glob.getGroupedAgents()
             ui.getBuild()
             ui.getBuildSummary()
             delay(50)
@@ -201,6 +204,7 @@ abstract class E2ETest : AdminTest() {
                 val apply = Agent(application, agentWrap.id, inp, out, agentStreamDebug).apply { queued() }
                 reconnect(
                     asyncEngine,
+                    glob,
                     ui,
                     apply
                 )
@@ -212,7 +216,7 @@ abstract class E2ETest : AdminTest() {
 
     fun reconnect(
         ags: AgentWrap,
-        bl: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
+        bl: suspend AsyncTestAppEngine.(GlobalUiChannels, AdminUiChannels, Agent) -> Unit,
     ): E2ETest {
         agents[AgentBuildKey(ags.id, ags.buildVersion)]?.filter {
             it.first == AgentKey(AgentBuildKey(ags.id, ags.buildVersion), ags.instanceId)
@@ -314,6 +318,22 @@ abstract class E2ETest : AdminTest() {
         }
     }
 
+    fun AsyncTestAppEngine.toggleAnalytic(
+        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
+    ) {
+        callAsync(context) {
+            with(engine) {
+                handleRequest(
+                    HttpMethod.Patch,
+                    toApiUri(
+                        ApiRoot().let { ApiRoot.ToggleAnalytic(it) }
+                    )
+                ) {
+                }.apply { resultBlock(response.status(), response.content) }
+            }
+        }
+    }
+
     fun AsyncTestAppEngine.changePackages(
         agentId: String,
         token: String = globToken,
@@ -339,8 +359,8 @@ data class AgentKey(val id: AgentBuildKey, val instanceId: String)
 data class AgentStruct(
     val agWrap: AgentWrap,
     val intiBlock: suspend () -> Unit = {},
-    val connection: suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit,
-    val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(AdminUiChannels, Agent) -> Unit>>,
+    val connection: suspend AsyncTestAppEngine.(GlobalUiChannels, AdminUiChannels, Agent) -> Unit,
+    val reconnects: MutableList<Pair<AgentWrap, suspend AsyncTestAppEngine.(GlobalUiChannels, AdminUiChannels, Agent) -> Unit>>,
 )
 
 data class AgentWrap(

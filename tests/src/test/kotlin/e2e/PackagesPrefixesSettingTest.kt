@@ -30,7 +30,7 @@ class PackagesPrefixesSettingTest : E2ETest() {
     @Test
     fun `Packages prefixes changing Test`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentId)) { ui, agent ->
+            connectAgent(AgentWrap(agentId)) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->

@@ -50,7 +50,8 @@ val adminVersionDto = AdminVersionDto(
     java = System.getProperty("java.version")
 )
 
-val analyticsInfoDto = AnalyticsInfoDto(
-    clientId = AnalyticService.CLIENT_ID,
-    isAnalyticsDisabled = System.getenv(AnalyticService.ANALYTIC_DISABLE) != null
-)
+val analyticsInfoDto
+    get() = AnalyticsInfoDto(
+        clientId = AnalyticService.CLIENT_ID,
+        isAnalyticsDisabled = isAnalyticDisabled()
+    )

@@ -35,7 +35,7 @@ class BuildsTest : E2ETest() {
             timeout = Duration.seconds(15)
         ) {
             val aw = AgentWrap(agentId)
-            connectAgent(aw) { ui, agent ->
+            connectAgent(aw) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(aw.id) { status, _ ->
@@ -49,7 +49,7 @@ class BuildsTest : E2ETest() {
                 ui.getBuildSummary()?.size shouldBe 1
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
 
-            }.reconnect(aw.copy(buildVersion = "0.1.2")) { ui, agent ->
+            }.reconnect(aw.copy(buildVersion = "0.1.2")) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 agent.`get-set-packages-prefixes`()
@@ -57,7 +57,7 @@ class BuildsTest : E2ETest() {
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getBuildSummary()?.size shouldBe 2
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
-            }.reconnect(aw.copy(buildVersion = "0.1.3")) { ui, agent ->
+            }.reconnect(aw.copy(buildVersion = "0.1.3")) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 agent.`get-set-packages-prefixes`()

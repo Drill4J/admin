@@ -13,25 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.sync
+package com.epam.drill.admin.e2e
 
-import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.*
-import kotlinx.coroutines.sync.*
+import com.epam.drill.e2e.*
+import io.kotlintest.*
+import io.ktor.http.*
+import kotlin.test.Test
 
-class MonitorMutex<T> {
+class ToggleAnalytic : E2ETest() {
 
-    private val resources = atomic(persistentHashMapOf<T, Mutex>())
-
-    private fun getOrCreate(resource: T): Mutex = resources.updateAndGet { persistentMap ->
-        persistentMap.takeIf { it.containsKey(resource) } ?: persistentMap.put(resource, Mutex())
-    }.getValue(resource)
-
-    suspend fun <R> withLock(
-        lock: T,
-        action: suspend () -> R,
-    ) = getOrCreate(lock).withLock {
-        action()
+    @Test
+    fun `Toggle Analytic Test`() {
+        createSimpleAppWithUIConnection {
+            connectAgent(AgentWrap("agentId")) { glob, _, _ ->
+                glob.getAnalytic()?.isAnalyticsDisabled shouldBe true
+                toggleAnalytic() { status, _ ->
+                    status shouldBe HttpStatusCode.OK
+                }
+                glob.getAnalytic()?.isAnalyticsDisabled shouldBe false
+            }
+        }
     }
+
 
 }

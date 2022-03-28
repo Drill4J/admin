@@ -29,7 +29,7 @@ class MultipleAgentRegistrationTest : E2ETest() {
     fun `4 Agents should be registered in parallel`() {
         createSimpleAppWithUIConnection(delayBeforeClearData = 1_000) {
             repeat(4) {
-                connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { ui, agent ->
+                connectAgent(AgentWrap("$agentIdPrefix$it", "0.1.$it")) { _, ui, agent ->
                     ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                     ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                     register("$agentIdPrefix$it") { status, _ ->

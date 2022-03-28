@@ -27,6 +27,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.router.*
+import com.epam.drill.admin.version.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
@@ -49,6 +50,14 @@ abstract class PluginStreams {
     abstract fun queued(incoming: ReceiveChannel<Frame>, out: SendChannel<Frame>, isDebugStream: Boolean = false)
     open suspend fun initSubscriptions(subscription: AgentSubscription) {}
     abstract suspend fun subscribe(subscription: AgentSubscription, destination: String)
+}
+
+class GlobalUiChannels {
+    val analyticChannel = Channel<AnalyticsInfoDto?>(Channel.UNLIMITED)
+    val groupedAgentChannel = Channel<GroupedAgentsDto>()
+
+    suspend fun getAnalytic() = analyticChannel.receive()
+    suspend fun getGroupedAgents() = groupedAgentChannel.receive()
 }
 
 
@@ -74,7 +83,7 @@ class AdminUiChannels {
 class UIEVENTLOOP(
     val cs: Map<String, AdminUiChannels>,
     val uiStreamDebug: Boolean,
-    val glob: Channel<GroupedAgentsDto> = Channel(),
+    val glob: GlobalUiChannels = GlobalUiChannels(),
 ) {
 
     fun Application.queued(wsTopic: WsTopic, incoming: ReceiveChannel<Frame>) = launch {
@@ -93,7 +102,7 @@ class UIEVENTLOOP(
                     when (messageType) {
                         WsMessageType.MESSAGE, WsMessageType.DELETE -> launch {
                             when (type) {
-                                is WsRoutes.Agents -> glob.run {
+                                is WsRoutes.Agents -> glob.groupedAgentChannel.run {
                                     response?.let {
                                         send(GroupedAgentsDto.serializer() fromJson it)
                                     }
@@ -113,6 +122,10 @@ class UIEVENTLOOP(
                                 }
                                 is WsRoutes.AgentPlugins -> cs.getValue(type.agentId).agentPluginInfoChannel.run {
                                     send(response?.let { SetSerializer(PluginDto.serializer()) fromJson it })
+                                    println("Processed $type")
+                                }
+                                is WsRoot.Analytics -> glob.analyticChannel.run {
+                                    send(response?.let { AnalyticsInfoDto.serializer() fromJson it })
                                     println("Processed $type")
                                 }
                             }

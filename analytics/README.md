@@ -8,6 +8,6 @@ Messages are sent by HTTP post request to https://www.google-analytics.com/colle
 
 cid - Client ID generated once to identify the application, it could be found on file system in /user/home/.drill/drill.properties
 
-If you want to disable analytics, then set environment variable `analytic.disable`
+If you want to disable analytics, then set system property `analytic.disable = true` or send PATCH request `/api/analytic/toggle`
 
 For more details see [Google Analytics API](https://developers.google.com/analytics/devguides/collection/protocol/v1/parameters)
