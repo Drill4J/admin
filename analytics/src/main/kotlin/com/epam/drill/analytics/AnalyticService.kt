@@ -24,6 +24,8 @@ import java.nio.file.*
 import java.util.*
 import kotlin.time.*
 
+fun isAnalyticDisabled() = System.getProperty(AnalyticService.ANALYTIC_DISABLE).toBoolean()
+
 object AnalyticService : Closeable {
 
     private val logger = KotlinLogging.logger { AnalyticService::class.simpleName }
@@ -43,14 +45,15 @@ object AnalyticService : Closeable {
         }
     }
 
+    private val drillAnalyticClient = AnalyticClient("UA-214931987-2", CLIENT_ID)
+
     private val analyticClient: AnalyticApiClient
+        get() = if (isAnalyticDisabled()) StubClient else drillAnalyticClient
 
     init {
-        if (System.getenv(ANALYTIC_DISABLE) != null) {
-            analyticClient = StubClient()
+        if (isAnalyticDisabled()) {
             logger.info { "Analytics disabled" }
         } else {
-            analyticClient = AnalyticClient("UA-214931987-2", CLIENT_ID)
             logger.info { "Analytics enabled" }
         }
     }

@@ -53,7 +53,7 @@ internal class AnalyticClient(trackingId: String, clientId: String) : AnalyticAp
         runCatching {
             val url = googleAnalyticsUrl()
             val payload = (requiredParams + items).toStatisticsPayload()
-            logger.trace { "Trying to send statistics to $url  with payload '$payload'" }
+            logger.trace { "Trying to send statistics to $url with payload '$payload'" }
             val httpResponse: HttpResponse = client.post(url) {
                 body = payload
             }
@@ -81,7 +81,7 @@ internal class AnalyticClient(trackingId: String, clientId: String) : AnalyticAp
     }
 }
 
-class StubClient : AnalyticApiClient {
+internal object StubClient : AnalyticApiClient {
     override suspend fun send(items: StatisticsItems) {
         // do noting
     }

@@ -31,7 +31,7 @@ class AgentRegistrationTest : E2ETest() {
     @Test
     fun `agent should be registered`() {
         createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true, timeout = 120.0.toDuration(TimeUnit.SECONDS) ) {
-            connectAgent(AgentWrap(agentId, "0.1.0")) { ui, agent ->
+            connectAgent(AgentWrap(agentId, "0.1.0")) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
@@ -50,7 +50,7 @@ class AgentRegistrationTest : E2ETest() {
     @Test
     fun `agent must register without a description`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentId, "0.1.0")) { ui, agent ->
+            connectAgent(AgentWrap(agentId, "0.1.0")) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(

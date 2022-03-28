@@ -60,7 +60,7 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
             uts.send(uiMessage(Subscribe(toWsDestination(WsRoutes.Agents()))))
             frontIn.receive()
             val cs = mutableMapOf<String, AdminUiChannels>()
-            val glob = Channel<GroupedAgentsDto>()
+            val glob = GlobalUiChannels()
             val globLaunch = application.launch(handler) {
                 watcher?.invoke(asyncEngine, glob)
             }

@@ -42,7 +42,7 @@ abstract class AdminTest {
         hikariConfig = TestDatabaseContainer.createDataSource()
     }
 
-    var watcher: (suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit?)? = null
+    var watcher: (suspend AsyncTestAppEngine.(GlobalUiChannels) -> Unit?)? = null
     val projectDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     lateinit var asyncEngine: AsyncTestAppEngine
@@ -54,7 +54,7 @@ abstract class AdminTest {
 
     internal val testAgentContext = TestAgentContext()
 
-    fun uiWatcher(bl: suspend AsyncTestAppEngine.(Channel<GroupedAgentsDto>) -> Unit): AdminTest {
+    fun uiWatcher(bl: suspend AsyncTestAppEngine.(GlobalUiChannels) -> Unit): AdminTest {
         this.watcher = bl
         return this
     }
@@ -78,7 +78,7 @@ abstract class AdminTest {
                 toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
             ) {
                 addHeader(HttpHeaders.Authorization, "Bearer $token")
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addHeader(HttpHeaders.ContentType, "${ContentType.Application.Json}")
                 setBody(AgentRegistrationDto.serializer() stringify payload)
             }.apply { resultBlock(response.status(), response.content) }
         }

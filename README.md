@@ -1,7 +1,7 @@
 > **DISCLAIMER**: We use Google Analytics for sending anonymous usage information such as agent's type, version
 > after a successful agent registration. This information might help us to improve both Drill4J backend and client sides. It is used by the
 > Drill4J team only and is not supposed for sharing with 3rd parties.
-> You are able to turn off by setting environment variable 'analytic.disable'.
+> You are able to turn off by set system property `analytic.disable = true` or send PATCH request `/api/analytic/toggle`
 
 [![Check admin](https://github.com/Drill4J/admin/actions/workflows/check.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/check.yml)
 [![Release](https://github.com/Drill4J/admin/actions/workflows/release.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/release.yml)

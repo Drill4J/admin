@@ -32,7 +32,7 @@ class AgentSingleInstanceTest : E2ETest() {
     fun `Agent shouldn't create more instances after reconnection`() {
         createSimpleAppWithUIConnection(timeout = Duration.seconds(20)) {
             val aw = AgentWrap(agentId)
-            connectAgent(aw) { ui, agent ->
+            connectAgent(aw) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->
@@ -47,7 +47,7 @@ class AgentSingleInstanceTest : E2ETest() {
                     buildStatus shouldBe BuildStatus.ONLINE
                     instanceIds.size shouldBe 1
                 }
-            }.reconnect(aw) { ui, _ ->
+            }.reconnect(aw) { _, ui, _ ->
                 ui.getBuild()?.apply {
                     buildStatus shouldBe BuildStatus.ONLINE
                     instanceIds.size shouldBe 1

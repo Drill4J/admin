@@ -143,7 +143,7 @@ tasks {
     (run) {
         environment("DRILL_DEVMODE", true)
         environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
-        environment("analytic.disable", true)
+        systemProperty("analytic.disable", true)
         mustRunAfter(cleanData)
     }
 

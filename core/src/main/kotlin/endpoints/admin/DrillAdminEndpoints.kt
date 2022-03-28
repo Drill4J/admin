@@ -26,6 +26,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.analytics.*
 import com.epam.drill.api.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -38,7 +39,7 @@ import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
 
-class DrillAdminEndpoints(override val di: DI) : DIAware{
+class DrillAdminEndpoints(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
@@ -47,6 +48,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware{
     private val loggingHandler by instance<LoggingHandler>()
     private val plugins by instance<Plugins>()
     private val cacheService by instance<CacheService>()
+    private val topicResolver by instance<TopicResolver>()
 
     init {
         app.routing {
@@ -185,6 +187,23 @@ class DrillAdminEndpoints(override val di: DI) : DIAware{
                     (cacheService as? MapDBCacheService)?.clear()
                     call.respond(HttpStatusCode.OK)
                 }
+            }
+
+            val meta = "Toggle google analytics"
+                .examples()
+                .responds(
+                    ok<String>()
+                )
+            patch<ApiRoot.ToggleAnalytic>(meta) {
+                if (isAnalyticDisabled()) {
+                    logger.info { "Analytics enabled" }
+                    System.setProperty(AnalyticService.ANALYTIC_DISABLE, "${false}")
+                } else {
+                    logger.info { "Analytics disabled" }
+                    System.setProperty(AnalyticService.ANALYTIC_DISABLE, "${true}")
+                }
+                topicResolver.sendToAllSubscribed(WsRoot.Analytics)
+                call.respond(HttpStatusCode.OK)
             }
         }
     }

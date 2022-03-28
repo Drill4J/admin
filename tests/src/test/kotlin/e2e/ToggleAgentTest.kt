@@ -28,7 +28,7 @@ class ToggleAgentTest : E2ETest() {
     @Test
     fun `Toggle Agent Test`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentId)) { ui, agent ->
+            connectAgent(AgentWrap(agentId)) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentId) { status, _ ->

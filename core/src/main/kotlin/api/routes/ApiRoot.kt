@@ -51,6 +51,10 @@ class ApiRoot(val prefix: String = "api") {
         data class Clear(val parent: Cache)
     }
 
+    @Group(SYSTEM)
+    @Location("/analytic/toggle")
+    data class ToggleAnalytic(val parent: ApiRoot)
+
     @Group(AGENT)
     @Location("/agents")
     data class Agents(val parent: ApiRoot) {

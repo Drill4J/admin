@@ -33,7 +33,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
     fun `agent can have multiple instances`() {
         val instance = "instanceAgent"
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentName, "1"), {}) { ui, agent ->
+            connectAgent(AgentWrap(agentName, "1"), {}) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentName) { status, _ ->
@@ -50,7 +50,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
                 }
             }
             for (i in 2..5) {
-                connectAgent(AgentWrap(agentName, "$i"), {}) { ui, _ ->
+                connectAgent(AgentWrap(agentName, "$i"), {}) { _, ui, _ ->
                     ui.getBuild()
                     ui.getBuild()?.run {
                         buildStatus shouldBe BuildStatus.ONLINE
@@ -64,7 +64,7 @@ class MultipleInstanceProcessingTest : E2ETest() {
     @Test
     fun `agent should not be busy after new instance connect`() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentName, "1"), {}) { ui, agent ->
+            connectAgent(AgentWrap(agentName, "1"), {}) { _, ui, agent ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 register(agentName) { status, _ ->
@@ -81,14 +81,14 @@ class MultipleInstanceProcessingTest : E2ETest() {
                     instanceIds shouldBe setOf("1")
                 }
             }
-            connectAgent(AgentWrap(agentName, "2"), {}) { ui, _ ->
+            connectAgent(AgentWrap(agentName, "2"), {}) { _, ui, _ ->
                 ui.getBuild()
                 ui.getBuild()?.run {
                     buildStatus shouldBe BuildStatus.ONLINE
                     instanceIds shouldBe setOf("1", "2")
                 }
             }
-            connectAgent(AgentWrap(agentName, "3"), {}) { ui, _ ->
+            connectAgent(AgentWrap(agentName, "3"), {}) { _, ui, _ ->
                 ui.getBuild()
                 ui.getBuild()?.run {
                     buildStatus shouldBe BuildStatus.ONLINE
@@ -101,10 +101,10 @@ class MultipleInstanceProcessingTest : E2ETest() {
     @Test
     fun `not registered agent should not change status when new instance income `() {
         createSimpleAppWithUIConnection {
-            connectAgent(AgentWrap(agentName, "1")) { ui, _ ->
+            connectAgent(AgentWrap(agentName, "1")) { _, ui, _ ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
             }
-            connectAgent(AgentWrap(agentName, "2")) { ui, _ ->
+            connectAgent(AgentWrap(agentName, "2")) { _, ui, _ ->
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
             }
         }

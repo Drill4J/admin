@@ -80,7 +80,7 @@ class PluginTest : E2EPluginTest() {
             logger.info { "finish connected..." }
             uiWatcher { channel ->
                 logger.info { "waiting..." }
-                waitForMultipleAgents(channel)
+                waitForMultipleAgents(channel.groupedAgentChannel)
                 logger.info { "after waiting..." }
                 val statusResponse = StatusMessageResponse(
                     code = 200,
