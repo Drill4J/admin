@@ -30,6 +30,7 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.sync.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
@@ -68,6 +69,7 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
     private val notificationsManager by instance<NotificationManager>()
     private val loggingHandler by instance<LoggingHandler>()
     private val configHandler by instance<ConfigHandler>()
+    private val agentMonitor = MonitorMutex<String>()
 
     private val _instances = atomic(persistentHashMapOf<AgentKey, PersistentMap<String, InstanceState>>())
 
@@ -135,46 +137,48 @@ class AgentManager(override val kodein: Kodein) : KodeinAware {
         val isNewBuild = adminData.initBuild(buildVersion)
         loggingHandler.sync(id, session)
         //TODO agent instances
-        return if (
-            (oldInstanceIds.isEmpty() || currentInfo?.isRegistered == true) &&
-            currentInfo?.buildVersion == buildVersion &&
-            currentInfo.groupId == groupId &&
-            currentInfo.agentVersion == config.agentVersion
-        ) {
-            logger.info { "agent($id, $buildVersion): reattaching to current build..." }
-            notifySingleAgent(id)
-            notifyAllAgents()
-            currentInfo.plugins.initPlugins(existingAgent)
-            if (needSync) app.launch {
-                currentInfo.sync(config.instanceId) // sync only existing info!
-            } else session.syncPluginState()
-            currentInfo.persistToDatabase()
-            session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
-            currentInfo
-        } else {
-            logger.info { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
-            val storedInfo: AgentInfo? = loadAgentInfo(id)
-            val preparedInfo: AgentInfo? = preparedInfo(storedInfo, id)
-            val existingInfo = (storedInfo ?: preparedInfo)?.copy(
-                buildVersion = config.buildVersion,
-                agentVersion = config.agentVersion
-            )
-            val info: AgentInfo = existingInfo ?: config.toAgentInfo()
-            val entry = Agent(info)
-            agentStorage.put(id, entry)?.also { oldEntry ->
-                oldEntry.close()
-            }
-            existingInfo?.plugins?.initPlugins(entry)
-            app.launch {
-                existingInfo?.takeIf { needSync }?.sync(config.instanceId, true) // sync only existing info!
-                if (isNewBuild && currentInfo != null) {
-                    notificationsManager.saveNewBuildNotification(info)
+        return agentMonitor.withLock(id) {
+            if (
+                (oldInstanceIds.isEmpty() || currentInfo?.isRegistered == true) &&
+                currentInfo?.buildVersion == buildVersion &&
+                currentInfo.groupId == groupId &&
+                currentInfo.agentVersion == config.agentVersion
+            ) {
+                logger.info { "agent($id, $buildVersion): reattaching to current build..." }
+                notifySingleAgent(id)
+                notifyAllAgents()
+                currentInfo.plugins.initPlugins(existingAgent)
+                if (needSync) app.launch {
+                    currentInfo.sync(config.instanceId) // sync only existing info!
+                } else session.syncPluginState()
+                currentInfo.persistToDatabase()
+                session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
+                currentInfo
+            } else {
+                logger.info { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
+                val storedInfo: AgentInfo? = loadAgentInfo(id)
+                val preparedInfo: AgentInfo? = preparedInfo(storedInfo, id)
+                val existingInfo = (storedInfo ?: preparedInfo)?.copy(
+                    buildVersion = config.buildVersion,
+                    agentVersion = config.agentVersion
+                )
+                val info: AgentInfo = existingInfo ?: config.toAgentInfo()
+                val entry = Agent(info)
+                agentStorage.put(id, entry)?.also { oldEntry ->
+                    oldEntry.close()
                 }
+                existingInfo?.plugins?.initPlugins(entry)
+                app.launch {
+                    existingInfo?.takeIf { needSync }?.sync(config.instanceId, true) // sync only existing info!
+                    if (isNewBuild && currentInfo != null) {
+                        notificationsManager.saveNewBuildNotification(info)
+                    }
+                }
+                info.persistToDatabase()
+                preparedInfo?.let { commonStore.client.deleteById<PreparedAgentData>(it.id) }
+                session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
+                info
             }
-            info.persistToDatabase()
-            preparedInfo?.let { commonStore.client.deleteById<PreparedAgentData>(it.id) }
-            session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
-            info
         }
     }
 
@@ -612,7 +616,7 @@ internal suspend fun StoreClient.storeMetadata(agentKey: AgentKey, metadata: Met
 }
 
 internal suspend fun StoreClient.loadMetadata(
-    agentKey: AgentKey
+    agentKey: AgentKey,
 ): Metadata = findById<StoredMetadata>(agentKey)?.data ?: Metadata()
 
 @Serializable
