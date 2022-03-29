@@ -23,6 +23,8 @@ import org.apache.bcel.classfile.*
 import org.apache.bcel.generic.*
 import java.util.jar.*
 
+const val PLUGIN_ACTION = """{"myActionForAllAgents": ""}"""
+
 @Suppress("UNCHECKED_CAST")
 fun MemoryClassLoader.clazz(
     suffix: String,

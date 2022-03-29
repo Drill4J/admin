@@ -21,6 +21,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.e2e.*
+import com.epam.drill.e2e.plugin.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
@@ -37,7 +38,7 @@ class PluginTest : E2EPluginTest() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1> { _, build ->
                 logger.info { build }
-                pluginAction("myActionForAllAgents") { status, content ->
+                pluginAction(PLUGIN_ACTION) { status, content ->
                     logger.info { content }
                     status shouldBe HttpStatusCode.OK
                 }.join()
@@ -52,7 +53,7 @@ class PluginTest : E2EPluginTest() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1> { plugUi, _ ->
                 plugUi.processedData.receive()
-                pluginAction("myActionForAllAgents") { status, content ->
+                pluginAction(PLUGIN_ACTION) { status, content ->
                     logger.info { content }
                     status shouldBe HttpStatusCode.OK
                 }.join()
@@ -89,7 +90,7 @@ class PluginTest : E2EPluginTest() {
                 val statusResponses: List<WithStatusCode> =
                     listOf(statusResponse, statusResponse, statusResponse)
                 delay(50)
-                pluginAction("myActionForAllAgents", group) { status, content ->
+                pluginAction(PLUGIN_ACTION, group) { status, content ->
                     logger.info { "2" }
                     status shouldBe HttpStatusCode.OK
                     content shouldBe (ListSerializer(WithStatusCode.serializer()) stringify statusResponses)

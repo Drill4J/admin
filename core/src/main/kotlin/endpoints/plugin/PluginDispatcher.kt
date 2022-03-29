@@ -124,7 +124,8 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                             val buildStatus = buildManager.buildStatus(agentId)
                             val adminPluginPart = this[pluginId]
                             val isActionPossibleOffline = adminPluginPart?.let { adminPart ->
-                                val offlineAction = IsPossibleOffline.serializer() stringify IsPossibleOffline(payload = action)
+                                val offlineAction = IsPossibleOffline.serializer() stringify
+                                        IsPossibleOffline(payload = action.parseJson() as JsonObject)
                                 val result = adminPart.processAction(offlineAction, buildManager::agentSessions)
                                 result.toStatusResponse().code == HttpStatusCode.OK.value
                             } ?: false
@@ -346,7 +347,8 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
     }
 
-    private fun Agent.isReadyToAction(agentId: String = info.id) = info.agentStatus == REGISTERED && buildManager.buildStatus(agentId) == ONLINE
+    private fun Agent.isReadyToAction(agentId: String = info.id) = info.agentStatus == REGISTERED
+            && buildManager.buildStatus(agentId) == ONLINE
 
     private fun pluginRoutes(pluginId: String, classLoader: ClassLoader): List<String> {
         runCatching {

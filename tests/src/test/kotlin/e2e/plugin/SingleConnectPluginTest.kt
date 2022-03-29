@@ -19,6 +19,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.e2e.*
+import com.epam.drill.e2e.plugin.*
 import io.kotlintest.*
 import io.ktor.http.*
 import kotlin.test.*
@@ -33,7 +34,7 @@ class SingleConnectPluginTest : E2EPluginTest() {
                     code = 200,
                     message = "act"
                 )
-                pluginAction("x") { status, content ->
+                pluginAction(PLUGIN_ACTION) { status, content ->
                     status shouldBe HttpStatusCode.OK
                     content shouldBe expectedContent
                 }.join()

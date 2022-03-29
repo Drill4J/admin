@@ -16,6 +16,7 @@
 package com.epam.drill.admin.plugin
 
 import kotlinx.serialization.*
+import kotlinx.serialization.json.*
 
 typealias PluginAction = com.epam.drill.common.PluginAction
 typealias TogglePayload = com.epam.drill.common.TogglePayload
@@ -24,5 +25,5 @@ typealias TogglePayload = com.epam.drill.common.TogglePayload
 @Serializable
 data class IsPossibleOffline(
     val type: String = "IS_POSSIBLE_OFFLINE",
-    val payload: String,
+    val payload: JsonObject,
 )
