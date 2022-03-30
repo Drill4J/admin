@@ -18,12 +18,17 @@
 package com.epam.drill.e2e.plugin
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.common.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.e2e.*
+import com.epam.drill.e2e.Agent
+import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import org.apache.bcel.classfile.*
 import java.io.*
 import kotlin.reflect.*
-import kotlin.test.*
 
 fun AdminTest.processThens(
     psClass: KClass<out PluginStreams>,
@@ -33,6 +38,7 @@ fun AdminTest.processThens(
     ui: AdminUiChannels,
     pluginMeta: com.epam.drill.common.PluginMetadata,
     globLaunch: Job,
+    uts: SendChannel<Frame>
 ) {
     thens.forEach { (ag, build, needSync, it) ->
         val classes = File("./build/classes/java/${build.name}")
@@ -58,6 +64,7 @@ fun AdminTest.processThens(
                 "/agent/attach",
                 wsRequestRequiredParams(ag)
             ) { inp, out ->
+                uts.send(uiMessage(Subscribe(application.toLocation(WsRoot.AgentBuild(ag.id, ag.buildVersion)))))
                 val apply = Agent(
                     application,
                     ag.id,
@@ -87,6 +94,7 @@ fun AdminTest.processThens(
                     true,
                     needSync
                 )
+                waitForBuildOnline(ui, build.version)
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)
                     delay(100)
