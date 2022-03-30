@@ -16,10 +16,16 @@
 package com.epam.drill.e2e.plugin
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.common.*
+import com.epam.drill.admin.endpoints.*
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.e2e.*
+import com.epam.drill.e2e.Agent
+import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import org.apache.bcel.classfile.*
 import java.io.*
 import kotlin.reflect.*
@@ -35,6 +41,7 @@ fun AdminTest.processFirstConnect(
     pluginMeta: PluginMetadata,
     connect: suspend PluginTestContext.(Any, Any) -> Unit,
     globLaunch: Job,
+    uts: SendChannel<Frame>
 ) {
     engine.handleWebSocketConversation("/ws/plugins/${pluginMeta.id}?token=${globToken}") { uiIncoming, ut ->
         val classes = File("./build/classes/java/${build.name}")
@@ -63,6 +70,7 @@ fun AdminTest.processFirstConnect(
             "/agent/attach",
             wsRequestRequiredParams(ag)
         ) { inp, out ->
+            uts.send(uiMessage(Subscribe(application.toLocation(WsRoot.AgentBuild(ag.id, ag.buildVersion)))))
             val agent = Agent(
                 engine.application,
                 ag.id,
@@ -103,6 +111,7 @@ fun AdminTest.processFirstConnect(
             ui.getAgent()
             ui.getAgent()
             ui.getAgent()
+            waitForBuildOnline(ui, build.version)
             connect(pluginTestInfo, st, build)
             while (globLaunch.isActive) {
                 delay(100)

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.e2e.plugin
 
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
@@ -89,9 +90,9 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
                             agentStreamDebug,
                             pluginMeta,
                             connect,
-                            globLaunch
+                            globLaunch,
+                            uts,
                         )
-
                         processThens(
                             psClass,
                             reconnectionCallbacks,
@@ -99,7 +100,8 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
                             agentStreamDebug,
                             ui,
                             pluginMeta,
-                            globLaunch
+                            globLaunch,
+                            uts,
                         )
                     }
                 }.forEach { it.join() }
@@ -112,4 +114,9 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
             throw coroutineException as Throwable
         }
     }
+}
+
+internal suspend fun waitForBuildOnline(ui: AdminUiChannels, buildVersion: String) = repeat(2) {
+    while (ui.getBuild()?.let { it.buildVersion to it.buildStatus } != buildVersion to BuildStatus.ONLINE)
+        delay(50)
 }
