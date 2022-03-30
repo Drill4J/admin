@@ -121,7 +121,8 @@ abstract class E2ETest : AdminTest() {
                                     with(uiE) { application.queued(appConfig.wsTopic, uiIncoming) }
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.Analytics))))
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.Agent(agentId)))))
-                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.AgentBuild(agentId, buildVersion)))))
+                                    ut.send(uiMessage(Subscribe(toWsDestination(WsRoot.AgentBuild(agentId,
+                                        buildVersion)))))
                                     ut.send(uiMessage(Subscribe(toWsDestination(WsRoutes.AgentBuildsSummary(agentId)))))
                                     ui.getAgent()
                                     ui.getBuild()
@@ -319,6 +320,7 @@ abstract class E2ETest : AdminTest() {
     }
 
     fun AsyncTestAppEngine.toggleAnalytic(
+        payload: String,
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) {
         callAsync(context) {
@@ -329,6 +331,8 @@ abstract class E2ETest : AdminTest() {
                         ApiRoot().let { ApiRoot.ToggleAnalytic(it) }
                     )
                 ) {
+                    addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    setBody(payload)
                 }.apply { resultBlock(response.status(), response.content) }
             }
         }

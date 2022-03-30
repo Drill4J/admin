@@ -26,7 +26,9 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.plugins.*
+import com.epam.drill.admin.version.*
 import com.epam.drill.analytics.*
+import com.epam.drill.analytics.AnalyticService.ANALYTIC_DISABLE
 import com.epam.drill.api.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -190,20 +192,18 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
             }
 
             val meta = "Toggle google analytics"
-                .examples()
+                .examples(example(
+                    "analytics toggle request",
+                    AnalyticsToggleDto(disable = true)
+                ))
                 .responds(
-                    ok<String>()
+                    ok<AnalyticsToggleDto>()
                 )
-            patch<ApiRoot.ToggleAnalytic>(meta) {
-                if (isAnalyticDisabled()) {
-                    logger.info { "Analytics enabled" }
-                    System.setProperty(AnalyticService.ANALYTIC_DISABLE, "${false}")
-                } else {
-                    logger.info { "Analytics disabled" }
-                    System.setProperty(AnalyticService.ANALYTIC_DISABLE, "${true}")
-                }
+            patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(meta) { _, toggleDto ->
+                System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
+                logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
                 topicResolver.sendToAllSubscribed(WsRoot.Analytics)
-                call.respond(HttpStatusCode.OK)
+                call.respond(HttpStatusCode.OK, toggleDto)
             }
         }
     }

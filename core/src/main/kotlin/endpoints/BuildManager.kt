@@ -94,7 +94,7 @@ class BuildManager(override val di: DI) : DIAware {
             } finally {
                 updateInstanceStatus(buildId, instanceId, BuildStatus.ONLINE).also {
                     notifyBuild(buildId)
-                    logger.debug { "Build $buildId is is ${BuildStatus.ONLINE}." }
+                    logger.debug { "Build $buildId is ${BuildStatus.ONLINE}." }
                 }
             }
         } ?: logger.warn { "Instance $instanceId is not found" }

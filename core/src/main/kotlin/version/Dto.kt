@@ -45,6 +45,12 @@ data class AnalyticsInfoDto(
     val isAnalyticsDisabled: Boolean,
 )
 
+@Serializable
+data class AnalyticsToggleDto(
+    val disable: Boolean,
+)
+
+
 val adminVersionDto = AdminVersionDto(
     admin = adminVersion,
     java = System.getProperty("java.version")
