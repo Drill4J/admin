@@ -57,6 +57,7 @@ dependencies {
     implementation("com.epam.drill.logger:logger:$drillLogger")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill.dsm:core:$drillDsmVersion")
+    api("com.epam.drill.dsm:annotations:$drillDsmVersion")
     implementation("org.flywaydb:flyway-core:$flywayVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     //TODO remove logger - EPMDJ-9548
