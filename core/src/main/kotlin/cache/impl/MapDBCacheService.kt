@@ -67,7 +67,10 @@ class MapDBCacheService : CacheService {
         hTreeMap(it).clear()
     }
 
-    fun clear(id: Any, qualifier: Any) = dbMemory.get<HTreeMap<Any, ByteArray>>(cacheId(id, qualifier))?.clear()
+    fun clear(
+        id: Any,
+        qualifier: Any = "",
+    ) = dbMemory.getAll().filter { it.key.startsWith(cacheId(id, qualifier)) }.forEach { hTreeMap(it).clear() }
 
     private fun cacheId(id: Any, qualifier: Any) = "$id$qualifier"
 
@@ -124,7 +127,7 @@ internal class MapDBCache<K, V>(
         if (it.contentEquals(ProtoBuf.dump(""))) { //TODO EPMDJ-6817
             return ProtoBuf.load(String.serializer() as KSerializer<V>, it)
         }
-        return ProtoBuf.load((serializers as Map<K, V> )[key] as KSerializer<V>, it)
+        return ProtoBuf.load((serializers as Map<K, V>)[key] as KSerializer<V>, it)
     }
 }
 
