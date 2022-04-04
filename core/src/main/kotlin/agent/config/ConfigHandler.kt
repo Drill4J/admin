@@ -38,6 +38,8 @@ class ConfigHandler(override val di: DI) : DIAware {
             updateParameters(parameters)
         }
     }
+
+    suspend fun remove(agentId: String) = adminStore.deleteById<StoredAgentConfig>(agentId)
 }
 
 suspend fun AgentWsSession.updateParameters(params: Map<String, String>) =

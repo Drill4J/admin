@@ -21,7 +21,11 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.cache.*
+import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.plugin.AgentCacheKey
 import com.epam.drill.admin.store.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -33,7 +37,7 @@ import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
 
-class AgentEndpoints(override val di: DI) : DIAware{
+class AgentEndpoints(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
@@ -202,7 +206,12 @@ class AgentEndpoints(override val di: DI) : DIAware{
                 }
             }
 
-            //TODO EPMDJ-9872 Add ability to remove offline agent
+            /**
+             * Also you should send action to plugin
+             * {
+             *     "type": "REMOVE_PLUGIN_DATA"
+             * }
+             */
             authenticate {
                 val meta = "Remove all agent info"
                     .responds(
@@ -210,15 +219,19 @@ class AgentEndpoints(override val di: DI) : DIAware{
                     )
                 delete<ApiRoot.Agents.Agent>(meta) { payload ->
                     val agentId = payload.agentId
-                    if (agentManager.removePreregisteredAgent(agentId)) {
-                        call.respond(HttpStatusCode.OK, EmptyContent)
+                    val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
+                        HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."
                     } else {
-                        logger.debug { "Deleting registered Agent '$agentId' isn't supported yet" }
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            ErrorResponse("Deleting registered Agent '$agentId' isn't supported yet")
-                        )
+                        //TODO EPMDJ-10354 Think about ability to remove online agent
+                        if (buildManager.buildStatus(agentId) == BuildStatus.OFFLINE) {
+                            agentManager.removeOfflineAgent(agentId)
+                            HttpStatusCode.OK to "Offline Agent '$agentId' has been completely removed."
+                        } else {
+                            logger.debug { "Deleting online Agent '$agentId' isn't available." }
+                            HttpStatusCode.BadRequest to ErrorResponse("Deleting online Agent '$agentId' isn't availabl.e")
+                        }
                     }
+                    call.respond(status, message)
                 }
             }
         }

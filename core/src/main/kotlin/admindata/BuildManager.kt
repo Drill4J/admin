@@ -40,6 +40,8 @@ class AgentBuildManager(
 
     internal fun delete(version: String) = _buildMap.update { it.remove(version) }
 
+    internal fun deleteAll() = _buildMap.update { persistentMapOf() }
+
     internal fun init(version: String) = _buildMap.updateAndGet { map ->
         if (version !in map) {
             val build = AgentBuild(
