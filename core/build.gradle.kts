@@ -79,8 +79,9 @@ val defaultAppJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
+    "-XX:+UseContainerSupport",
     "-XX:+UseStringDeduplication",
-    "-XX:MaxDirectMemorySize=5G"
+    "-XX:MaxDirectMemorySize=2G"
 )
 
 val devJvmArgs = listOf(
