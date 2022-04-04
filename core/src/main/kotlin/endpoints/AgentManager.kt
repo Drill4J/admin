@@ -21,6 +21,9 @@ import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
 import com.epam.drill.admin.agent.plugin.*
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.build.*
+import com.epam.drill.admin.cache.*
+import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
@@ -31,9 +34,12 @@ import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.sync.*
 import com.epam.drill.admin.util.*
+import com.epam.drill.admin.websocket.*
+import com.epam.drill.admin.websocket.agentKeyPattern
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.dsm.*
+import com.epam.dsm.find.*
 import io.ktor.application.*
 import io.ktor.util.*
 import kotlinx.coroutines.*
@@ -65,6 +71,7 @@ class AgentManager(override val di: DI) : DIAware {
     private val loggingHandler by instance<LoggingHandler>()
     private val configHandler by instance<ConfigHandler>()
     private val buildManager by instance<BuildManager>()
+    private val cacheService by instance<CacheService>()
     private val agentMonitor = MonitorMutex<String>()
 
     init {
@@ -106,7 +113,6 @@ class AgentManager(override val di: DI) : DIAware {
         } else null
     }
 
-    //TODO EPMDJ-9872 Add ability to remove offline agent
     internal suspend fun removePreregisteredAgent(
         agentId: String,
     ): Boolean = (get(agentId) ?: loadAgentInfo(agentId)).let { storedInfo ->
@@ -114,10 +120,33 @@ class AgentManager(override val di: DI) : DIAware {
         if (storedInfo == null || agentStatus == AgentStatus.PREREGISTERED) {
             adminStore.deleteById<PreparedAgentData>(agentId)
             agentStorage.remove(agentId)
-            logger.debug { "Agent info for Agent $agentId was completely deleted." }
+            logger.debug { "Pre registered Agent $agentId has been completely removed." }
             return true
         }
         return false
+    }
+
+    internal suspend fun removeOfflineAgent(
+        agentId: String,
+    ) = trackTime("Remove $agentId") {
+        (get(agentId) ?: loadAgentInfo(agentId))?.let { storedInfo ->
+            adminStore.executeInAsyncTransaction {
+                storedInfo.plugins.forEach { pluginId ->
+                    pluginStoresDSM(pluginId).deleteBy<Stored> {
+                        (Stored::id.startsWith("$agentPrefix$agentId"))
+                    }
+                    (cacheService as? MapDBCacheService)?.clear(AgentCacheKey(pluginId, agentId))
+                }
+                deleteBy<AgentBuildData> { FieldPath(AgentBuildData::id, AgentBuildId::agentId) eq agentId }
+                deleteBy<StoredCodeData> { FieldPath(StoredCodeData::id, AgentBuildId::agentId) eq agentId }
+                deleteBy<AgentMetadata> { FieldPath(AgentMetadata::id, AgentBuildId::agentId) eq agentId }
+                deleteById<AgentInfo>(agentId)
+                deleteById<AgentDataSummary>(agentId)
+                buildManager.buildData(agentId).agentBuildManager.deleteAll()
+                configHandler.remove(agentId)
+            }
+            agentStorage.remove(agentId)
+        }
     }
 
     internal suspend fun attach(

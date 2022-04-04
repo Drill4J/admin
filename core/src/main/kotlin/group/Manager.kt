@@ -63,7 +63,6 @@ internal class GroupManager(override val di: DI) : DIAware {
                     systemSettings = SystemSettingsDto(
                         packages = app.drillDefaultPackages
                     )
-
                 )
             )
         }
