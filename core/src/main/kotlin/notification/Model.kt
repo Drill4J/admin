@@ -38,3 +38,8 @@ data class NewBuildArrivedMessage(
     val recommendations: Set<String> = emptySet(),
     val buildInfo: JsonElement = JsonNull,
 )
+
+@Serializable
+data class NotificationStatus(
+    val isRead: Boolean,
+)

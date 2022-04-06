@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.notification
 
+import com.epam.drill.admin.*
 import com.epam.drill.admin.endpoints.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -25,7 +26,6 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
-
 
 
 class NotificationEndpoints(override val di: DI) : DIAware {
@@ -42,11 +42,16 @@ class NotificationEndpoints(override val di: DI) : DIAware {
     }
 
     private fun Route.authenticated() {
-        val readMeta = "".responds(ok<Unit>(), notFound())
-        patch<ApiNotifications.Notification.Read>(readMeta) { read ->
+        val toggle = "Read/Unread notification"
+            .examples(
+                example("Read/Unread notification",
+                    NotificationStatus(isRead = true)
+                )
+            ).responds(ok<Unit>(), notFound())
+        patch<ApiNotifications.Notification.ToggleStatus, NotificationStatus>(toggle) { read, status ->
             val notificationId = read.parent.id
-            logger.info { "Read notification $notificationId" }
-            notificationManager.read(notificationId)
+            logger.info { "Notification $notificationId status is read = ${status.isRead}" }
+            notificationManager.updateNotificationStatus(notificationId, status.isRead)
             topicResolver.sendToAllSubscribed(WsNotifications)
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
