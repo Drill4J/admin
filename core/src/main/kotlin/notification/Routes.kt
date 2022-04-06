@@ -29,8 +29,8 @@ object ApiNotifications {
     @Location("/{id}")
     data class Notification(val id: String) {
         @Group("Notification Endpoints")
-        @Location("/read")
-        data class Read(val parent: Notification)
+        @Location("/toggle")
+        data class ToggleStatus(val parent: Notification)
     }
 
     @Group("Notification Endpoints")

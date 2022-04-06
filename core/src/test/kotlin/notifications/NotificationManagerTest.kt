@@ -48,14 +48,14 @@ class NotificationManagerTest {
     @Test
     fun `read - not existing notification`() {
         val id = "not-existing"
-        assertFalse { notificationManager.read(id) }
+        assertFalse { notificationManager.updateNotificationStatus(id, true) }
         assertNull(notificationManager.notifications[id])
     }
 
     @Test
     fun `read - status must be changed`() {
         val id = notification.id
-        assertTrue { notificationManager.read(id) }
+        assertTrue { notificationManager.updateNotificationStatus(id, true) }
         assertNotNull(notificationManager.notifications[id])
         assertTrue { notificationManager.notifications[id]!!.read }
     }

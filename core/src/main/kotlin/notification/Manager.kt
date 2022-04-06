@@ -44,8 +44,11 @@ class NotificationManager(override val di: DI) : DIAware {
         _notifications.update { it + notification }
     }
 
-    fun read(id: String): Boolean = id in _notifications.updateAndGet { notifications ->
-        notifications[id]?.run { copy(read = true) }?.let(notifications::replace) ?: notifications
+    fun updateNotificationStatus(
+        id: String,
+        isRead: Boolean,
+    ): Boolean = id in _notifications.updateAndGet { notifications ->
+        notifications[id]?.run { copy(read = isRead) }?.let(notifications::replace) ?: notifications
     }
 
     fun readAll(): Notifications = _notifications.updateAndGet { notifications ->

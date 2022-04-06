@@ -31,13 +31,13 @@ import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.e2e.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.http.ContentType.Application.Json
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
@@ -89,7 +89,7 @@ internal class DrillServerWsTest {
                         notificationsManager
                     }
                     bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
-                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance())}
+                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<AgentManager>() with eagerSingleton { AgentManager(di) }
                     bind<BuildStorage>() with eagerSingleton { BuildStorage() }
                     bind<BuildManager>() with eagerSingleton { BuildManager(di) }
@@ -145,12 +145,14 @@ internal class DrillServerWsTest {
                 val firstNotificationId = currentNotifications.first().id
                 handleHttpPatchRequest(
                     locations.href(
-                        ApiNotifications.Notification.Read(
+                        ApiNotifications.Notification.ToggleStatus(
                             ApiNotifications.Notification(
                                 firstNotificationId
                             )
                         )
-                    ), token
+                    ),
+                    token,
+                    NotificationStatus.serializer() stringify NotificationStatus(isRead = true)
                 )
                 currentNotifications = getCurrentNotifications(incoming, outgoing)
                 assertTrue(
@@ -160,15 +162,17 @@ internal class DrillServerWsTest {
         }
     }
 
-    private fun TestApplicationEngine.handleHttpPatchRequest(location: String, token: String) {
+    private fun TestApplicationEngine.handleHttpPatchRequest(location: String, token: String, body: String) {
         handleRequest(HttpMethod.Patch, location) {
             addHeader(HttpHeaders.Authorization, "Bearer $token")
+            addHeader(HttpHeaders.ContentType, "$Json")
+            setBody(body)
         }
     }
 
     private suspend fun TestApplicationCall.getCurrentNotifications(
         incoming: ReceiveChannel<Frame>,
-        outgoing: SendChannel<Frame>
+        outgoing: SendChannel<Frame>,
     ): List<Notification> {
         outgoing.send(uiMessage(Subscribe(locations.href(WsNotifications), "")))
         val frame = incoming.receive()
