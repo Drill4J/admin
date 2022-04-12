@@ -186,7 +186,8 @@ class AgentManager(override val di: DI) : DIAware {
                 currentInfo.plugins.initPlugins(existingAgent)
                 if (needSync) app.launch {
                     currentInfo.sync(config.instanceId) // sync only existing info!
-                } else session.syncPluginState()
+                    session.syncPluginState()
+                }
                 currentInfo.persistToDatabase()
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
                 currentInfo
