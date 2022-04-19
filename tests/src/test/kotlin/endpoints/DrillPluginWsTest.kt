@@ -28,10 +28,8 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.e2e.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
-import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.features.*
@@ -196,7 +194,7 @@ class PluginWsTest {
 
                 unsubscribe(outgoing, destination)
                 //cached value
-                subscribe(//filter: field1; sort: field2 desc
+                subscribe(//filter: field1; sort: field1 desc
                     outgoing,
                     destination,
                     filters = setOf(FieldFilter(fieldName, "x2", FieldOp.CONTAINS)),
@@ -215,6 +213,114 @@ class PluginWsTest {
                     assertEquals(message.size, array.size)
                     val expected: List<String> = message.sortedByDescending { it.field2 }.map { it.field1 }
                     assertEquals(expected, array.map { it.jsonObject[fieldName]?.toContentString() })
+                }
+                //pagination
+                subscribe(
+                    outgoing,
+                    destination,
+                    output = OutputType.LIST,
+                    pagination = Pagination(0, 3)
+                )
+                (readMessageJson(incoming) as JsonObject).let { jsonObj ->
+                    val array = jsonObj[ListOutput::items.name] as JsonArray
+                    assertEquals(message.size, (jsonObj[ListOutput::totalCount.name] as JsonPrimitive).int)
+                    assertEquals(3, (jsonObj[ListOutput::filteredCount.name] as JsonPrimitive).int)
+                    assertEquals(3, array.size)
+                    assertEquals(listOf("x11", "x22", "x31"), array.map { it.jsonObject[fieldName]?.toContentString() })
+                }
+                subscribe(
+                    outgoing,
+                    destination,
+                    output = OutputType.LIST,
+                    pagination = Pagination(1, 3)
+                )
+                (readMessageJson(incoming) as JsonObject).let { jsonObj ->
+                    val array = jsonObj[ListOutput::items.name] as JsonArray
+                    assertEquals(message.size, (jsonObj[ListOutput::totalCount.name] as JsonPrimitive).int)
+                    assertEquals(1, (jsonObj[ListOutput::filteredCount.name] as JsonPrimitive).int)
+                    assertEquals(1, array.size)
+                    assertEquals(listOf(message.last().field1), array.map { it.jsonObject[fieldName]?.toContentString() })
+                }
+            }
+        }
+    }
+
+    @Serializable
+    data class DataWithNested(
+        val field1: SingleData,
+        val field2: Int,
+        val notSortable: Noncomparable = Noncomparable(""),
+    )
+
+    @Serializable
+    data class SingleData(val nestedField: String)
+
+    @Test
+    fun `should apply filters to list topics with nested objects`() {
+        withTestApplication(testApp) {
+            val fieldName = DataWithNested::field1.name
+            val fieldNameNested = "$fieldName.${SingleData::nestedField.name}"
+            handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
+                val destination = "/ws/plugins/test-plugin"
+                val message = listOf(
+                    DataWithNested(SingleData("x11"), 16),
+                    DataWithNested(SingleData("x22"), 14),
+                    DataWithNested(SingleData("x31"), 10),
+                    DataWithNested(SingleData("x21"), 12, Noncomparable("a"))
+                )
+
+                subscribe(outgoing, destination)
+                assertEquals(
+                    "",
+                    readMessageJson(incoming)?.toContentString().orEmpty(),
+                    "first subscription should be empty"
+                )
+
+                sendListData(destination, message)
+                assertEquals(message.size, (readMessageJson(incoming) as JsonArray).size)
+
+                subscribe(outgoing, destination, filters = setOf(FieldFilter(fieldNameNested, "x11")))
+                assertEquals(1, (readMessageJson(incoming) as JsonArray).size)
+                unsubscribe(outgoing, destination)
+
+                subscribe(
+                    outgoing,
+                    destination,
+                    output = OutputType.LIST,
+                    filters = setOf(FieldFilter(fieldNameNested, "x2", FieldOp.CONTAINS)),
+                    orderBy = setOf(FieldOrder(fieldNameNested))
+                )
+                (readMessageJson(incoming) as JsonObject).let { jsonObj ->
+                    val array = jsonObj[ListOutput::items.name] as JsonArray
+                    assertEquals(message.size, (jsonObj[ListOutput::totalCount.name] as JsonPrimitive).int)
+                    assertEquals(2, (jsonObj[ListOutput::filteredCount.name] as JsonPrimitive).int)
+                    assertEquals(2, array.size)
+                    val expected = listOf(SingleData("x21"), SingleData("x22")).toJsonList()
+                    assertEquals(expected, array.map { it.jsonObject[fieldName] })
+                }
+
+                unsubscribe(outgoing, destination)
+                //cached value
+                subscribe(//filter: field1; sort: field1 desc
+                    outgoing,
+                    destination,
+                    filters = setOf(FieldFilter(fieldNameNested, "x2", FieldOp.CONTAINS)),
+                    orderBy = setOf(FieldOrder(fieldNameNested, OrderKind.DESC))
+                )
+                (readMessageJson(incoming) as JsonArray).let { array ->
+                    assertEquals(2, array.size)
+                    assertEquals(listOf(SingleData("x22"), SingleData("x21")).toJsonList(),
+                        array.map { it.jsonObject[fieldName] })
+                }
+                subscribe(//sort: field2 desc
+                    outgoing,
+                    destination,
+                    orderBy = setOf(FieldOrder(Data::field2.name, OrderKind.DESC), FieldOrder(Data::notSortable.name))
+                )
+                (readMessageJson(incoming) as JsonArray).let { array ->
+                    assertEquals(message.size, array.size)
+                    val expected = message.sortedByDescending { it.field2 }.map { it.field1 }
+                    assertEquals(expected.toJsonList(), array.map { it.jsonObject[fieldName] })
                 }
             }
         }
@@ -241,6 +347,7 @@ class PluginWsTest {
         output: OutputType = OutputType.DEFAULT,
         filters: Set<FieldFilter> = emptySet(),
         orderBy: Set<FieldOrder> = emptySet(),
+        pagination: Pagination = Pagination.empty,
     ) {
         outgoing.send(
             uiMessage(
@@ -251,14 +358,15 @@ class PluginWsTest {
                         buildVersion,
                         output = output,
                         filters = filters,
-                        orderBy = orderBy
+                        orderBy = orderBy,
+                        pagination = pagination
                     )
                 )
             )
         )
     }
 
-    private suspend fun sendListData(destination: String, message: List<Data>) {
+    private suspend fun sendListData(destination: String, message: List<Any>) {
         val ps by kodeinApplication.di.instance<PluginSenders>()
         val sender = ps.sender(pluginId)
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
