@@ -16,13 +16,16 @@
 package com.epam.drill.admin.websocket
 
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.api.websocket.Pagination.*
 import com.epam.drill.admin.common.serialization.*
+import kotlinx.serialization.json.*
+import java.lang.reflect.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 
 typealias FrontMessage = Any
 
-internal fun FrontMessage.postProcess(
+internal fun FrontMessage.postProcessFilter(
     subscription: Subscription?,
 ): Any = subscription?.let {
     @Suppress("UNCHECKED_CAST")
@@ -36,18 +39,14 @@ internal fun FrontMessage.postProcess(
                     filters.asSequence().map(FieldFilter::field),
                     sorts.asSequence().map(FieldOrder::field)
                 ).flatten().toSet()
-                val clazz = first()::class
-                val propMap = clazz.memberProperties.asSequence()
-                    .filter { it.name in fields }
-                    .associateBy { it.name }
                 val predicate: ((Any) -> Boolean)? = filters.asSequence()
-                    .filter { it.field in propMap }
+                    .filter { it.field in fields }
                     .takeIf { it.any() }
-                    ?.toPredicate(propMap)
+                    ?.toPredicate()
                 val comparator = sorts.asSequence()
-                    .filter { it.field in propMap }
+                    .filter { it.field in fields }
                     .takeIf { it.any() }
-                    ?.toComparator(propMap)
+                    ?.toComparator()
                 (predicate?.let { filter(it) } ?: this).run {
                     comparator?.let { sortedWith(it) } ?: this
                 }
@@ -60,27 +59,22 @@ internal fun FrontMessage.postProcess(
     }
 } ?: this
 
-private fun Sequence<FieldFilter>.toPredicate(
-    propMap: Map<String, KProperty1<out Any, Any?>>,
-): (Any) -> Boolean = { msg: Any ->
-    fold(true) { acc, f ->
-        acc && propMap.getValue(f.field).call(msg)?.toString().orEmpty().let {
-            when (f.op) {
-                FieldOp.EQ -> it == f.value
-                FieldOp.CONTAINS -> it.contains(f.value, ignoreCase = true)
+private fun Sequence<FieldFilter>.toPredicate(): (Any) -> Boolean = { filteringMsg: Any ->
+    fold(true) { acc, filter ->
+        acc && findValue(filter.field, filteringMsg)?.toString().orEmpty().let {
+            when (filter.op) {
+                FieldOp.EQ -> it == filter.value
+                FieldOp.CONTAINS -> it.contains(filter.value, ignoreCase = true)
             }
         }
     }
 }
 
-private fun Sequence<FieldOrder>.toComparator(
-    propMap: Map<String, KProperty1<out Any, Any?>>,
-) = Comparator<Any> { msg1, msg2 ->
+private fun Sequence<FieldOrder>.toComparator(): Comparator<Any> = Comparator { msg1, msg2 ->
     fold(0) { acc, sort ->
         if (acc == 0) {
-            val prop = propMap.getValue(sort.field)
-            val val1 = prop.call(msg1)
-            val val2 = prop.call(msg2)
+            val val1 = findValue(sort.field, msg1)
+            val val2 = findValue(sort.field, msg2)
             val selector = { any: Any? -> any as? Comparable<*> }
             when (sort.order) {
                 OrderKind.ASC -> compareValuesBy(val1, val2, selector)
@@ -90,14 +84,50 @@ private fun Sequence<FieldOrder>.toComparator(
     }
 }
 
+const val delimiter = "."
+
+/**
+ * @param nameField - can be "field" or nested with delimiter "field.nestedFiled"
+ * @param instance first of field
+ * @return value of the field
+ */
+private fun findValue(
+    nameField: String,
+    instance: Any,
+): Any? {
+    val firstFiled = nameField.substringBefore(delimiter)
+    val fieldValue = instance.javaClass.kotlin.memberProperties.first {
+        it.name == firstFiled
+    }.get(instance)
+    if (nameField.contains(delimiter)) {
+        return findValue(nameField.substringAfter(delimiter), fieldValue ?: throw RuntimeException())
+    }
+    return fieldValue
+}
+
 private fun Iterable<Any>.toOutput(
     subscription: Subscription,
     totalCount: Int,
 ): Any = when (subscription.output) {
-    OutputType.LIST -> ListOutput(
-        totalCount = totalCount,
-        filteredCount = count(),
-        items = (this as? List<Any> ?: toList()).toJsonList()
-    )
+    OutputType.LIST -> {
+        val items = (this as? List<Any> ?: toList()).toJsonList()
+        val result = paginateIfNeed(subscription, items)
+        ListOutput(
+            totalCount = totalCount,
+            filteredCount = result.count(),
+            items = result
+        )
+    }
     else -> this
+}
+
+private fun Iterable<Any>.paginateIfNeed(
+    subscription: Subscription,
+    items: List<JsonElement>,
+): List<JsonElement> {
+    val pagination = subscription.pagination
+    return if (pagination != Pagination.empty) {
+        val fromIndex = pagination.pageIndex * pagination.pageSize
+        items.subList(fromIndex, minOf(fromIndex + pagination.pageSize, count()))
+    } else items
 }

@@ -93,7 +93,7 @@ class DrillPluginWs(override val di: DI) : DIAware {
                     sessionCache.subscribe(it, destination, this)
                 } ?: destination.also { sessionCache.subscribe(it, this) }
                 val message = pluginCaches.retrieveMessage(pluginId, subscription, destination)
-                val messageToSend = message.postProcess(subscription).toWsMessageAsString(
+                val messageToSend = message.postProcessFilter(subscription).toWsMessageAsString(
                     destination,
                     WsMessageType.MESSAGE,
                     subscription

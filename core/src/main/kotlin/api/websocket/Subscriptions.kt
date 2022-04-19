@@ -17,6 +17,7 @@ package com.epam.drill.admin.api.websocket
 
 import kotlinx.serialization.*
 
+//todo EPMDJ-10338 remove OutputType?
 enum class OutputType { LIST, DEFAULT }
 
 enum class FieldOp { EQ, CONTAINS }
@@ -32,8 +33,19 @@ data class FieldOrder(val field: String, val order: OrderKind = OrderKind.ASC)
 @Serializable
 sealed class Subscription {
     abstract val output: OutputType
+    abstract val pagination: Pagination
     abstract val filters: Set<FieldFilter>
     abstract val orderBy: Set<FieldOrder>
+}
+
+@Serializable
+data class Pagination(
+    val pageIndex: Int,
+    val pageSize: Int,
+) {
+    companion object {
+        val empty = Pagination(-1, -1)
+    }
 }
 
 @Serializable
@@ -43,6 +55,7 @@ data class AgentSubscription(
     val buildVersion: String? = null,
     val filterId: String = "",
     override val output: OutputType = OutputType.DEFAULT,
+    override val pagination: Pagination = Pagination.empty,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet(),
 ) : Subscription()
@@ -52,6 +65,7 @@ data class AgentSubscription(
 data class GroupSubscription(
     val groupId: String,
     override val output: OutputType = OutputType.DEFAULT,
+    override val pagination: Pagination = Pagination.empty,
     override val filters: Set<FieldFilter> = emptySet(),
     override val orderBy: Set<FieldOrder> = emptySet(),
 ) : Subscription()

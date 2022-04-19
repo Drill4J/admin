@@ -72,7 +72,7 @@ class PluginSenders(override val di: DI) : DIAware {
             pluginSessions[pluginId].sendTo(
                 destination = messageKey,
                 messageProvider = { sessionSubscription ->
-                    message.postProcess(sessionSubscription).toWsMessageAsString(
+                    message.postProcessFilter(sessionSubscription).toWsMessageAsString(
                         destination = dest,
                         type = WsMessageType.MESSAGE,
                         to = sessionSubscription
