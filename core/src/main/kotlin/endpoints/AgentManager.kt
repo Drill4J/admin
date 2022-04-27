@@ -184,9 +184,9 @@ class AgentManager(override val di: DI) : DIAware {
                 notifySingleAgent(id)
                 notifyAllAgents()
                 currentInfo.plugins.initPlugins(existingAgent)
-                if (needSync) app.launch {
-                    currentInfo.sync(config.instanceId) // sync only existing info!
-                    session.syncPluginState()
+                app.launch {
+                    if (needSync) currentInfo.sync(config.instanceId) // sync only existing info!
+                    currentInfo.plugins.forEach { existingAgent[it]?.syncState() }
                 }
                 currentInfo.persistToDatabase()
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
@@ -214,6 +214,7 @@ class AgentManager(override val di: DI) : DIAware {
                 existingInfo?.plugins?.initPlugins(entry) // first
                 app.launch {
                     existingInfo?.takeIf { needSync }?.sync(config.instanceId, true) // sync only existing info!
+                    storedInfo?.plugins?.forEach { entry[it]?.syncState() }
                     if (isNewBuild && currentInfo != null) {
                         notificationsManager.saveNewBuildNotification(info)
                     }
@@ -472,9 +473,11 @@ class AgentManager(override val di: DI) : DIAware {
                 logger.error(e) { "Error updating agent $agentId" }
             }
             async(handler) {
-                updateSystemSettings(agentId, systemSettings.copy(
-                    targetHost = buildManager.buildData(agentId).settings.targetHost
-                ))
+                updateSystemSettings(
+                    agentId, systemSettings.copy(
+                        targetHost = buildManager.buildData(agentId).settings.targetHost
+                    )
+                )
                 agentId
             }
         }
