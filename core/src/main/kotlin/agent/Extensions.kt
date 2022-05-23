@@ -31,9 +31,10 @@ internal fun AgentManager.all(): List<AgentInfoDto> = agentStorage.values.map { 
 //TODO remove after EPMDJ-8292
 internal fun AgentManager.agentsActiveBuild(
     buildManager: BuildManager,
-) = activeAgents.filter {
-    it.agentStatus == AgentStatus.REGISTERED
-}.map { AgentBuildDto(it.id, it.toAgentBuildDto(buildManager)) }
+) = agentStorage.values.map { agent ->
+    val info = agent.info
+    AgentBuildDto(info.id, info.agentStatus, info.toAgentBuildDto(buildManager))
+}
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
 
