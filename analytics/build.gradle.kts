@@ -5,7 +5,6 @@ plugins {
     `maven-publish`
 }
 
-val drillLogger: String by extra
 val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
 val muLogger: String by extra

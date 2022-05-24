@@ -32,10 +32,12 @@ jobs:
       - name: Publish to Maven Repo
         uses: eskatos/gradle-command-action@v1
         with:
-          arguments: -s publish
+          arguments: -s publishAllPublicationsToSonatypeRepository closeAndReleaseSonatypeStagingRepository
         env:
-          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
-          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       - name: Publish to DockerHub
         uses: eskatos/gradle-command-action@v1
         with:

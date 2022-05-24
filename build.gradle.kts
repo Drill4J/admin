@@ -3,6 +3,7 @@ plugins {
     id("kotlinx-atomicfu") apply false
     kotlin("plugin.serialization") apply false
     id("com.github.hierynomus.license")
+    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     base
 }
 
@@ -24,7 +25,6 @@ subprojects {
     repositories {
         mavenLocal()
         mavenCentral()
-        apply(from = "$scriptUrl/maven-repo.gradle.kts")
     }
 }
 

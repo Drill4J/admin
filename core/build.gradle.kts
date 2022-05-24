@@ -54,7 +54,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$collectionImmutableVersion")
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
-    implementation("com.epam.drill.logger:logger:$drillLogger")
+    implementation("com.epam.drill.logger:logger:$drillLogger") {
+        isTransitive = false
+    }
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("com.epam.drill.dsm:core:$drillDsmVersion")
     api("com.epam.drill.dsm:annotations:$drillDsmVersion")
