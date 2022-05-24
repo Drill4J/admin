@@ -16,6 +16,11 @@ tasks {
     }
 }
 
+java {
+    targetCompatibility = JavaVersion.VERSION_1_8
+    withSourcesJar()
+}
+
 publishing {
     publications {
         create<MavenPublication>(project.name) {
