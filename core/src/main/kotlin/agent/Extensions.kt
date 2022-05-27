@@ -33,7 +33,7 @@ internal fun AgentManager.agentsActiveBuild(
     buildManager: BuildManager,
 ) = agentStorage.values.map { agent ->
     val info = agent.info
-    AgentBuildDto(info.id, info.agentStatus, info.toAgentBuildDto(buildManager))
+    AgentBuildDto(info.id, info.groupId, info.agentStatus, info.agentType.notation, info.toAgentBuildDto(buildManager))
 }
 
 internal fun Plugins.ofAgent(info: AgentInfo) = info.plugins.mapNotNull { this[it] }
