@@ -45,7 +45,7 @@ object AnalyticService : Closeable {
         }
     }
 
-    private val drillAnalyticClient = AnalyticClient("UA-214931987-2", CLIENT_ID)
+    private val drillAnalyticClient = AnalyticClient("UA-214931987-3", CLIENT_ID)
 
     private val analyticClient: AnalyticApiClient
         get() = if (isAnalyticDisabled()) StubClient else drillAnalyticClient
