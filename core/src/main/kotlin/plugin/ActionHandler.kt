@@ -34,8 +34,12 @@ internal suspend fun AdminPluginPart<*>.processAction(
     doRawAction(action).also { result ->
         (result as? ActionResult)?.agentAction?.let { action ->
             action.actionSerializerOrNull()?.let { serializer ->
-                val actionStr = serializer stringify action
+                val actionStr: String = (action as? Map<String, Any>)?.run {
+                    get("skipSerialize")?.takeIf { it as Boolean }?.let { get("data") as? String }
+                } ?: (serializer stringify action)
+
                 val agentAction = PluginAction(id, actionStr, "${UUID.randomUUID()}")
+
                 agentSessions(agentInfo.id).map {
                     //TODO EPMDJ-8233 move to the api
                     it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
