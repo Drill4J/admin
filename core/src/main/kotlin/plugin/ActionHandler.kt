@@ -32,22 +32,27 @@ internal suspend fun AdminPluginPart<*>.processAction(
     agentSessions: (String) -> Iterable<AgentWsSession>,
 ): Any = runCatching {
     doRawAction(action).also { result ->
-        (result as? ActionResult)?.agentAction?.let { action ->
-            action.actionSerializerOrNull()?.let { serializer ->
-                val actionStr: String = (action as? Map<String, Any>)?.run {
-                    get("skipSerialize")?.takeIf { it as Boolean }?.let { get("data") as? String }
-                } ?: (serializer stringify action)
+        (result as? ActionResult)?.agentAction?.let { parsedAction ->
 
-                val agentAction = PluginAction(id, actionStr, "${UUID.randomUUID()}")
+            val skipSerialize = (parsedAction as? Map<String, Any>)?.get("skipSerialize") == true
 
-                agentSessions(agentInfo.id).map {
-                    //TODO EPMDJ-8233 move to the api
-                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
-                        agentAction,
-                        topicName = "/plugin/action/${agentAction.confirmationKey}"
-                    )
-                }.forEach { it.await() }
+            val actionStr = if (skipSerialize) {
+                action
+            } else {
+                parsedAction.actionSerializerOrNull()?.let { serializer -> serializer stringify parsedAction }
             }
+
+            if (actionStr.isNullOrEmpty()) throw Exception("failed to stringify action payload")
+
+            val agentAction = PluginAction(id, actionStr, "${UUID.randomUUID()}")
+
+            agentSessions(agentInfo.id).map {
+                //TODO EPMDJ-8233 move to the api
+                it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
+                    agentAction,
+                    topicName = "/plugin/action/${agentAction.confirmationKey}"
+                )
+            }.forEach { it.await() }
         }
     }
 }.getOrElse {
