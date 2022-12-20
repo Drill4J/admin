@@ -82,7 +82,7 @@ val defaultAppJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
-    "-XX:+UseContainerSupport",
+//    "-XX:+UseContainerSupport",
     "-XX:+UseStringDeduplication",
     "-XX:MaxDirectMemorySize=2G"
 )
@@ -113,7 +113,7 @@ jib {
         tags = setOf("${project.version}")
     }
     container {
-        ports = listOf("8090", "5006")
+        ports = listOf("8091", "5006")
         mainClass = appMainClassName
         volumes = listOf("/work", "/distr")
 
