@@ -28,6 +28,7 @@ import io.ktor.application.*
 import io.ktor.config.*
 import mu.*
 
+//TODO find set for cacheService
 class PluginCaches(
     app: Application,
     private val cacheService: CacheService,
@@ -67,6 +68,9 @@ class PluginCaches(
         pluginId: String,
         subscription: Subscription?,
         destination: String,
+        // TODO
+        //  set agentKey to cache
+        //  agentKey : String
     ): FrontMessage = get(pluginId, subscription).let { cache ->
         val dest = destination.urlDecode()
         cache[dest] ?: run {

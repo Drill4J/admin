@@ -67,6 +67,9 @@ class PluginSenders(override val di: DI) : DIAware {
                         }
                     }
                 }
+                //TODO ?
+                // set cache with agent_key
+                // remove by agent+buildVersion
                 pluginCache.remove(dest)
             }
             pluginSessions[pluginId].sendTo(
