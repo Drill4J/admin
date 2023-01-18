@@ -15,35 +15,38 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.util.*
-import com.epam.dsm.*
-import com.epam.dsm.serializer.*
-import kotlinx.serialization.*
-import kotlinx.serialization.protobuf.*
+import com.epam.drill.admin.common.serialization.dump
+import com.epam.drill.admin.common.serialization.load
+import com.epam.dsm.Id
+import com.epam.dsm.StoreClient
+import com.epam.dsm.serializer.BinarySerializer
+import com.epam.dsm.serializer.BynariaData
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.protobuf.ProtoBuf
 
 @Serializable
 internal class Stored(
     @Id val id: String,
-    @Serializable(with = BinarySerializer::class)
-    val data: ByteArray,
+    @Serializable
+    val data: BynariaData,
 )
 
 //todo do we need protobuf? in db clients cannot see an object
 internal suspend fun StoreClient.storeMessage(
     id: String,
     message: Any,
+    agentKey: String
 ): Int {
     val storedMessage = message.toStoredMessage()
     val bytes = ProtoBuf.dump(StoredMessage.serializer(), storedMessage)
-    return store(Stored(id, bytes)).data.size
+    return store(Stored(id, BynariaData(byteArray = bytes, agentKey = agentKey))).data.byteArray.size
 }
 
 internal suspend fun StoreClient.readMessage(
     id: String,
     classLoader: ClassLoader = Thread.currentThread().contextClassLoader,
 ): Any? = findById<Stored>(id)?.let { stored ->
-    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), stored.data)
+    val storedMessage = ProtoBuf.load(StoredMessage.serializer(), stored.data.byteArray)
     storedMessage.toMessage(classLoader)
 }
 

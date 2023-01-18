@@ -26,11 +26,11 @@ fun Subscription?.toKey(destination: String): String = when (this) {
     null -> destination
 }
 
-//fun Subscription?.toAgentKey(): String = when (this) {
-//    is AgentSubscription -> "${agentKeyPattern(agentId, buildVersion, filterId)}"
-//    is GroupSubscription -> "$groupPrefix$groupId"
-//    null -> throw IllegalArgumentException("Invalid subscription type.")
-//}
+fun Subscription?.toAgentKey(): String = when (this) {
+    is AgentSubscription -> "${agentKeyPattern(agentId, buildVersion, filterId)}"
+    is GroupSubscription -> "$groupPrefix$groupId"
+    null -> throw IllegalArgumentException("Invalid subscription type.")
+}
 
 internal fun agentKeyPattern(
     agentId: String,
