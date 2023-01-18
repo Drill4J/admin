@@ -15,13 +15,14 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.drill.admin.*
-import com.epam.dsm.test.*
-import kotlinx.coroutines.*
-import kotlinx.serialization.*
-import org.junit.jupiter.api.*
-import kotlin.test.*
+import com.epam.drill.admin.hikariConfig
+import com.epam.dsm.test.TestDatabaseContainer
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import org.junit.jupiter.api.BeforeAll
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class MessagePersistingTest {
 
@@ -43,7 +44,7 @@ class MessagePersistingTest {
         val message = SimpleMessage("data")
         runBlocking {
             assertNull(storeClient.readMessage("1"))
-            storeClient.storeMessage("1", message)
+            storeClient.storeMessage("1", message, "test")
             assertEquals(message, storeClient.readMessage("1"))
         }
     }
