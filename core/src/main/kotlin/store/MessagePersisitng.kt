@@ -27,7 +27,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 @Serializable
 internal class Stored(
     @Id val id: String,
-    @Serializable
+    @Serializable(with = BinarySerializer::class)
     val data: BynariaData,
 )
 
