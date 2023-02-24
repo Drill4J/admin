@@ -52,8 +52,9 @@ class AgentHandler(override val di: DI) : DIAware{
             agentWebsocket("/agent/attach") {
                 val (agentConfig, needSync) = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
+                    com.epam.drill.common.AgentType.JAVA -> FrameType.BINARY
+                    com.epam.drill.common.AgentType.DOTNET,
                     com.epam.drill.common.AgentType.NODEJS -> FrameType.TEXT
-                    else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(
                     this@agentWebsocket,
