@@ -15,14 +15,11 @@
  */
 package com.epam.drill.admin.store
 
-import com.epam.drill.admin.common.serialization.dump
-import com.epam.drill.admin.common.serialization.load
-import com.epam.dsm.Id
-import com.epam.dsm.StoreClient
-import com.epam.dsm.serializer.BinarySerializer
-import com.epam.dsm.serializer.BynariaData
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.protobuf.ProtoBuf
+import com.epam.drill.admin.common.serialization.*
+import com.epam.dsm.*
+import com.epam.dsm.serializer.*
+import kotlinx.serialization.*
+import kotlinx.serialization.protobuf.*
 
 @Serializable
 internal class Stored(

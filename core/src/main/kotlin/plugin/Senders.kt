@@ -15,35 +15,21 @@
  */
 package com.epam.drill.admin.plugin
 
-import com.epam.drill.admin.api.websocket.AgentSubscription
-import com.epam.drill.admin.api.websocket.GroupSubscription
-import com.epam.drill.admin.api.websocket.Subscription
-import com.epam.drill.admin.common.WsMessageType
-import com.epam.drill.admin.common.serialization.stringify
-import com.epam.drill.admin.endpoints.BuildManager
-import com.epam.drill.admin.endpoints.toLocation
-import com.epam.drill.admin.endpoints.toWsMessageAsString
-import com.epam.drill.admin.store.deleteMessage
-import com.epam.drill.admin.store.pluginStoresDSM
-import com.epam.drill.admin.store.storeMessage
-import com.epam.drill.admin.websocket.postProcessFilter
-import com.epam.drill.admin.websocket.toAgentKey
-import com.epam.drill.admin.websocket.toKey
-import com.epam.drill.api.Communication
-import com.epam.drill.plugin.api.end.AgentSendContext
-import com.epam.drill.plugin.api.end.GroupSendContext
-import com.epam.drill.plugin.api.end.SendContext
-import com.epam.drill.plugin.api.end.Sender
+import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.common.*
+import com.epam.drill.admin.common.serialization.*
+import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.store.*
+import com.epam.drill.admin.websocket.*
+import com.epam.drill.api.*
+import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.DIAware
-import org.kodein.di.instance
+import kotlinx.coroutines.*
+import mu.*
+import org.kodein.di.*
 import java.util.*
-import kotlin.time.measureTimedValue
+import kotlin.time.*
 
 class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
