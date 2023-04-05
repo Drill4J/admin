@@ -84,6 +84,7 @@ data class AgentCreationDto(
     val agentType: AgentType,
     val name: String,
     val group: String = "",
+    val envId: String = "",
     val environment: String = "",
     val description: String = "",
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),

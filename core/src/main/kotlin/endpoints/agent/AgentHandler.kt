@@ -61,7 +61,8 @@ class AgentHandler(override val di: DI) : DIAware{
                     frameType,
                     application.agentSocketTimeout,
                     agentConfig.id,
-                    agentConfig.instanceId
+                    agentConfig.instanceId,
+                    agentConfig.envId
                 )
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig, needSync, agentSession)
@@ -75,6 +76,7 @@ class AgentHandler(override val di: DI) : DIAware{
     }
 
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
+        val envId = this.envId
         val agentDebugStr = agentInfo.debugString(instanceId)
         try {
             val buildData = buildManager.buildData(agentInfo.id)
@@ -99,7 +101,7 @@ class AgentHandler(override val di: DI) : DIAware{
                     else -> null
                 }?.also { message ->
                     withContext(Dispatchers.IO) {
-                        logger.trace { "Processing message for $agentDebugStr: $message" }
+                        logger.trace { "Processing message for $agentDebugStr: $message $envId" }
 
                         when (message.type) {
                             MessageType.PLUGIN_DATA -> {

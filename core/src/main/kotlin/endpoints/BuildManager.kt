@@ -134,8 +134,8 @@ class BuildManager(override val di: DI) : DIAware {
         )
     }
 
-    fun agentSessions(k: String) = instanceIds(k).values.mapNotNull { state ->
-        state.takeIf { it.status == BuildStatus.ONLINE }?.agentWsSession
+    fun agentSessions(k: String, envId: String = "") = instanceIds(k).values.mapNotNull { state ->
+        state.takeIf { it.status == BuildStatus.ONLINE && (envId == "" || it.agentWsSession.envId == envId) }?.agentWsSession
     }
 
     internal suspend fun notifyBuild(agentBuildKey: AgentBuildKey) {
