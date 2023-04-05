@@ -140,6 +140,37 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     logger.info { "response for '$agentId': $response" }
                     sendResponse(response, statusCode)
                 }
+                post<ApiRoot.Agents.DispatchPluginActionForEnv, String>(meta) { payload, action ->
+                    val (_, agentId, envId, pluginId) = payload
+                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId in env $envId" }
+                    val agent = agentManager.entryOrNull(agentId)
+                    val (statusCode, response) = agent?.run {
+                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                        if (plugin != null) {
+                            val buildStatus = buildManager.buildStatus(agentId)
+                            val adminPluginPart = this[pluginId]
+                            if (info.agentStatus == REGISTERED) {
+                                adminPluginPart?.let { adminPart ->
+                                    val result = adminPart.processAction(action) { id: String ->
+                                        buildManager.agentSessions(
+                                            id,
+                                            envId
+                                        )
+                                    }
+                                    val statusResponse = result.toStatusResponse()
+                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
+                                )).also { logger.warn { "BadRequest with action: $action" } }
+                            } else HttpStatusCode.BadRequest to ErrorResponse(
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
+                                        " status of build is $buildStatus."
+                            ).also { logger.warn { "BadRequest with action: $action" } }
+                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                    logger.info { "response for '$agentId': $response" }
+                    sendResponse(response, statusCode)
+                }
             }
 
             authenticate {

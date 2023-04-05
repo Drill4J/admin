@@ -36,7 +36,8 @@ fun wsRequestRequiredParams(
                     ag.groupId,
                     AgentType.valueOf(ag.agentType.name),
                     ag.buildVersion,
-                    ag.needSync
+                    ag.needSync,
+                    envId = "integration_test_env"
                 )
             )
         )

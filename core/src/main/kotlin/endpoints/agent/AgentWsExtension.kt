@@ -104,6 +104,7 @@ open class AgentWsSession(
     private val timeout: Duration,
     private val agentId: String,
     val instanceId: String,
+    val envId: String
 ) : WebSocketServerSession by session {
 
     val subscribers get() = _subscribers.value
