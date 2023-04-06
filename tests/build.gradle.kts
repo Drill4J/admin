@@ -42,12 +42,12 @@ dependencies {
     testImplementation(project(":core"))
     testImplementation(project(":test-framework"))
 
-    testImplementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
+    testImplementation("com.epam.drill:plugin-api-admin-jvm:$drillApiVersion")
     testImplementation("com.epam.drill:common-jvm:$drillApiVersion")
 
     testImplementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
 
-    testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
+    testImplementation("com.epam.drill:plugin-api-agent-jvm:$drillApiVersion")
 
     testImplementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
