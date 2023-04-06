@@ -67,7 +67,7 @@ class SessionStorage {
         messageStr: String,
     ): Unit = try {
         send(messageStr)
-        logger.trace { "Sent $messageStr through admin socket" }
+//        logger.trace { "Sent $messageStr through admin socket" }
     } catch (ex: Exception) {
         when (ex) {
             is ClosedSendChannelException,

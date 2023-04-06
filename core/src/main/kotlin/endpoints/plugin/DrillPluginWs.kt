@@ -52,7 +52,7 @@ class DrillPluginWs(override val di: DI) : DIAware {
     private suspend fun WebSocketSession.handle(pluginId: String) {
         val session = this
         val sessionCache = pluginSessions[pluginId]
-        logger.debug { "plugin $pluginId socket: acquired ${session.toDebugString()}" }
+//        logger.debug { "plugin $pluginId socket: acquired ${session.toDebugString()}" }
         try {
             @Suppress("EXPERIMENTAL_API_USAGE")
             incoming.consumeEach { frame ->
@@ -75,7 +75,7 @@ class DrillPluginWs(override val di: DI) : DIAware {
             }
         } finally {
             sessionCache.release(session)
-            logger.debug { "plugin $pluginId socket: released ${session.toDebugString()}" }
+//            logger.debug { "plugin $pluginId socket: released ${session.toDebugString()}" }
         }
     }
 
@@ -83,7 +83,7 @@ class DrillPluginWs(override val di: DI) : DIAware {
         pluginId: String,
         event: WsReceiveMessage,
     ) {
-        logger.trace { "Receiving event $event" }
+//        logger.trace { "Receiving event $event" }
         val sessionCache = pluginSessions[pluginId]
         when (event) {
             is Subscribe -> {
@@ -99,13 +99,13 @@ class DrillPluginWs(override val di: DI) : DIAware {
                     subscription
                 )
                 send(messageToSend)
-                logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
+//                logger.trace { "Subscribed to $subscriptionKey, ${toDebugString()}" }
             }
             is Unsubscribe -> {
                 val subscriptionKey = event.message.parseSubscription()?.let {
                     sessionCache.unsubscribe(it, event.destination, this)
                 } ?: event.destination.also { sessionCache.unsubscribe(it, this) }
-                logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
+//                logger.trace { "Unsubscribed from $subscriptionKey, ${toDebugString()}" }
             }
         }
     }
