@@ -48,7 +48,7 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
+    implementation("com.epam.drill:plugin-api-admin:$drillApiVersion")
     implementation("com.epam.drill:common:$drillApiVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
@@ -70,7 +70,6 @@ dependencies {
 
     implementation(project(":analytics"))
 
-    testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
@@ -82,7 +81,7 @@ val defaultAppJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
-    "-XX:+UseContainerSupport",
+//    "-XX:+UseContainerSupport",
     "-XX:+UseStringDeduplication",
     "-XX:MaxDirectMemorySize=2G"
 )
@@ -90,7 +89,7 @@ val defaultAppJvmArgs = listOf(
 val devJvmArgs = listOf(
     "-Xms128m",
     "-Xmx2g",
-    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
+    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5008"
 )
 
 java {

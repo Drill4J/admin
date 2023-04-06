@@ -15,7 +15,7 @@ val drillApiVersion: String by extra
 val drillDsmVersion: String by extra
 
 dependencies {
-    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
+    implementation("com.epam.drill:plugin-api-admin:$drillApiVersion")
     implementation("com.epam.drill:common:$drillApiVersion")
     implementation("com.epam.drill.dsm:core:$drillDsmVersion")
 }
