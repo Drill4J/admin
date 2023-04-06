@@ -44,12 +44,12 @@ class DrillServerWs(override val di:DI) : DIAware {
             val socketName = "drill-admin-socket"
             authWebSocket("/ws/$socketName") {
                 val session = this
-                logger.debug { "$socketName: acquired ${session.toDebugString()}" }
+//                logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {
                     incoming.consumeEach { frame ->
                         val json = (frame as Frame.Text).readText()
                         val event = WsReceiveMessage.serializer() parse json
-                        logger.debug { "Receiving event $event" }
+//                        logger.debug { "Receiving event $event" }
 
                         val destination = event.destination
                         when (event) {
@@ -58,11 +58,11 @@ class DrillServerWs(override val di:DI) : DIAware {
                                 val message = wsTopic.resolve(destination)
                                 val messageToSend = message.toWsMessageAsString(destination, WsMessageType.MESSAGE)
                                 session.send(messageToSend)
-                                logger.debug { "$destination is subscribed" }
+//                                logger.debug { "$destination is subscribed" }
                             }
                             is Unsubscribe -> {
                                 if (sessionStorage.unsubscribe(destination, session)) {
-                                    logger.debug { "$destination is unsubscribed" }
+//                                    logger.debug { "$destination is unsubscribed" }
                                 }
                             }
                         }
