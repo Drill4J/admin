@@ -107,11 +107,6 @@ class AgentHandler(override val di: DI) : DIAware{
                             MessageType.PLUGIN_DATA -> {
                                 pd.processPluginData(agentInfo, instanceId, message.text)
                             }
-                            MessageType.PLUGIN_ACTION -> {
-                                app.launch {
-                                    pd.dispatchAction(agentInfo, instanceId, message.text)
-                                }
-                            }
                             MessageType.MESSAGE_DELIVERED -> {
                                 subscribers[message.destination]?.received(message) ?: logger.debug {
                                     "A subscriber to destination for $agentDebugStr is not found: '${message.destination}'"

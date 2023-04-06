@@ -77,24 +77,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
-    suspend fun dispatchAction(
-        agentInfo: AgentInfo,
-        instanceId: String,
-        message: String,
-    ) = run {
-        val wrapper = MessageWrapper.serializer().parse(message)
-        val pluginId = wrapper.pluginId
-        val action = wrapper.drillMessage.content
-        logger.info { "Attempting to dispatch action from agent ${agentInfo.debugString(instanceId)} : $action" }
-        plugins[pluginId]?.let {
-            val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
-            agentEntry[pluginId]?.run {
-                val result = processAction(action, buildManager::agentSessions)
-                logger.info { "Response ${result.toStatusResponse()} " }
-            } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
-        } ?: logger.error { "Plugin $pluginId not loaded!" }
-    }
-
     init {
         app.routing {
             plugins.forEach { (pluginId, plugin) ->
