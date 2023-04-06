@@ -57,6 +57,11 @@ docker run --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpasswo
 
 custom configs see application.conf drill.database
 
+#### Building Docker image locally
+./gradlew tasks | grep docker
+
+./gradlew jib
+
 #### Embedded
 set embeddedMode=true to use embedded database. 
 
