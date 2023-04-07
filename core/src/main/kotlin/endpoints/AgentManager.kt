@@ -74,6 +74,8 @@ class AgentManager(override val di: DI) : DIAware {
     private val cacheService by instance<CacheService>()
     private val agentMonitor = MonitorMutex<String>()
 
+    suspend fun isAlreadyRegistered(id: String) = loadAgentInfo(id).let { info -> info?.agentStatus == AgentStatus.REGISTERED }
+
     init {
         trackTime("loadingAgents") {
             runBlocking {
@@ -178,11 +180,12 @@ class AgentManager(override val di: DI) : DIAware {
                 (oldInstanceIds.isEmpty() || currentInfo?.agentStatus == AgentStatus.REGISTERED) &&
                 currentInfo?.build?.version == buildVersion &&
                 currentInfo.groupId == groupId &&
-                currentInfo.build.agentVersion == config.agentVersion
+                currentInfo.build.agentVersion == config.agentVersion   // the version of the drill4j java agent itself
             ) {
+                // already known agent & build
                 logger.info { "agent($id, $buildVersion): reattaching to current build..." }
-                notifySingleAgent(id)
-                notifyAllAgents()
+                notifySingleAgent(id)                                   // updates /api/agents/{agentId}
+                notifyAllAgents()                                       // updates /api/agents
                 currentInfo.plugins.initPlugins(existingAgent)
                 if (needSync) app.launch {
                     currentInfo.sync(config.instanceId) // sync only existing info!
@@ -253,7 +256,6 @@ class AgentManager(override val di: DI) : DIAware {
         }
     }
 
-
     suspend fun register(
         agentId: String,
         dto: AgentRegistrationDto,
@@ -276,7 +278,6 @@ class AgentManager(override val di: DI) : DIAware {
         agent.update { it.copy(agentStatus = AgentStatus.REGISTERED) }.apply { commitChanges() }
         info.sendAgentRegisterAction()
     }
-
 
     internal suspend fun updateAgent(
         agentId: String,
