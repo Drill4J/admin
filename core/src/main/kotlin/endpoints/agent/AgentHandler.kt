@@ -19,6 +19,7 @@ package com.epam.drill.admin.endpoints.agent
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
+import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
@@ -65,12 +66,35 @@ class AgentHandler(override val di: DI) : DIAware{
                     agentConfig.envId
                 )
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
+                    // TODO if agentManager.attach throws the error is "eaten" silently
                     agentManager.attach(agentConfig, needSync, agentSession)
                 }
-                agentSession.createWsLoop(
-                    agentInfo,
-                    call.request.headers[ContentEncoding] == "deflate"
-                )
+
+                coroutineScope {
+                    launch {
+                        agentSession.createWsLoop(
+                            agentInfo,
+                            call.request.headers[ContentEncoding] == "deflate"
+                        )
+                    }
+                    launch {
+                        // HACK - agent auto registration
+                        if (agentConfig.autoRegister && !agentManager.isAlreadyRegistered(agentConfig.id)) {
+                            delay(1000) // delay to wait for agentSession.createWsLoop to establish message handlers
+                            try {
+                                logger.trace { "Auto registration for $agentConfig" }
+                                // for .NET only, other implementations (JS, Java) require additional params
+                                agentManager.register(agentConfig.id, AgentRegistrationDto(
+                                    name = agentConfig.id,
+                                    systemSettings = SystemSettingsDto(),
+                                    plugins = listOf("test2code")
+                                ));
+                            } catch (e: Exception) {
+                                logger.error { "Auto registration failed for agent with config $agentConfig with error $e" }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
