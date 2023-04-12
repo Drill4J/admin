@@ -43,7 +43,7 @@ class MessagePersistingTest {
         val message = SimpleMessage("data")
         runBlocking {
             assertNull(storeClient.readMessage("1"))
-            storeClient.storeMessage("1", message)
+            storeClient.storeMessage("1", message, "test")
             assertEquals(message, storeClient.readMessage("1"))
         }
     }
