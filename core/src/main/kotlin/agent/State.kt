@@ -31,6 +31,9 @@ import kotlinx.collections.immutable.*
 import kotlinx.serialization.protobuf.*
 import mu.*
 
+/**
+ * Cache service for the agent data
+ */
 internal class AgentDataCache {
 
     private val _data = atomic(persistentMapOf<String, AgentData>())
@@ -53,6 +56,12 @@ internal class AgentDataCache {
     }[key]!!
 }
 
+/**
+ * Plugins part of the agent data
+ *
+ * @param agentId the agent ID
+ * @param initialSettings the initial settings of the agent
+ */
 internal class AgentData(
     val agentId: String,
     initialSettings: SystemSettingsDto,
@@ -132,6 +141,10 @@ internal class AgentData(
 
     suspend fun deleteClassBytes(agentBuildKey: AgentBuildKey) = adminStore.deleteClasses(agentBuildKey)
 
+    /**
+     * Load builds and settings from DB and initialize agent data state
+     *
+     */
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings

@@ -24,6 +24,13 @@ import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
+/**
+ * Lazy initialization of the datasource clients for a plugin
+ *
+ * @param pluginId the plugin ID
+ * @param config the DB configuration
+ * @return the datasource client
+ */
 suspend fun pluginStoresDSM(pluginId: String, config: HikariConfig = hikariConfig): StoreClient =
     storeClientPlugins[pluginId] ?: createOncePluginStore(pluginId, config)
 

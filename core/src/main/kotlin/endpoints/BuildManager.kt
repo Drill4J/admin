@@ -26,6 +26,9 @@ import mu.*
 import org.kodein.di.*
 
 
+/**
+ * Service for managing application builds
+ */
 class BuildManager(override val di: DI) : DIAware {
 
     private val logger = KotlinLogging.logger {}
@@ -40,6 +43,15 @@ class BuildManager(override val di: DI) : DIAware {
     }
 
 
+    /**
+     * Add a new build information to the build storage
+     *
+     * @param key the agent ID and the build version
+     * @param instanceId the agent instance ID
+     * @param session the current WebSocket session
+     *
+     * @features Agent registration
+     */
     suspend fun addBuildInstance(
         key: AgentBuildKey,
         instanceId: String,
@@ -74,6 +86,11 @@ class BuildManager(override val di: DI) : DIAware {
         }
     }
 
+    /**
+     * todo
+     *
+     * @features Agent registration
+     */
     // TODO EPMDJ-10011 instances spamming ONLINE
     suspend fun processInstance(
         agentId: String,
@@ -100,6 +117,15 @@ class BuildManager(override val di: DI) : DIAware {
         } ?: logger.warn { "Instance $instanceId is not found" }
     } ?: logger.warn { "Agent $agentId not found" }
 
+    /**
+     * todo
+     * @param instanceId todo
+     * @param status todo
+     * @param agentBuildKey todo
+     * @return todo
+     *
+     * @features Agent registration
+     */
     internal fun updateInstanceStatus(
         agentBuildKey: AgentBuildKey,
         instanceId: String,
@@ -138,6 +164,13 @@ class BuildManager(override val di: DI) : DIAware {
         state.takeIf { it.status == BuildStatus.ONLINE }?.agentWsSession
     }
 
+    /**
+     * Notify subscribers when a build is updated
+     *
+     * @param agentBuildKey the link between the agent and the build version
+     *
+     * @features Agent registration
+     */
     internal suspend fun notifyBuild(agentBuildKey: AgentBuildKey) {
         buildStorage.singleUpdate(agentBuildKey)
     }

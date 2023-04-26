@@ -39,17 +39,34 @@ fun Route.agentWebsocket(
 
 class WsAwaitException(message: String) : RuntimeException(message)
 
+/**
+ * Delivery signal
+ *
+ * @param topicName the topic name
+ * @param callback the function which is called when the message is delivered
+ */
 class Signal(
     private val topicName: String,
     val callback: suspend (Any) -> Unit,
 ) {
     private val _state = atomic(true)
 
+    /**
+     * Finish waiting for the message delivery and call the callback
+     * @param result the delivery message
+     *
+     */
     suspend fun received(result: Any) {
         _state.value = false
         callback(result)
     }
 
+    /**
+     * Wait for a message to be delivered
+     * @param timeout the waiting timeout
+     * @param agentId the agent ID
+     * @param instanceId the agent instance ID
+     */
     suspend fun await(timeout: Duration, agentId: String, instanceId: String) {
         if (_state.value) {
             awaitWithExpr(timeout, agentId, instanceId, topicName) { _state.value }
@@ -73,6 +90,16 @@ suspend fun awaitWithExpr(
     }
 }
 
+/**
+ * Deferred value of the WebSocket future
+ *
+ * @param timeout the WebSession timeout
+ * @param agentId the agent ID
+ * @param instanceId the agent instance ID
+ * @param topicName the name of WebSocket topic
+ * @param callback todo
+ * @param caller todo
+ */
 class WsDeferred(
     val timeout: Duration,
     val agentId: String,
@@ -98,6 +125,16 @@ class WsDeferred(
     }
 }
 
+/**
+ * Agent WebSocket session with additional parameters and methods
+ *
+ * @param session Agent WebSession delegation
+ * @param frameType WebSession frame type
+ * @param timeout Timeout of WebSession
+ * @param agentId Agent ID
+ * @param instanceId Agent instance ID
+ *
+ */
 open class AgentWsSession(
     private val session: WebSocketServerSession,
     val frameType: FrameType,
@@ -110,6 +147,13 @@ open class AgentWsSession(
 
     private val _subscribers = atomic(persistentMapOf<String, Signal>())
 
+    /**
+     * Send topic to agents with proof of delivery
+     *
+     * @param message the message which needs to send
+     * @param topicName the name of the topic
+     * @param callback
+     */
     suspend inline fun <reified TopicUrl : Any, reified T> sendToTopic(
         message: T,
         topicName: String = TopicUrl::class.topicUrl(),

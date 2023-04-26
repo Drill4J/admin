@@ -31,6 +31,9 @@ import org.kodein.di.*
 import java.util.*
 import kotlin.time.*
 
+/**
+ * Send messages to the plugin on the Admin UI
+ */
 class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
@@ -39,7 +42,16 @@ class PluginSenders(override val di: DI) : DIAware {
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 
+    /**
+     * Choose a sender for the plugin
+     *
+     * @param pluginId the plugin ID
+     * @return the sender for the plugin
+     */
     fun sender(pluginId: String): Sender = object : Sender {
+        /**
+         * Send a message to the agent part of plugin
+         */
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
             val dest = destination as? String ?: app.toLocation(destination).decodeURLPart()
             logger.trace { "send destination $dest for $destination" }

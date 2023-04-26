@@ -31,6 +31,9 @@ import mu.*
 import org.kodein.di.*
 
 
+/**
+ * Web Socket controller for Admin UI
+ */
 class DrillServerWs(override val di:DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 

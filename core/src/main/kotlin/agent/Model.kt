@@ -52,6 +52,11 @@ data class AgentBuildInfo(
     val ipAddress: String = "",
 )
 
+/**
+ * Link between the agent and the build
+ * @param agentId Agent ID
+ * @param buildVersion Application build version
+ */
 @Serializable
 data class AgentBuildKey(
     val agentId: String,

@@ -25,6 +25,9 @@ import kotlinx.coroutines.channels.*
 import mu.*
 import java.util.concurrent.*
 
+/**
+ * Storage of WebSocket sessions of the agent part of the plugin
+ */
 class SessionStorage {
     private val logger = KotlinLogging.logger {}
 
