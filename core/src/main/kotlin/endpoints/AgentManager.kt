@@ -693,6 +693,12 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 suspend fun AgentWsSession.triggerClassesSending() =
     sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
 
+/**
+ * Persist the metadata of the application code
+ * @param agentBuildKey the pair of the agent ID and the build version
+ * @param metadata the metadata of the application code
+ * @features Agent registration
+ */
 internal suspend fun StoreClient.storeMetadata(agentBuildKey: AgentBuildKey, metadata: Metadata) {
     store(AgentMetadata(agentBuildKey, metadata))
 }

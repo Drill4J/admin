@@ -62,6 +62,14 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
     private val cacheService by instance<CacheService>()
 
+    /**
+     * Receive data from applications
+     * @param agentInfo the information about the agent
+     * @param instanceId the agent instance ID
+     * @param pluginData the application data
+     *
+     * @features Agent registration
+     */
     suspend fun processPluginData(
         agentInfo: AgentInfo,
         instanceId: String,

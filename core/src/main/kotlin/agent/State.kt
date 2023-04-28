@@ -99,6 +99,11 @@ internal class AgentData(
         }
     }
 
+    /**
+     * Persist received packages and classes from the agent
+     * @param buildVersion the application build version
+     * @features Agent registration
+     */
     internal suspend fun initClasses(buildVersion: String) {
         val classBytes: List<ByteArray> = agentBuildManager.collectClasses()
         val classBytesSize = classBytes.sumOf { it.size } / 1024
@@ -175,6 +180,12 @@ internal class AgentData(
     )
 }
 
+/**
+ * Persist the application code
+ * @param agentKey the pair of agent ID and the build version
+ * @param classBytes class bytes of application code
+ * @features Agent registration
+ */
 private suspend fun StoreClient.storeClasses(
     agentKey: AgentBuildKey,
     classBytes: List<ByteArray>,
