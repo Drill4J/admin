@@ -5,10 +5,13 @@ import org.ajoberstar.grgit.operation.BranchListOp
 
 plugins {
     kotlin("jvm").apply(false)
+    kotlin("multiplatform").apply(false)
+    kotlin("plugin.noarg").apply(false)
     kotlin("plugin.serialization").apply(false)
     id("kotlinx-atomicfu").apply(false)
     id("org.ajoberstar.grgit")
     id("com.github.hierynomus.license").apply(false)
+    id("com.google.cloud.tools.jib").apply(false)
 }
 
 group = "com.epam.drill"

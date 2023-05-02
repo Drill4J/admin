@@ -1,11 +1,15 @@
+@Suppress("RemoveRedundantBackticks")
 plugins {
+    `application`
     kotlin("jvm")
-    id("kotlinx-atomicfu")
     kotlin("plugin.serialization")
-    application
-    `maven-publish`
+    id("kotlinx-atomicfu")
     id("com.google.cloud.tools.jib")
-    id("com.github.johnrengelman.shadow")
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
 }
 
 kotlin.sourceSets.main {
@@ -19,19 +23,15 @@ kotlin.sourceSets.main {
     )
 }
 
-val drillApiVersion: String by extra
-val drillLogger: String by extra
-val drillDsmVersion: String by extra
+val kotlinxCollectionsVersion: String by extra
+val kotlinxSerializationVersion: String by extra
 val hikariVersion: String by project
-val serializationVersion: String by extra
-val collectionImmutableVersion: String by extra
 val ktorVersion: String by extra
 val kodeinVersion: String by extra
-val swaggerVersion: String by extra
-val muLogger: String by extra
-val zstdJniVersion: String by extra
-val cacheMapDB: String by extra
-val flywayVersion: String by extra
+val microutilsLoggingVersion: String by extra
+val lubenZstdVersion: String by extra
+val mapdbVersion: String by extra
+val flywaydbVersion: String by extra
 
 val junitVersion: String by extra
 val mockkVersion: String by extra
@@ -48,32 +48,29 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
-    implementation("com.epam.drill:common:$drillApiVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$collectionImmutableVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
-    implementation("com.epam.drill.logger:logger:$drillLogger") {
-        isTransitive = false
-    }
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.epam.drill.dsm:core:$drillDsmVersion")
-    api("com.epam.drill.dsm:annotations:$drillDsmVersion")
-    implementation("org.flywaydb:flyway-core:$flywayVersion")
+    implementation("org.flywaydb:flyway-core:$flywaydbVersion")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
-    //TODO remove logger - EPMDJ-9548
-    implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
-    implementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
-    implementation("com.github.luben:zstd-jni:$zstdJniVersion")
-    implementation("org.mapdb:mapdb:$cacheMapDB")
+    implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    implementation("com.github.luben:zstd-jni:$lubenZstdVersion")
+    implementation("org.mapdb:mapdb:$mapdbVersion")
 
-    implementation(project(":analytics"))
+    implementation(project(":admin-analytics"))
+    implementation(project(":common"))
+    implementation(project(":logger"))
+    implementation(project(":plugin-api-admin"))
+    implementation(project(":dsm"))
+    implementation(project(":ktor-swagger"))
+    api(project(":dsm-annotations"))
 
-    testImplementation("com.epam.drill.dsm:test-framework:$drillDsmVersion")
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
-    testImplementation("io.mockk:mockk:$mockkVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    testImplementation("io.mockk:mockk:1.9.3")
+    testImplementation(project(":dsm-test-framework"))
 }
 
 val appMainClassName by extra("io.ktor.server.netty.EngineMain")
@@ -197,18 +194,4 @@ tasks {
 val sourcesJar by tasks.registering(Jar::class) {
     from(sourceSets.main.get().allSource)
     archiveClassifier.set("sources")
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("adminFull") {
-            artifact(tasks.shadowJar.get())
-            artifactId = "admin-core"
-        }
-        create<MavenPublication>("admin") {
-            artifact(tasks.jar.get())
-            artifactId = "admin-core"
-            artifact(sourcesJar.get())
-        }
-    }
 }
