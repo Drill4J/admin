@@ -1,9 +1,5 @@
-**/.idea/*
-!/.idea/codeStyles
-!/.idea/fileTemplates
-.gradle/
 build/
-/build-cache/
-/core/work/
-/core/distr/
-**/src/generated/
+.gradle/
+.idea/
+*.iml
+/lib-jvm-shared/
