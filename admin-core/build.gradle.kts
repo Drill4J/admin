@@ -1,45 +1,46 @@
+import java.net.URI
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.hierynomus.gradle.license.tasks.LicenseCheck
+import com.hierynomus.gradle.license.tasks.LicenseFormat
+
 @Suppress("RemoveRedundantBackticks")
 plugins {
     `application`
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("kotlinx-atomicfu")
-    id("com.google.cloud.tools.jib")
+    id("com.github.hierynomus.license")
+    id("com.github.johnrengelman.shadow")
 }
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-kotlin.sourceSets.main {
-    kotlin.srcDir(
-        file("src/generated/kotlin").apply {
-            mkdirs()
-            resolve("Version.kt").writeText(
-                "package com.epam.drill.admin internal val adminVersion = \"${rootProject.version}\""
-            )
-        }
-    )
-}
+group = "com.epam.drill"
+version = rootProject.version
 
 val kotlinxCollectionsVersion: String by extra
 val kotlinxSerializationVersion: String by extra
-val hikariVersion: String by project
 val ktorVersion: String by extra
 val kodeinVersion: String by extra
 val microutilsLoggingVersion: String by extra
 val lubenZstdVersion: String by extra
 val mapdbVersion: String by extra
 val flywaydbVersion: String by extra
-
-val junitVersion: String by extra
-val mockkVersion: String by extra
 val postgresEmbeddedVersion: String by extra
-val testContainerVersion: String by project
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
@@ -48,16 +49,13 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
-    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("org.flywaydb:flyway-core:$flywaydbVersion")
-    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
-    implementation("com.github.luben:zstd-jni:$lubenZstdVersion")
+    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    implementation("org.flywaydb:flyway-core:$flywaydbVersion")
     implementation("org.mapdb:mapdb:$mapdbVersion")
+    implementation("com.github.luben:zstd-jni:$lubenZstdVersion")
+    implementation("ch.qos.logback:logback-classic:1.2.3")
+    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
@@ -65,133 +63,118 @@ dependencies {
     implementation(project(":plugin-api-admin"))
     implementation(project(":dsm"))
     implementation(project(":ktor-swagger"))
+
     api(project(":dsm-annotations"))
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("io.mockk:mockk:1.9.3")
+
     testImplementation(project(":dsm-test-framework"))
 }
 
-val appMainClassName by extra("io.ktor.server.netty.EngineMain")
+kotlin.sourceSets {
+    all {
+        languageSettings.optIn("kotlin.Experimental")
+        languageSettings.optIn("kotlin.ExperimentalStdlibApi")
+        languageSettings.optIn("kotlin.time.ExperimentalTime")
+        languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+        languageSettings.optIn("kotlinx.coroutines.ObsoleteCoroutinesApi")
+        languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
+        languageSettings.optIn("kotlinx.serialization.InternalSerializationApi")
+        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
+        languageSettings.optIn("io.ktor.util.InternalAPI")
+    }
+    main {
+        kotlin.srcDir("src/commonGenerated/kotlin")
+        file("src/commonGenerated/kotlin/com/epam/drill/admin").apply {
+            mkdirs()
+            resolve("Version.kt").writeText("package com.epam.drill.admin\n\ninternal val adminVersion = \"${project.version}\"")
+        }
+    }
+}
 
-val defaultAppJvmArgs = listOf(
+val jarMainClassName: String by extra("io.ktor.server.netty.EngineMain")
+val defaultJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
     "-XX:+UseG1GC",
-    "-XX:+UseContainerSupport",
     "-XX:+UseStringDeduplication",
     "-XX:MaxDirectMemorySize=2G"
 )
-
 val devJvmArgs = listOf(
     "-Xms128m",
     "-Xmx2g",
     "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
 )
 
-java {
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
-
 application {
-    mainClassName = appMainClassName
-    applicationDefaultJvmArgs = defaultAppJvmArgs + devJvmArgs
+    mainClass.set(jarMainClassName)
+    applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val jibExtraDirs = "$buildDir/jib-extra-dirs"
-
-jib {
-    from {
-        image = "adoptopenjdk/openjdk11:latest"
-    }
-    to {
-        image = "ghcr.io/drill4j/admin"
-        tags = setOf("${project.version}")
-    }
-    container {
-        ports = listOf("8090", "5006")
-        mainClass = appMainClassName
-        volumes = listOf("/work", "/distr")
-
-        jvmFlags = defaultAppJvmArgs
-    }
-    extraDirectories {
-        setPaths(jibExtraDirs)
-        permissions = mapOf("/work" to "775", "/distr" to "775")
-    }
-}
-
+@Suppress("UNUSED_VARIABLE")
 tasks {
+    processResources {
+        val adminVersion = file("$buildDir/tmp/admin.version").apply {
+            parentFile.mkdirs()
+            writeText(project.version.toString())
+        }
+        from(adminVersion) {
+            into("META-INF/drill")
+        }
+    }
+    test {
+        useJUnitPlatform()
+    }
+    withType<KotlinCompile> {
+        kotlinOptions.jvmTarget = "1.8"
+    }
     val cleanData by registering(Delete::class) {
         group = "build"
-        delete("work", "distr")
+        delete("distr")
+        delete("work")
     }
-
-    clean {
-        dependsOn(cleanData)
+    clean.get().dependsOn(cleanData)
+    val sourcesJar by registering(Jar::class) {
+        from(sourceSets.main.get().allSource)
+        archiveClassifier.set("sources")
     }
-
-    processResources {
-        from(provider {
-            file("$buildDir/tmp/admin.version").apply {
-                parentFile.mkdirs()
-                writeText("${rootProject.version}")
-            }
-        }) { into("META-INF/drill") }
-    }
-
     (run) {
         environment("DRILL_DEVMODE", true)
         environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")
         systemProperty("analytic.disable", true)
         mustRunAfter(cleanData)
     }
-
-    register("firstRun") {
+    val firstRun by registering {
         group = "application"
         dependsOn(cleanData, run)
     }
-
-    test {
-        useJUnitPlatform()
-    }
-
-    val makeJibExtraDirs by registering(Copy::class) {
-        group = "jib"
-        outputs.upToDateWhen(Specs.satisfyNone())
-        into(jibExtraDirs)
-        from("src/main/jib")
-        from("temporary.jks")
-        doLast {
-            listOf("work", "distr")
-                .map(destinationDir::resolve)
-                .forEach { mkdir(it) }
-        }
-    }
-
-    withType<com.google.cloud.tools.jib.gradle.JibTask> {
-        dependsOn(makeJibExtraDirs)
-    }
-
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = "1.8"
-            freeCompilerArgs = listOf(
-                "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
-                "-Xopt-in=kotlinx.serialization.InternalSerializationApi",
-                "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI",
-                "-Xopt-in=io.ktor.util.InternalAPI",
-                "-Xopt-in=kotlin.Experimental",
-                "-Xopt-in=kotlin.ExperimentalStdlibApi",
-                "-Xopt-in=kotlin.time.ExperimentalTime",
-                "-Xopt-in=kotlinx.coroutines.ObsoleteCoroutinesApi",
-            )
-        }
-    }
 }
 
-val sourcesJar by tasks.registering(Jar::class) {
-    from(sourceSets.main.get().allSource)
-    archiveClassifier.set("sources")
+@Suppress("UNUSED_VARIABLE")
+license {
+    headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
+    val licenseMain by tasks.getting(LicenseCheck::class) {
+        source = fileTree("$projectDir/src/main").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+        }
+    }
+    val licenseFormatMain by tasks.getting(LicenseFormat::class) {
+        source = fileTree("$projectDir/src/main").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+        }
+    }
+    val licenseFormatSources by tasks.registering(LicenseFormat::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+            exclude("**/commonGenerated")
+        }
+    }
+    val licenseCheckSources by tasks.registering(LicenseCheck::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+            exclude("**/commonGenerated")
+        }
+    }
 }

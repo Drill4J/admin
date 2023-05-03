@@ -4,8 +4,8 @@ pluginManagement {
     val kotlinVersion: String by extra
     val atomicfuVersion: String by extra
     val licenseVersion: String by extra
+    val shadowPluginVersion: String by extra
     val grgitVersion: String by extra
-    val googleJibVersion: String by extra
     plugins {
         kotlin("jvm") version kotlinVersion
         kotlin("multiplatform") version kotlinVersion
@@ -14,7 +14,7 @@ pluginManagement {
         id("kotlinx-atomicfu") version atomicfuVersion
         id("org.ajoberstar.grgit") version grgitVersion
         id("com.github.hierynomus.license") version licenseVersion
-        id("com.google.cloud.tools.jib") version googleJibVersion
+        id("com.github.johnrengelman.shadow") version shadowPluginVersion
     }
     repositories {
         mavenLocal()
