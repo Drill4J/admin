@@ -1,55 +1,49 @@
+import java.net.URI
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.hierynomus.gradle.license.tasks.LicenseCheck
+import com.hierynomus.gradle.license.tasks.LicenseFormat
+
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
+    id("com.github.hierynomus.license")
 }
 
-val testBuilds = listOf("build1", "build2")
+group = "com.epam.drill"
+version = rootProject.version
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+val kotlinxCollectionsVersion: String by parent!!.extra
+val kotlinxSerializationVersion: String by parent!!.extra
+val ktorVersion: String by parent!!.extra
+val kodeinVersion: String by parent!!.extra
+val microutilsLoggingVersion: String by parent!!.extra
+val testsSkipIntegrationTests: String by parent!!.extra
+
 sourceSets {
-    testBuilds.forEach { create(it) }
+    create("build1")
+    create("build2")
 }
 
-val testData: Configuration by configurations.creating {}
+@Suppress("HasPlatformType")
+val testData by configurations.creating
 
 configurations {
-    testImplementation {
-        extendsFrom(testData)
-    }
-    testBuilds.forEach {
-        named("${it}Implementation") {
-            extendsFrom(testData)
-        }
-    }
+    testImplementation.get().extendsFrom(testData)
+    getByName("build1Implementation").extendsFrom(testData)
+    getByName("build2Implementation").extendsFrom(testData)
 }
-
-val drillApiVersion: String by extra
-val drillLogger: String by extra
-val drillDsmVersion: String by extra
-
-val serializationVersion: String by extra
-val collectionImmutableVersion: String by extra
-val ktorVersion: String by extra
-val kodeinVersion: String by extra
-val swaggerVersion: String by extra
-val muLogger: String by extra
-val zstdJniVersion: String by extra
-val testContainerVersion: String by project
-
-val junitVersion: String by extra
-val mockkVersion: String by extra
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    testImplementation(project(":core"))
-    testImplementation(project(":test-framework"))
 
-    testImplementation("com.epam.drill:drill-admin-part-jvm:$drillApiVersion")
-    testImplementation("com.epam.drill:common-jvm:$drillApiVersion")
-
+    testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$kotlinxCollectionsVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     testImplementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
-
-    testImplementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
-
-    testImplementation("com.epam.drill.ktor:ktor-swagger:$swaggerVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-auth:$ktorVersion")
     testImplementation("io.ktor:ktor-auth-jwt:$ktorVersion")
@@ -59,70 +53,66 @@ dependencies {
     testImplementation("io.ktor:ktor-websockets:$ktorVersion")
     testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
     testImplementation("io.ktor:ktor-serialization:$ktorVersion")
-
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-    //TODO remove logging - EPMDJ-9548
-    testImplementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
-
-    testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$collectionImmutableVersion")
-
-    testImplementation(kotlin("test-junit5"))
+    testImplementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("io.kotlintest:kotlintest-runner-junit5:3.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
-    testImplementation("io.mockk:mockk:$mockkVersion")
+    testImplementation("io.mockk:mockk:1.9.3")
+    testImplementation(kotlin("test-junit5"))
 
-    testData(project(":test-framework:test-data"))
+    testImplementation(project(":admin-core"))
+    testImplementation(project(":common"))
+    testImplementation(project(":ktor-swagger"))
+    testImplementation(project(":plugin-api-admin"))
+    testImplementation(project(":plugin-api-agent"))
+    testImplementation(project(":test-framework"))
+
+    testData(project(":test-data"))
 }
 
-subprojects {
-    repositories {
-        mavenCentral()
-    }
+kotlin.sourceSets.all {
+    languageSettings.optIn("kotlin.Experimental")
+    languageSettings.optIn("kotlin.time.ExperimentalTime")
+    languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
 }
 
 tasks {
-    val cleanData by registering(Delete::class) {
-        group = "build"
-        delete("work", "distr")
+    val prepareDistr by registering(Sync::class) {
+        from(project(":test-plugin").tasks["distZip"])
+        into("distr/adminStorage")
     }
-
-    clean {
-        dependsOn(cleanData)
-    }
-
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = "1.8"
-            freeCompilerArgs = listOf(
-                "-Xopt-in=kotlin.Experimental",
-                "-Xopt-in=kotlin.time.ExperimentalTime",
-                "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI"
-            )
-        }
-    }
-
-    val testPluginProject = project(":test-framework:test-plugin")
-
-    val testBuildClassesTasks = testBuilds.map { named("${it}Classes") }
-
-    val prepareDist by registering(Sync::class) {
-        val distZip by testPluginProject.tasks
-        from(distZip)
-        into(file("distr").resolve("adminStorage"))
-    }
-
     val integrationTest by registering(Test::class) {
         description = "Runs integration tests"
         group = "verification"
-        dependsOn(testBuildClassesTasks)
-        dependsOn(prepareDist)
-        mustRunAfter(test)
+        enabled = !testsSkipIntegrationTests.toBoolean()
         useJUnitPlatform()
-        systemProperty("plugin.config.path", testPluginProject.projectDir.resolve("plugin_config.json"))
+        systemProperty("plugin.config.path", project(":test-plugin").projectDir.resolve("plugin_config.json"))
         systemProperty("analytic.disable", true)
+        dependsOn("build1Classes")
+        dependsOn("build2Classes")
+        dependsOn(prepareDistr)
+        mustRunAfter(test)
     }
+    check.get().dependsOn(integrationTest)
+    clean {
+        delete("distr")
+        delete("work")
+    }
+    withType<KotlinCompile> {
+        kotlinOptions.jvmTarget = "1.8"
+    }
+}
 
-    check {
-        dependsOn(integrationTest)
+@Suppress("UNUSED_VARIABLE")
+license {
+    headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
+    val licenseFormatSources by tasks.registering(LicenseFormat::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+        }
+    }
+    val licenseCheckSources by tasks.registering(LicenseCheck::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+        }
     }
 }

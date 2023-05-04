@@ -16,15 +16,15 @@ plugins {
 group = "com.epam.drill"
 version = rootProject.version
 
-val kotlinxCollectionsVersion: String by extra
-val kotlinxSerializationVersion: String by extra
-val ktorVersion: String by extra
-val kodeinVersion: String by extra
-val microutilsLoggingVersion: String by extra
-val lubenZstdVersion: String by extra
-val mapdbVersion: String by extra
-val flywaydbVersion: String by extra
-val postgresEmbeddedVersion: String by extra
+val kotlinxCollectionsVersion: String by parent!!.extra
+val kotlinxSerializationVersion: String by parent!!.extra
+val ktorVersion: String by parent!!.extra
+val kodeinVersion: String by parent!!.extra
+val microutilsLoggingVersion: String by parent!!.extra
+val lubenZstdVersion: String by parent!!.extra
+val mapdbVersion: String by parent!!.extra
+val flywaydbVersion: String by parent!!.extra
+val postgresEmbeddedVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -94,7 +94,7 @@ kotlin.sourceSets {
     }
 }
 
-val jarMainClassName: String by extra("io.ktor.server.netty.EngineMain")
+val jarMainClassName: String by parent!!.extra("io.ktor.server.netty.EngineMain")
 val defaultJvmArgs = listOf(
     "-server",
     "-Djava.awt.headless=true",
@@ -130,16 +130,16 @@ tasks {
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
     }
+    val sourcesJar by registering(Jar::class) {
+        from(sourceSets.main.get().allSource)
+        archiveClassifier.set("sources")
+    }
     val cleanData by registering(Delete::class) {
         group = "build"
         delete("distr")
         delete("work")
     }
     clean.get().dependsOn(cleanData)
-    val sourcesJar by registering(Jar::class) {
-        from(sourceSets.main.get().allSource)
-        archiveClassifier.set("sources")
-    }
     (run) {
         environment("DRILL_DEVMODE", true)
         environment("DRILL_DEFAULT_PACKAGES", "org/springframework/samples/petclinic")

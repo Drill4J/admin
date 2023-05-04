@@ -4,3 +4,7 @@ build/
 *.iml
 **/commonGenerated/
 /lib-jvm-shared/
+/admin-core/distr
+/admin-core/work
+/tests/distr
+/tests/work

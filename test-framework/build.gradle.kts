@@ -1,31 +1,33 @@
-import org.jetbrains.kotlin.gradle.tasks.*
+import java.net.URI
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.hierynomus.gradle.license.tasks.LicenseCheck
+import com.hierynomus.gradle.license.tasks.LicenseFormat
 
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("kotlinx-atomicfu")
-    `maven-publish`
+    id("com.github.hierynomus.license")
 }
 
-val drillApiVersion: String by extra
-val drillLogger: String by extra
-val drillDsmVersion: String by extra
+group = "com.epam.drill"
+version = rootProject.version
 
-val serializationVersion: String by extra
-val collectionImmutableVersion: String by extra
-val ktorVersion: String by extra
-val kodeinVersion: String by extra
-val swaggerVersion: String by extra
-val muLogger: String by extra
-val zstdJniVersion: String by extra
-val cacheMapDB: String by extra
-val testContainerVersion: String by project
+val kotlinxSerializationVersion: String by parent!!.extra
+val ktorVersion: String by parent!!.extra
+val bcelVersion: String by parent!!.extra
+val kodeinVersion: String by parent!!.extra
+val microutilsLoggingVersion: String by parent!!.extra
+val mapdbVersion: String by parent!!.extra
 
-val junitVersion: String by extra
-val mockkVersion: String by extra
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("test-junit5"))
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
@@ -34,48 +36,56 @@ dependencies {
     implementation("io.ktor:ktor-websockets:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    implementation("com.epam.drill:drill-admin-part:$drillApiVersion")
-    implementation("com.epam.drill:common:$drillApiVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
-    api("com.epam.drill.dsm:core:$drillDsmVersion")
-    api("com.epam.drill.dsm:test-framework:$drillDsmVersion")
-    implementation("io.github.microutils:kotlin-logging-jvm:$muLogger")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
-    implementation("org.mapdb:mapdb:$cacheMapDB")
-    implementation("io.mockk:mockk:$mockkVersion")
-    api(project(":core"))
-    implementation("org.apache.bcel:bcel:6.3.1")
-    implementation("com.epam.drill:drill-agent-part-jvm:$drillApiVersion")
-    implementation("org.junit.jupiter:junit-jupiter:$junitVersion")
-    implementation(project(":test-framework:test-data"))
-    implementation(kotlin("test-junit5"))
+    implementation("org.apache.bcel:bcel:$bcelVersion")
+    implementation("org.mapdb:mapdb:$mapdbVersion")
+    implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    implementation("io.mockk:mockk:1.9.3")
+    implementation("org.junit.jupiter:junit-jupiter:5.5.2")
+
+    implementation(project(":common"))
+    implementation(project(":plugin-api-admin"))
+    implementation(project(":plugin-api-agent"))
+    implementation(project(":test-data"))
+
+    api(project(":dsm"))
+    api(project(":dsm-test-framework"))
+    api(project(":admin-core"))
 }
 
+kotlin.sourceSets.all {
+    languageSettings.optIn("kotlin.ExperimentalStdlibApi")
+    languageSettings.optIn("kotlin.time.ExperimentalTime")
+    languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+    languageSettings.optIn("kotlinx.coroutines.ObsoleteCoroutinesApi")
+    languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
+    languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
+    languageSettings.optIn("io.ktor.util.InternalAPI")
+}
+
+@Suppress("UNUSED_VARIABLE")
 tasks {
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=io.ktor.util.InternalAPI"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.ExperimentalStdlibApi"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=io.ktor.locations.KtorExperimentalLocationsAPI"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.time.ExperimentalTime"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
-        kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlinx.coroutines.ObsoleteCoroutinesApi"
+    }
+    val sourcesJar by registering(Jar::class) {
+        from(sourceSets.main.get().allSource)
+        archiveClassifier.set("sources")
     }
 }
 
-val sourcesJar by tasks.registering(Jar::class) {
-    from(sourceSets.main.get().allSource)
-    archiveClassifier.set("sources")
-}
-
-publishing {
-    publications {
-        create<MavenPublication>(project.name) {
-            afterEvaluate {
-                artifact(tasks.jar.get())
-                artifact(sourcesJar.get())
-            }
+@Suppress("UNUSED_VARIABLE")
+license {
+    headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
+    val licenseFormatSources by tasks.registering(LicenseFormat::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
+        }
+    }
+    val licenseCheckSources by tasks.registering(LicenseCheck::class) {
+        source = fileTree("$projectDir/src").also {
+            include("**/*.kt", "**/*.java", "**/*.groovy")
         }
     }
 }
