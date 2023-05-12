@@ -3,7 +3,9 @@ import org.ajoberstar.grgit.Grgit
 import org.ajoberstar.grgit.Branch
 import org.ajoberstar.grgit.operation.BranchListOp
 
+@Suppress("RemoveRedundantBackticks")
 plugins {
+    `distribution`
     kotlin("jvm").apply(false)
     kotlin("multiplatform").apply(false)
     kotlin("plugin.noarg").apply(false)
@@ -71,6 +73,12 @@ subprojects {
 
 @Suppress("UNUSED_VARIABLE")
 tasks {
+    val filterDistTasks: (Task) -> Boolean = { it.name.endsWith("DistTar", true) || it.name.endsWith("DistZip", true) }
+    val copyAdminCoreDist by registering(Copy::class) {
+        from(project(":admin-core").tasks.filter(filterDistTasks))
+        into(buildDir.resolve("distributions"))
+    }
+    assemble.get().dependsOn(copyAdminCoreDist)
     val sharedLibsDir = file("$projectDir/lib-jvm-shared")
     val sharedLibsRef: String by extra
     val updateSharedLibs by registering {
