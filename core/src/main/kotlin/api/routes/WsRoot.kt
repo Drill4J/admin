@@ -17,6 +17,9 @@ package com.epam.drill.admin.api.routes
 
 import io.ktor.locations.*
 
+/**
+ * WebSocket API for Admin UI
+ */
 object WsRoot {
     @Location("/api/version")
     object Version

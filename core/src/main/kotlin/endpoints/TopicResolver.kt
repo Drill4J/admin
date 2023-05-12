@@ -20,6 +20,9 @@ import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import org.kodein.di.*
 
+/**
+ * Sender messages to the Admin UI
+ */
 class TopicResolver(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val wsTopic by instance<WsTopic>()

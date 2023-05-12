@@ -27,6 +27,12 @@ import org.kodein.di.*
 class ConfigHandler(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
 
+    /**
+     * Store parameters of the agent
+     * @param agentId the agent ID
+     * @param parameters agent parameters
+     * @feature Agent attaching
+     */
     suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {
         adminStore.store(StoredAgentConfig(agentId, parameters))
     }

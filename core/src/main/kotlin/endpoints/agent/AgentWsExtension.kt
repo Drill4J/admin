@@ -97,8 +97,8 @@ suspend fun awaitWithExpr(
  * @param agentId the agent ID
  * @param instanceId the agent instance ID
  * @param topicName the name of WebSocket topic
- * @param callback todo
- * @param caller todo
+ * @param callback the function which is called when the message is delivered
+ * @param caller the function to be executed deferred
  */
 class WsDeferred(
     val timeout: Duration,

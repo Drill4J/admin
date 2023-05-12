@@ -159,7 +159,7 @@ class AgentManager(override val di: DI) : DIAware {
      * @param session the current WebSocket session of the agent
      * @return the agent information
      *
-     * @features Agent registration
+     * @features Agent attaching
      */
     internal suspend fun attach(
         config: CommonAgentConfig,
@@ -244,8 +244,8 @@ class AgentManager(override val di: DI) : DIAware {
      * Get the prepared agent information from DB and convert into the agent information
      * @param id the agent ID
      * @param storedInfo the previously received information about prepared agent if exists
-     *
      * @return the converted agent information or null
+     * @feature Agent attaching
      */
     private suspend fun preparedInfo(
         id: String,
@@ -258,10 +258,9 @@ class AgentManager(override val di: DI) : DIAware {
     } else null
 
     /**
-     * Ensure all plugin instances
+     * Create all plugin instances
      * @param agent the agent
-     * @receiver the plugin IDs
-     *
+     * @features Agent registration, Agent attaching
      */
     private suspend fun Collection<String>.initPlugins(
         agent: Agent,
@@ -419,9 +418,7 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Enable all plugins on the agent side
-     *
      * @param agentInfo the agent information
-     *
      * @features Agent registration
      */
     private suspend fun AgentWsSession.enableAllPlugins(agentInfo: AgentInfo) {
@@ -436,11 +433,9 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Enable a plugin on the agent side
-     *
      * @param pluginId the plugin ID
      * @param agentInfo the agent information
      * @return the deferred value of the WebSocket future
-     *
      * @features Agent registration
      */
     //TODO EPMDJ-8233 move to the api
@@ -457,8 +452,7 @@ class AgentManager(override val di: DI) : DIAware {
      * Get the agent information from DB
      * @param agentId the agent ID
      * @return the agent information
-     *
-     * @features Agent registration
+     * @features Agent registration, Agent attaching
      */
     private suspend fun loadAgentInfo(agentId: String): AgentInfo? = adminStore.findById(agentId)
 
@@ -473,9 +467,7 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Send packages prefixes to the agent
-     *
      * @param prefixes package prefixes which need to send
-     *
      * @features Agent registration
      */
     private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
@@ -484,11 +476,9 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Synchronize the agent information with the agent
-     *
      * @param instanceId the agent instance ID
      * @param needClassSending the sign of the need to load classes from the agent
-     *
-     * @features Agent registration
+     * @features Agent registration, Agent attaching
      */
     private suspend fun AgentInfo.sync(
         instanceId: String,
@@ -518,9 +508,7 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Send to the agent a new session header name
-     *
      * @param sessionIdHeaderName the name of session header
-     *
      * @features Agent registration
      */
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
@@ -565,9 +553,7 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Send all plugin's byte data to the agent
-     *
      * @param info the agent information
-     *
      * @features Agent registration
      */
     private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
@@ -581,11 +567,9 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Send the plugin's byte data to the agent
-     *
      * @param plugin the information about the plugin
      * @param agentInfo the information about the agent
      * @return the deferred value of the future
-     *
      * @features Agent registration
      */
     private suspend fun AgentWsSession.sendPlugin(
@@ -616,12 +600,10 @@ class AgentManager(override val di: DI) : DIAware {
 
     /**
      * Create the admin part of the plugin
-     *
      * @param agent the agent
      * @param plugin the plugin structure
      * @return the admin part of the plugin
-     *
-     * @features Agent registration
+     * @features Agent registration, Agent attaching
      */
     private suspend fun ensurePluginInstance(
         agent: Agent,
@@ -675,9 +657,7 @@ class AgentManager(override val di: DI) : DIAware {
 /**
  *
  * Send packages prefixes to the agent
- *
  * @param prefixes the package names
- *
  * @features Agent registration
  */
 suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
@@ -687,7 +667,6 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
 
 /**
  * Initialize class loading from the agent
- *
  * @features Agent registration
  */
 suspend fun AgentWsSession.triggerClassesSending() =
@@ -709,7 +688,6 @@ internal suspend fun StoreClient.loadAgentMetadata(
 
 /**
  * Agent instance state
- *
  * @param agentWsSession Current agent WebSocket session
  * @param status Current agent status
  */

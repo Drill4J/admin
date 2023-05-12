@@ -17,6 +17,9 @@ package com.epam.drill.admin.router
 
 import io.ktor.locations.*
 
+/**
+ * WebSocket routes for Admin UI
+ */
 //TODO Remove and refactor in EPMDJ-9842
 object WsRoutes {
     @Location("/groups/{groupId}")

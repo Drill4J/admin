@@ -87,6 +87,12 @@ internal class AgentData(
     //todo delete after removing of deprecated methods. EPMDJ-8608
     private val buildVersion = atomic("")
 
+    /**
+     * Load the build data from the database or store there if a build is new
+     * @param version the build version
+     * @return A sign of a new build or not
+     * @feature Agent attaching
+     */
     suspend fun initBuild(version: String): Boolean {
 
         buildVersion.update { version }
@@ -115,6 +121,12 @@ internal class AgentData(
         }
     }
 
+    /**
+     * Update settings in the database if they have changed
+     * @param settings the settings which need to update
+     * @param block the function which will be called after updating
+     * @feature Agent registration
+     */
     suspend fun updateSettings(
         settings: SystemSettingsDto,
         block: suspend (SystemSettingsDto) -> Unit = {},
@@ -148,7 +160,7 @@ internal class AgentData(
 
     /**
      * Load builds and settings from DB and initialize agent data state
-     *
+     * @feature Agent attaching
      */
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }

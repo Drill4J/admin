@@ -81,6 +81,9 @@ class PluginCaches(
     }
 }
 
+/**
+ * Collection of WS sessions of plugins
+ */
 class PluginSessions(plugins: Plugins) {
 
     private val sessionCaches: Map<String, SessionStorage> = plugins.mapValues { SessionStorage() }

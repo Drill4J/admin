@@ -26,7 +26,7 @@ import mu.*
 import java.util.concurrent.*
 
 /**
- * Storage of WebSocket sessions of the agent part of the plugin
+ * Storage of the WebSocket sessions of the Admin UI
  */
 class SessionStorage {
     private val logger = KotlinLogging.logger {}
@@ -54,6 +54,11 @@ class SessionStorage {
         it.send(destination, message.toWsMessageAsString(destination, type))
     }
 
+    /**
+     * Send a message to the plugin on the admin UI if it's subscribed to the destination
+     * @param destination the destination of the message
+     * @param messageProvider the function which provides a message by a subscription
+     */
     suspend fun sendTo(
         destination: String,
         messageProvider: (Subscription) -> String,

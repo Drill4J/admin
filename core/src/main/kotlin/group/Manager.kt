@@ -53,6 +53,11 @@ internal class GroupManager(override val di: DI) : DIAware {
 
     operator fun get(groupId: String): GroupDto? = _state.value[groupId]
 
+    /**
+     * Store a group of the agent if it doesn't exist before
+     * @param groupId the group ID of the agent
+     * @feature Agent attaching
+     */
     suspend fun syncOnAttach(groupId: String) {
         val oldGroups = _state.getAndUpdate { groups ->
             groups.takeIf { groupId in it } ?: groups.put(

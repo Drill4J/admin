@@ -22,7 +22,7 @@ import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
 /**
- * REST API for Admin UI
+ * Drill REST API
  */
 @Location("/{prefix}")
 @Ignore(properties = ["parent"])
