@@ -1,6 +1,8 @@
 import org.jetbrains.kotlin.util.prefixIfNot
+import org.apache.commons.configuration2.builder.fluent.Configurations
 import org.ajoberstar.grgit.Grgit
 import org.ajoberstar.grgit.Branch
+import org.ajoberstar.grgit.Credentials
 import org.ajoberstar.grgit.operation.BranchListOp
 
 @Suppress("RemoveRedundantBackticks")
@@ -26,6 +28,11 @@ val kotlinxSerializationVersion: String by extra
 repositories {
     mavenLocal()
     mavenCentral()
+}
+
+buildscript {
+    dependencies.classpath("org.apache.commons:commons-configuration2:2.9.0")
+    dependencies.classpath("commons-beanutils:commons-beanutils:1.9.4")
 }
 
 if(version == Project.DEFAULT_VERSION) {
@@ -95,6 +102,21 @@ tasks {
                 createBranch = branchIsCreate(sharedLibsRef)
             }
             gitrepo.pull()
+        }
+    }
+    val tagSharedLibs by registering {
+        group = "other"
+        doLast {
+            val tag = "${project.name}-v${project.version}"
+            val gitrepo = Grgit.open {
+                dir = sharedLibsDir
+                credentials = Credentials(System.getenv("SHARED_LIBS_USER"), System.getenv("SHARED_LIBS_PASSWORD"))
+            }
+            gitrepo.tag.add { name = tag }
+            gitrepo.push { refsOrSpecs = listOf("tags/$tag") }
+            val properties = Configurations().propertiesBuilder(file("gradle.properties"))
+            properties.configuration.setProperty("sharedLibsRef", tag)
+            properties.save()
         }
     }
 }

@@ -1,0 +1,149 @@
+name: Release
+run-name: 'Release: ${{ github.ref }}'
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (vX.Y.Z or vX.Y.Z-suf.V)'
+        default: null
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        config:
+          - {os: ubuntu-latest, preset: linuxX64}
+    runs-on: ${{ matrix.config.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 8.0
+          distribution: zulu
+      - uses: gradle/wrapper-validation-action@v1
+      - if: matrix.config.preset == 'linuxX64'
+        run: chmod +x ${{ github.workspace }}/gradlew
+      - if: matrix.config.preset == 'linuxX64'
+        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
+      - if: matrix.config.preset == 'linuxX64'
+        run: sudo apt-get install -y libtinfo5
+      - if: matrix.config.preset == 'linuxX64'
+        run: ${{ github.workspace }}/setup-shared-libs.sh
+      - if: matrix.config.preset == 'mingwX64'
+        run: ${{ github.workspace }}/setup-shared-libs.bat
+      - uses: gradle/gradle-build-action@v2
+        with:
+          arguments: check
+      - if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports-${{ matrix.config.preset }}
+          path: ${{ github.workspace }}/*/build/reports/*
+  release:
+    needs: check
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ inputs.version != null && inputs.version || steps.next-tag.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+    steps:
+      - if: inputs.version == null
+        id: next-tag
+        uses: Drill4J/semver-tag-action@v0.2.0
+        with:
+          type: ${{ github.ref_name == 'main' && 'patch' || 'prerelease' }}
+      - uses: actions/create-release@v1
+        id: create-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.version != null && inputs.version || steps.next-tag.outputs.tag }}
+          release_name: ${{ inputs.version != null && inputs.version || steps.next-tag.outputs.tag }}
+          prerelease: ${{ github.ref_name != 'main' }}
+      - run: echo version=${tag#v} >> $GITHUB_OUTPUT
+        id: version
+        env:
+          tag: ${{ inputs.version != null && inputs.version || steps.next-tag.outputs.tag }}
+  assets:
+    needs: release
+    strategy:
+      matrix:
+        config:
+          - {os: ubuntu-latest, preset: linuxX64}
+    runs-on: ${{ matrix.config.os }}
+    outputs:
+      tag: ${{ needs.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 8.0
+          distribution: zulu
+      - uses: gradle/wrapper-validation-action@v1
+      - if: matrix.config.preset == 'linuxX64'
+        run: chmod +x ${{ github.workspace }}/gradlew
+      - if: matrix.config.preset == 'linuxX64'
+        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
+      - if: matrix.config.preset == 'linuxX64'
+        run: sudo apt-get install -y libtinfo5
+      - if: matrix.config.preset == 'linuxX64'
+        run: ${{ github.workspace }}/setup-shared-libs.sh
+      - if: matrix.config.preset == 'mingwX64'
+        run: ${{ github.workspace }}/setup-shared-libs.bat
+      - uses: gradle/gradle-build-action@v2
+        with:
+          arguments: assemble
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/build/distributions/admin-core-${{ needs.release.outputs.version }}.zip
+          asset_name: admin-${{ needs.release.outputs.version }}.zip
+          asset_content_type: application/zip
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/build/distributions/admin-core-shadow-${{ needs.release.outputs.version }}.zip
+          asset_name: admin-shadow-${{ needs.release.outputs.version }}.zip
+          asset_content_type: application/zip
+  tagging:
+    needs: assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 8.0
+          distribution: zulu
+      - uses: gradle/wrapper-validation-action@v1
+      - run: chmod +x ${{ github.workspace }}/gradlew
+      - run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
+      - run: ${{ github.workspace }}/setup-shared-libs.sh
+      - run: 'git switch -c release/${{ needs.assets.outputs.tag }}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/gradle-build-action@v2
+        env:
+          SHARED_LIBS_USER: ${{ secrets.GH_PACKAGE_USERNAME }}
+          SHARED_LIBS_PASSWORD: ${{ secrets.GH_PACKAGE_TOKEN }}
+        with:
+          arguments: tagSharedLibs
+      - run: 'git commit -am "release: branch ${{ needs.assets.outputs.tag }}"'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: runner
+          GIT_AUTHOR_EMAIL: runner@users.noreply.github.com
+          GIT_COMMITTER_NAME: runner
+          GIT_COMMITTER_EMAIL: runner@users.noreply.github.com
+      - run: 'git push origin release/${{ needs.assets.outputs.tag }}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
