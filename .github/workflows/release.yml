@@ -98,7 +98,12 @@ jobs:
         run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
-          arguments: assemble
+          arguments: assemble jib
+        env:
+          GRADLE_OPTS: >
+            -Djib.to.image=ghcr.io/drill4j/admin
+            -Djib.to.auth.username=${{ secrets.GH_PACKAGE_USERNAME }}
+            -Djib.to.auth.password=${{ secrets.GH_PACKAGE_TOKEN }}
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

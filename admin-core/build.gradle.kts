@@ -2,6 +2,7 @@ import java.net.URI
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import com.hierynomus.gradle.license.tasks.LicenseCheck
 import com.hierynomus.gradle.license.tasks.LicenseFormat
+import com.google.cloud.tools.jib.gradle.JibTask
 
 @Suppress("RemoveRedundantBackticks")
 plugins {
@@ -11,6 +12,7 @@ plugins {
     id("kotlinx-atomicfu")
     id("com.github.hierynomus.license")
     id("com.github.johnrengelman.shadow")
+    id("com.google.cloud.tools.jib")
 }
 
 group = "com.epam.drill"
@@ -113,6 +115,27 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
+val jibExtraDirs = "$buildDir/jib-extra-dirs"
+jib {
+    from {
+        image = "adoptopenjdk/openjdk11:latest"
+    }
+    to {
+        image = "ghcr.io/drill4j/admin"
+        tags = setOf(version.toString())
+    }
+    container {
+        ports = listOf("8090", "5006")
+        volumes = listOf("/distr", "/work")
+        mainClass = jarMainClassName
+        jvmFlags = defaultJvmArgs
+    }
+    extraDirectories {
+        setPaths(jibExtraDirs)
+        permissions = mapOf("/distr" to "775", "/work" to "775")
+    }
+}
+
 @Suppress("UNUSED_VARIABLE")
 tasks {
     processResources {
@@ -149,6 +172,18 @@ tasks {
     val firstRun by registering {
         group = "application"
         dependsOn(cleanData, run)
+    }
+    val processJibExtraDirs by registering(Copy::class) {
+        group = "jib"
+        from("src/main/jib")
+        into(jibExtraDirs)
+        outputs.upToDateWhen(Specs.satisfyNone())
+        doLast {
+            listOf("distr", "work").map(destinationDir::resolve).forEach { mkdir(it) }
+        }
+    }
+    withType<JibTask> {
+        dependsOn(processJibExtraDirs)
     }
 }
 

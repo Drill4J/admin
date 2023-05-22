@@ -16,6 +16,7 @@ plugins {
     id("org.ajoberstar.grgit")
     id("com.github.hierynomus.license").apply(false)
     id("com.github.johnrengelman.shadow").apply(false)
+    id("com.google.cloud.tools.jib").apply(false)
 }
 
 group = "com.epam.drill"
