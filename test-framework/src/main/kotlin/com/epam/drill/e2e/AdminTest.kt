@@ -17,7 +17,6 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
@@ -29,7 +28,6 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
 import java.io.*
 import java.util.*
