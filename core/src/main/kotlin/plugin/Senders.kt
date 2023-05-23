@@ -49,7 +49,7 @@ class PluginSenders(override val di: DI) : DIAware {
      */
     fun sender(pluginId: String): Sender = object : Sender {
         /**
-         * Send a message to the plugin on the Admin UI side
+         * Send a message to the plugin on the UI side
          */
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
             val dest = destination as? String ?: app.toLocation(destination).decodeURLPart()

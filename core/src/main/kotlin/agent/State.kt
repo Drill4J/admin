@@ -91,7 +91,7 @@ internal class AgentData(
      * Load the build data from the database or store there if a build is new
      * @param version the build version
      * @return A sign of a new build or not
-     * @feature Agent attaching
+     * @features Agent attaching
      */
     suspend fun initBuild(version: String): Boolean {
 
@@ -125,7 +125,7 @@ internal class AgentData(
      * Update settings in the database if they have changed
      * @param settings the settings which need to update
      * @param block the function which will be called after updating
-     * @feature Agent registration
+     * @features Agent registration
      */
     suspend fun updateSettings(
         settings: SystemSettingsDto,
@@ -160,7 +160,7 @@ internal class AgentData(
 
     /**
      * Load builds and settings from DB and initialize agent data state
-     * @feature Agent attaching
+     * @features Agent attaching
      */
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }

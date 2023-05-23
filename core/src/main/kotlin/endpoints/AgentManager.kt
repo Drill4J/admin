@@ -245,7 +245,7 @@ class AgentManager(override val di: DI) : DIAware {
      * @param id the agent ID
      * @param storedInfo the previously received information about prepared agent if exists
      * @return the converted agent information or null
-     * @feature Agent attaching
+     * @features Agent attaching
      */
     private suspend fun preparedInfo(
         id: String,

@@ -34,7 +34,7 @@ import kotlinx.coroutines.*
 import org.kodein.di.*
 
 /**
- * WebSocket routing for the Admin UI
+ * WebSocket routing for the UI
  */
 class ServerWsTopics(override val di: DI) : DIAware {
     private val wsTopic by instance<WsTopic>()

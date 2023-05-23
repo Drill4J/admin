@@ -26,7 +26,7 @@ import mu.*
 import java.util.concurrent.*
 
 /**
- * Storage of the WebSocket sessions of the Admin UI
+ * Storage of the WebSocket sessions of the UI
  */
 class SessionStorage {
     private val logger = KotlinLogging.logger {}

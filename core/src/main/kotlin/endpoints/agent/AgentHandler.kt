@@ -80,7 +80,7 @@ class AgentHandler(override val di: DI) : DIAware{
     /**
      * Receiving messages from agents
      *
-     * @features Agent registration
+     * @features Agent registration, Test running
      */
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
         val agentDebugStr = agentInfo.debugString(instanceId)

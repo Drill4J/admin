@@ -21,7 +21,7 @@ import io.ktor.application.*
 import org.kodein.di.*
 
 /**
- * Sender messages to the Admin UI
+ * Sender messages to the UI
  */
 class TopicResolver(override val di: DI) : DIAware {
     private val app by instance<Application>()
