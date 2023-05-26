@@ -3,9 +3,8 @@
 > Drill4J team only and is not supposed for sharing with 3rd parties.
 > You are able to turn off by set system property `analytic.disable = true` or send PATCH request `/api/analytic/toggle`
 
-[![Check admin](https://github.com/Drill4J/admin/actions/workflows/check.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/check.yml)
+[![Check](https://github.com/Drill4J/admin/actions/workflows/check.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/check.yml)
 [![Release](https://github.com/Drill4J/admin/actions/workflows/release.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/release.yml)
-[![Build & publish drill artifacts](https://github.com/Drill4J/admin/actions/workflows/publish.yml/badge.svg)](https://github.com/Drill4J/admin/actions/workflows/publish.yml)
 [![License](https://img.shields.io/github/license/Drill4J/admin)](LICENSE)
 [![Visit the website at drill4j.github.io](https://img.shields.io/badge/visit-website-green.svg?logo=firefox)](https://drill4j.github.io/)
 [![Telegram Chat](https://img.shields.io/badge/Chat%20on-Telegram-brightgreen.svg)](https://t.me/drill4j)
@@ -22,57 +21,10 @@ The backend core part of Drill4J, based on Ktor framework.
 Agents connect to this app(admin) by web sockets. 
 And this app is extended by plugins (for example, [test2code](https://github.com/Drill4J/test2code-plugin)) by .jar files.
 
-See more in [documentation](https://drill4j.github.io/docs/installation/drill-admin) 
-and [Launch Parameters](https://drill4j.github.io/docs/configuration/launch-parameters)
+See more in [documentation](https://drill4j.github.io/docs/installation/drill-admin) and [Launch Parameters](https://drill4j.github.io/docs/configuration/launch-parameters)
 
-## Links
-
-Swagger 
-- host/apidocs/index.html?url=./openapi.json
-- example: http://localhost:8090/apidocs/index.html?url=./openapi.json
-
-# Development
 ## Modules
 
-- **core** uses:
-  - [Drill API](https://github.com/Drill4J/drill) to communicate with agents and plugins.
-  - [ORM for database](https://github.com/Drill4J/dsm)
-  - swagger
-- **analytics** - Google Analytics, see more in [here](analytics/README.md)
-- **test-framework** for creating integration tests
-- **tests** - integration tests by **test-framework**
-
-## How to Run
-
-- run database
-- run application
-
-see below how
-### Database
-
-#### Docker
-```
-docker run --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
-```
-
-custom configs see application.conf drill.database
-
-#### Embedded
-set embeddedMode=true to use embedded database. 
-
-To clean data from it use:
-
-```shell script
-./gradlew cleanData
-```
-
-### Application
-
-Gradle command:
-```shell script
-./gradlew run
-```
-
-Default ports:
-* HTTP: 8090
-* Debug: 5006
+- **admin-core**: backend core part of Drill4J, admin component itself
+- **test-framework**: framework for creating integration tests, runs lightweight version of admin application for testing purposes, used in test2code plugin
+- **tests** - integration tests for **admin-core**, based on **test-framework**
