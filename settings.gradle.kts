@@ -2,40 +2,54 @@ rootProject.name = "admin"
 
 pluginManagement {
     val kotlinVersion: String by extra
-    val atomicFuVersion: String by extra
+    val atomicfuVersion: String by extra
     val licenseVersion: String by extra
-    val shadowJarVersion: String by extra
+    val shadowPluginVersion: String by extra
+    val grgitVersion: String by extra
     val jibVersion: String by extra
     plugins {
         kotlin("jvm") version kotlinVersion
+        kotlin("multiplatform") version kotlinVersion
+        kotlin("plugin.noarg") version kotlinVersion
         kotlin("plugin.serialization") version kotlinVersion
-        id("kotlinx-atomicfu") version atomicFuVersion
-        id("com.google.cloud.tools.jib") version jibVersion
-        id("com.github.johnrengelman.shadow") version shadowJarVersion
+        id("kotlinx-atomicfu") version atomicfuVersion
+        id("org.ajoberstar.grgit") version grgitVersion
         id("com.github.hierynomus.license") version licenseVersion
-
-        repositories {
-            mavenCentral()
-            gradlePluginPortal()
-            maven(url = "https://oss.jfrog.org/artifactory/list/oss-release-local")
-        }
+        id("com.github.johnrengelman.shadow") version shadowPluginVersion
+        id("com.google.cloud.tools.jib") version jibVersion
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    resolutionStrategy.eachPlugin {
+        if(requested.id.id == "kotlinx-atomicfu") useModule("org.jetbrains.kotlinx:atomicfu-gradle-plugin:${target.version}")
     }
 }
 
-//TODO remove after plugin marker is added to the atomicfu artifacts
-mapOf(
-    "kotlinx-atomicfu" to "org.jetbrains.kotlinx:atomicfu-gradle-plugin"
-).let { substitutions ->
-    pluginManagement.resolutionStrategy.eachPlugin {
-        substitutions["${requested.id}"]?.let { useModule("$it:${target.version}") }
-    }
+val includeSharedLib: Settings.(String) -> Unit = {
+    include(it)
+    project(":$it").projectDir = file("lib-jvm-shared/$it")
 }
 
-include(":core")
-include(":analytics")
-include(":test-framework")
-include(":test-framework:test-data")
-include(":test-framework:test-plugin")
-include(":test-framework:test-plugin:admin-part")
-include(":test-framework:test-plugin:agent-part")
-include(":tests")
+includeSharedLib("admin-analytics")
+includeSharedLib("common")
+includeSharedLib("dsm")
+includeSharedLib("dsm-annotations")
+includeSharedLib("dsm-test-framework")
+includeSharedLib("kni-runtime")
+includeSharedLib("ktor-swagger")
+includeSharedLib("jvmapi")
+includeSharedLib("logger")
+includeSharedLib("logger-api")
+includeSharedLib("logger-test-agent")
+includeSharedLib("plugin-api-admin")
+includeSharedLib("plugin-api-agent")
+includeSharedLib("test-data")
+includeSharedLib("test-plugin")
+includeSharedLib("test-plugin-admin")
+includeSharedLib("test-plugin-agent")
+include("admin-core")
+include("test-framework")
+include("tests")

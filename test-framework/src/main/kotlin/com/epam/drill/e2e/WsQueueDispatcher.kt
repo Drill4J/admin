@@ -33,7 +33,6 @@ import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
