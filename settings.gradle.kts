@@ -28,9 +28,10 @@ pluginManagement {
     }
 }
 
+val sharedLibsLocalPath: String by extra
 val includeSharedLib: Settings.(String) -> Unit = {
     include(it)
-    project(":$it").projectDir = file("lib-jvm-shared/$it")
+    project(":$it").projectDir = file(sharedLibsLocalPath).resolve(it)
 }
 
 includeSharedLib("admin-analytics")
