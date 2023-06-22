@@ -4,6 +4,7 @@ import com.hierynomus.gradle.license.tasks.LicenseCheck
 import com.hierynomus.gradle.license.tasks.LicenseFormat
 
 plugins {
+    `maven-publish`
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("kotlinx-atomicfu")
@@ -72,6 +73,12 @@ tasks {
     val sourcesJar by registering(Jar::class) {
         from(sourceSets.main.get().allSource)
         archiveClassifier.set("sources")
+    }
+}
+
+publishing {
+    publications.create<MavenPublication>("test-framework") {
+        from(components["java"])
     }
 }
 

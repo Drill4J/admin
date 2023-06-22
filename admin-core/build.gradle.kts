@@ -7,6 +7,7 @@ import com.google.cloud.tools.jib.gradle.JibTask
 @Suppress("RemoveRedundantBackticks")
 plugins {
     `application`
+    `maven-publish`
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("kotlinx-atomicfu")
@@ -184,6 +185,12 @@ tasks {
     }
     withType<JibTask> {
         dependsOn(processJibExtraDirs)
+    }
+}
+
+publishing {
+    publications.create<MavenPublication>("admin-core") {
+        from(components["java"])
     }
 }
 
