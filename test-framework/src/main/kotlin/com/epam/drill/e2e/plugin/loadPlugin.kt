@@ -115,6 +115,14 @@ suspend fun AdminTest.loadPlugin(
                 memoryClassLoader.loadClass(clsName)
             }
         }
+
+        if (spykAgentPart is ClassScanner) {
+            val capturedTransfer = slot<(Set<EntitySource>) -> Unit>()
+            every { spykAgentPart.scanClasses(consumer = capture(capturedTransfer)) } answers {
+                val transfer = capturedTransfer.captured
+                transfer(agentData.classMap.map { TestClassSource(it.key, it.value) }.toSet())
+            }
+        }
         agentStreamer.plugin = spykAgentPart
 
         st.initSubscriptions(
@@ -159,4 +167,9 @@ class TestPluginSender(
             )
         }
     }
+}
+
+class TestClassSource(private val className: String, private val bytes: ByteArray): EntitySource {
+    override fun entityName() = className
+    override fun bytes() = bytes
 }
