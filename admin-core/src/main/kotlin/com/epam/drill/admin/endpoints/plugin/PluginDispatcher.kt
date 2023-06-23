@@ -305,7 +305,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                                 adminStore.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 buildManager.buildData(agentId).run {
                                     agentBuildManager.delete(buildVersion)
-                                    deleteClassBytes(AgentBuildKey(agentId, buildVersion))
                                 }
                                 (cacheService as? MapDBCacheService)?.clear(
                                     AgentCacheKey(pluginId, agentId),

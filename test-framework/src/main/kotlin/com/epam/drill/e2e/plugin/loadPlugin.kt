@@ -128,11 +128,6 @@ suspend fun AdminTest.loadPlugin(
         spykAgentPart.updateRawConfig(pluginMeta.config)
         spykAgentPart.initPlugin()
         agentStreamer.loaded(meta.id)
-
-        val classes = classMap.map { ByteClass(it.key, it.value) }.toTypedArray()
-        if (needSync) {
-            agentStreamer.`get-load-classes-data`(*classes)
-        }
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw

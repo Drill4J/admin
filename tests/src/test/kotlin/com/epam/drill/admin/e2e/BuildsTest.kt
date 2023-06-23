@@ -21,7 +21,6 @@ import io.kotlintest.*
 import kotlin.time.*
 import io.ktor.http.*
 import kotlin.test.*
-import kotlin.time.seconds as secs
 
 class BuildsTest : E2ETest() {
 
@@ -43,7 +42,6 @@ class BuildsTest : E2ETest() {
                 }
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`("DrillExtension1.class")
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuildSummary()?.size shouldBe 1
@@ -53,7 +51,6 @@ class BuildsTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`("DrillExtension2.class")
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getBuildSummary()?.size shouldBe 2
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
@@ -61,7 +58,6 @@ class BuildsTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getBuildSummary()?.size shouldBe 3
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE

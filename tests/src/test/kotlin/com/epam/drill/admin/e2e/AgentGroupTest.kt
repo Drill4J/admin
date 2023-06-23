@@ -20,7 +20,6 @@ import com.epam.drill.admin.api.group.*
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
-import kotlinx.coroutines.channels.*
 import org.junit.jupiter.api.*
 import kotlin.time.*
 
@@ -50,7 +49,6 @@ class AgentGroupTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
@@ -74,7 +72,6 @@ class AgentGroupTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }

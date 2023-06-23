@@ -18,17 +18,13 @@ package com.epam.drill.admin.agent
 import com.epam.drill.admin.admindata.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
-import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.admin.util.*
 import com.epam.drill.admin.util.trackTime
 import com.epam.drill.plugin.api.*
 import com.epam.dsm.*
 import com.epam.dsm.find.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.protobuf.*
 import mu.*
 
 internal class AgentDataCache {
@@ -63,11 +59,6 @@ internal class AgentData(
 
     val agentBuildManager get() = _agentBuildManager.value
 
-    override suspend fun loadClassBytes(): Map<String, ByteArray> =
-        adminStore.loadClasses(AgentBuildKey(agentId, buildVersion.value))
-
-    override suspend fun loadClassBytes(buildVersion: String) =
-        adminStore.loadClasses(AgentBuildKey(agentId, buildVersion))
 
     val settings: SystemSettingsDto get() = _settings.value
 
@@ -90,16 +81,6 @@ internal class AgentData(
         }
     }
 
-    internal suspend fun initClasses(buildVersion: String) {
-        val classBytes: List<ByteArray> = agentBuildManager.collectClasses()
-        val classBytesSize = classBytes.sumOf { it.size } / 1024
-        val agentKey = AgentBuildKey(agentId, buildVersion)
-        logger.debug { "Saving ${classBytes.size} classes with $classBytesSize KB for $agentKey..." }
-        trackTime("initClasses") {
-            adminStore.storeClasses(agentKey, classBytes)
-            adminStore.storeMetadata(agentKey, Metadata(classBytes.size, classBytesSize))
-        }
-    }
 
     suspend fun updateSettings(
         settings: SystemSettingsDto,
@@ -130,7 +111,6 @@ internal class AgentData(
         logger.debug { "Saved build ${agentBuild.id}." }
     }
 
-    suspend fun deleteClassBytes(agentBuildKey: AgentBuildKey) = adminStore.deleteClasses(agentBuildKey)
 
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
@@ -162,36 +142,3 @@ internal class AgentData(
     )
 }
 
-private suspend fun StoreClient.storeClasses(
-    agentKey: AgentBuildKey,
-    classBytes: List<ByteArray>,
-) {
-    trackTime("storeClasses") {
-        logger.debug { "Storing for $agentKey class bytes ${classBytes.size}..." }
-        val storedData = StoredCodeData(
-            id = agentKey,
-            data = classBytes
-        )
-        store(storedData)
-    }
-}
-
-private suspend fun StoreClient.loadClasses(
-    agentBuildKey: AgentBuildKey,
-): Map<String, ByteArray> = trackTime("loadClasses") {
-    findById<StoredCodeData>(agentBuildKey)?.run {
-        data.asSequence().map {
-            ProtoBuf.load(ByteClass.serializer(), it)
-        }.associate { it.className to it.bytes }
-    } ?: let {
-        logger.warn { "Can not find classBytes for $agentBuildKey" }
-        emptyMap()
-    }
-}
-
-private suspend fun StoreClient.deleteClasses(
-    agentBuildKey: AgentBuildKey,
-) = trackTime("deleteClasses") {
-    logger.debug { "Deleting class bytes for $agentBuildKey..." }
-    deleteById<StoredCodeData>(agentBuildKey)
-}

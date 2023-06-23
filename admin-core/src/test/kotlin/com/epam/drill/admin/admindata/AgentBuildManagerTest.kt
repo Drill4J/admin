@@ -15,10 +15,7 @@
  */
 package com.epam.drill.admin.admindata
 
-import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.common.serialization.*
 import kotlinx.collections.immutable.*
-import kotlinx.serialization.protobuf.*
 import kotlin.test.*
 
 class AgentBuildManagerTest {
@@ -61,26 +58,6 @@ class AgentBuildManagerTest {
         assertNotNull(buildManager["0.1.0"])
     }
 
-    @Test
-    fun `addClass - before initBuildInfo`() {
-        buildManager.addClass(String::class.java.dump())
-        buildManager.init("0.1.0")
-    }
-
-    @Test
-    fun `addClass - two identical classes in one build`() {
-        val byteArray = String::class.java.dump()
-        buildManager.init("0.1.0")
-        buildManager.addClass(byteArray)
-        buildManager.addClass(byteArray)
-        assertEquals(2, buildManager.collectClasses().size)
-    }
-
-    @Test
-    fun `initClasses - empty added classes list`() {
-        buildManager.init("0.1.0")
-        assertEquals(0, buildManager.collectClasses().size)
-    }
 
     @Test
     fun `dtoList - build without classes`() {
@@ -90,12 +67,5 @@ class AgentBuildManagerTest {
         assertNotNull("0.1.0", builds.first().info.version)
     }
 
-    private fun Class<*>.dump(): ByteArray = ProtoBuf.dump(
-        ByteClass.serializer(),
-        ByteClass(name, readBytes())
-    )
 }
 
-private fun Class<*>.readBytes(): ByteArray = run {
-    getResourceAsStream("/${canonicalName.replace('.', '/')}.class")
-}.readBytes()

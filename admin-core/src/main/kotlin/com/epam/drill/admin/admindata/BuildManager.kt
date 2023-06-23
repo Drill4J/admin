@@ -30,7 +30,6 @@ class AgentBuildManager(
     private val buildMap: PersistentMap<String, AgentBuild>
         get() = _buildMap.value
 
-    private val _addedClasses = atomic(persistentListOf<ByteArray>())
 
     private val _buildMap = atomic(
         builds.associateBy { it.info.version }.toPersistentMap()
@@ -55,8 +54,4 @@ class AgentBuildManager(
             map.put(version, build)
         } else map
     }.getValue(version)
-
-    internal fun addClass(rawData: ByteArray) = _addedClasses.update { it + rawData }
-
-    internal fun collectClasses(): List<ByteArray> = _addedClasses.getAndUpdate { persistentListOf() }
 }

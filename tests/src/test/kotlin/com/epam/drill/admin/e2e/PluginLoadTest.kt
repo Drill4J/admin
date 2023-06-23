@@ -40,7 +40,6 @@ class PluginLoadTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
 
                 addPlugin(agentId, testPlugin) { status, _ ->
                     status shouldBe HttpStatusCode.OK

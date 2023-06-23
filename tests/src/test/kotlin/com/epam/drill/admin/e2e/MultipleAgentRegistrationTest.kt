@@ -38,7 +38,6 @@ class MultipleAgentRegistrationTest : E2ETest() {
                     ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                     ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                     agent.`get-set-packages-prefixes`()
-                    agent.`get-load-classes-datas`()
                     ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
                     ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 }

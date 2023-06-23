@@ -35,7 +35,6 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.sync.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.admin.websocket.agentKeyPattern
 import com.epam.drill.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.dsm.*
@@ -138,7 +137,6 @@ class AgentManager(override val di: DI) : DIAware {
                     (cacheService as? MapDBCacheService)?.clear(AgentCacheKey(pluginId, agentId))
                 }
                 deleteBy<AgentBuildData> { FieldPath(AgentBuildData::id, AgentBuildId::agentId) eq agentId }
-                deleteBy<StoredCodeData> { FieldPath(StoredCodeData::id, AgentBuildId::agentId) eq agentId }
                 deleteBy<AgentMetadata> { FieldPath(AgentMetadata::id, AgentBuildId::agentId) eq agentId }
                 deleteById<AgentInfo>(agentId)
                 deleteById<AgentDataSummary>(agentId)
@@ -429,7 +427,6 @@ class AgentManager(override val di: DI) : DIAware {
                     sendPlugins(info)
                     if (needClassSending) {
                         updateSessionHeader(settings.sessionIdHeaderName)
-                        triggerClassesSending()
                         enableAllPlugins(info)
                     }
                 }
@@ -453,7 +450,6 @@ class AgentManager(override val di: DI) : DIAware {
                 if (oldSettings.packages != settings.packages) {
                     disableAllPlugins(agentId)
                     configurePackages(settings.packages)
-                    triggerClassesSending()
                     entryOrNull(agentId)?.applyPackagesChanges()
                     enableAllPlugins(info)
                 }
@@ -569,12 +565,6 @@ suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
         PackagesPrefixes(prefixes)
     ).await()
 
-suspend fun AgentWsSession.triggerClassesSending() =
-    sendToTopic<Communication.Agent.LoadClassesDataEvent, String>("").await()
-
-internal suspend fun StoreClient.storeMetadata(agentBuildKey: AgentBuildKey, metadata: Metadata) {
-    store(AgentMetadata(agentBuildKey, metadata))
-}
 
 internal suspend fun StoreClient.loadAgentMetadata(
     agentBuildKey: AgentBuildKey,
