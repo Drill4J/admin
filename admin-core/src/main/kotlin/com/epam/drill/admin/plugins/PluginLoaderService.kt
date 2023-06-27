@@ -39,6 +39,9 @@ private val logger = KotlinLogging.logger {}
 const val TEST2CODE = "test2code"
 val defaultPlugins = setOf(TEST2CODE)
 
+/**
+ * Service for loading plugins
+ */
 class PluginLoaderService(
     private val application: Application,
     private val workDir: File = File(getenv("DRILL_HOME"), "work"),

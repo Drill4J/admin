@@ -27,6 +27,11 @@ import kotlin.reflect.full.*
 
 private val logger = KotlinLogging.logger { }
 
+/**
+ * Perform an action and then also perform an agent action if defined
+ * @param action the action to be performed
+ * @param agentSessions the function which returns a list of agent websocket sessions by an agent ID
+ */
 internal suspend fun AdminPluginPart<*>.processAction(
     action: String,
     agentSessions: (String) -> Iterable<AgentWsSession>,

@@ -23,6 +23,10 @@ import kotlinx.serialization.Serializable
 @Topic("/plugin/state")
 class PluginState
 
+/**
+ * Send a command to synchronize sessions between the agent and the admin
+ * @features Agent attaching
+ */
 suspend fun AgentWsSession.syncPluginState() {
     sendToTopic<PluginState, String>("")
 }

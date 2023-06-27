@@ -26,6 +26,9 @@ import mu.*
 import java.io.*
 import java.lang.reflect.*
 
+/**
+ * all information related to the agent
+ */
 class Agent(info: AgentInfo) {
     private val logger = KotlinLogging.logger { }
 
@@ -61,6 +64,16 @@ class Agent(info: AgentInfo) {
     }
 }
 
+/**
+ * Create a new instance of admin plugin part
+ * @param agentInfo the information about the agent
+ * @param data the admin part of information about the agent
+ * @param sender the service for sending messages to the plugin
+ * @param store the datasource client for persisting the plugin information
+ * @return a new instance of admin plugin part
+ *
+ * @features Agent registration
+ */
 internal fun Plugin.createInstance(
     agentInfo: AgentInfo,
     data: AdminData,

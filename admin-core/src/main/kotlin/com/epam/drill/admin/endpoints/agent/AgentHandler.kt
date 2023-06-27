@@ -38,6 +38,10 @@ import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
 
+/**
+ * Web Socket controller for agents.
+ * Used for communication between agents and admin backend via websocket messages.
+ */
 class AgentHandler(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
@@ -73,6 +77,11 @@ class AgentHandler(override val di: DI) : DIAware{
         }
     }
 
+    /**
+     * Receiving messages from agents
+     *
+     * @features Agent registration, Test running
+     */
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
         val agentDebugStr = agentInfo.debugString(instanceId)
         try {

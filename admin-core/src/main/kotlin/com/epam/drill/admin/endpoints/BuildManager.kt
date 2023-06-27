@@ -26,6 +26,9 @@ import mu.*
 import org.kodein.di.*
 
 
+/**
+ * Service for managing application builds
+ */
 class BuildManager(override val di: DI) : DIAware {
 
     private val logger = KotlinLogging.logger {}
@@ -40,6 +43,13 @@ class BuildManager(override val di: DI) : DIAware {
     }
 
 
+    /**
+     * Add a new build information to the build storage
+     * @param key the agent ID and the build version
+     * @param instanceId the agent instance ID
+     * @param session the current WebSocket session
+     * @features Agent attaching
+     */
     suspend fun addBuildInstance(
         key: AgentBuildKey,
         instanceId: String,
@@ -100,6 +110,13 @@ class BuildManager(override val di: DI) : DIAware {
         } ?: logger.warn { "Instance $instanceId is not found" }
     } ?: logger.warn { "Agent $agentId not found" }
 
+    /**
+     * Update status of the build
+     * @param instanceId the build instance ID
+     * @param status the status which have to update
+     * @param agentBuildKey the pair of the agent ID and the build version
+     * @features Agent registration, Agent attaching
+     */
     internal fun updateInstanceStatus(
         agentBuildKey: AgentBuildKey,
         instanceId: String,
@@ -138,6 +155,11 @@ class BuildManager(override val di: DI) : DIAware {
         state.takeIf { it.status == BuildStatus.ONLINE }?.agentWsSession
     }
 
+    /**
+     * Notify subscribers when a build is updated
+     * @param agentBuildKey the link between the agent and the build version
+     * @features Agent registration, Agent attaching
+     */
     internal suspend fun notifyBuild(agentBuildKey: AgentBuildKey) {
         buildStorage.singleUpdate(agentBuildKey)
     }

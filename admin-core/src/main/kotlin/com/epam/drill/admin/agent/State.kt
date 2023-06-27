@@ -27,6 +27,9 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
 
+/**
+ * Cache service for the agent data
+ */
 internal class AgentDataCache {
 
     private val _data = atomic(persistentMapOf<String, AgentData>())
@@ -49,6 +52,12 @@ internal class AgentDataCache {
     }[key]!!
 }
 
+/**
+ * Plugins part of the agent data
+ *
+ * @param agentId the agent ID
+ * @param initialSettings the initial settings of the agent
+ */
 internal class AgentData(
     val agentId: String,
     initialSettings: SystemSettingsDto,
@@ -69,6 +78,12 @@ internal class AgentData(
     //todo delete after removing of deprecated methods. EPMDJ-8608
     private val buildVersion = atomic("")
 
+    /**
+     * Load the build data from the database or store there if a build is new
+     * @param version the build version
+     * @return A sign of a new build or not
+     * @features Agent attaching
+     */
     suspend fun initBuild(version: String): Boolean {
 
         buildVersion.update { version }
@@ -82,6 +97,12 @@ internal class AgentData(
     }
 
 
+    /**
+     * Update settings in the database if they have changed
+     * @param settings the settings which need to update
+     * @param block the function which will be called after updating
+     * @features Agent registration
+     */
     suspend fun updateSettings(
         settings: SystemSettingsDto,
         block: suspend (SystemSettingsDto) -> Unit = {},
@@ -112,6 +133,10 @@ internal class AgentData(
     }
 
 
+    /**
+     * Load builds and settings from DB and initialize agent data state
+     * @features Agent attaching
+     */
     private suspend fun loadStoredData() = adminStore.findById<AgentDataSummary>(agentId)?.let { summary ->
         logger.info { "Loading data for $agentId..." }
         _settings.value = summary.settings

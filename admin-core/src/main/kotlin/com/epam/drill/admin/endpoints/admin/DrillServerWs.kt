@@ -31,6 +31,10 @@ import mu.*
 import org.kodein.di.*
 
 
+/**
+ * Web Socket handler for Admin UI
+ * Used for communication between admin frontend and admin backend via websocket messages.
+ */
 class DrillServerWs(override val di:DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 

@@ -19,12 +19,23 @@ import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import java.io.*
 
+/**
+ * Collection of plugins
+ */
 class Plugins(
     private val plugins: MutableMap<String, Plugin> = mutableMapOf(),
 ) : Map<String, Plugin> by plugins {
     operator fun set(k: String, v: Plugin) = plugins.put(k, v)
 }
 
+/**
+ * Plugin structure
+ *
+ * @param pluginClass the java class of the plugin
+ * @param agentPartFiles the plugin files location
+ * @param pluginBean the plugin metadata
+ * @param version the version of the plugin
+ */
 data class Plugin(
     val pluginClass: Class<AdminPluginPart<*>>,
     val agentPartFiles: AgentPartFiles,
@@ -32,6 +43,9 @@ data class Plugin(
     val version: String = "",
 )
 
+/**
+ * Agent part structure
+ */
 data class AgentPartFiles(
     val jar: File,
     val windowsPart: File? = null,
