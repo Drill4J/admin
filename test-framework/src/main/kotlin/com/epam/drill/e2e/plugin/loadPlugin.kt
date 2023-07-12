@@ -23,7 +23,6 @@ import com.epam.drill.common.*
 import com.epam.drill.common.classloading.EntitySource
 import com.epam.drill.e2e.*
 import com.epam.drill.e2e.Agent
-import com.epam.drill.logger.api.*
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
@@ -86,15 +85,13 @@ suspend fun AdminTest.loadPlugin(
         val declaredConstructor = clazz.getDeclaredConstructor(
             String::class.java,
             AgentContext::class.java,
-            Sender::class.java,
-            LoggerFactory::class.java
+            Sender::class.java
         )
         val sender = TestPluginSender(agentStreamDebug, out)
         val agentPart = declaredConstructor.newInstance(
             pluginId,
             testAgentContext,
-            sender,
-            SimpleLogging
+            sender
         ) as AgentPart<*>
         this.agentPart = agentPart
         val spykAgentPart = spyk(agentPart, ag.id)

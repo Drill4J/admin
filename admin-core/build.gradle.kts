@@ -62,7 +62,6 @@ dependencies {
 
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
-    implementation(project(":logger"))
     implementation(project(":plugin-api-admin"))
     implementation(project(":dsm"))
     implementation(project(":ktor-swagger"))
