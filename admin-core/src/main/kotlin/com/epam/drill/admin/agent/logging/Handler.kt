@@ -36,6 +36,12 @@ class LoggingHandler(override val di: DI) : DIAware {
         }
     }
 
+    /**
+     * Send the information about logging to the agent
+     * @param agentId the agent ID
+     * @param agentSession the agent WebSocket session
+     * @features Agent attaching
+     */
     suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
         adminStore.loadConfig(agentId)?.apply {
             agentSession?.sendConfig(config)

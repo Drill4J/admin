@@ -40,7 +40,6 @@ class AgentRegistrationTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }
@@ -68,7 +67,6 @@ class AgentRegistrationTest : E2ETest() {
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
             }

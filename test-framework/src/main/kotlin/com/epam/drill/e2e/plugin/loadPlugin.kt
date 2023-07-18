@@ -115,6 +115,14 @@ suspend fun AdminTest.loadPlugin(
                 memoryClassLoader.loadClass(clsName)
             }
         }
+
+        if (spykAgentPart is ClassScanner) {
+            val capturedTransfer = slot<(Set<EntitySource>) -> Unit>()
+            every { spykAgentPart.scanClasses(consumer = capture(capturedTransfer)) } answers {
+                val transfer = capturedTransfer.captured
+                transfer(agentData.classMap.map { TestClassSource(it.key, it.value) }.toSet())
+            }
+        }
         agentStreamer.plugin = spykAgentPart
 
         st.initSubscriptions(
@@ -128,11 +136,6 @@ suspend fun AdminTest.loadPlugin(
         spykAgentPart.updateRawConfig(pluginMeta.config)
         spykAgentPart.initPlugin()
         agentStreamer.loaded(meta.id)
-
-        val classes = classMap.map { ByteClass(it.key, it.value) }.toTypedArray()
-        if (needSync) {
-            agentStreamer.`get-load-classes-data`(*classes)
-        }
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw
@@ -164,4 +167,9 @@ class TestPluginSender(
             )
         }
     }
+}
+
+class TestClassSource(private val className: String, private val bytes: ByteArray): EntitySource {
+    override fun entityName() = className
+    override fun bytes() = bytes
 }

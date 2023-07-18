@@ -21,6 +21,9 @@ import de.nielsfalk.ktor.swagger.*
 import de.nielsfalk.ktor.swagger.version.shared.*
 import io.ktor.locations.*
 
+/**
+ * Drill REST API
+ */
 @Location("/{prefix}")
 @Ignore(properties = ["parent"])
 class ApiRoot(val prefix: String = "api") {

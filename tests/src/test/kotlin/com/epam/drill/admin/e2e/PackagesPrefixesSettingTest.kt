@@ -20,8 +20,6 @@ import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
 import org.junit.jupiter.api.*
-import java.util.concurrent.*
-import kotlin.time.*
 
 class PackagesPrefixesSettingTest : E2ETest() {
 
@@ -39,7 +37,6 @@ class PackagesPrefixesSettingTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
 
@@ -55,7 +52,6 @@ class PackagesPrefixesSettingTest : E2ETest() {
 
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-                agent.`get-load-classes-datas`()
 
                 ui.getBuild()?.run {
                     buildStatus shouldBe BuildStatus.ONLINE

@@ -31,6 +31,9 @@ enum class AgentStatus {
     REGISTERED,
 }
 
+/**
+ * Agent statuses
+ */
 enum class BuildStatus {
     ONLINE,
     OFFLINE,

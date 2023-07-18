@@ -38,8 +38,6 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import kotlinx.serialization.protobuf.*
-import org.apache.bcel.classfile.*
-import java.io.*
 import kotlin.reflect.full.*
 
 
@@ -149,7 +147,6 @@ class Agent(
 ) {
     private val headers = Channel<Int>(Channel.UNLIMITED)
     private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
-    private val `load-classes-data` = Channel<String>(Channel.UNLIMITED)
     private val plugins = Channel<com.epam.drill.common.PluginBinary>(Channel.UNLIMITED)
 
     lateinit var plugin: AgentPart<*>
@@ -180,59 +177,6 @@ class Agent(
 
     suspend fun `get-set-packages-prefixes`(): String = `set-packages-prefixes`.receive()
 
-    suspend fun `get-load-classes-datas`(vararg classes: String = emptyArray()): String {
-        val receive = `load-classes-data`.receive()
-
-        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
-
-
-        classes.map {
-
-            val readBytes = this::class.java.getResourceAsStream("/classes/$it").readBytes()
-            val parse = ClassParser(ByteArrayInputStream(readBytes), "").parse()
-
-            ProtoBuf.dump(
-                com.epam.drill.common.ByteClass.serializer(), com.epam.drill.common.ByteClass(
-                    parse.className.replace(".", "/"),
-                    readBytes
-                )
-            )
-        }.chunked(32768).forEach {
-            outgoing.send(
-                agentMessage(
-                    MessageType.CLASSES_DATA, "", ProtoBuf.dump(
-                        ByteArrayListWrapper.serializer(), ByteArrayListWrapper(it)
-                    )
-                )
-            )
-        }
-
-
-        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, ""))
-        sendDelivered("/agent/load-classes-data")
-        return receive
-    }
-
-    suspend fun `get-load-classes-data`(vararg classes: com.epam.drill.common.ByteClass = emptyArray()): String {
-        val receive = `load-classes-data`.receive()
-        outgoing.send(agentMessage(MessageType.START_CLASSES_TRANSFER, ""))
-        classes.map { byteClass ->
-            ProtoBuf.dump(com.epam.drill.common.ByteClass.serializer(), byteClass)
-        }.chunked(32768).forEach {
-            outgoing.send(
-                agentMessage(
-                    MessageType.CLASSES_DATA, "", ProtoBuf.dump(
-                        ByteArrayListWrapper.serializer(), ByteArrayListWrapper(it)
-                    )
-                )
-            )
-        }
-
-
-        outgoing.send(agentMessage(MessageType.FINISH_CLASSES_TRANSFER, ""))
-        sendDelivered("/agent/load-classes-data")
-        return receive
-    }
 
     fun queued() = app.launch {
         if (agentStreamDebug) {
@@ -256,9 +200,6 @@ class Agent(
                         is Communication.Agent.SetPackagePrefixesEvent -> {
                             `set-packages-prefixes`.send(content.decodeToString())
                             sendDelivered(url)
-                        }
-                        is Communication.Agent.LoadClassesDataEvent -> {
-                            `load-classes-data`.send(content.decodeToString())
                         }
                         is Communication.Agent.PluginLoadEvent -> {
                             plugins.send(

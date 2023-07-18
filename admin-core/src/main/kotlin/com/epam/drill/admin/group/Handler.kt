@@ -37,7 +37,9 @@ import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
 
-
+/**
+ * REST Controller for groups
+ */
 class GroupHandler(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 

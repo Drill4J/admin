@@ -33,6 +33,10 @@ import org.kodein.di.*
 
 private val logger = KotlinLogging.logger {}
 
+/**
+ * WebSocket handler for UI plugin
+ * Used for communication between frontend plugins and admin backend via websocket messages.
+ */
 class DrillPluginWs(override val di: DI) : DIAware {
 
     private val app by instance<Application>()

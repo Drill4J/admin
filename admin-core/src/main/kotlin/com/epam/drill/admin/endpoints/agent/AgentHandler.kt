@@ -38,6 +38,10 @@ import kotlinx.serialization.protobuf.*
 import mu.*
 import org.kodein.di.*
 
+/**
+ * Web Socket controller for agents.
+ * Used for communication between agents and admin backend via websocket messages.
+ */
 class AgentHandler(override val di: DI) : DIAware{
     private val logger = KotlinLogging.logger {}
 
@@ -73,6 +77,11 @@ class AgentHandler(override val di: DI) : DIAware{
         }
     }
 
+    /**
+     * Receiving messages from agents
+     *
+     * @features Agent registration, Test running
+     */
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
         val agentDebugStr = agentInfo.debugString(instanceId)
         try {
@@ -114,25 +123,6 @@ class AgentHandler(override val di: DI) : DIAware{
                                     "A subscriber to destination for $agentDebugStr is not found: '${message.destination}'"
                                 }
                             }
-
-                            MessageType.START_CLASSES_TRANSFER -> {
-                                logger.debug { "Starting classes transfer for $agentDebugStr..." }
-                            }
-
-                            MessageType.CLASSES_DATA -> {
-                                message.bytes.takeIf { it.isNotEmpty() }?.let { rawBytes ->
-                                    ProtoBuf.load(ByteArrayListWrapper.serializer(), rawBytes).bytesList.forEach {
-                                        buildData.agentBuildManager.addClass(it)
-                                    }
-                                }
-                            }
-
-                            MessageType.FINISH_CLASSES_TRANSFER -> buildData.apply {
-                                initClasses(agentInfo.build.version)
-                                topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(agentInfo.id))
-                                logger.debug { "Finished classes transfer for $agentDebugStr" }
-                            }
-
                             else -> {
                                 logger.warn { "Message with type '${message.type}' is not supported yet" }
                             }

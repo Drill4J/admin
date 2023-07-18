@@ -16,15 +16,12 @@
 package com.epam.drill.admin.agent
 
 import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.endpoints.*
 import com.epam.dsm.*
-import com.epam.dsm.serializer.*
 import kotlinx.serialization.*
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
 typealias PackagesPrefixes = com.epam.drill.common.PackagesPrefixes
-typealias ByteClass = com.epam.drill.common.ByteClass
 typealias BuildInfo = com.epam.drill.common.BuildInfo
 
 @Serializable
@@ -52,6 +49,11 @@ data class AgentBuildInfo(
     val ipAddress: String = "",
 )
 
+/**
+ * Link between the agent and the build
+ * @param agentId Agent ID
+ * @param buildVersion Application build version
+ */
 @Serializable
 data class AgentBuildKey(
     val agentId: String,
@@ -70,24 +72,8 @@ internal data class AgentDataSummary(
     val settings: SystemSettingsDto,
 )
 
-@Serializable
-internal class StoredCodeData(
-    @Id val id: AgentBuildKey,
-    val data: List<ByteArray>,
-)
-
-@Serializable
-internal data class Metadata(
-    val countClass: Int = 0,
-    val classBytesSizeKb: Int = 0,
-) {
-    companion object {
-        val emptyMetadata = Metadata()
-    }
-}
 
 @Serializable
 internal class AgentMetadata(
     @Id val id: AgentBuildKey,
-    val data: Metadata = Metadata.emptyMetadata,
 )

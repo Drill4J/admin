@@ -62,6 +62,12 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
     private val cacheService by instance<CacheService>()
 
+    /**
+     * Receive data from agents
+     * @param agentInfo the information about the agent
+     * @param instanceId the agent instance ID
+     * @param pluginData the application data
+     */
     suspend fun processPluginData(
         agentInfo: AgentInfo,
         instanceId: String,
@@ -305,7 +311,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                                 adminStore.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
                                 buildManager.buildData(agentId).run {
                                     agentBuildManager.delete(buildVersion)
-                                    deleteClassBytes(AgentBuildKey(agentId, buildVersion))
                                 }
                                 (cacheService as? MapDBCacheService)?.clear(
                                     AgentCacheKey(pluginId, agentId),

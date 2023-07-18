@@ -31,6 +31,9 @@ import org.kodein.di.*
 import java.util.*
 import kotlin.time.*
 
+/**
+ * Sender of messages to the plugin
+ */
 class PluginSenders(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
@@ -39,7 +42,15 @@ class PluginSenders(override val di: DI) : DIAware {
     private val pluginCaches by instance<PluginCaches>()
     private val pluginSessions by instance<PluginSessions>()
 
+    /**
+     * Choose a sender for the plugin
+     * @param pluginId the plugin ID
+     * @return the sender for the plugin
+     */
     fun sender(pluginId: String): Sender = object : Sender {
+        /**
+         * Send a message to the plugin on the UI side
+         */
         override suspend fun send(context: SendContext, destination: Any, message: Any) {
             val dest = destination as? String ?: app.toLocation(destination).decodeURLPart()
             logger.trace { "send destination $dest for $destination" }
@@ -49,7 +60,6 @@ class PluginSenders(override val di: DI) : DIAware {
 
             //TODO EPMDJ-6817 replace with normal event removal.
             if (message == "") {
-                logger.trace { "Removed message by key $messageKey" }
                 pluginCache[dest] = ""
                 pluginStoresDSM(pluginId).let { store ->
                     withContext(Dispatchers.IO) {
@@ -81,6 +91,9 @@ class PluginSenders(override val di: DI) : DIAware {
             )
         }
 
+        /**
+         * Send an action to the plugin on the agent side
+         */
         override suspend fun sendAgentAction(agentId: String, pluginId: String, message: Any) {
             message.actionSerializerOrNull()?.let { serializer ->
                 val actionStr = serializer stringify message
