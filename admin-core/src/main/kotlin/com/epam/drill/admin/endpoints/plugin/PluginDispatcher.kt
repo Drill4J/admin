@@ -50,6 +50,7 @@ import mu.*
 import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
+import com.epam.drill.plugins.test2code.api.routes.Routes
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -104,7 +105,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     init {
         app.routing {
             plugins.forEach { (pluginId, plugin) ->
-                val pluginRouters = pluginRoutes(pluginId, plugin.pluginClass.classLoader)
+                val pluginRouters = pluginRoutes(pluginId)
                 logger.debug { "start register routes for '$pluginId' size ${pluginRouters.size} $pluginRouters..." }
                 pluginRouters.forEach { destination ->
                     createPluginGetRoute(destination)
@@ -347,15 +348,9 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
     }
 
-    private fun pluginRoutes(pluginId: String, classLoader: ClassLoader): List<String> {
+    private fun pluginRoutes(pluginId: String): List<String> {
         runCatching {
-            Class.forName(
-                "$PLUGIN_PACKAGE.$pluginId.api.routes.Routes",//todo remove hardcode
-                true,
-                classLoader
-            )?.let { apiRoutesClass ->
-                return findPluginRoutes(apiRoutesClass.kotlin)
-            }
+            return findPluginRoutes(Routes::class)
         }
         logger.warn { "Cannot find routes for plugin '$pluginId'" }
         return emptyList()

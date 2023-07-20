@@ -16,23 +16,18 @@
 package com.epam.drill.admin.plugins
 
 
-import com.epam.drill.*
-import com.epam.drill.admin.*
 import com.epam.drill.admin.config.*
-import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.common.*
-import com.epam.drill.plugin.api.end.*
-import com.epam.dsm.*
+import com.epam.dsm.util.id
 import io.ktor.application.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import mu.*
-import org.flywaydb.core.*
 import java.io.*
 import java.lang.System.*
-import java.util.jar.*
+import java.util.jar.JarFile
 import java.util.zip.*
+import com.epam.drill.plugins.test2code.Plugin as Test2CodePlugin
 
 private val logger = KotlinLogging.logger {}
 
@@ -54,33 +49,6 @@ class PluginLoaderService(
     init {
         runBlocking(Dispatchers.Default) {
             pluginStoragePath.mkdirs()
-            val remoteEnabled = application.drillConfig
-                .propertyOrNull("plugins.remote.enabled")?.getString()?.toBoolean() ?: false
-
-            val artifactoryName = application.drillConfig
-                .propertyOrNull("plugins.artifactory.name")?.getString() ?: ""
-
-            val allowedPlugins = application.drillConfig
-                .propertyOrNull("plugin.ids")?.getString()?.split(",")?.toSet() ?: defaultPlugins
-
-            if (remoteEnabled) {
-                val artifactory = runCatching {
-                    Artifactory.valueOf(artifactoryName)
-                }.onFailure {
-                    logger.warn {
-                        "Please make sure the artifactory name is correct:${
-                            Artifactory.values().joinToString()
-                        }"
-                    }
-                }.getOrNull() ?: Artifactory.GITHUB
-                val pluginLoaderJfrog = ArtifactoryPluginLoader(
-                    artifactory = artifactory,
-                    storageDir = pluginStoragePath,
-                    devMode = application.isDevMode
-                )
-                pluginLoaderJfrog.loadPlugins(allowedPlugins)
-            }
-
             try {
                 logger.info { "Searching for plugins in paths $pluginPaths" }
 
@@ -111,35 +79,21 @@ class PluginLoaderService(
                                 val pluginId = config.id
 
                                 if (pluginId !in plugins.keys) {
-                                    val adminPartFile = jar.extractPluginEntry(pluginId, "admin-part.jar")
                                     val agentFile = jar.extractPluginEntry(pluginId, "agent-part.jar")
-
-                                    if (adminPartFile != null && agentFile != null) {
-                                        migratePluginDb(
-                                            pluginId = pluginId,
-                                            adminPartFile = adminPartFile,
+                                    if (agentFile != null) {
+                                        val dp = Plugin(
+                                            pluginClass = Test2CodePlugin::class.java,
+                                            agentPartFiles = AgentPartFiles(
+                                                agentFile,
+                                                jar.extractPluginEntry(pluginId, "native_plugin.dll"),
+                                                jar.extractPluginEntry(pluginId, "libnative_plugin.so")
+                                            ),
+                                            pluginBean = config,
+                                            version = version
                                         )
-                                        val adminPartClass = JarFile(adminPartFile).use { adminJar ->
+                                        plugins[pluginId] = dp
+                                        logger.info { "Plugin '$pluginId' loaded, version '$version'" }
 
-                                            processAdminPart(adminPartFile, adminJar)
-                                        }
-
-                                        if (adminPartClass != null) {
-                                            val dp = Plugin(
-                                                pluginClass = adminPartClass,
-                                                agentPartFiles = AgentPartFiles(
-                                                    agentFile,
-                                                    jar.extractPluginEntry(pluginId, "native_plugin.dll"),
-                                                    jar.extractPluginEntry(pluginId, "libnative_plugin.so")
-                                                ),
-                                                pluginBean = config,
-                                                version = version
-                                            )
-                                            plugins[pluginId] = dp
-                                            logger.info { "Plugin '$pluginId' loaded, version '$version'" }
-                                        } else {
-                                            logger.warn { "Admin Plugin API class was not found for $pluginId" }
-                                        }
                                     }
                                 } else {
                                     logger.warn { "Plugin $pluginId has already been loaded. Skipping loading from $pluginFile." }
@@ -160,34 +114,6 @@ class PluginLoaderService(
 
     }
 
-    private fun processAdminPart(
-        adminPartFile: File, adminJar: JarFile,
-    ): Class<AdminPluginPart<*>>? {
-        val pluginClassLoader = PluginClassLoader(adminPartFile.toURI().toURL())
-        val entrySet = adminJar.entries().iterator().asSequence().toSet()
-        val pluginApiClass =
-            retrieveApiClass(AdminPluginPart::class.java, entrySet, pluginClassLoader)
-        @Suppress("UNCHECKED_CAST")
-        return pluginApiClass as? Class<AdminPluginPart<*>>
-    }
-
-    private suspend fun migratePluginDb(
-        pluginId: String,
-        adminPartFile: File,
-    ) {
-        val migrationDir = copyMigrationFilesFromJar(workDir, pluginId, adminPartFile)
-        val pluginStore = pluginStoresDSM(pluginId)
-        pluginStore.createProcedureIfTableExist()
-        val flyway = Flyway.configure()
-            .dataSource(hikariConfig.jdbcUrl, hikariConfig.username, hikariConfig.password)
-            .schemas(pluginStore.hikariConfig.schema)
-            .baselineOnMigrate(true)
-            .locations("filesystem:${migrationDir.absolutePath}")
-            .load()
-        flyway.migrate()
-        migrationDir.deleteRecursively()
-    }
-
 
     private fun ZipFile.extractPluginEntry(pluginId: String, entry: String): File? {
         val jarEntry: ZipEntry = getEntry(entry) ?: return null
@@ -202,29 +128,6 @@ class PluginLoaderService(
     }
 
 
-}
-
-fun copyMigrationFilesFromJar(
-    workDir: File,
-    pluginId: String,
-    adminPartFile: File,
-): File {
-    val migrationDir = workDir.resolve("db-migration").resolve(pluginId)
-    migrationDir.mkdirs()
-
-    val zipAdminPart = ZipFile(adminPartFile)
-    val migrationFiles = JarFile(adminPartFile).entries().iterator()
-        .asSequence()
-        .toSet()
-        .filter { it.name.endsWith(".sql") }
-    migrationFiles.forEach {
-        File(migrationDir, it.name.substringAfterLast("/")).apply {
-            outputStream().use { outputStream ->
-                zipAdminPart.getInputStream(zipAdminPart.getEntry(it.name)).copyTo(outputStream)
-            }
-        }
-    }
-    return migrationDir
 }
 
 private val nonStrictJson = Json { ignoreUnknownKeys = true }

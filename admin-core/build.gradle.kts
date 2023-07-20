@@ -65,6 +65,8 @@ dependencies {
     implementation(project(":plugin-api-admin"))
     implementation(project(":dsm"))
     implementation(project(":ktor-swagger"))
+    implementation(project(":test2code-admin"))
+    implementation(project(":test2code-api"))
 
     api(project(":dsm-annotations"))
 

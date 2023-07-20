@@ -37,7 +37,7 @@ class Plugins(
  * @param version the version of the plugin
  */
 data class Plugin(
-    val pluginClass: Class<AdminPluginPart<*>>,
+    val pluginClass: Class<out AdminPluginPart<*>>,
     val agentPartFiles: AgentPartFiles,
     val pluginBean: PluginMetadata,
     val version: String = "",
