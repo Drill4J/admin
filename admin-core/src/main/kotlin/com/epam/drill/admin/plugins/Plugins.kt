@@ -18,14 +18,14 @@ package com.epam.drill.admin.plugins
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import java.io.*
+import com.epam.drill.plugins.test2code.Plugin as Test2CodePlugin
 
 /**
  * Collection of plugins
  */
 class Plugins(
-    private val plugins: MutableMap<String, Plugin> = mutableMapOf(),
+    private val plugins: Map<String, Plugin> = mutableMapOf(),
 ) : Map<String, Plugin> by plugins {
-    operator fun set(k: String, v: Plugin) = plugins.put(k, v)
 }
 
 /**
@@ -38,25 +38,24 @@ class Plugins(
  */
 data class Plugin(
     val pluginClass: Class<out AdminPluginPart<*>>,
-    val agentPartFiles: AgentPartFiles,
     val pluginBean: PluginMetadata,
     val version: String = "",
 )
 
 /**
- * Agent part structure
+ * Embedded test2code plugin
  */
-data class AgentPartFiles(
-    val jar: File,
-    val windowsPart: File? = null,
-    val linuxPart: File? = null,
-)
-
-const val PLUGIN_PACKAGE = "com.epam.drill.plugins"
-
-val Plugin.agentPluginPart: File
-    get() = agentPartFiles.jar
-val Plugin.windowsPart: File?
-    get() = agentPartFiles.windowsPart
-val Plugin.linuxPar: File?
-    get() = agentPartFiles.linuxPart
+fun test2CodePlugin(): Plugin {
+    val pluginId = "test2code"
+    return Plugin(
+        pluginClass = Test2CodePlugin::class.java,
+        pluginBean = PluginMetadata(
+            id = pluginId,
+            name = "Test2Code",
+            description = "Test2Code plugin minimizes your regression suite via Test Impact Analytics by suggesting only affected subset of tests to run, and highlight  untested areas via Test Gap Analysis, providing evidence of how changes are tested and which areas and not tested at all.",
+            type = "Custom",
+            config = "{\"message\": \"hello from default plugin config... This is 'plugin_config.json file\"}"
+        ),
+        version = "version"
+    )
+}

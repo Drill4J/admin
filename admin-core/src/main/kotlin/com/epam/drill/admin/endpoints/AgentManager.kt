@@ -376,7 +376,6 @@ class AgentManager(override val di: DI) : DIAware {
                         buildManager.processInstance(agentId, instanceId) {
                             launch {
                                 ensurePluginInstance(agent, plugin)
-                                sendPlugin(plugin, updatedInfo).await()
                                 enablePlugin(pluginId, updatedInfo).await()
                             }
                         }
@@ -490,7 +489,6 @@ class AgentManager(override val di: DI) : DIAware {
                 buildManager.processInstance(info.id, instanceId) {
                     val settings = buildManager.buildData(id).settings
                     configurePackages(settings.packages)
-                    sendPlugins(info)
                     if (needClassSending) {
                         updateSessionHeader(settings.sessionIdHeaderName)
                         enableAllPlugins(info)
@@ -547,48 +545,6 @@ class AgentManager(override val di: DI) : DIAware {
         }
     }.filterNot { it.isCancelled }.mapTo(mutableSetOf()) { it.await() }
 
-    /**
-     * Send all plugin's byte data to the agent
-     * @param info the agent information
-     * @features Agent registration
-     */
-    private suspend fun AgentWsSession.sendPlugins(info: AgentInfo) {
-        val debugStr = info.debugString(instanceId)
-        logger.debug { "Sending ${info.plugins.count()} plugins to $debugStr" }
-        info.plugins.mapNotNull(plugins::get).map { pb ->
-            sendPlugin(pb, info)
-        }.forEach { it.await() }
-        logger.debug { "Sent plugins ${info.plugins} to $debugStr" }
-    }
-
-    /**
-     * Send the plugin's byte data to the agent
-     * @param plugin the information about the plugin
-     * @param agentInfo the information about the agent
-     * @return the deferred value of the future
-     * @features Agent registration
-     */
-    private suspend fun AgentWsSession.sendPlugin(
-        plugin: Plugin,
-        agentInfo: AgentInfo,
-    ): WsDeferred {
-        val pb = plugin.pluginBean
-        val debugStr = agentInfo.debugString(instanceId)
-        logger.info { "Sending plugin ${pb.id} to $debugStr" }
-        val data = if (agentInfo.agentType == AgentType.JAVA) {
-            plugin.agentPluginPart.readBytes()
-        } else byteArrayOf()
-        pb.checkSum = hex(sha1(data))
-        //TODO EPMDJ-8233 move to the api
-        return sendToTopic<Communication.Agent.PluginLoadEvent, com.epam.drill.common.PluginBinary>(
-            message = com.epam.drill.common.PluginBinary(pb, data),
-            topicName = "/agent/plugin/${pb.id}/loaded",
-            callback = { logger.debug { "Sent plugin ${pb.id} to $debugStr" } }
-        ).apply {
-            await()
-            logger.debug { "Sent data of plugin ${pb.id} to $debugStr" }
-        }
-    }
 
     internal fun agentsByGroup(groupId: String): List<Agent> = allEntries().filter {
         it.info.groupId == groupId

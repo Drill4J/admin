@@ -56,7 +56,7 @@ class PluginCaches(
         agentId: String,
         buildVersion: String,
         type: String,
-        pluginId: String = TEST2CODE,
+        pluginId: String = "test2code",
     ): Any = retrieveMessage(
         pluginId,
         AgentSubscription(agentId, buildVersion),
