@@ -239,41 +239,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
             }
 
             authenticate {
-                val meta = "Add new plugin"
-                    .examples(
-                        example("pluginId", PluginId("some plugin id"))
-                    )
-                    .responds(
-                        ok<String>(
-                            example("result", "Plugin was added")
-                        ), badRequest()
-                    )
-                post<ApiRoot.Agents.Plugins, PluginId>(meta) { params, pluginIdObject ->
-                    val (_, agentId) = params
-                    logger.debug { "Add new plugin for agent with id $agentId" }
-                    val (status, msg) = when (pluginIdObject.pluginId) {
-                        in plugins.keys -> {
-                            if (agentId in agentManager) {
-                                val agentInfo = agentManager[agentId]!!
-                                if (pluginIdObject.pluginId in agentInfo.plugins) {
-                                    HttpStatusCode.BadRequest to ErrorResponse(
-                                        "Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'"
-                                    )
-                                } else {
-                                    agentManager.addPlugins(agentInfo.id, setOf(pluginIdObject.pluginId))
-                                    HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
-                                }
-                            } else {
-                                HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
-                            }
-                        }
-                        else -> HttpStatusCode.BadRequest to ErrorResponse("Plugin ${pluginIdObject.pluginId} not found.")
-                    }
-                    logger.debug { msg }
-                    call.respond(status, msg)
-                }
-            }
-            authenticate {
                 val meta = "Toggle Plugin"
                     .responds(
                         ok<Unit>(), notFound()

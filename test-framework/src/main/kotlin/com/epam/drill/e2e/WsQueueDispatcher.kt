@@ -29,6 +29,7 @@ import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.api.*
+import com.epam.drill.common.PluginMetadata
 import com.epam.drill.plugin.api.message.*
 import com.epam.drill.plugin.api.processing.*
 import io.ktor.application.*
@@ -147,19 +148,14 @@ class Agent(
 ) {
     private val headers = Channel<Int>(Channel.UNLIMITED)
     private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
-    private val plugins = Channel<com.epam.drill.common.PluginBinary>(Channel.UNLIMITED)
 
     lateinit var plugin: AgentPart<*>
 
     suspend fun getHeaders() = headers.receive()
 
-    suspend fun getLoadedPlugin(block: suspend (com.epam.drill.common.PluginMetadata, ByteArray) -> Unit) {
-        val (meta, data) = plugins.receive()
-        block(meta, data)
-    }
-
-    suspend fun loaded(pluginId: String) {
-        sendDelivered("/agent/plugin/$pluginId/loaded")
+    suspend fun getLoadedPlugin(block: suspend (PluginMetadata) -> Unit) {
+        val meta = PluginMetadata(id = "test-plugin")
+        block(meta)
     }
 
     suspend fun toggled(pluginId: String) {
@@ -199,15 +195,6 @@ class Agent(
                     when (mapw[url]) {
                         is Communication.Agent.SetPackagePrefixesEvent -> {
                             `set-packages-prefixes`.send(content.decodeToString())
-                            sendDelivered(url)
-                        }
-                        is Communication.Agent.PluginLoadEvent -> {
-                            plugins.send(
-                                ProtoBuf.load(
-                                    com.epam.drill.common.PluginBinary.serializer(),
-                                    content
-                                )
-                            )
                             sendDelivered(url)
                         }
                         is Communication.Agent.ChangeHeaderNameEvent -> {

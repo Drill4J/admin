@@ -28,6 +28,7 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.e2e.testPluginServices
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.dsm.test.*
@@ -73,7 +74,7 @@ class PluginWsTest {
         TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
-            withKModule { kodeinModule("pluginServices", pluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices) }
             withKModule {
                 kodeinModule("test") {
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }

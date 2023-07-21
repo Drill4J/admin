@@ -90,13 +90,6 @@ class ApiRoot(val prefix: String = "api") {
         @Location("/{agentId}/parameters")
         data class Parameters(val parent: Agents, val agentId: String)
 
-        @Group(AGENT_PLUGIN)
-        @Location("/{agentId}/plugins")
-        data class Plugins(val parent: Agents, val agentId: String)
-
-        @Group(AGENT_PLUGIN)
-        @Location("/{agentId}/plugins/{pluginId}")
-        data class Plugin(val parent: Agents, val agentId: String, val pluginId: String)
 
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/dispatch-action")
