@@ -40,21 +40,9 @@ import io.ktor.websocket.*
 import org.kodein.di.*
 import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
+import com.epam.drill.admin.plugins.test2CodePlugin
 
-val testPluginServices: DI.Builder.(Application) -> Unit = { application ->
-    bind<Plugins>() with singleton { Plugins(mapOf("test-plugin" to testPlugin())) }
-    bind<PluginCaches>() with singleton {
-        PluginCaches(
-            application,
-            instance(),
-            instance()
-        )
-    }
-    bind<PluginSessions>() with singleton { PluginSessions(instance()) }
-    bind<PluginSenders>() with singleton { PluginSenders(di) }
-}
-
-class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
+class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
 
@@ -84,7 +72,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
         enableSwaggerSupport()
 
         kodeinApplication(AppBuilder {
-            withKModule { kodeinModule("pluginServices", testPluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices(useTest2CodePlugin)) }
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
@@ -109,6 +97,22 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
             storeManager.close()
         }
     }
+}
+
+fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Application) -> Unit = { application ->
+    if (useTest2CodePlugin)
+        bind<Plugins>() with singleton { Plugins(mapOf("test2Code" to test2CodePlugin())) }
+    else
+        bind<Plugins>() with singleton { Plugins(mapOf("test-plugin" to testPlugin())) }
+    bind<PluginCaches>() with singleton {
+        PluginCaches(
+            application,
+            instance(),
+            instance()
+        )
+    }
+    bind<PluginSessions>() with singleton { PluginSessions(instance()) }
+    bind<PluginSenders>() with singleton { PluginSenders(di) }
 }
 
 private fun testPlugin(): Plugin {

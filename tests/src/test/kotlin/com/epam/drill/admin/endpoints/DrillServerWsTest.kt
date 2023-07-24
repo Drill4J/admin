@@ -76,7 +76,7 @@ internal class DrillServerWsTest {
         TestDatabaseContainer.startOnce()
         hikariConfig = TestDatabaseContainer.createDataSource()
         kodeinApplication(AppBuilder {
-            withKModule { kodeinModule("pluginServices", testPluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices()) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {

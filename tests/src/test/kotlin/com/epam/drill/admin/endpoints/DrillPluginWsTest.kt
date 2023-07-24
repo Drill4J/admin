@@ -74,7 +74,7 @@ class PluginWsTest {
         TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
-            withKModule { kodeinModule("pluginServices", testPluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices()) }
             withKModule {
                 kodeinModule("test") {
                     bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
