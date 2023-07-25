@@ -101,7 +101,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
 
 fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Application) -> Unit = { application ->
     if (useTest2CodePlugin)
-        bind<Plugins>() with singleton { Plugins(mapOf("test2Code" to test2CodePlugin())) }
+        bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
     else
         bind<Plugins>() with singleton { Plugins(mapOf("test-plugin" to testPlugin())) }
     bind<PluginCaches>() with singleton {
