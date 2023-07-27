@@ -49,12 +49,11 @@ class AgentHandler(override val di: DI) : DIAware{
     private val agentManager by instance<AgentManager>()
     private val buildManager by instance<BuildManager>()
     private val pd by instance<PluginDispatcher>()
-    private val topicResolver by instance<TopicResolver>()
 
     init {
         app.routing {
             agentWebsocket("/agent/attach") {
-                val (agentConfig, needSync) = call.request.retrieveParams()
+                val agentConfig = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
                     com.epam.drill.common.AgentType.NODEJS -> FrameType.TEXT
                     else -> FrameType.BINARY
@@ -67,7 +66,7 @@ class AgentHandler(override val di: DI) : DIAware{
                     agentConfig.instanceId
                 )
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
-                    agentManager.attach(agentConfig, needSync, agentSession)
+                    agentManager.attach(agentConfig, agentSession)
                 }
                 agentSession.createWsLoop(
                     agentInfo,
@@ -85,7 +84,6 @@ class AgentHandler(override val di: DI) : DIAware{
     private suspend fun AgentWsSession.createWsLoop(agentInfo: AgentInfo, useCompression: Boolean) {
         val agentDebugStr = agentInfo.debugString(instanceId)
         try {
-            val buildData = buildManager.buildData(agentInfo.id)
             incoming.consumeEach { frame ->
                 when (frame) {
                     is Frame.Binary -> runCatching {
@@ -94,7 +92,7 @@ class AgentHandler(override val di: DI) : DIAware{
                             val frameBytes = if (useCompression) {
                                 Zstd.decompress(bytes)
                             } else bytes
-                            BinaryMessage(ProtoBuf.load(com.epam.drill.common.Message.serializer(), frameBytes))
+                            BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
                     }.onFailure {
                         logger.error(it) { "Error processing $frame." }
@@ -127,7 +125,7 @@ class AgentHandler(override val di: DI) : DIAware{
                                 logger.warn { "Message with type '${message.type}' is not supported yet" }
                             }
                         }
-                    } ?: logger.warn { "Not supported frame type: ${frame.frameType}" }
+                    }
                 }
             }
         } catch (ex: Exception) {
@@ -142,11 +140,10 @@ class AgentHandler(override val di: DI) : DIAware{
     }
 }
 
-private fun ApplicationRequest.retrieveParams(): Pair<CommonAgentConfig, Boolean> {
+private fun ApplicationRequest.retrieveParams(): CommonAgentConfig {
     val configStr = headers[com.epam.drill.common.AgentConfigParam]!!
     val agentConfig = if (configStr.startsWith('{')) {
         CommonAgentConfig.serializer() parse configStr
     } else ProtoBuf.loads(CommonAgentConfig.serializer(), configStr)
-    val needSync = headers[com.epam.drill.common.NeedSyncParam]!!.toBoolean()
-    return agentConfig to needSync
+    return agentConfig
 }

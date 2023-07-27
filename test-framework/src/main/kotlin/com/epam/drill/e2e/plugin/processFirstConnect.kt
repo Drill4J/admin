@@ -105,7 +105,6 @@ fun AdminTest.processFirstConnect(
                 out,
                 st,
                 pluginTestInfo,
-                pluginMeta,
                 build
             )
             ui.getAgent()

@@ -27,7 +27,6 @@ data class AgentAsyncStruct(
 data class ThenAgentAsyncStruct(
     val ag: AgentWrap,
     val build: Build,
-    val needSync: Boolean,
     val callback: suspend PluginTestContext.(Any, Any) -> Unit
 )
 

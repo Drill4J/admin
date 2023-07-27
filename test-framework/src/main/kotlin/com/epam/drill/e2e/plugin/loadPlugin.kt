@@ -44,10 +44,7 @@ suspend fun AdminTest.loadPlugin(
     out: SendChannel<Frame>,
     st: PluginStreams,
     pluginTestInfo: PluginTestContext,
-    pluginMeta: PluginMetadata,
-    build: Build,
-    random: Boolean = false,
-    needSync: Boolean = true
+    build: Build
 ) {
     agentStreamer.getLoadedPlugin { meta ->
 
@@ -105,9 +102,7 @@ suspend fun AdminTest.loadPlugin(
             )
         )
 
-        spykAgentPart.setEnabled(true)
-        spykAgentPart.updateRawConfig(pluginMeta.config)
-        spykAgentPart.initPlugin()
+        spykAgentPart.load()
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw

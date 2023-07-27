@@ -40,7 +40,7 @@ fun AdminTest.processThens(
     globLaunch: Job,
     uts: SendChannel<Frame>
 ) {
-    thens.forEach { (ag, build, needSync, it) ->
+    thens.forEach { (ag, build, it) ->
         val classes = File("./build/classes/java/${build.name}")
             .walkTopDown()
             .filter { it.extension == "class" }
@@ -89,10 +89,7 @@ fun AdminTest.processThens(
                     out,
                     st,
                     pluginTestInfo,
-                    pluginMeta,
-                    build,
-                    true,
-                    needSync
+                    build
                 )
                 waitForBuildOnline(ui, build.version)
                 it(pluginTestInfo, st, build)

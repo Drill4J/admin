@@ -332,6 +332,5 @@ data class AgentWrap(
     val instanceId: String = id + "1",
     val buildVersion: String = "0.1.0",
     val groupId: String = "",
-    val needSync: Boolean = true,
     val agentType: AgentType = AgentType.JAVA,
 )

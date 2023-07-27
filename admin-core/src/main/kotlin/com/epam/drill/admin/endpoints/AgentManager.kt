@@ -19,7 +19,6 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
-import com.epam.drill.admin.agent.plugin.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.cache.*
@@ -40,7 +39,6 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.dsm.*
 import com.epam.dsm.find.*
 import io.ktor.application.*
-import io.ktor.util.*
 import kotlinx.coroutines.*
 import mu.*
 import org.kodein.di.*
@@ -153,7 +151,6 @@ class AgentManager(override val di: DI) : DIAware {
      * Actions taken when establishing a connection with an agent
      *
      * @param config the configuration of the agent
-     * @param needSync the sign of the need to synchronize information about the agent with the agent
      * @param session the current WebSocket session of the agent
      * @return the agent information
      *
@@ -161,10 +158,9 @@ class AgentManager(override val di: DI) : DIAware {
      */
     internal suspend fun attach(
         config: CommonAgentConfig,
-        needSync: Boolean,
         session: AgentWsSession,
     ): AgentInfo {
-        logger.info { "Attaching agent: needSync=$needSync, config=$config" }
+        logger.info { "Attaching agent: config=$config" }
         val id = config.id
         configHandler.store(id, config.parameters)
         //todo implement merge of params in EPMDJ-8124
@@ -194,10 +190,6 @@ class AgentManager(override val di: DI) : DIAware {
                 notifySingleAgent(id)
                 notifyAllAgents()
                 currentInfo.plugins.initPlugins(existingAgent)
-                if (needSync) app.launch {
-                    currentInfo.sync(config.instanceId) // sync only existing info!
-                    session.syncPluginState()
-                }
                 currentInfo.persistToDatabase()
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
                 currentInfo
@@ -223,7 +215,6 @@ class AgentManager(override val di: DI) : DIAware {
                 buildManager.notifyBuild(agentBuildKey)
                 existingInfo?.plugins?.initPlugins(entry) // first
                 app.launch {
-                    existingInfo?.takeIf { needSync }?.sync(config.instanceId, true) // sync only existing info!
                     if (isNewBuild && currentInfo != null) {
                         notificationsManager.saveNewBuildNotification(info)
                     }
