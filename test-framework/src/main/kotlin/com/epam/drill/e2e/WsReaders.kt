@@ -35,11 +35,9 @@ fun wsRequestRequiredParams(
                     ag.buildVersion,
                     ag.groupId,
                     AgentType.valueOf(ag.agentType.name),
-                    ag.buildVersion,
-                    ag.needSync
+                    ag.buildVersion
                 )
             )
         )
-        this.addHeader(NeedSyncParam, ag.needSync.toString())
     }
 }

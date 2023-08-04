@@ -21,7 +21,13 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.plugin.PluginCaches
+import com.epam.drill.admin.plugin.PluginSenders
+import com.epam.drill.admin.plugin.PluginSessions
+import com.epam.drill.admin.plugins.Plugin
+import com.epam.drill.admin.plugins.Plugins
 import com.epam.drill.admin.store.*
+import com.epam.drill.common.PluginMetadata
 import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
@@ -33,8 +39,10 @@ import io.ktor.locations.*
 import io.ktor.websocket.*
 import org.kodein.di.*
 import java.io.*
+import com.epam.drill.admin.plugins.coverage.TestAdminPart
+import com.epam.drill.admin.plugins.test2CodePlugin
 
-class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
+class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
     lateinit var storeManager: StoreClient
 
@@ -64,8 +72,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
         enableSwaggerSupport()
 
         kodeinApplication(AppBuilder {
-
-            withKModule { kodeinModule("pluginServices", pluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices(useTest2CodePlugin)) }
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule { kodeinModule("handlers", handlers) }
@@ -90,4 +97,35 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long) {
             storeManager.close()
         }
     }
+}
+
+fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Application) -> Unit = { application ->
+    if (useTest2CodePlugin)
+        bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
+    else
+        bind<Plugins>() with singleton { Plugins(mapOf("test-plugin" to testPlugin())) }
+    bind<PluginCaches>() with singleton {
+        PluginCaches(
+            application,
+            instance(),
+            instance()
+        )
+    }
+    bind<PluginSessions>() with singleton { PluginSessions(instance()) }
+    bind<PluginSenders>() with singleton { PluginSenders(di) }
+}
+
+private fun testPlugin(): Plugin {
+    val pluginId = "test-plugin"
+    return Plugin(
+        pluginClass = TestAdminPart::class.java,
+        pluginBean = PluginMetadata(
+            id = pluginId,
+            name = "Test plugin",
+            description = "This is the test plugin",
+            type = "Custom",
+            config = "{\"message\": \"temp message\"}"
+        ),
+        version = "version"
+    )
 }

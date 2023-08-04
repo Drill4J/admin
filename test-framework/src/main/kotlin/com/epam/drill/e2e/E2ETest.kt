@@ -73,7 +73,7 @@ abstract class E2ETest : AdminTest() {
     fun createSimpleAppWithUIConnection(
         uiStreamDebug: Boolean = false,
         agentStreamDebug: Boolean = false,
-        timeout: Duration = Duration.seconds(7),
+        timeout: Duration = Duration.seconds(70),
         delayBeforeClearData: Long = 0,
         block: suspend () -> Unit,
     ) {
@@ -221,24 +221,6 @@ abstract class E2ETest : AdminTest() {
         return this
     }
 
-    fun AsyncTestAppEngine.addPlugin(
-        agentId: String,
-        payload: PluginId,
-        token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-    ) =
-        callAsync(context) {
-            with(engine) {
-                handleRequest(
-                    HttpMethod.Post,
-                    toApiUri(agentApi { ApiRoot.Agents.Plugins(it, agentId) })
-                ) {
-                    addHeader(HttpHeaders.Authorization, "Bearer $token")
-                    addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    setBody(PluginId.serializer() stringify payload)
-                }.apply { resultBlock(response.status(), response.content) }
-            }
-        }
 
     fun AsyncTestAppEngine.unregister(
         agentId: String,
@@ -255,24 +237,6 @@ abstract class E2ETest : AdminTest() {
                 }.apply { resultBlock(response.status(), response.content) }
             }
         }
-
-    fun AsyncTestAppEngine.unLoadPlugin(
-        agentId: String,
-        payload: PluginId,
-        token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-    ) {
-        callAsync(context) {
-            with(engine) {
-                handleRequest(
-                    HttpMethod.Delete,
-                    toApiUri(agentApi { ApiRoot.Agents.Plugin(it, agentId, payload.pluginId) })
-                ) {
-                    addHeader(HttpHeaders.Authorization, "Bearer $token")
-                }.apply { resultBlock(response.status(), response.content) }
-            }
-        }
-    }
 
     fun AsyncTestAppEngine.togglePlugin(
         agentId: String,
@@ -368,6 +332,5 @@ data class AgentWrap(
     val instanceId: String = id + "1",
     val buildVersion: String = "0.1.0",
     val groupId: String = "",
-    val needSync: Boolean = true,
     val agentType: AgentType = AgentType.JAVA,
 )

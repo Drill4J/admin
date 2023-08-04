@@ -39,8 +39,9 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
     agentStreamDebug: Boolean,
     context: CompletableJob,
     delayBeforeClearData: Long,
+    useTest2CodePlugin: Boolean,
 ) {
-    val appConfig = AppConfig(projectDir, delayBeforeClearData)
+    val appConfig = AppConfig(projectDir, delayBeforeClearData, useTest2CodePlugin)
     val testApp = appConfig.testApp
     var coroutineException: Throwable? = null
     val handler = CoroutineExceptionHandler { _, exception -> coroutineException = exception } + context

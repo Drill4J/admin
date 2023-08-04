@@ -31,6 +31,7 @@ import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
+import com.epam.drill.e2e.testPluginServices
 import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -75,7 +76,7 @@ internal class DrillServerWsTest {
         TestDatabaseContainer.startOnce()
         hikariConfig = TestDatabaseContainer.createDataSource()
         kodeinApplication(AppBuilder {
-            withKModule { kodeinModule("pluginServices", pluginServices) }
+            withKModule { kodeinModule("pluginServices", testPluginServices()) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
                 kodeinModule("test") {

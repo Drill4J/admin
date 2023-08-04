@@ -54,45 +54,6 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
 
     init {
         app.routing {
-            authenticate {
-                val meta = "Unload plugin"
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-                delete<ApiRoot.Agents.Plugin>(meta) { payload ->
-                    val (_, agentId, pluginId) = payload
-                    logger.debug { "Unload plugin with id $pluginId for agent with id $agentId" }
-                    val drillAgent = buildManager.agentSessions(agentId)
-                    val agentPluginPartFile = plugins[pluginId]?.agentPluginPart
-
-                    val (status, response) = when {
-                        drillAgent.isEmpty() -> {
-                            logger.warn { "Drill agent is absent" }
-                            HttpStatusCode.NotFound to ErrorResponse("Can't find the agent '$agentId'")
-                        }
-                        agentPluginPartFile == null -> {
-                            logger.warn { "Agent plugin part file is absent" }
-                            HttpStatusCode.NotFound to ErrorResponse("Can't find the plugin '$pluginId' in the agent '$agentId'")
-                        }
-                        else -> {
-                            drillAgent.applyEach {
-                                send(
-                                    Message.serializer() stringify Message(
-                                        MessageType.MESSAGE,
-                                        "/plugins/unload",
-                                        pluginId.encodeToByteArray()
-                                    )
-                                )
-                            }
-                            logger.info { "Unload plugin with id $pluginId for agent with id $agentId was successfully" }
-                            //TODO: implement the agent-side plugin unloading, remove plugin from AgentInfo
-                            HttpStatusCode.OK to EmptyContent
-                        }
-                    }
-                    call.respond(status, response)
-                }
-
-            }
 
             authenticate {
                 val meta = "Agent Toggle StandBy"

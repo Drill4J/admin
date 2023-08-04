@@ -56,7 +56,7 @@ class PluginCaches(
         agentId: String,
         buildVersion: String,
         type: String,
-        pluginId: String = TEST2CODE,
+        pluginId: String = "test2code",
     ): Any = retrieveMessage(
         pluginId,
         AgentSubscription(agentId, buildVersion),
@@ -71,10 +71,7 @@ class PluginCaches(
         val dest = destination.urlDecode()
         cache[dest] ?: run {
             val messageKey = subscription.toKey(dest)
-            val classLoader = plugins[pluginId]?.run {
-                pluginClass.classLoader
-            } ?: Thread.currentThread().contextClassLoader
-            val messageFromStore = pluginStoresDSM(pluginId).readMessage(messageKey, classLoader) ?: ""
+            val messageFromStore = pluginStoresDSM(pluginId).readMessage(messageKey) ?: ""
             logger.trace { "retrieveMessage set to cache $dest for $messageKey" }
             messageFromStore.also { cache[dest] = it }
         }

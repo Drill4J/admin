@@ -50,6 +50,7 @@ import mu.*
 import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
+import com.epam.drill.plugins.test2code.api.routes.Routes
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -104,7 +105,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     init {
         app.routing {
             plugins.forEach { (pluginId, plugin) ->
-                val pluginRouters = pluginRoutes(pluginId, plugin.pluginClass.classLoader)
+                val pluginRouters = pluginRoutes(pluginId)
                 logger.debug { "start register routes for '$pluginId' size ${pluginRouters.size} $pluginRouters..." }
                 pluginRouters.forEach { destination ->
                     createPluginGetRoute(destination)
@@ -238,41 +239,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
             }
 
             authenticate {
-                val meta = "Add new plugin"
-                    .examples(
-                        example("pluginId", PluginId("some plugin id"))
-                    )
-                    .responds(
-                        ok<String>(
-                            example("result", "Plugin was added")
-                        ), badRequest()
-                    )
-                post<ApiRoot.Agents.Plugins, PluginId>(meta) { params, pluginIdObject ->
-                    val (_, agentId) = params
-                    logger.debug { "Add new plugin for agent with id $agentId" }
-                    val (status, msg) = when (pluginIdObject.pluginId) {
-                        in plugins.keys -> {
-                            if (agentId in agentManager) {
-                                val agentInfo = agentManager[agentId]!!
-                                if (pluginIdObject.pluginId in agentInfo.plugins) {
-                                    HttpStatusCode.BadRequest to ErrorResponse(
-                                        "Plugin '${pluginIdObject.pluginId}' is already in agent '$agentId'"
-                                    )
-                                } else {
-                                    agentManager.addPlugins(agentInfo.id, setOf(pluginIdObject.pluginId))
-                                    HttpStatusCode.OK to "Plugin '${pluginIdObject.pluginId}' was added to agent '$agentId'"
-                                }
-                            } else {
-                                HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
-                            }
-                        }
-                        else -> HttpStatusCode.BadRequest to ErrorResponse("Plugin ${pluginIdObject.pluginId} not found.")
-                    }
-                    logger.debug { msg }
-                    call.respond(status, msg)
-                }
-            }
-            authenticate {
                 val meta = "Toggle Plugin"
                     .responds(
                         ok<Unit>(), notFound()
@@ -347,15 +313,9 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
     }
 
-    private fun pluginRoutes(pluginId: String, classLoader: ClassLoader): List<String> {
+    private fun pluginRoutes(pluginId: String): List<String> {
         runCatching {
-            Class.forName(
-                "$PLUGIN_PACKAGE.$pluginId.api.routes.Routes",//todo remove hardcode
-                true,
-                classLoader
-            )?.let { apiRoutesClass ->
-                return findPluginRoutes(apiRoutesClass.kotlin)
-            }
+            return findPluginRoutes(Routes::class)
         }
         logger.warn { "Cannot find routes for plugin '$pluginId'" }
         return emptyList()

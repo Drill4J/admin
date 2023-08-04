@@ -40,15 +40,6 @@ class PluginLoadTest : E2ETest() {
                 ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
                 ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 agent.`get-set-packages-prefixes`()
-
-                addPlugin(agentId, testPlugin) { status, _ ->
-                    status shouldBe HttpStatusCode.OK
-                }
-                agent.getLoadedPlugin { metadata, file ->
-                    hex(sha1(file)) shouldBe metadata.checkSum
-                    agent.loaded(metadata.id)
-                }
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
                 ui.getAgent()?.apply {
                     agentStatus shouldBe AgentStatus.REGISTERED
                     activePluginsCount shouldBe 1

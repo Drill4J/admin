@@ -76,7 +76,7 @@ internal fun AgentInfo.toDto(
         environment = environment,
         agentStatus = agentStatus,
         adminUrl = adminUrl,
-        activePluginsCount = plugins.activePluginsCount(),
+        activePluginsCount = plugins.count(),
         agentType = agentType.notation,
         plugins = plugins.mapToDto().toSet(),
     )
@@ -112,8 +112,6 @@ internal fun AgentInfo.toAgentBuildKey() = AgentBuildKey(id, build.version)
 internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
     block(it)
 }
-
-private fun Iterable<Plugin>.activePluginsCount(): Int = count { it.pluginBean.enabled }
 
 internal fun AgentInfo.debugString(
     instanceId: String,

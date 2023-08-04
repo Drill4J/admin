@@ -36,60 +36,17 @@ abstract class E2EPluginTest : AdminTest() {
         agentStreamDebug: Boolean = false,
         timeout: Long = 20,
         delayBeforeClearData: Long = 0,
+        useTest2CodePlugin: Boolean = false,
         noinline block: suspend TestContext<X>.() -> Unit,
     ) = runBlocking {
         val context = SupervisorJob()
         val timeoutJob = createTimeoutJob(Duration.seconds(timeout), context)
-        pluginRun(X::class, block, uiStreamDebug, agentStreamDebug, context, delayBeforeClearData)
+        pluginRun(X::class, block, uiStreamDebug, agentStreamDebug, context, delayBeforeClearData, useTest2CodePlugin)
         timeoutJob.cancel()
     }
 
 }
 
-fun AdminTest.addPlugin(
-    agentId: String,
-    payload: PluginId,
-    token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-) = callAsync(asyncEngine.context) {
-    engine.handleRequest(
-        HttpMethod.Post,
-        engine.toApiUri(agentApi { ApiRoot.Agents.Plugins(it, agentId) })
-    ) {
-        addHeader(HttpHeaders.Authorization, "Bearer $token")
-        setBody(PluginId.serializer() stringify payload)
-    }.apply { resultBlock(response.status(), response.content) }
-}
-
-fun AdminTest.unRegister(
-    agentId: String,
-    token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-) =
-    callAsync(asyncEngine.context) {
-        engine.handleRequest(
-            HttpMethod.Delete,
-            engine.toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.apply { resultBlock(response.status(), response.content) }
-    }
-
-fun AdminTest.unLoadPlugin(
-    agentId: String,
-    payload: PluginId,
-    token: String = globToken,
-    resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-) {
-    callAsync(asyncEngine.context) {
-        engine.handleRequest(
-            HttpMethod.Delete,
-            engine.toApiUri(agentApi { ApiRoot.Agents.Plugin(it, agentId, payload.pluginId) })
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-        }.apply { resultBlock(response.status(), response.content) }
-    }
-}
 
 fun AdminTest.togglePlugin(
     agentId: String,

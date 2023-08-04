@@ -13,18 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.plugin
+package com.epam.drill.plugins.test2code
 
-import mu.*
-import java.net.*
+internal class RuntimeConfig(private val pluginId: String) {
+    val realtime: Boolean = sysProp("features.realtime")?.toBoolean() ?: true
 
+    val sendPackages: Boolean = sysProp("send.packages")?.toBoolean() ?: true
 
-private val logger = KotlinLogging.logger {}
-
-class PluginClassLoader(url: URL) : URLClassLoader(arrayOf(url)) {
-
-    override fun findClass(name: String?): Class<*> {
-        logger.trace { "Loading $name" }
-        return super.findClass(name)
-    }
+    private fun sysProp(key: String): String? = System.getProperty("drill.plugins.$pluginId.$key")
 }

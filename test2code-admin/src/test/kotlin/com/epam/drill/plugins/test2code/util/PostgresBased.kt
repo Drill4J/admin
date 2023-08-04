@@ -13,20 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.agent.plugin
+package com.epam.drill.plugins.test2code.util
 
-import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.api.*
-import kotlinx.serialization.Serializable
+import com.epam.dsm.*
+import com.epam.dsm.test.*
+import org.junit.jupiter.api.*
+import kotlin.test.*
 
-@Serializable
-@Topic("/plugin/state")
-class PluginState
+abstract class PostgresBased(schema: String) {
+    val storeClient = StoreClient(TestDatabaseContainer.createDataSource(schema = schema))
 
-/**
- * Send a command to synchronize sessions between the agent and the admin
- * @features Agent attaching
- */
-suspend fun AgentWsSession.syncPluginState() {
-    sendToTopic<PluginState, String>("")
+    @AfterTest
+    fun after() {
+        TestDatabaseContainer.clearData()
+    }
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        fun postgresSetup() {
+            TestDatabaseContainer.startOnce()
+        }
+    }
 }

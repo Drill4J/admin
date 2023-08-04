@@ -18,6 +18,7 @@ package com.epam.drill.e2e.plugin
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugins.coverage.TestAgentPart
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
 import com.epam.drill.common.classloading.EntitySource
@@ -43,43 +44,14 @@ suspend fun AdminTest.loadPlugin(
     out: SendChannel<Frame>,
     st: PluginStreams,
     pluginTestInfo: PluginTestContext,
-    pluginMeta: PluginMetadata,
-    build: Build,
-    random: Boolean = false,
-    needSync: Boolean = true
+    build: Build
 ) {
-    lateinit var bs: ByteArray
-    agentStreamer.getLoadedPlugin { meta, file ->
-        hex(file)
-        bs = file
+    agentStreamer.getLoadedPlugin { meta ->
 
         val memoryClassLoader = MemoryClassLoader()
 
-        val agentDir = projectDir.resolve(ag.id)
-        agentDir.mkdirs()
-        val agentJar = agentDir.resolve("ag-part.jar")
-        agentJar.writeBytes(bs)
 
-        val clazz = withContext(Dispatchers.IO) {
-            JarFile(agentJar).use { jarFile ->
-                JarInputStream(FileInputStream(agentJar)).use { jarInputStream ->
-                    val sequence = sequence {
-                        var nextJarEntry = jarInputStream.nextJarEntry
-                        do {
-                            yield(nextJarEntry)
-                            nextJarEntry = jarInputStream.nextJarEntry
-                        } while (nextJarEntry != null)
-                    }
-
-                    val toSet = sequence.toSet()
-                    memoryClassLoader.clazz(
-                        if (random) ag.id + UUID.randomUUID().toString().substring(0..3) else ag.id,
-                        toSet,
-                        jarFile
-                    )
-                }
-            }
-        }
+        val clazz = TestAgentPart::class.java
 
         val agentData = AgentDatum(classMap)
         val declaredConstructor = clazz.getDeclaredConstructor(
@@ -130,10 +102,7 @@ suspend fun AdminTest.loadPlugin(
             )
         )
 
-        spykAgentPart.setEnabled(true)
-        spykAgentPart.updateRawConfig(pluginMeta.config)
-        spykAgentPart.initPlugin()
-        agentStreamer.loaded(meta.id)
+        spykAgentPart.load()
         spykAgentPart.on()
 
         pluginTestInfo.lis = memoryClassLoader.sw
