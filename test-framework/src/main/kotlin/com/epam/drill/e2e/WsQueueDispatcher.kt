@@ -15,7 +15,6 @@
  */
 package com.epam.drill.e2e
 
-import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.group.*
 import com.epam.drill.admin.api.plugin.*
@@ -206,7 +205,7 @@ class Agent(
 
                         is Communication.Plugin.DispatchEvent -> {
                             val message = ProtoBuf.load(
-                                com.epam.drill.common.agent.PluginAction.serializer(),
+                                com.epam.drill.common.ws.dto.PluginAction.serializer(),
                                 content
                             )
                             plugin.doRawAction(message.message)
@@ -214,7 +213,7 @@ class Agent(
                             sendDelivered(url)
                         }
                         is Communication.Plugin.ToggleEvent -> {
-                            val pluginId = ProtoBuf.load(com.epam.drill.common.agent.TogglePayload.serializer(), content).pluginId
+                            val pluginId = ProtoBuf.load(com.epam.drill.common.ws.dto.TogglePayload.serializer(), content).pluginId
                             toggled(pluginId)
                             sendDelivered(url)
                         }

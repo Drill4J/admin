@@ -16,7 +16,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.common.agent.*
+import com.epam.drill.common.agent.configuration.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.protobuf.*
 
@@ -26,7 +26,7 @@ fun wsRequestRequiredParams(
 ): TestApplicationRequest.() -> Unit {
     return {
         this.addHeader(
-            AgentConfigParam,
+            HEADER_AGENT_CONFIG,
             ProtoBuf.dumps(
                 AgentConfig.serializer(),
                 AgentConfig(

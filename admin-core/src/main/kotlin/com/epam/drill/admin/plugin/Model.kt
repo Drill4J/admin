@@ -18,8 +18,8 @@ package com.epam.drill.admin.plugin
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
-typealias PluginAction = com.epam.drill.common.agent.PluginAction
-typealias TogglePayload = com.epam.drill.common.agent.TogglePayload
+typealias PluginAction = com.epam.drill.common.ws.dto.PluginAction
+typealias TogglePayload = com.epam.drill.common.ws.dto.TogglePayload
 
 //todo EPMDJ-10291 remove additional action from admin
 @Serializable

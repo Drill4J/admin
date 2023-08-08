@@ -25,7 +25,7 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
-import com.epam.drill.common.agent.*
+import com.epam.drill.common.agent.configuration.*
 import com.epam.drill.common.message.Message
 import com.epam.drill.common.message.MessageType
 import io.ktor.application.*
@@ -143,7 +143,7 @@ class AgentHandler(override val di: DI) : DIAware{
 }
 
 private fun ApplicationRequest.retrieveParams(): CommonAgentConfig {
-    val configStr = headers[AgentConfigParam]!!
+    val configStr = headers[HEADER_AGENT_CONFIG]!!
     val agentConfig = if (configStr.startsWith('{')) {
         CommonAgentConfig.serializer() parse configStr
     } else ProtoBuf.loads(CommonAgentConfig.serializer(), configStr)
