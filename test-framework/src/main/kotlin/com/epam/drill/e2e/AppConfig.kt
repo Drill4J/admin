@@ -22,12 +22,12 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.PluginCaches
+import com.epam.drill.admin.plugin.PluginMetadata
 import com.epam.drill.admin.plugin.PluginSenders
 import com.epam.drill.admin.plugin.PluginSessions
 import com.epam.drill.admin.plugins.Plugin
 import com.epam.drill.admin.plugins.Plugins
 import com.epam.drill.admin.store.*
-import com.epam.drill.common.PluginMetadata
 import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*

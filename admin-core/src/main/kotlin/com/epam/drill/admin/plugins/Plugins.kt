@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.plugins
 
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.end.*
 import java.io.*

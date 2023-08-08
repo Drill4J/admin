@@ -15,8 +15,8 @@
  */
 package com.epam.drill.e2e.plugin
 
+import com.epam.drill.common.agent.*
 import com.epam.drill.e2e.*
-import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.channels.*
 import org.apache.bcel.classfile.*
@@ -30,14 +30,14 @@ fun MemoryClassLoader.clazz(
     suffix: String,
     entries: Set<JarEntry>,
     jarFile: JarFile
-): Class<AgentPart<*>> = entries.asSequence().filter {
+): Class<AgentModule<*>> = entries.asSequence().filter {
     it.name.endsWith(".class") && !it.name.contains("module-info")
 }.map { jarEntry ->
     jarFile.getInputStream(jarEntry).use { inStream ->
         ClassParser(inStream, "").parse()
     }
 }.run {
-    first { it.superclassName == AgentPart::class.qualifiedName }.also { pluginClass ->
+    first { it.superclassName == AgentModule::class.qualifiedName }.also { pluginClass ->
         val singletons = filter { c ->
             !c.isSynthetic && !c.isNested && c.packageName == pluginClass.packageName &&
                 c.fields.any { it.isStatic && it.name == "INSTANCE" }
@@ -64,7 +64,7 @@ fun MemoryClassLoader.clazz(
             addDefinition(defClass.className, defClass.bytes)
         }
     }.let { "${it.className}$suffix" }
-}.let { loadClass(it) as Class<AgentPart<*>> }
+}.let { loadClass(it) as Class<AgentModule<*>> }
 
 class OutsSock(private val mainChannel: SendChannel<Frame>, private val withDebug: Boolean = false) :
     SendChannel<Frame> by mainChannel {

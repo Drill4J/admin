@@ -26,12 +26,14 @@ import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.version.*
-import com.epam.drill.api.*
-import com.epam.drill.common.PluginMetadata
-import com.epam.drill.plugin.api.message.*
-import com.epam.drill.plugin.api.processing.*
+import com.epam.drill.common.agent.*
+import com.epam.drill.common.message.*
+import com.epam.drill.common.message.Message
+import com.epam.drill.common.message.MessageType
+import com.epam.drill.common.ws.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
@@ -149,7 +151,7 @@ class Agent(
     private val headers = Channel<Int>(Channel.UNLIMITED)
     private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
 
-    lateinit var plugin: AgentPart<*>
+    lateinit var plugin: AgentModule<*>
 
     suspend fun getHeaders() = headers.receive()
 
@@ -162,11 +164,11 @@ class Agent(
         sendDelivered("/agent/plugin/${pluginId}/toggle")
     }
 
-    suspend fun sendPluginData(data: MessageWrapper) {
+    suspend fun sendPluginData(data: DrillMessageWrapper) {
         outgoing.send(
             agentMessage(
                 MessageType.PLUGIN_DATA, "",
-                (MessageWrapper.serializer() stringify data).encodeToByteArray()
+                (DrillMessageWrapper.serializer() stringify data).encodeToByteArray()
             )
         )
     }
@@ -204,7 +206,7 @@ class Agent(
 
                         is Communication.Plugin.DispatchEvent -> {
                             val message = ProtoBuf.load(
-                                com.epam.drill.common.PluginAction.serializer(),
+                                com.epam.drill.common.agent.PluginAction.serializer(),
                                 content
                             )
                             plugin.doRawAction(message.message)
@@ -212,7 +214,7 @@ class Agent(
                             sendDelivered(url)
                         }
                         is Communication.Plugin.ToggleEvent -> {
-                            val pluginId = ProtoBuf.load(com.epam.drill.common.TogglePayload.serializer(), content).pluginId
+                            val pluginId = ProtoBuf.load(com.epam.drill.common.agent.TogglePayload.serializer(), content).pluginId
                             toggled(pluginId)
                             sendDelivered(url)
                         }

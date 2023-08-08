@@ -20,8 +20,8 @@ import com.epam.drill.admin.api.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.api.*
-import com.epam.drill.api.dto.*
+import com.epam.drill.common.ws.*
+import com.epam.drill.common.ws.dto.*
 import com.epam.dsm.*
 import org.kodein.di.*
 

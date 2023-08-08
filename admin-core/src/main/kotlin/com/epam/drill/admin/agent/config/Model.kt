@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.agent.config
 
-import com.epam.drill.common.*
+import com.epam.drill.common.agent.*
 import com.epam.dsm.*
 import kotlinx.serialization.*
 

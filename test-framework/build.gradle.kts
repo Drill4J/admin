@@ -47,7 +47,6 @@ dependencies {
 
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))
-    implementation(project(":plugin-api-agent"))
     implementation(project(":test-data"))
     implementation(project(":test-plugin-admin"))
     implementation(project(":test-plugin-agent"))

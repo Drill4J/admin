@@ -18,9 +18,9 @@ package com.epam.drill.e2e.plugin
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
-import com.epam.drill.common.*
 import com.epam.drill.e2e.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.testdata.*
 import io.ktor.server.testing.*
