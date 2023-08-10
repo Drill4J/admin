@@ -15,31 +15,35 @@
  */
 package com.epam.drill.admin.endpoints.admin
 
-import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.agent.logging.*
-import com.epam.drill.admin.api.*
-import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.routes.*
-import com.epam.drill.admin.cache.*
-import com.epam.drill.admin.cache.impl.*
-import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.agent.logging.LoggingHandler
+import com.epam.drill.admin.agent.logging.defaultLoggingConfig
+import com.epam.drill.admin.agent.toAgentBuildKey
+import com.epam.drill.admin.api.LoggingConfigDto
+import com.epam.drill.admin.api.agent.BuildStatus
+import com.epam.drill.admin.api.routes.ApiRoot
+import com.epam.drill.admin.api.routes.WsRoot
+import com.epam.drill.admin.cache.CacheService
+import com.epam.drill.admin.cache.impl.MapDBCacheService
+import com.epam.drill.admin.endpoints.AgentManager
+import com.epam.drill.admin.endpoints.BuildManager
+import com.epam.drill.admin.endpoints.ErrorResponse
+import com.epam.drill.admin.endpoints.TopicResolver
 import com.epam.drill.admin.plugin.TogglePayload
-import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.version.*
-import com.epam.drill.analytics.*
+import com.epam.drill.admin.plugins.Plugins
+import com.epam.drill.admin.version.AnalyticsToggleDto
 import com.epam.drill.analytics.AnalyticService.ANALYTIC_DISABLE
-import com.epam.drill.api.*
+import com.epam.drill.api.Communication
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import mu.*
-import org.kodein.di.*
+import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.instance
 
 class DrillAdminEndpoints(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -106,29 +110,6 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }
             }
-
-            authenticate {
-                val meta = "Update system settings"
-                    .examples(
-                        example(
-                            "systemSettings",
-                            SystemSettingsDto(
-                                listOf("some package prefixes"),
-                                "some session header name"
-                            )
-                        )
-                    )
-                    .responds(
-                        ok<String>(), badRequest()
-                    )
-                put<ApiRoot.Agents.SystemSettings, SystemSettingsDto>(meta) { params, settingsDto ->
-                    val (_, agentId) = params
-                    settingsDto.takeIf { it.packages.none(String::isBlank) }?.let {
-                        agentManager.updateSystemSettings(agentId, it)
-                        call.respond(HttpStatusCode.OK, EmptyContent)
-                    } ?: call.respond(HttpStatusCode.BadRequest, "Package prefixes contain an empty value.")
-                }
-            }
             authenticate {
                 val meta = "Return cache stats"
                     .examples()
@@ -153,10 +134,12 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
             }
 
             val meta = "Toggle google analytics"
-                .examples(example(
-                    "analytics toggle request",
-                    AnalyticsToggleDto(disable = true)
-                ))
+                .examples(
+                    example(
+                        "analytics toggle request",
+                        AnalyticsToggleDto(disable = true)
+                    )
+                )
                 .responds(
                     ok<AnalyticsToggleDto>()
                 )

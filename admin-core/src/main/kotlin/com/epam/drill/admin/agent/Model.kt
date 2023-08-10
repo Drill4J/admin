@@ -15,9 +15,12 @@
  */
 package com.epam.drill.admin.agent
 
-import com.epam.drill.admin.api.agent.*
-import com.epam.dsm.*
-import kotlinx.serialization.*
+import com.epam.drill.admin.api.agent.AgentCreationDto
+import com.epam.drill.admin.api.agent.AgentStatus
+import com.epam.drill.admin.api.agent.AgentType
+import com.epam.drill.admin.api.agent.SystemSettingsDto
+import com.epam.dsm.Id
+import kotlinx.serialization.Serializable
 
 typealias CommonAgentConfig = com.epam.drill.common.AgentConfig
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
@@ -29,13 +32,13 @@ data class AgentInfo(
     @Id val id: String,
     val name: String,
     val groupId: String = "",
-    val agentStatus: AgentStatus,
-    val environment: String = "",
-    val description: String,
-    val agentType: AgentType,
-    val adminUrl: String = "",
+    val agentStatus: AgentStatus, // Deprecated
+    val environment: String = "", // Deprecated
+    val description: String, // Deprecated
+    val agentType: AgentType,  // ?
+    val adminUrl: String = "", // Deprecated
     val build: AgentBuildInfo,
-    val plugins: Set<String> = emptySet(),
+    val plugins: Set<String> = emptySet(), // Deprecated
 ) {
     override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
