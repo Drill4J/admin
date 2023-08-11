@@ -202,6 +202,9 @@ class AgentManager(override val di: DI) : DIAware {
                 notifySingleAgent(id)
                 notifyAllAgents()
                 currentInfo.plugins.initPlugins(existingAgent)
+                app.launch {
+                    currentInfo.sync(config.instanceId) // sync only existing info!
+                }
                 currentInfo.persistToDatabase()
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
                 currentInfo
@@ -224,15 +227,18 @@ class AgentManager(override val di: DI) : DIAware {
                 buildManager.notifyBuild(agentBuildKey)
                 existingInfo?.plugins?.initPlugins(entry) // first
                 app.launch {
+                    existingInfo?.sync(config.instanceId, true) // sync only existing info!
                     if (isNewBuild && currentInfo != null) {
                         notificationsManager.saveNewBuildNotification(info)
                     }
                 }
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
-                if (oldInstanceIds.isEmpty() || currentInfo?.agentStatus != AgentStatus.REGISTERED) {
+                if (info.agentStatus == AgentStatus.NOT_REGISTERED || info.agentStatus == AgentStatus.PREREGISTERED) {
                     app.launch {
                         val dto = AgentRegistrationDto(
-                            name = config.id,
+                            name = info.name,
+                            description = info.description,
+                            environment = info.environment,
                             systemSettings = SystemSettingsDto(
                                 packages = config.packagesPrefixes.packagesPrefixes
                             ),
