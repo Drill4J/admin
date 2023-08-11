@@ -1002,6 +1002,6 @@ class Plugin(
             StartNewSession(payload = StartPayload(sessionId = "global", isRealtime = true, isGlobal = true)),
             data = null
         )
-        logger.info { "Global session for agent $agentId was created." }
+        logger.debug { "Global session for agent $agentId was created." }
     }
 }
