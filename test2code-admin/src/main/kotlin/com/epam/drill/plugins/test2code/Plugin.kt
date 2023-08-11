@@ -101,6 +101,7 @@ class Plugin(
         state.loadFromDb {
             processInitialized()
         }
+        createGlobalSession()
     }
 
     override fun close() {
@@ -259,17 +260,17 @@ class Plugin(
          * @features Session starting
          */
         is StartNewSession -> action.payload.run {
-//            val newSessionId = sessionId.ifEmpty(::genUuid)
-//            val isRealtimeSession = runtimeConfig.realtime && isRealtime
-//            val labels = labels + Label("Session", newSessionId)
-//            activeScope.startSession(
-//                newSessionId,
-//                testType,
-//                isGlobal,
-//                isRealtimeSession,
-//                testName,
-//                labels
-//            )
+            val newSessionId = sessionId.ifEmpty(::genUuid)
+            val isRealtimeSession = runtimeConfig.realtime && isRealtime
+            val labels = labels + Label("Session", newSessionId)
+            activeScope.startSession(
+                newSessionId,
+                testType,
+                isGlobal,
+                isRealtimeSession,
+                testName,
+                labels
+            )
             //Leave okResult as stub (for autotest-agent)
             okResult
         }
@@ -364,16 +365,6 @@ class Plugin(
          * @features Session starting
          */
         is SessionStarted -> logger.info { "$instanceId: Agent session ${message.sessionId} started." }
-            .also {
-                activeScope.startSession(
-                    message.sessionId,
-                    message.testType,
-                    message.isGlobal,
-                    message.isRealtime,
-                    "testName",
-                    setOf(Label("Session", message.sessionId))
-                )
-            }
             .also { logPoolStats() }
 
         is CoverDataPart -> activeScope.activeSessions[message.sessionId]?.let {
@@ -1004,5 +995,13 @@ class Plugin(
                 }
             }
         }
+    }
+
+    private suspend fun createGlobalSession() {
+        doAction(
+            StartNewSession(payload = StartPayload(sessionId = "global", isRealtime = true, isGlobal = true)),
+            data = null
+        )
+        logger.debug { "Global session for agent $agentId was created." }
     }
 }
