@@ -376,13 +376,19 @@ class Plugin(
             }
             .also { logPoolStats() }
 
-        is CoverDataPart -> activeScope.activeSessions[message.sessionId]?.let {
-            activeScope.addProbes(message.sessionId) { message.data }?.run {
-                if (isRealtime) {
-                    activeScope.probesChanged()
+        is CoverDataPart -> {
+            message.data.groupBy { it.sessionId }
+                .forEach { (probeSessionId, data) ->
+                    val sessionId = probeSessionId ?: message.sessionId ?: "global"
+                    activeScope.activeSessions[sessionId]?.let {
+                        activeScope.addProbes(sessionId) { data }?.run {
+                            if (isRealtime) {
+                                activeScope.probesChanged()
+                            }
+                        }
+                    } ?: logger.debug { "Attempting to add coverage in non-existent active session" }
                 }
-            }
-        } ?: logger.debug { "Attempting to add coverage in non-existent active session" }
+        }
 
         is SessionChanged -> activeScope.takeIf { scope ->
             scope.activeSessions.values.any { it.isRealtime }
