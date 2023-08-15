@@ -21,7 +21,7 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.api.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.*

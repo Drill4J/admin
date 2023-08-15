@@ -15,7 +15,7 @@
  */
 package com.epam.drill.e2e.plugin
 
-import com.epam.drill.plugin.api.processing.*
+import com.epam.drill.common.agent.*
 import kotlinx.atomicfu.*
 
 class TestAgentContext : AgentContext {
@@ -34,7 +34,7 @@ class TestAgentContext : AgentContext {
         sessionId: String,
         testName: String,
         testHash: String,
-        agentPart: AgentPart<*>?,
+        agentPart: AgentModule<*>?,
         block: () -> Unit,
     ) {
         _data.value = mapOf(

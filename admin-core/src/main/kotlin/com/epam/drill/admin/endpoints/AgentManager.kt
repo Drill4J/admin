@@ -34,7 +34,7 @@ import com.epam.drill.admin.store.*
 import com.epam.drill.admin.sync.*
 import com.epam.drill.admin.util.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.api.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.dsm.*
 import com.epam.dsm.find.*

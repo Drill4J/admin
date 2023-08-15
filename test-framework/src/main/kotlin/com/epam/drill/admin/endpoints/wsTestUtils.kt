@@ -18,7 +18,7 @@ package com.epam.drill.admin.endpoints
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.common.*
+import com.epam.drill.common.message.*
 import com.epam.drill.e2e.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*

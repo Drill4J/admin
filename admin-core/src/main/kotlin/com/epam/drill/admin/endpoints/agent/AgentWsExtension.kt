@@ -18,7 +18,7 @@ package com.epam.drill.admin.endpoints.agent
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.util.*
-import com.epam.drill.api.*
+import com.epam.drill.common.ws.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -27,6 +27,7 @@ import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
+import kotlin.reflect.*
 import kotlin.time.*
 import kotlin.time.TimeSource.*
 
@@ -198,3 +199,11 @@ open class AgentWsSession(
         _subscribers.update { it.put(topicName, signal) }
     }
 }
+
+inline fun <reified T : Any> KClass<T>.topicUrl() = (this
+    .serializer())
+    .descriptor
+    .annotations
+    .filterIsInstance<Topic>()
+    .first()
+    .url

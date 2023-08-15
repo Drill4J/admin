@@ -21,11 +21,11 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugins.coverage.TestAgentPart
 import com.epam.drill.builds.*
 import com.epam.drill.common.*
+import com.epam.drill.common.agent.*
 import com.epam.drill.common.classloading.*
+import com.epam.drill.common.message.*
 import com.epam.drill.e2e.*
 import com.epam.drill.e2e.Agent
-import com.epam.drill.plugin.api.message.*
-import com.epam.drill.plugin.api.processing.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import io.mockk.*
@@ -64,7 +64,7 @@ suspend fun AdminTest.loadPlugin(
             pluginId,
             testAgentContext,
             sender
-        ) as AgentPart<*>
+        ) as AgentModule<*>
         this.agentPart = agentPart
         val spykAgentPart = spyk(agentPart, ag.id)
         if (spykAgentPart is Instrumenter) {
@@ -126,7 +126,7 @@ class TestPluginSender(
             out.send(
                 agentMessage(
                     MessageType.PLUGIN_DATA, "",
-                    (MessageWrapper.serializer() stringify MessageWrapper(
+                    (DrillMessageWrapper.serializer() stringify DrillMessageWrapper(
                         pluginId,
                         DrillMessage(content = message)
                     )).encodeToByteArray()

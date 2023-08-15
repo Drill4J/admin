@@ -19,9 +19,9 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.api.*
-import com.epam.drill.api.dto.*
-import com.epam.drill.common.*
+import com.epam.drill.common.agent.configuration.*
+import com.epam.drill.common.ws.*
+import com.epam.drill.common.ws.dto.*
 import org.kodein.di.*
 
 class ConfigHandler(override val di: DI) : DIAware {

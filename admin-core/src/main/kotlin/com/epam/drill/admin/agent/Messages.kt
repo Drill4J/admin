@@ -18,8 +18,8 @@ package com.epam.drill.admin.agent
 import io.ktor.util.*
 import kotlinx.serialization.*
 
-typealias MessageType = com.epam.drill.common.MessageType
-typealias Message = com.epam.drill.common.Message
+typealias MessageType = com.epam.drill.common.message.MessageType
+typealias Message = com.epam.drill.common.message.Message
 
 sealed class AgentMessage {
     abstract val type: MessageType

@@ -63,7 +63,6 @@ dependencies {
     testImplementation(project(":common"))
     testImplementation(project(":ktor-swagger"))
     testImplementation(project(":plugin-api-admin"))
-    testImplementation(project(":plugin-api-agent"))
     testImplementation(project(":test-framework"))
 
     testData(project(":test-data"))

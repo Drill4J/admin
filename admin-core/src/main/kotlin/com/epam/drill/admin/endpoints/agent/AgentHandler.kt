@@ -25,7 +25,9 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.router.*
 import com.epam.drill.admin.util.*
-import com.epam.drill.common.MessageType
+import com.epam.drill.common.agent.configuration.*
+import com.epam.drill.common.message.Message
+import com.epam.drill.common.message.MessageType
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
@@ -55,7 +57,7 @@ class AgentHandler(override val di: DI) : DIAware{
             agentWebsocket("/agent/attach") {
                 val agentConfig = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
-                    com.epam.drill.common.AgentType.NODEJS -> FrameType.TEXT
+                    AgentType.NODEJS -> FrameType.TEXT
                     else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(
@@ -141,7 +143,7 @@ class AgentHandler(override val di: DI) : DIAware{
 }
 
 private fun ApplicationRequest.retrieveParams(): CommonAgentConfig {
-    val configStr = headers[com.epam.drill.common.AgentConfigParam]!!
+    val configStr = headers[HEADER_AGENT_CONFIG]!!
     val agentConfig = if (configStr.startsWith('{')) {
         CommonAgentConfig.serializer() parse configStr
     } else ProtoBuf.loads(CommonAgentConfig.serializer(), configStr)

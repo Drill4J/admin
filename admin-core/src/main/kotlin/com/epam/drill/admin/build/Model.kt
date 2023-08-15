@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.build
 
-import com.epam.drill.common.*
 import com.epam.dsm.*
 import kotlinx.serialization.*
 
@@ -45,4 +44,13 @@ data class AgentBuildData(
     override fun equals(other: Any?) = other is AgentBuildData && id == other.id
 
     override fun hashCode() = id.hashCode()
+}
+
+@Serializable
+data class BuildInfo(
+    val version: String = ""
+) {
+    override fun equals(other: Any?) = other is BuildInfo && version == other.version
+
+    override fun hashCode() = version.hashCode()
 }

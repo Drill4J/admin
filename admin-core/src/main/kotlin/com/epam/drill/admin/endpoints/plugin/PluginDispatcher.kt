@@ -31,9 +31,9 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.api.*
+import com.epam.drill.common.message.*
+import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
-import com.epam.drill.plugin.api.message.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -74,7 +74,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         instanceId: String,
         pluginData: String,
     ) {
-        val message = MessageWrapper.serializer().parse(pluginData)
+        val message = DrillMessageWrapper.serializer().parse(pluginData)
         val pluginId = message.pluginId
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
@@ -89,7 +89,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         instanceId: String,
         message: String,
     ) = run {
-        val wrapper = MessageWrapper.serializer().parse(message)
+        val wrapper = DrillMessageWrapper.serializer().parse(message)
         val pluginId = wrapper.pluginId
         val action = wrapper.drillMessage.content
         logger.info { "Attempting to dispatch action from agent ${agentInfo.debugString(instanceId)} : $action" }
