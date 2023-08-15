@@ -386,7 +386,7 @@ class Plugin(
                                 activeScope.probesChanged()
                             }
                         }
-                    } ?: logger.debug { "Attempting to add coverage in non-existent active session" }
+                    } ?: logger.debug { "Attempting to add coverage in non-existent active session with id $sessionId" }
                 }
         }
 
