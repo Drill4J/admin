@@ -105,13 +105,11 @@ internal class AgentData(
      */
     suspend fun updateSettings(
         settings: SystemSettingsDto,
-        block: suspend (SystemSettingsDto) -> Unit = {},
     ) {
         val current = this.settings
         if (current != settings) {
             _settings.value = settings
             adminStore.store(toSummary())
-            block(current)
         }
     }
 

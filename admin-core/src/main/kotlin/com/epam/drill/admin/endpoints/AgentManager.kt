@@ -17,33 +17,45 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.AgentInfo
-import com.epam.drill.admin.agent.config.*
-import com.epam.drill.admin.agent.logging.*
+import com.epam.drill.admin.agent.config.ConfigHandler
+import com.epam.drill.admin.agent.logging.LoggingHandler
 import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.build.*
-import com.epam.drill.admin.cache.*
-import com.epam.drill.admin.cache.impl.*
-import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.group.*
-import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.router.*
-import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.store.*
-import com.epam.drill.admin.sync.*
-import com.epam.drill.admin.util.*
-import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.ws.*
-import com.epam.drill.plugin.api.end.*
-import com.epam.dsm.*
-import com.epam.dsm.find.*
+import com.epam.drill.admin.build.AgentBuildData
+import com.epam.drill.admin.build.AgentBuildId
+import com.epam.drill.admin.cache.CacheService
+import com.epam.drill.admin.cache.impl.MapDBCacheService
+import com.epam.drill.admin.endpoints.agent.AgentWsSession
+import com.epam.drill.admin.endpoints.agent.WsDeferred
+import com.epam.drill.admin.group.GroupManager
+import com.epam.drill.admin.notification.NotificationManager
+import com.epam.drill.admin.plugin.AgentCacheKey
+import com.epam.drill.admin.plugin.PluginSenders
+import com.epam.drill.admin.plugin.TogglePayload
+import com.epam.drill.admin.plugins.Plugin
+import com.epam.drill.admin.plugins.Plugins
+import com.epam.drill.admin.router.WsRoutes
+import com.epam.drill.admin.storage.AgentStorage
+import com.epam.drill.admin.store.Stored
+import com.epam.drill.admin.store.adminStore
+import com.epam.drill.admin.store.pluginStoresDSM
+import com.epam.drill.admin.sync.MonitorMutex
+import com.epam.drill.admin.util.trackTime
+import com.epam.drill.admin.websocket.agentPrefix
+import com.epam.drill.api.Communication
+import com.epam.drill.plugin.api.end.AdminPluginPart
+import com.epam.dsm.StoreClient
+import com.epam.dsm.deleteBy
+import com.epam.dsm.deleteById
+import com.epam.dsm.find.FieldPath
 import io.ktor.application.*
-import kotlinx.coroutines.*
-import mu.*
-import org.kodein.di.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.instance
 import java.util.*
-import kotlin.time.*
+import kotlin.time.measureTime
 
 /**
  * Service for managing agents
@@ -190,16 +202,16 @@ class AgentManager(override val di: DI) : DIAware {
                 notifySingleAgent(id)
                 notifyAllAgents()
                 currentInfo.plugins.initPlugins(existingAgent)
+                app.launch {
+                    currentInfo.sync(config.instanceId) // sync only existing info!
+                }
                 currentInfo.persistToDatabase()
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
                 currentInfo
             } else {
                 logger.info { "agent($id, $buildVersion, ${config.instanceId}): attaching to new or stored build..." }
                 val storedInfo: AgentInfo? = loadAgentInfo(id)
-                val preparedInfo: AgentInfo? = preparedInfo(id, storedInfo)?.copy(
-                    agentStatus = AgentStatus.REGISTERING
-                )
-                val existingInfo = (storedInfo ?: preparedInfo)?.run {
+                val existingInfo = storedInfo?.run {
                     copy(
                         build = build.copy(
                             version = config.buildVersion,
@@ -215,17 +227,29 @@ class AgentManager(override val di: DI) : DIAware {
                 buildManager.notifyBuild(agentBuildKey)
                 existingInfo?.plugins?.initPlugins(entry) // first
                 app.launch {
+                    existingInfo?.sync(config.instanceId, true) // sync only existing info!
                     if (isNewBuild && currentInfo != null) {
                         notificationsManager.saveNewBuildNotification(info)
                     }
                 }
-                preparedInfo?.let {
-                    adminStore.deleteById<PreparedAgentData>(it.id)
-                    entry.update { info.copy(agentStatus = AgentStatus.REGISTERED) }.commitChanges()
-                }
                 session.updateSessionHeader(adminData.settings.sessionIdHeaderName)
+                if (info.agentStatus == AgentStatus.NOT_REGISTERED || info.agentStatus == AgentStatus.PREREGISTERED) {
+                    app.launch {
+                        val dto = AgentRegistrationDto(
+                            name = info.name,
+                            description = info.description,
+                            environment = info.environment,
+                            systemSettings = SystemSettingsDto(
+                                packages = config.packagesPrefixes.packagesPrefixes
+                            ),
+                            plugins = listOf("test2code")
+                        )
+                        register(config.id, dto)
+                    }
+                }
                 info
             }
+
         }
     }
 
@@ -279,23 +303,19 @@ class AgentManager(override val di: DI) : DIAware {
         agentId: String,
         dto: AgentRegistrationDto,
     ) = entryOrNull(agentId)?.let { agent ->
-        val pluginsToAdd = dto.plugins.mapNotNull(plugins::get)
         val info: AgentInfo = agent.update { info ->
             info.copy(
                 name = dto.name,
-                environment = dto.environment,
-                description = dto.description,
-                agentStatus = AgentStatus.REGISTERING,
-                plugins = pluginsToAdd.mapTo(mutableSetOf()) { it.pluginBean.id }
+                plugins = setOf("test2code")
             )
         }.apply { notifyAgents(id) }
+        // save name and plugin to
         buildManager.buildData(agentId).updateSettings(dto.systemSettings)
-        pluginsToAdd.forEach { plugin -> ensurePluginInstance(agent, plugin) }
+        ensurePluginInstance(agent, plugins["test2code"]!!)
         buildManager.instanceIds(agentId).keys.mapIndexed { index, instanceId ->
             info.sync(instanceId, index == 0)
         }
         agent.update { it.copy(agentStatus = AgentStatus.REGISTERED) }.apply { commitChanges() }
-        info.sendAgentRegisterAction()
     }
 
 
@@ -346,63 +366,6 @@ class AgentManager(override val di: DI) : DIAware {
     internal fun entryOrNull(agentId: String): Agent? = agentStorage.targetMap[agentId]
 
     internal fun allEntries(): Collection<Agent> = agentStorage.targetMap.values
-
-    suspend fun addPlugins(
-        agentId: String,
-        pluginIds: Set<String>,
-    ) = entryOrNull(agentId)!!.let { agent ->
-        val existingIds = agent.info.plugins
-        val pluginsToAdd = pluginIds.filter { it !in existingIds }.mapNotNull(plugins::get)
-        if (pluginsToAdd.any()) {
-            val updatedInfo = agent.update { info ->
-                val updatedPlugins = info.plugins + pluginsToAdd.map { it.pluginBean.id }
-                info.copy(
-                    plugins = updatedPlugins
-                )
-            }
-            supervisorScope {
-                buildManager.instanceIds(agentId).forEach { (instanceId, _) ->
-                    pluginsToAdd.forEach { plugin ->
-                        val pluginId = plugin.pluginBean.id
-                        buildManager.processInstance(agentId, instanceId) {
-                            launch {
-                                ensurePluginInstance(agent, plugin)
-                                enablePlugin(pluginId, updatedInfo).await()
-                            }
-                        }
-                    }
-                    topicResolver.sendToAllSubscribed(WsRoutes.AgentPlugins(agentId))
-                }
-                updatedInfo.persistToDatabase()
-            }
-        }
-    }
-
-    suspend fun addPlugins(
-        agentInfos: Iterable<AgentInfo>,
-        pluginIds: Set<String>,
-    ): Set<String> = supervisorScope {
-        agentInfos.map { info ->
-            val agentId = info.id
-            agentId to async { addPlugins(agentId, pluginIds) }
-        }
-    }.mapNotNullTo(mutableSetOf()) { (agentId, deferred) ->
-        agentId.takeIf {
-            runCatching { deferred.await() }.onFailure {
-                logger.error(it) { "Error on adding plugins $pluginIds to agent $agentId" }
-            }.isSuccess
-        }
-    }
-
-    private suspend fun AgentWsSession.disableAllPlugins(agentId: String) {
-        logger.debug { "Reset all plugins for agent with id $agentId" }
-        getOrNull(agentId)?.plugins?.forEach { pluginId ->
-            sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                message = TogglePayload(pluginId, false)
-            )
-        }
-        logger.debug { "All plugins for agent with id $agentId were disabled" }
-    }
 
     /**
      * Enable all plugins on the agent side
@@ -473,23 +436,21 @@ class AgentManager(override val di: DI) : DIAware {
         needClassSending: Boolean = false,
     ) {
         val agentDebugStr = debugString(instanceId)
-        if (agentStatus != AgentStatus.NOT_REGISTERED) {
-            logger.debug { "$agentDebugStr: starting sync for instance $instanceId..." }
-            val info = this
-            val duration = measureTime {
-                buildManager.processInstance(info.id, instanceId) {
-                    val settings = buildManager.buildData(id).settings
-                    configurePackages(settings.packages)
-                    if (needClassSending) {
-                        updateSessionHeader(settings.sessionIdHeaderName)
-                        enableAllPlugins(info)
-                    }
+        logger.debug { "$agentDebugStr: starting sync for instance $instanceId..." }
+        val info = this
+        val duration = measureTime {
+            buildManager.processInstance(info.id, instanceId) {
+                val settings = buildManager.buildData(id).settings
+                this.configurePackages(settings.packages)
+                if (needClassSending) {
+                    this.updateSessionHeader(settings.sessionIdHeaderName)
+                    this.enableAllPlugins(info)
                 }
             }
-            logger.info { "$agentDebugStr: sync took: $duration." }
-            topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(id))
-            logger.debug { "$agentDebugStr: sync finished." }
-        } else logger.warn { "$agentDebugStr: cannot sync, status is ${AgentStatus.NOT_REGISTERED}." }
+        }
+        logger.info { "$agentDebugStr: sync took: $duration." }
+        topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(id))
+        logger.debug { "$agentDebugStr: sync finished." }
     }
 
     /**
@@ -500,42 +461,6 @@ class AgentManager(override val di: DI) : DIAware {
     private suspend fun AgentWsSession.updateSessionHeader(sessionIdHeaderName: String) {
         sendToTopic<Communication.Agent.ChangeHeaderNameEvent, String>(sessionIdHeaderName.lowercase(Locale.getDefault()))
     }
-
-    suspend fun updateSystemSettings(agentId: String, settings: SystemSettingsDto) {
-        getOrNull(agentId)?.let { info ->
-            buildManager.updateSystemSettings(agentId, settings) { oldSettings ->
-                if (oldSettings.sessionIdHeaderName != settings.sessionIdHeaderName) {
-                    updateSessionHeader(settings.sessionIdHeaderName)
-                }
-                if (oldSettings.packages != settings.packages) {
-                    disableAllPlugins(agentId)
-                    configurePackages(settings.packages)
-                    entryOrNull(agentId)?.applyPackagesChanges()
-                    enableAllPlugins(info)
-                }
-            }
-        }
-    }
-
-
-    internal suspend fun updateSystemSettings(
-        agentInfos: Iterable<AgentInfo>,
-        systemSettings: SystemSettingsDto,
-    ): Set<String> = supervisorScope {
-        agentInfos.map { info ->
-            val agentId = info.id
-            val handler = CoroutineExceptionHandler { _, e ->
-                logger.error(e) { "Error updating agent $agentId" }
-            }
-            async(handler) {
-                updateSystemSettings(agentId, systemSettings.copy(
-                    targetHost = buildManager.buildData(agentId).settings.targetHost
-                ))
-                agentId
-            }
-        }
-    }.filterNot { it.isCancelled }.mapTo(mutableSetOf()) { it.await() }
-
 
     internal fun agentsByGroup(groupId: String): List<Agent> = allEntries().filter {
         it.info.groupId == groupId
@@ -570,20 +495,6 @@ class AgentManager(override val di: DI) : DIAware {
         }
     }
 
-    private suspend fun BuildManager.updateSystemSettings(
-        agentId: String,
-        settings: SystemSettingsDto,
-        block: suspend AgentWsSession.(SystemSettingsDto) -> Unit,
-    ) {
-        buildData(agentId).updateSettings(settings) { oldSettings ->
-            instanceIds(agentId).forEach { (instanceId, _) ->
-                processInstance(agentId, instanceId) {
-                    block(oldSettings)
-                }
-            }
-        }
-    }
-
     private suspend fun AgentInfo.commitChanges() {
         persistToDatabase()
         notifyAgents(id)
@@ -593,8 +504,6 @@ class AgentManager(override val di: DI) : DIAware {
         notifyAllAgents()
         notifySingleAgent(agentId)
     }
-
-
 }
 
 /**

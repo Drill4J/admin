@@ -15,18 +15,23 @@
  */
 package com.epam.drill.admin.group
 
-import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.group.*
-import com.epam.drill.admin.config.*
-import com.epam.drill.admin.store.*
-import com.epam.dsm.*
+import com.epam.drill.admin.agent.AgentInfo
+import com.epam.drill.admin.api.agent.SystemSettingsDto
+import com.epam.drill.admin.api.group.GroupDto
+import com.epam.drill.admin.config.drillDefaultPackages
+import com.epam.drill.admin.store.adminStore
+import com.epam.dsm.StoreClient
 import io.ktor.application.*
-import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.*
-import kotlinx.coroutines.*
-import mu.*
-import org.kodein.di.*
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.getAndUpdate
+import kotlinx.atomicfu.update
+import kotlinx.collections.immutable.mutate
+import kotlinx.collections.immutable.persistentHashMapOf
+import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.instance
 
 
 internal class GroupManager(override val di: DI) : DIAware {
@@ -98,19 +103,6 @@ internal class GroupManager(override val di: DI) : DIAware {
             .map { (key, value) -> AgentGroup(groups[key]!!, value) }
         return singleAgents to groupedAgents
     }
-
-    suspend fun updateSystemSettings(
-        group: GroupDto,
-        systemSettings: SystemSettingsDto,
-    ): GroupDto? = update(
-        group.copy(
-            systemSettings = SystemSettingsDto(
-                packages = systemSettings.packages,
-                sessionIdHeaderName = systemSettings.sessionIdHeaderName,
-                targetHost = systemSettings.targetHost
-            )
-        )
-    )
 
     private suspend fun StoreClient.store(
         oldValue: GroupDto,

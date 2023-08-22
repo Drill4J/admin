@@ -29,6 +29,7 @@ internal object StatusCodes {
 }
 
 internal val okResult = ActionResult(code = StatusCodes.OK, data = "")
+internal val deprecatedResult = ActionResult(code = StatusCodes.BAD_REQUEST, data = "Deprecated")
 
 internal fun AgentAction.toActionResult() = ActionResult(
     code = StatusCodes.OK,
