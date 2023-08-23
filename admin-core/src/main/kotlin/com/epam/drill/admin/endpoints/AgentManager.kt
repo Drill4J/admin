@@ -41,7 +41,7 @@ import com.epam.drill.admin.store.pluginStoresDSM
 import com.epam.drill.admin.sync.MonitorMutex
 import com.epam.drill.admin.util.trackTime
 import com.epam.drill.admin.websocket.agentPrefix
-import com.epam.drill.api.Communication
+import com.epam.drill.common.ws.Communication
 import com.epam.drill.plugin.api.end.AdminPluginPart
 import com.epam.dsm.StoreClient
 import com.epam.dsm.deleteBy
