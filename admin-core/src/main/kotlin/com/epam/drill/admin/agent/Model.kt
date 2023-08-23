@@ -32,13 +32,13 @@ data class AgentInfo(
     @Id val id: String,
     val name: String,
     val groupId: String = "",
-    val agentStatus: AgentStatus, // Deprecated
-    val environment: String = "", // Deprecated
-    val description: String, // Deprecated
-    val agentType: AgentType,  // ?
-    val adminUrl: String = "", // Deprecated
+    val agentStatus: AgentStatus, // TODO deprecate (with change to universal backend API)
+    val environment: String = "", // TODO deprecate (with change to universal backend API)
+    val description: String, // TODO deprecate (with change to universal backend API)
+    val agentType: AgentType,  // TODO consider deprecation (with change to universal backend API)
+    val adminUrl: String = "", // TODO deprecate (with change to universal backend API)
     val build: AgentBuildInfo,
-    val plugins: Set<String> = emptySet(), // Deprecated
+    val plugins: Set<String> = emptySet(), // TODO deprecate (with change to universal backend API)
 ) {
     override fun equals(other: Any?): Boolean = other is AgentInfo && id == other.id
 
