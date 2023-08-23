@@ -23,6 +23,7 @@ import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
+import com.epam.drill.plugins.test2code.coverage.id
 import com.epam.drill.plugins.test2code.global_filter.*
 import com.epam.drill.plugins.test2code.group.*
 import com.epam.drill.plugins.test2code.storage.*
