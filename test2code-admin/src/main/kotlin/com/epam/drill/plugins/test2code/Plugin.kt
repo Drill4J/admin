@@ -289,20 +289,15 @@ class Plugin(
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
         }
         is CancelSession -> action.payload.run {
-//            activeScope.cancelSession(action.payload.sessionId)?.let { session ->
-//                okResult.copy(data = "Session with id=${session.id} was canceled successfully")
-//            } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
             deprecatedResult
         }
 
         is StopAllSessions -> {
-//            StopAllAgentSessions.toActionResult()
             okResult
         }
 
         is CancelAllSessions -> {
             activeScope.cancelAllSessions()
-//            CancelAllAgentSessions.toActionResult()
             okResult
         }
 
