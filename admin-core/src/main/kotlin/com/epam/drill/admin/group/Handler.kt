@@ -15,32 +15,38 @@
  */
 package com.epam.drill.admin.group
 
-import com.epam.drill.admin.*
-import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.group.*
-import com.epam.drill.admin.api.plugin.*
-import com.epam.drill.admin.api.routes.*
-import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.agent.AgentInfo
+import com.epam.drill.admin.agentRegistrationExample
+import com.epam.drill.admin.api.agent.AgentRegistrationDto
+import com.epam.drill.admin.api.group.GroupDto
+import com.epam.drill.admin.api.group.GroupUpdateDto
+import com.epam.drill.admin.api.routes.ApiRoot
+import com.epam.drill.admin.api.routes.WsRoot
+import com.epam.drill.admin.api.websocket.GroupSubscription
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.router.*
-import com.epam.drill.admin.websocket.*
+import com.epam.drill.admin.plugin.PluginCaches
+import com.epam.drill.admin.plugins.Plugins
+import com.epam.drill.admin.router.WsRoutes
+import com.epam.drill.admin.websocket.SessionStorage
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.coroutines.*
-import mu.*
-import org.kodein.di.*
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.supervisorScope
+import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.instance
 
 /**
  * REST Controller for groups
  */
-class GroupHandler(override val di: DI) : DIAware{
+class GroupHandler(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
 
     private val app by instance<Application>()
@@ -81,7 +87,8 @@ class GroupHandler(override val di: DI) : DIAware{
             val metadata = "Get service group data"
                 .responds(
                     ok<Any>(),
-                    notFound())
+                    notFound()
+                )
             get<ApiRoot.AgentGroup.Plugin.Data>(metadata) { (pluginParent, pluginId, dataType) ->
                 val groupId = pluginParent.parent.groupId
                 logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
@@ -140,71 +147,6 @@ class GroupHandler(override val di: DI) : DIAware{
                         HttpStatusCode.InternalServerError to it
                     }
                     call.respond(status, message)
-                }
-            }
-
-            authenticate {
-                val meta = "Update system settings of group"
-                    .examples(
-                        example(
-                            "systemSettings",
-                            SystemSettingsDto(
-                                listOf("some package prefixes"),
-                                "some session header name"
-                            )
-                        )
-                    ).responds(
-                        ok<Unit>(),
-                        notFound()
-                    )
-                put<ApiRoot.AgentGroup.SystemSettings, SystemSettingsDto>(meta) { (group), systemSettings ->
-                    val id: String = group.groupId
-                    val status: HttpStatusCode = groupManager[id]?.let { groupDto ->
-                        if (systemSettings.packages.all { it.isNotBlank() }) {
-                            val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(id).map { it.info }
-                            val updatedAgentIds = agentManager.updateSystemSettings(agentInfos, systemSettings)
-                            groupManager.updateSystemSettings(groupDto, systemSettings)?.let { sendUpdates(listOf(it)) }
-                            if (updatedAgentIds.count() < agentInfos.count()) {
-                                logger.error {
-                                    """Group $id: not all agents updated successfully.
-                                        |Failed agents: ${agentInfos - updatedAgentIds}.
-                                    """.trimMargin()
-                                }
-                            } else logger.debug { "Group $id: updated agents $updatedAgentIds." }
-                            HttpStatusCode.OK
-                        } else HttpStatusCode.BadRequest
-                    } ?: HttpStatusCode.NotFound
-                    call.respond(status)
-                }
-            }
-
-            authenticate {
-                val meta = "Add plugin to group".responds(ok<Unit>(), notFound(), badRequest())
-                post<ApiRoot.AgentGroup.Plugins, PluginId>(meta) { (group), (pluginId) ->
-                    val groupId: String = group.groupId
-                    logger.debug { "Adding plugin to group '$groupId'..." }
-                    val agentInfos: List<AgentInfo> = agentManager.agentsByGroup(groupId).map { it.info }
-                    val (status, msg) = if (agentInfos.isNotEmpty()) {
-                        if (pluginId in plugins.keys) {
-                            if (agentInfos.any { pluginId !in it.plugins }) {
-                                val updatedAgentIds = agentManager.addPlugins(agentInfos, setOf(pluginId))
-                                val errorAgentIds = agentInfos.map(AgentInfo::id) - updatedAgentIds
-                                if (errorAgentIds.any()) {
-                                    logger.error {
-                                        """Group $groupId: not all agents updated successfully.
-                                        |Failed agents: $errorAgentIds.
-                                    """.trimMargin()
-                                    }
-                                } else logger.debug {
-                                    "Group '$groupId': added plugin '$pluginId' to agents $updatedAgentIds."
-                                }
-                                HttpStatusCode.OK to "Plugin '$pluginId' added to agents $updatedAgentIds."
-                            } else HttpStatusCode.Conflict to ErrorResponse(
-                                "Plugin '$pluginId' already installed on all agents of group '$groupId'."
-                            )
-                        } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found.")
-                    } else HttpStatusCode.BadRequest to ErrorResponse("No agents found for group '$groupId'.")
-                    call.respond(status, msg)
                 }
             }
         }

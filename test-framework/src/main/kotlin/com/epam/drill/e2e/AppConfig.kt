@@ -103,7 +103,7 @@ fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Applica
     if (useTest2CodePlugin)
         bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
     else
-        bind<Plugins>() with singleton { Plugins(mapOf("test-plugin" to testPlugin())) }
+        bind<Plugins>() with singleton { Plugins(mapOf("test2code" to testPlugin())) }
     bind<PluginCaches>() with singleton {
         PluginCaches(
             application,
@@ -116,7 +116,7 @@ fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Applica
 }
 
 private fun testPlugin(): Plugin {
-    val pluginId = "test-plugin"
+    val pluginId = "test2code"
     return Plugin(
         pluginClass = TestAdminPart::class.java,
         pluginBean = PluginMetadata(

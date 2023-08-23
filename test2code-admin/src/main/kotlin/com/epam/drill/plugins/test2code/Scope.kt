@@ -180,24 +180,19 @@ class ActiveScope(
         testName: String? = null,
         labels: Set<Label> = emptySet(),
     ) = ActiveSession(sessionId, testType, isGlobal, isRealtime, testName, labels).takeIf { newSession ->
-        val key = if (isGlobal) "" else sessionId
+        val key = sessionId
         activeSessions(key) { existing ->
-            existing ?: newSession.takeIf { activeSessionOrNull(it.id) == null }
+            existing ?: newSession.takeIf { activeSessions[it.id] == null }
         } === newSession
     }?.also {
         sessionsChanged()
     }
 
-    fun activeSessionOrNull(id: String): ActiveSession? = activeSessions.run {
-        this[""]?.takeIf { it.id == id } ?: this[id]
-    }
-
-    fun hasActiveGlobalSession(): Boolean = "" in activeSessions
 
     fun addProbes(
         sessionId: String,
         probeProvider: () -> Collection<ExecClassData>,
-    ): ActiveSession? = activeSessionOrNull(sessionId)?.apply { addAll(probeProvider()) }
+    ): ActiveSession? = activeSessions[sessionId]?.apply { addAll(probeProvider()) }
 
     fun addBundleCache(bundleByTests: Map<TestKey, BundleCounter>) {
         _bundleByTests.update {
@@ -284,9 +279,7 @@ class ActiveScope(
     private fun clearBundleCache() = _bundleByTests.update { SoftReference(persistentMapOf()) }
 
     private fun removeSession(id: String): ActiveSession? = activeSessions.run {
-        if (this[""]?.id == id) {
-            remove("")
-        } else remove(id)
+        remove(id)
     }
 }
 

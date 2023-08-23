@@ -66,7 +66,7 @@ abstract class AdminTest {
             systemSettings = SystemSettingsDto(
                 packages = listOf("testPrefix")
             ),
-            plugins = listOf("test-plugin")
+            plugins = listOf("test2code")
         ),
         resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
     ) = callAsync(context) {

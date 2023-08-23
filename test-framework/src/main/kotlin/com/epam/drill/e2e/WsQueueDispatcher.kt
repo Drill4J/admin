@@ -155,7 +155,7 @@ class Agent(
     suspend fun getHeaders() = headers.receive()
 
     suspend fun getLoadedPlugin(block: suspend (PluginMetadata) -> Unit) {
-        val meta = PluginMetadata(id = "test-plugin")
+        val meta = PluginMetadata(id = "test2code")
         block(meta)
     }
 
