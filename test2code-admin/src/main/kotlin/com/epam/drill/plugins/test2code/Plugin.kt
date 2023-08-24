@@ -225,7 +225,6 @@ class Plugin(
                 this.data.map { probes ->
                     ExecClassData(
                         className = probes.name,
-                        testName = probes.test,
                         testId = probes.testId,
                         probes = probes.probes.toBitSet()
                     )
@@ -366,7 +365,7 @@ class Plugin(
         is CoverDataPart -> {
             message.data.groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->
-                    val sessionId = probeSessionId ?: message.sessionId ?: "global"
+                    val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
                     activeScope.activeSessions[sessionId]?.let {
                         activeScope.addProbes(sessionId) { data }?.run {
                             if (isRealtime) {
@@ -1000,8 +999,14 @@ class Plugin(
     }
 
     private suspend fun createGlobalSession() {
-        doAction(
-            StartNewSession(payload = StartPayload(sessionId = "global", isRealtime = true, isGlobal = true)),
+        doAction(StartNewSession(
+            payload = StartPayload(
+                testType = GLOBAL_SESSION_ID,
+                sessionId = GLOBAL_SESSION_ID,
+                testName = GLOBAL_SESSION_ID,
+                isRealtime = true,
+                isGlobal = true)
+            ),
             data = null
         )
         logger.debug { "Global session for agent $agentId was created." }

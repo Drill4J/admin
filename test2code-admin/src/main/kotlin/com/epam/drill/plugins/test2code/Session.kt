@@ -48,7 +48,7 @@ sealed class Session : Sequence<ExecClassData> {
 }
 
 
-private typealias ProbeKey = Pair<String, String>
+private typealias ProbeKey = String
 
 class ActiveSession(
     override val id: String,
@@ -60,30 +60,19 @@ class ActiveSession(
 ) : Session() {
 
     override val tests: Set<TestOverview>
-        get() = _probes.value.run {
-            _testTestInfo.value.takeIf { it.any() }?.let { tests ->
-                val autotests = tests.values.map {
-                    TestOverview(
-                        testId = it.id.weakIntern(),
-                        duration = it.finishedAt - it.startedAt,
-                        details = it.details.copy(labels = it.details.labels + labels),
-                        result = it.result
-                    )
-                }
-                val manualTests = keys.filter { (id, _) -> id !in tests }.map { (id, name) ->
-                    TestOverview(
-                        testId = id,
-                        details = TestDetails(testName = name.urlDecode().weakIntern(), labels = labels)
-                    )
-                }
-                autotests + manualTests
-            } ?: keys.map { (id, name) ->
-                TestOverview(
-                    testId = id,
-                    details = TestDetails(testName = name.urlDecode().weakIntern(), labels = labels)
-                )
-            }
+        get() = _testTestInfo.value.values.map { testInfo ->
+            TestOverview(
+                testId = testInfo.id,
+                duration = getDuration(testInfo.startedAt, testInfo.finishedAt),
+                details = testInfo.details,
+                result = testInfo.result
+            )
         }.toSet()
+
+    private fun getDuration(start: Long?, end: Long?): Long {
+        if (start == null || end == null) return 0
+        return end - start
+    }
 
     private val _probes = atomic(
         persistentMapOf<ProbeKey, PersistentMap<Long, ExecClassData>>()
@@ -105,7 +94,7 @@ class ActiveSession(
         probe.id?.let { probe } ?: probe.copy(id = probe.id())
     }.forEach { probe ->
         if (true in probe.probes) {
-            val test = probe.testId.weakIntern() to probe.testName.weakIntern()
+            val test = probe.testId.weakIntern()
             _probes.update { map ->
                 (map[test] ?: persistentHashMapOf()).let { testData ->
                     val probeId = probe.id()
