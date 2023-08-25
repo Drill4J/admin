@@ -25,6 +25,7 @@ class ProbesTest {
         val data = ExecClassData(
             id = 1L,
             className = "foo/Bar",
+            testId = "",
             probes = probesOf(true, true, false)
         )
         val map = persistentMapOf(data.id() to data)
@@ -39,6 +40,7 @@ class ProbesTest {
         val data = ExecClassData(
             id = 1L,
             className = "foo/Bar",
+            testId = "",
             probes = probesOf(true, true, false)
         )
         val data2 = data.copy(

@@ -58,14 +58,14 @@ val ast = listOf(
 val probes = listOf(
     ExecClassData(
         className = "foo/bar/baz.js",
-        testName = "default",
+        testId = "default",
         probes = probesOf(true, true, false, true, false)
     )
 )
 val probes2 = listOf(
     ExecClassData(
         className = "foo/bar/baz.js",
-        testName = "default",
+        testId = "default",
         probes = probesOf(true, false, true, true, false)
     )
 )
@@ -74,7 +74,7 @@ object IncorrectProbes {
     val overCount = listOf(
         ExecClassData(
             className = "foo/bar/baz.js",
-            testName = "default",
+            testId = "default",
             probes = probesOf(true, true, false, true, false, /*extra*/ false)
         )
     )
@@ -82,7 +82,7 @@ object IncorrectProbes {
     val underCount = listOf(
         ExecClassData(
             className = "foo/bar/baz.js",
-            testName = "default",
+            testId = "default",
             probes = probesOf(true, true, false, true)
         )
     )
@@ -90,7 +90,7 @@ object IncorrectProbes {
     val notExisting = listOf(
         ExecClassData(
             className = "foo/bar/not-existing",
-            testName = "default",
+            testId = "default",
             probes = probesOf(false, false)
         )
     )
