@@ -106,7 +106,7 @@ class PerformanceTest : PluginTest() {
                 ExecClassData(
                     className = "foo/Bar/$index/$it",
                     probes = randomBoolean(sizeProbes),
-                    testName = "$index/$it"
+                    testId = "$index/$it"
                 )
             }
             plugin.activeScope.addProbes(sessionId) { execClassData }
