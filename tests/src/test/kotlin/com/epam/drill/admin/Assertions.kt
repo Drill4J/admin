@@ -22,9 +22,9 @@ import kotlinx.coroutines.delay
  * Inside the block, you should use functions such as `shouldBe` from the io.kotlintest package.
  * @see io.kotlintest.shouldBe
  */
-suspend fun waitUntil(block: suspend () -> Unit) {
+suspend fun waitUntil(delayMs: Long = 50, block: suspend () -> Unit) {
     while (isFailed(block)) {
-        delay(10)
+        delay(delayMs)
     }
 }
 
