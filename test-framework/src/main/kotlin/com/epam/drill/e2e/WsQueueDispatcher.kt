@@ -148,7 +148,6 @@ class Agent(
     val agentStreamDebug: Boolean,
 ) {
     private val headers = Channel<Int>(Channel.UNLIMITED)
-    private val `set-packages-prefixes` = Channel<String>(Channel.UNLIMITED)
 
     lateinit var plugin: AgentModule<*>
 
@@ -172,7 +171,6 @@ class Agent(
         )
     }
 
-    suspend fun `get-set-packages-prefixes`(): String = `set-packages-prefixes`.receive()
 
 
     fun queued() = app.launch {
@@ -195,7 +193,6 @@ class Agent(
                     }
                     when (mapw[url]) {
                         is Communication.Agent.SetPackagePrefixesEvent -> {
-                            `set-packages-prefixes`.send(content.decodeToString())
                             sendDelivered(url)
                         }
                         is Communication.Agent.ChangeHeaderNameEvent -> {

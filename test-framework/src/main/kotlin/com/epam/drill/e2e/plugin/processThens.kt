@@ -74,7 +74,6 @@ fun AdminTest.processThens(
                     agentStreamDebug
                 ).apply { queued() }
                 apply.getHeaders()
-                apply.`get-set-packages-prefixes`()
                 val bcelClasses = classes.map {
                     it.inputStream().use { fs -> ClassParser(fs, "").parse() }
                 }
@@ -92,6 +91,7 @@ fun AdminTest.processThens(
                     pluginTestInfo,
                     build
                 )
+                waitForAgentRegistered(ui)
                 waitForBuildOnline(ui, build.version)
                 it(pluginTestInfo, st, build)
                 while (globLaunch.isActive)

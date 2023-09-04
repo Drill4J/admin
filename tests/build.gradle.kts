@@ -84,7 +84,7 @@ tasks {
         group = "verification"
         enabled = !testsSkipIntegrationTests.toBoolean()
         useJUnitPlatform()
-        systemProperty("plugin.config.path", project(":test-plugin").projectDir.resolve("plugin_config.json"))
+//        systemProperty("plugin.config.path", project(":test-plugin").projectDir.resolve("plugin_config.json"))
         systemProperty("analytic.disable", true)
         dependsOn("build1Classes")
         dependsOn("build2Classes")
