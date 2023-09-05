@@ -1,0 +1,10 @@
+{
+  "id": "test2code",
+  "name": "Test2Code",
+  "version": "{version}",
+  "description": "Test2Code plugin minimizes your regression suite via Test Impact Analytics by suggesting only affected subset of tests to run, and highlight  untested areas via Test Gap Analysis, providing evidence of how changes are tested and which areas and not tested at all.",
+  "type": "Custom",
+  "family": "INSTRUMENTATION",
+  "enabled": true,
+  "config": "{\"message\": \"hello from default plugin config... This is 'plugin_config.json file\"}"
+}
