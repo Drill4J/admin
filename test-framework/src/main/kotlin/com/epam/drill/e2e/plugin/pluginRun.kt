@@ -124,7 +124,7 @@ internal suspend fun waitForBuildOnline(ui: AdminUiChannels, buildVersion: Strin
 }
 
 internal suspend fun waitForAgentRegistered(ui: AdminUiChannels) {
-    waitUntil { ui.getAgent()?.agentStatus != AgentStatus.REGISTERED }
+    waitUntil { ui.getAgent()?.agentStatus == AgentStatus.REGISTERED }
 }
 
 private suspend fun waitUntil(delayMs: Long = 50, test: suspend () -> Boolean?) {
