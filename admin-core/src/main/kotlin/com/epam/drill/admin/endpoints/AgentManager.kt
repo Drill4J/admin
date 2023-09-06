@@ -333,19 +333,6 @@ class AgentManager(override val di: DI) : DIAware {
         topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(agentId))
     }
 
-    internal suspend fun resetAgent(agInfo: AgentInfo) = entryOrNull(agInfo.id)?.also { agent ->
-        logger.debug { "Reset agent ${agInfo.id}" }
-        agent.update {
-            it.copy(
-                name = "",
-                environment = "",
-                description = "",
-                agentStatus = AgentStatus.NOT_REGISTERED
-            )
-        }.commitChanges()
-        logger.debug { "Agent ${agInfo.id} has been reset" }
-        topicResolver.sendToAllSubscribed(WsRoutes.AgentBuildsSummary(agInfo.id))
-    }
 
     private suspend fun notifyAllAgents() {
         agentStorage.update()
@@ -416,14 +403,6 @@ class AgentManager(override val di: DI) : DIAware {
         adminStore.store(this)
     }
 
-    /**
-     * Send packages prefixes to the agent
-     * @param prefixes package prefixes which need to send
-     * @features Agent registration
-     */
-    private suspend fun AgentWsSession.configurePackages(prefixes: List<String>) {
-        setPackagesPrefixes(prefixes)
-    }
 
     /**
      * Synchronize the agent information with the agent
@@ -441,7 +420,6 @@ class AgentManager(override val di: DI) : DIAware {
         val duration = measureTime {
             buildManager.processInstance(info.id, instanceId) {
                 val settings = buildManager.buildData(id).settings
-                this.configurePackages(settings.packages)
                 if (needClassSending) {
                     this.updateSessionHeader(settings.sessionIdHeaderName)
                     this.enableAllPlugins(info)
@@ -506,16 +484,6 @@ class AgentManager(override val di: DI) : DIAware {
     }
 }
 
-/**
- *
- * Send packages prefixes to the agent
- * @param prefixes the package names
- * @features Agent registration
- */
-suspend fun AgentWsSession.setPackagesPrefixes(prefixes: List<String>) =
-    sendToTopic<Communication.Agent.SetPackagePrefixesEvent, PackagesPrefixes>(
-        PackagesPrefixes(prefixes)
-    ).await()
 
 
 internal suspend fun StoreClient.loadAgentMetadata(

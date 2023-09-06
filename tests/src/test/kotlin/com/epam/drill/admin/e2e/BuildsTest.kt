@@ -16,6 +16,7 @@
 package com.epam.drill.admin.e2e
 
 import com.epam.drill.admin.api.agent.*
+import com.epam.drill.admin.waitUntil
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import kotlin.time.*
@@ -35,32 +36,17 @@ class BuildsTest : E2ETest() {
         ) {
             val aw = AgentWrap(agentId)
             connectAgent(aw) { _, ui, agent ->
-                ui.getAgent()?.agentStatus shouldBe AgentStatus.NOT_REGISTERED
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
-                register(aw.id) { status, _ ->
-                    status shouldBe HttpStatusCode.OK
-                }
-                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERING
-                agent.`get-set-packages-prefixes`()
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
-                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
-                ui.getBuildSummary()?.size shouldBe 1
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
-
+                waitUntil { ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED }
+                waitUntil { ui.getBuildSummary()?.size shouldBe 1 }
+                waitUntil { ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE }
             }.reconnect(aw.copy(buildVersion = "0.1.2")) { _, ui, agent ->
-                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
-                agent.`get-set-packages-prefixes`()
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
-                ui.getBuildSummary()?.size shouldBe 2
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
+                waitUntil { ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED }
+                waitUntil { ui.getBuildSummary()?.size shouldBe 2 }
+                waitUntil { ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE }
             }.reconnect(aw.copy(buildVersion = "0.1.3")) { _, ui, agent ->
-                ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
-                agent.`get-set-packages-prefixes`()
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.BUSY
-                ui.getBuildSummary()?.size shouldBe 3
-                ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE
+                waitUntil { ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED }
+                waitUntil { ui.getBuildSummary()?.size shouldBe 3 }
+                waitUntil { ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE }
             }
         }
 

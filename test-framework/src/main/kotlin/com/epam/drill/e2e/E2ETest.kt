@@ -222,21 +222,6 @@ abstract class E2ETest : AdminTest() {
     }
 
 
-    fun AsyncTestAppEngine.unregister(
-        agentId: String,
-        token: String = globToken,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-    ) =
-        callAsync(context) {
-            with(engine) {
-                handleRequest(
-                    HttpMethod.Patch,
-                    toApiUri(agentApi { ApiRoot.Agents.Agent(it, agentId) })
-                ) {
-                    addHeader(HttpHeaders.Authorization, "Bearer $token")
-                }.apply { resultBlock(response.status(), response.content) }
-            }
-        }
 
     fun AsyncTestAppEngine.togglePlugin(
         agentId: String,
@@ -298,23 +283,6 @@ abstract class E2ETest : AdminTest() {
         }
     }
 
-    fun AsyncTestAppEngine.changePackages(
-        agentId: String,
-        token: String = globToken,
-        payload: SystemSettingsDto,
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-    ) = callAsync(context) {
-        with(engine) {
-            handleRequest(
-                HttpMethod.Put,
-                toApiUri(agentApi { ApiRoot.Agents.SystemSettings(it, agentId) })
-            ) {
-                addHeader(HttpHeaders.Authorization, "Bearer $token")
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody(SystemSettingsDto.serializer() stringify payload)
-            }.apply { resultBlock(response.status(), response.content) }
-        }
-    }
 }
 
 data class AsyncTestAppEngine(val context: CoroutineContext, val engine: TestApplicationEngine)

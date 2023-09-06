@@ -17,6 +17,7 @@ package com.epam.drill.admin.e2e
 
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.version.*
+import com.epam.drill.admin.waitUntil
 import com.epam.drill.e2e.*
 import io.kotlintest.*
 import io.ktor.http.*
@@ -28,11 +29,11 @@ class ToggleAnalytic : E2ETest() {
     fun `Toggle Analytic Test`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap("agentId")) { glob, _, _ ->
-                glob.getAnalytic()?.isAnalyticsDisabled shouldBe true
+                waitUntil { glob.getAnalytic()?.isAnalyticsDisabled shouldBe true }
                 toggleAnalytic(AnalyticsToggleDto.serializer() stringify AnalyticsToggleDto(disable = false)) { status, _ ->
                     status shouldBe HttpStatusCode.OK
                 }
-                glob.getAnalytic()?.isAnalyticsDisabled shouldBe false
+                waitUntil { glob.getAnalytic()?.isAnalyticsDisabled shouldBe false }
             }
         }
     }

@@ -124,20 +124,6 @@ data class PluginTestContext(
         }.apply { resultBlock(response.status(), response.content) }
     }
 
-    fun changePackages(
-        agentId: String = this.agentId,
-        token: String = this.token,
-        payload: PackagesPrefixes = PackagesPrefixes(),
-        resultBlock: suspend (HttpStatusCode?, String?) -> Unit = { _, _ -> },
-    ) = callAsync(context) {
-        engine.handleRequest(
-            HttpMethod.Post,
-            engine.toApiUri(agentApi { ApiRoot.Agents.SystemSettings(it, agentId) })
-        ) {
-            addHeader(HttpHeaders.Authorization, "Bearer $token")
-            setBody(PackagesPrefixes.serializer() stringify payload)
-        }.apply { resultBlock(response.status(), response.content) }
-    }
 }
 
 

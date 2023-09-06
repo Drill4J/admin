@@ -52,7 +52,6 @@ class PluginTest : E2EPluginTest() {
     fun `reconnect - new build`() {
         createSimpleAppWithPlugin<PTestStream> {
             connectAgent<Build1> { plugUi, _ ->
-                plugUi.processedData.receive()
                 pluginAction(PLUGIN_ACTION) { status, content ->
                     logger.info { content }
                     status shouldBe HttpStatusCode.OK
