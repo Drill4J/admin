@@ -27,10 +27,10 @@ class AgentTypeTest : E2ETest() {
     fun `check agent type`() {
         createSimpleAppWithUIConnection {
             connectAgent(AgentWrap(id = "agentId1", agentType = AgentType.JAVA)) { _, ui, _ ->
-                waitUntil { ui.getAgent()?.agentType shouldBe "Java" }
+                waitUntil { ui.getAgent()?.agentType shouldBe AgentType.JAVA.notation }
             }
             connectAgent(AgentWrap(id = "agentId2", agentType = AgentType.DOTNET)) { _, ui, _ ->
-                waitUntil { ui.getAgent()?.agentType shouldBe ".NET" }
+                waitUntil { ui.getAgent()?.agentType shouldBe AgentType.DOTNET.notation }
             }
         }
     }
