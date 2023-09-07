@@ -34,7 +34,7 @@ internal fun PersistentMap<Long, ExecClassData>.merge(
 ): PersistentMap<Long, ExecClassData> = if (probes.any()) {
     mutate { map ->
         probes.forEach { data ->
-            data.id().let { map[it] = map[it]?.merge(data) ?: data }
+            data.id.let { map[it] = map[it]?.merge(data) ?: data }
         }
     }
 } else this

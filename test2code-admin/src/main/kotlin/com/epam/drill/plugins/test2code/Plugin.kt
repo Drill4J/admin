@@ -23,7 +23,6 @@ import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
-import com.epam.drill.plugins.test2code.coverage.id
 import com.epam.drill.plugins.test2code.global_filter.*
 import com.epam.drill.plugins.test2code.group.*
 import com.epam.drill.plugins.test2code.storage.*
@@ -224,7 +223,7 @@ class Plugin(
             activeScope.addProbes(sessionId) {
                 this.data.map { probes ->
                     ExecClassData(
-                        className = probes.name,
+                        id = probes.name.crc64(),
                         testId = probes.testId,
                         probes = probes.probes.toBitSet()
                     )
@@ -287,6 +286,7 @@ class Plugin(
                 okResult
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
         }
+
         is CancelSession -> action.payload.run {
             deprecatedResult
         }
@@ -397,6 +397,7 @@ class Plugin(
                 "$instanceId: No active session with id ${message.sessionId}."
             }
         }
+
         is SessionsFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
             message.ids.forEach { state.finishSession(it) }
@@ -999,13 +1000,15 @@ class Plugin(
     }
 
     private suspend fun createGlobalSession() {
-        doAction(StartNewSession(
-            payload = StartPayload(
-                testType = GLOBAL_SESSION_ID,
-                sessionId = GLOBAL_SESSION_ID,
-                testName = GLOBAL_SESSION_ID,
-                isRealtime = true,
-                isGlobal = true)
+        doAction(
+            StartNewSession(
+                payload = StartPayload(
+                    testType = GLOBAL_SESSION_ID,
+                    sessionId = GLOBAL_SESSION_ID,
+                    testName = GLOBAL_SESSION_ID,
+                    isRealtime = true,
+                    isGlobal = true
+                )
             ),
             data = null
         )

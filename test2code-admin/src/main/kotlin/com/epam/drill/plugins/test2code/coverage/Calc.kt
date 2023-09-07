@@ -30,11 +30,11 @@ internal fun Sequence<ExecClassData>.bundle(
     tree: PackageTree
 ): BundleCounter = run {
     val probeCounts: Map<String, Int> = tree.packages.run {
-        flatMap { it.classes }.associateBy({ fullClassname(it.path, it.name) }) { it.totalCount }
+        flatMap { it.classes }.associateBy({ fullClassname(it.path, it.name).crc64().toString() }) { it.totalCount }
     }
     val probesByClasses: Map<String, List<Boolean>> = filter {
-        it.className in probeCounts
-    }.groupBy(ExecClassData::className).mapValues { (className, execDataList) ->
+        it.id.toString() in probeCounts
+    }.groupBy { it.id.toString() }.mapValues { (className, execDataList) ->
         val initialProbe = BooleanArray(probeCounts.getValue(className)) { false }.toList()
         execDataList.map(ExecClassData::probes).fold(initialProbe) { acc, probes ->
             acc.merge(probes.toList())

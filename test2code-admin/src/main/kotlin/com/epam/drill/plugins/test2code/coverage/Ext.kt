@@ -17,14 +17,11 @@ package com.epam.drill.plugins.test2code.coverage
 
 import com.epam.drill.plugins.test2code.*
 import com.epam.drill.plugins.test2code.api.*
-import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.util.*
 import java.util.stream.*
 import kotlin.math.*
 import kotlinx.serialization.*
-
-internal fun ExecClassData.id(): Long = id ?: className.crc64()
 
 internal fun List<Boolean>.toCount() = Count(count { it }, size)
 

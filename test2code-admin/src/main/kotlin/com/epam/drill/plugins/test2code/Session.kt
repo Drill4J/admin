@@ -90,14 +90,12 @@ class ActiveSession(
      * @param dataPart a collection of new probes
      * @features Sending coverage data
      */
-    fun addAll(dataPart: Collection<ExecClassData>) = dataPart.map { probe ->
-        probe.id?.let { probe } ?: probe.copy(id = probe.id())
-    }.forEach { probe ->
+    fun addAll(dataPart: Collection<ExecClassData>) = dataPart.forEach { probe ->
         if (true in probe.probes) {
             val test = probe.testId.weakIntern()
             _probes.update { map ->
                 (map[test] ?: persistentHashMapOf()).let { testData ->
-                    val probeId = probe.id()
+                    val probeId = probe.id
                     if (probeId in testData) {
                         testData.getValue(probeId).run {
                             val merged = probes.merge(probe.probes)

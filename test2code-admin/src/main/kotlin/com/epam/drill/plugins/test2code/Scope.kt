@@ -180,8 +180,7 @@ class ActiveScope(
         testName: String? = null,
         labels: Set<Label> = emptySet(),
     ) = ActiveSession(sessionId, testType, isGlobal, isRealtime, testName, labels).takeIf { newSession ->
-        val key = sessionId
-        activeSessions(key) { existing ->
+        activeSessions(sessionId) { existing ->
             existing ?: newSession.takeIf { activeSessions[it.id] == null }
         } === newSession
     }?.also {
