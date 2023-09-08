@@ -29,56 +29,70 @@ import com.epam.dsm.util.*
 internal fun Sequence<ExecClassData>.bundle(
     tree: PackageTree
 ): BundleCounter = run {
-    val probeCounts: Map<String, Int> = tree.packages.run {
-        flatMap { it.classes }.associateBy({ fullClassname(it.path, it.name).crc64().toString() }) { it.totalCount }
-    }
-    val probesByClasses: Map<String, List<Boolean>> = filter {
-        it.id.toString() in probeCounts
-    }.groupBy { it.id.toString() }.mapValues { (className, execDataList) ->
-        val initialProbe = BooleanArray(probeCounts.getValue(className)) { false }.toList()
-        execDataList.map(ExecClassData::probes).fold(initialProbe) { acc, probes ->
-            acc.merge(probes.toList())
+    val classIdToClassName: Map<String, String> = tree.packages
+        .flatMap { it.classes }
+        .map { fullClassname(it.path, it.name) }
+        .associateBy(
+            keySelector = { it.crc64().toString() },
+            valueTransform = { it }
+        )
+    val classIdToProbeCounts: Map<String, Int> = tree.packages
+        .flatMap { it.classes }
+        .associateBy(
+            keySelector = { fullClassname(it.path, it.name).crc64().toString() },
+            valueTransform = { it.totalCount }
+        )
+    val classIdToProbes: Map<String, List<Boolean>> = this.filter { it.id.toString() in classIdToProbeCounts }
+        .groupBy { it.id.toString() }
+        .mapValues { (classId, execDataList) ->
+            val initialProbe = BooleanArray(classIdToProbeCounts.getValue(classId)) { false }.toList()
+            execDataList.map(ExecClassData::probes).fold(initialProbe) { acc, probes ->
+                acc.merge(probes.toList())
+            }
         }
-    }
-    val classMethods = tree.packages.flatMap { it.classes }.associate {
-        fullClassname(it.path, it.name).crc64().toString() to it.methods
-    }
-    val covered = probesByClasses.values.sumBy { probes -> probes.count { it } }
-    val packages = probesByClasses.keys.groupBy { classPath(it) }.map { (pkgName, classNames) ->
-        val classes = classNames.map { fullClassname ->
-            val probes = probesByClasses.getValue(fullClassname)
-            ClassCounter(
-                path = pkgName.weakIntern(),
-                name = classname(fullClassname),
-                count = probes.toCount(),
-                fullName = fullClassname,
-                probes = probes,
-                methods = classMethods.getValue(fullClassname).map {
-                    val methodProbes = probes.slice(it.probeRange)
-                    val sign = signature(fullClassname, it.name, it.desc)
-                    MethodCounter(
-                        it.name, it.desc, it.decl,
-                        sign = sign,
-                        fullName = fullMethodName(fullClassname, it.name, it.desc),
-                        count = methodProbes.toCount()
-                    )
-                }
+    val classIdToMethods = tree.packages
+        .flatMap { it.classes }
+        .associate {
+            fullClassname(it.path, it.name).crc64().toString() to it.methods
+        }
+    val covered = classIdToProbes.values.sumOf { probes -> probes.count { it } }
+    val packages = classIdToProbes.keys
+        .groupBy { classId -> classPath(classIdToClassName[classId]!!) }
+        .map { (pkgName, classIds) ->
+            val classes = classIds.map { classId ->
+                val probes = classIdToProbes.getValue(classId)
+                ClassCounter(
+                    path = pkgName.weakIntern(),
+                    name = classname(classIdToClassName[classId]!!),
+                    count = probes.toCount(),
+                    fullName = classIdToClassName[classId]!!,
+                    probes = probes,
+                    methods = classIdToMethods.getValue(classId).map {
+                        val methodProbes = probes.slice(it.probeRange)
+                        val sign = signature(classId, it.name, it.desc)
+                        MethodCounter(
+                            it.name, it.desc, it.decl,
+                            sign = sign,
+                            fullName = fullMethodName(classId, it.name, it.desc),
+                            count = methodProbes.toCount()
+                        )
+                    }
+                )
+            }
+            PackageCounter(
+                name = pkgName,
+                count = classIds.flatMap { classIdToProbes[it] ?: emptyList() }.toCount(),
+                classCount = Count(
+                    classIds.count { id -> classIdToProbes.getValue(id).any { it } },
+                    classIds.size
+                ),
+                methodCount = Count(
+                    classes.sumOf { c -> c.methods.count { it.count.covered > 0 } },
+                    classes.sumOf { it.methods.count() }
+                ),
+                classes = classes
             )
         }
-        PackageCounter(
-            name = pkgName,
-            count = classNames.flatMap { probesByClasses[it] ?: emptyList() }.toCount(),
-            classCount = Count(
-                classNames.count { name -> probesByClasses.getValue(name).any { it } },
-                classNames.size
-            ),
-            methodCount = Count(
-                classes.sumOf { c -> c.methods.count { it.count.covered > 0 } },
-                classes.sumOf { it.methods.count() }
-            ),
-            classes = classes
-        )
-    }
     BundleCounter(
         name = "",
         count = Count(covered, tree.totalCount),
