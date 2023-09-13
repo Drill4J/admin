@@ -127,7 +127,7 @@ jib {
         tags = setOf(version.toString())
     }
     container {
-        ports = listOf("8090", "5006")
+        ports = listOf("8090", "5006", "8453")
         volumes = listOf("/distr", "/work")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
