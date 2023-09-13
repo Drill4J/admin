@@ -42,8 +42,8 @@ internal fun Sequence<ExecClassData>.bundle(
             keySelector = { fullClassname(it.path, it.name).crc64().toString() },
             valueTransform = { it.totalCount }
         )
-    val classIdToProbes: Map<String, List<Boolean>> = this.filter { it.id.toString() in classIdToProbeCounts }
-        .groupBy { it.id.toString() }
+    val classIdToProbes: Map<String, List<Boolean>> = this.filter { it.nameId.toString() in classIdToProbeCounts }
+        .groupBy { it.nameId.toString() }
         .mapValues { (classId, execDataList) ->
             val initialProbe = BooleanArray(classIdToProbeCounts.getValue(classId)) { false }.toList()
             execDataList.map(ExecClassData::probes).fold(initialProbe) { acc, probes ->

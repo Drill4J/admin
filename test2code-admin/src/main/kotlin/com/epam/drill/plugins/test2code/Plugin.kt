@@ -224,6 +224,7 @@ class Plugin(
                 this.data.map { probes ->
                     ExecClassData(
                         id = probes.name.crc64(),
+                        nameId = probes.name.crc64(),
                         testId = probes.testId,
                         probes = probes.probes.toBitSet()
                     )
