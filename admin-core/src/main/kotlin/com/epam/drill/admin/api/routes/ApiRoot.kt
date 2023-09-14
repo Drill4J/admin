@@ -83,10 +83,6 @@ class ApiRoot(val prefix: String = "api") {
         data class AgentLogging(val parent: Agents, val agentId: String)
 
         @Group(AGENT)
-        @Location("/{agentId}/system-settings")
-        data class SystemSettings(val parent: Agents, val agentId: String)
-
-        @Group(AGENT)
         @Location("/{agentId}/parameters")
         data class Parameters(val parent: Agents, val agentId: String)
 

@@ -79,17 +79,6 @@ fun AdminTest.processFirstConnect(
                 agentStreamDebug
             ).apply { queued() }
             agent.getHeaders()
-            asyncEngine.register(
-                ag.id, payload = AgentRegistrationDto(
-                    name = "xz",
-                    description = "ad",
-                    systemSettings = SystemSettingsDto(
-                        packages = listOf("testPrefix")
-                    ),
-                    plugins = listOf(pluginMeta.id)
-                )
-            )
-            agent.`get-set-packages-prefixes`()
             val bcelClasses = classes.map {
                 it.inputStream().use { fs -> ClassParser(fs, "").parse() }
             }
@@ -107,9 +96,7 @@ fun AdminTest.processFirstConnect(
                 pluginTestInfo,
                 build
             )
-            ui.getAgent()
-            ui.getAgent()
-            ui.getAgent()
+            waitForAgentRegistered(ui)
             waitForBuildOnline(ui, build.version)
             connect(pluginTestInfo, st, build)
             while (globLaunch.isActive) {

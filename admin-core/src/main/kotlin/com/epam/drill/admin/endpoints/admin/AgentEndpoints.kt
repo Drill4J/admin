@@ -184,27 +184,6 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
-                val meta = "Unregister agent"
-                    .responds(
-                        ok<Unit>(), badRequest()
-                    )
-                patch<ApiRoot.Agents.Agent>(meta) { payload ->
-                    logger.debug { "Unregister agent with id ${payload.agentId}" }
-                    val agentId = payload.agentId
-                    val agInfo = agentManager[agentId]
-
-                    val (status, message) = if (agInfo != null) {
-                        agentManager.resetAgent(agInfo)
-                        logger.debug { "Agent with id ${payload.agentId} has been unregistered successfully" }
-                        HttpStatusCode.OK to EmptyContent
-                    } else {
-                        logger.warn { "Agent with id'$agentId' was not found" }
-                        HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
-                    }
-                    call.respond(status, message)
-                }
-            }
 
             /**
              * Also you should send action to plugin

@@ -72,8 +72,8 @@ class JsCoverageTest : PostgresBased("js_coverage") {
                     }
                 }
                 assertEquals(
-                    setOf(TypedTest(details = TestDetails(testName = "default"), type = manualTestType),
-                        TypedTest(details = TestDetails(testName = "default"), type = autoTestType)),
+                    setOf(TypedTest(details = TestDetails(testName = ""), type = manualTestType),
+                        TypedTest(details = TestDetails(testName = ""), type = autoTestType)),
                     associatedTests.getAssociatedTests().flatMap { it.tests }.toSet()
                 )
                 buildMethods.run {

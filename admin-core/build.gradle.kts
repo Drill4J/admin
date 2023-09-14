@@ -55,7 +55,14 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("org.flywaydb:flyway-core:$flywaydbVersion")
-    implementation("org.mapdb:mapdb:$mapdbVersion")
+    implementation("org.mapdb:mapdb:$mapdbVersion") {
+        exclude(group = "org.eclipse.collections", module = "eclipse-collections")
+        exclude(group = "org.eclipse.collections", module = "eclipse-collections-api")
+        exclude(group = "org.eclipse.collections", module = "eclipse-collections-forkjoin")
+    }
+    implementation("org.eclipse.collections:eclipse-collections:11.1.0")
+    implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
+    implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
     implementation("com.github.luben:zstd-jni:$lubenZstdVersion")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")

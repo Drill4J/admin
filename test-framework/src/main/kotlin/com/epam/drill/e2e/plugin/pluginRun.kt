@@ -115,7 +115,20 @@ fun <PS : PluginStreams> E2EPluginTest.pluginRun(
     }
 }
 
-internal suspend fun waitForBuildOnline(ui: AdminUiChannels, buildVersion: String) = repeat(2) {
-    while (ui.getBuild()?.let { it.buildVersion to it.buildStatus } != buildVersion to BuildStatus.ONLINE)
-        delay(50)
+internal suspend fun waitForBuildOnline(ui: AdminUiChannels, buildVersion: String) {
+    waitUntil {
+        ui.getBuild()?.let {
+            it.buildVersion == buildVersion && it.buildStatus == BuildStatus.ONLINE
+        }
+    }
+}
+
+internal suspend fun waitForAgentRegistered(ui: AdminUiChannels) {
+    waitUntil { ui.getAgent()?.agentStatus == AgentStatus.REGISTERED }
+}
+
+private suspend fun waitUntil(delayMs: Long = 50, test: suspend () -> Boolean?) {
+    while (test() != true) {
+        delay(delayMs)
+    }
 }
