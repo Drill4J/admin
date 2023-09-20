@@ -63,7 +63,6 @@ dependencies {
     implementation("org.eclipse.collections:eclipse-collections:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
-    implementation("com.github.luben:zstd-jni:$lubenZstdVersion")
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
@@ -134,7 +133,7 @@ jib {
         tags = setOf(version.toString())
     }
     container {
-        ports = listOf("8090", "5006")
+        ports = listOf("8090", "5006", "8453")
         volumes = listOf("/distr", "/work")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs

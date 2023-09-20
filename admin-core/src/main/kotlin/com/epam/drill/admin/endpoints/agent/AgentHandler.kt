@@ -34,6 +34,8 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import java.io.ByteArrayOutputStream
+import java.util.zip.Inflater
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.protobuf.*
@@ -92,7 +94,7 @@ class AgentHandler(override val di: DI) : DIAware{
                         withContext(Dispatchers.IO) {
                             val bytes = frame.readBytes()
                             val frameBytes = if (useCompression) {
-                                Zstd.decompress(bytes)
+                                decompress(bytes)
                             } else bytes
                             BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
@@ -140,6 +142,20 @@ class AgentHandler(override val di: DI) : DIAware{
             buildManager.removeInstance(agentInfo.toAgentBuildKey(), instanceId)
         }
     }
+
+    private fun decompress(input: ByteArray): ByteArray = Inflater(true).run {
+        ByteArrayOutputStream().use { stream ->
+            this.setInput(input)
+            val readBuffer = ByteArray(1024)
+            val readed: (Int) -> Boolean = { it > 0 }
+            while (!this.finished()) {
+                this.inflate(readBuffer).takeIf(readed)?.also { stream.write(readBuffer, 0, it) }
+            }
+            this.end()
+            stream.toByteArray()
+        }
+    }
+
 }
 
 private fun ApplicationRequest.retrieveParams(): CommonAgentConfig {
