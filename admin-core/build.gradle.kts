@@ -24,7 +24,6 @@ val kotlinxSerializationVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
-val lubenZstdVersion: String by parent!!.extra
 val mapdbVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val postgresEmbeddedVersion: String by parent!!.extra
