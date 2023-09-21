@@ -367,16 +367,16 @@ class Plugin(
                 .groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->
                     var sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
-                    if (activeScope.activeSessions[sessionId] == null){
+                    if (activeScope.activeSessions[sessionId] == null) {
                         sessionId = GLOBAL_SESSION_ID
                     }
-                    activeScope.activeSessions[sessionId].let{
+                    activeScope.activeSessions[sessionId].let {
                         activeScope.addProbes(sessionId) { data }?.run {
                             if (isRealtime) {
                                 activeScope.probesChanged()
                             }
                         }
-                    }
+                    } ?: logger.debug { "Attempting to add coverage in non-existent active session with id $sessionId" }
                 }
         }
 
