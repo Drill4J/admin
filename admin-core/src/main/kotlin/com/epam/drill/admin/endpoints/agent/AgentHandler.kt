@@ -28,6 +28,7 @@ import com.epam.drill.admin.util.*
 import com.epam.drill.common.agent.configuration.*
 import com.epam.drill.common.message.Message
 import com.epam.drill.common.message.MessageType
+import com.epam.drill.common.util.JavaZip
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
@@ -94,7 +95,7 @@ class AgentHandler(override val di: DI) : DIAware{
                         withContext(Dispatchers.IO) {
                             val bytes = frame.readBytes()
                             val frameBytes = if (useCompression) {
-                                decompress(bytes)
+                                JavaZip.decompress(bytes)
                             } else bytes
                             BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
@@ -140,19 +141,6 @@ class AgentHandler(override val di: DI) : DIAware{
         } finally {
             logger.info { "removing instance of $agentDebugStr..." }
             buildManager.removeInstance(agentInfo.toAgentBuildKey(), instanceId)
-        }
-    }
-
-    private fun decompress(input: ByteArray): ByteArray = Inflater(true).run {
-        ByteArrayOutputStream().use { stream ->
-            this.setInput(input)
-            val readBuffer = ByteArray(1024)
-            val readed: (Int) -> Boolean = { it > 0 }
-            while (!this.finished()) {
-                this.inflate(readBuffer).takeIf(readed)?.also { stream.write(readBuffer, 0, it) }
-            }
-            this.end()
-            stream.toByteArray()
         }
     }
 
