@@ -32,9 +32,7 @@ import com.epam.dsm.StoreClient
 import com.epam.dsm.find.Expr.Companion.ANY
 import com.epam.dsm.find.get
 import com.epam.dsm.find.getAndMap
-import com.epam.dsm.util.id
 import com.epam.dsm.util.logPoolStats
-import com.github.luben.zstd.Zstd
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
 import kotlinx.coroutines.*
@@ -327,8 +325,7 @@ class Plugin(
             json.decodeFromString(CoverMessage.serializer(), content)
         else {
             val decode = Base64.getDecoder().decode(content)
-            val decompress = Zstd.decompress(decode, Zstd.decompressedSize(decode).toInt())
-            ProtoBuf.decodeFromByteArray(CoverMessage.serializer(), decompress)
+            ProtoBuf.decodeFromByteArray(CoverMessage.serializer(), decode)
         }
         processData(instanceId, message)
             .let { "" } //TODO eliminate magic empty strings from API

@@ -28,12 +28,15 @@ import com.epam.drill.admin.util.*
 import com.epam.drill.common.agent.configuration.*
 import com.epam.drill.common.message.Message
 import com.epam.drill.common.message.MessageType
+import com.epam.drill.common.util.JavaZip
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
 import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import java.io.ByteArrayOutputStream
+import java.util.zip.Inflater
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.serialization.protobuf.*
@@ -92,7 +95,7 @@ class AgentHandler(override val di: DI) : DIAware{
                         withContext(Dispatchers.IO) {
                             val bytes = frame.readBytes()
                             val frameBytes = if (useCompression) {
-                                Zstd.decompress(bytes)
+                                JavaZip.decompress(bytes)
                             } else bytes
                             BinaryMessage(ProtoBuf.load(Message.serializer(), frameBytes))
                         }
@@ -140,6 +143,7 @@ class AgentHandler(override val di: DI) : DIAware{
             buildManager.removeInstance(agentInfo.toAgentBuildKey(), instanceId)
         }
     }
+
 }
 
 private fun ApplicationRequest.retrieveParams(): CommonAgentConfig {

@@ -21,7 +21,6 @@ val kotlinxCollectionsVersion: String by parent!!.extra
 val bcelVersion: String by parent!!.extra
 val jacocoVersion: String by parent!!.extra
 val atomicfuVersion: String by parent!!.extra
-val lubenZstdVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
 
 repositories {
@@ -40,7 +39,6 @@ dependencies {
     jarDependencies(project(":test2code-common"))
 
     compileOnly("org.jetbrains.kotlinx:atomicfu:$atomicfuVersion")
-    compileOnly("com.github.luben:zstd-jni:$lubenZstdVersion")
 
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
