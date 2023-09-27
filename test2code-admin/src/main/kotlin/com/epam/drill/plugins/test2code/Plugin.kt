@@ -363,11 +363,11 @@ class Plugin(
             message.data
                 .groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->
-                    var sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
+                    val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
                     if (activeScope.activeSessions[sessionId] == null) {
-                        sessionId = GLOBAL_SESSION_ID
+                        activeScope.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true)
                     }
-                    activeScope.activeSessions[sessionId].let {
+                    activeScope.activeSessions[sessionId]?.let {
                         activeScope.addProbes(sessionId) { data }?.run {
                             if (isRealtime) {
                                 activeScope.probesChanged()
