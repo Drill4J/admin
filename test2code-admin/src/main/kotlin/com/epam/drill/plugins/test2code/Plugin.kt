@@ -360,9 +360,13 @@ class Plugin(
             .also { logPoolStats() }
 
         is CoverDataPart -> {
-            message.data.groupBy { it.sessionId }
+            message.data
+                .groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->
                     val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
+                    if (activeScope.activeSessions[sessionId] == null) {
+                        activeScope.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true)
+                    }
                     activeScope.activeSessions[sessionId]?.let {
                         activeScope.addProbes(sessionId) { data }?.run {
                             if (isRealtime) {
