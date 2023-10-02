@@ -80,12 +80,8 @@ fun Application.module() = kodeinApplication(
 
             install(Authentication) {
                 jwt {
-                    skipWhen { applicationCall ->
-                        applicationCall.request.headers["Referer"]?.contains("openapi.json") ?: false
-                    }
                     realm = jwtRealm
                     verifier(jwtConfig.verifier)
-                    skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
                     validate {
                         it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                     }
