@@ -21,28 +21,60 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.jwt.user.*
 import io.ktor.application.*
 import io.ktor.config.*
+import mu.KotlinLogging
 import java.util.*
+import javax.crypto.KeyGenerator
 import kotlin.time.*
 
-val Application.jwtConfig: ApplicationConfig
-    get() = environment.config.config("jwt")
+val logger = KotlinLogging.logger {}
+val Application.jwtProperties: ApplicationConfig
+    get() = drillConfig.config("jwt")
 
+val generatedSecret: String by lazy {
+    logger.warn { "The generated secret key for the JWT is used. " +
+            "To set your secret key, use the DRILL_JWT_SECRET environment variable." }
+    generateSecret()
+}
+val Application.jwtSecret: String
+    get() = jwtProperties.propertyOrNull("secret")?.getString() ?: generatedSecret
+
+val Application.jwtIssuer: String
+    get() = jwtProperties.propertyOrNull("issuer")?.getString() ?: "Drill4j App"
 
 val Application.jwtLifetime: Duration
-    get() = jwtConfig.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(15)
+    get() = jwtProperties.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(15)
 
-object JwtConfig {
-    private const val secret = "HDZZh35d82zdzHJFF86tt"
-    private const val issuser = "http://drill-4-j/"
-    private val algorithm = Algorithm.HMAC512(secret)
+val Application.jwtAudience: String?
+    get() = jwtProperties.propertyOrNull("audience")?.getString()
+
+val Application.jwtRealm: String
+    get() = jwtProperties.propertyOrNull("realm")?.getString() ?: "Drill4J app"
+
+val Application.jwtAlgorithm: Algorithm
+    get() = Algorithm.HMAC512(jwtSecret)
+
+val Application.jwtConfig: JwtConfig
+    get() = JwtConfig(
+        algorithm = jwtAlgorithm,
+        issuer = jwtIssuer,
+        audience = jwtAudience
+    )
+
+
+class JwtConfig(
+    private val algorithm: Algorithm,
+    private val issuer: String,
+    private val audience: String? = null
+) {
 
     val verifier: JWTVerifier = JWT.require(algorithm)
-        .withIssuer(issuser)
+        .withIssuer(issuer)
         .build()
 
     fun makeToken(user: User, lifetime: Duration): String = JWT.create()
         .withSubject("Authentication")
-        .withIssuer(issuser)
+        .withIssuer(issuer)
+        .withAudience(audience)
         .withClaim("id", user.id)
         .withClaim("role", user.role)
         .withExpiresAt(lifetime.toExpiration())
@@ -51,3 +83,4 @@ object JwtConfig {
 
 private fun Duration.toExpiration() = Date(System.currentTimeMillis() + inWholeMilliseconds)
 
+private fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()

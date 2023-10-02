@@ -21,6 +21,7 @@ import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
+import com.epam.drill.admin.jwt.config.jwtConfig
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
@@ -46,7 +47,7 @@ class DrillServerWs(override val di:DI) : DIAware {
     init {
         app.routing {
             val socketName = "drill-admin-socket"
-            authWebSocket("/ws/$socketName") {
+            authWebSocket("/ws/$socketName", app.jwtConfig) {
                 val session = this
                 logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {

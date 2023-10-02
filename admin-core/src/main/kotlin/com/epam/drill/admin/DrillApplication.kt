@@ -53,8 +53,6 @@ private val logger = KotlinLogging.logger {}
 fun Application.module() = kodeinApplication(
     AppBuilder {
         withInstallation {
-            @Suppress("UNUSED_VARIABLE") val jwtAudience = environment.config.property("jwt.audience").getString()
-            val jwtRealm = environment.config.property("jwt.realm").getString()
 
             install(StatusPages) {
                 exception<Throwable> { cause ->
@@ -86,7 +84,7 @@ fun Application.module() = kodeinApplication(
                         applicationCall.request.headers["Referer"]?.contains("openapi.json") ?: false
                     }
                     realm = jwtRealm
-                    verifier(JwtConfig.verifier)
+                    verifier(jwtConfig.verifier)
                     skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
                     validate {
                         it.payload.getClaim("id").asInt()?.let(userSource::findUserById)

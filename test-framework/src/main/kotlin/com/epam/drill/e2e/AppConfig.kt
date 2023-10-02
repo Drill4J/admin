@@ -58,8 +58,8 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
         install(WebSockets)
         install(Authentication) {
             jwt {
-                realm = "Drill4J app"
-                verifier(JwtConfig.verifier)
+                realm = jwtRealm
+                verifier(jwtConfig.verifier)
                 validate {
                     it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
                 }
