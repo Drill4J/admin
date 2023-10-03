@@ -16,7 +16,6 @@
 package com.epam.drill.admin.security
 
 import com.epam.drill.admin.jwt.config.jwtConfig
-import com.epam.drill.admin.jwt.config.jwtRealm
 import com.epam.drill.admin.userSource
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -25,14 +24,14 @@ import io.ktor.auth.jwt.*
 fun Application.installAuthentication() {
     install(Authentication) {
         jwt("jwt") {
-            realm = jwtRealm
+            realm = "Access to the http(s) and the ws(s) services"
             verifier(jwtConfig.verifier)
             validate {
                 it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
             }
         }
         basic("basic") {
-            realm = jwtRealm
+            realm = "Access to the http(s) services"
             validate {
                 userSource.findUserByCredentials(it)
             }

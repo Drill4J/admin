@@ -47,9 +47,6 @@ val Application.jwtLifetime: Duration
 val Application.jwtAudience: String?
     get() = jwtProperties.propertyOrNull("audience")?.getString()
 
-val Application.jwtRealm: String
-    get() = jwtProperties.propertyOrNull("realm")?.getString() ?: "Drill4J app"
-
 val Application.jwtAlgorithm: Algorithm
     get() = Algorithm.HMAC512(jwtSecret)
 
