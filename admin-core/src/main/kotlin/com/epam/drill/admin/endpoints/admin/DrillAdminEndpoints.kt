@@ -60,11 +60,13 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
         app.routing {
 
             authenticate("jwt", "basic") {
-                val meta = "Agent Toggle StandBy"
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-                post<ApiRoot.Agents.ToggleAgent>(meta) { params ->
+
+                post<ApiRoot.Agents.ToggleAgent>(
+                    "Agent Toggle StandBy"
+                        .responds(
+                            ok<Unit>(), notFound(), badRequest()
+                        )
+                ) { params ->
                     val (_, agentId) = params
                     logger.info { "Toggle agent $agentId" }
                     val (status, response) = agentManager[agentId]?.let { agentInfo ->
@@ -93,57 +95,58 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                     } ?: (HttpStatusCode.NotFound to EmptyContent)
                     call.respond(status, response)
                 }
-            }
 
-            authenticate("jwt", "basic") {
-                val meta = "Configure agent logging levels"
-                    .examples(
-                        example("Agent logging configuration", defaultLoggingConfig)
-                    )
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-                put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(meta) { (_, agentId), loggingConfig ->
+
+                put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(
+                    "Configure agent logging levels"
+                        .examples(
+                            example("Agent logging configuration", defaultLoggingConfig)
+                        )
+                        .responds(
+                            ok<Unit>(), notFound(), badRequest()
+                        )
+                ) { (_, agentId), loggingConfig ->
                     logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
                     loggingHandler.updateConfig(agentId, loggingConfig)
                     logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }
-            }
-            authenticate("jwt", "basic") {
-                val meta = "Return cache stats"
-                    .examples()
-                    .responds(
-                        ok<String>()
-                    )
-                get<ApiRoot.Cache.Stats>(meta) {
+
+                get<ApiRoot.Cache.Stats>(
+                    "Return cache stats"
+                        .examples()
+                        .responds(
+                            ok<String>()
+                        )
+                ) {
                     val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
                     call.respond(HttpStatusCode.OK, cacheStats)
                 }
-            }
-            authenticate("jwt", "basic") {
-                val meta = "Clear cache"
-                    .examples()
-                    .responds(
-                        ok<String>()
-                    )
-                get<ApiRoot.Cache.Clear>(meta) {
+
+                get<ApiRoot.Cache.Clear>(
+                    "Clear cache"
+                        .examples()
+                        .responds(
+                            ok<String>()
+                        )
+                ) {
                     (cacheService as? MapDBCacheService)?.clear()
                     call.respond(HttpStatusCode.OK)
                 }
             }
 
-            val meta = "Toggle google analytics"
-                .examples(
-                    example(
-                        "analytics toggle request",
-                        AnalyticsToggleDto(disable = true)
+            patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(
+                "Toggle google analytics"
+                    .examples(
+                        example(
+                            "analytics toggle request",
+                            AnalyticsToggleDto(disable = true)
+                        )
                     )
-                )
-                .responds(
-                    ok<AnalyticsToggleDto>()
-                )
-            patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(meta) { _, toggleDto ->
+                    .responds(
+                        ok<AnalyticsToggleDto>()
+                    )
+            ) { _, toggleDto ->
                 System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
                 logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
                 topicResolver.sendToAllSubscribed(WsRoot.Analytics)

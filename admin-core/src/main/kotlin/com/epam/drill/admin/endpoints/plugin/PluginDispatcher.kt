@@ -112,16 +112,18 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 }
             }
             authenticate("jwt", "basic") {
-                val meta = "Dispatch Plugin Action"
-                    .examples(
-                        example("action", "some action name")
-                    )
-                    .responds(
-                        ok<String>(
-                            example("")
-                        ), notFound()
-                    )
-                post<ApiRoot.Agents.DispatchPluginAction, String>(meta) { payload, action ->
+
+                post<ApiRoot.Agents.DispatchPluginAction, String>(
+                    "Dispatch Plugin Action"
+                        .examples(
+                            example("action", "some action name")
+                        )
+                        .responds(
+                            ok<String>(
+                                example("")
+                            ), notFound()
+                        )
+                ) { payload, action ->
                     val (_, agentId, pluginId) = payload
                     logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
                     val agent = agentManager.entryOrNull(agentId)
@@ -147,23 +149,22 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     logger.info { "response for '$agentId': $response" }
                     sendResponse(response, statusCode)
                 }
-            }
 
-            authenticate("jwt", "basic") {
-                val meta = "Process plugin data"
-                    .examples(
-                        example(
-                            "Petclinic",
-                            """Multipart form-data with key-value pairs: 
+                // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
+                post<ApiRoot.Agents.ProcessData, MultiPartData>(
+                    "Process plugin data"
+                        .examples(
+                            example(
+                                "Petclinic",
+                                """Multipart form-data with key-value pairs: 
                                 "action":{"type":"IMPORT_COVERAGE"},
                                 "data": File(jacoco.exec)
                             """.trimIndent()
+                            )
                         )
-                    )
-                    .description("To try out this request, please use the Postman")
-                    .responds(ok<String>(), badRequest())
-                // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
-                post<ApiRoot.Agents.ProcessData, MultiPartData>(meta) { (_, agentId, pluginId), data ->
+                        .description("To try out this request, please use the Postman")
+                        .responds(ok<String>(), badRequest())
+                ) { (_, agentId, pluginId), data ->
                     val parts: List<PartData> = data.readAllParts()
                     val action = (parts.find { it.name == "action" } as PartData.FormItem).value
                     val inputStream = (parts.find { it.name == "data" } as PartData.FileItem).streamProvider()
@@ -188,19 +189,18 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     logger.info { "response for '$agentId': $response" }
                     sendResponse(response, statusCode)
                 }
-            }
 
-            authenticate("jwt", "basic") {
-                val meta = "Dispatch defined plugin actions in defined group"
-                    .examples(
-                        example("action", "some action name")
-                    )
-                    .responds(
-                        ok<String>(
-                            example("")
-                        ), notFound()
-                    )
-                post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(meta) { pluginParent, action ->
+                post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(
+                    "Dispatch defined plugin actions in defined group"
+                        .examples(
+                            example("action", "some action name")
+                        )
+                        .responds(
+                            ok<String>(
+                                example("")
+                            ), notFound()
+                        )
+                ) { pluginParent, action ->
                     val pluginId = pluginParent.pluginId
                     val groupId = pluginParent.parent.parent.groupId
                     val agents = agentManager.agentsByGroup(groupId)
@@ -215,35 +215,35 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     logger.trace { "response for '$groupId': $response" }
                     call.respond(statusCode, response)
                 }
-            }
 
-            //todo remove it cause it is duplicated in another place. EPMDJ-6145
-            get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
-                logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
-                val dp: Plugin? = plugins[pluginId]
-                val agentInfo = agentManager[agentId]
-                val agentEntry = agentManager.entryOrNull(agentId)
-                val (statusCode: HttpStatusCode, response: Any) = when {
-                    (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
-                    (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
-                    (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
-                    else -> AgentSubscription(agentId, agentInfo.build.version).let { subscription ->
-                        pluginCache.retrieveMessage(
-                            pluginId,
-                            subscription,
-                            "/data/$dataType"
-                        ).toStatusResponsePair()
+
+                //todo remove it cause it is duplicated in another place. EPMDJ-6145
+                get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
+                    logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
+                    val dp: Plugin? = plugins[pluginId]
+                    val agentInfo = agentManager[agentId]
+                    val agentEntry = agentManager.entryOrNull(agentId)
+                    val (statusCode: HttpStatusCode, response: Any) = when {
+                        (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
+                        (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
+                        (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
+                        else -> AgentSubscription(agentId, agentInfo.build.version).let { subscription ->
+                            pluginCache.retrieveMessage(
+                                pluginId,
+                                subscription,
+                                "/data/$dataType"
+                            ).toStatusResponsePair()
+                        }
                     }
+                    sendResponse(response, statusCode)
                 }
-                sendResponse(response, statusCode)
-            }
 
-            authenticate("jwt", "basic") {
-                val meta = "Toggle Plugin"
-                    .responds(
-                        ok<Unit>(), notFound()
-                    )
-                post<ApiRoot.Agents.TogglePlugin>(meta) { params ->
+                post<ApiRoot.Agents.TogglePlugin>(
+                    "Toggle Plugin"
+                        .responds(
+                            ok<Unit>(), notFound()
+                        )
+                ) { params ->
                     val (_, agentId, pluginId) = params
                     logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
                     val dp: Plugin? = plugins[pluginId]
@@ -263,8 +263,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     logger.debug { response }
                     call.respond(statusCode, response)
                 }
-            }
-            authenticate("jwt", "basic") {
+
                 delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
                     logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
                     val (status, msg) = if (agentId in agentManager) {
@@ -288,27 +287,30 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     } else HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
                     call.respond(status, msg)
                 }
-            }
 
-            get<ApiRoot.Agents.PluginBuildsSummary> { (_, agentId, pluginId) ->
-                logger.debug { "Get builds summary, agentId=$agentId, pluginId=$pluginId" }
-                val (status, message) = agentManager[agentId]?.let {
-                    val buildsSummary =
-                        buildManager.buildData(agentId).agentBuildManager.agentBuilds.map { agentBuild ->
-                            val buildVersion = agentBuild.info.version
-                            BuildSummaryDto(
-                                buildVersion = buildVersion,
-                                detectedAt = agentBuild.detectedAt,
-                                summary = pluginCache.retrieveMessage(
-                                    pluginId = pluginId,
-                                    subscription = AgentSubscription(agentId = agentId, buildVersion = buildVersion),
-                                    destination = "/build/summary"
-                                ).toJson()
-                            )
-                        }
-                    HttpStatusCode.OK to buildsSummary
-                } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found"))
-                call.respond(status, message)
+                get<ApiRoot.Agents.PluginBuildsSummary> { (_, agentId, pluginId) ->
+                    logger.debug { "Get builds summary, agentId=$agentId, pluginId=$pluginId" }
+                    val (status, message) = agentManager[agentId]?.let {
+                        val buildsSummary =
+                            buildManager.buildData(agentId).agentBuildManager.agentBuilds.map { agentBuild ->
+                                val buildVersion = agentBuild.info.version
+                                BuildSummaryDto(
+                                    buildVersion = buildVersion,
+                                    detectedAt = agentBuild.detectedAt,
+                                    summary = pluginCache.retrieveMessage(
+                                        pluginId = pluginId,
+                                        subscription = AgentSubscription(
+                                            agentId = agentId,
+                                            buildVersion = buildVersion
+                                        ),
+                                        destination = "/build/summary"
+                                    ).toJson()
+                                )
+                            }
+                        HttpStatusCode.OK to buildsSummary
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found"))
+                    call.respond(status, message)
+                }
             }
         }
     }
@@ -375,17 +377,20 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
             contentType = ContentType.Application.Json,
             status = statusCode
         )
+
         is ByteArray -> call.respondBytes(
             bytes = response,
             contentType = ContentType.MultiPart.Any,
             status = statusCode
         )
+
         is FileResponse -> call.respondFile(
             file = response.data
         ).also {
             if (!response.data.delete())
                 logger.warn { "File ${response.data} is not deleted" }
         }
+
         else -> call.respond(
             status = statusCode,
             message = response
@@ -433,6 +438,7 @@ private fun Any.toStatusResponse(): WithStatusCode = when (this) {
         is File -> FileResponse(code, d)
         else -> StatusResponse(code, d.actionToJson())
     }
+
     else -> StatusResponse(HttpStatusCode.OK.value, actionToJson())
 }
 

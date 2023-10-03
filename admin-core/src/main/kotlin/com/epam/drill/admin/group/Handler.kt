@@ -65,11 +65,12 @@ class GroupHandler(override val di: DI) : DIAware {
     init {
         app.routing {
             authenticate("jwt", "basic") {
-                val meta = "Update group"
-                    .examples(
-                        example("group", GroupUpdateDto(name = "Some Group"))
-                    ).responds(ok<Unit>(), notFound())
-                put<ApiRoot.AgentGroup, GroupUpdateDto>(meta) { (_, id), info ->
+                put<ApiRoot.AgentGroup, GroupUpdateDto>(
+                    "Update group"
+                        .examples(
+                            example("group", GroupUpdateDto(name = "Some Group"))
+                        ).responds(ok<Unit>(), notFound())
+                ) { (_, id), info ->
                     val statusCode = groupManager[id]?.let { group ->
                         groupManager.update(
                             group.copy(
@@ -82,41 +83,42 @@ class GroupHandler(override val di: DI) : DIAware {
                     } ?: HttpStatusCode.NotFound
                     call.respond(statusCode)
                 }
-            }
 
-            val metadata = "Get service group data"
-                .responds(
-                    ok<Any>(),
-                    notFound()
-                )
-            get<ApiRoot.AgentGroup.Plugin.Data>(metadata) { (pluginParent, pluginId, dataType) ->
-                val groupId = pluginParent.parent.groupId
-                logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
-                val (statusCode, response) = if (pluginId in plugins) {
-                    val agents: List<Agent> = agentManager.agentsByGroup(groupId)
-                    if (agents.any()) {
-                        pluginCache.retrieveMessage(
-                            pluginId,
-                            GroupSubscription(groupId),
-                            "/group/data/$dataType"
-                        ).toStatusResponsePair()
-                    } else HttpStatusCode.NotFound to ErrorResponse(
-                        "group $groupId not found"
-                    )
-                } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
-                logger.trace { response }
-                call.respond(statusCode, response)
-            }
 
-            authenticate("jwt", "basic") {
-                val meta = "Register agent in defined group"
-                    .examples(
-                        example(
-                            "agentRegistrationInfo",
-                            agentRegistrationExample
+                get<ApiRoot.AgentGroup.Plugin.Data>(
+                    "Get service group data"
+                        .responds(
+                            ok<Any>(),
+                            notFound()
                         )
-                    )
-                patch<ApiRoot.AgentGroup, AgentRegistrationDto>(meta) { location, regInfo ->
+                ) { (pluginParent, pluginId, dataType) ->
+                    val groupId = pluginParent.parent.groupId
+                    logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
+                    val (statusCode, response) = if (pluginId in plugins) {
+                        val agents: List<Agent> = agentManager.agentsByGroup(groupId)
+                        if (agents.any()) {
+                            pluginCache.retrieveMessage(
+                                pluginId,
+                                GroupSubscription(groupId),
+                                "/group/data/$dataType"
+                            ).toStatusResponsePair()
+                        } else HttpStatusCode.NotFound to ErrorResponse(
+                            "group $groupId not found"
+                        )
+                    } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                    logger.trace { response }
+                    call.respond(statusCode, response)
+                }
+
+                patch<ApiRoot.AgentGroup, AgentRegistrationDto>(
+                    "Register agent in defined group"
+                        .examples(
+                            example(
+                                "agentRegistrationInfo",
+                                agentRegistrationExample
+                            )
+                        )
+                ) { location, regInfo ->
                     val groupId = location.groupId
                     logger.debug { "Group $groupId: registering agents..." }
                     val agents: List<Agent> = agentManager.agentsByGroup(groupId)
