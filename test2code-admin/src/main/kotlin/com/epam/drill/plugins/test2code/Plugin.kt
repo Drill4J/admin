@@ -264,7 +264,6 @@ class Plugin(
             activeScope.startSession(
                 newSessionId,
                 testType,
-                isGlobal,
                 isRealtimeSession,
                 testName,
                 labels
@@ -422,8 +421,7 @@ class Plugin(
                         sessionId = id,
                         testType = session.testType,
                         testName = session.testName,
-                        isGlobal = session.isGlobal,
-                        isRealtime = session.isRealtime,
+                        isRealtime = session.isRealtime
                     )
                     logger.info { "Attempting to start session: $startSessionPayload" }
                     sendAgentAction(StartAgentSession(startSessionPayload))
@@ -530,7 +528,6 @@ class Plugin(
                 id = it.id,
                 agentId = agentId,
                 testType = it.testType,
-                isGlobal = it.isGlobal,
                 isRealtime = it.isRealtime
             )
         }
@@ -1005,8 +1002,7 @@ class Plugin(
                 testType = GLOBAL_SESSION_ID,
                 sessionId = GLOBAL_SESSION_ID,
                 testName = GLOBAL_SESSION_ID,
-                isRealtime = true,
-                isGlobal = true)
+                isRealtime = true)
             ),
             data = null
         )
