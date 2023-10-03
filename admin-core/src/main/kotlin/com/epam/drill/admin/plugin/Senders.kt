@@ -56,6 +56,7 @@ class PluginSenders(override val di: DI) : DIAware {
             logger.trace { "send destination $dest for $destination" }
             val subscription = context.toSubscription()
             val messageKey = subscription.toKey(dest)
+            val agentKey = subscription.toAgentKey()
             val pluginCache = pluginCaches.get(pluginId, subscription, true)
 
             //TODO EPMDJ-6817 replace with normal event removal.
@@ -71,7 +72,7 @@ class PluginSenders(override val di: DI) : DIAware {
                 pluginStoresDSM(pluginId).let { store ->
                     withContext(Dispatchers.IO) {
                         measureTimedValue {
-                            store.storeMessage(messageKey, message)
+                            store.storeMessage(messageKey, message, agentKey)
                         }.let {
                             logger.trace { "Stored message (key=$messageKey, size=${it.value}) in ${it.duration}" }
                         }
