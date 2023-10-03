@@ -45,29 +45,6 @@ class PerformanceTest : PluginTest() {
         assertEquals(3000, finishedSession?.probes?.size)
     }
 
-    @Test
-    fun `should finish scope with 2 session and takes probes`() = runBlocking {
-        switchScopeWithProbes()
-    }
-
-    @Ignore(value = "Failed with OOM")
-    @Test
-    fun `perf check! should finish scope with 2 session and takes probes`() = runBlocking {
-        switchScopeWithProbes(800)
-    }
-
-    private suspend fun switchScopeWithProbes(countAddProbes: Int = 1) {
-        val buildVersion = "0.1.0"
-        val plugin: Plugin = initPlugin(buildVersion)
-        finishedSession(plugin, "sessionId", countAddProbes)
-        finishedSession(plugin, "sessionId2", countAddProbes)
-        val res = plugin.changeActiveScope(ActiveScopeChangePayload("new scope", true))
-        val scopes = plugin.state.scopeManager.run {
-            byVersion(AgentKey(agentId, buildVersion), withData = true)
-        }
-        assertEquals(200, res.code)
-        assertEquals(2, scopes.first().data.sessions.size)
-    }
 
     private suspend fun finishedSession(
         plugin: Plugin,
@@ -76,7 +53,7 @@ class PerformanceTest : PluginTest() {
         sizeExec: Int = 100,
         sizeProbes: Int = 10_000,
     ): FinishedSession? {
-        plugin.activeScope.startSession(
+        plugin.scope.startSession(
             sessionId = sessionId,
             testType = "MANUAL",
         )
@@ -109,7 +86,7 @@ class PerformanceTest : PluginTest() {
                     testId = "$index/$it"
                 )
             }
-            plugin.activeScope.addProbes(sessionId) { execClassData }
+            plugin.scope.addProbes(sessionId) { execClassData }
         }
     }
 

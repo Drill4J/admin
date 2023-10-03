@@ -27,7 +27,7 @@ import com.epam.dsm.util.*
  * Initialize periodic job to recalculate coverage data and send it to the UI
  * @features Session starting, Session finishing, Sending coverage data, Scope finishing
  */
-internal fun Plugin.initActiveScope(): Boolean = activeScope.initRealtimeHandler { sessionChanged, sessions ->
+internal fun Plugin.initScope(): Boolean = scope.initRealtimeHandler { sessionChanged, sessions ->
     if (sessionChanged) {
         sendActiveSessions()
     }
@@ -40,7 +40,7 @@ internal fun Plugin.initActiveScope(): Boolean = activeScope.initRealtimeHandler
             bundleCounters.calculateCoverageData(context, this)
         }.also { logPoolStats() }
         updateSummary { it.copy(coverage = coverageInfoSet.coverage as ScopeCoverage) }
-        sendActiveScope()
+        sendScope()
         coverageInfoSet.sendScopeCoverage(buildVersion, id)
         if (sessionChanged) {
             bundleCounters.assocTestsJob(this)
@@ -49,7 +49,7 @@ internal fun Plugin.initActiveScope(): Boolean = activeScope.initRealtimeHandler
     }
 }
 
-internal fun Plugin.initBundleHandler(): Boolean = activeScope.initBundleHandler { tests ->
+internal fun Plugin.initBundleHandler(): Boolean = scope.initBundleHandler { tests ->
     val context = state.coverContext()
     val preparedBundle = tests.keys.associateWithTo(mutableMapOf()) {
         BundleCounter.empty
@@ -58,74 +58,6 @@ internal fun Plugin.initBundleHandler(): Boolean = activeScope.initBundleHandler
         it.value.bundle(context)
     }
     addBundleCache(calculated)
-}
-
-
-/**
- * Finish the current active scope and start a new one
- * @param scopeChange the action payload to finish the scope
- * @features Scope finishing
- */
-internal suspend fun Plugin.changeActiveScope(
-    scopeChange: ActiveScopeChangePayload,
-): ActionResult = if (state.scopeByName(scopeChange.scopeName) == null) {
-    trackTime("changeActiveScope") {
-        if (scopeChange.forceFinish) {
-            val activeScope = state.activeScope
-            logger.warn { "Active sessions count ${activeScope.activeSessions.count()}. Probes may be lost." }
-            val probes = activeScope.activeSessions.map.mapNotNull { (sessionId, _) ->
-                state.finishSession(sessionId)
-            }.asSequence().flatten()
-            if (probes.any()) calculateAndSendScopeCoverage()
-        }
-        val prevScope = state.changeActiveScope(scopeChange.scopeName.trim())
-        state.storeActiveScopeInfo()
-        sendActiveSessions()
-        sendActiveScope()
-        if (scopeChange.savePrevScope) {
-            if (prevScope.any()) {
-                logger.debug { "finish scope with id=${prevScope.id}" }.also { logPoolStats() }
-                val finishedScope = prevScope.finish(scopeChange.prevScopeEnabled)
-                state.scopeManager.store(finishedScope)
-                sendScopeSummary(finishedScope.summary)
-                logger.info { "$finishedScope has been saved." }.also { logPoolStats() }
-            } else {
-                cleanTopics(prevScope.id)
-                logger.info { "$prevScope is empty, it won't be added to the build." }.also { logPoolStats() }
-            }
-        } else cleanTopics(prevScope.id)
-        scopeInitialized(prevScope.id)
-        ActionResult(StatusCodes.OK,
-            data = ActionScopeResult(
-                id = activeScope.id,
-                name = activeScope.name,
-                prevId = prevScope.id
-            )
-        )
-    }
-} else ActionResult(
-    code = StatusCodes.CONFLICT,
-    data = "Failed to switch to a new scope: name ${scopeChange.scopeName} is already in use"
-)
-
-/**
- * Initialize the active scope:
- * - resume the jobs for a new active scope
- * - recalculate coverage data by the enabled finished scopes
- * - calculate coverage data for the active scope
- * @param prevId the previous scope ID
- * @features Scope finishing
- */
-internal suspend fun Plugin.scopeInitialized(prevId: String) {
-    if (initActiveScope() && initBundleHandler()) {
-        sendScopes()
-        val prevScope = state.scopeManager.byId(prevId)
-        prevScope?.takeIf { it.enabled }.apply {
-            calculateAndSendBuildCoverage()
-        }
-        calculateAndSendScopeCoverage()
-        logger.info { "Current active scope - $activeScope" }.also { logPoolStats() }
-    }
 }
 
 internal suspend fun Plugin.renameScope(
@@ -203,7 +135,7 @@ private suspend fun Plugin.handleChange(scope: FinishedScope) {
     val scopeBuildVersion = scope.agentKey.buildVersion
     if (scopeBuildVersion == buildVersion) {
         calculateAndSendBuildCoverage()
-        activeScope.probesChanged()
+        this.scope.probesChanged()
     }
     sendScopes(scopeBuildVersion)
     sendScopeSummary(scope.summary, scopeBuildVersion)

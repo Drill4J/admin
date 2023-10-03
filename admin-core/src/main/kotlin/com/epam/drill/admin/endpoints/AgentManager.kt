@@ -306,6 +306,7 @@ class AgentManager(override val di: DI) : DIAware {
         val info: AgentInfo = agent.update { info ->
             info.copy(
                 name = dto.name,
+                agentStatus = AgentStatus.REGISTERING,
                 plugins = setOf("test2code")
             )
         }.apply { notifyAgents(id) }

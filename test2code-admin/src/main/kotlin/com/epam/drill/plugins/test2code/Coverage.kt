@@ -126,7 +126,7 @@ suspend fun List<TestOverviewFilter>.calcBundleCounters(
  */
 internal fun BundleCounters.calculateCoverageData(
     context: CoverContext,
-    scope: Scope? = null,
+    scope: IScope? = null,
 ): CoverageInfoSet {
     val bundle = all
     val bundlesByTests = byTest

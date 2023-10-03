@@ -33,7 +33,6 @@ import kotlinx.coroutines.sync.*
  * In case of inconsistencies of the data a ClassCastException is thrown.
  */
 
-internal const val DEFAULT_SCOPE_NAME = "New Scope"
 
 internal class AgentState(
     val storeClient: StoreClient,
@@ -46,7 +45,7 @@ internal class AgentState(
 
     val scopeManager = ScopeManager(storeClient)
 
-    val activeScope get() = _activeScope.value
+    val scope get() = _scope.value
 
     val qualityGateSettings = AtomicCache<String, ConditionSetting>()
 
@@ -55,8 +54,8 @@ internal class AgentState(
     private val _coverContext = atomic<CoverContext?>(null)
 
     private val agentKey = AgentKey(agentInfo.id, agentInfo.buildVersion)
-    private val _activeScope = atomic(
-        ActiveScope(
+    private val _scope = atomic(
+        Scope(
             agentKey = agentKey,
         )
     )
@@ -84,8 +83,8 @@ internal class AgentState(
     }
 
     fun close() {
-        logger.debug { "close active scope id=${activeScope.id}" }
-        activeScope.close()
+        logger.debug { "close scope id=${scope.id}" }
+        scope.close()
     }
 
     private val mutex = Mutex()
@@ -156,7 +155,7 @@ internal class AgentState(
             build = build
         )
         _coverContext.value = coverContext
-        updateProbes(probes)
+        updateProbes(probes.flatten())
         val (agentId, buildVersion) = agentKey
         logger.debug { "$agentKey initializing..." }
         storeClient.findById<GlobalAgentData>(agentId)?.baseline?.let { baseline ->
@@ -208,7 +207,7 @@ internal class AgentState(
             storeClient.store(GlobalAgentData(agentId, baseline))
             logger.debug { "(buildVersion=$buildVersion) Stored initial baseline $baseline." }
         }
-        initActiveScope()
+        initScope()
     }
 
     /**
@@ -218,18 +217,18 @@ internal class AgentState(
      */
     internal suspend fun finishSession(
         sessionId: String,
-    ): FinishedSession? = activeScope.finishSession(sessionId)?.also {
+    ): FinishedSession? = scope.finishSession(sessionId)?.also {
         if (it.any()) {
             logger.debug { "FinishSession. size of exec data = ${it.probes.size}" }.also { logPoolStats() }
             trackTime("session storing") {
                 storeClient.storeSession(
-                    activeScope.id,
+                    scope.id,
                     agentKey,
                     it
                 )
             }
             logger.debug { "Session $sessionId finished." }.also { logPoolStats() }
-        } else logger.debug { "Session with id $sessionId is empty, it won't be added to the active scope." }
+        } else logger.debug { "Session with id $sessionId is empty, it won't be added to the scope." }
     }
 
     /**
@@ -238,10 +237,10 @@ internal class AgentState(
      * @features Agent registration
      */
     internal fun updateProbes(
-        buildScopes: Sequence<FinishedScope>,
+        buildScopes: Sequence<FinishedSession>,
     ) {
         _coverContext.update {
-            it?.copy(build = it.build.copy(probes = buildScopes.flatten().flatten().merge()))
+            it?.copy(build = it.build.copy(probes = buildScopes.flatten().merge()))
         }
     }
 
@@ -277,7 +276,7 @@ internal class AgentState(
     }
 
     suspend fun renameScope(id: String, newName: String): ScopeSummary? = when (id) {
-        activeScope.id -> activeScope.rename(newName.trim()).also { storeActiveScopeInfo() }
+        scope.id -> scope.rename(newName.trim()).also { storeScopeInfo() }
         else -> scopeManager.byId(id)?.let { scope ->
             scope.copy(name = newName, summary = scope.summary.copy(name = newName.trim())).also {
                 scopeManager.store(it)
@@ -291,13 +290,13 @@ internal class AgentState(
         }
     }
 
-    suspend fun scopeByName(name: String): Scope? = when (name) {
-        activeScope.name -> activeScope
+    suspend fun scopeByName(name: String): IScope? = when (name) {
+        scope.name -> scope
         else -> scopeManager.byVersion(agentKey).firstOrNull { it.name == name }
     }
 
-    suspend fun scopeById(id: String): Scope? = when (id) {
-        activeScope.id -> activeScope
+    suspend fun scopeById(id: String): IScope? = when (id) {
+        scope.id -> scope
         else -> scopeManager.byId(id)
     }
 
@@ -306,19 +305,17 @@ internal class AgentState(
     internal fun classDataOrNull(): ClassData? = _data.value as? ClassData
 
     /**
-     * Update an active scope
+     * Update an scope
      * @features Agent registration
      */
-    private suspend fun initActiveScope() {
-        readActiveScopeInfo()?.run {
+    private suspend fun initScope() {
+        readScopeInfo()?.run {
             val sessions = storeClient.loadSessions(id)
-            logger.debug { "load sessions for active scope with id=$id" }.also { logPoolStats() }
-            _activeScope.update {
-                ActiveScope(
+            logger.debug { "load sessions for scope with id=$id" }.also { logPoolStats() }
+            _scope.update {
+                Scope(
                     id = id,
-                    nth = nth,
                     agentKey = agentKey,
-                    name = name,
                     sessions = sessions,
                 ).apply {
                     updateSummary {
@@ -326,46 +323,26 @@ internal class AgentState(
                     }
                 }
             }
-        } ?: storeActiveScopeInfo()
+        } ?: storeScopeInfo()
     }
 
-    /**
-     * Change the active scope state to a new one and close the previous scope
-     * @param name the name of a new scope
-     * @return the previous instance of the active scope state
-     * @features Scope finishing
-     */
-    fun changeActiveScope(name: String): ActiveScope = _activeScope.getAndUpdate {
-        ActiveScope(
-            nth = it.nth.inc(),
-            name = scopeName(name),
-            agentKey = agentKey,
-        )
-    }.apply { close() }
-
-    private suspend fun readActiveScopeInfo(): ActiveScopeInfo? = scopeManager.counter(agentKey)
+    private suspend fun readScopeInfo(): ScopeInfo? = scopeManager.counter(agentKey)
 
     /**
-     * Store the active scope to the database
+     * Store the scope to the database
      * @features Scope finishing
      */
-    suspend fun storeActiveScopeInfo() = trackTime("storeActiveScopeInfo") {
+    private suspend fun storeScopeInfo() = trackTime("storeScopeInfo") {
         scopeManager.storeCounter(
-            activeScope.run {
-                ActiveScopeInfo(
+            scope.run {
+                ScopeInfo(
                     agentKey = AgentKey(agentInfo.id, agentKey.buildVersion),
                     id = id,
-                    nth = nth,
                     name = name,
                     startedAt = summary.started
                 )
             }
         )
-    }
-
-    private fun scopeName(name: String) = when (val trimmed = name.trim()) {
-        "" -> "$DEFAULT_SCOPE_NAME ${activeScope.nth + 1}"
-        else -> trimmed
     }
 
     internal suspend fun toggleBaseline(): String? = run {

@@ -97,9 +97,9 @@ class ScopeManager(private val storage: StoreClient) {
         } ?: findById(scopeId)
     }
 
-    internal suspend fun counter(agentKey: AgentKey): ActiveScopeInfo? = storage.findById(agentKey)
+    internal suspend fun counter(agentKey: AgentKey): ScopeInfo? = storage.findById(agentKey)
 
-    internal suspend fun storeCounter(activeScopeInfo: ActiveScopeInfo) = storage.store(activeScopeInfo)
+    internal suspend fun storeCounter(scopeInfo: ScopeInfo) = storage.store(scopeInfo)
 }
 
 @Serializable
