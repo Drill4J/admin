@@ -64,7 +64,7 @@ class GroupHandler(override val di: DI) : DIAware {
 
     init {
         app.routing {
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Update group"
                     .examples(
                         example("group", GroupUpdateDto(name = "Some Group"))
@@ -108,7 +108,7 @@ class GroupHandler(override val di: DI) : DIAware {
                 call.respond(statusCode, response)
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Register agent in defined group"
                     .examples(
                         example(

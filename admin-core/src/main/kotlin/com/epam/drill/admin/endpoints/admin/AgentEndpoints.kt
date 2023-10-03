@@ -48,7 +48,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
     init {
         app.routing {
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Create agent"
                     .examples(
                         example(
@@ -75,7 +75,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Agents metadata"
                     .examples()
                     .responds(
@@ -92,7 +92,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Agent parameters"
                     .examples()
                     .responds(
@@ -105,7 +105,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Update agent parameters"
                     .examples(
                         example(
@@ -136,7 +136,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Update agent configuration"
                     .examples(
                         example("Petclinic", agentUpdateExample)
@@ -160,7 +160,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Register agent"
                     .examples(
                         example("Petclinic", agentRegistrationExample)
@@ -191,7 +191,7 @@ class AgentEndpoints(override val di: DI) : DIAware {
              *     "type": "REMOVE_PLUGIN_DATA"
              * }
              */
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Remove all agent info"
                     .responds(
                         ok<Unit>(), notFound(), badRequest()

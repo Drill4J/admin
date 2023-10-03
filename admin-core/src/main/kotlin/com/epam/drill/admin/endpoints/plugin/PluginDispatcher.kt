@@ -111,7 +111,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     createPluginGetRoute(destination)
                 }
             }
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Dispatch Plugin Action"
                     .examples(
                         example("action", "some action name")
@@ -149,7 +149,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Process plugin data"
                     .examples(
                         example(
@@ -190,7 +190,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Dispatch defined plugin actions in defined group"
                     .examples(
                         example("action", "some action name")
@@ -238,7 +238,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 sendResponse(response, statusCode)
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Toggle Plugin"
                     .responds(
                         ok<Unit>(), notFound()
@@ -264,7 +264,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     call.respond(statusCode, response)
                 }
             }
-            authenticate {
+            authenticate("jwt", "basic") {
                 delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
                     logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
                     val (status, msg) = if (agentId in agentManager) {

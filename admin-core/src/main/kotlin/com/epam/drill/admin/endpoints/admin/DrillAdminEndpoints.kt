@@ -59,7 +59,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
     init {
         app.routing {
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Agent Toggle StandBy"
                     .responds(
                         ok<Unit>(), notFound(), badRequest()
@@ -95,7 +95,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                 }
             }
 
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Configure agent logging levels"
                     .examples(
                         example("Agent logging configuration", defaultLoggingConfig)
@@ -110,7 +110,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }
             }
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Return cache stats"
                     .examples()
                     .responds(
@@ -121,7 +121,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                     call.respond(HttpStatusCode.OK, cacheStats)
                 }
             }
-            authenticate {
+            authenticate("jwt", "basic") {
                 val meta = "Clear cache"
                     .examples()
                     .responds(

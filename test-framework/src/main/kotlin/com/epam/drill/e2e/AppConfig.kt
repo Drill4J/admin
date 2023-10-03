@@ -41,6 +41,7 @@ import org.kodein.di.*
 import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
+import com.epam.drill.admin.security.installAuthentication
 
 class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
@@ -56,15 +57,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
         }
         install(Locations)
         install(WebSockets)
-        install(Authentication) {
-            jwt {
-                realm = jwtRealm
-                verifier(jwtConfig.verifier)
-                validate {
-                    it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
-                }
-            }
-        }
+        installAuthentication()
         install(ContentNegotiation) {
             converters()
         }

@@ -20,6 +20,7 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
@@ -78,15 +79,7 @@ fun Application.module() = kodeinApplication(
 
             enableSwaggerSupport()
 
-            install(Authentication) {
-                jwt {
-                    realm = jwtRealm
-                    verifier(jwtConfig.verifier)
-                    validate {
-                        it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
-                    }
-                }
-            }
+            installAuthentication()
 
             install(CORS) {
                 anyHost()
