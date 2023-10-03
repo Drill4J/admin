@@ -367,7 +367,7 @@ class Plugin(
                 .forEach { (probeSessionId, data) ->
                     val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
                     if (scope.activeSessions[sessionId] == null) {
-                        scope.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true)
+                        scope.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
                     }
                     scope.activeSessions[sessionId]?.let {
                         scope.addProbes(sessionId) { data }?.run {
