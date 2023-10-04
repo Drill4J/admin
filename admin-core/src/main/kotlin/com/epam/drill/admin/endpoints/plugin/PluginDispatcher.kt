@@ -79,7 +79,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
-                processData(instanceId, message.drillMessage.content)
+                processData(instanceId, agentInfo.build.version, message.drillMessage.content)
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
