@@ -31,7 +31,7 @@ class AgentRegistrationTest : E2ETest() {
 
     @Test
     fun `agent should be registered`() {
-        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true, timeout = 120.0.toDuration(TimeUnit.SECONDS) ) {
+        createSimpleAppWithUIConnection(uiStreamDebug = true, agentStreamDebug = true) {
             connectAgent(AgentWrap(agentId, "0.1.0")) { _, ui, agent ->
                 waitUntil { ui.getAgent()?.agentStatus shouldBe AgentStatus.REGISTERED }
                 waitUntil { ui.getBuild()?.buildStatus shouldBe BuildStatus.ONLINE }

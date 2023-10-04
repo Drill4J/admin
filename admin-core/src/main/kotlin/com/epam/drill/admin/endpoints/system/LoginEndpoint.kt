@@ -57,7 +57,7 @@ class LoginEndpoint(val app: Application) {
                 val credentials = UserPasswordCredential(username, password)
                 logger.debug { "Login user with name $username" }
                 userSource.findUserByCredentials(credentials)?.let { user ->
-                    val token = JwtConfig.makeToken(user, app.jwtLifetime)
+                    val token = app.jwtConfig.makeToken(user, app.jwtLifetime)
                     call.response.header(HttpHeaders.Authorization, token)
                     logger.debug { "Login user with name $username was successfully" }
                     call.respond(HttpStatusCode.OK, JWT(token))

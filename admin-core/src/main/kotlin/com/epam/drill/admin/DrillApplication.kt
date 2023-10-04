@@ -20,6 +20,7 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
@@ -53,8 +54,6 @@ private val logger = KotlinLogging.logger {}
 fun Application.module() = kodeinApplication(
     AppBuilder {
         withInstallation {
-            @Suppress("UNUSED_VARIABLE") val jwtAudience = environment.config.property("jwt.audience").getString()
-            val jwtRealm = environment.config.property("jwt.realm").getString()
 
             install(StatusPages) {
                 exception<Throwable> { cause ->
@@ -80,19 +79,7 @@ fun Application.module() = kodeinApplication(
 
             enableSwaggerSupport()
 
-            install(Authentication) {
-                jwt {
-                    skipWhen { applicationCall ->
-                        applicationCall.request.headers["Referer"]?.contains("openapi.json") ?: false
-                    }
-                    realm = jwtRealm
-                    verifier(JwtConfig.verifier)
-                    skipWhen { call -> call.request.headers["no-auth"]?.toBoolean() ?: false }
-                    validate {
-                        it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
-                    }
-                }
-            }
+            installAuthentication()
 
             install(CORS) {
                 anyHost()
