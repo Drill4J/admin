@@ -39,7 +39,7 @@ val Application.jwtSecret: String
     get() = jwtProperties.propertyOrNull("secret")?.getString() ?: generatedSecret
 
 val Application.jwtIssuer: String
-    get() = jwtProperties.propertyOrNull("issuer")?.getString() ?: "Drill4j App"
+    get() = jwtProperties.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
 val Application.jwtLifetime: Duration
     get() = jwtProperties.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(15)
