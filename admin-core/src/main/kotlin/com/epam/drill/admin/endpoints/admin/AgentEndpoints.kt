@@ -48,22 +48,23 @@ class AgentEndpoints(override val di: DI) : DIAware {
     init {
         app.routing {
 
-            authenticate {
-                val meta = "Create agent"
-                    .examples(
-                        example(
-                            "Petclinic", AgentCreationDto(
-                                id = "petclinic",
-                                agentType = AgentType.JAVA,
-                                name = "Petclinic"
+            authenticate("jwt", "basic") {
+                post<ApiRoot.Agents, AgentCreationDto>(
+                    "Create agent"
+                        .examples(
+                            example(
+                                "Petclinic", AgentCreationDto(
+                                    id = "petclinic",
+                                    agentType = AgentType.JAVA,
+                                    name = "Petclinic"
+                                )
                             )
                         )
-                    )
-                    .responds(
-                        ok<AgentInfoDto>(),
-                        HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
-                    )
-                post<ApiRoot.Agents, AgentCreationDto>(meta) { _, payload ->
+                        .responds(
+                            ok<AgentInfoDto>(),
+                            HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
+                        )
+                ) { _, payload ->
                     logger.debug { "Creating agent with id ${payload.id}..." }
                     agentManager.prepare(payload)?.run {
                         logger.info { "Created agent ${payload.id}." }
@@ -73,15 +74,14 @@ class AgentEndpoints(override val di: DI) : DIAware {
                         call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))
                     }
                 }
-            }
 
-            authenticate {
-                val meta = "Agents metadata"
-                    .examples()
-                    .responds(
-                        ok<String>()
-                    )
-                get<ApiRoot.Agents.Metadata>(meta) {
+                get<ApiRoot.Agents.Metadata>(
+                    "Agents metadata"
+                        .examples()
+                        .responds(
+                            ok<String>()
+                        )
+                ) {
                     val metadataAgents = agentManager.all().flatMap {
                         buildManager.buildData(it.id).agentBuildManager.agentBuilds.map { agentBuild ->
                             val agentBuildKey = AgentBuildKey(it.id, agentBuild.info.version)
@@ -90,34 +90,32 @@ class AgentEndpoints(override val di: DI) : DIAware {
                     }
                     call.respond(HttpStatusCode.OK, metadataAgents)
                 }
-            }
 
-            authenticate {
-                val meta = "Agent parameters"
-                    .examples()
-                    .responds(
-                        ok<String>(), badRequest()
-                    )
-                get<ApiRoot.Agents.Parameters>(meta) { params ->
+                get<ApiRoot.Agents.Parameters>(
+                    "Agent parameters"
+                        .examples()
+                        .responds(
+                            ok<String>(), badRequest()
+                        )
+                ) { params ->
                     val (_, agentId) = params
                     val map = configHandler.load(agentId) ?: emptyMap()
                     call.respond(HttpStatusCode.OK, map)
                 }
-            }
 
-            authenticate {
-                val meta = "Update agent parameters"
-                    .examples(
-                        example(
-                            "Agent parameters", mapOf(
-                                "logLevel" to "DEBUG",
-                                "logFile" to "Directory"
+                patch<ApiRoot.Agents.Parameters, Map<String, String>>(
+                    "Update agent parameters"
+                        .examples(
+                            example(
+                                "Agent parameters", mapOf(
+                                    "logLevel" to "DEBUG",
+                                    "logFile" to "Directory"
+                                )
                             )
+                        ).responds(
+                            ok<String>(), notFound()
                         )
-                    ).responds(
-                        ok<String>(), notFound()
-                    )
-                patch<ApiRoot.Agents.Parameters, Map<String, String>>(meta) { location, updatedValues ->
+                ) { location, updatedValues ->
                     val agentId = location.agentId
                     logger.debug { "Update parameters for agent with id $agentId params: $updatedValues" }
                     val (status, message) = configHandler.load(agentId)?.let { storageParameters ->
@@ -134,17 +132,16 @@ class AgentEndpoints(override val di: DI) : DIAware {
                     } ?: (HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found"))
                     call.respond(status, message)
                 }
-            }
 
-            authenticate {
-                val meta = "Update agent configuration"
-                    .examples(
-                        example("Petclinic", agentUpdateExample)
-                    )
-                    .responds(
-                        ok<Unit>(), badRequest()
-                    )
-                patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(meta) { location, au ->
+                patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(
+                    "Update agent configuration"
+                        .examples(
+                            example("Petclinic", agentUpdateExample)
+                        )
+                        .responds(
+                            ok<Unit>(), badRequest()
+                        )
+                ) { location, au ->
                     val agentId = location.agentId
                     logger.debug { "Update configuration for agent with id $agentId" }
 
@@ -158,17 +155,16 @@ class AgentEndpoints(override val di: DI) : DIAware {
                     }
                     call.respond(status, message)
                 }
-            }
 
-            authenticate {
-                val meta = "Register agent"
-                    .examples(
-                        example("Petclinic", agentRegistrationExample)
-                    )
-                    .responds(
-                        ok<Unit>(), badRequest()
-                    )
-                post<ApiRoot.Agents.Agent, AgentRegistrationDto>(meta) { payload, regInfo ->
+                post<ApiRoot.Agents.Agent, AgentRegistrationDto>(
+                    "Register agent"
+                        .examples(
+                            example("Petclinic", agentRegistrationExample)
+                        )
+                        .responds(
+                            ok<Unit>(), badRequest()
+                        )
+                ) { payload, regInfo ->
                     logger.debug { "Registering agent with id ${payload.agentId}" }
                     val agentId = payload.agentId
                     val agInfo = agentManager[agentId]
@@ -182,21 +178,20 @@ class AgentEndpoints(override val di: DI) : DIAware {
                     }
                     call.respond(status, message)
                 }
-            }
 
 
-            /**
-             * Also you should send action to plugin
-             * {
-             *     "type": "REMOVE_PLUGIN_DATA"
-             * }
-             */
-            authenticate {
-                val meta = "Remove all agent info"
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-                delete<ApiRoot.Agents.Agent>(meta) { payload ->
+                /**
+                 * Also you should send action to plugin
+                 * {
+                 *     "type": "REMOVE_PLUGIN_DATA"
+                 * }
+                 */
+                delete<ApiRoot.Agents.Agent>(
+                    "Remove all agent info"
+                        .responds(
+                            ok<Unit>(), notFound(), badRequest()
+                        )
+                ) { payload ->
                     val agentId = payload.agentId
                     val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
                         HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."

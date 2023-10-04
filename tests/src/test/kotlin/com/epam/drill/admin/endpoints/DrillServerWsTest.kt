@@ -29,6 +29,7 @@ import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.e2e.testPluginServices
@@ -57,15 +58,7 @@ internal class DrillServerWsTest {
     private val testApp: Application.() -> Unit = {
         install(Locations)
         install(WebSockets)
-        install(Authentication) {
-            jwt {
-                realm = jwtRealm
-                verifier(jwtConfig.verifier)
-                validate {
-                    it.payload.getClaim("id").asInt()?.let(userSource::findUserById)
-                }
-            }
-        }
+        installAuthentication()
 
         install(ContentNegotiation) {
             converters()
