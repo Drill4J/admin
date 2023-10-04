@@ -31,11 +31,12 @@ private val logger = KotlinLogging.logger {}
 
 fun Route.authWebSocket(
     path: String,
+    jwtConfig: JwtConfig,
     protocol: String? = null,
     handler: suspend DefaultWebSocketServerSession.() -> Unit,
 ) {
     webSocket(path, protocol) {
-        socketAuthentication()
+        socketAuthentication(jwtConfig)
         try {
             handler(this)
         } catch (ex: Exception) {
@@ -44,7 +45,7 @@ fun Route.authWebSocket(
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.socketAuthentication() {
+private suspend fun DefaultWebSocketServerSession.socketAuthentication(jwtConfig: JwtConfig) {
     val token = call.parameters["token"]
 
     if (token == null) {
@@ -53,20 +54,20 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication() {
         close()
         return
     }
-    verifyToken(token)
+    verifyToken(token, jwtConfig)
 
     launch {
         while (true) {
             delay(10_000)
-            verifyToken(token)
+            verifyToken(token, jwtConfig)
         }
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.verifyToken(token: String) {
+private suspend fun DefaultWebSocketServerSession.verifyToken(token: String, jwtConfig: JwtConfig,) {
 
     try {
-        JwtConfig.verifier.verify(token)
+        jwtConfig.verifier.verify(token)
     } catch (ex: JWTVerificationException) {
         when (ex) {
             is TokenExpiredException -> Unit //Ignore, since we don't have token refreshing 

@@ -37,7 +37,7 @@ class NotificationEndpoints(override val di: DI) : DIAware {
 
     init {
         app.routing {
-            authenticate { authenticated() }
+            authenticate("jwt", "basic") { authenticated() }
         }
     }
 
