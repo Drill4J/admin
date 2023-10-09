@@ -22,7 +22,7 @@ import com.epam.drill.admin.users.view.UserView
 interface UserManagementService {
     fun getUsers(): List<UserView>
 
-    fun getUser(userId: Int)
+    fun getUser(userId: Int): UserForm
 
     fun updateUser(userId: Int, form: UserForm)
 

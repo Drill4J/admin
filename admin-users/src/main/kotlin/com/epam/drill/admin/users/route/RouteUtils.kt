@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.users
+package com.epam.drill.admin.users.route
 
 import com.epam.drill.admin.users.exception.UserValidationException
 import io.ktor.application.*

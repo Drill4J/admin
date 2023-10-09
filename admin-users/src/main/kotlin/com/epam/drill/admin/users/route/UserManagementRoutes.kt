@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.users.route
 
-import com.epam.drill.admin.users.getRequiredParam
 import com.epam.drill.admin.users.service.UserManagementService
 import com.epam.drill.admin.users.view.ApiResponse
 import com.epam.drill.admin.users.view.UserForm

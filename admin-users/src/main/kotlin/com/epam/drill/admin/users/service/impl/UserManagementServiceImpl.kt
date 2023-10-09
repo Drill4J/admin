@@ -15,38 +15,53 @@
  */
 package com.epam.drill.admin.users.service.impl
 
+import com.epam.drill.admin.users.entity.UserEntity
+import com.epam.drill.admin.users.exception.UserNotFoundException
 import com.epam.drill.admin.users.repository.UserRepository
 import com.epam.drill.admin.users.service.UserManagementService
 import com.epam.drill.admin.users.view.CredentialsView
 import com.epam.drill.admin.users.view.UserForm
 import com.epam.drill.admin.users.view.UserView
 
-class UserManagementServiceImpl(val userRepository: UserRepository): UserManagementService {
+class UserManagementServiceImpl(
+    private val userRepository: UserRepository,
+    private val passwordService: PasswordService
+) : UserManagementService {
     override fun getUsers(): List<UserView> {
-        TODO("Not yet implemented")
+        return userRepository.findAll().map { it.toView() }
     }
 
-    override fun getUser(userId: Int) {
-        TODO("Not yet implemented")
+    override fun getUser(userId: Int): UserForm {
+        return userRepository.findById(userId)?.toForm() ?: throw UserNotFoundException()
     }
 
     override fun updateUser(userId: Int, form: UserForm) {
-        TODO("Not yet implemented")
+        userRepository.update(form.toEntity(userId))
     }
 
     override fun deleteUser(userId: Int) {
-        TODO("Not yet implemented")
+        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        entity.deleted = true
+        userRepository.update(entity)
     }
 
     override fun blockUser(userId: Int) {
-        TODO("Not yet implemented")
+        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        entity.blocked = true
+        userRepository.update(entity)
     }
 
     override fun unblockUser(userId: Int) {
-        TODO("Not yet implemented")
+        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        entity.blocked = false
+        userRepository.update(entity)
     }
 
     override fun resetPassword(userId: Int): CredentialsView {
-        TODO("Not yet implemented")
+        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val newPassword = passwordService.generatePassword()
+        entity.passwordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(entity)
+        return entity.toCredentialsView(newPassword)
     }
 }

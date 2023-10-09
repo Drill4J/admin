@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.users.service.impl
 
-import com.epam.drill.admin.users.entity.UserEntity
 import com.epam.drill.admin.users.exception.IncorrectCredentialsException
 import com.epam.drill.admin.users.exception.IncorrectPasswordException
 import com.epam.drill.admin.users.exception.UserAlreadyExistsException
@@ -25,10 +24,13 @@ import com.epam.drill.admin.users.service.UserAuthenticationService
 import com.epam.drill.admin.users.view.*
 import io.ktor.auth.*
 
-class UserAuthenticationServiceImpl(private val userRepository: UserRepository): UserAuthenticationService {
+class UserAuthenticationServiceImpl(
+    private val userRepository: UserRepository,
+    private val passwordService: PasswordService
+) : UserAuthenticationService {
     override fun signIn(form: LoginForm): TokenResponse {
         val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
-        if (entity.passwordHash != hashPassword(form.password))
+        if (entity.passwordHash != passwordService.hashPassword(form.password))
             throw IncorrectCredentialsException()
         val token = issueToken(entity.toModel())
         return TokenResponse(token)
@@ -37,38 +39,21 @@ class UserAuthenticationServiceImpl(private val userRepository: UserRepository):
     override fun signUp(form: RegistrationForm) {
         if (userRepository.findByUsername(form.username) != null)
             throw UserAlreadyExistsException(form.username)
-        validatePassword(form.password)
+        passwordService.validatePassword(form.password)
         userRepository.create(form.toEntity())
     }
 
     override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm) {
-        val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException(principal.name)
-        if (entity.passwordHash != hashPassword(form.oldPassword))
+        val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
+        if (entity.passwordHash != passwordService.hashPassword(form.oldPassword))
             throw IncorrectPasswordException()
-        validatePassword(form.newPassword)
-        entity.passwordHash = hashPassword(form.newPassword)
+        passwordService.validatePassword(form.newPassword)
+        entity.passwordHash = passwordService.hashPassword(form.newPassword)
         userRepository.update(entity)
-    }
-
-    private fun hashPassword(password: String): String {
-        TODO("Not yet implemented")
     }
 
     private fun issueToken(user: UserView): String {
         TODO("Not yet implemented")
     }
-
-    private fun validatePassword(password: String) {
-        TODO("Not yet implemented")
-    }
-
-    private fun UserEntity.toModel(): UserView {
-        TODO("Not yet implemented")
-    }
-
-    private fun RegistrationForm.toEntity(): UserEntity {
-        TODO("Not yet implemented")
-    }
-
 }
 
