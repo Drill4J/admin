@@ -31,12 +31,14 @@ class UserManagementServiceImpl(
         return userRepository.findAll().map { it.toView() }
     }
 
-    override fun getUser(userId: Int): UserForm {
-        return userRepository.findById(userId)?.toForm() ?: throw UserNotFoundException()
+    override fun getUser(userId: Int): UserView {
+        return userRepository.findById(userId)?.toView() ?: throw UserNotFoundException()
     }
 
     override fun updateUser(userId: Int, form: UserForm) {
-        userRepository.update(form.toEntity(userId))
+        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        entity.role = form.role.name
+        userRepository.update(entity)
     }
 
     override fun deleteUser(userId: Int) {

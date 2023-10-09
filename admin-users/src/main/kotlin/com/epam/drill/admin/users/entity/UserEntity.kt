@@ -16,10 +16,10 @@
 package com.epam.drill.admin.users.entity
 
 data class UserEntity(
-    var id: Int,
+    var id: Int? = null,
     var username: String,
     var passwordHash: String,
     var role: String,
-    var blocked: Boolean,
-    var deleted: Boolean
+    var blocked: Boolean = false,
+    var deleted: Boolean = false
 )

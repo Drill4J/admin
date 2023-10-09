@@ -32,7 +32,7 @@ class UserAuthenticationServiceImpl(
         val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
         if (entity.passwordHash != passwordService.hashPassword(form.password))
             throw IncorrectCredentialsException()
-        val token = issueToken(entity.toModel())
+        val token = issueToken(entity.toView())
         return TokenResponse(token)
     }
 
@@ -40,7 +40,8 @@ class UserAuthenticationServiceImpl(
         if (userRepository.findByUsername(form.username) != null)
             throw UserAlreadyExistsException(form.username)
         passwordService.validatePassword(form.password)
-        userRepository.create(form.toEntity())
+        val passwordHash = passwordService.hashPassword(form.password)
+        userRepository.create(form.toEntity(passwordHash))
     }
 
     override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm) {
