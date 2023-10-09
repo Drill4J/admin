@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.users.repository
+package com.epam.drill.admin.users.exception
 
-import com.epam.drill.admin.users.entity.UserEntity
-
-interface UserRepository {
-    fun findAll(): List<UserEntity>
-
-    fun findById(id: Int): UserEntity?
-
-    fun findByUsername(username: String): UserEntity?
-
-    fun create(entity: UserEntity)
-
-    fun update(entity: UserEntity)
-
+open class UserValidationException(message: String): RuntimeException(message) {
 }
