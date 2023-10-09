@@ -60,7 +60,11 @@ class AgentHandler(override val di: DI) : DIAware{
             agentWebsocket("/agent/attach") {
                 val agentConfig = call.request.retrieveParams()
                 val frameType = when (agentConfig.agentType) {
+                    AgentType.JAVA -> FrameType.BINARY
+
+                    AgentType.DOTNET,
                     AgentType.NODEJS -> FrameType.TEXT
+
                     else -> FrameType.BINARY
                 }
                 val agentSession = AgentWsSession(

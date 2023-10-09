@@ -319,8 +319,11 @@ class Plugin(
      */
     override suspend fun processData(
         instanceId: String,
+        attachedAgentBuildVersion: String,
         content: String,
     ): Any = run {
+        if (attachedAgentBuildVersion != buildVersion) return "";
+
         val message = if (content.isJson())
             json.decodeFromString(CoverMessage.serializer(), content)
         else {
