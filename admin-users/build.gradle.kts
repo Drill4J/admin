@@ -12,6 +12,7 @@ plugins {
 group = "com.epam.drill.admin.users"
 version = rootProject.version
 
+val kotlinVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
@@ -32,6 +33,8 @@ dependencies {
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     testImplementation(kotlin("test-junit5"))
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
 }
 
 tasks {
