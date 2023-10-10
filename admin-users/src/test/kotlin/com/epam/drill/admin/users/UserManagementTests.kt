@@ -25,7 +25,7 @@ class UpdateUserTest {
 
     @Test
     fun `given username and password 'guest' sign-in results should have token`() {
-        withTestApplication(testApp) {
+        withTestApplication(testApp {}) {
             with(handleRequest(HttpMethod.Post, "/sign-in"){
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"username\":\"guest\", \"password\":\"guest\"}")

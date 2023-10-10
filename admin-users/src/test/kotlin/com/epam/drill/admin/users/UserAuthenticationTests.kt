@@ -15,21 +15,45 @@
  */
 package com.epam.drill.admin.users
 
+import com.epam.drill.admin.users.entity.UserEntity
+import com.epam.drill.admin.users.repository.UserRepository
 import com.epam.drill.admin.users.view.ChangePasswordForm
+import com.epam.drill.admin.users.view.LoginForm
 import com.epam.drill.admin.users.view.TokenResponse
+import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
+import org.junit.Before
+import org.kodein.di.bind
+import org.kodein.di.eagerSingleton
+import org.mockito.Mock
+import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.whenever
 import kotlin.test.*
 
 class SignInTest {
 
+    @Mock
+    lateinit var userRepository: UserRepository
+
+    @BeforeTest
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+    }
+
     @Test
     fun `given username and password 'guest' sign-in results should have token`() {
-        withTestApplication(testApp) {
-            with(handleRequest(HttpMethod.Post, "/sign-in"){
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(UserEntity(id = 1, username = "guest", passwordHash = "hash", role = "ADMIN"))
+
+        withTestApplication(testApp {
+            bind<UserRepository>() with eagerSingleton { userRepository }
+        }) {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"username\":\"guest\", \"password\":\"guest\"}")
+                val form = LoginForm(username = "guest", password = "guest")
+                setBody(Json.encodeToString(LoginForm.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response = Json.decodeFromString(TokenResponse.serializer(), response.content!!)
@@ -43,8 +67,8 @@ class SignUpTest {
 
     @Test
     fun `given username and password 'guest' sign-up results should return OK status`() {
-        withTestApplication(testApp) {
-            with(handleRequest(HttpMethod.Post, "/sign-up"){
+        withTestApplication(testApp {}) {
+            with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"username\":\"guest\", \"password\":\"guest\"}")
             }) {
@@ -58,8 +82,8 @@ class ChangePasswordTest {
 
     @Test
     fun `given correct old password update-password results should return OK status`() {
-        withTestApplication(testApp) {
-            with(handleRequest(HttpMethod.Post, "/update-password"){
+        withTestApplication(testApp {}) {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = ChangePasswordForm(oldPassword = "password1", newPassword = "password2")
                 setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))

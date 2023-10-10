@@ -29,10 +29,22 @@ import org.kodein.di.*
 
 val usersConfig: DI.Builder.(Application) -> Unit
     get() = { _ ->
-        bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
-        bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
-        bind<UserAuthenticationService>() with eagerSingleton { UserAuthenticationServiceImpl(instance(), instance()) }
-        bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-        bind<PasswordService>() with eagerSingleton { PasswordService() }
-        bind<UserRepository>() with eagerSingleton { UserRepositoryImpl() }
+        userRepositoriesConfig()
+        userServicesConfig()
+        userRoutesConfig()
     }
+
+fun DI.Builder.userRoutesConfig() {
+    bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
+    bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
+}
+
+fun DI.Builder.userServicesConfig() {
+    bind<UserAuthenticationService>() with eagerSingleton { UserAuthenticationServiceImpl(instance(), instance()) }
+    bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
+    bind<PasswordService>() with eagerSingleton { PasswordService() }
+}
+
+fun DI.Builder.userRepositoriesConfig() {
+    bind<UserRepository>() with eagerSingleton { UserRepositoryImpl() }
+}

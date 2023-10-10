@@ -16,6 +16,7 @@ val kotlinVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
+val mockitoKotlinVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -35,6 +36,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
 }
 
 tasks {
