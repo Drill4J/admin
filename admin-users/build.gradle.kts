@@ -17,6 +17,7 @@ val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
+val jbcryptVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -33,6 +34,7 @@ dependencies {
     implementation("io.ktor:ktor-locations:$ktorVersion")
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    implementation("org.mindrot:jbcrypt:$jbcryptVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")

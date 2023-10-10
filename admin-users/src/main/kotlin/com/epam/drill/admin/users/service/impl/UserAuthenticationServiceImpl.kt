@@ -30,7 +30,7 @@ class UserAuthenticationServiceImpl(
 ) : UserAuthenticationService {
     override fun signIn(form: LoginForm): TokenResponse {
         val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
-        if (entity.passwordHash != passwordService.hashPassword(form.password))
+        if (passwordService.checkPassword(form.password, entity.passwordHash))
             throw IncorrectCredentialsException()
         val token = issueToken(entity.toView())
         return TokenResponse(token)
@@ -46,7 +46,7 @@ class UserAuthenticationServiceImpl(
 
     override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm) {
         val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
-        if (entity.passwordHash != passwordService.hashPassword(form.oldPassword))
+        if (passwordService.checkPassword(form.oldPassword, entity.passwordHash))
             throw IncorrectPasswordException()
         passwordService.validatePassword(form.newPassword)
         entity.passwordHash = passwordService.hashPassword(form.newPassword)
