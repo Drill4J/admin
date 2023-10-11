@@ -16,9 +16,7 @@
 package com.epam.drill.plugins.test2code.perf
 
 import com.epam.drill.plugins.test2code.*
-import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.common.api.*
-import com.epam.drill.plugins.test2code.storage.*
 import kotlinx.coroutines.*
 import kotlin.random.*
 import kotlin.test.*
@@ -53,7 +51,7 @@ class PerformanceTest : PluginTest() {
         sizeExec: Int = 100,
         sizeProbes: Int = 10_000,
     ): FinishedSession? {
-        plugin.scope.startSession(
+        plugin.sessionHolder.startSession(
             sessionId = sessionId,
             testType = "MANUAL",
         )
@@ -86,7 +84,7 @@ class PerformanceTest : PluginTest() {
                     testId = "$index/$it"
                 )
             }
-            plugin.scope.addProbes(sessionId) { execClassData }
+            plugin.sessionHolder.addProbes(sessionId) { execClassData }
         }
     }
 
