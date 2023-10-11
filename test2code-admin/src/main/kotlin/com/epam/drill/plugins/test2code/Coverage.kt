@@ -119,14 +119,12 @@ suspend fun List<TestOverviewFilter>.calcBundleCounters(
 }
 
 /**
- * Calculate coverage data by scope
+ * Calculate coverage data by sessionHolder
  * @param context the build context
- * @param sessionHolder the scope
  * @return various sets of coverage information
  */
 internal fun BundleCounters.calculateCoverageData(
     context: CoverContext,
-    sessionHolder: ISessionHolder? = null,
 ): CoverageInfoSet {
     val bundle = all
     val bundlesByTests = byTest
@@ -152,29 +150,16 @@ internal fun BundleCounters.calculateCoverageData(
     val methodCount = bundle.methodCount.copy(total = tree.totalMethodCount)
     val classCount = bundle.classCount.copy(total = tree.totalClassCount)
     val packageCount = bundle.packageCount.copy(total = tree.packages.count())
-    val coverageBlock: Coverage = when (sessionHolder) {
-        null -> {
-            BuildCoverage(
-                percentage = totalCoveragePercent,
-                count = coverageCount,
-                methodCount = methodCount,
-                classCount = classCount,
-                packageCount = packageCount,
-                testTypeOverlap = testTypeOverlap.toCoverDto(tree),
-                byTestType = coverageByTests.byType
-            )
-        }
-        else -> ScopeCoverage(
+    val coverageBlock: Coverage =
+        BuildCoverage(
             percentage = totalCoveragePercent,
             count = coverageCount,
-            overlap = overlap.toCoverDto(tree),
             methodCount = methodCount,
             classCount = classCount,
             packageCount = packageCount,
             testTypeOverlap = testTypeOverlap.toCoverDto(tree),
             byTestType = coverageByTests.byType
         )
-    }
     logger.info { coverageBlock }
 
     val buildMethods = trackTime("calculateBundleMethods") { context.calculateBundleMethods(bundle) }

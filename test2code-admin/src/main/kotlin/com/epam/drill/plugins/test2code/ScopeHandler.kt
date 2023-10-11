@@ -15,38 +15,7 @@
  */
 package com.epam.drill.plugins.test2code
 
-import com.epam.drill.plugin.api.end.*
-import com.epam.drill.plugins.test2code.api.*
-import com.epam.drill.plugins.test2code.api.routes.*
 import com.epam.drill.plugins.test2code.coverage.*
-import com.epam.drill.plugins.test2code.util.*
-import com.epam.dsm.util.*
-
-/**
- * Initialize periodic job to recalculate coverage data and send it to the UI
- * @features Session starting, Session finishing, Sending coverage data, Scope finishing
- */
-internal fun Plugin.initScope(): Boolean = sessionHolder.initRealtimeHandler { sessionChanged, sessions ->
-    if (sessionChanged) {
-        sendActiveSessions()
-    }
-//    sessions?.let {
-//        val context = state.coverContext()
-//        val bundleCounters = trackTime("bundleCounters") {
-//            sessions.calcBundleCounters(context, bundleByTests)
-//        }.also { logPoolStats() }
-//        val coverageInfoSet = trackTime("coverageInfoSet") {
-//            bundleCounters.calculateCoverageData(context, this)
-//        }.also { logPoolStats() }
-//        updateSummary { it.copy(coverage = coverageInfoSet.coverage as ScopeCoverage) }
-//        sendScope()
-//        coverageInfoSet.sendScopeCoverage(buildVersion, id)
-//        if (sessionChanged) {
-//            bundleCounters.assocTestsJob(this)
-//            bundleCounters.coveredMethodsJob(id)
-//        }
-//    }
-}
 
 internal fun Plugin.initBundleHandler(): Boolean = sessionHolder.initBundleHandler { tests ->
     val context = state.coverContext()
