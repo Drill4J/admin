@@ -24,6 +24,7 @@ import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
 import com.epam.dsm.util.*
 import kotlinx.atomicfu.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.*
 
 /**
@@ -45,7 +46,7 @@ internal class AgentState(
 
     val scopeManager = ScopeManager(storeClient)
 
-    val scope get() = _scope.value
+    val sessionHolder get() = _sessionHolder.value
 
     val qualityGateSettings = AtomicCache<String, ConditionSetting>()
 
@@ -54,9 +55,9 @@ internal class AgentState(
     private val _coverContext = atomic<CoverContext?>(null)
 
     private val agentKey = AgentKey(agentInfo.id, agentInfo.buildVersion)
-    private val _scope = atomic(
-        Scope(
-            agentKey = agentKey,
+    private val _sessionHolder = atomic(
+        SessionHolder(
+            agentKey = agentKey
         )
     )
 
@@ -83,8 +84,8 @@ internal class AgentState(
     }
 
     fun close() {
-        logger.debug { "close scope id=${scope.id}" }
-        scope.close()
+        logger.debug { "close scope id=${sessionHolder.id}" }
+        sessionHolder.close()
     }
 
     private val mutex = Mutex()
@@ -146,7 +147,6 @@ internal class AgentState(
      */
     private suspend fun initialized(classData: ClassData) {
         val build: CachedBuild = storeClient.loadBuild(agentKey) ?: CachedBuild(agentKey)
-        val probes = scopeManager.byVersion(agentKey, withData = true)
         val coverContext = CoverContext(
             agentType = agentInfo.agentType,
             packageTree = classData.packageTree,
@@ -155,7 +155,6 @@ internal class AgentState(
             build = build
         )
         _coverContext.value = coverContext
-        updateProbes(probes.flatten())
         val (agentId, buildVersion) = agentKey
         logger.debug { "$agentKey initializing..." }
         storeClient.findById<GlobalAgentData>(agentId)?.baseline?.let { baseline ->
@@ -210,6 +209,14 @@ internal class AgentState(
         initScope()
     }
 
+    private val finishSessionJob = AsyncJobDispatcher.launch {
+        while (true) {
+            delay(2000)
+            sessionHolder.activeSessions.values.forEach {activeSession ->
+                finishSession(activeSession.id)
+            }
+        }
+    }
     /**
      * Finish the test session
      * @param sessionId the session ID which need to finish
@@ -217,12 +224,13 @@ internal class AgentState(
      */
     internal suspend fun finishSession(
         sessionId: String,
-    ): FinishedSession? = scope.finishSession(sessionId)?.also {
+    ): FinishedSession? = sessionHolder.finishSession(sessionId)?.also {
         if (it.any()) {
             logger.debug { "FinishSession. size of exec data = ${it.probes.size}" }.also { logPoolStats() }
             trackTime("session storing") {
+                //TODO add update instead of new storing
                 storeClient.storeSession(
-                    scope.id,
+                    sessionHolder.id,
                     agentKey,
                     it
                 )
@@ -237,7 +245,7 @@ internal class AgentState(
      * @features Agent registration
      */
     internal fun updateProbes(
-        buildScopes: Sequence<FinishedSession>,
+        buildScopes: Sequence<Session>,
     ) {
         _coverContext.update {
             it?.copy(build = it.build.copy(probes = buildScopes.flatten().merge()))
@@ -275,31 +283,6 @@ internal class AgentState(
         trackTime("storeBuild") { _coverContext.value?.build?.store(storeClient) }
     }
 
-    suspend fun renameScope(id: String, newName: String): ScopeSummary? = when (id) {
-        scope.id -> scope.rename(newName.trim()).also { storeScopeInfo() }
-        else -> scopeManager.byId(id)?.let { scope ->
-            scope.copy(name = newName, summary = scope.summary.copy(name = newName.trim())).also {
-                scopeManager.store(it)
-            }.summary
-        }
-    }
-
-    suspend fun toggleScope(id: String) {
-        scopeManager.byId(id)?.apply {
-            scopeManager.store(copy(enabled = !enabled, summary = this.summary.copy(enabled = !enabled)))
-        }
-    }
-
-    suspend fun scopeByName(name: String): IScope? = when (name) {
-        scope.name -> scope
-        else -> scopeManager.byVersion(agentKey).firstOrNull { it.name == name }
-    }
-
-    suspend fun scopeById(id: String): IScope? = when (id) {
-        scope.id -> scope
-        else -> scopeManager.byId(id)
-    }
-
     internal fun coverContext(): CoverContext = _coverContext.value!!
 
     internal fun classDataOrNull(): ClassData? = _data.value as? ClassData
@@ -312,12 +295,12 @@ internal class AgentState(
         readScopeInfo()?.run {
             val sessions = storeClient.loadSessions(id)
             logger.debug { "load sessions for scope with id=$id" }.also { logPoolStats() }
-            _scope.update {
-                Scope(
+            _sessionHolder.update {
+                SessionHolder(
                     id = id,
-                    agentKey = agentKey,
-                    sessions = sessions,
+                    agentKey = agentKey
                 ).apply {
+                    finishedSessions.update { el -> el.plus(sessions) }
                     updateSummary {
                         it.copy(started = startedAt)
                     }
@@ -326,7 +309,7 @@ internal class AgentState(
         } ?: storeScopeInfo()
     }
 
-    private suspend fun readScopeInfo(): ScopeInfo? = scopeManager.counter(agentKey)
+    private suspend fun readScopeInfo(): SessionHolderInfo? = scopeManager.counter(agentKey)
 
     /**
      * Store the scope to the database
@@ -334,11 +317,10 @@ internal class AgentState(
      */
     private suspend fun storeScopeInfo() = trackTime("storeScopeInfo") {
         scopeManager.storeCounter(
-            scope.run {
-                ScopeInfo(
+            sessionHolder.run {
+                SessionHolderInfo(
                     agentKey = AgentKey(agentInfo.id, agentKey.buildVersion),
                     id = id,
-                    name = name,
                     startedAt = summary.started
                 )
             }

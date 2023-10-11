@@ -84,7 +84,7 @@ class Plugin(
 
     internal val state: AgentState get() = _state.value!!
 
-    val scope: Scope get() = state.scope
+    val sessionHolder: SessionHolder get() = state.sessionHolder
 
     val agentKey = AgentKey(agentId, buildVersion)
 
@@ -122,12 +122,11 @@ class Plugin(
         data: Any?,
     ): ActionResult = when (action) {
         is ToggleBaseline -> toggleBaseline()
-        is SwitchActiveScope -> {
-            okResult
-        }
+        is SwitchActiveScope -> {okResult }
+        is RenameScope -> { okResult}
+        is ToggleScope -> { okResult }
+        is DropScope -> { okResult}
 
-        is RenameScope -> renameScope(action.payload)
-        is ToggleScope -> toggleScope(action.payload.scopeId)
         is CreateFilter -> {
             val newFilter = action.payload
             logger.debug { "creating filter with $newFilter..." }
@@ -195,14 +194,13 @@ class Plugin(
             okResult
         }
 
-        is DropScope -> dropScope(action.payload.scopeId)
         is UpdateSettings -> updateSettings(action.payload)
 
         /**
          * @features Running tests
          */
         is AddSessionData -> action.payload.run {
-            scope.activeSessions[sessionId]?.let { session ->
+            sessionHolder.activeSessions[sessionId]?.let { session ->
                 ActionResult(
                     code = StatusCodes.OK,
                     data = "Successfully received session data",
@@ -216,7 +214,7 @@ class Plugin(
         }
 
         is AddCoverage -> action.payload.run {
-            scope.addProbes(sessionId) {
+            sessionHolder.addProbes(sessionId) {
                 this.data.map { probes ->
                     ExecClassData(
                         className = probes.name,
@@ -226,7 +224,7 @@ class Plugin(
                 }
             }?.run {
                 if (isRealtime) {
-                    scope.probesChanged()
+                    sessionHolder.probesChanged()
                 }
                 okResult
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
@@ -241,7 +239,7 @@ class Plugin(
          * @features Running tests
          */
         is AddTests -> action.payload.run {
-            scope.activeSessions[sessionId]?.let { session ->
+            sessionHolder.activeSessions[sessionId]?.let { session ->
                 session.addTests(tests)
                 ActionResult(
                     code = StatusCodes.OK,
@@ -258,7 +256,7 @@ class Plugin(
             val newSessionId = sessionId.ifEmpty(::genUuid)
             val isRealtimeSession = runtimeConfig.realtime && isRealtime
             val labels = labels + Label("Session", newSessionId)
-            scope.startSession(
+            sessionHolder.startSession(
                 newSessionId,
                 testType,
                 isGlobal,
@@ -274,16 +272,12 @@ class Plugin(
          * @features Session finishing
          */
         is StopSession -> action.payload.run {
-            scope.activeSessions[sessionId]?.let { session ->
+            sessionHolder.activeSessions[sessionId]?.let { session ->
                 session.addTests(tests)
                 state.finishSession(sessionId)
-                    .also {
-                        calculateAndSendBuildCoverage()
-                        sendActiveSessions()
-                        sendLabels()
-                    } ?: logger.info {
-                    "No active session with id $sessionId."
-                }
+                    ?: logger.info {
+                        "No active session with id $sessionId."
+                    }
                 okResult
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
         }
@@ -296,7 +290,7 @@ class Plugin(
         }
 
         is CancelAllSessions -> {
-            scope.cancelAllSessions()
+            sessionHolder.cancelAllSessions()
             okResult
         }
 
@@ -369,20 +363,17 @@ class Plugin(
                 .groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->
                     val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
-                    if (scope.activeSessions[sessionId] == null) {
-                        scope.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
+                    if (sessionHolder.activeSessions[sessionId] == null) {
+                        sessionHolder.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
                     }
-                    scope.activeSessions[sessionId]?.let {
-                        scope.addProbes(sessionId) { data }?.run {
-                            if (isRealtime) {
-                                scope.probesChanged()
-                            }
-                        }
+                    sessionHolder.activeSessions[sessionId]?.let {
+                        sessionHolder.addProbes(sessionId) { data }
+                        calculateAndSendBuildCoverage()
                     } ?: logger.debug { "Attempting to add coverage in non-existent active session with id $sessionId" }
                 }
         }
 
-        is SessionChanged -> scope.takeIf { scope ->
+        is SessionChanged -> sessionHolder.takeIf { scope ->
             scope.activeSessions.values.any { it.isRealtime }
         }?.apply { probesChanged() }
 
@@ -390,7 +381,7 @@ class Plugin(
         is SessionCancelled -> logger.info { "$instanceId: Agent session ${message.sessionId} cancelled." }
 
         is SessionsCancelled -> message.run {
-            scope.let { ids.forEach { id: String -> it.cancelSession(id) } }
+            sessionHolder.let { ids.forEach { id: String -> it.cancelSession(id) } }
             logger.info { "$instanceId: Agent sessions cancelled: $ids." }
         }
 
@@ -415,13 +406,13 @@ class Plugin(
          */
         is SyncMessage -> message.run {
             logger.info { "Active session ids from agent: $activeSessions" }
-            activeSessions.filter { it !in scope.activeSessions }.forEach {
+            activeSessions.filter { it !in sessionHolder.activeSessions }.forEach {
                 AsyncJobDispatcher.launch {
                     logger.info { "Attempting to cancel session: $it" }
                     sendAgentAction(CancelAgentSession(AgentSessionPayload(it)))
                 }
             }
-            scope.activeSessions.map.filter { it.key !in activeSessions }.forEach { (id, session) ->
+            sessionHolder.activeSessions.map.filter { it.key !in activeSessions }.forEach { (id, session) ->
                 AsyncJobDispatcher.launch {
                     val startSessionPayload = StartSessionPayload(
                         sessionId = id,
@@ -451,7 +442,6 @@ class Plugin(
         sendBaseline()
         sendParentTestsToRunStats()
         state.classDataOrNull()?.sendBuildStats()
-        sendScopes()
         calculateAndSendCachedCoverage()
         sendLabels()
         sendFilters()
@@ -505,19 +495,8 @@ class Plugin(
      * @features Agent registration
      */
     private suspend fun calculateAndSendCachedCoverage() = state.coverContext().build.let { build ->
-        val scopes = state.scopeManager.byVersion(
-            agentKey, withData = true
-        ) //todo double get from DB? (State.initialized)
-        state.updateProbes(scopes.flatten()) //todo double call updateProbes? (State.initialized)
         val coverContext = state.coverContext()
-        build.bundleCounters.calculateAndSendBuildCoverage(coverContext, build.stats.scopeCount)
-        scopes.forEach { scope ->
-            val bundleCounters = scope.calcBundleCounters(coverContext)
-            val coverageInfoSet = bundleCounters.calculateCoverageData(coverContext, scope)
-            coverageInfoSet.sendScopeCoverage(buildVersion, scope.id)
-            bundleCounters.assocTestsJob(scope)
-            bundleCounters.coveredMethodsJob(scope.id)
-        }
+        build.bundleCounters.calculateAndSendBuildCoverage(coverContext)
     }
 
     internal suspend fun sendScopeMessages(buildVersion: String) {
@@ -530,7 +509,7 @@ class Plugin(
      * @features Scope finishing, Session starting
      */
     internal suspend fun sendActiveSessions() {
-        val sessions = scope.activeSessions.values.map {
+        val sessions = sessionHolder.activeSessions.values.map {
             ActiveSessionDto(
                 id = it.id,
                 agentId = agentId,
@@ -562,7 +541,7 @@ class Plugin(
      * @features Sending coverage data, Scope finishing
      */
     internal suspend fun sendScope() {
-        val summary = scope.summary
+        val summary = sessionHolder.summary
         send(buildVersion, Routes.ActiveScope(), summary)
         sendScopeSummary(summary)
     }
@@ -597,7 +576,7 @@ class Plugin(
 
     private suspend fun sendScopes(
         buildVersion: String,
-        scopes: Sequence<FinishedScope>,
+        scopes: Sequence<SessionHolder>,
     ) = sender.send(
         context = AgentSendContext(
             agentId,
@@ -634,7 +613,6 @@ class Plugin(
         val filterId = filter.id
         bundleCounters.calculateAndSendBuildCoverage(
             context = context,
-            scopeCount = context.build.stats.scopeCount,
             filterId = filterId
         )
         return filterId
@@ -646,7 +624,7 @@ class Plugin(
      * @features Scope finishing
      */
     internal suspend fun calculateAndSendBuildCoverage() {
-        val sessions = state.scope.sessions.asSequence()
+        val sessions = (state.sessionHolder.finishedSessions.value + state.sessionHolder.activeSessions.values).asSequence()
         sessions.calculateAndSendBuildCoverage(state.coverContext())
     }
 
@@ -654,25 +632,22 @@ class Plugin(
      * Calculate coverage data by finished scopes
      * @features Scope finishing
      */
-    private suspend fun Sequence<FinishedSession>.calculateAndSendBuildCoverage(context: CoverContext) {
-        state.updateProbes(this)
+    private suspend fun Sequence<Session>.calculateAndSendBuildCoverage(context: CoverContext) {
         logger.debug { "Start to calculate BundleCounters of build" }
-        val bundleCounters = calcBundleCounters(context)
+        val bundleCounters = this.calcBundleCounters(context)
         state.updateBundleCounters(bundleCounters)
         logger.debug { "Start to calculate build coverage" }
-        bundleCounters.calculateAndSendBuildCoverage(context, scopeCount = count())
+        bundleCounters.calculateAndSendBuildCoverage(context)
     }
 
     private suspend fun BundleCounters.calculateAndSendBuildCoverage(
         context: CoverContext,
-        scopeCount: Int,
         filterId: String = "",
     ) {
-        val coverageInfoSet = calculateCoverageData(context)
+        val coverageInfoSet = this.calculateCoverageData(context)
         val parentCoverageCount = context.parentBuild?.let { context.parentBuild.stats.coverage } ?: zeroCount
         val risks = context.calculateRisks(storeClient, all)
         val buildCoverage = (coverageInfoSet.coverage as BuildCoverage).copy(
-            finishedScopesCount = scopeCount,
             riskCount = Count(risks.notCovered().count(), risks.count())
         )
         val testsNew = byTestOverview.asSequence().groupBy({ it.key.type }, { TestData(it.key.id, it.value.details) })
@@ -821,69 +796,6 @@ class Plugin(
         }
     }
 
-    /**
-     * Calculate test coverage data for the scope
-     * @features Scope finishing
-     */
-    internal suspend fun calculateAndSendScopeCoverage() = scope.let { scope ->
-        val context = state.coverContext()
-        val bundleCounters = scope.calcBundleCounters(context)
-        val coverageInfoSet = bundleCounters.calculateCoverageData(context, scope)
-        this.scope.updateSummary {
-            it.copy(coverage = coverageInfoSet.coverage as ScopeCoverage)
-        }
-        coverageInfoSet.sendScopeCoverage(buildVersion, scope.id)
-        bundleCounters.assocTestsJob(scope)
-        bundleCounters.coveredMethodsJob(scope.id)
-    }
-
-    private suspend fun sendScopeTree(
-        scopeId: String,
-        associatedTests: List<AssociatedTests>,
-        treeCoverage: List<JavaPackageCoverage>,
-        filterId: String = "",
-    ) {
-        val scopeRoute = Routes.Build.Scopes.Scope(scopeId, Routes.Build.Scopes(Routes.Build()))
-        if (associatedTests.isNotEmpty()) {
-            logger.info { "Assoc tests - ids count: ${associatedTests.count()}" }
-            associatedTests.forEach { assocTests ->
-                AsyncJobDispatcher.launch {
-                    val assocTestsRoute = Routes.Build.Scopes.Scope.AssociatedTests(assocTests.id, scopeRoute)
-                    send(buildVersion, assocTestsRoute, assocTests, filterId)
-                }
-            }
-        }
-        val coverageRoute = Routes.Build.Scopes.Scope.Coverage(scopeRoute)
-        val pkgsRoute = Routes.Build.Scopes.Scope.Coverage.Packages(coverageRoute)
-        val packages = treeCoverage.takeIf { runtimeConfig.sendPackages } ?: emptyList()
-        send(buildVersion, pkgsRoute, packages.map { it.copy(classes = emptyList()) }, filterId)
-        packages.forEach {
-            AsyncJobDispatcher.launch {
-                send(
-                    buildVersion,
-                    Routes.Build.Scopes.Scope.Coverage.Packages.Package(it.name, pkgsRoute),
-                    it,
-                    filterId
-                )
-            }
-        }
-    }
-
-    internal suspend fun CoverageInfoSet.sendScopeCoverage(
-        buildVersion: String,
-        scopeId: String,
-    ) = scopeById(scopeId).let { scope ->
-        val coverageRoute = Routes.Build.Scopes.Scope.Coverage(scope)
-        send(buildVersion, coverageRoute, coverage)
-        send(buildVersion, Routes.Build.Scopes.Scope.Methods(scope), buildMethods.toSummaryDto())
-        sendScopeTree(scopeId, associatedTests.getAssociatedTests(), packageCoverage)
-        send(buildVersion, Routes.Build.Scopes.Scope.Tests(scope), tests)
-        Routes.Build.Scopes.Scope.Summary.Tests(Routes.Build.Scopes.Scope.Summary(scope)).let {
-            send(buildVersion, Routes.Build.Scopes.Scope.Summary.Tests.All(it), coverageByTests.all)
-            send(buildVersion, Routes.Build.Scopes.Scope.Summary.Tests.ByType(it), coverageByTests.byType)
-        }
-    }
-
     internal suspend fun send(buildVersion: String, destination: Any, message: Any, filterId: String = "") {
         sender.send(AgentSendContext(agentId, buildVersion, filterId), destination, message)
     }
@@ -914,7 +826,7 @@ class Plugin(
      * @features Agent registration, Test running
      */
     internal suspend fun BundleCounters.assocTestsJob(
-        scope: IScope? = null,
+        scope: ISessionHolder? = null,
         filterId: String = "",
     ) = AsyncJobDispatcher.launch {
         trackTime("assocTestsJob") {
@@ -929,11 +841,7 @@ class Plugin(
                 state.coverContext().packageTree.packages.treeCoverage(all, assocTestsMap)
             }
             logger.debug { "Sending all associated tests..." }
-            scope?.let {
-                trackTime("assocTestsJob sendScopeTree") {
-                    sendScopeTree(it.id, associatedTests, treeCoverage, filterId)
-                }
-            } ?: run {
+            run {
                 send(
                     buildVersion,
                     Routes.Build.Risks(Routes.Build()),

@@ -29,20 +29,19 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import java.lang.ref.*
 
-interface IScope : Sequence<FinishedSession> {
+interface ISessionHolder : Sequence<FinishedSession> {
     val id: String
     val agentKey: AgentKey
-    val name: String
     val summary: ScopeSummary
 }
 
-fun Sequence<IScope>.summaries(): List<ScopeSummary> = map(IScope::summary).toList()
+fun Sequence<ISessionHolder>.summaries(): List<ScopeSummary> = map(ISessionHolder::summary).toList()
 
 typealias SoftBundleByTests = SoftReference<PersistentMap<TestKey, BundleCounter>>
 
-typealias CoverageHandler = suspend Scope.(Boolean, Sequence<Session>?) -> Unit
+typealias CoverageHandler = suspend SessionHolder.(Boolean, Sequence<Session>?) -> Unit
 
-typealias BundleCacheHandler = suspend Scope.(Map<TestKey, Sequence<ExecClassData>>) -> Unit
+typealias BundleCacheHandler = suspend SessionHolder.(Map<TestKey, Sequence<ExecClassData>>) -> Unit
 
 private val logger = logger {}
 
@@ -54,15 +53,11 @@ private val logger = logger {}
  * @param name the scope name
  * @param sessions all finished sessions in the scope
  */
-class Scope(
-    override val id: String = genUuid(),
+data class SessionHolder(
+    @Id override val id: String = genUuid(),
     override val agentKey: AgentKey,
-    sessions: List<FinishedSession> = emptyList(),
-) : IScope {
+    ) : ISessionHolder {
     private val _bundleByTests = atomic<SoftBundleByTests>(SoftReference(persistentMapOf()))
-    override val name = "Single Scope"
-    val bundleByTests: PersistentMap<TestKey, BundleCounter>
-        get() = _bundleByTests.value.get() ?: persistentMapOf()
 
     private enum class Change(val sessions: Boolean, val probes: Boolean) {
         ONLY_SESSIONS(true, false),
@@ -74,17 +69,13 @@ class Scope(
 
     val activeSessions = AtomicCache<String, ActiveSession>()
 
-    private val _sessions = atomic(sessions.toMutableList())
+    val finishedSessions = atomic( emptyList<FinishedSession>())
 
-    val sessions: List<FinishedSession> get() = _sessions.value
-
-    //TODO remove summary for this class
     private val _summary = atomic(
         ScopeSummary(
             id = id,
-            name = name,
             started = currentTimeMillis(),
-            sessionsFinished = sessions.size,
+            sessionsFinished = finishedSessions.value.size,
         )
     )
 
@@ -102,7 +93,7 @@ class Scope(
                 _change.getAndUpdate { null }?.let { change ->
                     _realtimeCoverageHandler.value?.let { handler ->
                         val probes = if (change.probes) {
-                            this@Scope + activeSessions.values.filter { it.isRealtime }
+                            this@SessionHolder + activeSessions.values.filter { it.isRealtime }
                         } else null
                         handler(change.sessions, probes)
                         delay(500)
@@ -116,7 +107,7 @@ class Scope(
         while (true) {
             val tests = activeSessions.values.flatMap { it.updatedTests }
             _bundleCacheHandler.value.takeIf { tests.any() }?.let {
-                val probes = this@Scope + activeSessions.values
+                val probes = this@SessionHolder + activeSessions.values
                 val probesByTests = probes.groupBy { it.testType }.map { (testType, sessions) ->
                     sessions.asSequence().flatten()
                         .groupBy { it.testId.testKey(testType) }
@@ -139,32 +130,9 @@ class Scope(
         it ?: handler
     } == null
 
-    //TODO remove summary related stuff from the scope
     fun updateSummary(updater: (ScopeSummary) -> ScopeSummary) = _summary.updateAndGet(updater)
 
-    fun rename(name: String): ScopeSummary = _summary.updateAndGet { it.copy(name = name) }
-
-    /**
-     * Create a FinishScope instance from the scope state
-     * @param enabled todo
-     * @features Scope finishing
-     */
-    fun finish(enabled: Boolean) = FinishedScope(
-        id = id,
-        agentKey = agentKey,
-        name = summary.name,
-        enabled = enabled,
-        summary = summary.copy(
-            finished = currentTimeMillis(),
-            active = false,
-            enabled = enabled
-        ),
-        data = ScopeData(
-            sessions = toList(),
-        )
-    )
-
-    override fun iterator(): Iterator<FinishedSession> = _sessions.value.iterator()
+    override fun iterator(): Iterator<FinishedSession> = finishedSessions.value.iterator()
 
     /**
      * Start the test session
@@ -233,7 +201,15 @@ class Scope(
     ): FinishedSession? = removeSession(sessionId)?.run {
         finish().also { finished ->
             if (finished.probes.any()) {
-                val updatedSessions = _sessions.updateAndGet { it.apply { add(finished) } }
+                val updatedSessions = finishedSessions.updateAndGet { list ->
+                    if (list.map { it.id }.contains(finished.id)) {
+                        val first = list.first { el -> el.id == finished.id }
+                        first.probes += finished.probes
+                        list
+                    } else {
+                        list + listOf(finished)
+                    }
+                }
                 _bundleByTests.update {
                     val current = it.get() ?: persistentMapOf()
                     SoftReference(current - updatedTests)
@@ -252,14 +228,14 @@ class Scope(
      * @features Scope finishing
      */
     fun close() {
-        logger.debug { "closing scope $id..." }
+        logger.debug { "closing session-holder $id..." }
         _change.value = null
         activeSessions.clear()
         realtimeCoverageJob.cancel()
         bundleCacheJob.cancel()
     }
 
-    override fun toString() = "act-scope($id, $name)"
+    override fun toString() = "session-holder($id)"
 
     /**
      * Set a sign that the session has been changed
@@ -282,31 +258,7 @@ class Scope(
 }
 
 @Serializable
-data class ScopeData(
-    @Transient
-    val sessions: List<FinishedSession> = emptyList(),
-) {
-    companion object {
-        val empty = ScopeData()
-    }
-}
-
-@Serializable
-data class FinishedScope(
-    @Id override val id: String,
-    override val agentKey: AgentKey,
-    override val name: String,
-    override val summary: ScopeSummary,
-    val enabled: Boolean,
-    val data: ScopeData,
-) : IScope {
-    override fun iterator() = data.sessions.iterator()
-
-    override fun toString() = "fin-scope($id, $name)"
-}
-
-@Serializable
-internal data class ScopeInfo(
+internal data class SessionHolderInfo(
     @Id val agentKey: AgentKey,
     val id: String = genUuid(),
     val nth: Int = 1,
@@ -314,7 +266,7 @@ internal data class ScopeInfo(
     val startedAt: Long = 0L,
 )
 
-internal fun ScopeInfo.inc() = copy(nth = nth.inc())
+internal fun SessionHolderInfo.inc() = copy(nth = nth.inc())
 
 fun scopeById(scopeId: String) = Routes.Build.Scopes(Routes.Build()).let {
     Routes.Build.Scopes.Scope(scopeId, it)

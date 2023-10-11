@@ -147,7 +147,7 @@ data class FinishedSession(
     override val id: String,
     override val testType: String,
     override val tests: Set<TestOverview>,
-    val probes: List<ExecClassData>,
+    var probes: List<ExecClassData>,
 ) : Session() {
     override fun iterator(): Iterator<ExecClassData> = probes.iterator()
 
