@@ -499,7 +499,7 @@ class Plugin(
 
     /**
      * Send all active sessions to the UI
-     * @features Scope finishing, Session starting
+     * @features Session saving, Session starting
      */
     internal suspend fun sendActiveSessions() {
         val sessions = sessionHolder.sessions.values.map {
@@ -523,7 +523,7 @@ class Plugin(
 
 
     /**
-     * filter in current build using:
+     * filter in the current build using:
      * @see calculateAndSendBuildCoverage
      */
     private suspend fun calculateAndSendFilteredCoverageInBuild(
@@ -555,7 +555,7 @@ class Plugin(
 
     /**
      * Recalculate test coverage data by session and send it to the UI
-     * @features Scope finishing
+     * @features Session saving
      */
     internal suspend fun calculateAndSendBuildCoverage() {
         val sessions = (sessionHolder.sessions.values).asSequence()
@@ -564,7 +564,7 @@ class Plugin(
 
     /**
      * Calculate coverage data by session
-     * @features Scope finishing
+     * @features Session saving
      */
     private suspend fun Sequence<Session>.calculateAndSendBuildCoverage(context: CoverContext) {
         logger.debug { "Start to calculate BundleCounters of build" }

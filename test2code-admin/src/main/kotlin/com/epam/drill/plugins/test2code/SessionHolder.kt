@@ -142,7 +142,7 @@ data class SessionHolder(
      * Close the session-holder:
      * - clear the active sessions
      * - suspend all the session-holder jobs
-     * @features Scope finishing
+     * @features Session saving
      */
     fun close() {
         logger.debug { "closing session-holder $id..." }

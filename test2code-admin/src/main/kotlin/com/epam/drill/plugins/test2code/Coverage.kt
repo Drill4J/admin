@@ -36,7 +36,7 @@ private val logger = logger {}
  * @param classBytes java class bytes of the build
  * @param cache the current cache of build coverage
  * @return various sets of build coverages
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<Session>.calcBundleCounters(
     context: CoverContext,
@@ -241,7 +241,7 @@ private fun Sequence<Session>.testsWithBundle(
  * @param context the context of the coverage
  * @param classBytes the map when keys are class names and values are class bytes
  * @return a calculated build coverage
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<ExecClassData>.overlappingBundle(
     context: CoverContext,
@@ -254,7 +254,7 @@ internal fun Sequence<ExecClassData>.overlappingBundle(
  * @param context the context of the coverage
  * @param classBytes the map when keys are class names and values are class bytes
  * @return a calculated build coverage
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<ExecClassData>.bundle(
     context: CoverContext,

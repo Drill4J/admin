@@ -210,6 +210,10 @@ internal class AgentState(
     }
 
     //TODO should we move to another place?
+    /**
+     * That job each 5 seconds will save all sessions from SessionHolder to DB
+     * @features  Session saving
+     */
     private val finishSessionJob = AsyncJobDispatcher.launch {
         while (true) {
             delay(5000)
@@ -224,7 +228,7 @@ internal class AgentState(
     /**
      * Finish the test session
      * @param sessionId the session ID which need to finish
-     * @features Session finishing, Scope finishing
+     * @features Session finishing, Session saving
      */
     internal suspend fun finishSession(
         sessionId: String,
@@ -303,7 +307,7 @@ internal class AgentState(
 
     /**
      * Store the scope to the database
-     * @features Scope finishing
+     * @features Session saving
      */
     private suspend fun storeSessionHolderInfo() = trackTime("storeSessionHolderInfo") {
         sessionHolderManager.storeCounter(
