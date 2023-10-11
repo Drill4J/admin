@@ -44,7 +44,7 @@ internal class AgentState(
 
     val data get() = _data.value
 
-    val scopeManager = ScopeManager(storeClient)
+    val sessionHolderManager = SessionHolderManager(storeClient)
 
     val sessionHolder get() = _sessionHolder.value
 
@@ -84,7 +84,7 @@ internal class AgentState(
     }
 
     fun close() {
-        logger.debug { "close scope id=${sessionHolder.id}" }
+        logger.debug { "close sessionHolder id=${sessionHolder.id}" }
         sessionHolder.close()
     }
 
@@ -206,17 +206,21 @@ internal class AgentState(
             storeClient.store(GlobalAgentData(agentId, baseline))
             logger.debug { "(buildVersion=$buildVersion) Stored initial baseline $baseline." }
         }
-        initScope()
+        initSessionHolder()
     }
 
+    //TODO should we move to another place?
     private val finishSessionJob = AsyncJobDispatcher.launch {
         while (true) {
-            delay(2000)
-            sessionHolder.activeSessions.values.forEach {activeSession ->
+            delay(5000)
+            val values = sessionHolder.sessions.values
+
+            values.forEach { activeSession ->
                 finishSession(activeSession.id)
             }
         }
     }
+
     /**
      * Finish the test session
      * @param sessionId the session ID which need to finish
@@ -224,32 +228,21 @@ internal class AgentState(
      */
     internal suspend fun finishSession(
         sessionId: String,
-    ): FinishedSession? = sessionHolder.finishSession(sessionId)?.also {
-        if (it.any()) {
-            logger.debug { "FinishSession. size of exec data = ${it.probes.size}" }.also { logPoolStats() }
+    ): TestSession? = sessionHolder.finishSession(sessionId)?.also { testSession ->
+        if (testSession.any()) {
+            logger.debug {
+                "FinishSession. size of exec data = ${testSession.probes.values.map { it.keys }.count()}"
+            }.also { logPoolStats() }
             trackTime("session storing") {
                 //TODO add update instead of new storing
                 storeClient.storeSession(
                     sessionHolder.id,
                     agentKey,
-                    it
+                    testSession
                 )
             }
             logger.debug { "Session $sessionId finished." }.also { logPoolStats() }
-        } else logger.debug { "Session with id $sessionId is empty, it won't be added to the scope." }
-    }
-
-    /**
-     * Update the state of scope probes
-     * @param buildScopes the scope data
-     * @features Agent registration
-     */
-    internal fun updateProbes(
-        buildScopes: Sequence<Session>,
-    ) {
-        _coverContext.update {
-            it?.copy(build = it.build.copy(probes = buildScopes.flatten().merge()))
-        }
+        } else logger.debug { "Session with id $sessionId is empty, it won't be added to the sessionHolder." }
     }
 
     internal fun updateBundleCounters(
@@ -288,40 +281,36 @@ internal class AgentState(
     internal fun classDataOrNull(): ClassData? = _data.value as? ClassData
 
     /**
-     * Update an scope
+     * Update an SessionHolder
      * @features Agent registration
      */
-    private suspend fun initScope() {
-        readScopeInfo()?.run {
-            val sessions = storeClient.loadSessions(id)
-            logger.debug { "load sessions for scope with id=$id" }.also { logPoolStats() }
+    private suspend fun initSessionHolder() {
+        readSessionHolderInfo()?.run {
+            val loadedSessions = storeClient.loadSessions(id).associateBy { it.id }
+            logger.debug { "load sessions for SessionHolder with id=$id" }.also { logPoolStats() }
             _sessionHolder.update {
                 SessionHolder(
                     id = id,
                     agentKey = agentKey
                 ).apply {
-                    finishedSessions.update { el -> el.plus(sessions) }
-                    updateSummary {
-                        it.copy(started = startedAt)
-                    }
+                    sessions.putAll(loadedSessions)
                 }
             }
-        } ?: storeScopeInfo()
+        } ?: storeSessionHolderInfo()
     }
 
-    private suspend fun readScopeInfo(): SessionHolderInfo? = scopeManager.counter(agentKey)
+    private suspend fun readSessionHolderInfo(): SessionHolderInfo? = sessionHolderManager.counter(agentKey)
 
     /**
      * Store the scope to the database
      * @features Scope finishing
      */
-    private suspend fun storeScopeInfo() = trackTime("storeScopeInfo") {
-        scopeManager.storeCounter(
+    private suspend fun storeSessionHolderInfo() = trackTime("storeSessionHolderInfo") {
+        sessionHolderManager.storeCounter(
             sessionHolder.run {
                 SessionHolderInfo(
                     agentKey = AgentKey(agentInfo.id, agentKey.buildVersion),
                     id = id,
-                    startedAt = summary.started
                 )
             }
         )

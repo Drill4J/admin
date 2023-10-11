@@ -16,42 +16,32 @@
 package com.epam.drill.plugins.test2code
 
 import com.epam.drill.plugins.test2code.api.*
-import com.epam.drill.plugins.test2code.api.routes.*
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
-import com.epam.dsm.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import java.lang.ref.*
 
-interface ISessionHolder : Sequence<FinishedSession> {
+interface ISessionHolder : Sequence<Session> {
     val id: String
     val agentKey: AgentKey
-    val summary: ScopeSummary
 }
 
-fun Sequence<ISessionHolder>.summaries(): List<ScopeSummary> = map(ISessionHolder::summary).toList()
 
 typealias SoftBundleByTests = SoftReference<PersistentMap<TestKey, BundleCounter>>
-
-typealias CoverageHandler = suspend SessionHolder.(Boolean, Sequence<Session>?) -> Unit
 
 typealias BundleCacheHandler = suspend SessionHolder.(Map<TestKey, Sequence<ExecClassData>>) -> Unit
 
 private val logger = logger {}
 
 /**
- * State of a scope
- * @param id the scope ID
+ * @param id the sessionHolder ID
  * @param agentKey todo
- * @param nth todo
- * @param name the scope name
- * @param sessions all finished sessions in the scope
  */
 data class SessionHolder(
     @Id override val id: String = genUuid(),
@@ -59,55 +49,15 @@ data class SessionHolder(
     ) : ISessionHolder {
     private val _bundleByTests = atomic<SoftBundleByTests>(SoftReference(persistentMapOf()))
 
-    private enum class Change(val sessions: Boolean, val probes: Boolean) {
-        ONLY_SESSIONS(true, false),
-        ONLY_PROBES(false, true),
-        ALL(true, true)
-    }
+    val sessions = AtomicCache<String, TestSession>()
 
-    override val summary get() = _summary.value
-
-    val activeSessions = AtomicCache<String, ActiveSession>()
-
-    val finishedSessions = atomic( emptyList<FinishedSession>())
-
-    private val _summary = atomic(
-        ScopeSummary(
-            id = id,
-            started = currentTimeMillis(),
-            sessionsFinished = finishedSessions.value.size,
-        )
-    )
-
-    private val _realtimeCoverageHandler = atomic<CoverageHandler?>(null)
     private val _bundleCacheHandler = atomic<BundleCacheHandler?>(null)
-
-
-    private val _change = atomic<Change?>(null)
-
-    private val realtimeCoverageJob = AsyncJobDispatcher.launch {
-        while (true) {
-            delay(250)
-            _change.value?.let {
-                delay(250)
-                _change.getAndUpdate { null }?.let { change ->
-                    _realtimeCoverageHandler.value?.let { handler ->
-                        val probes = if (change.probes) {
-                            this@SessionHolder + activeSessions.values.filter { it.isRealtime }
-                        } else null
-                        handler(change.sessions, probes)
-                        delay(500)
-                    }
-                }
-            }
-        }
-    }
 
     private val bundleCacheJob = AsyncJobDispatcher.launch {
         while (true) {
-            val tests = activeSessions.values.flatMap { it.updatedTests }
+            val tests = sessions.values.flatMap { it.updatedTests }
             _bundleCacheHandler.value.takeIf { tests.any() }?.let {
-                val probes = this@SessionHolder + activeSessions.values
+                val probes = this@SessionHolder + sessions.values
                 val probesByTests = probes.groupBy { it.testType }.map { (testType, sessions) ->
                     sessions.asSequence().flatten()
                         .groupBy { it.testId.testKey(testType) }
@@ -122,17 +72,11 @@ data class SessionHolder(
         }
     }
 
-    fun initRealtimeHandler(handler: CoverageHandler): Boolean = _realtimeCoverageHandler.getAndUpdate {
-        it ?: handler.also { _change.value = Change.ALL }
-    } == null
-
     fun initBundleHandler(handler: BundleCacheHandler): Boolean = _bundleCacheHandler.getAndUpdate {
         it ?: handler
     } == null
 
-    fun updateSummary(updater: (ScopeSummary) -> ScopeSummary) = _summary.updateAndGet(updater)
-
-    override fun iterator(): Iterator<FinishedSession> = finishedSessions.value.iterator()
+    override fun iterator(): Iterator<Session> = sessions.values.iterator()
 
     /**
      * Start the test session
@@ -145,20 +89,17 @@ data class SessionHolder(
         isRealtime: Boolean = false,
         testName: String? = null,
         labels: Set<Label> = emptySet(),
-    ) = ActiveSession(sessionId, testType, isGlobal, isRealtime, testName, labels).takeIf { newSession ->
-        val key = sessionId
-        activeSessions(key) { existing ->
-            existing ?: newSession.takeIf { activeSessions[it.id] == null }
+    ) = TestSession(sessionId, testType, isGlobal, isRealtime, testName, labels).takeIf { newSession ->
+        sessions(sessionId) { existing ->
+            existing ?: newSession.takeIf { sessions[it.id] == null }
         } === newSession
-    }?.also {
-        sessionsChanged()
     }
 
 
     fun addProbes(
         sessionId: String,
         probeProvider: () -> Collection<ExecClassData>,
-    ): ActiveSession? = activeSessions[sessionId]?.apply { addAll(probeProvider()) }
+    ): TestSession? = sessions[sessionId]?.apply { addAll(probeProvider()) }
 
     fun addBundleCache(bundleByTests: Map<TestKey, BundleCounter>) {
         _bundleByTests.update {
@@ -167,27 +108,14 @@ data class SessionHolder(
         }
     }
 
-    fun probesChanged() = _change.update {
-        when (it) {
-            Change.ONLY_SESSIONS, Change.ALL -> Change.ALL
-            else -> Change.ONLY_PROBES
-        }
-    }
-
     fun cancelSession(
         sessionId: String,
-    ): ActiveSession? = removeSession(sessionId)?.also {
+    ): TestSession? = removeSession(sessionId)?.also {
         clearBundleCache()
-        if (it.any()) {
-            _change.value = Change.ALL
-        } else sessionsChanged()
     }
 
-    fun cancelAllSessions() = activeSessions.clear().also { map ->
+    fun cancelAllSessions() = sessions.clear().also {
         clearBundleCache()
-        if (map.values.any { it.any() }) {
-            _change.value = Change.ALL
-        } else sessionsChanged()
     }
 
     /**
@@ -198,62 +126,38 @@ data class SessionHolder(
      */
     fun finishSession(
         sessionId: String,
-    ): FinishedSession? = removeSession(sessionId)?.run {
-        finish().also { finished ->
-            if (finished.probes.any()) {
-                val updatedSessions = finishedSessions.updateAndGet { list ->
-                    if (list.map { it.id }.contains(finished.id)) {
-                        val first = list.first { el -> el.id == finished.id }
-                        first.probes += finished.probes
-                        list
-                    } else {
-                        list + listOf(finished)
-                    }
-                }
+    ): TestSession? = sessions[sessionId]?.run {
+            val execData = this.probes.values.map { it.values }.flatten()
+            if (execData.any()) {
                 _bundleByTests.update {
                     val current = it.get() ?: persistentMapOf()
                     SoftReference(current - updatedTests)
                 }
-                _summary.update { it.copy(sessionsFinished = updatedSessions.count()) }
-                _change.value = Change.ALL
-            } else sessionsChanged()
-        }
+            }
+        this
     }
 
 
     /**
-     * Close the scope:
+     * Close the session-holder:
      * - clear the active sessions
-     * - suspend all the scope jobs
+     * - suspend all the session-holder jobs
      * @features Scope finishing
      */
     fun close() {
         logger.debug { "closing session-holder $id..." }
-        _change.value = null
-        activeSessions.clear()
-        realtimeCoverageJob.cancel()
+        sessions.clear()
         bundleCacheJob.cancel()
     }
 
     override fun toString() = "session-holder($id)"
 
-    /**
-     * Set a sign that the session has been changed
-     * @features Session starting
-     */
-    private fun sessionsChanged() {
-        _change.update {
-            when (it) {
-                Change.ONLY_PROBES, Change.ALL -> Change.ALL
-                else -> Change.ONLY_SESSIONS
-            }
-        }
-    }
-
     private fun clearBundleCache() = _bundleByTests.update { SoftReference(persistentMapOf()) }
 
-    private fun removeSession(id: String): ActiveSession? = activeSessions.run {
-        remove(id)
+    private fun removeSession(id: String): TestSession? = sessions.run {
+        val testSession = get(id)
+        this.remove(id)
+        testSession
     }
 }
 
@@ -267,7 +171,3 @@ internal data class SessionHolderInfo(
 )
 
 internal fun SessionHolderInfo.inc() = copy(nth = nth.inc())
-
-fun scopeById(scopeId: String) = Routes.Build.Scopes(Routes.Build()).let {
-    Routes.Build.Scopes.Scope(scopeId, it)
-}

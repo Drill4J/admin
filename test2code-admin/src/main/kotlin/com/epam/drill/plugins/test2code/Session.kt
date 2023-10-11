@@ -18,13 +18,11 @@ package com.epam.drill.plugins.test2code
 import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
-import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.util.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.serialization.*
 
-private val logger = logger {}
 
 /**
  * Test session
@@ -48,9 +46,9 @@ sealed class Session : Sequence<ExecClassData> {
 }
 
 
-private typealias ProbeKey = String
+typealias ProbeKey = String
 
-class ActiveSession(
+class TestSession(
     override val id: String,
     override val testType: String,
     val isGlobal: Boolean = false,
@@ -74,13 +72,13 @@ class ActiveSession(
         return end - start
     }
 
-    private val _probes = atomic(
-        persistentMapOf<ProbeKey, PersistentMap<Long, ExecClassData>>()
-    )
+    private val _probes = atomic(persistentMapOf<ProbeKey, PersistentMap<Long, ExecClassData>>())
 
-    private val _testTestInfo = atomic<PersistentMap<String, TestInfo>>(persistentHashMapOf())
+    val probes get() = _probes.value
 
-    private val _updatedTests = atomic<Set<String>>(setOf())
+    private val _testTestInfo = atomic(persistentMapOf<String, TestInfo>())
+
+    private val _updatedTests = atomic(setOf<String>())
 
     val updatedTests: Set<TestKey>
         get() = _updatedTests.getAndUpdate { setOf() }.mapTo(mutableSetOf()) { it.testKey(testType) }
@@ -92,22 +90,22 @@ class ActiveSession(
      */
     fun addAll(dataPart: Collection<ExecClassData>) = dataPart.map { probe ->
         probe.id?.let { probe } ?: probe.copy(id = probe.id())
-    }.forEach { probe ->
-        if (true in probe.probes) {
-            val test = probe.testId.weakIntern()
+    }.forEach { execData ->
+        if (true in execData.probes) {
+            val testKey = execData.testId.weakIntern()
             _probes.update { map ->
-                (map[test] ?: persistentHashMapOf()).let { testData ->
-                    val probeId = probe.id()
+                (map[testKey] ?: persistentHashMapOf()).let { testData ->
+                    val probeId = execData.id()
                     if (probeId in testData) {
                         testData.getValue(probeId).run {
-                            val merged = probes.merge(probe.probes)
+                            val merged = probes.merge(execData.probes)
                             merged.takeIf { it != probes }?.let {
-                                addUpdatedTest(probe.testId)
+                                addUpdatedTest(execData.testId)
                                 testData.put(probeId, copy(probes = merged))
                             }
                         }
-                    } else testData.put(probeId, probe).also { addUpdatedTest(probe.testId) }
-                }?.let { map.put(test, it) } ?: map
+                    } else testData.put(probeId, execData).also { addUpdatedTest(execData.testId) }
+                }?.let { map.put(testKey, it) } ?: map
             }
         }
     }
@@ -131,28 +129,4 @@ class ActiveSession(
         _probes.value.values.asSequence().flatMap { it.values.asSequence() }.iterator()
     }.iterator()
 
-    fun finish() = _probes.value.run {
-        logger.debug { "ActiveSession finish with size = $size " }
-        FinishedSession(
-            id = id,
-            testType = testType,
-            tests = tests,
-            probes = values.flatMap { it.values },
-        )
-    }
 }
-
-@Serializable
-data class FinishedSession(
-    override val id: String,
-    override val testType: String,
-    override val tests: Set<TestOverview>,
-    var probes: List<ExecClassData>,
-) : Session() {
-    override fun iterator(): Iterator<ExecClassData> = probes.iterator()
-
-    override fun equals(other: Any?): Boolean = other is FinishedSession && id == other.id
-
-    override fun hashCode(): Int = id.hashCode()
-}
-

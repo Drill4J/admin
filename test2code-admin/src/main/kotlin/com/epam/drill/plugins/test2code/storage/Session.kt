@@ -1,4 +1,4 @@
- /**
+/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +16,8 @@
 package com.epam.drill.plugins.test2code.storage
 
 import com.epam.drill.plugins.test2code.*
+import com.epam.drill.plugins.test2code.api.TestOverview
+import com.epam.drill.plugins.test2code.common.api.ExecClassData
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
 import com.epam.dsm.find.*
@@ -36,30 +38,44 @@ data class AgentKey(
 internal class StoredSession(
     @Id val id: String,
     val agentKey: AgentKey,
-    val scopeId: String,
-    val data: FinishedSession,
+    val sessionHolderId: String,
+    val testType: String,
+    val testName: String,
+    val tests: Set<TestOverview>,
+    val probes: List<ExecClassData>
 )
 
 internal suspend fun StoreClient.loadSessions(
-    scopeId: String,
-): List<FinishedSession> = trackTime("Load session") {
+    holderId: String,
+): List<TestSession> = trackTime("Load session") {
     findBy<StoredSession> {
-        StoredSession::scopeId eq scopeId
-    }.get().map { it.data }
+        StoredSession::sessionHolderId eq holderId
+    }.get().map { stored ->
+        TestSession(
+            id = stored.id,
+            testType = stored.testType,
+            testName = stored.testName
+        ).also { session ->
+            session.addAll(stored.probes)
+        }
+    }
 }
 
 internal suspend fun StoreClient.storeSession(
-    scopeId: String,
+    holderId: String,
     agentKey: AgentKey,
-    session: FinishedSession,
+    session: TestSession,
 ) {
     trackTime("Store session") {
         store(
             StoredSession(
                 id = genUuid(),
                 agentKey = agentKey,
-                scopeId = scopeId,
-                data = session
+                sessionHolderId = holderId,
+                probes = session.probes.values.map { it.values }.flatten(),
+                tests = session.tests,
+                testType = session.testType,
+                testName = session.testName.orEmpty()
             )
         )
     }
