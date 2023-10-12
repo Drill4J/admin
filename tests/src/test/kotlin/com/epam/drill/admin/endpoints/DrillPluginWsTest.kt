@@ -17,6 +17,8 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.auth.securityDiConfig
+import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
@@ -24,15 +26,16 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.plugin.*
-import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.storage.*
+import com.epam.drill.e2e.GUEST_USER
 import com.epam.drill.e2e.testPluginServices
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
+import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -62,6 +65,9 @@ class PluginWsTest {
     private lateinit var kodeinApplication: DI
 
     private val testApp: Application.() -> Unit = {
+        (environment.config as MapApplicationConfig).apply {
+            put("drill.users", listOf(GUEST_USER))
+        }
         install(Locations)
         install(WebSockets)
 
@@ -74,10 +80,11 @@ class PluginWsTest {
         TestDatabaseContainer.startOnce()
         kodeinApplication = kodeinApplication(AppBuilder {
 
+            withKModule { kodeinModule("securityConfig", securityDiConfig) }
+            withKModule { kodeinModule("usersConfig", usersDiConfig) }
             withKModule { kodeinModule("pluginServices", testPluginServices()) }
             withKModule {
                 kodeinModule("test") {
-                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
                     bind<WsTopic>() with singleton { WsTopic(di) }
                     if (app.drillCacheType == "mapdb") {

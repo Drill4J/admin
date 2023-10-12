@@ -62,6 +62,7 @@ class JwtConfig(override val di: DI) : DIAware {
 fun DI.Builder.bindJwt() {
     bind<JwtConfig>() with eagerSingleton { JwtConfig(di) }
     bind<JwtTokenService>() with eagerSingleton { JwtTokenService(instance()) }
+    bind<TokenService>() with provider { instance<JwtTokenService>() }
     bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
 }
 

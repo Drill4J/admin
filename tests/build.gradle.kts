@@ -60,6 +60,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
 
     testImplementation(project(":admin-core"))
+    testImplementation(project(":admin-auth"))
     testImplementation(project(":common"))
     testImplementation(project(":ktor-swagger"))
     testImplementation(project(":plugin-api-admin"))

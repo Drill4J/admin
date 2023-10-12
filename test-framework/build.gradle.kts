@@ -54,6 +54,7 @@ dependencies {
     api(project(":dsm"))
     api(project(":dsm-test-framework"))
     api(project(":admin-core"))
+    api(project(":admin-auth"))
 }
 
 kotlin.sourceSets.all {
