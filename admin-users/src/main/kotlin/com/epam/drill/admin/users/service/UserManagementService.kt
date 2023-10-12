@@ -24,7 +24,7 @@ interface UserManagementService {
 
     fun getUser(userId: Int): UserView
 
-    fun updateUser(userId: Int, form: UserForm)
+    fun updateUser(userId: Int, form: UserForm): UserView
 
     fun deleteUser(userId: Int)
 

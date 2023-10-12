@@ -15,10 +15,10 @@
  */
 package com.epam.drill.admin.users.service.impl
 
-import com.epam.drill.admin.users.entity.UserEntity
 import com.epam.drill.admin.users.exception.UserNotFoundException
 import com.epam.drill.admin.users.repository.UserRepository
 import com.epam.drill.admin.users.service.UserManagementService
+import com.epam.drill.admin.users.service.PasswordService
 import com.epam.drill.admin.users.view.CredentialsView
 import com.epam.drill.admin.users.view.UserForm
 import com.epam.drill.admin.users.view.UserView
@@ -35,10 +35,11 @@ class UserManagementServiceImpl(
         return userRepository.findById(userId)?.toView() ?: throw UserNotFoundException()
     }
 
-    override fun updateUser(userId: Int, form: UserForm) {
+    override fun updateUser(userId: Int, form: UserForm): UserView {
         val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
         entity.role = form.role.name
         userRepository.update(entity)
+        return entity.toView()
     }
 
     override fun deleteUser(userId: Int) {

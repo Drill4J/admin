@@ -15,27 +15,36 @@
  */
 package com.epam.drill.admin.users
 
-import com.epam.drill.admin.users.entity.UserEntity
 import com.epam.drill.admin.users.repository.UserRepository
+import com.epam.drill.admin.users.route.UserAuthenticationRoutes
+import com.epam.drill.admin.users.service.PasswordService
+import com.epam.drill.admin.users.service.TokenService
+import com.epam.drill.admin.users.service.UserAuthenticationService
+import com.epam.drill.admin.users.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.users.view.ChangePasswordForm
 import com.epam.drill.admin.users.view.LoginForm
+import com.epam.drill.admin.users.view.RegistrationForm
 import com.epam.drill.admin.users.view.TokenResponse
-import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
-import org.junit.Before
 import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
+import org.kodein.di.instance
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
-class SignInTest {
+class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
+    @Mock
+    lateinit var passwordService: PasswordService
+    @Mock
+    lateinit var tokenService: TokenService
 
     @BeforeTest
     fun setup() {
@@ -45,11 +54,12 @@ class SignInTest {
     @Test
     fun `given username and password 'guest' sign-in results should have token`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(UserEntity(id = 1, username = "guest", passwordHash = "hash", role = "ADMIN"))
+            .thenReturn(userGuest)
+        whenever(passwordService.checkPassword("guest", "hash"))
+            .thenReturn(true)
+        whenever(tokenService.issueToken(any())).thenReturn("token")
 
-        withTestApplication(testApp {
-            bind<UserRepository>() with eagerSingleton { userRepository }
-        }) {
+        withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginForm(username = "guest", password = "guest")
@@ -61,35 +71,58 @@ class SignInTest {
             }
         }
     }
-}
-
-class SignUpTest {
 
     @Test
     fun `given username and password 'guest' sign-up results should return OK status`() {
-        withTestApplication(testApp {}) {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(null)
+        whenever(passwordService.hashPassword("secret"))
+            .thenReturn("hash")
+        whenever(userRepository.create(any()))
+            .thenReturn(1)
+
+        withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"username\":\"guest\", \"password\":\"guest\"}")
+                val form = RegistrationForm(username = "guest", password = "secret")
+                setBody(Json.encodeToString(RegistrationForm.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
             }
         }
     }
-}
-
-class ChangePasswordTest {
 
     @Test
     fun `given correct old password update-password results should return OK status`() {
-        withTestApplication(testApp {}) {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(userGuest)
+        whenever(passwordService.checkPassword("secret", "hash"))
+            .thenReturn(true)
+        whenever(passwordService.hashPassword("secret2"))
+            .thenReturn("hash2")
+
+        withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = ChangePasswordForm(oldPassword = "password1", newPassword = "password2")
+                val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
                 setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
             }
         }
+    }
+
+    private fun config() = testApp {
+        bind<UserRepository>() with eagerSingleton { userRepository }
+        bind<PasswordService>() with eagerSingleton { passwordService }
+        bind<TokenService>() with eagerSingleton { tokenService }
+        bind<UserAuthenticationService>() with eagerSingleton {
+            UserAuthenticationServiceImpl(
+                instance(),
+                instance(),
+                instance()
+            )
+        }
+        bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
     }
 }

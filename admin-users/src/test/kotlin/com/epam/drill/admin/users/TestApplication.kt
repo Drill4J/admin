@@ -6,7 +6,7 @@ import io.ktor.locations.*
 import io.ktor.serialization.*
 import org.kodein.di.*
 
-fun testApp(extraBindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Unit = {
+fun testApp(bindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Unit = {
     install(Locations)
     install(ContentNegotiation) {
         json()
@@ -14,8 +14,6 @@ fun testApp(extraBindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Un
     val app = this
     DI {
         bind<Application>() with singleton { app }
-        userServicesConfig()
-        userRoutesConfig()
-        extraBindings()
+        bindings()
     }
 }

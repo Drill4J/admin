@@ -21,18 +21,21 @@ import com.epam.drill.admin.users.exception.UserAlreadyExistsException
 import com.epam.drill.admin.users.exception.UserNotFoundException
 import com.epam.drill.admin.users.repository.UserRepository
 import com.epam.drill.admin.users.service.UserAuthenticationService
+import com.epam.drill.admin.users.service.PasswordService
+import com.epam.drill.admin.users.service.TokenService
 import com.epam.drill.admin.users.view.*
 import io.ktor.auth.*
 
 class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val tokenService: TokenService
 ) : UserAuthenticationService {
     override fun signIn(form: LoginForm): TokenResponse {
         val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
-        if (passwordService.checkPassword(form.password, entity.passwordHash))
+        if (!passwordService.checkPassword(form.password, entity.passwordHash))
             throw IncorrectCredentialsException()
-        val token = issueToken(entity.toView())
+        val token = tokenService.issueToken(entity.toView())
         return TokenResponse(token)
     }
 
@@ -46,15 +49,12 @@ class UserAuthenticationServiceImpl(
 
     override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm) {
         val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
-        if (passwordService.checkPassword(form.oldPassword, entity.passwordHash))
+        if (!passwordService.checkPassword(form.oldPassword, entity.passwordHash))
             throw IncorrectPasswordException()
         passwordService.validatePassword(form.newPassword)
         entity.passwordHash = passwordService.hashPassword(form.newPassword)
         userRepository.update(entity)
     }
 
-    private fun issueToken(user: UserView): String {
-        TODO("Not yet implemented")
-    }
 }
 

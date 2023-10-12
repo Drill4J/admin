@@ -60,8 +60,7 @@ class UsersRoutes(override val di: DI) : DIAware {
         put("/users/{userId}") {
             val userId = call.getRequiredParam<Int>("userId")
             val userForm = call.receive<UserForm>()
-            service.updateUser(userId, userForm)
-            call.respond(HttpStatusCode.OK, ApiResponse("User updated successfully"))
+            call.respond(HttpStatusCode.OK, service.updateUser(userId, userForm))
         }
     }
 

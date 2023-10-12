@@ -24,7 +24,7 @@ interface UserRepository {
 
     fun findByUsername(username: String): UserEntity?
 
-    fun create(entity: UserEntity)
+    fun create(entity: UserEntity): Int
 
     fun update(entity: UserEntity)
 

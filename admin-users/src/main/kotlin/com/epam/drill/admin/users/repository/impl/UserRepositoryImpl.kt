@@ -31,7 +31,7 @@ class UserRepositoryImpl: UserRepository {
         TODO("Not yet implemented")
     }
 
-    override fun create(entity: UserEntity) {
+    override fun create(entity: UserEntity): Int {
         TODO("Not yet implemented")
     }
 

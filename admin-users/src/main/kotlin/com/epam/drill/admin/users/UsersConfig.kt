@@ -19,9 +19,10 @@ import com.epam.drill.admin.users.repository.UserRepository
 import com.epam.drill.admin.users.repository.impl.UserRepositoryImpl
 import com.epam.drill.admin.users.route.UserAuthenticationRoutes
 import com.epam.drill.admin.users.route.UsersRoutes
+import com.epam.drill.admin.users.service.PasswordService
 import com.epam.drill.admin.users.service.UserAuthenticationService
 import com.epam.drill.admin.users.service.UserManagementService
-import com.epam.drill.admin.users.service.impl.PasswordService
+import com.epam.drill.admin.users.service.impl.PasswordServiceImpl
 import com.epam.drill.admin.users.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.users.service.impl.UserManagementServiceImpl
 import io.ktor.application.*
@@ -40,9 +41,15 @@ fun DI.Builder.userRoutesConfig() {
 }
 
 fun DI.Builder.userServicesConfig() {
-    bind<UserAuthenticationService>() with eagerSingleton { UserAuthenticationServiceImpl(instance(), instance()) }
+    bind<UserAuthenticationService>() with eagerSingleton {
+        UserAuthenticationServiceImpl(
+            instance(),
+            instance(),
+            instance()
+        )
+    }
     bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-    bind<PasswordService>() with eagerSingleton { PasswordService() }
+    bind<PasswordService>() with eagerSingleton { PasswordServiceImpl() }
 }
 
 fun DI.Builder.userRepositoriesConfig() {

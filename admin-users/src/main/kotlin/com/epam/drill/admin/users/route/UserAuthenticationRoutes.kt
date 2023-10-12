@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.users.route
 
+import com.epam.drill.admin.users.exception.UserNotAuthenticatedException
 import com.epam.drill.admin.users.service.UserAuthenticationService
 import com.epam.drill.admin.users.view.ApiResponse
 import com.epam.drill.admin.users.view.ChangePasswordForm
@@ -63,8 +64,8 @@ class UserAuthenticationRoutes(override val di: DI) : DIAware {
     fun Route.updatePasswordRoute() {
         post("update-password") {
             val form = call.receive<ChangePasswordForm>()
-            val principal = call.principal<UserIdPrincipal>()
-            service.updatePassword(principal!!, form)
+            val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
+            service.updatePassword(principal, form)
             call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
         }
     }

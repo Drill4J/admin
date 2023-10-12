@@ -15,5 +15,5 @@
  */
 package com.epam.drill.admin.users.exception
 
-open class UserValidationException(message: String): RuntimeException(message) {
+open class UserValidationException(message: String): UserException(message) {
 }
