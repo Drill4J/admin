@@ -17,11 +17,11 @@
 
 package com.epam.drill.admin.endpoints.admin
 
+import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.jwt.config.jwtConfig
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
@@ -41,13 +41,14 @@ class DrillServerWs(override val di:DI) : DIAware {
 
     private val app by instance<Application>()
     private val wsTopic by instance<WsTopic>()
+    private val tokenService by instance<TokenService>()
 
     private val sessionStorage by instance<SessionStorage>()
 
     init {
         app.routing {
             val socketName = "drill-admin-socket"
-            authWebSocket("/ws/$socketName", app.jwtConfig) {
+            authWebSocket("/ws/$socketName", tokenService) {
                 val session = this
                 logger.debug { "$socketName: acquired ${session.toDebugString()}" }
                 try {

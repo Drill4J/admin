@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.view.*
 import io.ktor.auth.*
 
 interface UserAuthenticationService {
-    fun signIn(form: LoginForm): TokenResponse
+    fun signIn(form: LoginForm): UserView
 
     fun signUp(form: RegistrationForm)
 

@@ -35,10 +35,6 @@ class ApiRoot(val prefix: String = "api") {
     }
 
     @Group(SYSTEM)
-    @Location("/login")
-    data class Login(val parent: ApiRoot)
-
-    @Group(SYSTEM)
     @Location("/version")
     data class Version(val parent: ApiRoot)
 

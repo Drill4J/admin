@@ -18,9 +18,17 @@ package com.epam.drill.admin.auth.service.impl
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.model.UserStatus
+import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.view.CredentialsView
 import com.epam.drill.admin.auth.view.RegistrationForm
 import com.epam.drill.admin.auth.view.UserView
+
+fun UserView.toPrincipal(): User {
+    return User(
+        name = username,
+        role = role
+    )
+}
 
 fun RegistrationForm.toEntity(passwordHash: String): UserEntity {
     return UserEntity(

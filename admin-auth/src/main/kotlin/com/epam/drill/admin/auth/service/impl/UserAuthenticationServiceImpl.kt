@@ -28,15 +28,13 @@ import io.ktor.auth.*
 
 class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService,
-    private val tokenService: TokenService
+    private val passwordService: PasswordService
 ) : UserAuthenticationService {
-    override fun signIn(form: LoginForm): TokenResponse {
+    override fun signIn(form: LoginForm): UserView {
         val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
         if (!passwordService.checkPassword(form.password, entity.passwordHash))
             throw IncorrectCredentialsException()
-        val token = tokenService.issueToken(entity.toView())
-        return TokenResponse(token)
+        return entity.toView()
     }
 
     override fun signUp(form: RegistrationForm) {

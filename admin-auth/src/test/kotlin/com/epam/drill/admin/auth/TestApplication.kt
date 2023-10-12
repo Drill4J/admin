@@ -28,7 +28,8 @@ fun testApp(bindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Unit = 
         json()
     }
     install(Authentication) {
-        basic {
+        //have to use "jwt", because only jwt method is allowed in production code for this route
+        basic("jwt") {
             validate {
                 UserIdPrincipal(it.name)
             }

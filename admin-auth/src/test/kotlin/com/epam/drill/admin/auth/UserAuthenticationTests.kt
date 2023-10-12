@@ -134,7 +134,6 @@ class UserAuthenticationTest {
         bind<UserAuthenticationService>() with eagerSingleton {
             UserAuthenticationServiceImpl(
                 instance(),
-                instance(),
                 instance()
             )
         }

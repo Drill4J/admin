@@ -15,14 +15,12 @@
  */
 package com.epam.drill.admin
 
+import com.epam.drill.admin.auth.securityDiConfig
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
-import com.epam.drill.admin.jwt.config.*
-import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
-import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.store.*
-import com.epam.drill.admin.auth.usersConfig
+import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -31,14 +29,17 @@ import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
+import io.ktor.http.content.*
 import io.ktor.locations.*
 import io.ktor.response.*
+import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import mu.*
 import org.flywaydb.core.*
 import ru.yandex.qatools.embed.postgresql.*
 import ru.yandex.qatools.embed.postgresql.distribution.*
+import ru.yandex.qatools.embed.postgresql.distribution.Version
 import java.io.*
 import java.time.*
 
@@ -46,8 +47,6 @@ import java.time.*
 val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
 
 val drillWorkDir = drillHomeDir.resolve("work")
-
-val userSource: UserSource = UserSourceImpl()
 
 private val logger = KotlinLogging.logger {}
 
@@ -80,8 +79,6 @@ fun Application.module() = kodeinApplication(
 
             enableSwaggerSupport()
 
-            installAuthentication()
-
             install(CORS) {
                 anyHost()
                 allowCredentials = true
@@ -97,11 +94,12 @@ fun Application.module() = kodeinApplication(
             }
 
         }
+        withKModule { kodeinModule("securityConfig", securityDiConfig) }
+        withKModule { kodeinModule("usersConfig", usersDiConfig) }
         withKModule { kodeinModule("storage", storage) }
         withKModule { kodeinModule("wsHandler", wsHandler) }
         withKModule { kodeinModule("handlers", handlers) }
         withKModule { kodeinModule("pluginServices", pluginServices) }
-        withKModule { kodeinModule("usersConfig", usersConfig) }
         val host = drillDatabaseHost
         val port = drillDatabasePort
         val dbName = drillDatabaseName
@@ -136,6 +134,12 @@ fun Application.module() = kodeinApplication(
             .baselineOnMigrate(true)
             .load()
         flyway.migrate()
+
+        routing {
+            static {
+                resources("public")
+            }
+        }
     }
 )
 
