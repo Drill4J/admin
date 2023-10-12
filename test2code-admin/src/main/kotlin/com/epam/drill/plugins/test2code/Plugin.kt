@@ -432,7 +432,7 @@ class Plugin(
      * Send information to the admin UI
      * @features Agent registration
      */
-    private suspend fun Plugin.processInitialized(): Boolean {
+    private suspend fun Plugin.processInitialized() {
         initGateSettings()
         sendGateSettings()
         sendParentBuild()
@@ -443,7 +443,6 @@ class Plugin(
         sendLabels()
         sendFilters()
         sendActiveSessions()
-        return initBundleHandler()
     }
 
     /**

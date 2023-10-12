@@ -32,11 +32,6 @@ interface ISessionHolder : Sequence<Session> {
     val agentKey: AgentKey
 }
 
-
-typealias SoftBundleByTests = SoftReference<PersistentMap<TestKey, BundleCounter>>
-
-typealias BundleCacheHandler = suspend SessionHolder.(Map<TestKey, Sequence<ExecClassData>>) -> Unit
-
 private val logger = logger {}
 
 /**
@@ -46,35 +41,9 @@ private val logger = logger {}
 data class SessionHolder(
     @Id override val id: String = genUuid(),
     override val agentKey: AgentKey,
-    ) : ISessionHolder {
-    private val _bundleByTests = atomic<SoftBundleByTests>(SoftReference(persistentMapOf()))
+) : ISessionHolder {
 
     val sessions = AtomicCache<String, TestSession>()
-
-    private val _bundleCacheHandler = atomic<BundleCacheHandler?>(null)
-
-    private val bundleCacheJob = AsyncJobDispatcher.launch {
-        while (true) {
-            val tests = sessions.values.flatMap { it.updatedTests }
-            _bundleCacheHandler.value.takeIf { tests.any() }?.let {
-                val probes = this@SessionHolder + sessions.values
-                val probesByTests = probes.groupBy { it.testType }.map { (testType, sessions) ->
-                    sessions.asSequence().flatten()
-                        .groupBy { it.testId.testKey(testType) }
-                        .filter { it.key in tests }
-                        .mapValuesTo(mutableMapOf()) { it.value.asSequence() }
-                }.takeIf { it.isNotEmpty() }?.reduce { m1, m2 ->
-                    m1.apply { putAll(m2) }
-                } ?: emptyMap()
-                it(probesByTests)
-            }
-            delay(2000)
-        }
-    }
-
-    fun initBundleHandler(handler: BundleCacheHandler): Boolean = _bundleCacheHandler.getAndUpdate {
-        it ?: handler
-    } == null
 
     override fun iterator(): Iterator<Session> = sessions.values.iterator()
 
@@ -95,28 +64,16 @@ data class SessionHolder(
         } === newSession
     }
 
-
     fun addProbes(
         sessionId: String,
         probeProvider: () -> Collection<ExecClassData>,
     ): TestSession? = sessions[sessionId]?.apply { addAll(probeProvider()) }
 
-    fun addBundleCache(bundleByTests: Map<TestKey, BundleCounter>) {
-        _bundleByTests.update {
-            val bundles = (it.get() ?: persistentMapOf()).putAll(bundleByTests)
-            SoftReference(bundles)
-        }
-    }
-
     fun cancelSession(
         sessionId: String,
-    ): TestSession? = removeSession(sessionId)?.also {
-        clearBundleCache()
-    }
+    ): TestSession? = removeSession(sessionId)
 
-    fun cancelAllSessions() = sessions.clear().also {
-        clearBundleCache()
-    }
+    fun cancelAllSessions() = sessions.clear()
 
     /**
      * Finish the test session
@@ -126,17 +83,7 @@ data class SessionHolder(
      */
     fun finishSession(
         sessionId: String,
-    ): TestSession? = sessions[sessionId]?.run {
-            val execData = this.probes.values.map { it.values }.flatten()
-            if (execData.any()) {
-                _bundleByTests.update {
-                    val current = it.get() ?: persistentMapOf()
-                    SoftReference(current - updatedTests)
-                }
-            }
-        this
-    }
-
+    ): TestSession? = sessions[sessionId]
 
     /**
      * Close the session-holder:
@@ -147,12 +94,9 @@ data class SessionHolder(
     fun close() {
         logger.debug { "closing session-holder $id..." }
         sessions.clear()
-        bundleCacheJob.cancel()
     }
 
     override fun toString() = "session-holder($id)"
-
-    private fun clearBundleCache() = _bundleByTests.update { SoftReference(persistentMapOf()) }
 
     private fun removeSession(id: String): TestSession? = sessions.run {
         val testSession = get(id)
