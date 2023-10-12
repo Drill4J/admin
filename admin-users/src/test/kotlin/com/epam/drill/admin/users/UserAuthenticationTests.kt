@@ -25,6 +25,7 @@ import com.epam.drill.admin.users.view.ChangePasswordForm
 import com.epam.drill.admin.users.view.LoginForm
 import com.epam.drill.admin.users.view.RegistrationForm
 import com.epam.drill.admin.users.view.TokenResponse
+import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
@@ -35,6 +36,7 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import java.util.Base64
 import kotlin.test.*
 
 class UserAuthenticationTest {
@@ -54,15 +56,15 @@ class UserAuthenticationTest {
     @Test
     fun `given username and password 'guest' sign-in results should have token`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest)
-        whenever(passwordService.checkPassword("guest", "hash"))
+            .thenReturn(userGuest.copy())
+        whenever(passwordService.checkPassword("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginForm(username = "guest", password = "guest")
+                val form = LoginForm(username = "guest", password = "secret")
                 setBody(Json.encodeToString(LoginForm.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -95,7 +97,7 @@ class UserAuthenticationTest {
     @Test
     fun `given correct old password update-password results should return OK status`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest)
+            .thenReturn(userGuest.copy())
         whenever(passwordService.checkPassword("secret", "hash"))
             .thenReturn(true)
         whenever(passwordService.hashPassword("secret2"))
@@ -104,6 +106,7 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth("guest", "secret")
                 val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
                 setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
             }) {
@@ -124,5 +127,10 @@ class UserAuthenticationTest {
             )
         }
         bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
+    }
+
+    private fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
+        val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
+        addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
     }
 }

@@ -62,11 +62,13 @@ class UserAuthenticationRoutes(override val di: DI) : DIAware {
     }
 
     fun Route.updatePasswordRoute() {
-        post("update-password") {
-            val form = call.receive<ChangePasswordForm>()
-            val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
-            service.updatePassword(principal, form)
-            call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
+        authenticate {
+            post("update-password") {
+                val form = call.receive<ChangePasswordForm>()
+                val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
+                service.updatePassword(principal, form)
+                call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
+            }
         }
     }
 }
