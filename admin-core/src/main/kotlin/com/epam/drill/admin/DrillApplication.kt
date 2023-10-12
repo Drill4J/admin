@@ -22,7 +22,7 @@ import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.store.*
-import com.epam.drill.admin.users.usersConfig
+import com.epam.drill.admin.auth.usersConfig
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*

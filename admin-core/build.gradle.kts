@@ -65,7 +65,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
-    implementation(project(":admin-users"))
+    implementation(project(":admin-auth"))
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))
