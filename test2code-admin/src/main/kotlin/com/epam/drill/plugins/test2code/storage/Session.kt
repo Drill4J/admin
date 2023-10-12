@@ -17,7 +17,7 @@ package com.epam.drill.plugins.test2code.storage
 
 import com.epam.drill.plugins.test2code.*
 import com.epam.drill.plugins.test2code.api.TestOverview
-import com.epam.drill.plugins.test2code.common.api.ExecClassData
+import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
 import com.epam.dsm.find.*
@@ -42,7 +42,8 @@ internal class StoredSession(
     val testType: String,
     val testName: String,
     val tests: Set<TestOverview>,
-    val probes: List<ExecClassData>
+    var probes: List<ExecClassData>,
+    val isFinished : Boolean
 )
 
 internal suspend fun StoreClient.loadSessions(
@@ -54,7 +55,8 @@ internal suspend fun StoreClient.loadSessions(
         TestSession(
             id = stored.id,
             testType = stored.testType,
-            testName = stored.testName
+            testName = stored.testName,
+            isFinished = stored.isFinished
         ).also { session ->
             session.addAll(stored.probes)
         }
@@ -69,16 +71,44 @@ internal suspend fun StoreClient.storeSession(
     trackTime("Store session") {
         store(
             StoredSession(
-                id = genUuid(),
+                id = session.id,
                 agentKey = agentKey,
                 sessionHolderId = holderId,
                 probes = session.probes.values.map { it.values }.flatten(),
                 tests = session.tests,
                 testType = session.testType,
-                testName = session.testName.orEmpty()
+                testName = session.testName.orEmpty(),
+                isFinished = session.isFinished
             )
         )
     }
+}
+
+internal suspend fun StoreClient.updateSession(
+    session: TestSession
+) {
+    trackTime("Store session") {
+        //TODO rework it
+        //1. get session and update probes
+        val storedSession = findById<StoredSession>(session.id)!!
+
+        session.probes.values.flatMap { it.values }
+            .forEach { probe ->
+                if (probe !in storedSession.probes) {
+                    storedSession.probes += probe
+                } else {
+                    storedSession.probes.first { it.id == probe.id }.probes = probe.probes
+                }
+            }
+        //2. remove old version
+        deleteById<StoredSession>(session.id)
+
+        //3. store new version
+        store(
+            storedSession
+        )
+    }
+
 }
 
 internal suspend fun StoreClient.sessionIds(

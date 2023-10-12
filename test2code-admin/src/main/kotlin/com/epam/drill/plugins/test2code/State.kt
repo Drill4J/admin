@@ -238,12 +238,16 @@ internal class AgentState(
                 "FinishSession. size of exec data = ${testSession.probes.values.map { it.keys }.count()}"
             }.also { logPoolStats() }
             trackTime("session storing") {
-                //TODO add update instead of new storing
-                storeClient.storeSession(
-                    sessionHolder.id,
-                    agentKey,
-                    testSession
-                )
+                if (testSession.isFinished){
+                    storeClient.updateSession(testSession)
+                } else {
+                    testSession.isFinished = true
+                    storeClient.storeSession(
+                        sessionHolder.id,
+                        agentKey,
+                        testSession
+                    )
+                }
             }
             logger.debug { "Session $sessionId finished." }.also { logPoolStats() }
         } else logger.debug { "Session with id $sessionId is empty, it won't be added to the sessionHolder." }
