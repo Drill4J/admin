@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth.repository
 import com.epam.drill.admin.auth.entity.UserEntity
 
 interface UserRepository {
-    fun findAll(): List<UserEntity>
+    fun findAllNotDeleted(): List<UserEntity>
 
     fun findById(id: Int): UserEntity?
 

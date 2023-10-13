@@ -35,6 +35,7 @@ fun testApp(bindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Unit = 
             }
         }
     }
+
     val app = this
     DI {
         bind<Application>() with singleton { app }

@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
 
 class UserRepositoryImpl: UserRepository {
-    override fun findAll(): List<UserEntity> {
+    override fun findAllNotDeleted(): List<UserEntity> {
         TODO("Not yet implemented")
     }
 

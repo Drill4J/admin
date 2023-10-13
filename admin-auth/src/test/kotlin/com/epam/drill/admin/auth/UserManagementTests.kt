@@ -52,7 +52,7 @@ class UserManagementTest {
 
     @Test
     fun `get users`() {
-        whenever(userRepository.findAll())
+        whenever(userRepository.findAllNotDeleted())
             .thenReturn(listOf(userAdmin, userUser))
 
         withTestApplication(config()) {

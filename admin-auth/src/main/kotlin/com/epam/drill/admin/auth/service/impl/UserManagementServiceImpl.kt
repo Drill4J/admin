@@ -28,7 +28,7 @@ class UserManagementServiceImpl(
     private val passwordService: PasswordService
 ) : UserManagementService {
     override fun getUsers(): List<UserView> {
-        return userRepository.findAll().map { it.toView() }
+        return userRepository.findAllNotDeleted().map { it.toView() }
     }
 
     override fun getUser(userId: Int): UserView {
