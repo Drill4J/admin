@@ -46,8 +46,8 @@ class EnvUserRepository(
             .toMap(ConcurrentHashMap())
     }
 
-    override fun findAll(): List<UserEntity> {
-        return users.values.map(UserEntity::copy)
+    override fun findAllNotDeleted(): List<UserEntity> {
+        return users.values.filter { !it.deleted }.map(UserEntity::copy)
     }
 
     override fun findById(id: Int): UserEntity? {
