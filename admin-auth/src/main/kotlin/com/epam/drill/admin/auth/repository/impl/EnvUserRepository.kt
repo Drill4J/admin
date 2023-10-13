@@ -22,6 +22,7 @@ import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.util.concurrent.ConcurrentHashMap
 
 class EnvUserRepository(
     private val env: ApplicationConfig,
@@ -42,7 +43,7 @@ class EnvUserRepository(
             .map { Json.decodeFromString(UserConfig.serializer(), it) }
             .map { it.toEntity() }
             .associateBy { it.id!! }
-            .toMutableMap()
+            .toMap(ConcurrentHashMap())
     }
 
     override fun findAll(): List<UserEntity> {
