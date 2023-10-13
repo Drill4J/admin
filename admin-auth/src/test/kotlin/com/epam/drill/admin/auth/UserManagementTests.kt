@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.UsersRoutes
+import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
@@ -166,15 +166,17 @@ class UserManagementTest {
         }
     }
 
-    private fun config() = testApp {
-        bind<UserRepository>() with eagerSingleton { userRepository }
-        bind<PasswordService>() with eagerSingleton { passwordService }
-        bind<UserManagementService>() with eagerSingleton {
-            UserManagementServiceImpl(
-                instance(),
-                instance()
-            )
-        }
-        bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
-    }
+    private fun config() = testApp(
+        routing = {
+            userManagementRoutes()
+        }, bindings = {
+            bind<UserRepository>() with eagerSingleton { userRepository }
+            bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<UserManagementService>() with eagerSingleton {
+                UserManagementServiceImpl(
+                    instance(),
+                    instance()
+                )
+            }
+        })
 }

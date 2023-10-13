@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.UserAuthenticationRoutes
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -27,6 +27,7 @@ import com.epam.drill.admin.auth.view.ChangePasswordForm
 import com.epam.drill.admin.auth.view.LoginForm
 import com.epam.drill.admin.auth.view.RegistrationForm
 import com.epam.drill.admin.auth.view.TokenResponse
+import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
@@ -127,18 +128,30 @@ class UserAuthenticationTest {
         }
     }
 
-    private fun config() = testApp {
-        bind<UserRepository>() with eagerSingleton { userRepository }
-        bind<PasswordService>() with eagerSingleton { passwordService }
-        bind<TokenService>() with eagerSingleton { tokenService }
-        bind<UserAuthenticationService>() with eagerSingleton {
-            UserAuthenticationServiceImpl(
-                instance(),
-                instance()
-            )
+    private fun config() = testApp(
+        authentication = {
+            //have to use "jwt" for basic auth, because that name is required for this route in production code
+            basic("jwt") {
+                validate {
+                    UserIdPrincipal(it.name)
+                }
+            }
+        },
+        routing = {
+            userAuthenticationRoutes()
+        },
+        bindings = {
+            bind<UserRepository>() with eagerSingleton { userRepository }
+            bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<TokenService>() with eagerSingleton { tokenService }
+            bind<UserAuthenticationService>() with eagerSingleton {
+                UserAuthenticationServiceImpl(
+                    instance(),
+                    instance()
+                )
+            }
         }
-        bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
-    }
+    )
 
     private fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
         val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))

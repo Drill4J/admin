@@ -19,26 +19,29 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.locations.*
+import io.ktor.routing.*
 import io.ktor.serialization.*
 import org.kodein.di.*
+import org.kodein.di.ktor.di
 
-fun testApp(bindings: DI.MainBuilder.() -> Unit = {}): Application.() -> Unit = {
+fun testApp(
+    authentication: Authentication.Configuration.() -> Unit = {},
+    routing: Routing.() -> Unit = {},
+    bindings: DI.MainBuilder.() -> Unit = {}
+): Application.() -> Unit = {
     install(Locations)
     install(ContentNegotiation) {
         json()
     }
     install(Authentication) {
-        //have to use "jwt", because only jwt method is allowed in production code for this route
-        basic("jwt") {
-            validate {
-                UserIdPrincipal(it.name)
-            }
-        }
+        authentication()
     }
 
-    val app = this
-    DI {
-        bind<Application>() with singleton { app }
+    di {
         bindings()
+    }
+
+    routing {
+        routing()
     }
 }

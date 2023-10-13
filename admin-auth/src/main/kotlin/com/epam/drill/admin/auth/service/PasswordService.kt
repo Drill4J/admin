@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.auth.service
+
 interface PasswordService {
     fun hashPassword(password: String): String
     fun checkPassword(candidate: String, hashed: String): Boolean

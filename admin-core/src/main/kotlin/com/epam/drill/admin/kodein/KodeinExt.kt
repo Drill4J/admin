@@ -17,6 +17,8 @@ package com.epam.drill.admin.kodein
 
 import io.ktor.application.*
 import org.kodein.di.*
+import org.kodein.di.ktor.DIFeature
+import org.kodein.di.ktor.di
 
 
 fun AppBuilder(handler: AppBuilder.() -> Unit) = AppBuilder().apply { handler(this) }
@@ -38,18 +40,26 @@ class AppBuilder {
 }
 
 fun Application.kodeinApplication(
-    appConfig: AppBuilder,
-    kodeinMapper: DI.MainBuilder.(Application) -> Unit = {},
-): DI {
-    val app = this
-    return DI {
-        bind<Application>() with singleton { app }
+    appConfig: AppBuilder
+): DIFeature {
+    return di {
         appConfig.kodeinModules.forEach { import(kodeinConfig(this) { it(this) }, allowOverride = true) }
         appConfig.kodeinModules.clear()
-        kodeinMapper(this, app)
     }
 }
 
+fun Application.kodein(
+    bindings: AppBuilder.() -> Unit
+): DIFeature {
+    return di {
+        AppBuilder()
+            .apply(bindings)
+            .apply {
+            kodeinModules.forEach { import(kodeinConfig(this@di) { it(this) }, allowOverride = true) }
+            kodeinModules.clear()
+        }
+    }
+}
 
 fun Application.kodeinConfig(mainBuilder: DI.MainBuilder, hand: KodeinConf.(DI.MainBuilder) -> DI.Module) =
     KodeinConf(this, mainBuilder).run { hand(this, mainBuilder) }

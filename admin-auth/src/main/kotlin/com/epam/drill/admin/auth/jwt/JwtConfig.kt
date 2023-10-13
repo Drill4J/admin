@@ -19,7 +19,6 @@ import com.auth0.jwt.algorithms.*
 import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.route.UsersRoutes
 import com.epam.drill.admin.auth.service.TokenService
 import com.typesafe.config.ConfigFactory
 import io.ktor.application.*
@@ -60,10 +59,9 @@ class JwtConfig(override val di: DI) : DIAware {
 }
 
 fun DI.Builder.bindJwt() {
-    bind<JwtConfig>() with eagerSingleton { JwtConfig(di) }
-    bind<JwtTokenService>() with eagerSingleton { JwtTokenService(instance()) }
+    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
     bind<TokenService>() with provider { instance<JwtTokenService>() }
-    bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
 }
 
 

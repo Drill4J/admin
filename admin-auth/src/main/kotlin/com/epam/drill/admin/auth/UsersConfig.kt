@@ -17,9 +17,6 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
-import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
-import com.epam.drill.admin.auth.route.UserAuthenticationRoutes
-import com.epam.drill.admin.auth.route.UsersRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.UserManagementService
@@ -33,13 +30,7 @@ val usersDiConfig: DI.Builder.(Application) -> Unit
     get() = { _ ->
         userRepositoriesConfig()
         userServicesConfig()
-        userRoutesConfig()
     }
-
-fun DI.Builder.userRoutesConfig() {
-    bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
-    bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
-}
 
 fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with eagerSingleton {

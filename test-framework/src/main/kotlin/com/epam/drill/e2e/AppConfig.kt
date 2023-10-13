@@ -16,6 +16,7 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.securityDiConfig
 import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.drill.admin.config.*
@@ -42,6 +43,7 @@ import org.kodein.di.*
 import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
+import io.ktor.routing.*
 
 const val GUEST_USER = "{\"username\": \"guest\", \"password\": \"guest\", \"role\": \"ADMIN\"}"
 
@@ -67,7 +69,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
 
         enableSwaggerSupport()
 
-        kodeinApplication(AppBuilder {
+        kodein {
             withKModule { kodeinModule("securityConfig", securityDiConfig) }
             withKModule { kodeinModule("usersConfig", usersDiConfig) }
             withKModule { kodeinModule("pluginServices", testPluginServices(useTest2CodePlugin)) }
@@ -85,7 +87,12 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
                     }
                 }
             }
-        })
+        }
+
+        routing {
+            userAuthenticationRoutes()
+        }
+
         environment.monitor.subscribe(ApplicationStopped) {
             println("test app stopping...")
             Thread.sleep(delayBeforeClearData)//for parallel tests, example: MultipleAgentRegistrationTest

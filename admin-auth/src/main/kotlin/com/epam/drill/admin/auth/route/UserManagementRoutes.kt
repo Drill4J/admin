@@ -23,75 +23,82 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import org.kodein.di.DI
-import org.kodein.di.DIAware
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI as di
 
-class UsersRoutes(override val di: DI) : DIAware {
-    private val app by instance<Application>()
-    private val service by instance<UserManagementService>()
+fun Routing.userManagementRoutes() {
+    getUsersRoute()
+    getUserRoute()
+    editUserRoute()
+    deleteUserRoute()
+    blockUserRoute()
+    unblockUserRoute()
+    resetPasswordRoute()
+}
 
-    init {
-        app.routing {
-            getUsersRoute()
-            getUserRoute()
-            editUserRoute()
-            deleteUserRoute()
-            blockUserRoute()
-            unblockUserRoute()
-            resetPasswordRoute()
-        }
+fun Route.getUsersRoute() {
+    val service by di().instance<UserManagementService>()
+
+    get("/users") {
+        call.respond(HttpStatusCode.OK, service.getUsers())
     }
+}
 
-    fun Route.getUsersRoute() {
-        get("/users") {
-            call.respond(HttpStatusCode.OK, service.getUsers())
-        }
-    }
+fun Route.getUserRoute() {
+    val service by di().instance<UserManagementService>()
 
-    fun Route.getUserRoute() {
-        get("/users/{userId}") {
-            val userId = call.getRequiredParam<Int>("userId")
-            call.respond(HttpStatusCode.OK, service.getUser(userId))
-        }
+    get("/users/{userId}") {
+        val userId = call.getRequiredParam<Int>("userId")
+        call.respond(HttpStatusCode.OK, service.getUser(userId))
     }
+}
 
-    fun Route.editUserRoute() {
-        put("/users/{userId}") {
-            val userId = call.getRequiredParam<Int>("userId")
-            val userForm = call.receive<UserForm>()
-            call.respond(HttpStatusCode.OK, service.updateUser(userId, userForm))
-        }
-    }
+fun Route.editUserRoute() {
+    val service by di().instance<UserManagementService>()
 
-    fun Route.deleteUserRoute() {
-        delete("/users/{userId}") {
-            val userId = call.getRequiredParam<Int>("userId")
-            service.deleteUser(userId)
-            call.respond(HttpStatusCode.OK, ApiResponse("User deleted successfully"))
-        }
+    put("/users/{userId}") {
+        val userId = call.getRequiredParam<Int>("userId")
+        val userForm = call.receive<UserForm>()
+        call.respond(HttpStatusCode.OK, service.updateUser(userId, userForm))
     }
-    fun Route.blockUserRoute() {
-        patch("/users/{userId}/block") {
-            val userId = call.getRequiredParam<Int>("userId")
-            service.blockUser(userId)
-            call.respond(HttpStatusCode.OK, ApiResponse("User blocked successfully"))
-        }
-    }
+}
 
-    fun Route.unblockUserRoute() {
-        patch("/users/{userId}/unblock") {
-            val userId = call.getRequiredParam<Int>("userId")
-            service.unblockUser(userId)
-            call.respond(HttpStatusCode.OK, ApiResponse("User unblocked successfully"))
-        }
-    }
+fun Route.deleteUserRoute() {
+    val service by di().instance<UserManagementService>()
 
-    fun Route.resetPasswordRoute() {
-        patch("/users/{userId}/reset-password") {
-            val userId = call.getRequiredParam<Int>("userId")
-            call.respond(HttpStatusCode.OK, service.resetPassword(userId))
-        }
+    delete("/users/{userId}") {
+        val userId = call.getRequiredParam<Int>("userId")
+        service.deleteUser(userId)
+        call.respond(HttpStatusCode.OK, ApiResponse("User deleted successfully"))
+    }
+}
+
+fun Route.blockUserRoute() {
+    val service by di().instance<UserManagementService>()
+
+    patch("/users/{userId}/block") {
+        val userId = call.getRequiredParam<Int>("userId")
+        service.blockUser(userId)
+        call.respond(HttpStatusCode.OK, ApiResponse("User blocked successfully"))
+    }
+}
+
+fun Route.unblockUserRoute() {
+    val service by di().instance<UserManagementService>()
+
+    patch("/users/{userId}/unblock") {
+        val userId = call.getRequiredParam<Int>("userId")
+        service.unblockUser(userId)
+        call.respond(HttpStatusCode.OK, ApiResponse("User unblocked successfully"))
+    }
+}
+
+fun Route.resetPasswordRoute() {
+    val service by di().instance<UserManagementService>()
+
+    patch("/users/{userId}/reset-password") {
+        val userId = call.getRequiredParam<Int>("userId")
+        call.respond(HttpStatusCode.OK, service.resetPassword(userId))
     }
 }
 

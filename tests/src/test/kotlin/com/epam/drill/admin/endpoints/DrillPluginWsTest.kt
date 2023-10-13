@@ -17,6 +17,7 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.securityDiConfig
 import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.drill.admin.cache.*
@@ -39,6 +40,7 @@ import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
@@ -46,6 +48,7 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI as di
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -62,8 +65,6 @@ class PluginWsTest {
 
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
-    private lateinit var kodeinApplication: DI
-
     private val testApp: Application.() -> Unit = {
         (environment.config as MapApplicationConfig).apply {
             put("drill.users", listOf(GUEST_USER))
@@ -78,8 +79,7 @@ class PluginWsTest {
         enableSwaggerSupport()
         hikariConfig = TestDatabaseContainer.createDataSource()
         TestDatabaseContainer.startOnce()
-        kodeinApplication = kodeinApplication(AppBuilder {
-
+        kodein {
             withKModule { kodeinModule("securityConfig", securityDiConfig) }
             withKModule { kodeinModule("usersConfig", usersDiConfig) }
             withKModule { kodeinModule("pluginServices", testPluginServices()) }
@@ -97,7 +97,11 @@ class PluginWsTest {
                 }
 
             }
-        })
+        }
+
+        routing {
+            userAuthenticationRoutes()
+        }
     }
 
     @AfterTest
@@ -374,8 +378,8 @@ class PluginWsTest {
         )
     }
 
-    private suspend fun sendListData(destination: String, message: List<Any>) {
-        val ps by kodeinApplication.di.instance<PluginSenders>()
+    private suspend fun TestApplicationCall.sendListData(destination: String, message: List<Any>) {
+        val ps by di().instance<PluginSenders>()
         val sender = ps.sender(pluginId)
         sender.send(AgentSendContext(agentId, buildVersion), destination, message)
     }
@@ -393,7 +397,7 @@ class PluginWsTest {
             handleWebSocketConversation(socketUrl()) { incoming, outgoing ->
                 val destination = "/pluginTopic1"
                 val messageForTest = TestMessage("testMessage")
-                val wsPluginService by kodeinApplication.instance<PluginSenders>()
+                val wsPluginService by di().instance<PluginSenders>()
                 val sender = wsPluginService.sender(pluginId)
                 val sendContext = AgentSendContext(agentId, buildVersion)
                 @Suppress("DEPRECATION")

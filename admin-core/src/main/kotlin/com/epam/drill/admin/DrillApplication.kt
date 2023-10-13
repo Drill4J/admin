@@ -15,6 +15,10 @@
  */
 package com.epam.drill.admin
 
+import com.epam.drill.admin.auth.basicAuth
+import com.epam.drill.admin.auth.jwtAuth
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
+import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.securityDiConfig
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
@@ -51,49 +55,46 @@ val drillWorkDir = drillHomeDir.resolve("work")
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
-fun Application.module() = kodeinApplication(
-    AppBuilder {
-        withInstallation {
-
-            install(StatusPages) {
-                exception<Throwable> { cause ->
-                    logger.error(cause) { "Build application finished with exception" }
-                    call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-                    throw cause
-                }
-            }
-            install(CallLogging)
-            install(Locations)
-            install(WebSockets) {
-                pingPeriod = Duration.ofSeconds(15)
-                timeout = Duration.ofSeconds(150)
-                maxFrameSize = Long.MAX_VALUE
-                masking = false
-            }
-
-            install(ContentNegotiation) {
-                converters()
-            }
-
-            interceptorForApplicationJson()
-
-            enableSwaggerSupport()
-
-            install(CORS) {
-                anyHost()
-                allowCredentials = true
-                method(HttpMethod.Post)
-                method(HttpMethod.Get)
-                method(HttpMethod.Delete)
-                method(HttpMethod.Put)
-                method(HttpMethod.Patch)
-                header(HttpHeaders.Authorization)
-                header(HttpHeaders.ContentType)
-                exposeHeader(HttpHeaders.Authorization)
-                exposeHeader(HttpHeaders.ContentType)
-            }
-
+fun Application.module() {
+    install(StatusPages) {
+        exception<Throwable> { cause ->
+            logger.error(cause) { "Build application finished with exception" }
+            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+            throw cause
         }
+    }
+    install(CallLogging)
+    install(Locations)
+    install(WebSockets) {
+        pingPeriod = Duration.ofSeconds(15)
+        timeout = Duration.ofSeconds(150)
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
+    }
+
+    install(ContentNegotiation) {
+        converters()
+    }
+
+    interceptorForApplicationJson()
+
+    enableSwaggerSupport()
+
+    install(CORS) {
+        anyHost()
+        allowCredentials = true
+        method(HttpMethod.Post)
+        method(HttpMethod.Get)
+        method(HttpMethod.Delete)
+        method(HttpMethod.Put)
+        method(HttpMethod.Patch)
+        header(HttpHeaders.Authorization)
+        header(HttpHeaders.ContentType)
+        exposeHeader(HttpHeaders.Authorization)
+        exposeHeader(HttpHeaders.ContentType)
+    }
+
+    kodein {
         withKModule { kodeinModule("securityConfig", securityDiConfig) }
         withKModule { kodeinModule("usersConfig", usersDiConfig) }
         withKModule { kodeinModule("storage", storage) }
@@ -134,13 +135,16 @@ fun Application.module() = kodeinApplication(
             .baselineOnMigrate(true)
             .load()
         flyway.migrate()
+    }
 
-        routing {
-            static {
-                resources("public")
-            }
+    routing {
+        userAuthenticationRoutes()
+        userManagementRoutes()
+
+        static {
+            resources("public")
         }
     }
-)
+}
 
 lateinit var hikariConfig: HikariConfig
