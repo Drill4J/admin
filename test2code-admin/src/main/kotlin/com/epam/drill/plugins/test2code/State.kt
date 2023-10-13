@@ -232,7 +232,7 @@ internal class AgentState(
      */
     internal suspend fun finishSession(
         sessionId: String,
-    ): TestSession? = sessionHolder.finishSession(sessionId)?.also { testSession ->
+    ): TestSession? = sessionHolder.sessions[sessionId]?.also { testSession ->
         if (testSession.any()) {
             logger.debug {
                 "FinishSession. size of exec data = ${testSession.probes.values.map { it.keys }.count()}"

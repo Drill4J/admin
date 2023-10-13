@@ -76,16 +76,6 @@ data class SessionHolder(
     fun cancelAllSessions() = sessions.clear()
 
     /**
-     * Finish the test session
-     * @param sessionId the test session ID
-     * @return the finished session
-     * @features Session finishing
-     */
-    fun finishSession(
-        sessionId: String,
-    ): TestSession? = sessions[sessionId]
-
-    /**
      * Close the session-holder:
      * - clear the active sessions
      * - suspend all the session-holder jobs

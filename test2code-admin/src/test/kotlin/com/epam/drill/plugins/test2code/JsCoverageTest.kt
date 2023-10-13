@@ -124,6 +124,5 @@ class JsCoverageTest : PostgresBased("js_coverage") {
         val sessionId = genUuid()
         startSession(sessionId = sessionId, testType = testType)
         block(sessionId)
-        finishSession(sessionId)
     }
 }
