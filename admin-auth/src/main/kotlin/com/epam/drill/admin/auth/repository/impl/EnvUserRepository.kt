@@ -22,14 +22,13 @@ import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.util.concurrent.ConcurrentHashMap
 
 class EnvUserRepository(
     private val env: ApplicationConfig,
     private val passwordService: PasswordService
 ) : UserRepository {
 
-    private var users: MutableMap<Int, UserEntity>
+    private var users: Map<Int, UserEntity>
 
     @Serializable
     private data class UserConfig(
@@ -43,7 +42,7 @@ class EnvUserRepository(
             .map { Json.decodeFromString(UserConfig.serializer(), it) }
             .map { it.toEntity() }
             .associateBy { it.id!! }
-            .toMap(ConcurrentHashMap())
+            .toMap()
     }
 
     override fun findAllNotDeleted(): List<UserEntity> {
@@ -59,13 +58,11 @@ class EnvUserRepository(
     }
 
     override fun create(entity: UserEntity): Int {
-        val id = genId(entity.username)
-        users[id] = entity.copy(id = id)
-        return id
+        throw UnsupportedOperationException("User creation is not supported")
     }
 
     override fun update(entity: UserEntity) {
-        users[entity.id!!] = entity.copy()
+        throw UnsupportedOperationException("User update is not supported")
     }
 
     private fun getUsersFromEnv() = env.config("drill").propertyOrNull("users")?.getList() ?: emptyList()
