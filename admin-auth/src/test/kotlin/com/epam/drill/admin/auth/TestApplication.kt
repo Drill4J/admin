@@ -27,6 +27,7 @@ import io.ktor.server.testing.*
 import io.ktor.util.pipeline.*
 import org.kodein.di.*
 import org.kodein.di.ktor.di
+import java.util.*
 
 
 fun TestApplicationEngine.withStatusPages() {
@@ -47,6 +48,7 @@ fun testModule(
     },
     authentication: Authentication.Configuration.() -> Unit = {},
     routing: Routing.() -> Unit = {},
+    features: Application.() -> Unit = {},
     bindings: DI.MainBuilder.() -> Unit = {}
 ): Application.() -> Unit = {
     install(Locations)
@@ -62,6 +64,7 @@ fun testModule(
     install(Authentication) {
         authentication()
     }
+    features()
 
     di {
         bindings()
@@ -72,4 +75,8 @@ fun testModule(
     }
 }
 
+fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
+    val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
+    addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
+}
 

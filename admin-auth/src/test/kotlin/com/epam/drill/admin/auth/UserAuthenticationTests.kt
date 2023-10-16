@@ -242,9 +242,4 @@ class UserAuthenticationTest {
             }
         }
     )
-
-    private fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
-        val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
-        addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
-    }
 }
