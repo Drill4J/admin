@@ -443,6 +443,7 @@ class Plugin(
         sendLabels()
         sendFilters()
         sendActiveSessions()
+        state.sessionFinishingJob()
     }
 
     /**

@@ -209,17 +209,14 @@ internal class AgentState(
         initSessionHolder()
     }
 
-    //TODO should we move to another place?
     /**
      * That job each 5 seconds will save all sessions from SessionHolder to DB
      * @features  Session saving
      */
-    private val finishSessionJob = AsyncJobDispatcher.launch {
-        while (true) {
-            delay(5000)
-            val values = sessionHolder.sessions.values
-
-            values.forEach { activeSession ->
+    fun sessionFinishingJob() = CoroutineScope(Dispatchers.Default).launch {
+        while (isActive) {
+            delay(10000)
+            sessionHolder.sessions.values.forEach { activeSession ->
                 finishSession(activeSession.id)
             }
         }
