@@ -164,6 +164,23 @@ class UserAuthenticationTest {
     }
 
     @Test
+    fun `given already existing username sign-up results should return 400 Bad Request`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(userGuest.copy())
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-up") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = RegistrationForm(username = "guest", password = "secret")
+                setBody(Json.encodeToString(RegistrationForm.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.BadRequest, response.status())
+            }
+        }
+    }
+
+    @Test
     fun `given without authentication update-password results should return 401 Unauthorized`() {
         withTestApplication(config()) {
             withStatusPages()

@@ -40,7 +40,6 @@ class UserManagementTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
 

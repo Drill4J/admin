@@ -19,7 +19,6 @@ import com.epam.drill.admin.auth.*
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.route.userManagementRoutes
-import com.epam.drill.admin.auth.route.userValidationStatusPages
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.kodein.*
@@ -62,7 +61,6 @@ fun Application.module() {
             throw cause
         }
         authStatusPages()
-        userValidationStatusPages()
     }
     install(CallLogging)
     install(Locations)

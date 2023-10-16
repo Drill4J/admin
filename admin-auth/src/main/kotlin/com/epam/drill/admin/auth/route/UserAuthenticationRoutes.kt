@@ -15,9 +15,7 @@
  */
 package com.epam.drill.admin.auth.route
 
-import com.epam.drill.admin.auth.exception.IncorrectCredentialsException
-import com.epam.drill.admin.auth.exception.IncorrectPasswordException
-import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
+import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.*
@@ -51,6 +49,15 @@ fun StatusPages.Configuration.authStatusPages() {
         logger.trace(cause) { "400 BadRequest" }
         call.respond(HttpStatusCode.BadRequest, "Incorrect password")
         throw cause
+    }
+    exception<UserAlreadyExistsException> { cause ->
+        logger.trace(cause) { "400 BadRequest" }
+        call.respond(HttpStatusCode.BadRequest, "Incorrect password")
+        throw cause
+    }
+    exception<UserValidationException> { cause ->
+        logger.trace(cause) { "400 BadRequest" }
+        call.respond(HttpStatusCode.BadRequest, cause.message ?: "User data is invalid")
     }
 }
 
