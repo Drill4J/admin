@@ -15,25 +15,39 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.view.ApiResponse
 import com.epam.drill.admin.auth.view.UserForm
 import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
+private val logger = KotlinLogging.logger {}
+
+fun StatusPages.Configuration.userValidationStatusPages() {
+    exception<UserValidationException> { cause ->
+        logger.trace(cause) { "400 BadRequest" }
+        call.respond(HttpStatusCode.BadRequest, cause.message ?: "User data is invalid")
+    }
+}
+
 fun Routing.userManagementRoutes() {
-    getUsersRoute()
-    getUserRoute()
-    editUserRoute()
-    deleteUserRoute()
-    blockUserRoute()
-    unblockUserRoute()
-    resetPasswordRoute()
+    route("/api") {
+        getUsersRoute()
+        getUserRoute()
+        editUserRoute()
+        deleteUserRoute()
+        blockUserRoute()
+        unblockUserRoute()
+        resetPasswordRoute()
+    }
 }
 
 fun Route.getUsersRoute() {

@@ -15,5 +15,5 @@
  */
 package com.epam.drill.admin.auth.exception
 
-class IncorrectCredentialsException : UserValidationException("Username or password is incorrect") {
+class IncorrectCredentialsException : UserException("Username or password is incorrect") {
 }

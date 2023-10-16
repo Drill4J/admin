@@ -15,5 +15,5 @@
  */
 package com.epam.drill.admin.auth.exception
 
-sealed class UserException(message: String): RuntimeException(message) {
+sealed class UserException(message: String): Exception(message) {
 }

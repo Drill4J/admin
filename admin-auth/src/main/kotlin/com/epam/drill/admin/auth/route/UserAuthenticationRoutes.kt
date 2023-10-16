@@ -15,21 +15,44 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.exception.IncorrectCredentialsException
+import com.epam.drill.admin.auth.exception.IncorrectPasswordException
 import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.*
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
+private val logger = KotlinLogging.logger {}
+
+fun StatusPages.Configuration.authStatusPages() {
+    exception<UserNotAuthenticatedException> { cause ->
+        logger.trace(cause) { "401 Unauthorized" }
+        call.respond(HttpStatusCode.Unauthorized, "User is not authenticated")
+        throw cause
+    }
+    exception<IncorrectCredentialsException> { cause ->
+        logger.trace(cause) { "401 Unauthorized" }
+        call.respond(HttpStatusCode.Unauthorized, "Username or password is incorrect")
+        throw cause
+    }
+    exception<IncorrectPasswordException> { cause ->
+        logger.trace(cause) { "400 BadRequest" }
+        call.respond(HttpStatusCode.BadRequest, "Incorrect password")
+        throw cause
+    }
+}
 
 fun Routing.userAuthenticationRoutes() {
     loginRoute()

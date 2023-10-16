@@ -18,13 +18,33 @@ package com.epam.drill.admin.auth
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
+import io.ktor.http.*
 import io.ktor.locations.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
+import io.ktor.server.testing.*
+import io.ktor.util.pipeline.*
 import org.kodein.di.*
 import org.kodein.di.ktor.di
 
-fun testApp(
+
+fun TestApplicationEngine.withStatusPages() {
+    callInterceptor = {
+        try {
+            call.application.execute(call)
+        } catch (_: Throwable) {
+            //allow to handle status pages
+        }
+    }
+}
+
+fun testModule(
+    statusPages: StatusPages.Configuration.() -> Unit = {
+        exception<Throwable> { _ ->
+            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+        }
+    },
     authentication: Authentication.Configuration.() -> Unit = {},
     routing: Routing.() -> Unit = {},
     bindings: DI.MainBuilder.() -> Unit = {}
@@ -32,6 +52,12 @@ fun testApp(
     install(Locations)
     install(ContentNegotiation) {
         json()
+    }
+    install(StatusPages) {
+        exception<Throwable> { _ ->
+            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+        }
+        statusPages()
     }
     install(Authentication) {
         authentication()
@@ -45,3 +71,5 @@ fun testApp(
         routing()
     }
 }
+
+

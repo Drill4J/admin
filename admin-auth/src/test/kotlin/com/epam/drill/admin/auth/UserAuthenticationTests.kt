@@ -18,6 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -46,10 +47,8 @@ class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
-
     @Mock
     lateinit var tokenService: TokenService
 
@@ -59,7 +58,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given username and password 'guest' sign-in results should have token`() {
+    fun `given correct username and password sign-in results should have token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(userGuest.copy())
         whenever(passwordService.checkPassword("secret", "hash"))
@@ -80,7 +79,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given username and password 'guest' sign-up results should return OK status`() {
+    fun `given correct username and password sign-up results should return OK status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
@@ -128,7 +127,81 @@ class UserAuthenticationTest {
         }
     }
 
-    private fun config() = testApp(
+    @Test
+    fun `given incorrect username sign-in results should return 401 Unauthorized`() {
+        whenever(userRepository.findByUsername("unknown"))
+            .thenReturn(null)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginForm(username = "unknown", password = "secret")
+                setBody(Json.encodeToString(LoginForm.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given incorrect password sign-in results should return 401 Unauthorized`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(userGuest.copy())
+        whenever(passwordService.checkPassword("incorrect", "hash"))
+            .thenReturn(false)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginForm(username = "guest", password = "incorrect")
+                setBody(Json.encodeToString(LoginForm.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given without authentication update-password results should return 401 Unauthorized`() {
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                //not add auth
+                val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given incorrect old password update-password results should return 400 Bad Request`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(userGuest.copy())
+        whenever(passwordService.checkPassword("incorrect", "hash"))
+            .thenReturn(false)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth("guest", "secret")
+                val form = ChangePasswordForm(oldPassword = "incorrect", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.BadRequest, response.status())
+            }
+        }
+    }
+
+    private fun config() = testModule(
+        statusPages = {
+            authStatusPages()
+        },
         authentication = {
             //have to use "jwt" for basic auth, because that name is required for this route in production code
             basic("jwt") {

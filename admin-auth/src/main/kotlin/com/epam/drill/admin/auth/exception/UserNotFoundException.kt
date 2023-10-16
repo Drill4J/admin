@@ -15,5 +15,5 @@
  */
 package com.epam.drill.admin.auth.exception
 
-class UserNotFoundException: UserValidationException("User not found") {
+class UserNotFoundException: UserException("User not found") {
 }

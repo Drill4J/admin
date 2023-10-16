@@ -15,16 +15,15 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.auth.basicAuth
-import com.epam.drill.admin.auth.jwtAuth
+import com.epam.drill.admin.auth.*
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.route.userManagementRoutes
-import com.epam.drill.admin.auth.securityDiConfig
+import com.epam.drill.admin.auth.route.userValidationStatusPages
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -62,6 +61,8 @@ fun Application.module() {
             call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
             throw cause
         }
+        authStatusPages()
+        userValidationStatusPages()
     }
     install(CallLogging)
     install(Locations)
