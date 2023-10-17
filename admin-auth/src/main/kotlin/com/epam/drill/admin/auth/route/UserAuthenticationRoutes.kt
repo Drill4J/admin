@@ -45,9 +45,9 @@ fun Route.signInRoute() {
     val tokenService by di().instance<TokenService>()
 
     post("sign-in") {
-        val form = call.receive<LoginPayload>()
-        val view = authService.signIn(form)
-        val token = tokenService.issueToken(view)
+        val loginPayload = call.receive<LoginPayload>()
+        val userView = authService.signIn(loginPayload)
+        val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
         call.respond(HttpStatusCode.OK, TokenView(token))
     }
@@ -72,22 +72,22 @@ fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post("update-password") {
-        val form = call.receive<ChangePasswordPayload>()
+        val changePasswordPayload = call.receive<ChangePasswordPayload>()
         val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
-        authService.updatePassword(principal, form)
+        authService.updatePassword(principal, changePasswordPayload)
         call.respond(HttpStatusCode.OK, MessageView("Password changed successfully."))
     }
 }
 
-@Deprecated("the /api/login route is outdated, please use /sign-in")
+@Deprecated("The /api/login route is outdated, please use /sign-in")
 fun Route.loginRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
 
     post("/api/login") {
-        val form = call.receive<UserData>()
-        val view = authService.signIn(LoginPayload(username = form.name, password = form.password))
-        val token = tokenService.issueToken(view)
+        val loginPayload = call.receive<UserData>()
+        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
+        val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
         call.respond(HttpStatusCode.OK, TokenView(token))
     }

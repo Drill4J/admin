@@ -40,7 +40,8 @@ fun Route.getUsersRoute() {
     val service by di().instance<UserManagementService>()
 
     get("/users") {
-        call.respond(HttpStatusCode.OK, service.getUsers())
+        val users = service.getUsers()
+        call.respond(HttpStatusCode.OK, users)
     }
 }
 
@@ -49,7 +50,8 @@ fun Route.getUserRoute() {
 
     get("/users/{userId}") {
         val userId = call.getRequiredParam<Int>("userId")
-        call.respond(HttpStatusCode.OK, service.getUser(userId))
+        val userView = service.getUser(userId)
+        call.respond(HttpStatusCode.OK, userView)
     }
 }
 
@@ -59,7 +61,8 @@ fun Route.editUserRoute() {
     put("/users/{userId}") {
         val userId = call.getRequiredParam<Int>("userId")
         val userPayload = call.receive<UserPayload>()
-        call.respond(HttpStatusCode.OK, service.updateUser(userId, userPayload))
+        val userView = service.updateUser(userId, userPayload)
+        call.respond(HttpStatusCode.OK, userView)
     }
 }
 
@@ -98,7 +101,8 @@ fun Route.resetPasswordRoute() {
 
     patch("/users/{userId}/reset-password") {
         val userId = call.getRequiredParam<Int>("userId")
-        call.respond(HttpStatusCode.OK, service.resetPassword(userId))
+        val credentialsView = service.resetPassword(userId)
+        call.respond(HttpStatusCode.OK, credentialsView)
     }
 }
 
