@@ -38,7 +38,7 @@ data class AgentKey(
 internal class StoredSession(
     @Id val id: String,
     val agentKey: AgentKey,
-    val sessionHolderId: String,
+    @Id val sessionHolderId: String,
     val testType: String,
     val testName: String,
     val tests: Set<TestOverview>,
@@ -62,7 +62,6 @@ internal suspend fun StoreClient.loadSessions(
         }
     }
 }
-
 internal suspend fun StoreClient.storeSession(
     holderId: String,
     agentKey: AgentKey,
