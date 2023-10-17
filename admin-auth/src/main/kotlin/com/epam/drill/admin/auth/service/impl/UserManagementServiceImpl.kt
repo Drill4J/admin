@@ -18,7 +18,6 @@ package com.epam.drill.admin.auth.service.impl
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.exception.UserNotFoundException
 import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.model.UserStatus
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.PasswordService
@@ -35,41 +34,43 @@ class UserManagementServiceImpl(
     }
 
     override fun getUser(userId: Int): UserView {
-        return userRepository.findById(userId)?.toView() ?: throw UserNotFoundException()
+        return findUserOrThrow(userId).toView()
     }
 
     override fun updateUser(userId: Int, form: UserPayload): UserView {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val entity = findUserOrThrow(userId)
         entity.role = form.role.name
         userRepository.update(entity)
         return entity.toView()
     }
 
     override fun deleteUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val entity = findUserOrThrow(userId)
         entity.deleted = true
         userRepository.update(entity)
     }
 
     override fun blockUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val entity = findUserOrThrow(userId)
         entity.blocked = true
         userRepository.update(entity)
     }
 
     override fun unblockUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val entity = findUserOrThrow(userId)
         entity.blocked = false
         userRepository.update(entity)
     }
 
     override fun resetPassword(userId: Int): CredentialsView {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val entity = findUserOrThrow(userId)
         val newPassword = passwordService.generatePassword()
         entity.passwordHash = passwordService.hashPassword(newPassword)
         userRepository.update(entity)
         return entity.toCredentialsView(newPassword)
     }
+
+    private fun findUserOrThrow(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
 }
 
 private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
