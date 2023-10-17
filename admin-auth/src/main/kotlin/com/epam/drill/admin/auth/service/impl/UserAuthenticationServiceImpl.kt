@@ -20,8 +20,7 @@ import com.epam.drill.admin.auth.exception.IncorrectCredentialsException
 import com.epam.drill.admin.auth.exception.IncorrectPasswordException
 import com.epam.drill.admin.auth.exception.UserAlreadyExistsException
 import com.epam.drill.admin.auth.exception.UserNotFoundException
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.model.UserStatus
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
@@ -70,6 +69,6 @@ private fun UserEntity.toView(): UserView {
     return UserView(
         username = this.username,
         role = Role.valueOf(this.role),
-        status = if (this.blocked) UserStatus.BLOCKED else UserStatus.ACTIVE,
+        blocked = this.blocked
     )
 }

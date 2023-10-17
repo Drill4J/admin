@@ -15,15 +15,14 @@
  */
 package com.epam.drill.admin.auth.view
 
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.model.UserStatus
+import com.epam.drill.admin.auth.entity.Role
 import kotlinx.serialization.*
 
 @Serializable
 data class UserView(
     val username: String,
     val role: Role,
-    val status: UserStatus
+    val blocked: Boolean
 )
 
 @Serializable

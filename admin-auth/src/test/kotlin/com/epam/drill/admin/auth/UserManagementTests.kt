@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.model
+package com.epam.drill.admin.auth.entity
 
 enum class Role {
     USER,
