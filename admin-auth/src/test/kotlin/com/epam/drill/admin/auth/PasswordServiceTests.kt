@@ -18,6 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.exception.PasswordConstraintsException
 import com.epam.drill.admin.auth.service.impl.PasswordGeneratorImpl
 import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.mock
 import kotlin.test.Test
@@ -102,11 +103,13 @@ class ValidatePasswordTest {
             mustHaveLowercase = true,
             mustHaveDigit = true)
 
-        try {
-            validator.validatePasswordRequirements("ABCabc12345")
-        } catch (ignore: Exception) {
-            fail()
-        }
+        assertDoesNotThrow { validator.validatePasswordRequirements("ABCabc12345") }
+    }
+
+    @Test
+    fun `given password with non-latin characters, validatePassword must be valid`() {
+        val validator = PasswordGeneratorImpl(mustHaveLowercase = true, mustHaveUppercase = true)
+        assertDoesNotThrow { validator.validatePasswordRequirements("Котик123") }
     }
 
 }
