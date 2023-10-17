@@ -59,7 +59,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given username and password 'guest' sign-in results should have token`() {
+    fun `given expected username and password, sign-in service should return an access token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(userGuest.copy())
         whenever(passwordService.checkPassword("secret", "hash"))
@@ -69,8 +69,8 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginPayload(username = "guest", password = "secret")
-                setBody(Json.encodeToString(LoginPayload.serializer(), form))
+                val payload = LoginPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), payload))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response = Json.decodeFromString(TokenView.serializer(), assertNotNull(response.content))
@@ -80,7 +80,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given username and password 'guest' sign-up results should return OK status`() {
+    fun `given unique username and correct password, sign-up service must create a user`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
@@ -107,7 +107,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given correct old password update-password results should return OK status`() {
+    fun `given correct old password, update-password service must update the password to the new one`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(userGuest.copy())
         whenever(passwordService.checkPassword("secret", "hash"))

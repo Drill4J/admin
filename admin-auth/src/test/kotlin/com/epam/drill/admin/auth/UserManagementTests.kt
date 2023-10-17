@@ -51,7 +51,7 @@ class UserManagementTest {
 
 
     @Test
-    fun `get users`() {
+    fun `'GET users' service must return the expected number of users from repository`() {
         whenever(userRepository.findAllNotDeleted())
             .thenReturn(listOf(userAdmin, userUser))
 
@@ -68,7 +68,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `get users 1`() {
+    fun `given existed user identifier, 'GET users' service must return that user from repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin)
 
@@ -84,7 +84,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `put users 1`() {
+    fun `given user identifier and role, 'PUT users' service must change user role in repository and return changed user`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin.copy())
 
@@ -103,7 +103,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `delete users 1`() {
+    fun `given user identifier, 'DELETE users' service must delete that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin.copy())
 
@@ -118,7 +118,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `patch users 1 block`() {
+    fun `given user identifier, 'PATCH users block' service must block that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin.copy())
 
@@ -133,7 +133,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `patch users 1 unblock`() {
+    fun `given user identifier, 'PATCH users block' service must unblock that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin.copy(blocked = true))
 
@@ -148,7 +148,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `patch users 1 reset-password`() {
+    fun `given user identifier, 'PATCH users reset-password' service must generate and return a new password of that user`() {
         whenever(userRepository.findById(1))
             .thenReturn(userAdmin.copy())
         whenever(passwordService.generatePassword())
