@@ -15,10 +15,6 @@
  */
 package com.epam.drill.admin.auth.jwt
 
-import com.auth0.jwt.algorithms.*
-import com.auth0.jwt.interfaces.Payload
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.TokenService
 import com.typesafe.config.ConfigFactory
 import io.ktor.application.*
@@ -42,7 +38,7 @@ class JwtConfig(override val di: DI) : DIAware {
         }
         generateSecret()
     }
-    private val secret: String
+    val secret: String
         get() = jwt.propertyOrNull("secret")?.getString() ?: generatedSecret
 
     val issuer: String
@@ -53,9 +49,6 @@ class JwtConfig(override val di: DI) : DIAware {
 
     val audience: String?
         get() = jwt.propertyOrNull("audience")?.getString()
-
-    val algorithm: Algorithm
-        get() = Algorithm.HMAC512(secret)
 }
 
 fun DI.Builder.bindJwt() {
@@ -65,16 +58,10 @@ fun DI.Builder.bindJwt() {
 }
 
 
-internal fun Payload.toPrincipal(): User {
-    return User(
-        name = subject,
-        role = Role.valueOf(getClaim("role").asString())
-    )
-}
 
 private fun ApplicationConfigValue.getDuration() = "_".let { k ->
     mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)
 }.toKotlinDuration()
 
 
-private fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()
+internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()

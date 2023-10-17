@@ -40,7 +40,6 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.util.Base64
 import kotlin.test.*
 
 class UserAuthenticationTest {

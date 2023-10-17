@@ -15,8 +15,12 @@
  */
 package com.epam.drill.admin.auth
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.model.Role
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -41,16 +45,20 @@ fun TestApplicationEngine.withStatusPages() {
 }
 
 fun testModule(
+    environment: MapApplicationConfig.() -> Unit = {},
     statusPages: StatusPages.Configuration.() -> Unit = {
         exception<Throwable> { _ ->
             call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
         }
     },
-    authentication: Authentication.Configuration.() -> Unit = {},
+    authentication: (Authentication.Configuration.() -> Unit)? = null,
     routing: Routing.() -> Unit = {},
     features: Application.() -> Unit = {},
     bindings: DI.MainBuilder.() -> Unit = {}
 ): Application.() -> Unit = {
+    (this.environment.config as MapApplicationConfig).apply {
+        environment()
+    }
     install(Locations)
     install(ContentNegotiation) {
         json()
@@ -61,8 +69,10 @@ fun testModule(
         }
         statusPages()
     }
-    install(Authentication) {
-        authentication()
+    authentication?.let {
+        install(Authentication) {
+            it()
+        }
     }
     features()
 
@@ -78,5 +88,27 @@ fun testModule(
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
     addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
+}
+
+fun TestApplicationRequest.addJwtToken(token: String) {
+    addHeader(HttpHeaders.Authorization, "Bearer $token")
+}
+
+fun TestApplicationRequest.addJwtToken(
+    username: String,
+    secret: String,
+    expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
+    role: String = Role.UNDEFINED.name,
+    issuer: String? = "test issuer",
+    audience: String? = null
+) {
+    val token = JWT.create()
+        .withSubject(username)
+        .withIssuer(issuer)
+        .withAudience(audience)
+        .withClaim("role", role)
+        .withExpiresAt(expiresAt)
+        .sign(Algorithm.HMAC512(secret))
+    addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 

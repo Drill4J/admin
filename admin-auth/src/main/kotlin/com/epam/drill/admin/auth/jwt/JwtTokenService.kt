@@ -17,25 +17,30 @@ package com.epam.drill.admin.auth.jwt
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
+import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.view.UserView
 import java.util.*
 import kotlin.time.Duration
 
-class JwtTokenService(
-    private val jwtConfig: JwtConfig
-) : TokenService {
+class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
 
-    val verifier: JWTVerifier = JWT.require(jwtConfig.algorithm)
+    private val algorithm: Algorithm = Algorithm.HMAC512(jwtConfig.secret)
+    private val issuer: String = jwtConfig.issuer
+    private val audience: String? = jwtConfig.audience
+    private val lifetime: Duration = jwtConfig.lifetime
+
+    val verifier: JWTVerifier = JWT.require(algorithm)
         .withIssuer(jwtConfig.issuer)
         .build()
+
     override fun issueToken(user: UserView): String = JWT.create()
         .withSubject(user.username)
-        .withIssuer(jwtConfig.issuer)
-        .withAudience(jwtConfig.audience)
+        .withIssuer(issuer)
+        .withAudience(audience)
         .withClaim("role", user.role.name)
-        .withExpiresAt(jwtConfig.lifetime.toExpiration())
-        .sign(jwtConfig.algorithm)
+        .withExpiresAt(lifetime.toExpiration())
+        .sign(algorithm)
 
     override fun verifyToken(token: String) {
         verifier.verify(token)
