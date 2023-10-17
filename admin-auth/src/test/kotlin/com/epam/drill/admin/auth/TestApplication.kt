@@ -33,17 +33,6 @@ import org.kodein.di.*
 import org.kodein.di.ktor.di
 import java.util.*
 
-
-fun TestApplicationEngine.withStatusPages() {
-    callInterceptor = {
-        try {
-            call.application.execute(call)
-        } catch (_: Throwable) {
-            //allow to handle status pages
-        }
-    }
-}
-
 fun testModule(
     environment: MapApplicationConfig.() -> Unit = {},
     statusPages: StatusPages.Configuration.() -> Unit = {
@@ -85,13 +74,19 @@ fun testModule(
     }
 }
 
+fun TestApplicationEngine.withStatusPages() {
+    callInterceptor = {
+        try {
+            call.application.execute(call)
+        } catch (_: Throwable) {
+            //allow to handle status pages
+        }
+    }
+}
+
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
     addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
-}
-
-fun TestApplicationRequest.addJwtToken(token: String) {
-    addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 
 fun TestApplicationRequest.addJwtToken(
