@@ -30,7 +30,7 @@ class PasswordGeneratorTest {
     fun `given minLength 10 generatePassword result must be at least 10 characters`() {
         val generator = PasswordGeneratorImpl(minLength = 10)
         val password = generator.generatePassword()
-        assertTrue { password.length >= 10 }
+        assertTrue { password.length == 10 }
     }
 
     @Test

@@ -27,7 +27,7 @@ class PasswordGeneratorImpl(private val minLength: Int = 6,
             append(DIGITS_CHARSET)
         }
 
-        val passwordLength = random.nextInt(minLength, minLength + 1)
+        val passwordLength = minLength
         val random = Random.Default
 
         val password = buildString {
