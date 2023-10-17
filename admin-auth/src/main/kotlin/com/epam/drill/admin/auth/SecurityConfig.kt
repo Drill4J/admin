@@ -18,9 +18,10 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.jwt.JwtTokenService
 import com.epam.drill.admin.auth.jwt.bindJwt
 import com.epam.drill.admin.auth.jwt.toPrincipal
+import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.service.impl.toPrincipal
-import com.epam.drill.admin.auth.view.LoginForm
+import com.epam.drill.admin.auth.view.LoginPayload
+import com.epam.drill.admin.auth.view.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -49,7 +50,7 @@ class SecurityConfig(override val di: DI) : DIAware {
         basic(name) {
             realm = "Access to the http(s) services"
             validate {
-                authService.signIn(LoginForm(username = it.name, password = it.password)).toPrincipal()
+                authService.signIn(LoginPayload(username = it.name, password = it.password)).toPrincipal()
             }
         }
     }
@@ -65,25 +66,9 @@ class SecurityConfig(override val di: DI) : DIAware {
     }
 }
 
-fun Authentication.Configuration.basicAuth(name: String? = null, app: Application) {
-    val authService by app.di().instance<UserAuthenticationService>()
-
-    basic(name) {
-        realm = "Access to the http(s) services"
-        validate {
-            authService.signIn(LoginForm(username = it.name, password = it.password)).toPrincipal()
-        }
-    }
-}
-
-fun Authentication.Configuration.jwtAuth(name: String? = null, app: Application) {
-    val jwtTokenService by app.di().instance<JwtTokenService>()
-
-    jwt(name) {
-        realm = "Access to the http(s) and the ws(s) services"
-        verifier(jwtTokenService.verifier)
-        validate {
-            it.payload.toPrincipal()
-        }
-    }
+private fun UserView.toPrincipal(): User {
+    return User(
+        name = username,
+        role = role
+    )
 }

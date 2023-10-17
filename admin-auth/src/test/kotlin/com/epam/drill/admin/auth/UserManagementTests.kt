@@ -21,7 +21,7 @@ import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.UserPayload
 import com.epam.drill.admin.auth.view.UserView
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -91,8 +91,8 @@ class UserManagementTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Put, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = UserForm(role = Role.USER)
-                setBody(Json.encodeToString(UserForm.serializer(), form))
+                val form = UserPayload(role = Role.USER)
+                setBody(Json.encodeToString(UserPayload.serializer(), form))
             }) {
                 verify(userRepository).update(userAdmin.copy(role = "USER"))
                 assertEquals(HttpStatusCode.OK, response.status())

@@ -16,8 +16,8 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.view.ApiResponse
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.MessageView
+import com.epam.drill.admin.auth.view.UserPayload
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
@@ -58,8 +58,8 @@ fun Route.editUserRoute() {
 
     put("/users/{userId}") {
         val userId = call.getRequiredParam<Int>("userId")
-        val userForm = call.receive<UserForm>()
-        call.respond(HttpStatusCode.OK, service.updateUser(userId, userForm))
+        val userPayload = call.receive<UserPayload>()
+        call.respond(HttpStatusCode.OK, service.updateUser(userId, userPayload))
     }
 }
 
@@ -69,7 +69,7 @@ fun Route.deleteUserRoute() {
     delete("/users/{userId}") {
         val userId = call.getRequiredParam<Int>("userId")
         service.deleteUser(userId)
-        call.respond(HttpStatusCode.OK, ApiResponse("User deleted successfully"))
+        call.respond(HttpStatusCode.OK, MessageView("User deleted successfully"))
     }
 }
 
@@ -79,7 +79,7 @@ fun Route.blockUserRoute() {
     patch("/users/{userId}/block") {
         val userId = call.getRequiredParam<Int>("userId")
         service.blockUser(userId)
-        call.respond(HttpStatusCode.OK, ApiResponse("User blocked successfully"))
+        call.respond(HttpStatusCode.OK, MessageView("User blocked successfully"))
     }
 }
 
@@ -89,7 +89,7 @@ fun Route.unblockUserRoute() {
     patch("/users/{userId}/unblock") {
         val userId = call.getRequiredParam<Int>("userId")
         service.unblockUser(userId)
-        call.respond(HttpStatusCode.OK, ApiResponse("User unblocked successfully"))
+        call.respond(HttpStatusCode.OK, MessageView("User unblocked successfully"))
     }
 }
 

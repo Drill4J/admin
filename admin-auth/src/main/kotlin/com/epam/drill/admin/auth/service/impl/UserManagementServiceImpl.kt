@@ -15,12 +15,15 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.exception.UserNotFoundException
+import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.model.UserStatus
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.UserPayload
 import com.epam.drill.admin.auth.view.UserView
 
 class UserManagementServiceImpl(
@@ -35,7 +38,7 @@ class UserManagementServiceImpl(
         return userRepository.findById(userId)?.toView() ?: throw UserNotFoundException()
     }
 
-    override fun updateUser(userId: Int, form: UserForm): UserView {
+    override fun updateUser(userId: Int, form: UserPayload): UserView {
         val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
         entity.role = form.role.name
         userRepository.update(entity)
@@ -67,4 +70,20 @@ class UserManagementServiceImpl(
         userRepository.update(entity)
         return entity.toCredentialsView(newPassword)
     }
+}
+
+private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
+    return CredentialsView(
+        username = this.username,
+        password = newPassword,
+        role = Role.valueOf(this.role)
+    )
+}
+
+private fun UserEntity.toView(): UserView {
+    return UserView(
+        username = this.username,
+        role = Role.valueOf(this.role),
+        status = if (this.blocked) UserStatus.BLOCKED else UserStatus.ACTIVE,
+    )
 }

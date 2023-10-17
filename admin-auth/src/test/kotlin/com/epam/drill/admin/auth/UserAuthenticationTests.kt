@@ -23,10 +23,10 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
-import com.epam.drill.admin.auth.view.ChangePasswordForm
-import com.epam.drill.admin.auth.view.LoginForm
-import com.epam.drill.admin.auth.view.RegistrationForm
-import com.epam.drill.admin.auth.view.TokenResponse
+import com.epam.drill.admin.auth.view.ChangePasswordPayload
+import com.epam.drill.admin.auth.view.LoginPayload
+import com.epam.drill.admin.auth.view.RegistrationPayload
+import com.epam.drill.admin.auth.view.TokenView
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -69,11 +69,11 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginForm(username = "guest", password = "secret")
-                setBody(Json.encodeToString(LoginForm.serializer(), form))
+                val form = LoginPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response = Json.decodeFromString(TokenResponse.serializer(), response.content!!)
+                val response = Json.decodeFromString(TokenView.serializer(), response.content!!)
                 assertEquals("token", response.token)
             }
         }
@@ -91,8 +91,8 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationForm(username = "guest", password = "secret")
-                setBody(Json.encodeToString(RegistrationForm.serializer(), form))
+                val form = RegistrationPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verify(userRepository).create(
@@ -119,8 +119,8 @@ class UserAuthenticationTest {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
-                val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
-                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+                val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verify(userRepository).update(userGuest.copy(passwordHash = "hash2"))

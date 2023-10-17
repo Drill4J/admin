@@ -45,11 +45,11 @@ fun Route.signInRoute() {
     val tokenService by di().instance<TokenService>()
 
     post("sign-in") {
-        val form = call.receive<LoginForm>()
+        val form = call.receive<LoginPayload>()
         val view = authService.signIn(form)
         val token = tokenService.issueToken(view)
         call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenResponse(token))
+        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 
@@ -57,10 +57,10 @@ fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post("sign-up") {
-        val form = call.receive<RegistrationForm>()
+        val form = call.receive<RegistrationPayload>()
         authService.signUp(form)
         call.respond(
-            HttpStatusCode.OK, ApiResponse(
+            HttpStatusCode.OK, MessageView(
                 "User registered successfully. " +
                         "Please contact the administrator for system access."
             )
@@ -72,10 +72,10 @@ fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post("update-password") {
-        val form = call.receive<ChangePasswordForm>()
+        val form = call.receive<ChangePasswordPayload>()
         val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
         authService.updatePassword(principal, form)
-        call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
+        call.respond(HttpStatusCode.OK, MessageView("Password changed successfully."))
     }
 }
 
@@ -86,10 +86,10 @@ fun Route.loginRoute() {
 
     post("/api/login") {
         val form = call.receive<UserData>()
-        val view = authService.signIn(LoginForm(username = form.name, password = form.password))
+        val view = authService.signIn(LoginPayload(username = form.name, password = form.password))
         val token = tokenService.issueToken(view)
         call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenResponse(token))
+        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 

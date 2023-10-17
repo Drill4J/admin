@@ -27,7 +27,31 @@ data class UserView(
 )
 
 @Serializable
-data class UserForm(val role: Role)
+data class CredentialsView(
+    val username: String,
+    val password: String,
+    val role: Role
+)
 
 @Serializable
-data class CredentialsView(val username: String, val password: String, val role: Role)
+data class UserPayload(
+    val role: Role
+)
+
+@Serializable
+data class LoginPayload(
+    val username: String,
+    val password: String
+)
+
+@Serializable
+data class RegistrationPayload(
+    val username: String,
+    val password: String
+)
+
+@Serializable
+data class ChangePasswordPayload(
+    val oldPassword: String,
+    val newPassword: String
+)
