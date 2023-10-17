@@ -41,7 +41,7 @@ class UserAuthenticationServiceImpl(
     override fun signUp(form: RegistrationPayload) {
         if (userRepository.findByUsername(form.username) != null)
             throw UserAlreadyExistsException(form.username)
-        passwordService.validatePassword(form.password)
+        passwordService.validatePasswordRequirements(form.password)
         val passwordHash = passwordService.hashPassword(form.password)
         userRepository.create(form.toEntity(passwordHash))
     }
@@ -50,7 +50,7 @@ class UserAuthenticationServiceImpl(
         val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
         if (!passwordService.checkPassword(form.oldPassword, entity.passwordHash))
             throw IncorrectPasswordException()
-        passwordService.validatePassword(form.newPassword)
+        passwordService.validatePasswordRequirements(form.newPassword)
         entity.passwordHash = passwordService.hashPassword(form.newPassword)
         userRepository.update(entity)
     }
