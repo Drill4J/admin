@@ -84,33 +84,6 @@ internal suspend fun StoreClient.storeSession(
     }
 }
 
-internal suspend fun StoreClient.updateSession(
-    session: TestSession
-) {
-    trackTime("Store session") {
-        //TODO rework it
-        //1. get session and update probes
-        val storedSession = findById<StoredSession>(session.id)!!
-
-        session.probes.values.flatMap { it.values }
-            .forEach { probe ->
-                if (probe !in storedSession.probes) {
-                    storedSession.probes += probe
-                } else {
-                    storedSession.probes.first { it.id == probe.id }.probes = probe.probes
-                }
-            }
-        //2. remove old version
-        deleteById<StoredSession>(session.id)
-
-        //3. store new version
-        store(
-            storedSession
-        )
-    }
-
-}
-
 internal suspend fun StoreClient.sessionIds(
     agentKey: AgentKey,
 ) = findBy<StoredSession> { StoredSession::agentKey eq agentKey }.getIds()
