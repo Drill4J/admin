@@ -96,6 +96,8 @@ fun Application.module() {
         exposeHeader(HttpHeaders.ContentType)
     }
 
+    install(RoleBasedAuthorization)
+
     kodein {
         withKModule { kodeinModule("securityConfig", securityDiConfig) }
         withKModule { kodeinModule("usersConfig", usersDiConfig) }

@@ -21,6 +21,8 @@ import com.epam.drill.admin.api.agent.BuildStatus.*
 import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.withRole
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.build.AgentBuildData
 import com.epam.drill.admin.cache.*
@@ -112,204 +114,205 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 }
             }
             authenticate("jwt", "basic") {
+                withRole(Role.USER) {
+                    post<ApiRoot.Agents.DispatchPluginAction, String>(
+                        "Dispatch Plugin Action"
+                            .examples(
+                                example("action", "some action name")
+                            )
+                            .responds(
+                                ok<String>(
+                                    example("")
+                                ), notFound()
+                            )
+                    ) { payload, action ->
+                        val (_, agentId, pluginId) = payload
+                        logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
+                        val agent = agentManager.entryOrNull(agentId)
+                        val (statusCode, response) = agent?.run {
+                            val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                            if (plugin != null) {
+                                val buildStatus = buildManager.buildStatus(agentId)
+                                val adminPluginPart = this[pluginId]
+                                if (info.agentStatus == REGISTERED) {
+                                    adminPluginPart?.let { adminPart ->
+                                        val result = adminPart.processAction(action, buildManager::agentSessions)
+                                        val statusResponse = result.toStatusResponse()
+                                        HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                    } ?: (HttpStatusCode.BadRequest to ErrorResponse(
+                                        "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
+                                    )).also { logger.warn { "BadRequest with action: $action" } }
+                                } else HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
+                                            " status of build is $buildStatus."
+                                ).also { logger.warn { "BadRequest with action: $action" } }
+                            } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                        } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                        logger.info { "response for '$agentId': $response" }
+                        sendResponse(response, statusCode)
+                    }
 
-                post<ApiRoot.Agents.DispatchPluginAction, String>(
-                    "Dispatch Plugin Action"
-                        .examples(
-                            example("action", "some action name")
-                        )
-                        .responds(
-                            ok<String>(
-                                example("")
-                            ), notFound()
-                        )
-                ) { payload, action ->
-                    val (_, agentId, pluginId) = payload
-                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
-                    val agent = agentManager.entryOrNull(agentId)
-                    val (statusCode, response) = agent?.run {
-                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
-                        if (plugin != null) {
-                            val buildStatus = buildManager.buildStatus(agentId)
-                            val adminPluginPart = this[pluginId]
-                            if (info.agentStatus == REGISTERED) {
-                                adminPluginPart?.let { adminPart ->
-                                    val result = adminPart.processAction(action, buildManager::agentSessions)
-                                    val statusResponse = result.toStatusResponse()
-                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
-                                    "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
-                                )).also { logger.warn { "BadRequest with action: $action" } }
-                            } else HttpStatusCode.BadRequest to ErrorResponse(
-                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
-                                        " status of build is $buildStatus."
-                            ).also { logger.warn { "BadRequest with action: $action" } }
-                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
-                    logger.info { "response for '$agentId': $response" }
-                    sendResponse(response, statusCode)
-                }
-
-                // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
-                post<ApiRoot.Agents.ProcessData, MultiPartData>(
-                    "Process plugin data"
-                        .examples(
-                            example(
-                                "Petclinic",
-                                """Multipart form-data with key-value pairs: 
+                    // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
+                    post<ApiRoot.Agents.ProcessData, MultiPartData>(
+                        "Process plugin data"
+                            .examples(
+                                example(
+                                    "Petclinic",
+                                    """Multipart form-data with key-value pairs: 
                                 "action":{"type":"IMPORT_COVERAGE"},
                                 "data": File(jacoco.exec)
                             """.trimIndent()
+                                )
                             )
-                        )
-                        .description("To try out this request, please use the Postman")
-                        .responds(ok<String>(), badRequest())
-                ) { (_, agentId, pluginId), data ->
-                    val parts: List<PartData> = data.readAllParts()
-                    val action = (parts.find { it.name == "action" } as PartData.FormItem).value
-                    val inputStream = (parts.find { it.name == "data" } as PartData.FileItem).streamProvider()
-                    logger.debug { "Process data with plugin with id $pluginId for agent with id $agentId" }
-                    val agentEntry = agentManager.entryOrNull(agentId)
-                    val (statusCode, response) = agentEntry?.run {
-                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
-                        if (plugin != null) {
-                            if (info.agentStatus == REGISTERED) {
-                                this[pluginId]?.let { adminPart ->
-                                    val result = adminPart.doRawAction(action, inputStream)
-                                    val statusResponse = result.toStatusResponse()
-                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
-                                    "Cannot process data: plugin $pluginId not initialized for agent $agentId."
-                                ))
-                            } else HttpStatusCode.BadRequest to ErrorResponse(
-                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not registered."
+                            .description("To try out this request, please use the Postman")
+                            .responds(ok<String>(), badRequest())
+                    ) { (_, agentId, pluginId), data ->
+                        val parts: List<PartData> = data.readAllParts()
+                        val action = (parts.find { it.name == "action" } as PartData.FormItem).value
+                        val inputStream = (parts.find { it.name == "data" } as PartData.FileItem).streamProvider()
+                        logger.debug { "Process data with plugin with id $pluginId for agent with id $agentId" }
+                        val agentEntry = agentManager.entryOrNull(agentId)
+                        val (statusCode, response) = agentEntry?.run {
+                            val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                            if (plugin != null) {
+                                if (info.agentStatus == REGISTERED) {
+                                    this[pluginId]?.let { adminPart ->
+                                        val result = adminPart.doRawAction(action, inputStream)
+                                        val statusResponse = result.toStatusResponse()
+                                        HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                    } ?: (HttpStatusCode.BadRequest to ErrorResponse(
+                                        "Cannot process data: plugin $pluginId not initialized for agent $agentId."
+                                    ))
+                                } else HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is not registered."
+                                )
+                            } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                        } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                        logger.info { "response for '$agentId': $response" }
+                        sendResponse(response, statusCode)
+                    }
+
+                    post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(
+                        "Dispatch defined plugin actions in defined group"
+                            .examples(
+                                example("action", "some action name")
                             )
-                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
-                    logger.info { "response for '$agentId': $response" }
-                    sendResponse(response, statusCode)
-                }
-
-                post<ApiRoot.AgentGroup.Plugin.DispatchAction, String>(
-                    "Dispatch defined plugin actions in defined group"
-                        .examples(
-                            example("action", "some action name")
-                        )
-                        .responds(
-                            ok<String>(
-                                example("")
-                            ), notFound()
-                        )
-                ) { pluginParent, action ->
-                    val pluginId = pluginParent.pluginId
-                    val groupId = pluginParent.parent.parent.groupId
-                    val agents = agentManager.agentsByGroup(groupId)
-                    logger.debug { "Dispatch action plugin with id $pluginId for agents with groupId $groupId" }
-                    val (statusCode, response) = plugins[pluginId]?.let {
-                        processMultipleActions(
-                            agents,
-                            pluginId,
-                            action
-                        )
-                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Plugin $pluginId not found."))
-                    logger.trace { "response for '$groupId': $response" }
-                    call.respond(statusCode, response)
-                }
-
-
-                //todo remove it cause it is duplicated in another place. EPMDJ-6145
-                get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
-                    logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
-                    val dp: Plugin? = plugins[pluginId]
-                    val agentInfo = agentManager[agentId]
-                    val agentEntry = agentManager.entryOrNull(agentId)
-                    val (statusCode: HttpStatusCode, response: Any) = when {
-                        (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
-                        (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
-                        (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
-                        else -> AgentSubscription(agentId, agentInfo.build.version).let { subscription ->
-                            pluginCache.retrieveMessage(
+                            .responds(
+                                ok<String>(
+                                    example("")
+                                ), notFound()
+                            )
+                    ) { pluginParent, action ->
+                        val pluginId = pluginParent.pluginId
+                        val groupId = pluginParent.parent.parent.groupId
+                        val agents = agentManager.agentsByGroup(groupId)
+                        logger.debug { "Dispatch action plugin with id $pluginId for agents with groupId $groupId" }
+                        val (statusCode, response) = plugins[pluginId]?.let {
+                            processMultipleActions(
+                                agents,
                                 pluginId,
-                                subscription,
-                                "/data/$dataType"
-                            ).toStatusResponsePair()
-                        }
+                                action
+                            )
+                        } ?: (HttpStatusCode.NotFound to ErrorResponse("Plugin $pluginId not found."))
+                        logger.trace { "response for '$groupId': $response" }
+                        call.respond(statusCode, response)
                     }
-                    sendResponse(response, statusCode)
-                }
 
-                post<ApiRoot.Agents.TogglePlugin>(
-                    "Toggle Plugin"
-                        .responds(
-                            ok<Unit>(), notFound()
-                        )
-                ) { params ->
-                    val (_, agentId, pluginId) = params
-                    logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
-                    val dp: Plugin? = plugins[pluginId]
-                    val session = buildManager.agentSessions(agentId)
-                    val (statusCode, response) = when {
-                        (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
-                        (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
-                        else -> {
-                            session.applyEach {
-                                sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                                    message = TogglePayload(pluginId)
-                                )
+
+                    //todo remove it cause it is duplicated in another place. EPMDJ-6145
+                    get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->
+                        logger.debug { "Get plugin data, agentId=$agentId, pluginId=$pluginId, dataType=$dataType" }
+                        val dp: Plugin? = plugins[pluginId]
+                        val agentInfo = agentManager[agentId]
+                        val agentEntry = agentManager.entryOrNull(agentId)
+                        val (statusCode: HttpStatusCode, response: Any) = when {
+                            (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("Plugin '$pluginId' not found")
+                            (agentInfo == null) -> HttpStatusCode.NotFound to ErrorResponse("Agent '$agentId' not found")
+                            (agentEntry == null) -> HttpStatusCode.NotFound to ErrorResponse("Data for agent '$agentId' not found")
+                            else -> AgentSubscription(agentId, agentInfo.build.version).let { subscription ->
+                                pluginCache.retrieveMessage(
+                                    pluginId,
+                                    subscription,
+                                    "/data/$dataType"
+                                ).toStatusResponsePair()
                             }
-                            HttpStatusCode.OK to EmptyContent
                         }
+                        sendResponse(response, statusCode)
                     }
-                    logger.debug { response }
-                    call.respond(statusCode, response)
-                }
 
-                delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
-                    logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
-                    val (status, msg) = if (agentId in agentManager) {
-                        if (plugins[pluginId] != null) {
-                            val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
-                            if (buildVersion != curBuildVersion) {
-                                pluginStoresDSM(pluginId).deleteBy<Stored> {
-                                    (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
+                    post<ApiRoot.Agents.TogglePlugin>(
+                        "Toggle Plugin"
+                            .responds(
+                                ok<Unit>(), notFound()
+                            )
+                    ) { params ->
+                        val (_, agentId, pluginId) = params
+                        logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
+                        val dp: Plugin? = plugins[pluginId]
+                        val session = buildManager.agentSessions(agentId)
+                        val (statusCode, response) = when {
+                            (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
+                            (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
+                            else -> {
+                                session.applyEach {
+                                    sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                                        message = TogglePayload(pluginId)
+                                    )
                                 }
-                                adminStore.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
-                                buildManager.buildData(agentId).run {
-                                    agentBuildManager.delete(buildVersion)
-                                }
-                                (cacheService as? MapDBCacheService)?.clear(
-                                    AgentCacheKey(pluginId, agentId),
-                                    buildVersion
-                                )
                                 HttpStatusCode.OK to EmptyContent
-                            } else HttpStatusCode.BadRequest to ErrorResponse("Can not remove a current build")
-                        } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found")
-                    } else HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
-                    call.respond(status, msg)
-                }
-
-                get<ApiRoot.Agents.PluginBuildsSummary> { (_, agentId, pluginId) ->
-                    logger.debug { "Get builds summary, agentId=$agentId, pluginId=$pluginId" }
-                    val (status, message) = agentManager[agentId]?.let {
-                        val buildsSummary =
-                            buildManager.buildData(agentId).agentBuildManager.agentBuilds.map { agentBuild ->
-                                val buildVersion = agentBuild.info.version
-                                BuildSummaryDto(
-                                    buildVersion = buildVersion,
-                                    detectedAt = agentBuild.detectedAt,
-                                    summary = pluginCache.retrieveMessage(
-                                        pluginId = pluginId,
-                                        subscription = AgentSubscription(
-                                            agentId = agentId,
-                                            buildVersion = buildVersion
-                                        ),
-                                        destination = "/build/summary"
-                                    ).toJson()
-                                )
                             }
-                        HttpStatusCode.OK to buildsSummary
-                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found"))
-                    call.respond(status, message)
+                        }
+                        logger.debug { response }
+                        call.respond(statusCode, response)
+                    }
+
+                    delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
+                        logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
+                        val (status, msg) = if (agentId in agentManager) {
+                            if (plugins[pluginId] != null) {
+                                val curBuildVersion = agentManager.buildVersionByAgentId(agentId)
+                                if (buildVersion != curBuildVersion) {
+                                    pluginStoresDSM(pluginId).deleteBy<Stored> {
+                                        (Stored::id.startsWith(agentKeyPattern(agentId, buildVersion)))
+                                    }
+                                    adminStore.deleteById<AgentBuildData>(AgentBuildId(agentId, buildVersion))
+                                    buildManager.buildData(agentId).run {
+                                        agentBuildManager.delete(buildVersion)
+                                    }
+                                    (cacheService as? MapDBCacheService)?.clear(
+                                        AgentCacheKey(pluginId, agentId),
+                                        buildVersion
+                                    )
+                                    HttpStatusCode.OK to EmptyContent
+                                } else HttpStatusCode.BadRequest to ErrorResponse("Can not remove a current build")
+                            } else HttpStatusCode.BadRequest to ErrorResponse("Plugin '$pluginId' not found")
+                        } else HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
+                        call.respond(status, msg)
+                    }
+
+                    get<ApiRoot.Agents.PluginBuildsSummary> { (_, agentId, pluginId) ->
+                        logger.debug { "Get builds summary, agentId=$agentId, pluginId=$pluginId" }
+                        val (status, message) = agentManager[agentId]?.let {
+                            val buildsSummary =
+                                buildManager.buildData(agentId).agentBuildManager.agentBuilds.map { agentBuild ->
+                                    val buildVersion = agentBuild.info.version
+                                    BuildSummaryDto(
+                                        buildVersion = buildVersion,
+                                        detectedAt = agentBuild.detectedAt,
+                                        summary = pluginCache.retrieveMessage(
+                                            pluginId = pluginId,
+                                            subscription = AgentSubscription(
+                                                agentId = agentId,
+                                                buildVersion = buildVersion
+                                            ),
+                                            destination = "/build/summary"
+                                        ).toJson()
+                                    )
+                                }
+                            HttpStatusCode.OK to buildsSummary
+                        } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $agentId not found"))
+                        call.respond(status, message)
+                    }
                 }
             }
         }

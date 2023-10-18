@@ -23,6 +23,8 @@ import com.epam.drill.admin.api.group.GroupUpdateDto
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
 import com.epam.drill.admin.api.websocket.GroupSubscription
+import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.withRole
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.PluginCaches
 import com.epam.drill.admin.plugins.Plugins
@@ -65,90 +67,92 @@ class GroupHandler(override val di: DI) : DIAware {
     init {
         app.routing {
             authenticate("jwt", "basic") {
-                put<ApiRoot.AgentGroup, GroupUpdateDto>(
-                    "Update group"
-                        .examples(
-                            example("group", GroupUpdateDto(name = "Some Group"))
-                        ).responds(ok<Unit>(), notFound())
-                ) { (_, id), info ->
-                    val statusCode = groupManager[id]?.let { group ->
-                        groupManager.update(
-                            group.copy(
-                                name = info.name,
-                                description = info.description,
-                                environment = info.environment
-                            )
-                        )?.let { sendUpdates(listOf(it)) }
-                        HttpStatusCode.OK
-                    } ?: HttpStatusCode.NotFound
-                    call.respond(statusCode)
-                }
-
-
-                get<ApiRoot.AgentGroup.Plugin.Data>(
-                    "Get service group data"
-                        .responds(
-                            ok<Any>(),
-                            notFound()
-                        )
-                ) { (pluginParent, pluginId, dataType) ->
-                    val groupId = pluginParent.parent.groupId
-                    logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
-                    val (statusCode, response) = if (pluginId in plugins) {
-                        val agents: List<Agent> = agentManager.agentsByGroup(groupId)
-                        if (agents.any()) {
-                            pluginCache.retrieveMessage(
-                                pluginId,
-                                GroupSubscription(groupId),
-                                "/group/data/$dataType"
-                            ).toStatusResponsePair()
-                        } else HttpStatusCode.NotFound to ErrorResponse(
-                            "group $groupId not found"
-                        )
-                    } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
-                    logger.trace { response }
-                    call.respond(statusCode, response)
-                }
-
-                patch<ApiRoot.AgentGroup, AgentRegistrationDto>(
-                    "Register agent in defined group"
-                        .examples(
-                            example(
-                                "agentRegistrationInfo",
-                                agentRegistrationExample
-                            )
-                        )
-                ) { location, regInfo ->
-                    val groupId = location.groupId
-                    logger.debug { "Group $groupId: registering agents..." }
-                    val agents: List<Agent> = agentManager.agentsByGroup(groupId)
-                    val agentInfos: List<AgentInfo> = agents.map { it.info }
-                    val (status: HttpStatusCode, message: Any) = if (agents.isNotEmpty()) {
-                        groupManager[groupId]?.let { groupDto ->
+                withRole(Role.USER) {
+                    put<ApiRoot.AgentGroup, GroupUpdateDto>(
+                        "Update group"
+                            .examples(
+                                example("group", GroupUpdateDto(name = "Some Group"))
+                            ).responds(ok<Unit>(), notFound())
+                    ) { (_, id), info ->
+                        val statusCode = groupManager[id]?.let { group ->
                             groupManager.update(
-                                groupDto.copy(
-                                    name = regInfo.name,
-                                    description = regInfo.description,
-                                    environment = regInfo.environment,
-                                    systemSettings = regInfo.systemSettings
+                                group.copy(
+                                    name = info.name,
+                                    description = info.description,
+                                    environment = info.environment
                                 )
                             )?.let { sendUpdates(listOf(it)) }
-                        }
-                        val registeredAgentIds: List<String> = agentInfos.register(regInfo)
-                        if (registeredAgentIds.count() < agentInfos.count()) {
-                            val agentIds = agentInfos.map { it.id }
-                            logger.error {
-                                """Group $groupId: not all agents registered successfully.
+                            HttpStatusCode.OK
+                        } ?: HttpStatusCode.NotFound
+                        call.respond(statusCode)
+                    }
+
+
+                    get<ApiRoot.AgentGroup.Plugin.Data>(
+                        "Get service group data"
+                            .responds(
+                                ok<Any>(),
+                                notFound()
+                            )
+                    ) { (pluginParent, pluginId, dataType) ->
+                        val groupId = pluginParent.parent.groupId
+                        logger.trace { "Get plugin data, groupId=${groupId}, pluginId=${pluginId}, dataType=$dataType" }
+                        val (statusCode, response) = if (pluginId in plugins) {
+                            val agents: List<Agent> = agentManager.agentsByGroup(groupId)
+                            if (agents.any()) {
+                                pluginCache.retrieveMessage(
+                                    pluginId,
+                                    GroupSubscription(groupId),
+                                    "/group/data/$dataType"
+                                ).toStatusResponsePair()
+                            } else HttpStatusCode.NotFound to ErrorResponse(
+                                "group $groupId not found"
+                            )
+                        } else HttpStatusCode.NotFound to ErrorResponse("plugin '$pluginId' not found")
+                        logger.trace { response }
+                        call.respond(statusCode, response)
+                    }
+
+                    patch<ApiRoot.AgentGroup, AgentRegistrationDto>(
+                        "Register agent in defined group"
+                            .examples(
+                                example(
+                                    "agentRegistrationInfo",
+                                    agentRegistrationExample
+                                )
+                            )
+                    ) { location, regInfo ->
+                        val groupId = location.groupId
+                        logger.debug { "Group $groupId: registering agents..." }
+                        val agents: List<Agent> = agentManager.agentsByGroup(groupId)
+                        val agentInfos: List<AgentInfo> = agents.map { it.info }
+                        val (status: HttpStatusCode, message: Any) = if (agents.isNotEmpty()) {
+                            groupManager[groupId]?.let { groupDto ->
+                                groupManager.update(
+                                    groupDto.copy(
+                                        name = regInfo.name,
+                                        description = regInfo.description,
+                                        environment = regInfo.environment,
+                                        systemSettings = regInfo.systemSettings
+                                    )
+                                )?.let { sendUpdates(listOf(it)) }
+                            }
+                            val registeredAgentIds: List<String> = agentInfos.register(regInfo)
+                            if (registeredAgentIds.count() < agentInfos.count()) {
+                                val agentIds = agentInfos.map { it.id }
+                                logger.error {
+                                    """Group $groupId: not all agents registered successfully.
                                     |Failed agents: ${agentIds - registeredAgentIds}.
                                 """.trimMargin()
-                            }
-                        } else logger.debug { "Group $groupId: registered agents $registeredAgentIds." }
-                        HttpStatusCode.OK to "$registeredAgentIds registered"
-                    } else "No agents found for group $groupId".let {
-                        logger.error(it)
-                        HttpStatusCode.InternalServerError to it
+                                }
+                            } else logger.debug { "Group $groupId: registered agents $registeredAgentIds." }
+                            HttpStatusCode.OK to "$registeredAgentIds registered"
+                        } else "No agents found for group $groupId".let {
+                            logger.error(it)
+                            HttpStatusCode.InternalServerError to it
+                        }
+                        call.respond(status, message)
                     }
-                    call.respond(status, message)
                 }
             }
         }

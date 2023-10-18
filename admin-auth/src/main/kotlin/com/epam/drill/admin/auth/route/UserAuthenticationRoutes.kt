@@ -59,6 +59,10 @@ fun StatusPages.Configuration.authStatusPages() {
         logger.trace(cause) { "400 User data is invalid" }
         call.respond(HttpStatusCode.BadRequest, "User data is invalid")
     }
+    exception<NotAuthorizedException> { cause ->
+        logger.trace(cause) { "403 Access denied" }
+        call.respond(HttpStatusCode.Forbidden, "Access denied")
+    }
 }
 
 fun Route.userAuthenticationRoutes() {
