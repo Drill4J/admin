@@ -1,9 +1,9 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.model.Role.ADMIN
-import com.epam.drill.admin.auth.model.Role.USER
+import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.entity.Role.ADMIN
+import com.epam.drill.admin.auth.entity.Role.USER
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -90,7 +90,7 @@ class RoleBasedAuthorizationTest {
     private fun config() = testModule(
         statusPages = {
             exception<NotAuthorizedException> { _ ->
-                call.respond(HttpStatusCode.Forbidden, "Forbidden")
+                call.respond(HttpStatusCode.Forbidden, "Access denied")
             }
         },
         features = {

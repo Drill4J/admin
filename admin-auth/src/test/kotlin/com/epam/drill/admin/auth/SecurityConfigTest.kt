@@ -3,10 +3,9 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.jwt.JwtConfig
 import com.epam.drill.admin.auth.jwt.JwtTokenService
 import com.epam.drill.admin.auth.jwt.generateSecret
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.model.UserStatus
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.view.LoginForm
+import com.epam.drill.admin.auth.view.LoginPayload
 import com.epam.drill.admin.auth.view.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -33,9 +32,9 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user with basic auth, request basic-only should return 200 Ok`() {
-        whenever(authService.signIn(LoginForm(username = "admin", password = "secret")))
-            .thenReturn(UserView(username = "admin", role = Role.ADMIN, status = UserStatus.ACTIVE))
+    fun `given user with basic auth, request basic-only must succeed`() {
+        whenever(authService.signIn(LoginPayload(username = "admin", password = "secret")))
+            .thenReturn(UserView(username = "admin", role = Role.ADMIN, blocked = false))
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")
@@ -46,7 +45,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user without basic auth, request basic-only should return 401 Unauthorized`() {
+    fun `given user without basic auth, request basic-only must fail with 401 status`() {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 //not to add basic auth
@@ -57,7 +56,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user with valid jwt token, request jwt-only should return 200 Ok`() {
+    fun `given user with valid jwt token, request jwt-only must succeed`() {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 addJwtToken(
@@ -70,7 +69,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user without jwt token, request jwt-only should return 401 Unauthorized`() {
+    fun `given user without jwt token, request jwt-only must fail with 401 status`() {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 //not to add jwt token
@@ -81,7 +80,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user with expired jwt token, request jwt-only should return 401 Unauthorized`() {
+    fun `given user with expired jwt token, request jwt-only must fail with 401 status`() {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 addJwtToken(
@@ -96,7 +95,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    fun `given user with invalid jwt token, request jwt-only should return 401 Unauthorized`() {
+    fun `given user with invalid jwt token, request jwt-only must fail with 401 status`() {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 addJwtToken(

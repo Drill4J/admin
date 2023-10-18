@@ -1,4 +1,4 @@
 package com.epam.drill.admin.auth.exception
 
-class NotAuthorizedException: UserException("Access denied") {
+class NotAuthorizedException: Exception("Access denied") {
 }

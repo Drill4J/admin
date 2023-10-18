@@ -16,9 +16,9 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.interfaces.Payload
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.jwt.JwtTokenService
 import com.epam.drill.admin.auth.jwt.bindJwt
-import com.epam.drill.admin.auth.jwt.toPrincipal
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.LoginPayload
@@ -66,9 +66,16 @@ class SecurityConfig(override val di: DI) : DIAware {
     }
 }
 
-internal fun Payload.toPrincipal(): User {
+private fun Payload.toPrincipal(): User {
     return User(
         name = subject,
         role = Role.valueOf(getClaim("role").asString())
+    )
+}
+
+private fun UserView.toPrincipal(): User {
+    return User(
+        name = username,
+        role = role
     )
 }
