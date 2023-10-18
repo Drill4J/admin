@@ -20,11 +20,29 @@ import com.epam.drill.admin.auth.view.MessageView
 import com.epam.drill.admin.auth.view.UserPayload
 import io.ktor.application.*
 import io.ktor.http.*
+import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.routing.Route
+import io.ktor.routing.Routing
+import io.ktor.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
+
+@Location("/users")
+object Users {
+    @Location("/{userId}")
+    data class Id(val userId: Int)
+
+    @Location("/{userId}/block")
+    data class Block(val userId: Int)
+
+    @Location("/{userId}/unblock")
+    data class Unblock(val userId: Int)
+
+    @Location("/{userId}/reset-password")
+    data class ResetPassword(val userId: Int)
+}
 
 fun Routing.userManagementRoutes() {
     route("/api") {
@@ -41,7 +59,7 @@ fun Routing.userManagementRoutes() {
 fun Route.getUsersRoute() {
     val service by di().instance<UserManagementService>()
 
-    get("/users") {
+    get<Users> {
         val users = service.getUsers()
         call.respond(HttpStatusCode.OK, users)
     }
@@ -50,9 +68,8 @@ fun Route.getUsersRoute() {
 fun Route.getUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    get("/users/{userId}") {
-        val userId = call.getRequiredParam<Int>("userId")
-        val userView = service.getUser(userId)
+    get<Users.Id> { params ->
+        val userView = service.getUser(params.userId)
         call.respond(HttpStatusCode.OK, userView)
     }
 }
@@ -60,8 +77,7 @@ fun Route.getUserRoute() {
 fun Route.editUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    put("/users/{userId}") {
-        val userId = call.getRequiredParam<Int>("userId")
+    put<Users.Id> { (userId) ->
         val userPayload = call.receive<UserPayload>()
         val userView = service.updateUser(userId, userPayload)
         call.respond(HttpStatusCode.OK, userView)
@@ -71,8 +87,7 @@ fun Route.editUserRoute() {
 fun Route.deleteUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    delete("/users/{userId}") {
-        val userId = call.getRequiredParam<Int>("userId")
+    delete<Users.Id> { (userId) ->
         service.deleteUser(userId)
         call.respond(HttpStatusCode.OK, MessageView("User deleted successfully"))
     }
@@ -81,8 +96,7 @@ fun Route.deleteUserRoute() {
 fun Route.blockUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch("/users/{userId}/block") {
-        val userId = call.getRequiredParam<Int>("userId")
+    patch<Users.Block> { (userId) ->
         service.blockUser(userId)
         call.respond(HttpStatusCode.OK, MessageView("User blocked successfully"))
     }
@@ -91,8 +105,7 @@ fun Route.blockUserRoute() {
 fun Route.unblockUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch("/users/{userId}/unblock") {
-        val userId = call.getRequiredParam<Int>("userId")
+    patch<Users.Unblock> { (userId) ->
         service.unblockUser(userId)
         call.respond(HttpStatusCode.OK, MessageView("User unblocked successfully"))
     }
@@ -101,8 +114,7 @@ fun Route.unblockUserRoute() {
 fun Route.resetPasswordRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch("/users/{userId}/reset-password") {
-        val userId = call.getRequiredParam<Int>("userId")
+    patch<Users.ResetPassword> { (userId) ->
         val credentialsView = service.resetPassword(userId)
         call.respond(HttpStatusCode.OK, credentialsView)
     }

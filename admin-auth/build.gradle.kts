@@ -30,6 +30,8 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlin.Experimental")
         languageSettings.optIn("kotlin.ExperimentalStdlibApi")
         languageSettings.optIn("kotlin.time.ExperimentalTime")
+        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
+        languageSettings.optIn("io.ktor.util.InternalAPI")
     }
 }
 

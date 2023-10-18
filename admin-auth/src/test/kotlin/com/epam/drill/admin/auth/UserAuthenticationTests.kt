@@ -66,7 +66,7 @@ class UserAuthenticationTest {
     fun `given expected username and password, sign-in service should return an access token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("secret", "hash"))
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
@@ -114,7 +114,7 @@ class UserAuthenticationTest {
     fun `given correct old password, update-password service must update the password to the new one`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("secret", "hash"))
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(passwordService.hashPassword("secret2"))
             .thenReturn("hash2")
@@ -153,7 +153,7 @@ class UserAuthenticationTest {
     fun `given incorrect password, sign-in service must fail with 401 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("incorrect", "hash"))
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
         withTestApplication(config()) {
@@ -204,7 +204,7 @@ class UserAuthenticationTest {
     fun `given incorrect old password, update-password service must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("incorrect", "hash"))
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
         withTestApplication(config()) {

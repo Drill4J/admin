@@ -23,9 +23,11 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.routing.Routing
+import io.ktor.routing.Route
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
@@ -33,6 +35,16 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
+
+@Location("/sign-in")
+object SignIn
+@Location("/sign-up")
+object SignUp
+@Location("/update-password")
+object UpdatePassword
+@Deprecated("Use /sign-in")
+@Location("/api/login")
+object Login
 
 fun StatusPages.Configuration.authStatusPages() {
     exception<UserNotAuthenticatedException> { cause ->
@@ -62,7 +74,7 @@ fun Route.signInRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
 
-    post("sign-in") {
+    post<SignIn> {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
@@ -74,7 +86,7 @@ fun Route.signInRoute() {
 fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
-    post("sign-up") {
+    post<SignUp> {
         val form = call.receive<RegistrationPayload>()
         authService.signUp(form)
         call.respond(
@@ -89,7 +101,7 @@ fun Route.signUpRoute() {
 fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
-    post("update-password") {
+    post<UpdatePassword> {
         val changePasswordPayload = call.receive<ChangePasswordPayload>()
         val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
@@ -102,7 +114,7 @@ fun Route.loginRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
 
-    post("/api/login") {
+    post<Login> {
         val loginPayload = call.receive<UserData>()
         val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
         val token = tokenService.issueToken(userView)

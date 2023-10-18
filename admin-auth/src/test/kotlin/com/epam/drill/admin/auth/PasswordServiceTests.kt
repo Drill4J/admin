@@ -62,7 +62,7 @@ class PasswordHashingTest {
         val password = "secret"
 
         val hashedPassword = passwordService.hashPassword(password)
-        val valid = passwordService.checkPassword(password, hashedPassword)
+        val valid = passwordService.matchPasswords(password, hashedPassword)
 
         assertTrue { valid }
     }

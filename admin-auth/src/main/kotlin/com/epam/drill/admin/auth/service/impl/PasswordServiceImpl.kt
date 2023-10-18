@@ -26,7 +26,7 @@ class PasswordServiceImpl(
         return BCrypt.hashpw(password, BCrypt.gensalt())
     }
 
-    override fun checkPassword(candidate: String, hashed: String): Boolean {
+    override fun matchPasswords(candidate: String, hashed: String): Boolean {
         return BCrypt.checkpw(candidate, hashed)
     }
 
