@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.exception
+package com.epam.drill.admin.auth.entity
 
-class IncorrectPasswordException: UserValidationException("Old password is incorrect") {
+enum class Role {
+    USER,
+    ADMIN,
+    UNDEFINED
 }

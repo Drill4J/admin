@@ -18,4 +18,7 @@ package com.epam.drill.admin.auth.view
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ApiResponse(val message: String)
+data class MessageView(val message: String)
+
+@Serializable
+data class TokenView(val token: String)
