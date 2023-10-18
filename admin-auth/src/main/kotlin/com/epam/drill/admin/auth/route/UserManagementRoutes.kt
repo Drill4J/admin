@@ -15,12 +15,9 @@
  */
 package com.epam.drill.admin.auth.route
 
-import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.entity.Role.ADMIN
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.view.MessageView
 import com.epam.drill.admin.auth.view.UserPayload
-import com.epam.drill.admin.auth.withRole
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
@@ -28,7 +25,6 @@ import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.Route
-import io.ktor.routing.Routing
 import io.ktor.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di

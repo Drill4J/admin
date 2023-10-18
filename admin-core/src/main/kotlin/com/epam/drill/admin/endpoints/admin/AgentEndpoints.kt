@@ -22,12 +22,8 @@ import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.withRole
-import com.epam.drill.admin.cache.*
-import com.epam.drill.admin.cache.impl.*
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.AgentCacheKey
 import com.epam.drill.admin.store.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*

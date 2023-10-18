@@ -24,7 +24,7 @@ import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
 import com.epam.drill.admin.api.websocket.GroupSubscription
 import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.withRole
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.plugin.PluginCaches
 import com.epam.drill.admin.plugins.Plugins

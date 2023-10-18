@@ -15,9 +15,10 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.jwt.JwtConfig
-import com.epam.drill.admin.auth.jwt.JwtTokenService
-import com.epam.drill.admin.auth.jwt.generateSecret
+import com.epam.drill.admin.auth.config.SecurityConfig
+import com.epam.drill.admin.auth.config.JwtConfig
+import com.epam.drill.admin.auth.service.impl.JwtTokenService
+import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.LoginPayload

@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.jwt
+package com.epam.drill.admin.auth.config
 
+import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.service.TokenService
 import com.typesafe.config.ConfigFactory
 import io.ktor.application.*

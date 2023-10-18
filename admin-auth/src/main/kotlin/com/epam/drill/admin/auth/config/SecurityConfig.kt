@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth
+package com.epam.drill.admin.auth.config
 
 import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.jwt.JwtTokenService
-import com.epam.drill.admin.auth.jwt.bindJwt
+import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.LoginPayload

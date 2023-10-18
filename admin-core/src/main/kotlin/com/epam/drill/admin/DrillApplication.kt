@@ -16,7 +16,10 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.*
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.config.RoleBasedAuthorization
+import com.epam.drill.admin.auth.config.securityDiConfig
+import com.epam.drill.admin.auth.config.usersDiConfig
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.entity.Role.ADMIN
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.updatePasswordRoute

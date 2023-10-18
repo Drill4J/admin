@@ -18,11 +18,10 @@ package com.epam.drill.admin.endpoints.plugin
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.AgentStatus.*
 import com.epam.drill.admin.api.agent.BuildStatus.*
-import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.withRole
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.build.AgentBuildData
 import com.epam.drill.admin.cache.*

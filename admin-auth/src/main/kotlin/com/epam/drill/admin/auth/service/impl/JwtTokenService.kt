@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.jwt
+package com.epam.drill.admin.auth.service.impl
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.config.JwtConfig
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.view.UserView
 import java.util.*
