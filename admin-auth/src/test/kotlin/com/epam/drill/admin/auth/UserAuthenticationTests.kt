@@ -67,7 +67,7 @@ class UserAuthenticationTest {
     fun `given expected username and password, sign-in service should return an access token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("secret", "hash"))
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
@@ -115,7 +115,7 @@ class UserAuthenticationTest {
     fun `given correct old password, update-password service must update the password to the new one`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("secret", "hash"))
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(passwordService.hashPassword("secret2"))
             .thenReturn("hash2")
