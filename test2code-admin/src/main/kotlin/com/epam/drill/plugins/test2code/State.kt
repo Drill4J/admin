@@ -209,18 +209,6 @@ internal class AgentState(
         initSessionHolder()
     }
 
-    /**
-     * That job each 5 seconds will save all sessions from SessionHolder to DB
-     * @features  Session saving
-     */
-    fun sessionFinishingJob() = CoroutineScope(Dispatchers.Default).launch {
-        while (isActive) {
-            delay(10000)
-            sessionHolder.sessions.values.forEach { activeSession ->
-                finishSession(activeSession.id)
-            }
-        }
-    }
 
     /**
      * Finish the test session

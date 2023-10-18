@@ -365,14 +365,12 @@ class Plugin(
                     }
                     sessionHolder.sessions[sessionId]?.let {
                         sessionHolder.addProbes(sessionId) { data }
-                        calculateAndSendBuildCoverage()
                     } ?: logger.debug { "Attempting to add coverage in non-existent active session with id $sessionId" }
                 }
         }
 
-        //TODO do we need it?
-        is SessionChanged -> sessionHolder.takeIf { session ->
-            session.sessions.values.any { it.isRealtime }
+        is SessionChanged -> {
+            okResult
         }
 
         is SessionCancelled -> logger.info { "$instanceId: Agent session ${message.sessionId} cancelled." }
@@ -428,6 +426,20 @@ class Plugin(
     }
 
     /**
+     * That job each 10 seconds will save all sessions from SessionHolder to DB
+     * @features  Session saving
+     */
+    private fun sessionFinishingJob() = CoroutineScope(Dispatchers.Default).launch {
+        while (isActive) {
+            delay(10000)
+            calculateAndSendBuildCoverage()
+            sessionHolder.sessions.values.forEach { activeSession ->
+                state.finishSession(activeSession.id)
+            }
+        }
+    }
+
+    /**
      * Initialize the plugin.
      * Send information to the admin UI
      * @features Agent registration
@@ -443,7 +455,7 @@ class Plugin(
         sendLabels()
         sendFilters()
         sendActiveSessions()
-        state.sessionFinishingJob()
+        sessionFinishingJob()
     }
 
     /**
