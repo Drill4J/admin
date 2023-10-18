@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth.repository.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.repository.Id
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
@@ -57,7 +58,7 @@ class EnvUserRepository(
         return users[genId(username)]?.copy()
     }
 
-    override fun create(entity: UserEntity): Int {
+    override fun create(entity: UserEntity): Id {
         throw UnsupportedOperationException("User creation is not supported")
     }
 

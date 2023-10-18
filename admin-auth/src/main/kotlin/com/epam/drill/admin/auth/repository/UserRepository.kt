@@ -17,6 +17,8 @@ package com.epam.drill.admin.auth.repository
 
 import com.epam.drill.admin.auth.entity.UserEntity
 
+typealias Id = Int
+
 interface UserRepository {
     fun findAllNotDeleted(): List<UserEntity>
 
@@ -24,7 +26,7 @@ interface UserRepository {
 
     fun findByUsername(username: String): UserEntity?
 
-    fun create(entity: UserEntity): Int
+    fun create(entity: UserEntity): Id
 
     fun update(entity: UserEntity)
 
