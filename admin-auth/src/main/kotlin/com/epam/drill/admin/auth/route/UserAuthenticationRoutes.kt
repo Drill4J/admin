@@ -36,28 +36,16 @@ private val logger = KotlinLogging.logger {}
 
 fun StatusPages.Configuration.authStatusPages() {
     exception<UserNotAuthenticatedException> { cause ->
-        logger.trace(cause) { "401 Unauthorized" }
+        logger.trace(cause) { "401 User is not authenticated" }
         call.respond(HttpStatusCode.Unauthorized, "User is not authenticated")
-        throw cause
     }
     exception<IncorrectCredentialsException> { cause ->
-        logger.trace(cause) { "401 Unauthorized" }
+        logger.trace(cause) { "401 Username or password is incorrect" }
         call.respond(HttpStatusCode.Unauthorized, "Username or password is incorrect")
-        throw cause
-    }
-    exception<IncorrectPasswordException> { cause ->
-        logger.trace(cause) { "400 BadRequest" }
-        call.respond(HttpStatusCode.BadRequest, "Incorrect password")
-        throw cause
-    }
-    exception<UserAlreadyExistsException> { cause ->
-        logger.trace(cause) { "400 BadRequest" }
-        call.respond(HttpStatusCode.BadRequest, "Incorrect password")
-        throw cause
     }
     exception<UserValidationException> { cause ->
-        logger.trace(cause) { "400 BadRequest" }
-        call.respond(HttpStatusCode.BadRequest, cause.message ?: "User data is invalid")
+        logger.trace(cause) { "400 User data is invalid" }
+        call.respond(HttpStatusCode.BadRequest, "User data is invalid")
     }
 }
 

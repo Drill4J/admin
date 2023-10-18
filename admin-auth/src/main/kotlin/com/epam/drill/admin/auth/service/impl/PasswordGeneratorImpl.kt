@@ -1,6 +1,6 @@
 package com.epam.drill.admin.auth.service.impl
 
-import com.epam.drill.admin.auth.exception.PasswordConstraintsException
+import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.service.PasswordGenerator
 import kotlin.random.Random
 
@@ -47,12 +47,12 @@ class PasswordGeneratorImpl(private val minLength: Int = 6,
 
     override fun validatePasswordRequirements(password: String) {
         if (!hasAtLeastMinLength(password))
-            throw PasswordConstraintsException("Password must have at least $minLength characters")
+            throw UserValidationException("Password must have at least $minLength characters")
         if (mustHaveUppercase && !hasUppercase(password))
-            throw PasswordConstraintsException("Password must contain uppercase letters")
+            throw UserValidationException("Password must contain uppercase letters")
         if (mustHaveLowercase && !hasLowercase(password))
-            throw PasswordConstraintsException("Password must contain lowercase letters")
+            throw UserValidationException("Password must contain lowercase letters")
         if (mustHaveDigit && !hasDigit(password))
-            throw PasswordConstraintsException("Password must contain numbers")
+            throw UserValidationException("Password must contain numbers")
     }
 }
