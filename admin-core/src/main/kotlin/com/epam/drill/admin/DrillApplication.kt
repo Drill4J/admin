@@ -15,8 +15,6 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.auth.basicAuth
-import com.epam.drill.admin.auth.jwtAuth
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.securityDiConfig
