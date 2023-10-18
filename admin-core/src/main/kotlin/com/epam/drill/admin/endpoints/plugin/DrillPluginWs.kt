@@ -16,7 +16,6 @@
 package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.api.websocket.*
-import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.core.*
@@ -45,12 +44,11 @@ class DrillPluginWs(override val di: DI) : DIAware {
     private val pluginSessions by instance<PluginSessions>()
     private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
-    private val tokenService by instance<TokenService>()
 
     init {
         app.routing {
             plugins.keys.forEach { pluginId ->
-                authWebSocket("/ws/plugins/$pluginId", tokenService) { handle(pluginId) }
+                authWebSocket("/ws/plugins/$pluginId") { handle(pluginId) }
             }
         }
     }
