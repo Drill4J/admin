@@ -99,9 +99,6 @@ data class SessionHolder(
 internal data class SessionHolderInfo(
     @Id val agentKey: AgentKey,
     val id: String = genUuid(),
-    val nth: Int = 1,
     val name: String = "",
     val startedAt: Long = 0L,
 )
-
-internal fun SessionHolderInfo.inc() = copy(nth = nth.inc())
