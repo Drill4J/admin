@@ -19,6 +19,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.authStatusPages
+import com.epam.drill.admin.auth.route.updatePasswordRoute
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -225,8 +226,7 @@ class UserAuthenticationTest {
             authStatusPages()
         },
         authentication = {
-            //have to use "jwt" for basic auth, because that name is required for this route in production code
-            basic("jwt") {
+            basic {
                 validate {
                     UserIdPrincipal(it.name)
                 }
@@ -234,6 +234,9 @@ class UserAuthenticationTest {
         },
         routing = {
             userAuthenticationRoutes()
+            authenticate {
+                updatePasswordRoute()
+            }
         },
         bindings = {
             bind<UserRepository>() with eagerSingleton { userRepository }

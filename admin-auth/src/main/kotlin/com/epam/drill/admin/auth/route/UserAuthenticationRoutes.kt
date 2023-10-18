@@ -61,13 +61,10 @@ fun StatusPages.Configuration.authStatusPages() {
     }
 }
 
-fun Routing.userAuthenticationRoutes() {
+fun Route.userAuthenticationRoutes() {
     loginRoute()
     signInRoute()
     signUpRoute()
-    authenticate("jwt") {
-        updatePasswordRoute()
-    }
 }
 
 fun Route.signInRoute() {
