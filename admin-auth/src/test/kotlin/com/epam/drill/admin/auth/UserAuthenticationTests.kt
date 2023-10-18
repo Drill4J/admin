@@ -42,6 +42,12 @@ import org.mockito.kotlin.whenever
 import java.util.Base64
 import kotlin.test.*
 
+val USER_GUEST
+    get() = UserEntity(id = 1, username = "guest", passwordHash = "hash", role = "UNDEFINED").copy()
+
+/**
+ * Testing /sign-in, /sign-up and /reset-password routers and UserAuthenticationServiceImpl
+ */
 class UserAuthenticationTest {
 
     @Mock
@@ -61,7 +67,7 @@ class UserAuthenticationTest {
     @Test
     fun `given expected username and password, sign-in service should return an access token`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
+            .thenReturn(USER_GUEST)
         whenever(passwordService.checkPassword("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
@@ -109,7 +115,7 @@ class UserAuthenticationTest {
     @Test
     fun `given correct old password, update-password service must update the password to the new one`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
+            .thenReturn(USER_GUEST)
         whenever(passwordService.checkPassword("secret", "hash"))
             .thenReturn(true)
         whenever(passwordService.hashPassword("secret2"))
@@ -123,7 +129,7 @@ class UserAuthenticationTest {
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userGuest.copy(passwordHash = "hash2"))
+                verify(userRepository).update(USER_GUEST.copy(passwordHash = "hash2"))
             }
         }
     }

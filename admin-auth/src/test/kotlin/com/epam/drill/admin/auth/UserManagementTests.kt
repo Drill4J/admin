@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
@@ -36,6 +37,14 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
+val USER_ADMIN
+    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN").copy()
+val USER_USER
+    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER").copy()
+
+/**
+ * Testing /users routers and UserManagementServiceImpl
+ */
 class UserManagementTest {
 
     @Mock
@@ -53,7 +62,7 @@ class UserManagementTest {
     @Test
     fun `'GET users' service must return the expected number of users from repository`() {
         whenever(userRepository.findAllNotDeleted())
-            .thenReturn(listOf(userAdmin, userUser))
+            .thenReturn(listOf(USER_ADMIN, USER_USER))
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/users") {
@@ -70,7 +79,7 @@ class UserManagementTest {
     @Test
     fun `given existed user identifier, 'GET users' service must return that user from repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin)
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/users/1") {
@@ -86,7 +95,7 @@ class UserManagementTest {
     @Test
     fun `given user identifier and role, 'PUT users' service must change user role in repository and return changed user`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Put, "/users/1") {
@@ -94,7 +103,7 @@ class UserManagementTest {
                 val form = UserPayload(role = Role.USER)
                 setBody(Json.encodeToString(UserPayload.serializer(), form))
             }) {
-                verify(userRepository).update(userAdmin.copy(role = "USER"))
+                verify(userRepository).update(USER_ADMIN.copy(role = "USER"))
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: UserView = Json.decodeFromString(UserView.serializer(), assertNotNull(response.content))
                 assertEquals(Role.USER, response.role)
@@ -105,14 +114,14 @@ class UserManagementTest {
     @Test
     fun `given user identifier, 'DELETE users' service must delete that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Delete, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(deleted = true))
+                verify(userRepository).update(USER_ADMIN.copy(deleted = true))
             }
         }
     }
@@ -120,14 +129,14 @@ class UserManagementTest {
     @Test
     fun `given user identifier, 'PATCH users block' service must block that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Patch, "/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(blocked = true))
+                verify(userRepository).update(USER_ADMIN.copy(blocked = true))
             }
         }
     }
@@ -135,14 +144,14 @@ class UserManagementTest {
     @Test
     fun `given user identifier, 'PATCH users block' service must unblock that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy(blocked = true))
+            .thenReturn(USER_ADMIN.copy(blocked = true))
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Patch, "/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(blocked = false))
+                verify(userRepository).update(USER_ADMIN.copy(blocked = false))
             }
         }
     }
@@ -150,7 +159,7 @@ class UserManagementTest {
     @Test
     fun `given user identifier, 'PATCH users reset-password' service must generate and return a new password of that user`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
         whenever(passwordService.generatePassword())
             .thenReturn("newsecret")
         whenever(passwordService.hashPassword("newsecret"))
@@ -161,7 +170,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(passwordHash = "newhash"))
+                verify(userRepository).update(USER_ADMIN.copy(passwordHash = "newhash"))
             }
         }
     }
