@@ -15,13 +15,14 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.UserPayload
 import com.epam.drill.admin.auth.view.UserView
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -36,6 +37,14 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
+val USER_ADMIN
+    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN").copy()
+val USER_USER
+    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER").copy()
+
+/**
+ * Testing /users routers and UserManagementServiceImpl
+ */
 class UserManagementTest {
 
     @Mock
@@ -50,9 +59,9 @@ class UserManagementTest {
 
 
     @Test
-    fun `get users`() {
+    fun `'GET users' service must return the expected number of users from repository`() {
         whenever(userRepository.findAllNotDeleted())
-            .thenReturn(listOf(userAdmin, userUser))
+            .thenReturn(listOf(USER_ADMIN, USER_USER))
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/api/users") {
@@ -60,96 +69,96 @@ class UserManagementTest {
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: List<UserView> =
-                    Json.decodeFromString(ListSerializer(UserView.serializer()), response.content!!)
+                    Json.decodeFromString(ListSerializer(UserView.serializer()), assertNotNull(response.content))
                 assertEquals(2, response.size)
             }
         }
     }
 
     @Test
-    fun `get users 1`() {
+    fun `given existed user identifier, 'GET users' service must return that user from repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin)
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Get, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = Json.decodeFromString(UserView.serializer(), response.content!!)
+                val response: UserView = Json.decodeFromString(UserView.serializer(), assertNotNull(response.content))
                 assertEquals("admin", response.username)
             }
         }
     }
 
     @Test
-    fun `put users 1`() {
+    fun `given user identifier and role, 'PUT users' service must change user role in repository and return changed user`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Put, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = UserForm(role = Role.USER)
-                setBody(Json.encodeToString(UserForm.serializer(), form))
+                val form = UserPayload(role = Role.USER)
+                setBody(Json.encodeToString(UserPayload.serializer(), form))
             }) {
-                verify(userRepository).update(userAdmin.copy(role = "USER"))
+                verify(userRepository).update(USER_ADMIN.copy(role = "USER"))
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = Json.decodeFromString(UserView.serializer(), response.content!!)
+                val response: UserView = Json.decodeFromString(UserView.serializer(), assertNotNull(response.content))
                 assertEquals(Role.USER, response.role)
             }
         }
     }
 
     @Test
-    fun `delete users 1`() {
+    fun `given user identifier, 'DELETE users' service must delete that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Delete, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(deleted = true))
+                verify(userRepository).update(USER_ADMIN.copy(deleted = true))
             }
         }
     }
 
     @Test
-    fun `patch users 1 block`() {
+    fun `given user identifier, 'PATCH users block' service must block that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Patch, "/api/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(blocked = true))
+                verify(userRepository).update(USER_ADMIN.copy(blocked = true))
             }
         }
     }
 
     @Test
-    fun `patch users 1 unblock`() {
+    fun `given user identifier, 'PATCH users block' service must unblock that user in repository`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy(blocked = true))
+            .thenReturn(USER_ADMIN.copy(blocked = true))
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Patch, "/api/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(blocked = false))
+                verify(userRepository).update(USER_ADMIN.copy(blocked = false))
             }
         }
     }
 
     @Test
-    fun `patch users 1 reset-password`() {
+    fun `given user identifier, 'PATCH users reset-password' service must generate and return a new password of that user`() {
         whenever(userRepository.findById(1))
-            .thenReturn(userAdmin.copy())
+            .thenReturn(USER_ADMIN)
         whenever(passwordService.generatePassword())
             .thenReturn("newsecret")
         whenever(passwordService.hashPassword("newsecret"))
@@ -160,7 +169,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userAdmin.copy(passwordHash = "newhash"))
+                verify(userRepository).update(USER_ADMIN.copy(passwordHash = "newhash"))
             }
         }
     }

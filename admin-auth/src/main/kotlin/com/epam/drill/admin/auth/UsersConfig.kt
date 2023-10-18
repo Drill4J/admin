@@ -17,9 +17,11 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.UserManagementService
+import com.epam.drill.admin.auth.service.impl.PasswordGeneratorImpl
 import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
@@ -40,7 +42,8 @@ fun DI.Builder.userServicesConfig() {
         )
     }
     bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-    bind<PasswordService>() with eagerSingleton { PasswordServiceImpl() }
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl() }
+    bind<PasswordService>() with singleton { PasswordServiceImpl(instance()) }
 }
 
 fun DI.Builder.userRepositoriesConfig() {

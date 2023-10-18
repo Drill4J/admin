@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.jwt
 
 import com.auth0.jwt.algorithms.*
 import com.auth0.jwt.interfaces.Payload
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.TokenService
 import com.typesafe.config.ConfigFactory

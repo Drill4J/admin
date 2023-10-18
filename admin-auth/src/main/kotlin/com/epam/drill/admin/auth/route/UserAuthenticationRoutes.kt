@@ -75,11 +75,11 @@ fun Route.signInRoute() {
     val tokenService by di().instance<TokenService>()
 
     post("sign-in") {
-        val form = call.receive<LoginForm>()
-        val view = authService.signIn(form)
-        val token = tokenService.issueToken(view)
+        val loginPayload = call.receive<LoginPayload>()
+        val userView = authService.signIn(loginPayload)
+        val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenResponse(token))
+        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 
@@ -87,10 +87,10 @@ fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post("sign-up") {
-        val form = call.receive<RegistrationForm>()
+        val form = call.receive<RegistrationPayload>()
         authService.signUp(form)
         call.respond(
-            HttpStatusCode.OK, ApiResponse(
+            HttpStatusCode.OK, MessageView(
                 "User registered successfully. " +
                         "Please contact the administrator for system access."
             )
@@ -102,24 +102,24 @@ fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post("update-password") {
-        val form = call.receive<ChangePasswordForm>()
+        val changePasswordPayload = call.receive<ChangePasswordPayload>()
         val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
-        authService.updatePassword(principal, form)
-        call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
+        authService.updatePassword(principal, changePasswordPayload)
+        call.respond(HttpStatusCode.OK, MessageView("Password changed successfully."))
     }
 }
 
-@Deprecated("the /api/login route is outdated, please use /sign-in")
+@Deprecated("The /api/login route is outdated, please use /sign-in")
 fun Route.loginRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
 
     post("/api/login") {
-        val form = call.receive<UserData>()
-        val view = authService.signIn(LoginForm(username = form.name, password = form.password))
-        val token = tokenService.issueToken(view)
+        val loginPayload = call.receive<UserData>()
+        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
+        val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenResponse(token))
+        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 

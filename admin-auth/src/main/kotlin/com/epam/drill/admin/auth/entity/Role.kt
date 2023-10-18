@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.basic
+package com.epam.drill.admin.auth.entity
 
-import com.epam.drill.admin.auth.view.LoginForm
-import io.ktor.auth.*
-
-class BasicAuthConfig {
+enum class Role {
+    USER,
+    ADMIN,
+    UNDEFINED
 }
-
