@@ -154,7 +154,7 @@ class UserAuthenticationTest {
     fun `given incorrect password, sign-in service must fail with 401 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("incorrect", "hash"))
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
         withTestApplication(config()) {
@@ -205,7 +205,7 @@ class UserAuthenticationTest {
     fun `given incorrect old password, update-password service must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
-        whenever(passwordService.checkPassword("incorrect", "hash"))
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
         withTestApplication(config()) {
