@@ -142,8 +142,8 @@ class UserAuthenticationTest {
             withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginForm(username = "unknown", password = "secret")
-                setBody(Json.encodeToString(LoginForm.serializer(), form))
+                val form = LoginPayload(username = "unknown", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
@@ -153,7 +153,7 @@ class UserAuthenticationTest {
     @Test
     fun `given incorrect password, sign-in service must fail with 401 status`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
+            .thenReturn(USER_GUEST)
         whenever(passwordService.checkPassword("incorrect", "hash"))
             .thenReturn(false)
 
@@ -161,8 +161,8 @@ class UserAuthenticationTest {
             withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginForm(username = "guest", password = "incorrect")
-                setBody(Json.encodeToString(LoginForm.serializer(), form))
+                val form = LoginPayload(username = "guest", password = "incorrect")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
@@ -172,14 +172,14 @@ class UserAuthenticationTest {
     @Test
     fun `given already existing username, sign-up service must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
+            .thenReturn(USER_GUEST)
 
         withTestApplication(config()) {
             withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationForm(username = "guest", password = "secret")
-                setBody(Json.encodeToString(RegistrationForm.serializer(), form))
+                val form = RegistrationPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.BadRequest, response.status())
             }
@@ -193,8 +193,8 @@ class UserAuthenticationTest {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 //not add auth
-                val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
-                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+                val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
@@ -204,7 +204,7 @@ class UserAuthenticationTest {
     @Test
     fun `given incorrect old password, update-password service must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
+            .thenReturn(USER_GUEST)
         whenever(passwordService.checkPassword("incorrect", "hash"))
             .thenReturn(false)
 
@@ -213,8 +213,8 @@ class UserAuthenticationTest {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
-                val form = ChangePasswordForm(oldPassword = "incorrect", newPassword = "secret2")
-                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+                val form = ChangePasswordPayload(oldPassword = "incorrect", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.BadRequest, response.status())
             }
