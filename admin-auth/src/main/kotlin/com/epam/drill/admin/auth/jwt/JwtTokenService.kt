@@ -41,5 +41,5 @@ class JwtTokenService(
         verifier.verify(token)
     }
 
-    private fun Duration.toExpiration() = Date(System.currentTimeMillis() + inWholeMilliseconds)
+    private fun Duration.toExpiration() = Date(System.currentTimeMillis() + this.inWholeMilliseconds)
 }

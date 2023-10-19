@@ -55,9 +55,9 @@ fun Application.kodein(
         AppBuilder()
             .apply(bindings)
             .apply {
-            kodeinModules.forEach { import(kodeinConfig(this@di) { it(this) }, allowOverride = true) }
-            kodeinModules.clear()
-        }
+                kodeinModules.forEach { import(kodeinConfig(this@di) { it(this) }, allowOverride = true) }
+                kodeinModules.clear()
+            }
     }
 }
 

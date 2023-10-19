@@ -67,7 +67,7 @@ fun DI.Builder.bindJwt() {
 
 internal fun Payload.toPrincipal(): User {
     return User(
-        name = subject,
+        username = subject,
         role = Role.valueOf(getClaim("role").asString())
     )
 }

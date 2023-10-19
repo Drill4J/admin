@@ -22,7 +22,7 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.UserPayload
+import com.epam.drill.admin.auth.view.EditUserPayload
 import com.epam.drill.admin.auth.view.UserView
 
 class UserManagementServiceImpl(
@@ -34,43 +34,43 @@ class UserManagementServiceImpl(
     }
 
     override fun getUser(userId: Int): UserView {
-        return findUserOrThrow(userId).toView()
+        return findUser(userId).toView()
     }
 
-    override fun updateUser(userId: Int, form: UserPayload): UserView {
-        val entity = findUserOrThrow(userId)
-        entity.role = form.role.name
-        userRepository.update(entity)
-        return entity.toView()
+    override fun updateUser(userId: Int, payload: EditUserPayload): UserView {
+        val userEntity = findUser(userId)
+        userEntity.role = payload.role.name
+        userRepository.update(userEntity)
+        return userEntity.toView()
     }
 
     override fun deleteUser(userId: Int) {
-        val entity = findUserOrThrow(userId)
-        entity.deleted = true
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.deleted = true
+        userRepository.update(userEntity)
     }
 
     override fun blockUser(userId: Int) {
-        val entity = findUserOrThrow(userId)
-        entity.blocked = true
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.blocked = true
+        userRepository.update(userEntity)
     }
 
     override fun unblockUser(userId: Int) {
-        val entity = findUserOrThrow(userId)
-        entity.blocked = false
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.blocked = false
+        userRepository.update(userEntity)
     }
 
     override fun resetPassword(userId: Int): CredentialsView {
-        val entity = findUserOrThrow(userId)
+        val userEntity = findUser(userId)
         val newPassword = passwordService.generatePassword()
-        entity.passwordHash = passwordService.hashPassword(newPassword)
-        userRepository.update(entity)
-        return entity.toCredentialsView(newPassword)
+        userEntity.passwordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(userEntity)
+        return userEntity.toCredentialsView(newPassword)
     }
 
-    private fun findUserOrThrow(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
+    private fun findUser(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
 }
 
 private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {

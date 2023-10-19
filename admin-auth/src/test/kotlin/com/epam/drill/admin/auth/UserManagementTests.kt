@@ -22,7 +22,7 @@ import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
-import com.epam.drill.admin.auth.view.UserPayload
+import com.epam.drill.admin.auth.view.EditUserPayload
 import com.epam.drill.admin.auth.view.UserView
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -76,7 +76,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given existed user identifier, 'GET users' service must return that user from repository`() {
+    fun `given existing user identifier 'GET users {id}' must return the respective user`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -92,15 +92,15 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier and role, 'PUT users' service must change user role in repository and return changed user`() {
+    fun `given user identifier and role 'PUT users {id}' must change user role in repository and return changed user`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Put, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = UserPayload(role = Role.USER)
-                setBody(Json.encodeToString(UserPayload.serializer(), form))
+                val form = EditUserPayload(role = Role.USER)
+                setBody(Json.encodeToString(EditUserPayload.serializer(), form))
             }) {
                 verify(userRepository).update(USER_ADMIN.copy(role = "USER"))
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -111,7 +111,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'DELETE users' service must delete that user in repository`() {
+    fun `given user identifier 'DELETE users {id}' must delete that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -126,7 +126,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users block' service must block that user in repository`() {
+    fun `given user identifier 'PATCH users {id} block' must block that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -141,7 +141,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users block' service must unblock that user in repository`() {
+    fun `given user identifier 'PATCH users {id} unblock' must unblock that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
@@ -156,7 +156,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users reset-password' service must generate and return a new password of that user`() {
+    fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
         whenever(passwordService.generatePassword())
