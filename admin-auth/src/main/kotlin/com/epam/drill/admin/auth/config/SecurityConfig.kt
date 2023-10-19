@@ -67,7 +67,7 @@ class SecurityConfig(override val di: DI) : DIAware {
 
 private fun Payload.toPrincipal(): User {
     return User(
-        name = subject,
+        username = subject,
         role = Role.valueOf(getClaim("role").asString())
     )
 }
