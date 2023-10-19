@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.view.MessageView
-import com.epam.drill.admin.auth.view.UserPayload
+import com.epam.drill.admin.auth.view.EditUserPayload
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
@@ -78,8 +78,8 @@ fun Route.editUserRoute() {
     val service by di().instance<UserManagementService>()
 
     put<Users.Id> { (userId) ->
-        val userPayload = call.receive<UserPayload>()
-        val userView = service.updateUser(userId, userPayload)
+        val editUserPayload = call.receive<EditUserPayload>()
+        val userView = service.updateUser(userId, editUserPayload)
         call.respond(HttpStatusCode.OK, userView)
     }
 }

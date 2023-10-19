@@ -74,7 +74,7 @@ private fun Payload.toPrincipal(): User {
 
 private fun UserView.toPrincipal(): User {
     return User(
-        name = username,
+        username = username,
         role = role
     )
 }

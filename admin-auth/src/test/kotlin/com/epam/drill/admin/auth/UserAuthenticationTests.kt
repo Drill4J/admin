@@ -64,7 +64,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given expected username and password, sign-in service should return an access token`() {
+    fun `given correct username and password 'POST sign-in' must return an access token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("secret", "hash"))
@@ -85,7 +85,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given unique username and correct password, sign-up service must create a user`() {
+    fun `given unique username 'POST sign-up' must succeed and user must be created`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
@@ -112,7 +112,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given correct old password, update-password service must update the password to the new one`() {
+    fun `given correct old password 'POST update-password' must succeed`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("secret", "hash"))
@@ -134,7 +134,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given incorrect username, sign-in service must fail with 401 status`() {
+    fun `given incorrect username 'POST sign-in' must fail with 401 status`() {
         whenever(userRepository.findByUsername("unknown"))
             .thenReturn(null)
 
@@ -151,7 +151,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given incorrect password, sign-in service must fail with 401 status`() {
+    fun `given incorrect password 'POST sign-in' must fail with 401 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("incorrect", "hash"))
@@ -170,7 +170,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given already existing username, sign-up service must fail with 400 status`() {
+    fun `given already existing username 'POST sign-up' must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
 
@@ -187,7 +187,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given without authentication, update-password service must fail with 401 status`() {
+    fun `given without authentication 'POST update-password' must fail with 401 status`() {
         withTestApplication(config()) {
             withStatusPages()
             with(handleRequest(HttpMethod.Post, "/update-password") {
@@ -202,7 +202,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given incorrect old password, update-password service must fail with 400 status`() {
+    fun `given incorrect old password 'POST update-password' must fail with 400 status`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("incorrect", "hash"))

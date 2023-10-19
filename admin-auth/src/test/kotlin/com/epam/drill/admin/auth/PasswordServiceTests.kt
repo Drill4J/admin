@@ -57,7 +57,7 @@ class PasswordGeneratorTest {
 
 class PasswordHashingTest {
     @Test
-    fun `given correct hashed password, hashPassword must pass verification checkPassword`() {
+    fun `given password and its hash matchPasswords must return true`() {
         val passwordService = PasswordServiceImpl(mock())
         val password = "secret"
 
@@ -71,31 +71,31 @@ class PasswordHashingTest {
 
 class ValidatePasswordTest {
     @Test
-    fun `given less than 10 characters password, validatePassword must fail`() {
+    fun `given less than 10 characters password validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(minLength = 10)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("less10") }
     }
 
     @Test
-    fun `given password without upper case characters, validatePassword must fail`() {
+    fun `given password without upper case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveUppercase = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("onlylowercase") }
     }
 
     @Test
-    fun `given password without lower case characters, validatePassword must fail`() {
+    fun `given password without lower case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveLowercase = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("ONLYUPPERCASE") }
     }
 
     @Test
-    fun `given password without digits characters, validatePassword must fail`() {
+    fun `given password without digits characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveDigit = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("AlphabeticCharsOnly") }
     }
 
     @Test
-    fun `given password satisfying all requirements, validatePassword must succeed`() {
+    fun `given password satisfying all requirements validatePassword must succeed`() {
         val validator = PasswordGeneratorImpl(
             minLength = 10,
             mustHaveUppercase = true,
@@ -106,7 +106,7 @@ class ValidatePasswordTest {
     }
 
     @Test
-    fun `given password with non-latin characters, validatePassword must succeed`() {
+    fun `given password with non-latin characters validatePassword must succeed`() {
         val validator = PasswordGeneratorImpl(mustHaveLowercase = true, mustHaveUppercase = true)
         assertDoesNotThrow { validator.validatePasswordRequirements("Котик123") }
     }
