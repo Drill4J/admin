@@ -26,7 +26,6 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import org.kodein.di.*
-import org.kodein.di.ktor.closestDI as di
 
 val securityDiConfig: DI.Builder.(Application) -> Unit
     get() = { _ ->
@@ -68,7 +67,7 @@ class SecurityConfig(override val di: DI) : DIAware {
 
 private fun UserView.toPrincipal(): User {
     return User(
-        name = username,
+        username = username,
         role = role
     )
 }

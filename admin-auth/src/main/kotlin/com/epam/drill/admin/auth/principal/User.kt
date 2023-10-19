@@ -19,6 +19,6 @@ import com.epam.drill.admin.auth.entity.Role
 import io.ktor.auth.*
 
 data class User(
-    val name: String,
+    val username: String,
     val role: Role
 ) : Principal
