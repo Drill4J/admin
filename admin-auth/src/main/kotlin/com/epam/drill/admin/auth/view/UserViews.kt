@@ -33,7 +33,7 @@ data class CredentialsView(
 )
 
 @Serializable
-data class UserPayload(
+data class EditUserPayload(
     val role: Role
 )
 

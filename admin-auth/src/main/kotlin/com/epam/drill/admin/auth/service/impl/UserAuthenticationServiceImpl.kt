@@ -32,10 +32,10 @@ class UserAuthenticationServiceImpl(
     private val passwordService: PasswordService
 ) : UserAuthenticationService {
     override fun signIn(payload: LoginPayload): UserView {
-        val entity = userRepository.findByUsername(payload.username) ?: throw IncorrectCredentialsException()
-        if (!passwordService.matchPasswords(payload.password, entity.passwordHash))
+        val userEntity = userRepository.findByUsername(payload.username) ?: throw IncorrectCredentialsException()
+        if (!passwordService.matchPasswords(payload.password, userEntity.passwordHash))
             throw IncorrectCredentialsException()
-        return entity.toView()
+        return userEntity.toView()
     }
 
     override fun signUp(payload: RegistrationPayload) {
@@ -43,21 +43,21 @@ class UserAuthenticationServiceImpl(
             throw UserAlreadyExistsException(payload.username)
         passwordService.validatePasswordRequirements(payload.password)
         val passwordHash = passwordService.hashPassword(payload.password)
-        userRepository.create(payload.toEntity(passwordHash))
+        userRepository.create(payload.toUserEntity(passwordHash))
     }
 
     override fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload) {
-        val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
-        if (!passwordService.matchPasswords(payload.oldPassword, entity.passwordHash))
+        val userEntity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
+        if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw IncorrectPasswordException()
         passwordService.validatePasswordRequirements(payload.newPassword)
-        entity.passwordHash = passwordService.hashPassword(payload.newPassword)
-        userRepository.update(entity)
+        userEntity.passwordHash = passwordService.hashPassword(payload.newPassword)
+        userRepository.update(userEntity)
     }
 
 }
 
-private fun RegistrationPayload.toEntity(passwordHash: String): UserEntity {
+private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
     return UserEntity(
         username = this.username,
         passwordHash = passwordHash,

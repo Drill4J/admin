@@ -57,7 +57,7 @@ class PasswordGeneratorTest {
 
 class PasswordHashingTest {
     @Test
-    fun `given correct hashed password, hashPassword must pass verification checkPassword`() {
+    fun `given password and its hash matchPasswords must return true`() {
         val passwordService = PasswordServiceImpl(mock())
         val password = "secret"
 
@@ -65,6 +65,11 @@ class PasswordHashingTest {
         val valid = passwordService.matchPasswords(password, hashedPassword)
 
         assertTrue { valid }
+    }
+
+    @Test
+    fun `Negative given password and its hash matchPasswords must return true`() {
+        TODO()
     }
 
 }

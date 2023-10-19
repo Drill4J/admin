@@ -37,7 +37,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given 2 users from env config, findAllNotDeleted returns these 2 users`() {
+    fun `given users from env config, findAllNotDeleted must return all users not deleted users`() {
         val repository = getRepositoryWithUsers(USER1, USER2)
 
         val users = repository.findAllNotDeleted()
@@ -48,7 +48,12 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given hash of username as id of user, findById returns that user`() {
+    fun `Negative given hash of username as id of user, findById must return that user`() {
+        TODO()
+    }
+
+    @Test
+    fun `given username hash, findById must return the respective user`() {
         val repository = getRepositoryWithUsers(USER1, USER2)
         val user = repository.findById("user".hashCode())
         assertNotNull(user)
@@ -56,7 +61,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given 'user' as a username of user, findByUsername returns user with 'user' username`() {
+    fun `given username findByUsername must return the respective user`() {
         val repository = getRepositoryWithUsers(USER1, USER2)
         val user = repository.findByUsername("user")
         assertNotNull(user)
@@ -65,9 +70,12 @@ class EnvRepositoryTest {
 
     private fun getRepositoryWithUsers(vararg users: String): EnvUserRepository {
         whenever(passwordService.hashPassword(any())).thenAnswer { "hash" }
-        val repository = EnvUserRepository(MapApplicationConfig().apply {
-            put("drill.users", users.toList())
-        }, passwordService)
+        val repository = EnvUserRepository(
+            MapApplicationConfig().apply {
+                put("drill.users", users.toList())
+            },
+            passwordService
+        )
         return repository
     }
 }

@@ -73,8 +73,8 @@ fun Route.signUpRoute() {
         authService.signUp(payload)
         call.respond(
             HttpStatusCode.OK, MessageView(
-                "User registered successfully. " +
-                        "Please contact the administrator for system access."
+                "User registration request accepted. " +
+                        "Please contact the administrator to confirm the registration."
             )
         )
     }
@@ -97,11 +97,12 @@ fun Route.loginRoute() {
     val tokenService by di().instance<TokenService>()
 
     post<Login> {
-        val loginPayload = call.receive<UserData>()
-        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
-        val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenView(token))
+        call.respondRedirect("/sign-in", true)
+//        val loginPayload = call.receive<UserData>()
+//        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
+//        val token = tokenService.issueToken(userView)
+//        call.response.header(HttpHeaders.Authorization, token)
+//        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 
