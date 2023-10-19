@@ -48,6 +48,10 @@ internal object AsyncJobDispatcher : CoroutineScope {
         Executors.newFixedThreadPool(availableProcessors).asCoroutineDispatcher() + SupervisorJob()
 }
 
+//TODO move to config
+private const val SAVE_DATA_JOB_INTERVAL_MS = 10000L
+private const val METRICS_JOB_INTERVAL_MS = 30000L
+
 /**
  * The all information related to the plugin
  *
@@ -76,17 +80,18 @@ class Plugin(
     }
 
     val agentId = agentInfo.id
+
     val buildVersion = agentInfo.buildVersion
 
     internal val logger = logger(agentId)
 
-    internal val runtimeConfig = RuntimeConfig(id)
-
     internal val state: AgentState get() = _state.value!!
+
+    val agentKey = AgentKey(agentId, buildVersion)
 
     val sessionHolder: SessionHolder get() = state.sessionHolder
 
-    val agentKey = AgentKey(agentId, buildVersion)
+    private val runtimeConfig = RuntimeConfig(id)
 
     private val _state = atomic<AgentState?>(null)
 
@@ -429,15 +434,26 @@ class Plugin(
      * That job each 10 seconds will save all sessions from SessionHolder to DB
      * @features  Session saving
      */
-    private fun sessionFinishingJob() = CoroutineScope(Dispatchers.Default).launch {
+    private fun sessionFinishingJob() = AsyncJobDispatcher.launch {
         while (isActive) {
-            delay(10000)
+            delay(SAVE_DATA_JOB_INTERVAL_MS)
             calculateAndSendBuildCoverage()
             sessionHolder.sessions.values.forEach { activeSession ->
                 state.finishSession(activeSession.id)
             }
         }
     }
+
+    /**
+     * That job each 30 seconds recalculate build coverage
+     */
+    private fun calculateMetricsJob() = AsyncJobDispatcher.launch {
+        while (isActive) {
+            delay(METRICS_JOB_INTERVAL_MS)
+            calculateAndSendBuildCoverage()
+        }
+    }
+
 
     /**
      * Initialize the plugin.
@@ -456,6 +472,7 @@ class Plugin(
         sendFilters()
         sendActiveSessions()
         sessionFinishingJob()
+        calculateMetricsJob()
     }
 
     /**
@@ -569,7 +586,7 @@ class Plugin(
      * Recalculate test coverage data by session and send it to the UI
      * @features Session saving
      */
-    internal suspend fun calculateAndSendBuildCoverage() {
+    private suspend fun calculateAndSendBuildCoverage() {
         val sessions = (sessionHolder.sessions.values).asSequence()
         sessions.calculateAndSendBuildCoverage(state.coverContext())
     }
