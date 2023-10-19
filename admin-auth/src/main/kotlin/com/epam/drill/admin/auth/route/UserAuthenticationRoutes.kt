@@ -106,6 +106,7 @@ fun Route.loginRoute() {
 }
 
 @Serializable
+@Deprecated("use LoginPayload")
 data class UserData(
     val name: String,
     val password: String,
