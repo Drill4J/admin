@@ -65,7 +65,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given correct username and password, 'POST sign-in' must return an access token`() {
+    fun `given correct username and password 'POST sign-in' must return an access token`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("secret", "hash"))
@@ -86,7 +86,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given unique username, 'POST sign-up' must succeed and user must be created`() {
+    fun `given unique username 'POST sign-up' must succeed and user must be created`() {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))

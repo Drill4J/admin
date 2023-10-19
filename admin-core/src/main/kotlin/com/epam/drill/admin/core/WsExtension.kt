@@ -63,7 +63,7 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication(tokenServ
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.verifyToken(token: String, tokenService: TokenService,) {
+private suspend fun DefaultWebSocketServerSession.verifyToken(token: String, tokenService: TokenService) {
 
     try {
         tokenService.verifyToken(token)

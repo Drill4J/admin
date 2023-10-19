@@ -93,7 +93,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier and role, 'PUT users {id}' must change user role in repository and return changed user`() {
+    fun `given user identifier and role 'PUT users {id}' must change user role in repository and return changed user`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -112,7 +112,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'DELETE users {id}' must delete that user in repository`() {
+    fun `given user identifier 'DELETE users {id}' must delete that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -127,7 +127,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users {id} block' must block that user in repository`() {
+    fun `given user identifier 'PATCH users {id} block' must block that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
@@ -142,7 +142,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users {id} unblock' must unblock that user in repository`() {
+    fun `given user identifier 'PATCH users {id} unblock' must unblock that user in repository`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
@@ -157,7 +157,7 @@ class UserManagementTest {
     }
 
     @Test
-    fun `given user identifier, 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
+    fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
         whenever(passwordService.generatePassword())

@@ -76,31 +76,31 @@ class PasswordHashingTest {
 
 class ValidatePasswordTest {
     @Test
-    fun `given less than 10 characters password, validatePassword must fail`() {
+    fun `given less than 10 characters password validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(minLength = 10)
         assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("less10") }
     }
 
     @Test
-    fun `given password without upper case characters, validatePassword must fail`() {
+    fun `given password without upper case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveUppercase = true)
         assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("onlylowercase") }
     }
 
     @Test
-    fun `given password without lower case characters, validatePassword must fail`() {
+    fun `given password without lower case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveLowercase = true)
         assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("ONLYUPPERCASE") }
     }
 
     @Test
-    fun `given password without digits characters, validatePassword must fail`() {
+    fun `given password without digits characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveDigit = true)
         assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("AlphabeticCharsOnly") }
     }
 
     @Test
-    fun `given password satisfying all requirements, validatePassword must succeed`() {
+    fun `given password satisfying all requirements validatePassword must succeed`() {
         val validator = PasswordGeneratorImpl(
             minLength = 10,
             mustHaveUppercase = true,
@@ -111,7 +111,7 @@ class ValidatePasswordTest {
     }
 
     @Test
-    fun `given password with non-latin characters, validatePassword must succeed`() {
+    fun `given password with non-latin characters validatePassword must succeed`() {
         val validator = PasswordGeneratorImpl(mustHaveLowercase = true, mustHaveUppercase = true)
         assertDoesNotThrow { validator.validatePasswordRequirements("Котик123") }
     }
