@@ -67,11 +67,6 @@ class PasswordHashingTest {
         assertTrue { valid }
     }
 
-    @Test
-    fun `Negative given password and its hash matchPasswords must return true`() {
-        TODO()
-    }
-
 }
 
 class ValidatePasswordTest {

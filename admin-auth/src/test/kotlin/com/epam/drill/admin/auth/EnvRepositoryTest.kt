@@ -48,11 +48,6 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `Negative given hash of username as id of user, findById must return that user`() {
-        TODO()
-    }
-
-    @Test
     fun `given username hash, findById must return the respective user`() {
         val repository = getRepositoryWithUsers(USER1, USER2)
         val user = repository.findById("user".hashCode())
