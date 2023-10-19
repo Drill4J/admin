@@ -97,12 +97,11 @@ fun Route.loginRoute() {
     val tokenService by di().instance<TokenService>()
 
     post<Login> {
-        call.respondRedirect("/sign-in", true)
-//        val loginPayload = call.receive<UserData>()
-//        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
-//        val token = tokenService.issueToken(userView)
-//        call.response.header(HttpHeaders.Authorization, token)
-//        call.respond(HttpStatusCode.OK, TokenView(token))
+        val loginPayload = call.receive<UserData>()
+        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
+        val token = tokenService.issueToken(userView)
+        call.response.header(HttpHeaders.Authorization, token)
+        call.respond(HttpStatusCode.OK, TokenView(token))
     }
 }
 
