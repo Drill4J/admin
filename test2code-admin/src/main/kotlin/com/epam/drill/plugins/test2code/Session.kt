@@ -55,7 +55,6 @@ class TestSession(
     val isRealtime: Boolean = false,
     val testName: String? = null,
     private val labels: Set<Label> = emptySet(),
-    var isFinished: Boolean = false,
 ) : Session() {
 
     override val tests: Set<TestOverview>

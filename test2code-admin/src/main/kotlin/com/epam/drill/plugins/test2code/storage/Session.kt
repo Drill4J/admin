@@ -43,7 +43,6 @@ internal class StoredSession(
     val testName: String,
     val tests: Set<TestOverview>,
     var probes: List<ExecClassData>,
-    val isFinished : Boolean
 )
 
 internal suspend fun StoreClient.loadSessions(
@@ -56,7 +55,6 @@ internal suspend fun StoreClient.loadSessions(
             id = stored.id,
             testType = stored.testType,
             testName = stored.testName,
-            isFinished = stored.isFinished
         ).also { session ->
             session.addAll(stored.probes)
         }
@@ -77,7 +75,6 @@ internal suspend fun StoreClient.storeSession(
                 tests = session.tests,
                 testType = session.testType,
                 testName = session.testName.orEmpty(),
-                isFinished = session.isFinished
             )
         )
     }
