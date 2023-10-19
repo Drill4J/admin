@@ -52,7 +52,6 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
-//    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("org.flywaydb:flyway-core:$flywaydbVersion")
     implementation("org.mapdb:mapdb:$mapdbVersion") {
