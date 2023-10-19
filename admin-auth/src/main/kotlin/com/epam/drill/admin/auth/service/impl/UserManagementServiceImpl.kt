@@ -37,9 +37,9 @@ class UserManagementServiceImpl(
         return findUserOrThrow(userId).toView()
     }
 
-    override fun updateUser(userId: Int, form: UserPayload): UserView {
+    override fun updateUser(userId: Int, payload: UserPayload): UserView {
         val entity = findUserOrThrow(userId)
-        entity.role = form.role.name
+        entity.role = payload.role.name
         userRepository.update(entity)
         return entity.toView()
     }

@@ -69,8 +69,8 @@ fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
     post<SignUp> {
-        val form = call.receive<RegistrationPayload>()
-        authService.signUp(form)
+        val payload = call.receive<RegistrationPayload>()
+        authService.signUp(payload)
         call.respond(
             HttpStatusCode.OK, MessageView(
                 "User registered successfully. " +

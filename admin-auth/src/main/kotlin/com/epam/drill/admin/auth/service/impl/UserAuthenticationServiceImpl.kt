@@ -31,27 +31,27 @@ class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService
 ) : UserAuthenticationService {
-    override fun signIn(form: LoginPayload): UserView {
-        val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
-        if (!passwordService.matchPasswords(form.password, entity.passwordHash))
+    override fun signIn(payload: LoginPayload): UserView {
+        val entity = userRepository.findByUsername(payload.username) ?: throw IncorrectCredentialsException()
+        if (!passwordService.matchPasswords(payload.password, entity.passwordHash))
             throw IncorrectCredentialsException()
         return entity.toView()
     }
 
-    override fun signUp(form: RegistrationPayload) {
-        if (userRepository.findByUsername(form.username) != null)
-            throw UserAlreadyExistsException(form.username)
-        passwordService.validatePasswordRequirements(form.password)
-        val passwordHash = passwordService.hashPassword(form.password)
-        userRepository.create(form.toEntity(passwordHash))
+    override fun signUp(payload: RegistrationPayload) {
+        if (userRepository.findByUsername(payload.username) != null)
+            throw UserAlreadyExistsException(payload.username)
+        passwordService.validatePasswordRequirements(payload.password)
+        val passwordHash = passwordService.hashPassword(payload.password)
+        userRepository.create(payload.toEntity(passwordHash))
     }
 
-    override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordPayload) {
+    override fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload) {
         val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
-        if (!passwordService.matchPasswords(form.oldPassword, entity.passwordHash))
+        if (!passwordService.matchPasswords(payload.oldPassword, entity.passwordHash))
             throw IncorrectPasswordException()
-        passwordService.validatePasswordRequirements(form.newPassword)
-        entity.passwordHash = passwordService.hashPassword(form.newPassword)
+        passwordService.validatePasswordRequirements(payload.newPassword)
+        entity.passwordHash = passwordService.hashPassword(payload.newPassword)
         userRepository.update(entity)
     }
 
