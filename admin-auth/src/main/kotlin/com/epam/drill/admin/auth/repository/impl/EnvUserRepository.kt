@@ -42,7 +42,7 @@ class EnvUserRepository(
         users = getUsersFromEnv()
             .map { Json.decodeFromString(UserConfig.serializer(), it) }
             .map { it.toEntity() }
-            .associateBy { it.id!! }
+            .associateBy { it.id!! } //id cannot be null because is always filled by toEntity() function
             .toMap()
     }
 

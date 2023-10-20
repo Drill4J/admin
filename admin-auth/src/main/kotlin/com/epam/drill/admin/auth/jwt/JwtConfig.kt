@@ -72,9 +72,9 @@ internal fun Payload.toPrincipal(): User {
     )
 }
 
-private fun ApplicationConfigValue.getDuration() = "_".let { k ->
-    mapOf(k to getString()).let(ConfigFactory::parseMap).getDuration(k)
-}.toKotlinDuration()
+private fun ApplicationConfigValue.getDuration(): Duration {
+    return Duration.parse(getString())
+}
 
 
 private fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()

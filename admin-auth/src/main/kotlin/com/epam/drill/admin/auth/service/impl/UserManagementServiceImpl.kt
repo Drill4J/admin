@@ -76,8 +76,7 @@ class UserManagementServiceImpl(
 private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
     return CredentialsView(
         username = this.username,
-        password = newPassword,
-        role = Role.valueOf(this.role)
+        password = newPassword
     )
 }
 
