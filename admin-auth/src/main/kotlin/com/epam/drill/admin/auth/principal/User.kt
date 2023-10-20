@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.auth.principal
 
-import com.epam.drill.admin.auth.principal.Role
 import io.ktor.auth.*
 
 data class User(
