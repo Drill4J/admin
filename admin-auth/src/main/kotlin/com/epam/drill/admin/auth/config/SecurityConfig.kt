@@ -27,11 +27,10 @@ import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import org.kodein.di.*
 
-val securityDiConfig: DI.Builder.(Application) -> Unit
-    get() = { _ ->
-        bindJwt()
-        bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
-    }
+val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
+    bindJwt()
+    bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
+}
 
 class SecurityConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()

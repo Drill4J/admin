@@ -86,7 +86,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
-        whenever(userRepository.findByUsername("guest"))
+        whenever(userRepository.findByUsername("foobar"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
             .thenReturn("hash")
@@ -96,13 +96,13 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationPayload(username = "guest", password = "secret")
+                val form = RegistrationPayload(username = "foobar", password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verify(userRepository).create(
                     UserEntity(
-                        username = "guest",
+                        username = "foobar",
                         passwordHash = "hash",
                         role = Role.UNDEFINED.name
                     )

@@ -154,10 +154,6 @@ fun Application.module() {
                 userManagementRoutes()
             }
         }
-
-        static {
-            resources("public")
-        }
     }
 }
 

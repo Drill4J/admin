@@ -85,7 +85,7 @@ internal class DrillServerWsTest {
                     if (app.drillCacheType == "mapdb") {
                         bind<CacheService>() with eagerSingleton { MapDBCacheService() }
                     } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<SessionStorage>() with eagerSingleton { SessionStorage() }
+                    bind<SessionStorage>() with eagerSingleton { sessionStorage }
                     bind<NotificationManager>() with eagerSingleton {
                         notificationsManager = NotificationManager(di)
                         notificationsManager
@@ -111,12 +111,13 @@ internal class DrillServerWsTest {
         TestDatabaseContainer.clearData()
     }
 
+    private val sessionStorage = SessionStorage()
+
     @Test
     fun testConversation() {
         withTestApplication(testApp) {
             val token = requestToken()
             handleWebSocketConversation("/ws/drill-admin-socket?token=${token}") { incoming, outgoing ->
-                val sessionStorage by di().instance<SessionStorage>()
                 assertEquals(0, sessionStorage.sessionCount())
                 assertEquals(0, sessionStorage.destinationCount())
                 outgoing.send(uiMessage(Subscribe(locations.href(PainRoutes.MyTopic()), "")))
@@ -135,9 +136,8 @@ internal class DrillServerWsTest {
                 assertEquals(2, sessionStorage.destinationCount())
             }
         }
-//        TODO find out why sessions are not closed after the engine shuts down
-//        assertEquals(0, sessionStorage.destinationCount())
-//        assertEquals(0, sessionStorage.sessionCount())
+        assertEquals(0, sessionStorage.destinationCount())
+        assertEquals(0, sessionStorage.sessionCount())
     }
 
     @Test

@@ -28,11 +28,10 @@ import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import io.ktor.application.*
 import org.kodein.di.*
 
-val usersDiConfig: DI.Builder.(Application) -> Unit
-    get() = { _ ->
-        userRepositoriesConfig()
-        userServicesConfig()
-    }
+val usersDiConfig: DI.Builder.(Application) -> Unit = { _ ->
+    userRepositoriesConfig()
+    userServicesConfig()
+}
 
 fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with eagerSingleton {
@@ -47,7 +46,10 @@ fun DI.Builder.userServicesConfig() {
 }
 
 fun DI.Builder.userRepositoriesConfig() {
-    bind<UserRepository>() with eagerSingleton { EnvUserRepository(
-        env = instance<Application>().environment.config,
-        passwordService = instance()) }
+    bind<UserRepository>() with eagerSingleton {
+        EnvUserRepository(
+            env = instance<Application>().environment.config,
+            passwordService = instance()
+        )
+    }
 }
