@@ -138,10 +138,6 @@ fun Application.module() {
     routing {
         userAuthenticationRoutes()
         userManagementRoutes()
-
-        static {
-            resources("public")
-        }
     }
 }
 
