@@ -53,10 +53,6 @@ fun StatusPages.Configuration.authStatusPages() {
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
     }
-    exception<IncorrectCredentialsException> { cause ->
-        logger.trace(cause) { "401 Username or password is incorrect" }
-        call.unauthorizedError(cause)
-    }
     exception<UserValidationException> { cause ->
         logger.trace(cause) { "400 User data is invalid" }
         call.validationError(cause)
