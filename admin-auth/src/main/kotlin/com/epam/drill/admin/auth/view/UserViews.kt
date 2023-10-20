@@ -29,7 +29,6 @@ data class UserView(
 data class CredentialsView(
     val username: String,
     val password: String,
-    val role: Role
 )
 
 @Serializable
