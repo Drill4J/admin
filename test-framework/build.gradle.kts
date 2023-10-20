@@ -38,7 +38,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.ktor:ktor-server-test-host:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
-    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("org.apache.bcel:bcel:$bcelVersion")
     implementation("org.mapdb:mapdb:$mapdbVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
@@ -54,6 +54,7 @@ dependencies {
     api(project(":dsm"))
     api(project(":dsm-test-framework"))
     api(project(":admin-core"))
+    api(project(":admin-auth"))
 }
 
 kotlin.sourceSets.all {

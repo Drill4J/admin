@@ -29,10 +29,10 @@ import kotlin.test.*
 //TODO move under com.epam.drill.e2e
 
 fun TestApplicationEngine.requestToken(): String {
-    val loginUrl = toApiUri(ApiRoot().let { ApiRoot.Login(it) })
+    val loginUrl = "/api/login"
     val token = handleRequest(HttpMethod.Post, loginUrl) {
         addHeader(HttpHeaders.ContentType, "${ContentType.Application.Json}")
-        setBody(UserData.serializer() stringify UserData("guest", ""))
+        setBody(UserData.serializer() stringify UserData("guest", "guest"))
     }.run { response.headers[HttpHeaders.Authorization] }
     assertNotNull(token, "token can't be empty")
     return token

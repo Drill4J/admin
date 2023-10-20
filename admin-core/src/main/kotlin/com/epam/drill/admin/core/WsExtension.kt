@@ -18,8 +18,7 @@ package com.epam.drill.admin.core
 import com.auth0.jwt.exceptions.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.jwt.config.*
-import com.epam.drill.common.*
+import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -31,12 +30,12 @@ private val logger = KotlinLogging.logger {}
 
 fun Route.authWebSocket(
     path: String,
-    jwtConfig: JwtConfig,
+    tokenService: TokenService,
     protocol: String? = null,
     handler: suspend DefaultWebSocketServerSession.() -> Unit,
 ) {
     webSocket(path, protocol) {
-        socketAuthentication(jwtConfig)
+        socketAuthentication(tokenService)
         try {
             handler(this)
         } catch (ex: Exception) {
@@ -45,7 +44,7 @@ fun Route.authWebSocket(
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.socketAuthentication(jwtConfig: JwtConfig) {
+private suspend fun DefaultWebSocketServerSession.socketAuthentication(tokenService: TokenService) {
     val token = call.parameters["token"]
 
     if (token == null) {
@@ -54,20 +53,20 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication(jwtConfig
         close()
         return
     }
-    verifyToken(token, jwtConfig)
+    verifyToken(token, tokenService)
 
     launch {
         while (true) {
             delay(10_000)
-            verifyToken(token, jwtConfig)
+            verifyToken(token, tokenService)
         }
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.verifyToken(token: String, jwtConfig: JwtConfig,) {
+private suspend fun DefaultWebSocketServerSession.verifyToken(token: String, tokenService: TokenService) {
 
     try {
-        jwtConfig.verifier.verify(token)
+        tokenService.verifyToken(token)
     } catch (ex: JWTVerificationException) {
         when (ex) {
             is TokenExpiredException -> Unit //Ignore, since we don't have token refreshing 

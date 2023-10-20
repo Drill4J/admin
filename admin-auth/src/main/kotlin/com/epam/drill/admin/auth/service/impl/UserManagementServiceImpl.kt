@@ -15,12 +15,14 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.exception.UserNotFoundException
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.EditUserPayload
 import com.epam.drill.admin.auth.view.UserView
 
 class UserManagementServiceImpl(
@@ -28,43 +30,60 @@ class UserManagementServiceImpl(
     private val passwordService: PasswordService
 ) : UserManagementService {
     override fun getUsers(): List<UserView> {
-        return userRepository.findAll().map { it.toView() }
+        return userRepository.findAllNotDeleted().map { it.toView() }
     }
 
     override fun getUser(userId: Int): UserView {
-        return userRepository.findById(userId)?.toView() ?: throw UserNotFoundException()
+        return findUser(userId).toView()
     }
 
-    override fun updateUser(userId: Int, form: UserForm): UserView {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
-        entity.role = form.role.name
-        userRepository.update(entity)
-        return entity.toView()
+    override fun updateUser(userId: Int, payload: EditUserPayload): UserView {
+        val userEntity = findUser(userId)
+        userEntity.role = payload.role.name
+        userRepository.update(userEntity)
+        return userEntity.toView()
     }
 
     override fun deleteUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
-        entity.deleted = true
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.deleted = true
+        userRepository.update(userEntity)
     }
 
     override fun blockUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
-        entity.blocked = true
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.blocked = true
+        userRepository.update(userEntity)
     }
 
     override fun unblockUser(userId: Int) {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
-        entity.blocked = false
-        userRepository.update(entity)
+        val userEntity = findUser(userId)
+        userEntity.blocked = false
+        userRepository.update(userEntity)
     }
 
     override fun resetPassword(userId: Int): CredentialsView {
-        val entity = userRepository.findById(userId) ?: throw UserNotFoundException()
+        val userEntity = findUser(userId)
         val newPassword = passwordService.generatePassword()
-        entity.passwordHash = passwordService.hashPassword(newPassword)
-        userRepository.update(entity)
-        return entity.toCredentialsView(newPassword)
+        userEntity.passwordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(userEntity)
+        return userEntity.toCredentialsView(newPassword)
     }
+
+    private fun findUser(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
+}
+
+private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
+    return CredentialsView(
+        username = this.username,
+        password = newPassword
+    )
+}
+
+private fun UserEntity.toView(): UserView {
+    return UserView(
+        username = this.username,
+        role = Role.valueOf(this.role),
+        blocked = this.blocked
+    )
 }

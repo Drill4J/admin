@@ -19,9 +19,9 @@ import com.epam.drill.admin.auth.view.*
 import io.ktor.auth.*
 
 interface UserAuthenticationService {
-    fun signIn(form: LoginForm): TokenResponse
+    fun signIn(payload: LoginPayload): UserView
 
-    fun signUp(form: RegistrationForm)
+    fun signUp(payload: RegistrationPayload)
 
-    fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm)
+    fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload)
 }

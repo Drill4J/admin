@@ -15,46 +15,60 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.exception.IncorrectCredentialsException
 import com.epam.drill.admin.auth.exception.IncorrectPasswordException
 import com.epam.drill.admin.auth.exception.UserAlreadyExistsException
 import com.epam.drill.admin.auth.exception.UserNotFoundException
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
-import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.view.*
 import io.ktor.auth.*
 
 class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService,
-    private val tokenService: TokenService
+    private val passwordService: PasswordService
 ) : UserAuthenticationService {
-    override fun signIn(form: LoginForm): TokenResponse {
-        val entity = userRepository.findByUsername(form.username) ?: throw IncorrectCredentialsException()
-        if (!passwordService.checkPassword(form.password, entity.passwordHash))
+    override fun signIn(payload: LoginPayload): UserView {
+        val userEntity = userRepository.findByUsername(payload.username) ?: throw IncorrectCredentialsException()
+        if (!passwordService.matchPasswords(payload.password, userEntity.passwordHash))
             throw IncorrectCredentialsException()
-        val token = tokenService.issueToken(entity.toView())
-        return TokenResponse(token)
+        return userEntity.toView()
     }
 
-    override fun signUp(form: RegistrationForm) {
-        if (userRepository.findByUsername(form.username) != null)
-            throw UserAlreadyExistsException(form.username)
-        passwordService.validatePassword(form.password)
-        val passwordHash = passwordService.hashPassword(form.password)
-        userRepository.create(form.toEntity(passwordHash))
+    override fun signUp(payload: RegistrationPayload) {
+        if (userRepository.findByUsername(payload.username) != null)
+            throw UserAlreadyExistsException(payload.username)
+        passwordService.validatePasswordRequirements(payload.password)
+        val passwordHash = passwordService.hashPassword(payload.password)
+        userRepository.create(payload.toUserEntity(passwordHash))
     }
 
-    override fun updatePassword(principal: UserIdPrincipal, form: ChangePasswordForm) {
-        val entity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
-        if (!passwordService.checkPassword(form.oldPassword, entity.passwordHash))
+    override fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload) {
+        val userEntity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
+        if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw IncorrectPasswordException()
-        passwordService.validatePassword(form.newPassword)
-        entity.passwordHash = passwordService.hashPassword(form.newPassword)
-        userRepository.update(entity)
+        passwordService.validatePasswordRequirements(payload.newPassword)
+        userEntity.passwordHash = passwordService.hashPassword(payload.newPassword)
+        userRepository.update(userEntity)
     }
 
 }
 
+private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
+    return UserEntity(
+        username = this.username,
+        passwordHash = passwordHash,
+        role = Role.UNDEFINED.name,
+    )
+}
+
+private fun UserEntity.toView(): UserView {
+    return UserView(
+        username = this.username,
+        role = Role.valueOf(this.role),
+        blocked = this.blocked
+    )
+}

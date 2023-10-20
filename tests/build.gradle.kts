@@ -43,7 +43,8 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:$kotlinxCollectionsVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
-    testImplementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    //    testImplementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    testImplementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-auth:$ktorVersion")
     testImplementation("io.ktor:ktor-auth-jwt:$ktorVersion")
@@ -60,6 +61,7 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
 
     testImplementation(project(":admin-core"))
+    testImplementation(project(":admin-auth"))
     testImplementation(project(":common"))
     testImplementation(project(":ktor-swagger"))
     testImplementation(project(":plugin-api-admin"))

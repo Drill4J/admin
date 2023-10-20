@@ -15,19 +15,41 @@
  */
 package com.epam.drill.admin.auth.view
 
-import com.epam.drill.admin.auth.model.Role
-import com.epam.drill.admin.auth.model.UserStatus
+import com.epam.drill.admin.auth.entity.Role
 import kotlinx.serialization.*
 
 @Serializable
 data class UserView(
     val username: String,
     val role: Role,
-    val status: UserStatus
+    val blocked: Boolean
 )
 
 @Serializable
-data class UserForm(val role: Role)
+data class CredentialsView(
+    val username: String,
+    val password: String,
+)
 
 @Serializable
-data class CredentialsView(val username: String, val password: String, val role: Role)
+data class EditUserPayload(
+    val role: Role
+)
+
+@Serializable
+data class LoginPayload(
+    val username: String,
+    val password: String
+)
+
+@Serializable
+data class RegistrationPayload(
+    val username: String,
+    val password: String
+)
+
+@Serializable
+data class ChangePasswordPayload(
+    val oldPassword: String,
+    val newPassword: String
+)

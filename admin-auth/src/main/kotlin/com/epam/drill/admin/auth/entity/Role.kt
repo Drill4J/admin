@@ -13,22 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.jwt.user.source
+package com.epam.drill.admin.auth.entity
 
-import com.epam.drill.admin.jwt.user.*
-import io.ktor.auth.*
-
-class UserSourceImpl : UserSource {
-
-    val testUser = User(1, System.getenv("DRILL_USERNAME") ?: "guest", System.getenv("DRILL_PASSWORD") ?: "", "admin")
-
-    override fun findUserById(id: Int): User? = users[id]
-
-    override fun findUserByCredentials(
-        credential: UserPasswordCredential,
-    ): User? = users.values.find { it.name == credential.name && it.password == credential.password }
-
-    private val users = listOf(testUser).associateBy(User::id)
-
-
+enum class Role {
+    USER,
+    ADMIN,
+    UNDEFINED
 }

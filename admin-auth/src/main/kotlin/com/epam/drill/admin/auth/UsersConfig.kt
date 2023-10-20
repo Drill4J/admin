@@ -16,42 +16,40 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
-import com.epam.drill.admin.auth.route.UserAuthenticationRoutes
-import com.epam.drill.admin.auth.route.UsersRoutes
+import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.UserManagementService
+import com.epam.drill.admin.auth.service.impl.PasswordGeneratorImpl
 import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import io.ktor.application.*
 import org.kodein.di.*
 
-val usersConfig: DI.Builder.(Application) -> Unit
-    get() = { _ ->
-        userRepositoriesConfig()
-        userServicesConfig()
-        userRoutesConfig()
-    }
-
-fun DI.Builder.userRoutesConfig() {
-    bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
-    bind<UsersRoutes>() with eagerSingleton { UsersRoutes(di) }
+val usersDiConfig: DI.Builder.(Application) -> Unit = { _ ->
+    userRepositoriesConfig()
+    userServicesConfig()
 }
 
 fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with eagerSingleton {
         UserAuthenticationServiceImpl(
             instance(),
-            instance(),
             instance()
         )
     }
     bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-    bind<PasswordService>() with eagerSingleton { PasswordServiceImpl() }
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl() }
+    bind<PasswordService>() with singleton { PasswordServiceImpl(instance()) }
 }
 
 fun DI.Builder.userRepositoriesConfig() {
-    bind<UserRepository>() with eagerSingleton { UserRepositoryImpl() }
+    bind<UserRepository>() with eagerSingleton {
+        EnvUserRepository(
+            env = instance<Application>().environment.config,
+            passwordService = instance()
+        )
+    }
 }

@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.jwt.user.source
+package com.epam.drill.admin.auth.principal
 
-import com.epam.drill.admin.jwt.user.*
+import com.epam.drill.admin.auth.entity.Role
 import io.ktor.auth.*
 
-interface UserSource {
-    fun findUserById(id: Int): User?
-
-    fun findUserByCredentials(credential: UserPasswordCredential): User?
-}
+data class User(
+    val username: String,
+    val role: Role
+) : Principal

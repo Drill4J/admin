@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.auth.service
-interface PasswordService {
+
+interface PasswordService: PasswordGenerator {
     fun hashPassword(password: String): String
-    fun checkPassword(candidate: String, hashed: String): Boolean
+    fun matchPasswords(candidate: String, hashed: String): Boolean
+}
+
+interface PasswordGenerator {
     fun generatePassword(): String
-    fun validatePassword(password: String)
+    fun validatePasswordRequirements(password: String)
 }

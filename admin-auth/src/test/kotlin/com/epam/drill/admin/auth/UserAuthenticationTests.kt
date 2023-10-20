@@ -16,17 +16,18 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.UserAuthenticationRoutes
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
-import com.epam.drill.admin.auth.view.ChangePasswordForm
-import com.epam.drill.admin.auth.view.LoginForm
-import com.epam.drill.admin.auth.view.RegistrationForm
-import com.epam.drill.admin.auth.view.TokenResponse
+import com.epam.drill.admin.auth.view.ChangePasswordPayload
+import com.epam.drill.admin.auth.view.LoginPayload
+import com.epam.drill.admin.auth.view.RegistrationPayload
+import com.epam.drill.admin.auth.view.TokenView
+import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
@@ -41,6 +42,12 @@ import org.mockito.kotlin.whenever
 import java.util.Base64
 import kotlin.test.*
 
+val USER_GUEST
+    get() = UserEntity(id = 1, username = "guest", passwordHash = "hash", role = "UNDEFINED").copy()
+
+/**
+ * Testing /sign-in, /sign-up and /reset-password routers and UserAuthenticationServiceImpl
+ */
 class UserAuthenticationTest {
 
     @Mock
@@ -58,29 +65,29 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given username and password 'guest' sign-in results should have token`() {
+    fun `given correct username and password 'POST sign-in' must return an access token`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
-        whenever(passwordService.checkPassword("secret", "hash"))
+            .thenReturn(USER_GUEST)
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = LoginForm(username = "guest", password = "secret")
-                setBody(Json.encodeToString(LoginForm.serializer(), form))
+                val payload = LoginPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), payload))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response = Json.decodeFromString(TokenResponse.serializer(), response.content!!)
+                val response = Json.decodeFromString(TokenView.serializer(), assertNotNull(response.content))
                 assertEquals("token", response.token)
             }
         }
     }
 
     @Test
-    fun `given username and password 'guest' sign-up results should return OK status`() {
-        whenever(userRepository.findByUsername("guest"))
+    fun `given unique username 'POST sign-up' must succeed and user must be created`() {
+        whenever(userRepository.findByUsername("foobar"))
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
             .thenReturn("hash")
@@ -90,13 +97,13 @@ class UserAuthenticationTest {
         withTestApplication(config()) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationForm(username = "guest", password = "secret")
-                setBody(Json.encodeToString(RegistrationForm.serializer(), form))
+                val form = RegistrationPayload(username = "foobar", password = "secret")
+                setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verify(userRepository).create(
                     UserEntity(
-                        username = "guest",
+                        username = "foobar",
                         passwordHash = "hash",
                         role = Role.UNDEFINED.name
                     )
@@ -106,10 +113,10 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given correct old password update-password results should return OK status`() {
+    fun `given correct old password 'POST update-password' must succeed`() {
         whenever(userRepository.findByUsername("guest"))
-            .thenReturn(userGuest.copy())
-        whenever(passwordService.checkPassword("secret", "hash"))
+            .thenReturn(USER_GUEST)
+        whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(passwordService.hashPassword("secret2"))
             .thenReturn("hash2")
@@ -118,28 +125,39 @@ class UserAuthenticationTest {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
-                val form = ChangePasswordForm(oldPassword = "secret", newPassword = "secret2")
-                setBody(Json.encodeToString(ChangePasswordForm.serializer(), form))
+                val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(userGuest.copy(passwordHash = "hash2"))
+                verify(userRepository).update(USER_GUEST.copy(passwordHash = "hash2"))
             }
         }
     }
 
-    private fun config() = testApp {
-        bind<UserRepository>() with eagerSingleton { userRepository }
-        bind<PasswordService>() with eagerSingleton { passwordService }
-        bind<TokenService>() with eagerSingleton { tokenService }
-        bind<UserAuthenticationService>() with eagerSingleton {
-            UserAuthenticationServiceImpl(
-                instance(),
-                instance(),
-                instance()
-            )
+    private fun config() = testApp(
+        authentication = {
+            //have to use "jwt" for basic auth, because that name is required for this route in production code
+            basic("jwt") {
+                validate {
+                    UserIdPrincipal(it.name)
+                }
+            }
+        },
+        routing = {
+            userAuthenticationRoutes()
+        },
+        bindings = {
+            bind<UserRepository>() with eagerSingleton { userRepository }
+            bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<TokenService>() with eagerSingleton { tokenService }
+            bind<UserAuthenticationService>() with eagerSingleton {
+                UserAuthenticationServiceImpl(
+                    instance(),
+                    instance()
+                )
+            }
         }
-        bind<UserAuthenticationRoutes>() with eagerSingleton { UserAuthenticationRoutes(di) }
-    }
+    )
 
     private fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
         val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))

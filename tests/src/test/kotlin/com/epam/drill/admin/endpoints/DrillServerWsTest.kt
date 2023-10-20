@@ -18,6 +18,9 @@
 package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
+import com.epam.drill.admin.auth.securityDiConfig
+import com.epam.drill.admin.auth.usersDiConfig
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
@@ -25,23 +28,23 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.*
-import com.epam.drill.admin.endpoints.system.*
-import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.storage.*
 import com.epam.drill.admin.websocket.*
+import com.epam.drill.e2e.GUEST_USER
 import com.epam.drill.e2e.testPluginServices
 import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
+import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.ContentType.Application.Json
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import io.ktor.routing.*
 import io.ktor.server.testing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -49,6 +52,7 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI as di
 import kotlin.test.*
 
 
@@ -56,9 +60,11 @@ internal class DrillServerWsTest {
 
     private lateinit var notificationsManager: NotificationManager
     private val testApp: Application.() -> Unit = {
+        (environment.config as MapApplicationConfig).apply {
+            put("drill.users", listOf(GUEST_USER))
+        }
         install(Locations)
         install(WebSockets)
-        installAuthentication()
 
         install(ContentNegotiation) {
             converters()
@@ -68,7 +74,9 @@ internal class DrillServerWsTest {
 
         TestDatabaseContainer.startOnce()
         hikariConfig = TestDatabaseContainer.createDataSource()
-        kodeinApplication(AppBuilder {
+        kodein {
+            withKModule { kodeinModule("securityConfig", securityDiConfig) }
+            withKModule { kodeinModule("usersConfig", usersDiConfig) }
             withKModule { kodeinModule("pluginServices", testPluginServices()) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
             withKModule {
@@ -83,7 +91,6 @@ internal class DrillServerWsTest {
                         notificationsManager
                     }
                     bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
-                    bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
                     bind<AgentManager>() with eagerSingleton { AgentManager(di) }
                     bind<BuildStorage>() with eagerSingleton { BuildStorage() }
                     bind<BuildManager>() with eagerSingleton { BuildManager(di) }
@@ -92,7 +99,11 @@ internal class DrillServerWsTest {
                 }
 
             }
-        })
+        }
+
+        routing {
+            userAuthenticationRoutes()
+        }
     }
 
     @AfterTest

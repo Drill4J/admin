@@ -16,60 +16,98 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
+import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.view.ApiResponse
-import com.epam.drill.admin.auth.view.ChangePasswordForm
-import com.epam.drill.admin.auth.view.LoginForm
-import com.epam.drill.admin.auth.view.RegistrationForm
+import com.epam.drill.admin.auth.view.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
+import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.*
-import org.kodein.di.DI
-import org.kodein.di.DIAware
+import io.ktor.routing.Routing
+import io.ktor.routing.Route
+import io.ktor.util.pipeline.*
+import kotlinx.serialization.Serializable
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI as di
 
-class UserAuthenticationRoutes(override val di: DI) : DIAware {
-    private val app by instance<Application>()
-    private val service by instance<UserAuthenticationService>()
+@Location("/sign-in")
+object SignIn
+@Location("/sign-up")
+object SignUp
+@Location("/update-password")
+object UpdatePassword
+@Deprecated("Use /sign-in")
+@Location("/api/login")
+object Login
 
-    init {
-        app.routing {
-            signInRoute()
-            signUpRoute()
-            updatePasswordRoute()
-        }
-    }
 
-    fun Route.signInRoute() {
-        post("sign-in") {
-            val form = call.receive<LoginForm>()
-            val token = service.signIn(form)
-            call.response.header(HttpHeaders.Authorization, token.token)
-            call.respond(HttpStatusCode.OK, token)
-        }
-    }
-
-    fun Route.signUpRoute() {
-        post("sign-up") {
-            val form = call.receive<RegistrationForm>()
-            service.signUp(form)
-            call.respond(HttpStatusCode.OK, ApiResponse("User registered successfully. " +
-                    "Please contact the administrator for system access."))
-        }
-    }
-
-    fun Route.updatePasswordRoute() {
-        authenticate {
-            post("update-password") {
-                val form = call.receive<ChangePasswordForm>()
-                val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
-                service.updatePassword(principal, form)
-                call.respond(HttpStatusCode.OK, ApiResponse("Password changed successfully."))
-            }
-        }
+fun Routing.userAuthenticationRoutes() {
+    loginRoute()
+    signInRoute()
+    signUpRoute()
+    authenticate("jwt") {
+        updatePasswordRoute()
     }
 }
 
+fun Route.signInRoute() {
+    val authService by di().instance<UserAuthenticationService>()
+    val tokenService by di().instance<TokenService>()
+
+    post<SignIn> {
+        val loginPayload = call.receive<LoginPayload>()
+        val userView = authService.signIn(loginPayload)
+        val token = tokenService.issueToken(userView)
+        call.response.header(HttpHeaders.Authorization, token)
+        call.respond(HttpStatusCode.OK, TokenView(token))
+    }
+}
+
+fun Route.signUpRoute() {
+    val authService by di().instance<UserAuthenticationService>()
+
+    post<SignUp> {
+        val payload = call.receive<RegistrationPayload>()
+        authService.signUp(payload)
+        call.respond(
+            HttpStatusCode.OK, MessageView(
+                "User registration request accepted. " +
+                        "Please contact the administrator to confirm the registration."
+            )
+        )
+    }
+}
+
+fun Route.updatePasswordRoute() {
+    val authService by di().instance<UserAuthenticationService>()
+
+    post<UpdatePassword> {
+        val changePasswordPayload = call.receive<ChangePasswordPayload>()
+        val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
+        authService.updatePassword(principal, changePasswordPayload)
+        call.respond(HttpStatusCode.OK, MessageView("Password changed successfully."))
+    }
+}
+
+@Deprecated("The /api/login route is outdated, please use /sign-in")
+fun Route.loginRoute() {
+    val authService by di().instance<UserAuthenticationService>()
+    val tokenService by di().instance<TokenService>()
+
+    post<Login> {
+        val loginPayload = call.receive<UserData>()
+        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
+        val token = tokenService.issueToken(userView)
+        call.response.header(HttpHeaders.Authorization, token)
+        call.respond(HttpStatusCode.OK, TokenView(token))
+    }
+}
+
+@Serializable
+@Deprecated("use LoginPayload")
+data class UserData(
+    val name: String,
+    val password: String,
+)

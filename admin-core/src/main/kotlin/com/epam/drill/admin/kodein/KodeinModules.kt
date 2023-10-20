@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.di
 
-import com.epam.drill.admin.*
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.agent.logging.*
@@ -26,15 +25,12 @@ import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.endpoints.plugin.*
-import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.group.*
-import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.service.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
@@ -102,7 +98,6 @@ val handlers: DI.Builder.(Application) -> Unit
         }
         bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
         bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(di) }
-        bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(di) }
         bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
         bind<AgentHandler>() with eagerSingleton { AgentHandler(di) }

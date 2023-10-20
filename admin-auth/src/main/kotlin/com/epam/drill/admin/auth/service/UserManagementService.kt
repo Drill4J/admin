@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth.service
 
 import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.UserForm
+import com.epam.drill.admin.auth.view.EditUserPayload
 import com.epam.drill.admin.auth.view.UserView
 
 interface UserManagementService {
@@ -24,7 +24,7 @@ interface UserManagementService {
 
     fun getUser(userId: Int): UserView
 
-    fun updateUser(userId: Int, form: UserForm): UserView
+    fun updateUser(userId: Int, payload: EditUserPayload): UserView
 
     fun deleteUser(userId: Int)
 
