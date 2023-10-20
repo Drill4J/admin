@@ -15,12 +15,15 @@
  */
 package com.epam.drill.admin.auth.service
 
-interface PasswordService: PasswordGenerator {
+interface PasswordService: PasswordGenerator, PasswordValidator {
     fun hashPassword(password: String): String
     fun matchPasswords(candidate: String, hashed: String): Boolean
 }
 
 interface PasswordGenerator {
     fun generatePassword(): String
+}
+
+interface PasswordValidator {
     fun validatePasswordRequirements(password: String)
 }

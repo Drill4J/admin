@@ -15,9 +15,6 @@
  */
 package com.epam.drill.admin.auth.config
 
-import com.epam.drill.admin.auth.service.impl.JwtTokenService
-import com.epam.drill.admin.auth.service.TokenService
-import com.typesafe.config.ConfigFactory
 import io.ktor.application.*
 import io.ktor.config.*
 import mu.KotlinLogging

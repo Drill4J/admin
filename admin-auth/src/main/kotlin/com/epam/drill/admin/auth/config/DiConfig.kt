@@ -10,6 +10,7 @@ import org.kodein.di.*
 val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
     bindJwt()
     bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
+    bind<PasswordRequirementsConfig>() with singleton { PasswordRequirementsConfig(di) }
 }
 
 val usersDiConfig: DI.Builder.(Application) -> Unit = { _ ->
@@ -31,8 +32,9 @@ fun DI.Builder.userServicesConfig() {
         )
     }
     bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl() }
-    bind<PasswordService>() with singleton { PasswordServiceImpl(instance()) }
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
+    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
+    bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
 
 fun DI.Builder.userRepositoriesConfig() {

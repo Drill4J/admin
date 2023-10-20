@@ -17,10 +17,12 @@ package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.service.PasswordGenerator
 import com.epam.drill.admin.auth.service.PasswordService
+import com.epam.drill.admin.auth.service.PasswordValidator
 import org.mindrot.jbcrypt.BCrypt
 
 class PasswordServiceImpl(
-    private val passwordGenerator: PasswordGenerator
+    private val passwordGenerator: PasswordGenerator,
+    private val passwordValidator: PasswordValidator
 ) : PasswordService {
     override fun hashPassword(password: String): String {
         return BCrypt.hashpw(password, BCrypt.gensalt())
@@ -35,6 +37,6 @@ class PasswordServiceImpl(
     }
 
     override fun validatePasswordRequirements(password: String) {
-        passwordGenerator.validatePasswordRequirements(password)
+        passwordValidator.validatePasswordRequirements(password)
     }
 }
