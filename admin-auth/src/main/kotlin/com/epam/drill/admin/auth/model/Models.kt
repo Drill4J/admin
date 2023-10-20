@@ -25,9 +25,6 @@ data class DataResponse<T>(val data: T, val message: String? = null)
 data class MessageResponse(val message: String)
 
 @Serializable
-data class ErrorResponse<T>(val message: String, val errors: T)
-
-@Serializable
 data class TokenView(val token: String)
 
 @Serializable

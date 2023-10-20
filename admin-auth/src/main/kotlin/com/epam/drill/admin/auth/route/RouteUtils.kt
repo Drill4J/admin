@@ -28,3 +28,15 @@ suspend inline fun <reified T> ApplicationCall.ok(data: T, message: String? = nu
 suspend fun ApplicationCall.ok(message: String) {
     respond(HttpStatusCode.OK, MessageResponse(message))
 }
+
+suspend fun ApplicationCall.validationError(cause: Exception) {
+    respond(HttpStatusCode.BadRequest, MessageResponse(cause.message ?: "User data is invalid"))
+}
+
+suspend fun ApplicationCall.unauthorizedError(cause: Exception) {
+    respond(HttpStatusCode.Unauthorized, MessageResponse(cause.message ?: "User is not authenticated"))
+}
+
+suspend fun ApplicationCall.accessDeniedError(cause: Exception) {
+    respond(HttpStatusCode.Forbidden, MessageResponse(cause.message ?: "Access denied"))
+}

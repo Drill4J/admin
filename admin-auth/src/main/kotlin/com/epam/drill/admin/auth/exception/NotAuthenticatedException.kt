@@ -15,5 +15,4 @@
  */
 package com.epam.drill.admin.auth.exception
 
-class UserNotAuthenticatedException: Exception("User is not authenticated") {
-}
+class NotAuthenticatedException(message: String? = null): Exception(message ?: "User is not authenticated")

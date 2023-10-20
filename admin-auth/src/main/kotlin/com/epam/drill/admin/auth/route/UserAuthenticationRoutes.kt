@@ -49,21 +49,21 @@ object UpdatePassword
 object Login
 
 fun StatusPages.Configuration.authStatusPages() {
-    exception<UserNotAuthenticatedException> { cause ->
+    exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
-        call.respond(HttpStatusCode.Unauthorized, "User is not authenticated")
+        call.unauthorizedError(cause)
     }
     exception<IncorrectCredentialsException> { cause ->
         logger.trace(cause) { "401 Username or password is incorrect" }
-        call.respond(HttpStatusCode.Unauthorized, "Username or password is incorrect")
+        call.unauthorizedError(cause)
     }
     exception<UserValidationException> { cause ->
         logger.trace(cause) { "400 User data is invalid" }
-        call.respond(HttpStatusCode.BadRequest, "User data is invalid")
+        call.validationError(cause)
     }
     exception<NotAuthorizedException> { cause ->
         logger.trace(cause) { "403 Access denied" }
-        call.respond(HttpStatusCode.Forbidden, "Access denied")
+        call.accessDeniedError(cause)
     }
 }
 
@@ -104,7 +104,7 @@ fun Route.updatePasswordRoute() {
 
     post<UpdatePassword> {
         val changePasswordPayload = call.receive<ChangePasswordPayload>()
-        val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
+        val principal = call.principal<UserIdPrincipal>() ?: throw NotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
         call.ok("Password was successfully changed.")
     }

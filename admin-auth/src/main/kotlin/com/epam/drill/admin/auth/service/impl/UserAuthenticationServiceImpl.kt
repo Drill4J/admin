@@ -29,9 +29,9 @@ class UserAuthenticationServiceImpl(
     private val passwordService: PasswordService
 ) : UserAuthenticationService {
     override fun signIn(payload: LoginPayload): UserView {
-        val userEntity = userRepository.findByUsername(payload.username) ?: throw IncorrectCredentialsException()
-        if (!passwordService.matchPasswords(payload.password, userEntity.passwordHash))
-            throw IncorrectCredentialsException()
+        val userEntity = userRepository.findByUsername(payload.username)?.takeIf { userEntity ->
+            passwordService.matchPasswords(payload.password, userEntity.passwordHash)
+        } ?: throw NotAuthenticatedException("Username or password is incorrect")
         return userEntity.toView()
     }
 

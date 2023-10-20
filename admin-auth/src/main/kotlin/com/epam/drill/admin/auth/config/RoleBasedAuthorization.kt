@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
+import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
@@ -36,7 +36,7 @@ class RoleBasedAuthorization(private val config: Configuration) {
         pipeline.insertPhaseAfter(Authentication.ChallengePhase, AuthorizationPhase)
 
         pipeline.intercept(AuthorizationPhase) {
-            val principal = call.authentication.principal<User>() ?: throw UserNotAuthenticatedException()
+            val principal = call.authentication.principal<User>() ?: throw NotAuthenticatedException()
             if (!roles.contains(principal.role)) {
                 throw NotAuthorizedException()
             }
