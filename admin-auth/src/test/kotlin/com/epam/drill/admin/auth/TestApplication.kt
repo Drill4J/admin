@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.config.*

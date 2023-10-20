@@ -22,7 +22,7 @@ import com.epam.drill.admin.api.LoggingConfigDto
 import com.epam.drill.admin.api.agent.BuildStatus
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.cache.CacheService
 import com.epam.drill.admin.cache.impl.MapDBCacheService

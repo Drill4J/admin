@@ -20,7 +20,7 @@ import com.epam.drill.admin.api.agent.AgentStatus.*
 import com.epam.drill.admin.api.agent.BuildStatus.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.build.*
 import com.epam.drill.admin.build.AgentBuildData

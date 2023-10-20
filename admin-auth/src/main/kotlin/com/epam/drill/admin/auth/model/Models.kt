@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.model
 
+import com.epam.drill.admin.auth.principal.Role
 import kotlinx.serialization.*
 
 @Serializable

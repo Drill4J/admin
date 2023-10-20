@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.config.SecurityConfig
 import com.epam.drill.admin.auth.config.JwtConfig
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.config.generateSecret
-import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserView
