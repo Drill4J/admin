@@ -187,7 +187,7 @@ class UserAuthenticationTest {
     }
 
     @Test
-    fun `given without authentication 'POST update-password' must fail with 401 status`() {
+    fun `without authentication 'POST update-password' must fail with 401 status`() {
         withTestApplication(config()) {
             withStatusPages()
             with(handleRequest(HttpMethod.Post, "/update-password") {
