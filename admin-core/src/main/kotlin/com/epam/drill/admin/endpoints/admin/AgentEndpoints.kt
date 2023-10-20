@@ -21,7 +21,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*

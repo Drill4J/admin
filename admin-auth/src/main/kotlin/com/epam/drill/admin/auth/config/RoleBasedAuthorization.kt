@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*

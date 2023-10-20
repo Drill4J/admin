@@ -17,6 +17,7 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.websocket.*
+import com.epam.drill.admin.auth.config.RoleBasedAuthorization
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.config.securityDiConfig
 import com.epam.drill.admin.auth.config.usersDiConfig
@@ -75,6 +76,8 @@ class PluginWsTest {
         install(ContentNegotiation) {
             json()
         }
+
+        install(RoleBasedAuthorization)
 
         enableSwaggerSupport()
         hikariConfig = TestDatabaseContainer.createDataSource()

@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth.route
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.view.*
+import com.epam.drill.admin.auth.model.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -26,7 +26,6 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.Routing
 import io.ktor.routing.Route
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable

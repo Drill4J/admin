@@ -17,13 +17,13 @@ package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.exception.UserNotFoundException
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.PasswordService
-import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.EditUserPayload
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.CredentialsView
+import com.epam.drill.admin.auth.model.EditUserPayload
+import com.epam.drill.admin.auth.model.UserView
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,

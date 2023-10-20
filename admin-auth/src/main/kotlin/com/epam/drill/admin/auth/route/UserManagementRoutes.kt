@@ -16,8 +16,8 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.view.MessageView
-import com.epam.drill.admin.auth.view.EditUserPayload
+import com.epam.drill.admin.auth.model.MessageView
+import com.epam.drill.admin.auth.model.EditUserPayload
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*

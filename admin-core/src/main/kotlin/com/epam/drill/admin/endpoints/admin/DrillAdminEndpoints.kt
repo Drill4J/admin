@@ -22,7 +22,7 @@ import com.epam.drill.admin.api.LoggingConfigDto
 import com.epam.drill.admin.api.agent.BuildStatus
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.cache.CacheService
 import com.epam.drill.admin.cache.impl.MapDBCacheService
@@ -136,24 +136,24 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                         call.respond(HttpStatusCode.OK)
                     }
                 }
+            }
 
-                patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(
-                    "Toggle google analytics"
-                        .examples(
-                            example(
-                                "analytics toggle request",
-                                AnalyticsToggleDto(disable = true)
-                            )
+            patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(
+                "Toggle google analytics"
+                    .examples(
+                        example(
+                            "analytics toggle request",
+                            AnalyticsToggleDto(disable = true)
                         )
-                        .responds(
-                            ok<AnalyticsToggleDto>()
-                        )
-                ) { _, toggleDto ->
-                    System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
-                    logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
-                    topicResolver.sendToAllSubscribed(WsRoot.Analytics)
-                    call.respond(HttpStatusCode.OK, toggleDto)
-                }
+                    )
+                    .responds(
+                        ok<AnalyticsToggleDto>()
+                    )
+            ) { _, toggleDto ->
+                System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
+                logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
+                topicResolver.sendToAllSubscribed(WsRoot.Analytics)
+                call.respond(HttpStatusCode.OK, toggleDto)
             }
         }
     }

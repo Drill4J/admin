@@ -13,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.view
+package com.epam.drill.admin.auth.model
 
-import com.epam.drill.admin.auth.entity.Role
 import kotlinx.serialization.*
+
+@Serializable
+data class MessageView(val message: String)
+
+@Serializable
+data class TokenView(val token: String)
 
 @Serializable
 data class UserView(

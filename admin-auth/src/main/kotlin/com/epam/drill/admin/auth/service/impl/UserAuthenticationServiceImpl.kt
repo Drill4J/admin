@@ -16,12 +16,12 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
-import com.epam.drill.admin.auth.view.*
+import com.epam.drill.admin.auth.model.*
 import io.ktor.auth.*
 
 class UserAuthenticationServiceImpl(

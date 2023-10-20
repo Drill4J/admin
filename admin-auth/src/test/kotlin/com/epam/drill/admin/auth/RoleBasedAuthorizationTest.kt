@@ -18,9 +18,9 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.RoleBasedAuthorization
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.entity.Role.ADMIN
-import com.epam.drill.admin.auth.entity.Role.USER
+import com.epam.drill.admin.auth.model.Role
+import com.epam.drill.admin.auth.model.Role.ADMIN
+import com.epam.drill.admin.auth.model.Role.USER
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*

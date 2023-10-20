@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.view.*
+import com.epam.drill.admin.auth.model.*
 import io.ktor.auth.*
 
 interface UserAuthenticationService {

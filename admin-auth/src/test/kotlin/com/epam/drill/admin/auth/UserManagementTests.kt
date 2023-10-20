@@ -15,15 +15,15 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
-import com.epam.drill.admin.auth.view.EditUserPayload
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.EditUserPayload
+import com.epam.drill.admin.auth.model.UserView
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.builtins.ListSerializer

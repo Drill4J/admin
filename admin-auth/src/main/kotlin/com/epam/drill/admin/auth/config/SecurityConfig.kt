@@ -16,13 +16,12 @@
 package com.epam.drill.admin.auth.config
 
 import com.auth0.jwt.interfaces.Payload
-import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.model.Role
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.view.LoginPayload
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.LoginPayload
+import com.epam.drill.admin.auth.model.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*

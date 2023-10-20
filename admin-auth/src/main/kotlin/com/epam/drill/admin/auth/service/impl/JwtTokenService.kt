@@ -20,7 +20,7 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.JwtConfig
 import com.epam.drill.admin.auth.service.TokenService
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.UserView
 import java.util.*
 import kotlin.time.Duration
 
