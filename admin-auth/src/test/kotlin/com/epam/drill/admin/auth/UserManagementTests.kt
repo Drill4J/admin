@@ -60,7 +60,7 @@ class UserManagementTest {
 
 
     @Test
-    fun `'GET users' service must return the expected number of users from repository`() {
+    fun `'GET users' must return the expected number of users from repository`() {
         whenever(userRepository.findAllNotDeleted())
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
