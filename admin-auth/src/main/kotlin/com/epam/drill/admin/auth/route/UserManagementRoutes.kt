@@ -25,6 +25,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.Route
 import io.ktor.routing.Routing
+import io.ktor.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
@@ -44,13 +45,15 @@ object Users {
 }
 
 fun Routing.userManagementRoutes() {
-    getUsersRoute()
-    getUserRoute()
-    editUserRoute()
-    deleteUserRoute()
-    blockUserRoute()
-    unblockUserRoute()
-    resetPasswordRoute()
+    route("/api") {
+        getUsersRoute()
+        getUserRoute()
+        editUserRoute()
+        deleteUserRoute()
+        blockUserRoute()
+        unblockUserRoute()
+        resetPasswordRoute()
+    }
 }
 
 fun Route.getUsersRoute() {

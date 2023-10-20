@@ -15,12 +15,13 @@
  */
 package com.epam.drill.admin.auth.route
 
-import com.epam.drill.admin.auth.exception.UserNotAuthenticatedException
+import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.*
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
@@ -29,8 +30,11 @@ import io.ktor.routing.Routing
 import io.ktor.routing.Route
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
+
+private val logger = KotlinLogging.logger {}
 
 @Location("/sign-in")
 object SignIn
@@ -42,6 +46,20 @@ object UpdatePassword
 @Location("/api/login")
 object Login
 
+fun StatusPages.Configuration.authStatusPages() {
+    exception<UserNotAuthenticatedException> { cause ->
+        logger.trace(cause) { "401 User is not authenticated" }
+        call.respond(HttpStatusCode.Unauthorized, "User is not authenticated")
+    }
+    exception<IncorrectCredentialsException> { cause ->
+        logger.trace(cause) { "401 Username or password is incorrect" }
+        call.respond(HttpStatusCode.Unauthorized, "Username or password is incorrect")
+    }
+    exception<UserValidationException> { cause ->
+        logger.trace(cause) { "400 User data is invalid" }
+        call.respond(HttpStatusCode.BadRequest, "User data is invalid")
+    }
+}
 
 fun Routing.userAuthenticationRoutes() {
     loginRoute()

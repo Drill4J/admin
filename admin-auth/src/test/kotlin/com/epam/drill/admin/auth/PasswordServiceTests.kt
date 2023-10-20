@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.exception.PasswordConstraintsException
+import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.service.impl.PasswordGeneratorImpl
 import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -73,25 +73,25 @@ class ValidatePasswordTest {
     @Test
     fun `given less than 10 characters password validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(minLength = 10)
-        assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("less10") }
+        assertThrows<UserValidationException> { validator.validatePasswordRequirements("less10") }
     }
 
     @Test
     fun `given password without upper case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveUppercase = true)
-        assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("onlylowercase") }
+        assertThrows<UserValidationException> { validator.validatePasswordRequirements("onlylowercase") }
     }
 
     @Test
     fun `given password without lower case characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveLowercase = true)
-        assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("ONLYUPPERCASE") }
+        assertThrows<UserValidationException> { validator.validatePasswordRequirements("ONLYUPPERCASE") }
     }
 
     @Test
     fun `given password without digits characters validatePassword must fail`() {
         val validator = PasswordGeneratorImpl(mustHaveDigit = true)
-        assertThrows<PasswordConstraintsException> { validator.validatePasswordRequirements("AlphabeticCharsOnly") }
+        assertThrows<UserValidationException> { validator.validatePasswordRequirements("AlphabeticCharsOnly") }
     }
 
     @Test

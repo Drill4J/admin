@@ -16,11 +16,8 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.exception.IncorrectCredentialsException
-import com.epam.drill.admin.auth.exception.IncorrectPasswordException
-import com.epam.drill.admin.auth.exception.UserAlreadyExistsException
-import com.epam.drill.admin.auth.exception.UserNotFoundException
 import com.epam.drill.admin.auth.entity.Role
+import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
@@ -40,7 +37,7 @@ class UserAuthenticationServiceImpl(
 
     override fun signUp(payload: RegistrationPayload) {
         if (userRepository.findByUsername(payload.username) != null)
-            throw UserAlreadyExistsException(payload.username)
+            throw UserValidationException("User '${payload.username}' already exists")
         passwordService.validatePasswordRequirements(payload.password)
         val passwordHash = passwordService.hashPassword(payload.password)
         userRepository.create(payload.toUserEntity(passwordHash))
@@ -49,7 +46,7 @@ class UserAuthenticationServiceImpl(
     override fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload) {
         val userEntity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
-            throw IncorrectPasswordException()
+            throw UserValidationException("Old password is incorrect")
         passwordService.validatePasswordRequirements(payload.newPassword)
         userEntity.passwordHash = passwordService.hashPassword(payload.newPassword)
         userRepository.update(userEntity)

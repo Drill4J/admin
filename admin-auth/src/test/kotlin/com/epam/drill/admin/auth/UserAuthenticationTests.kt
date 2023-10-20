@@ -18,6 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -52,10 +53,8 @@ class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
-
     @Mock
     lateinit var tokenService: TokenService
 
@@ -134,7 +133,98 @@ class UserAuthenticationTest {
         }
     }
 
-    private fun config() = testApp(
+    @Test
+    fun `given incorrect username 'POST sign-in' must fail with 401 status`() {
+        whenever(userRepository.findByUsername("unknown"))
+            .thenReturn(null)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginPayload(username = "unknown", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given incorrect password 'POST sign-in' must fail with 401 status`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(USER_GUEST)
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
+            .thenReturn(false)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginPayload(username = "guest", password = "incorrect")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given already existing username 'POST sign-up' must fail with 400 status`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(USER_GUEST)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/sign-up") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = RegistrationPayload(username = "guest", password = "secret")
+                setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.BadRequest, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `without authentication 'POST update-password' must fail with 401 status`() {
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                //not add auth
+                val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given incorrect old password 'POST update-password' must fail with 400 status`() {
+        whenever(userRepository.findByUsername("guest"))
+            .thenReturn(USER_GUEST)
+        whenever(passwordService.matchPasswords("incorrect", "hash"))
+            .thenReturn(false)
+
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth("guest", "secret")
+                val form = ChangePasswordPayload(oldPassword = "incorrect", newPassword = "secret2")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.BadRequest, response.status())
+            }
+        }
+    }
+
+    private fun config() = testModule(
+        statusPages = {
+            authStatusPages()
+        },
         authentication = {
             //have to use "jwt" for basic auth, because that name is required for this route in production code
             basic("jwt") {

@@ -15,16 +15,16 @@
  */
 package com.epam.drill.admin.auth.route
 
-import com.epam.drill.admin.auth.exception.UserValidationException
 import io.ktor.application.*
+import io.ktor.features.*
 
 inline fun <reified T : Any> ApplicationCall.getRequiredParam(name: String): T {
-    val value = parameters[name] ?: throw UserValidationException("Query parameter $name is not specified")
+    val value = parameters[name] ?: throw MissingRequestParameterException(name)
     return when (T::class) {
         String::class -> value as T
         Int::class -> value.toInt() as T
         Double::class -> value.toDouble() as T
         Boolean::class -> value.toBoolean() as T
-        else -> throw UnsupportedOperationException("Cannot convert String value to type ${T::class}")
+        else -> throw ParameterConversionException(parameterName = name, type = T::class.toString())
     }
 }
