@@ -26,7 +26,7 @@ import io.ktor.util.*
 import io.ktor.util.pipeline.*
 
 class RoleBasedAuthorization(private val config: Configuration) {
-    class Configuration {}
+    class Configuration
 
     fun interceptPipeline(
         pipeline: ApplicationCallPipeline,

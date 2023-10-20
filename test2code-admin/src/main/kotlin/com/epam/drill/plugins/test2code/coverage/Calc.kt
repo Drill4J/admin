@@ -43,7 +43,7 @@ internal fun Sequence<ExecClassData>.bundle(
     val classMethods = tree.packages.flatMap { it.classes }.associate {
         fullClassname(it.path, it.name) to it.methods
     }
-    val covered = probesByClasses.values.sumBy { probes -> probes.count { it } }
+    val covered = probesByClasses.values.sumOf { probes -> probes.count { it } }
     val packages = probesByClasses.keys.groupBy { classPath(it) }.map { (pkgName, classNames) ->
         val classes = classNames.map { fullClassname ->
             val probes = probesByClasses.getValue(fullClassname)

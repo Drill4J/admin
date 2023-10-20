@@ -37,10 +37,13 @@ private val logger = KotlinLogging.logger {}
 
 @Location("/sign-in")
 object SignIn
+
 @Location("/sign-up")
 object SignUp
+
 @Location("/update-password")
 object UpdatePassword
+
 @Deprecated("Use /sign-in")
 @Location("/api/login")
 object Login
@@ -79,7 +82,7 @@ fun Route.signInRoute() {
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenView(token))
+        call.ok(TokenView(token), "User was successfully authenticated.")
     }
 }
 
@@ -89,11 +92,9 @@ fun Route.signUpRoute() {
     post<SignUp> {
         val payload = call.receive<RegistrationPayload>()
         authService.signUp(payload)
-        call.respond(
-            HttpStatusCode.OK, MessageView(
-                "User registration request accepted. " +
-                        "Please contact the administrator to confirm the registration."
-            )
+        call.ok(
+            "User registration request accepted. " +
+                    "Please contact the administrator to confirm the registration."
         )
     }
 }
@@ -105,7 +106,7 @@ fun Route.updatePasswordRoute() {
         val changePasswordPayload = call.receive<ChangePasswordPayload>()
         val principal = call.principal<UserIdPrincipal>() ?: throw UserNotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
-        call.respond(HttpStatusCode.OK, MessageView("Password changed successfully."))
+        call.ok("Password was successfully changed.")
     }
 }
 

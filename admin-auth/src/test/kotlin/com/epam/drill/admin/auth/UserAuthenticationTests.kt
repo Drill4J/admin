@@ -78,7 +78,7 @@ class UserAuthenticationTest {
                 setBody(Json.encodeToString(LoginPayload.serializer(), payload))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response = Json.decodeFromString(TokenView.serializer(), assertNotNull(response.content))
+                val response = responseData(TokenView.serializer())
                 assertEquals("token", response.token)
             }
         }

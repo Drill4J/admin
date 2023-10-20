@@ -33,6 +33,8 @@ import com.epam.drill.common.message.*
 import com.epam.drill.common.message.Message
 import com.epam.drill.common.message.MessageType
 import com.epam.drill.common.ws.*
+import com.epam.drill.common.ws.dto.PluginAction
+import com.epam.drill.common.ws.dto.TogglePayload
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.*
@@ -202,7 +204,7 @@ class Agent(
 
                         is Communication.Plugin.DispatchEvent -> {
                             val message = ProtoBuf.load(
-                                com.epam.drill.common.ws.dto.PluginAction.serializer(),
+                                PluginAction.serializer(),
                                 content
                             )
                             plugin.doRawAction(message.message)
@@ -210,7 +212,7 @@ class Agent(
                             sendDelivered(url)
                         }
                         is Communication.Plugin.ToggleEvent -> {
-                            val pluginId = ProtoBuf.load(com.epam.drill.common.ws.dto.TogglePayload.serializer(), content).pluginId
+                            val pluginId = ProtoBuf.load(TogglePayload.serializer(), content).pluginId
                             toggled(pluginId)
                             sendDelivered(url)
                         }

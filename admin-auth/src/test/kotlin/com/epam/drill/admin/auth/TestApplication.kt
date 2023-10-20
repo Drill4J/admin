@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -28,9 +29,12 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
 import io.ktor.util.pipeline.*
 import org.kodein.di.*
 import org.kodein.di.ktor.di
+import kotlin.test.assertNotNull
 import java.util.*
 
 fun testModule(
@@ -105,5 +109,11 @@ fun TestApplicationRequest.addJwtToken(
         .withExpiresAt(expiresAt)
         .sign(Algorithm.HMAC512(secret))
     addHeader(HttpHeaders.Authorization, "Bearer $token")
+}
+
+fun <T> TestApplicationCall.responseData(serializer: KSerializer<T>): T {
+    val value = assertNotNull(response.content)
+    val response = Json.decodeFromString(DataResponse.serializer(serializer), value)
+    return response.data
 }
 

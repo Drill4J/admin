@@ -26,8 +26,7 @@ import com.epam.drill.plugins.test2code.Plugin as Test2CodePlugin
  */
 class Plugins(
     private val plugins: Map<String, Plugin> = mutableMapOf(),
-) : Map<String, Plugin> by plugins {
-}
+) : Map<String, Plugin> by plugins
 
 /**
  * Plugin structure

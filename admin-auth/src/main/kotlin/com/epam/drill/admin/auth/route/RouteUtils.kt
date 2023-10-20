@@ -15,16 +15,16 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.model.DataResponse
+import com.epam.drill.admin.auth.model.MessageResponse
 import io.ktor.application.*
-import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.response.*
 
-inline fun <reified T : Any> ApplicationCall.getRequiredParam(name: String): T {
-    val value = parameters[name] ?: throw MissingRequestParameterException(name)
-    return when (T::class) {
-        String::class -> value as T
-        Int::class -> value.toInt() as T
-        Double::class -> value.toDouble() as T
-        Boolean::class -> value.toBoolean() as T
-        else -> throw ParameterConversionException(parameterName = name, type = T::class.toString())
-    }
+suspend inline fun <reified T> ApplicationCall.ok(data: T, message: String? = null) {
+    respond(HttpStatusCode.OK, DataResponse(data, message))
+}
+
+suspend fun ApplicationCall.ok(message: String) {
+    respond(HttpStatusCode.OK, MessageResponse(message))
 }

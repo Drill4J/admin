@@ -19,7 +19,13 @@ import com.epam.drill.admin.auth.principal.Role
 import kotlinx.serialization.*
 
 @Serializable
-data class MessageView(val message: String)
+data class DataResponse<T>(val data: T, val message: String? = null)
+
+@Serializable
+data class MessageResponse(val message: String)
+
+@Serializable
+data class ErrorResponse<T>(val message: String, val errors: T)
 
 @Serializable
 data class TokenView(val token: String)

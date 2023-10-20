@@ -68,8 +68,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response: List<UserView> =
-                    Json.decodeFromString(ListSerializer(UserView.serializer()), assertNotNull(response.content))
+                val response: List<UserView> = responseData(ListSerializer(UserView.serializer()))
                 assertEquals(2, response.size)
             }
         }
@@ -85,7 +84,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = Json.decodeFromString(UserView.serializer(), assertNotNull(response.content))
+                val response: UserView = responseData(UserView.serializer())
                 assertEquals("admin", response.username)
             }
         }
@@ -104,7 +103,7 @@ class UserManagementTest {
             }) {
                 verify(userRepository).update(USER_ADMIN.copy(role = "USER"))
                 assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = Json.decodeFromString(UserView.serializer(), assertNotNull(response.content))
+                val response: UserView = responseData(UserView.serializer())
                 assertEquals(Role.USER, response.role)
             }
         }
