@@ -19,6 +19,7 @@ import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.entity.Role
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.view.LoginPayload
 import com.epam.drill.admin.auth.view.UserView
@@ -27,10 +28,6 @@ import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import org.kodein.di.*
 
-val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
-    bindJwt()
-    bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
-}
 
 class SecurityConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()

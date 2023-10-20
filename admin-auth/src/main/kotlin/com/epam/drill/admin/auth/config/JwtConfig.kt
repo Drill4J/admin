@@ -52,14 +52,6 @@ class JwtConfig(override val di: DI) : DIAware {
         get() = jwt.propertyOrNull("audience")?.getString()
 }
 
-fun DI.Builder.bindJwt() {
-    bind<JwtConfig>() with singleton { JwtConfig(di) }
-    bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
-    bind<TokenService>() with provider { instance<JwtTokenService>() }
-}
-
-
-
 private fun ApplicationConfigValue.getDuration(): Duration {
     return Duration.parse(getString())
 }
