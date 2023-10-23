@@ -29,6 +29,7 @@ import com.epam.drill.admin.auth.model.ChangePasswordPayload
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.RegistrationPayload
 import com.epam.drill.admin.auth.model.TokenView
+import com.epam.drill.admin.auth.principal.User
 import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -228,7 +229,7 @@ class UserAuthenticationTest {
         authentication = {
             basic {
                 validate {
-                    UserIdPrincipal(it.name)
+                    User(username = it.name, role = Role.UNDEFINED)
                 }
             }
         },

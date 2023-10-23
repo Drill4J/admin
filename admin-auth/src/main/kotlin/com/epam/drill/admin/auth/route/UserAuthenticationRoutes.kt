@@ -19,6 +19,7 @@ import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.*
+import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -100,7 +101,7 @@ fun Route.updatePasswordRoute() {
 
     post<UpdatePassword> {
         val changePasswordPayload = call.receive<ChangePasswordPayload>()
-        val principal = call.principal<UserIdPrincipal>() ?: throw NotAuthenticatedException()
+        val principal = call.principal<User>() ?: throw NotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
         call.ok("Password was successfully changed.")
     }

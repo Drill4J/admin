@@ -22,7 +22,8 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.*
-import io.ktor.auth.*
+import com.epam.drill.admin.auth.principal.User
+
 
 class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
@@ -43,8 +44,8 @@ class UserAuthenticationServiceImpl(
         userRepository.create(payload.toUserEntity(passwordHash))
     }
 
-    override fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload) {
-        val userEntity = userRepository.findByUsername(principal.name) ?: throw UserNotFoundException()
+    override fun updatePassword(principal: User, payload: ChangePasswordPayload) {
+        val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
         passwordService.validatePasswordRequirements(payload.newPassword)
