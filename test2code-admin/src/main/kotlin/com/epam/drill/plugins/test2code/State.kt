@@ -24,7 +24,6 @@ import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
 import com.epam.dsm.util.*
 import kotlinx.atomicfu.*
-import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.*
 
 /**
@@ -287,14 +286,14 @@ internal class AgentState(
         } ?: storeSessionHolderInfo()
     }
 
-    private suspend fun readSessionHolderInfo(): SessionHolderInfo? = sessionHolderManager.counter(agentKey)
+    private suspend fun readSessionHolderInfo(): SessionHolderInfo? = sessionHolderManager.getSessionHolderInfo(agentKey)
 
     /**
      * Store the scope to the database
      * @features Session saving
      */
     private suspend fun storeSessionHolderInfo() = trackTime("storeSessionHolderInfo") {
-        sessionHolderManager.storeCounter(
+        sessionHolderManager.saveSessionHolderInfo(
             sessionHolder.run {
                 SessionHolderInfo(
                     agentKey = AgentKey(agentInfo.id, agentKey.buildVersion),
