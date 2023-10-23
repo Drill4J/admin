@@ -24,13 +24,19 @@ import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.locations.*
+import io.ktor.routing.*
+import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
+import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.verify
@@ -63,7 +69,7 @@ class UserManagementTest {
         whenever(userRepository.findAllNotDeleted())
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/api/users") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -79,7 +85,7 @@ class UserManagementTest {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -95,7 +101,7 @@ class UserManagementTest {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Put, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
@@ -114,7 +120,7 @@ class UserManagementTest {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Delete, "/api/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -129,7 +135,7 @@ class UserManagementTest {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Patch, "/api/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -144,7 +150,7 @@ class UserManagementTest {
         whenever(userRepository.findById(1))
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Patch, "/api/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -163,7 +169,7 @@ class UserManagementTest {
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Patch, "/api/users/1/reset-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -173,10 +179,12 @@ class UserManagementTest {
         }
     }
 
-    private fun config() = testModule(
-        routing = {
-            userManagementRoutes()
-        }, bindings = {
+    private val config: Application.() -> Unit = {
+        install(Locations)
+        install(ContentNegotiation) {
+            json()
+        }
+        di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
             bind<UserManagementService>() with eagerSingleton {
@@ -185,5 +193,9 @@ class UserManagementTest {
                     instance()
                 )
             }
-        })
+        }
+        routing {
+            userManagementRoutes()
+        }
+    }
 }

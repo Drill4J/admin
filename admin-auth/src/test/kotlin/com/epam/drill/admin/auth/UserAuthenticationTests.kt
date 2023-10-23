@@ -29,13 +29,20 @@ import com.epam.drill.admin.auth.model.ChangePasswordPayload
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.RegistrationPayload
 import com.epam.drill.admin.auth.model.TokenView
+import com.epam.drill.admin.auth.principal.User
+import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.features.*
 import io.ktor.http.*
+import io.ktor.locations.*
+import io.ktor.routing.*
+import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
+import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
@@ -71,7 +78,7 @@ class UserAuthenticationTest {
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val payload = LoginPayload(username = "guest", password = "secret")
@@ -93,7 +100,7 @@ class UserAuthenticationTest {
         whenever(userRepository.create(any()))
             .thenReturn(1)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "foobar", password = "secret")
@@ -120,7 +127,7 @@ class UserAuthenticationTest {
         whenever(passwordService.hashPassword("secret2"))
             .thenReturn("hash2")
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
@@ -138,7 +145,7 @@ class UserAuthenticationTest {
         whenever(userRepository.findByUsername("unknown"))
             .thenReturn(null)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "unknown", password = "secret")
@@ -156,7 +163,7 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "guest", password = "incorrect")
@@ -172,7 +179,7 @@ class UserAuthenticationTest {
         whenever(userRepository.findByUsername("guest"))
             .thenReturn(USER_GUEST)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "guest", password = "secret")
@@ -185,7 +192,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `without authentication 'POST update-password' must fail with 401 status`() {
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 //not add auth
@@ -204,7 +211,7 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
-        withTestApplication(config()) {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
@@ -216,24 +223,22 @@ class UserAuthenticationTest {
         }
     }
 
-    private fun config() = testModule(
-        statusPages = {
+    private val config: Application.() -> Unit = {
+        install(Locations)
+        install(ContentNegotiation) {
+            json()
+        }
+        install(StatusPages) {
             authStatusPages()
-        },
-        authentication = {
+        }
+        install(Authentication) {
             basic {
                 validate {
-                    UserIdPrincipal(it.name)
+                    User(it.name, Role.UNDEFINED)
                 }
             }
-        },
-        routing = {
-            userAuthenticationRoutes()
-            authenticate {
-                updatePasswordRoute()
-            }
-        },
-        bindings = {
+        }
+        di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
             bind<TokenService>() with eagerSingleton { tokenService }
@@ -244,5 +249,11 @@ class UserAuthenticationTest {
                 )
             }
         }
-    )
+        routing {
+            userAuthenticationRoutes()
+            authenticate {
+                updatePasswordRoute()
+            }
+        }
+    }
 }
