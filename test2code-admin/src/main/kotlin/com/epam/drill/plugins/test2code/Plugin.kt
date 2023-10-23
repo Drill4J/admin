@@ -431,7 +431,7 @@ class Plugin(
     }
 
     /**
-     * That job each 10 seconds will save all sessions from SessionHolder to DB
+     * Saves sessions from SessionHolder to DB with a specified interval
      * @features  Session saving
      */
     private fun sessionFinishingJob() = AsyncJobDispatcher.launch {
@@ -445,7 +445,7 @@ class Plugin(
     }
 
     /**
-     * That job each 30 seconds recalculate build coverage
+     * Recalculate build coverage with a specified interval
      */
     private fun calculateMetricsJob() = AsyncJobDispatcher.launch {
         while (isActive) {
