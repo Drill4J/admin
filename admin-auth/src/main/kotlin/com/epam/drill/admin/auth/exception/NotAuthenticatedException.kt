@@ -15,4 +15,4 @@
  */
 package com.epam.drill.admin.auth.exception
 
-class NotAuthenticatedException(message: String? = null): Exception(message ?: "User is not authenticated")
+class NotAuthenticatedException(message: String? = null): Exception(message ?: "Invalid credentials")
