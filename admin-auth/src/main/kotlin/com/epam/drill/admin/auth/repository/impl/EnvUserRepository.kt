@@ -47,15 +47,15 @@ class EnvUserRepository(
     }
 
     override fun findAllNotDeleted(): List<UserEntity> {
-        return users.values.filter { !it.deleted }.map(UserEntity::copy)
+        return users.values.filter { !it.deleted }
     }
 
     override fun findById(id: Int): UserEntity? {
-        return users[id]?.copy()
+        return users[id]
     }
 
     override fun findByUsername(username: String): UserEntity? {
-        return users[genId(username)]?.copy()
+        return users[genId(username)]
     }
 
     override fun create(entity: UserEntity): Id {
@@ -71,7 +71,7 @@ class EnvUserRepository(
     private fun UserConfig.toEntity(): UserEntity {
         return UserEntity(
             id = genId(username),
-            username = username,
+            username = this.username,
             passwordHash = passwordService.hashPassword(password),
             role = role.name)
     }

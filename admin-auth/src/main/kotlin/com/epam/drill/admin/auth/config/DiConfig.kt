@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
+import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
 import io.ktor.application.*
@@ -54,9 +54,6 @@ fun DI.Builder.userServicesConfig() {
 
 fun DI.Builder.userRepositoriesConfig() {
     bind<UserRepository>() with eagerSingleton {
-        EnvUserRepository(
-            env = instance<Application>().environment.config,
-            passwordService = instance()
-        )
+        UserRepositoryImpl()
     }
 }

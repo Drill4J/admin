@@ -17,25 +17,48 @@ package com.epam.drill.admin.auth.repository.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.table.UserTable
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
-class UserRepositoryImpl: UserRepository {
+class UserRepositoryImpl : UserRepository {
     override fun findAllNotDeleted(): List<UserEntity> {
-        TODO("Not yet implemented")
+        return UserTable.select { UserTable.deleted eq false }.map { it.toEntity() }
     }
 
     override fun findById(id: Int): UserEntity? {
-        TODO("Not yet implemented")
+        return UserTable.select { UserTable.id eq id }.map { it.toEntity() }.firstOrNull()
     }
 
     override fun findByUsername(username: String): UserEntity? {
-        TODO("Not yet implemented")
+        return UserTable.select { UserTable.username eq username }.map { it.toEntity() }.firstOrNull()
     }
 
     override fun create(entity: UserEntity): Int {
-        TODO("Not yet implemented")
+        return UserTable.insertAndGetId { entity.mapTo(it) }.value
     }
 
     override fun update(entity: UserEntity) {
-        TODO("Not yet implemented")
+        UserTable.update(
+            where = { UserTable.id eq entity.id },
+            body = { entity.mapTo(it) }
+        )
     }
+}
+
+private fun ResultRow.toEntity() = UserEntity(
+    id = this[UserTable.id].value,
+    username = this[UserTable.username],
+    passwordHash = this[UserTable.passwordHash],
+    role = this[UserTable.role],
+    blocked = this[UserTable.blocked],
+    deleted = this[UserTable.deleted],
+)
+
+private fun UserEntity.mapTo(it: UpdateBuilder<Int>) {
+    it[UserTable.username] = username
+    it[UserTable.passwordHash] = passwordHash
+    it[UserTable.role] = role
+    it[UserTable.blocked] = blocked
+    it[UserTable.deleted] = deleted
 }

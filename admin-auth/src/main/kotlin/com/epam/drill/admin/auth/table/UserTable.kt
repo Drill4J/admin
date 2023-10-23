@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.auth.table
 
-import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.User
+import org.jetbrains.exposed.dao.id.IntIdTable
 
-interface UserAuthenticationService {
-    fun signIn(payload: LoginPayload): UserView
-
-    fun signUp(payload: RegistrationPayload)
-
-    fun updatePassword(principal: User, payload: ChangePasswordPayload)
+object UserTable: IntIdTable(name = "auth.user") {
+    val username = varchar("username", 30)
+    val passwordHash = varchar("password_hash", 100)
+    val role = varchar("role", 20)
+    var blocked = bool("blocked")
+    var deleted = bool("deleted")
 }
