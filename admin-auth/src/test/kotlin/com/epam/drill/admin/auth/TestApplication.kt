@@ -111,7 +111,7 @@ fun TestApplicationRequest.addJwtToken(
     addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 
-fun <T> TestApplicationCall.responseData(serializer: KSerializer<T>): T {
+fun <T> TestApplicationCall.assertResponseNotNull(serializer: KSerializer<T>): T {
     val value = assertNotNull(response.content)
     val response = Json.decodeFromString(DataResponse.serializer(serializer), value)
     return response.data
