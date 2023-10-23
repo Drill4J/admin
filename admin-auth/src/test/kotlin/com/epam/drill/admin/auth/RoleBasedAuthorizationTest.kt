@@ -69,6 +69,18 @@ class RoleBasedAuthorizationTest {
     }
 
     @Test
+    fun `given user with admin role, request only-users should return 403 Access denied`() {
+        withTestApplication(config()) {
+            withStatusPages()
+            with(handleRequest(HttpMethod.Get, "/only-users") {
+                addBasicAuth("admin", "secret")
+            }) {
+                assertEquals(HttpStatusCode.Forbidden, response.status())
+            }
+        }
+    }
+
+    @Test
     fun `given user with user role, request admins-or-users should return 200 OK`() {
         withTestApplication(config()) {
             withStatusPages()
@@ -81,7 +93,7 @@ class RoleBasedAuthorizationTest {
     }
 
     @Test
-    fun `given guest without role, request admins-or-users should return 401 Access denied`() {
+    fun `given guest without role, request admins-or-users should return 403 Access denied`() {
         withTestApplication(config()) {
             withStatusPages()
             with(handleRequest(HttpMethod.Get, "/admins-or-users") {
