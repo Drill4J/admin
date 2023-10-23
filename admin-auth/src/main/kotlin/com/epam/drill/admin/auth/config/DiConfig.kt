@@ -19,6 +19,8 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
+import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
+import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagementService
 import io.ktor.application.*
 import org.kodein.di.*
 
@@ -40,13 +42,22 @@ fun DI.Builder.bindJwt() {
 }
 
 fun DI.Builder.userServicesConfig() {
-    bind<UserAuthenticationService>() with eagerSingleton {
-        UserAuthenticationServiceImpl(
-            instance(),
-            instance()
+    bind<UserAuthenticationService>() with singleton {
+        TransactionalUserAuthenticationService(
+            UserAuthenticationServiceImpl(
+                userRepository = instance(),
+                passwordService = instance()
+            )
         )
     }
-    bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
+    bind<UserManagementService>() with singleton {
+        TransactionalUserManagementService(
+            UserManagementServiceImpl(
+                userRepository = instance(),
+                passwordService = instance()
+            )
+        )
+    }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
