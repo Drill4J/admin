@@ -25,8 +25,7 @@ import io.ktor.routing.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
 
-class RoleBasedAuthorization(private val config: Configuration) {
-    class Configuration
+class RoleBasedAuthorization {
 
     fun interceptPipeline(
         pipeline: ApplicationCallPipeline,
@@ -43,14 +42,13 @@ class RoleBasedAuthorization(private val config: Configuration) {
         }
     }
 
-    companion object Feature : ApplicationFeature<ApplicationCallPipeline, Configuration, RoleBasedAuthorization> {
+    companion object Feature : ApplicationFeature<ApplicationCallPipeline, Unit, RoleBasedAuthorization> {
         override val key = AttributeKey<RoleBasedAuthorization>("RoleBasedAuthorization")
         override fun install(
             pipeline: ApplicationCallPipeline,
-            configure: Configuration.() -> Unit
+            configure: Unit.() -> Unit
         ): RoleBasedAuthorization {
-            val configuration = Configuration().apply(configure)
-            return RoleBasedAuthorization(configuration)
+            return RoleBasedAuthorization()
         }
 
         val AuthorizationPhase = PipelinePhase("Authorization")
@@ -58,7 +56,7 @@ class RoleBasedAuthorization(private val config: Configuration) {
 
 }
 
-class AuthorizedRouteSelector(private val description: String) : RouteSelector() {
+class AuthorizedRouteSelector : RouteSelector() {
     override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) = RouteSelectorEvaluation.Constant
 }
 
@@ -68,7 +66,7 @@ private fun Route.authorizedRoute(
     roles: Set<Role>,
     build: Route.() -> Unit
 ): Route {
-    val authorizedRoute = createChild(AuthorizedRouteSelector("anyOf (${roles.joinToString(", ")})"))
+    val authorizedRoute = createChild(AuthorizedRouteSelector())
     application.feature(RoleBasedAuthorization).interceptPipeline(authorizedRoute, roles)
     authorizedRoute.build()
     return authorizedRoute
