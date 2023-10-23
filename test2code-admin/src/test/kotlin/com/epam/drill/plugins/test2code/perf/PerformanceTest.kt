@@ -51,7 +51,7 @@ class PerformanceTest : PluginTest() {
         sizeExec: Int = 100,
         sizeProbes: Int = 10_000,
     ): TestSession? {
-        plugin.sessionHolder.startSession(
+        plugin.sessionHolder.createSession(
             sessionId = sessionId,
             testType = "MANUAL",
         )

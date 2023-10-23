@@ -258,7 +258,7 @@ class Plugin(
             val newSessionId = sessionId.ifEmpty(::genUuid)
             val isRealtimeSession = runtimeConfig.realtime && isRealtime
             val labels = labels + Label("Session", newSessionId)
-            sessionHolder.startSession(
+            sessionHolder.createSession(
                 newSessionId,
                 testType,
                 isGlobal,
@@ -366,7 +366,7 @@ class Plugin(
                 .forEach { (probeSessionId, data) ->
                     val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
                     if (sessionHolder.sessions[sessionId] == null) {
-                        sessionHolder.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
+                        sessionHolder.createSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
                     }
                     sessionHolder.sessions[sessionId]?.let {
                         sessionHolder.addProbes(sessionId) { data }

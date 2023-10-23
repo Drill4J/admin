@@ -122,7 +122,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
 
     private suspend fun SessionHolder.execSession(testType: String, block: suspend SessionHolder.(String) -> Unit) {
         val sessionId = genUuid()
-        startSession(sessionId = sessionId, testType = testType)
+        createSession(sessionId = sessionId, testType = testType)
         block(sessionId)
     }
 }
