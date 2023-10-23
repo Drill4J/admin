@@ -16,6 +16,7 @@
 package com.epam.drill.plugins.test2code
 
 
+import com.epam.drill.admin.config.*
 import com.epam.drill.common.AgentInfo
 import com.epam.drill.plugin.api.AdminData
 import com.epam.drill.plugin.api.end.*
@@ -47,10 +48,6 @@ internal object AsyncJobDispatcher : CoroutineScope {
     override val coroutineContext =
         Executors.newFixedThreadPool(availableProcessors).asCoroutineDispatcher() + SupervisorJob()
 }
-
-//TODO move to config
-private const val SAVE_DATA_JOB_INTERVAL_MS = 10000L
-private const val METRICS_JOB_INTERVAL_MS = 30000L
 
 /**
  * The all information related to the plugin
