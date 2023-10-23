@@ -24,6 +24,7 @@ import com.epam.drill.admin.auth.principal.Role.USER
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -34,8 +35,7 @@ class RoleBasedAuthorizationTest {
 
     @Test
     fun `given user with admin role, request only-admins should return 200 OK`() {
-        withTestApplication(config()) {
-            withStatusPages()
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/only-admins") {
                 addBasicAuth("admin", "secret")
             }) {
@@ -46,8 +46,7 @@ class RoleBasedAuthorizationTest {
 
     @Test
     fun `given user with user role, request only-admins should return 403 Access denied`() {
-        withTestApplication(config()) {
-            withStatusPages()
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/only-admins") {
                 addBasicAuth("user", "secret")
             }) {
@@ -58,8 +57,7 @@ class RoleBasedAuthorizationTest {
 
     @Test
     fun `given user with user role, request only-users should return 200 OK`() {
-        withTestApplication(config()) {
-            withStatusPages()
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/only-users") {
                 addBasicAuth("user", "secret")
             }) {
@@ -69,9 +67,19 @@ class RoleBasedAuthorizationTest {
     }
 
     @Test
+    fun `given user with admin role, request only-users should return 403 Access denied`() {
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Get, "/only-users") {
+                addBasicAuth("admin", "secret")
+            }) {
+                assertEquals(HttpStatusCode.Forbidden, response.status())
+            }
+        }
+    }
+
+    @Test
     fun `given user with user role, request admins-or-users should return 200 OK`() {
-        withTestApplication(config()) {
-            withStatusPages()
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/admins-or-users") {
                 addBasicAuth("user", "secret")
             }) {
@@ -81,9 +89,8 @@ class RoleBasedAuthorizationTest {
     }
 
     @Test
-    fun `given guest without role, request admins-or-users should return 401 Access denied`() {
-        withTestApplication(config()) {
-            withStatusPages()
+    fun `given guest without role, request admins-or-users should return 403 Access denied`() {
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/admins-or-users") {
                 addBasicAuth("guest", "secret")
             }) {
@@ -94,8 +101,7 @@ class RoleBasedAuthorizationTest {
 
     @Test
     fun `given guest without role, request all should return 200 OK`() {
-        withTestApplication(config()) {
-            withStatusPages()
+        withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/all") {
                 addBasicAuth("guest", "secret")
             }) {
@@ -104,16 +110,14 @@ class RoleBasedAuthorizationTest {
         }
     }
 
-    private fun config() = testModule(
-        statusPages = {
+    private val config: Application.() -> Unit = {
+        install(StatusPages) {
             exception<NotAuthorizedException> { _ ->
                 call.respond(HttpStatusCode.Forbidden, "Access denied")
             }
-        },
-        features = {
-            install(RoleBasedAuthorization)
-        },
-        authentication = {
+        }
+        install(RoleBasedAuthorization)
+        install(Authentication) {
             basic {
                 validate {
                     when (it.name) {
@@ -123,8 +127,8 @@ class RoleBasedAuthorizationTest {
                     }
                 }
             }
-        },
-        routing = {
+        }
+        routing {
             authenticate {
                 withRole(ADMIN) {
                     get("/only-admins") {
@@ -146,5 +150,6 @@ class RoleBasedAuthorizationTest {
                 }
             }
         }
-    )
+    }
+
 }

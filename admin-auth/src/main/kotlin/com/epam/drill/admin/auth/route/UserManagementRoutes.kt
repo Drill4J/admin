@@ -79,7 +79,7 @@ fun Route.editUserRoute() {
     put<Users.Id> { (userId) ->
         val editUserPayload = call.receive<EditUserPayload>()
         val userView = service.updateUser(userId, editUserPayload)
-        call.ok(userView, "User was successfully edited.")
+        call.ok(userView, "User successfully edited.")
     }
 }
 
@@ -88,7 +88,7 @@ fun Route.deleteUserRoute() {
 
     delete<Users.Id> { (userId) ->
         service.deleteUser(userId)
-        call.ok("User was successfully deleted.")
+        call.ok("User successfully deleted.")
     }
 }
 
@@ -97,7 +97,7 @@ fun Route.blockUserRoute() {
 
     patch<Users.Block> { (userId) ->
         service.blockUser(userId)
-        call.ok("User was successfully blocked.")
+        call.ok("User successfully blocked.")
     }
 }
 
@@ -106,7 +106,7 @@ fun Route.unblockUserRoute() {
 
     patch<Users.Unblock> { (userId) ->
         service.unblockUser(userId)
-        call.ok("User was successfully unblocked.")
+        call.ok("User successfully unblocked.")
     }
 }
 

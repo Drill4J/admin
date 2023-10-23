@@ -79,7 +79,7 @@ fun Route.signInRoute() {
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
-        call.ok(TokenView(token), "User was successfully authenticated.")
+        call.ok(TokenView(token), "User successfully authenticated.")
     }
 }
 
@@ -103,7 +103,7 @@ fun Route.updatePasswordRoute() {
         val changePasswordPayload = call.receive<ChangePasswordPayload>()
         val principal = call.principal<User>() ?: throw NotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
-        call.ok("Password was successfully changed.")
+        call.ok("Password successfully changed.")
     }
 }
 
