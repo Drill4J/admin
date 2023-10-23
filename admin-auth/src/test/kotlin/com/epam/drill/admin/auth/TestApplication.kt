@@ -78,16 +78,6 @@ fun testModule(
     }
 }
 
-fun TestApplicationEngine.withStatusPages() {
-    callInterceptor = {
-        try {
-            call.application.execute(call)
-        } catch (_: Throwable) {
-            //allow to handle status pages
-        }
-    }
-}
-
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
     addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")

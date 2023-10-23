@@ -139,7 +139,6 @@ class UserAuthenticationTest {
             .thenReturn(null)
 
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "unknown", password = "secret")
@@ -158,7 +157,6 @@ class UserAuthenticationTest {
             .thenReturn(false)
 
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "guest", password = "incorrect")
@@ -175,7 +173,6 @@ class UserAuthenticationTest {
             .thenReturn(USER_GUEST)
 
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "guest", password = "secret")
@@ -189,7 +186,6 @@ class UserAuthenticationTest {
     @Test
     fun `without authentication 'POST update-password' must fail with 401 status`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 //not add auth
@@ -209,7 +205,6 @@ class UserAuthenticationTest {
             .thenReturn(false)
 
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")

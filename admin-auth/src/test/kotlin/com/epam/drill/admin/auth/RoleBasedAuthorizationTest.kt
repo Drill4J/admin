@@ -35,7 +35,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given user with admin role, request only-admins should return 200 OK`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/only-admins") {
                 addBasicAuth("admin", "secret")
             }) {
@@ -47,7 +46,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given user with user role, request only-admins should return 403 Access denied`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/only-admins") {
                 addBasicAuth("user", "secret")
             }) {
@@ -59,7 +57,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given user with user role, request only-users should return 200 OK`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/only-users") {
                 addBasicAuth("user", "secret")
             }) {
@@ -71,7 +68,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given user with admin role, request only-users should return 403 Access denied`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/only-users") {
                 addBasicAuth("admin", "secret")
             }) {
@@ -83,7 +79,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given user with user role, request admins-or-users should return 200 OK`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/admins-or-users") {
                 addBasicAuth("user", "secret")
             }) {
@@ -95,7 +90,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given guest without role, request admins-or-users should return 403 Access denied`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/admins-or-users") {
                 addBasicAuth("guest", "secret")
             }) {
@@ -107,7 +101,6 @@ class RoleBasedAuthorizationTest {
     @Test
     fun `given guest without role, request all should return 200 OK`() {
         withTestApplication(config()) {
-            withStatusPages()
             with(handleRequest(HttpMethod.Get, "/all") {
                 addBasicAuth("guest", "secret")
             }) {
