@@ -16,7 +16,13 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.*
+import com.epam.drill.admin.auth.config.RoleBasedAuthorization
+import com.epam.drill.admin.auth.config.securityDiConfig
+import com.epam.drill.admin.auth.config.usersDiConfig
+import com.epam.drill.admin.auth.config.withRole
+import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.route.authStatusPages
+import com.epam.drill.admin.auth.route.updatePasswordRoute
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.config.*
@@ -93,6 +99,8 @@ fun Application.module() {
         exposeHeader(HttpHeaders.ContentType)
     }
 
+    install(RoleBasedAuthorization)
+
     kodein {
         withKModule { kodeinModule("securityConfig", securityDiConfig) }
         withKModule { kodeinModule("usersConfig", usersDiConfig) }
@@ -138,7 +146,14 @@ fun Application.module() {
 
     routing {
         userAuthenticationRoutes()
-        userManagementRoutes()
+        authenticate("jwt") {
+            updatePasswordRoute()
+        }
+        authenticate("jwt", "basic") {
+            withRole(ADMIN) {
+                userManagementRoutes()
+            }
+        }
     }
 }
 

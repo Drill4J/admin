@@ -15,9 +15,9 @@
  */
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.view.CredentialsView
-import com.epam.drill.admin.auth.view.EditUserPayload
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.CredentialsView
+import com.epam.drill.admin.auth.model.EditUserPayload
+import com.epam.drill.admin.auth.model.UserView
 
 interface UserManagementService {
     fun getUsers(): List<UserView>

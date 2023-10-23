@@ -16,15 +16,14 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.view.MessageView
-import com.epam.drill.admin.auth.view.EditUserPayload
+import com.epam.drill.admin.auth.model.EditUserPayload
 import io.ktor.application.*
+import io.ktor.auth.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.Route
-import io.ktor.routing.Routing
 import io.ktor.routing.route
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
@@ -44,7 +43,7 @@ object Users {
     data class ResetPassword(val userId: Int)
 }
 
-fun Routing.userManagementRoutes() {
+fun Route.userManagementRoutes() {
     route("/api") {
         getUsersRoute()
         getUserRoute()
@@ -61,7 +60,7 @@ fun Route.getUsersRoute() {
 
     get<Users> {
         val users = service.getUsers()
-        call.respond(HttpStatusCode.OK, users)
+        call.ok(users)
     }
 }
 
@@ -70,7 +69,7 @@ fun Route.getUserRoute() {
 
     get<Users.Id> { params ->
         val userView = service.getUser(params.userId)
-        call.respond(HttpStatusCode.OK, userView)
+        call.ok(userView)
     }
 }
 
@@ -80,7 +79,7 @@ fun Route.editUserRoute() {
     put<Users.Id> { (userId) ->
         val editUserPayload = call.receive<EditUserPayload>()
         val userView = service.updateUser(userId, editUserPayload)
-        call.respond(HttpStatusCode.OK, userView)
+        call.ok(userView, "User successfully edited.")
     }
 }
 
@@ -89,7 +88,7 @@ fun Route.deleteUserRoute() {
 
     delete<Users.Id> { (userId) ->
         service.deleteUser(userId)
-        call.respond(HttpStatusCode.OK, MessageView("User deleted successfully"))
+        call.ok("User successfully deleted.")
     }
 }
 
@@ -98,7 +97,7 @@ fun Route.blockUserRoute() {
 
     patch<Users.Block> { (userId) ->
         service.blockUser(userId)
-        call.respond(HttpStatusCode.OK, MessageView("User blocked successfully"))
+        call.ok("User successfully blocked.")
     }
 }
 
@@ -107,7 +106,7 @@ fun Route.unblockUserRoute() {
 
     patch<Users.Unblock> { (userId) ->
         service.unblockUser(userId)
-        call.respond(HttpStatusCode.OK, MessageView("User unblocked successfully"))
+        call.ok("User successfully unblocked.")
     }
 }
 
@@ -116,7 +115,7 @@ fun Route.resetPasswordRoute() {
 
     patch<Users.ResetPassword> { (userId) ->
         val credentialsView = service.resetPassword(userId)
-        call.respond(HttpStatusCode.OK, credentialsView)
+        call.ok(credentialsView, "Password reset successfully.")
     }
 }
 

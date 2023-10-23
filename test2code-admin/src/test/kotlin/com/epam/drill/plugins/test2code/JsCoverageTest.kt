@@ -32,7 +32,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
     @Test
     fun `coverageData for active scope with custom js probes`() {
         runBlocking {
-            val coverageData = calculateCoverage() {
+            val coverageData = calculateCoverage {
                 this.execSession(manualTestType) { sessionId ->
                     addProbes(sessionId) { probes }
                 }
@@ -87,7 +87,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
 
     @Test
     fun `should merge probes`() = runBlocking {
-        val coverageData = calculateCoverage() {
+        val coverageData = calculateCoverage {
             this.execSession(manualTestType) { sessionId ->
                 addProbes(sessionId) { probes }
                 addProbes(sessionId) { probes2 }

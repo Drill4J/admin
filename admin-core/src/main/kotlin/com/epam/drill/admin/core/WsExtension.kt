@@ -25,15 +25,18 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import mu.*
+import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
 
 fun Route.authWebSocket(
     path: String,
-    tokenService: TokenService,
     protocol: String? = null,
     handler: suspend DefaultWebSocketServerSession.() -> Unit,
 ) {
+    val tokenService by di().instance<TokenService>()
+
     webSocket(path, protocol) {
         socketAuthentication(tokenService)
         try {

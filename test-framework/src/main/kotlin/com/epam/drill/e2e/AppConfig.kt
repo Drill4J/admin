@@ -16,9 +16,10 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.auth.config.RoleBasedAuthorization
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
-import com.epam.drill.admin.auth.securityDiConfig
-import com.epam.drill.admin.auth.usersDiConfig
+import com.epam.drill.admin.auth.config.securityDiConfig
+import com.epam.drill.admin.auth.config.usersDiConfig
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
@@ -33,8 +34,6 @@ import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.locations.*
@@ -45,7 +44,7 @@ import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
 import io.ktor.routing.*
 
-const val GUEST_USER = "{\"username\": \"guest\", \"password\": \"guest\", \"role\": \"ADMIN\"}"
+const val GUEST_USER = "{\"username\": \"guest\", \"password\": \"guest\", \"role\": \"USER\"}"
 
 class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
@@ -66,6 +65,8 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
         install(ContentNegotiation) {
             converters()
         }
+
+        install(RoleBasedAuthorization)
 
         enableSwaggerSupport()
 

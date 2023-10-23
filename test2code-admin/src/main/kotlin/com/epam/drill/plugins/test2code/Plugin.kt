@@ -322,7 +322,7 @@ class Plugin(
         attachedAgentBuildVersion: String,
         content: String,
     ): Any = run {
-        if (attachedAgentBuildVersion != buildVersion) return "";
+        if (attachedAgentBuildVersion != buildVersion) return ""
 
         val message = if (content.isJson())
             json.decodeFromString(CoverMessage.serializer(), content)

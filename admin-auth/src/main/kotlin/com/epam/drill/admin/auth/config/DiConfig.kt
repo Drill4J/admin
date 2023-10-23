@@ -13,24 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth
+package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
-import com.epam.drill.admin.auth.service.PasswordGenerator
-import com.epam.drill.admin.auth.service.PasswordService
-import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.service.impl.PasswordGeneratorImpl
-import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
-import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
-import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
+import com.epam.drill.admin.auth.service.*
+import com.epam.drill.admin.auth.service.impl.*
 import io.ktor.application.*
 import org.kodein.di.*
+
+val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
+    bindJwt()
+    bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
+    bind<PasswordRequirementsConfig>() with singleton { PasswordRequirementsConfig(di) }
+}
 
 val usersDiConfig: DI.Builder.(Application) -> Unit = { _ ->
     userRepositoriesConfig()
     userServicesConfig()
+}
+
+fun DI.Builder.bindJwt() {
+    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
+    bind<TokenService>() with provider { instance<JwtTokenService>() }
 }
 
 fun DI.Builder.userServicesConfig() {
@@ -41,8 +47,9 @@ fun DI.Builder.userServicesConfig() {
         )
     }
     bind<UserManagementService>() with eagerSingleton { UserManagementServiceImpl(instance(), instance()) }
-    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl() }
-    bind<PasswordService>() with singleton { PasswordServiceImpl(instance()) }
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
+    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
+    bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
 
 fun DI.Builder.userRepositoriesConfig() {

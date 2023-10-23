@@ -15,7 +15,8 @@
  */
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.view.*
+import com.epam.drill.admin.auth.model.*
+import com.epam.drill.admin.auth.principal.User
 import io.ktor.auth.*
 
 interface UserAuthenticationService {
@@ -23,5 +24,5 @@ interface UserAuthenticationService {
 
     fun signUp(payload: RegistrationPayload)
 
-    fun updatePassword(principal: UserIdPrincipal, payload: ChangePasswordPayload)
+    fun updatePassword(principal: User, payload: ChangePasswordPayload)
 }

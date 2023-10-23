@@ -15,61 +15,52 @@
  */
 package com.epam.drill.admin.auth
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.model.DataResponse
+import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.config.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
 import io.ktor.server.testing.*
-import io.ktor.util.pipeline.*
-import org.kodein.di.*
-import org.kodein.di.ktor.di
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
+import kotlin.test.assertNotNull
+import java.util.*
 
 
-fun TestApplicationEngine.withStatusPages() {
-    callInterceptor = {
-        try {
-            call.application.execute(call)
-        } catch (_: Throwable) {
-            //allow to handle status pages
-        }
-    }
+fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
+    val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
+    addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
 }
 
-fun testModule(
-    statusPages: StatusPages.Configuration.() -> Unit = {
-        exception<Throwable> { _ ->
-            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-        }
-    },
-    authentication: Authentication.Configuration.() -> Unit = {},
-    routing: Routing.() -> Unit = {},
-    bindings: DI.MainBuilder.() -> Unit = {}
-): Application.() -> Unit = {
-    install(Locations)
-    install(ContentNegotiation) {
-        json()
-    }
-    install(StatusPages) {
-        exception<Throwable> { _ ->
-            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-        }
-        statusPages()
-    }
-    install(Authentication) {
-        authentication()
-    }
-
-    di {
-        bindings()
-    }
-
-    routing {
-        routing()
-    }
+fun TestApplicationRequest.addJwtToken(
+    username: String,
+    secret: String,
+    expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
+    role: String = Role.UNDEFINED.name,
+    issuer: String? = "test issuer",
+    audience: String? = null
+) {
+    val token = JWT.create()
+        .withSubject(username)
+        .withIssuer(issuer)
+        .withAudience(audience)
+        .withClaim("role", role)
+        .withExpiresAt(expiresAt)
+        .sign(Algorithm.HMAC512(secret))
+    addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 
+fun <T> TestApplicationCall.assertResponseNotNull(serializer: KSerializer<T>): T {
+    val value = assertNotNull(response.content)
+    val response = Json.decodeFromString(DataResponse.serializer(serializer), value)
+    return response.data
+}
+
+fun Application.environment(configuration: MapApplicationConfig.() -> Unit) {
+    (this.environment.config as MapApplicationConfig).apply {
+        configuration()
+    }
+}
 

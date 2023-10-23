@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.notification
 
-import com.epam.drill.admin.*
 import com.epam.drill.admin.endpoints.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -37,11 +36,13 @@ class NotificationEndpoints(override val di: DI) : DIAware {
 
     init {
         app.routing {
-            authenticate("jwt", "basic") { authenticated() }
+            authenticate("jwt", "basic") {
+                notificationRoutes()
+            }
         }
     }
 
-    private fun Route.authenticated() {
+    private fun Route.notificationRoutes() {
         val toggle = "Read/Unread notification"
             .examples(
                 example("Read/Unread notification",

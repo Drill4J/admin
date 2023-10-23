@@ -13,24 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth
+package com.epam.drill.admin.auth.config
 
-import com.epam.drill.admin.auth.jwt.JwtTokenService
-import com.epam.drill.admin.auth.jwt.bindJwt
-import com.epam.drill.admin.auth.jwt.toPrincipal
+import com.auth0.jwt.interfaces.Payload
+import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.view.LoginPayload
-import com.epam.drill.admin.auth.view.UserView
+import com.epam.drill.admin.auth.model.LoginPayload
+import com.epam.drill.admin.auth.model.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import org.kodein.di.*
 
-val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
-    bindJwt()
-    bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
-}
 
 class SecurityConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
@@ -62,6 +58,13 @@ class SecurityConfig(override val di: DI) : DIAware {
             }
         }
     }
+}
+
+private fun Payload.toPrincipal(): User {
+    return User(
+        username = subject,
+        role = Role.valueOf(getClaim("role").asString())
+    )
 }
 
 private fun UserView.toPrincipal(): User {

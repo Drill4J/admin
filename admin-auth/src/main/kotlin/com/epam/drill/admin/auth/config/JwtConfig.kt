@@ -13,14 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.jwt
+package com.epam.drill.admin.auth.config
 
-import com.auth0.jwt.algorithms.*
-import com.auth0.jwt.interfaces.Payload
-import com.epam.drill.admin.auth.entity.Role
-import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.service.TokenService
-import com.typesafe.config.ConfigFactory
 import io.ktor.application.*
 import io.ktor.config.*
 import mu.KotlinLogging
@@ -42,7 +36,7 @@ class JwtConfig(override val di: DI) : DIAware {
         }
         generateSecret()
     }
-    private val secret: String
+    val secret: String
         get() = jwt.propertyOrNull("secret")?.getString() ?: generatedSecret
 
     val issuer: String
@@ -53,23 +47,6 @@ class JwtConfig(override val di: DI) : DIAware {
 
     val audience: String?
         get() = jwt.propertyOrNull("audience")?.getString()
-
-    val algorithm: Algorithm
-        get() = Algorithm.HMAC512(secret)
-}
-
-fun DI.Builder.bindJwt() {
-    bind<JwtConfig>() with singleton { JwtConfig(di) }
-    bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
-    bind<TokenService>() with provider { instance<JwtTokenService>() }
-}
-
-
-internal fun Payload.toPrincipal(): User {
-    return User(
-        username = subject,
-        role = Role.valueOf(getClaim("role").asString())
-    )
 }
 
 private fun ApplicationConfigValue.getDuration(): Duration {
@@ -77,4 +54,4 @@ private fun ApplicationConfigValue.getDuration(): Duration {
 }
 
 
-private fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()
+internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()

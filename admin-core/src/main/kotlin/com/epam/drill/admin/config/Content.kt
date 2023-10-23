@@ -66,7 +66,7 @@ private object EmptyContentConverter : ContentConverter {
         context: PipelineContext<Any, ApplicationCall>,
         contentType: ContentType,
         value: Any,
-    ): Any? = value
+    ): Any = value
 }
 
 /**

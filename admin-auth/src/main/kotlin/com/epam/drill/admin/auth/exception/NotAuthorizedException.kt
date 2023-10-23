@@ -15,5 +15,4 @@
  */
 package com.epam.drill.admin.auth.exception
 
-class IncorrectCredentialsException : Exception("Username or password is incorrect") {
-}
+class NotAuthorizedException: Exception("Access denied")
