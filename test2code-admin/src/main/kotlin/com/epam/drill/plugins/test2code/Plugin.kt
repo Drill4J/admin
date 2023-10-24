@@ -433,7 +433,6 @@ class Plugin(
     private fun sessionFinishingJob() = AsyncJobDispatcher.launch {
         while (isActive) {
             delay(SAVE_DATA_JOB_INTERVAL_MS)
-            calculateAndSendBuildCoverage()
             sessionHolder.sessions.values.forEach { activeSession ->
                 state.saveSession(activeSession.id)
             }
