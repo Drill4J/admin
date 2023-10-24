@@ -64,12 +64,6 @@ data class SessionHolder(
         probeProvider: () -> Collection<ExecClassData>,
     ): TestSession? = sessions[sessionId]?.apply { addAll(probeProvider()) }
 
-    fun cancelSession(
-        sessionId: String,
-    ): TestSession? = removeSession(sessionId)
-
-    fun cancelAllSessions() = sessions.clear()
-
     /**
      * Close the session-holder:
      * - clear the active sessions
@@ -83,11 +77,6 @@ data class SessionHolder(
 
     override fun toString() = "session-holder($id)"
 
-    private fun removeSession(id: String): TestSession? = sessions.run {
-        val testSession = get(id)
-        this.remove(id)
-        testSession
-    }
 }
 
 @Serializable

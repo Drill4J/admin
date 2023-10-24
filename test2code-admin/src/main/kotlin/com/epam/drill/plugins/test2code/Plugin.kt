@@ -292,7 +292,6 @@ class Plugin(
         }
 
         is CancelAllSessions -> {
-            sessionHolder.cancelAllSessions()
             okResult
         }
 
@@ -380,10 +379,7 @@ class Plugin(
 
         is SessionCancelled -> logger.info { "$instanceId: Agent session ${message.sessionId} cancelled." }
 
-        is SessionsCancelled -> message.run {
-            sessionHolder.let { ids.forEach { id: String -> it.cancelSession(id) } }
-            logger.info { "$instanceId: Agent sessions cancelled: $ids." }
-        }
+        is SessionsCancelled -> logger.info { "$instanceId: Agent sessions cancelled: ${message.ids}." }
 
         /**
          * @features Session finishing
