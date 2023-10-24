@@ -49,6 +49,10 @@ fun ApplicationConfigValue.getDuration() = "_".let { k ->
 
 val LOG_MESSAGE_MAX_LENGTH = System.getenv("LOG_MESSAGE_MAX_LENGTH")?.toIntOrNull() ?: 0
 
+val DRILL_SKIP_ANNOTATIONS =
+    System.getenv("DRILL_SKIP_ANNOTATIONS")?.split(",")?.filter { it.isNotBlank() }?.toList()
+        ?: emptyList()
+
 //database configs:
 val Application.drillDatabase: ApplicationConfig
     get() = drillConfig.config("database")

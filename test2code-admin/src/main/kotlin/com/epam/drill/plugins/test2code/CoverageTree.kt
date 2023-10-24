@@ -32,10 +32,10 @@ internal fun Iterable<AstEntity>.toPackages(): List<JavaPackageCoverage> = run {
             id = path.crc64,
             name = path.weakIntern(),
             totalClassesCount = astEntities.count(),
-            totalMethodsCount = astEntities.flatMap(AstEntity::methodsWithProbes).count(),
-            totalCount = astEntities.flatMap(AstEntity::methodsWithProbes).sumOf(AstMethod::count),
+            totalMethodsCount = astEntities.flatMap { it.methods }.count(),
+            totalCount = astEntities.flatMap { it.methods }.sumOf(AstMethod::count),
             classes = astEntities.mapNotNull { ast ->
-                ast.methodsWithProbes().takeIf { it.any() }?.let { methods ->
+                ast.methods.takeIf { it.any() }?.let { methods ->
                     val className = fullClassname(path, ast.name)
                     JavaClassCoverage(
                         id = className.crc64,
@@ -158,5 +158,3 @@ internal fun ClassCounter.toMethodCoverage(
 internal fun AstMethod.toDesc(): String = params.joinToString(
     prefix = "(", postfix = "):$returnType"
 ).weakIntern()
-
-fun AstEntity.methodsWithProbes(): List<AstMethod> = methods.filter { it.probes.any() }

@@ -15,9 +15,11 @@
  */
 package com.epam.drill.plugins.test2code
 
+import com.epam.drill.admin.config.DRILL_SKIP_ANNOTATIONS
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugins.test2code.api.*
+import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
@@ -110,20 +112,32 @@ internal class AgentState(
             }
         }.takeIf { it !is ClassData }?.also { data ->
             val classData = when (data) {
-                is DataBuilder -> data.flatMap { e -> e.methodsWithProbes().map { e to it } }.run {
+                is DataBuilder -> {
+                    val classes = data.asIterable()
+                        //filter for classes
+                        .filterByAnnotations { it.annotations.keys.toMutableList() }
+                        .map { astEntity ->
+                            //filter for methods in class
+                            astEntity.methods = astEntity.methodsWithProbes()
+                                .filterByAnnotations { it.annotations.keys.toMutableList() }
+                            astEntity
+                        }
                     logger.debug { "initializing DataBuilder..." }
-                    val methods = map { (e, m) ->
+                    val methods = classes.flatMap {
+                        it.methods.map { method -> it to method }
+                    }.map { (e, m) ->
                         Method(
                             ownerClass = fullClassname(e.path, e.name),
                             name = m.name.weakIntern(),
                             desc = m.toDesc(),
-                            hash = m.checksum.weakIntern()
+                            hash = m.checksum.weakIntern(),
+                            annotations = m.annotations
                         )
                     }.sorted()
-                    val packages = data.toPackages()
+                    val packages = classes.toPackages()
                     PackageTree(
-                        totalCount = sumOf { it.second.count },
-                        totalMethodCount = count(),
+                        totalCount = classes.flatMap(AstEntity::methods).sumOf { it.count },
+                        totalMethodCount = methods.count(),
                         totalClassCount = packages.sumOf { it.totalClassesCount },
                         packages = packages
                     ).toClassData(agentKey, methods = methods)
@@ -405,4 +419,16 @@ private fun CoverContext.updateBuild(
     updater: CachedBuild.() -> CachedBuild,
 ): CoverContext {
     return copy(build = build.updater())
+}
+
+fun AstEntity.methodsWithProbes(): List<AstMethod> = methods.filter { it.probes.any() }
+
+private fun <T> Iterable<T>.filterByAnnotations(processor: (T) -> List<String>): List<T> {
+    return filter { entity ->
+        processor(entity).none { annotation ->
+            DRILL_SKIP_ANNOTATIONS.any { skipAnnotation ->
+                annotation.contains(skipAnnotation)
+            }
+        }
+    }
 }
