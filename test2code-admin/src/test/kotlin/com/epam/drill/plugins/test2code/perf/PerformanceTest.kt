@@ -63,7 +63,7 @@ class PerformanceTest : PluginTest() {
             sizeProbes = sizeProbes
         )
         println("it has added probes, starting finish session...")
-        val finishedSession = plugin.state.finishSession(sessionId)
+        val finishedSession = plugin.state.saveSession(sessionId)
         println("finished session with size peerobes = ${finishedSession?.probes?.size}")
         return finishedSession
     }

@@ -276,7 +276,7 @@ class Plugin(
         is StopSession -> action.payload.run {
             sessionHolder.sessions[sessionId]?.let { session ->
                 session.addTests(tests)
-                state.finishSession(sessionId)
+                state.saveSession(sessionId)
                     ?: logger.info {
                         "No active session with id $sessionId."
                     }
@@ -386,13 +386,13 @@ class Plugin(
          */
         is SessionFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
-            state.finishSession(message.sessionId) ?: logger.info {
+            state.saveSession(message.sessionId) ?: logger.info {
                 "$instanceId: No active session with id ${message.sessionId}."
             }
         }
         is SessionsFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
-            message.ids.forEach { state.finishSession(it) }
+            message.ids.forEach { state.saveSession(it) }
         }
 
         //TODO EPMDJ-10398 send on agent attach
@@ -435,7 +435,7 @@ class Plugin(
             delay(SAVE_DATA_JOB_INTERVAL_MS)
             calculateAndSendBuildCoverage()
             sessionHolder.sessions.values.forEach { activeSession ->
-                state.finishSession(activeSession.id)
+                state.saveSession(activeSession.id)
             }
         }
     }

@@ -214,7 +214,7 @@ internal class AgentState(
      * @param sessionId the session ID which need to finish
      * @features Session finishing, Session saving
      */
-    internal suspend fun finishSession(
+    internal suspend fun saveSession(
         sessionId: String,
     ): TestSession? = sessionHolder.sessions[sessionId]?.also { testSession ->
         if (testSession.any()) {
