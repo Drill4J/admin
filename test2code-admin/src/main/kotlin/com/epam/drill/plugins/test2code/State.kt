@@ -15,7 +15,6 @@
  */
 package com.epam.drill.plugins.test2code
 
-import com.epam.drill.admin.config.DRILL_SKIP_ANNOTATIONS
 import com.epam.drill.common.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugins.test2code.api.*

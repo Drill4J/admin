@@ -22,3 +22,7 @@ internal class RuntimeConfig(private val pluginId: String) {
 
     private fun sysProp(key: String): String? = System.getProperty("drill.plugins.$pluginId.$key")
 }
+
+val DRILL_SKIP_ANNOTATIONS =
+    System.getenv("DRILL_SKIP_ANNOTATIONS")?.split(",")?.filter { it.isNotBlank() }?.toList()
+        ?: emptyList()
