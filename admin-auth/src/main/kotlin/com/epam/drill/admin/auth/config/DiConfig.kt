@@ -15,7 +15,9 @@
  */
 package com.epam.drill.admin.auth.config
 
+import com.epam.drill.admin.auth.config.UserRepoType.DB
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
@@ -24,15 +26,20 @@ import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagement
 import io.ktor.application.*
 import org.kodein.di.*
 
+enum class UserRepoType {
+    DB,
+    ENV
+}
+
 val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
     bindJwt()
     bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
     bind<PasswordRequirementsConfig>() with singleton { PasswordRequirementsConfig(di) }
 }
 
-val usersDiConfig: DI.Builder.(Application) -> Unit = { _ ->
-    userRepositoriesConfig()
-    userServicesConfig()
+val usersDiConfig: DI.Builder.(Application) -> Unit = { application ->
+    userRepositoriesConfig(application.userRepoType)
+    userServicesConfig(application.userRepoType)
 }
 
 fun DI.Builder.bindJwt() {
@@ -41,30 +48,49 @@ fun DI.Builder.bindJwt() {
     bind<TokenService>() with provider { instance<JwtTokenService>() }
 }
 
-fun DI.Builder.userServicesConfig() {
+fun DI.Builder.userServicesConfig(userRepoType: UserRepoType) {
     bind<UserAuthenticationService>() with singleton {
-        TransactionalUserAuthenticationService(
-            UserAuthenticationServiceImpl(
-                userRepository = instance(),
-                passwordService = instance()
-            )
-        )
+        UserAuthenticationServiceImpl(
+            userRepository = instance(),
+            passwordService = instance()
+        ).let { service ->
+            if (userRepoType == DB)
+                TransactionalUserAuthenticationService(service)
+            else
+                service
+        }
     }
     bind<UserManagementService>() with singleton {
-        TransactionalUserManagementService(
-            UserManagementServiceImpl(
-                userRepository = instance(),
-                passwordService = instance()
-            )
-        )
+        UserManagementServiceImpl(
+            userRepository = instance(),
+            passwordService = instance()
+        ).let { service ->
+            if (userRepoType == DB)
+                TransactionalUserManagementService(service)
+            else
+                service
+        }
     }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
 
-fun DI.Builder.userRepositoriesConfig() {
-    bind<UserRepository>() with eagerSingleton {
-        UserRepositoryImpl()
+fun DI.Builder.userRepositoriesConfig(userRepoType: UserRepoType) {
+    bind<UserRepository>() with singleton {
+        when (userRepoType) {
+            DB ->  UserRepositoryImpl()
+            UserRepoType.ENV -> EnvUserRepository(
+                env = instance<Application>().environment.config,
+                passwordService = instance()
+            )
+        }
     }
 }
+
+private val Application.userRepoType: UserRepoType
+    get() = environment.config
+        .config("drill")
+        .propertyOrNull("userRepoType")
+        ?.getString()?.let { UserRepoType.valueOf(it) }
+        ?: DB
