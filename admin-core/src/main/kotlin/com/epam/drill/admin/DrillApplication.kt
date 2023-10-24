@@ -16,10 +16,8 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.*
-import com.epam.drill.admin.auth.config.RoleBasedAuthorization
-import com.epam.drill.admin.auth.config.securityDiConfig
-import com.epam.drill.admin.auth.config.usersDiConfig
-import com.epam.drill.admin.auth.config.withRole
+import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.updatePasswordRoute
@@ -108,40 +106,7 @@ fun Application.module() {
         withKModule { kodeinModule("wsHandler", wsHandler) }
         withKModule { kodeinModule("handlers", handlers) }
         withKModule { kodeinModule("pluginServices", pluginServices) }
-        val host = drillDatabaseHost
-        val port = drillDatabasePort
-        val dbName = drillDatabaseName
-        val userName = drillDatabaseUserName
-        val password = drillDatabasePassword
-        val maxPoolSize = drillDatabaseMaxPoolSize
-        if (isEmbeddedMode) {
-            logger.info { "starting dev mode for db..." }
-            val postgres = EmbeddedPostgres(Version.V11_1, drillWorkDir.absolutePath)
-            postgres.start(
-                host,
-                port,
-                dbName,
-                userName,
-                password
-            )
-        }
-        hikariConfig = HikariConfig().apply {
-            this.driverClassName = "org.postgresql.Driver"
-            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
-            this.username = userName
-            this.password = password
-            this.maximumPoolSize = maxPoolSize
-            this.isAutoCommit = true
-            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-            this.validate()
-        }
-        adminStore.createProcedureIfTableExist()
-        val flyway = Flyway.configure()
-            .dataSource(hikariConfig.jdbcUrl, hikariConfig.username, hikariConfig.password)
-            .schemas(adminStore.hikariConfig.schema)
-            .baselineOnMigrate(true)
-            .load()
-        flyway.migrate()
+        initDB()
     }
 
     routing {
@@ -155,6 +120,47 @@ fun Application.module() {
             }
         }
     }
+}
+
+private fun Application.initDB() {
+    val host = drillDatabaseHost
+    val port = drillDatabasePort
+    val dbName = drillDatabaseName
+    val userName = drillDatabaseUserName
+    val password = drillDatabasePassword
+    val maxPoolSize = drillDatabaseMaxPoolSize
+    if (isEmbeddedMode) {
+        logger.info { "starting dev mode for db..." }
+        val postgres = EmbeddedPostgres(Version.V11_1, drillWorkDir.absolutePath)
+        postgres.start(
+            host,
+            port,
+            dbName,
+            userName,
+            password
+        )
+    }
+    hikariConfig = HikariConfig().apply {
+        this.driverClassName = "org.postgresql.Driver"
+        this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
+        this.username = userName
+        this.password = password
+        this.maximumPoolSize = maxPoolSize
+        this.isAutoCommit = true
+        this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+        this.validate()
+    }
+    adminStore.createProcedureIfTableExist()
+    val dataSource = HikariDataSource(hikariConfig)
+
+    val flyway = Flyway.configure()
+        .dataSource(dataSource)
+        .schemas(adminStore.hikariConfig.schema)
+        .baselineOnMigrate(true)
+        .load()
+    flyway.migrate()
+
+    DatabaseConfig.init(dataSource)
 }
 
 lateinit var hikariConfig: HikariConfig
