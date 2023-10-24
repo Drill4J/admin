@@ -29,14 +29,14 @@ class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService
 ) : UserAuthenticationService {
-    override fun signIn(payload: LoginPayload): UserView {
+    override suspend fun signIn(payload: LoginPayload): UserView {
         val userEntity = userRepository.findByUsername(payload.username)?.takeIf { userEntity ->
             passwordService.matchPasswords(payload.password, userEntity.passwordHash)
         } ?: throw NotAuthenticatedException("Username or password is incorrect")
         return userEntity.toView()
     }
 
-    override fun signUp(payload: RegistrationPayload) {
+    override suspend fun signUp(payload: RegistrationPayload) {
         if (userRepository.findByUsername(payload.username) != null)
             throw UserValidationException("User '${payload.username}' already exists")
         passwordService.validatePasswordRequirements(payload.password)
@@ -44,7 +44,7 @@ class UserAuthenticationServiceImpl(
         userRepository.create(payload.toUserEntity(passwordHash))
     }
 
-    override fun updatePassword(principal: User, payload: ChangePasswordPayload) {
+    override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
@@ -65,6 +65,7 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
 
 private fun UserEntity.toView(): UserView {
     return UserView(
+        id = this.id,
         username = this.username,
         role = Role.valueOf(this.role),
         blocked = this.blocked

@@ -19,9 +19,9 @@ import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
 
 interface UserAuthenticationService {
-    fun signIn(payload: LoginPayload): UserView
+    suspend fun signIn(payload: LoginPayload): UserView
 
-    fun signUp(payload: RegistrationPayload)
+    suspend fun signUp(payload: RegistrationPayload)
 
-    fun updatePassword(principal: User, payload: ChangePasswordPayload)
+    suspend fun updatePassword(principal: User, payload: ChangePasswordPayload)
 }

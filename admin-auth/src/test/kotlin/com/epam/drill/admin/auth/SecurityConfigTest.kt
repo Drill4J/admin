@@ -52,7 +52,7 @@ class SecurityConfigTest {
 
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
-        whenever(authService.signIn(LoginPayload(username = "admin", password = "secret")))
+        wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
             .thenReturn(UserView(username = "admin", role = Role.ADMIN, blocked = false))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {

@@ -21,20 +21,20 @@ import com.epam.drill.admin.auth.model.RegistrationPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import org.jetbrains.exposed.sql.transactions.transaction
+import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
 
 class TransactionalUserAuthenticationService(
     private val delegate: UserAuthenticationService
 ) : UserAuthenticationService by delegate {
-    override fun signIn(payload: LoginPayload): UserView = transaction {
+    override suspend fun signIn(payload: LoginPayload): UserView = transaction {
         delegate.signIn(payload)
     }
 
-    override fun signUp(payload: RegistrationPayload) = transaction {
+    override suspend fun signUp(payload: RegistrationPayload) = transaction {
         delegate.signUp(payload)
     }
 
-    override fun updatePassword(principal: User, payload: ChangePasswordPayload) = transaction {
+    override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) = transaction {
         delegate.updatePassword(principal, payload)
     }
 }

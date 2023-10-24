@@ -46,23 +46,23 @@ class EnvUserRepository(
             .toMap()
     }
 
-    override fun findAllNotDeleted(): List<UserEntity> {
+    override suspend fun findAllNotDeleted(): List<UserEntity> {
         return users.values.filter { !it.deleted }
     }
 
-    override fun findById(id: Int): UserEntity? {
+    override suspend fun findById(id: Int): UserEntity? {
         return users[id]
     }
 
-    override fun findByUsername(username: String): UserEntity? {
+    override suspend fun findByUsername(username: String): UserEntity? {
         return users[genId(username)]
     }
 
-    override fun create(entity: UserEntity): Id {
+    override suspend fun create(entity: UserEntity): Id {
         throw UnsupportedOperationException("User creation is not supported")
     }
 
-    override fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity) {
         throw UnsupportedOperationException("User update is not supported")
     }
 

@@ -22,23 +22,23 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class UserRepositoryImpl : UserRepository {
-    override fun findAllNotDeleted(): List<UserEntity> {
+    override suspend fun findAllNotDeleted(): List<UserEntity> {
         return UserTable.select { UserTable.deleted eq false }.map { it.toEntity() }
     }
 
-    override fun findById(id: Int): UserEntity? {
+    override suspend fun findById(id: Int): UserEntity? {
         return UserTable.select { UserTable.id eq id }.map { it.toEntity() }.firstOrNull()
     }
 
-    override fun findByUsername(username: String): UserEntity? {
+    override suspend fun findByUsername(username: String): UserEntity? {
         return UserTable.select { UserTable.username eq username }.map { it.toEntity() }.firstOrNull()
     }
 
-    override fun create(entity: UserEntity): Int {
+    override suspend fun create(entity: UserEntity): Int {
         return UserTable.insertAndGetId { entity.mapTo(it) }.value
     }
 
-    override fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity) {
         UserTable.update(
             where = { UserTable.id eq entity.id },
             body = { entity.mapTo(it) }

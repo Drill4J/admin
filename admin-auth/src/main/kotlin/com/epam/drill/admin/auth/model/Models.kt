@@ -29,6 +29,7 @@ data class TokenView(val token: String)
 
 @Serializable
 data class UserView(
+    val id: Int?,
     val username: String,
     val role: Role,
     val blocked: Boolean

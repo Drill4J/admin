@@ -47,6 +47,7 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
@@ -60,8 +61,10 @@ class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
+
     @Mock
     lateinit var passwordService: PasswordService
+
     @Mock
     lateinit var tokenService: TokenService
 
@@ -72,7 +75,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `given correct username and password 'POST sign-in' must return an access token`() {
-        whenever(userRepository.findByUsername("guest"))
+        wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
@@ -93,11 +96,11 @@ class UserAuthenticationTest {
 
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
-        whenever(userRepository.findByUsername("foobar"))
+        wheneverBlocking(userRepository) { findByUsername("foobar") }
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
             .thenReturn("hash")
-        whenever(userRepository.create(any()))
+        wheneverBlocking(userRepository) { create(any()) }
             .thenReturn(1)
 
         withTestApplication(config) {
@@ -107,20 +110,22 @@ class UserAuthenticationTest {
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).create(
-                    UserEntity(
-                        username = "foobar",
-                        passwordHash = "hash",
-                        role = Role.UNDEFINED.name
+                verifyBlocking(userRepository) {
+                    create(
+                        UserEntity(
+                            username = "foobar",
+                            passwordHash = "hash",
+                            role = Role.UNDEFINED.name
+                        )
                     )
-                )
+                }
             }
         }
     }
 
     @Test
     fun `given correct old password 'POST update-password' must succeed`() {
-        whenever(userRepository.findByUsername("guest"))
+        wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
@@ -135,14 +140,14 @@ class UserAuthenticationTest {
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(USER_GUEST.copy(passwordHash = "hash2"))
+                verifyBlocking(userRepository) { update(USER_GUEST.copy(passwordHash = "hash2")) }
             }
         }
     }
 
     @Test
     fun `given incorrect username 'POST sign-in' must fail with 401 status`() {
-        whenever(userRepository.findByUsername("unknown"))
+        wheneverBlocking(userRepository) { findByUsername("unknown") }
             .thenReturn(null)
 
         withTestApplication(config) {
@@ -158,7 +163,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `given incorrect password 'POST sign-in' must fail with 401 status`() {
-        whenever(userRepository.findByUsername("guest"))
+        wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
@@ -176,7 +181,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `given already existing username 'POST sign-up' must fail with 400 status`() {
-        whenever(userRepository.findByUsername("guest"))
+        wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
 
         withTestApplication(config) {
@@ -206,7 +211,7 @@ class UserAuthenticationTest {
 
     @Test
     fun `given incorrect old password 'POST update-password' must fail with 400 status`() {
-        whenever(userRepository.findByUsername("guest"))
+        wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)

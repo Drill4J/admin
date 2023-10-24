@@ -19,36 +19,36 @@ import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.service.UserManagementService
-import org.jetbrains.exposed.sql.transactions.transaction
+import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
 
 class TransactionalUserManagementService(
     private val delegate: UserManagementService
 ): UserManagementService by delegate {
-    override fun getUsers(): List<UserView> = transaction {
+    override suspend fun getUsers(): List<UserView> = transaction {
         delegate.getUsers()
     }
 
-    override fun getUser(userId: Int): UserView = transaction {
+    override suspend fun getUser(userId: Int): UserView = transaction {
         delegate.getUser(userId)
     }
 
-    override fun updateUser(userId: Int, payload: EditUserPayload): UserView = transaction {
+    override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView = transaction {
         delegate.updateUser(userId, payload)
     }
 
-    override fun deleteUser(userId: Int) = transaction {
+    override suspend fun deleteUser(userId: Int) = transaction {
         delegate.deleteUser(userId)
     }
 
-    override fun blockUser(userId: Int) = transaction {
+    override suspend fun blockUser(userId: Int) = transaction {
         delegate.blockUser(userId)
     }
 
-    override fun unblockUser(userId: Int) = transaction {
+    override suspend fun unblockUser(userId: Int) = transaction {
         delegate.unblockUser(userId)
     }
 
-    override fun resetPassword(userId: Int): CredentialsView = transaction {
+    override suspend fun resetPassword(userId: Int): CredentialsView = transaction {
         delegate.resetPassword(userId)
     }
 }
