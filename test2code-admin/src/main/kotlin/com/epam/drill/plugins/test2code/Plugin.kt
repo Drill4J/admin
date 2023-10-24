@@ -457,15 +457,16 @@ class Plugin(
      */
     private suspend fun Plugin.processInitialized() {
         initGateSettings()
+
         sendGateSettings()
         sendParentBuild()
         sendBaseline()
         sendParentTestsToRunStats()
         state.classDataOrNull()?.sendBuildStats()
-        calculateAndSendCachedCoverage()
         sendLabels()
         sendFilters()
         sendActiveSessions()
+
         sessionFinishingJob()
         calculateMetricsJob()
     }
@@ -510,15 +511,6 @@ class Plugin(
      */
     private suspend fun ClassData.sendBuildStats() {
         send(buildVersion, Routes.Data().let(Routes.Data::Build), state.coverContext().toBuildStatsDto())
-    }
-
-    /**
-     * Calculate coverage and send to the UI
-     * @features Agent registration
-     */
-    private suspend fun calculateAndSendCachedCoverage() = state.coverContext().build.let { build ->
-        val coverContext = state.coverContext()
-        build.bundleCounters.calculateAndSendBuildCoverage(coverContext)
     }
 
     /**
