@@ -68,6 +68,7 @@ class PluginWsTest {
 
     private val testApp: Application.() -> Unit = {
         (environment.config as MapApplicationConfig).apply {
+            put("drill.userRepoType", "ENV")
             put("drill.users", listOf(GUEST_USER))
         }
         install(Locations)

@@ -16,10 +16,9 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
-import com.epam.drill.admin.auth.config.RoleBasedAuthorization
-import com.epam.drill.admin.auth.route.userAuthenticationRoutes
-import com.epam.drill.admin.auth.config.securityDiConfig
+import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.usersDiConfig
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
@@ -43,8 +42,9 @@ import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
 import io.ktor.routing.*
+import javax.sql.DataSource
 
-const val GUEST_USER = "{\"username\": \"guest\", \"password\": \"guest\", \"role\": \"USER\"}"
+const val GUEST_USER = "{\"username\": \"user\", \"password\": \"user\", \"role\": \"USER\"}"
 
 class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
@@ -57,6 +57,7 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
             put("drill.plugins.remote.enabled", "false")
             put("drill.agents.socket.timeout", "90")
             put("drill.cache.type", "jvm")
+            put("drill.userRepoType", "ENV")
             put("drill.users", listOf(GUEST_USER))
         }
         install(Locations)
