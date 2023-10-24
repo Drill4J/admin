@@ -24,12 +24,11 @@ import javax.sql.DataSource
 
 object DatabaseConfig {
 
-    private lateinit var database: Database
-    private lateinit var dbDispatcher: CoroutineDispatcher
+    private var database: Database? = null
+    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
 
     fun init(dataSource: DataSource) {
         database = Database.connect(dataSource)
-        dbDispatcher = Dispatchers.IO
         Flyway.configure()
             .dataSource(dataSource)
             .schemas("auth")
@@ -40,5 +39,5 @@ object DatabaseConfig {
     }
 
     suspend fun <T> transaction(block: suspend () -> T): T =
-        newSuspendedTransaction(dbDispatcher, database) { block() }
+        newSuspendedTransaction(dispatcher, database) { block() }
 }

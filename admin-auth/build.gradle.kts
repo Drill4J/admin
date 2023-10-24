@@ -21,6 +21,7 @@ val mockitoKotlinVersion: String by parent!!.extra
 val jbcryptVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
+val h2Version: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -57,6 +58,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
+    testImplementation("com.h2database:h2:$h2Version")
 }
 
 tasks {
