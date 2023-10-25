@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
@@ -24,9 +25,6 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import kotlin.test.*
-
-private const val USER1 = "{\"username\": \"user\", \"password\": \"secret1\", \"role\": \"USER\"}"
-private const val USER2 = "{\"username\": \"admin\", \"password\": \"secret2\", \"role\": \"ADMIN\"}"
 
 class EnvRepositoryTest {
     @Mock
@@ -39,7 +37,10 @@ class EnvRepositoryTest {
 
     @Test
     fun `given users from env config, findAllNotDeleted must return all users not deleted users`() = runBlocking {
-        val repository = getRepositoryWithUsers(USER1, USER2)
+        val repository = prepareEnvUserRepository(
+            user("user", role = Role.USER),
+            user("admin", role = Role.ADMIN)
+        )
 
         val users = repository.findAllNotDeleted()
 
@@ -50,21 +51,61 @@ class EnvRepositoryTest {
 
     @Test
     fun `given username hash, findById must return the respective user`() = runBlocking {
-        val repository = getRepositoryWithUsers(USER1, USER2)
-        val user = repository.findById("user".hashCode())
+        val repository = prepareEnvUserRepository(
+            user("guest"),
+            user("foobar"),
+            user("admin")
+        )
+
+        val user = repository.findById("foobar".hashCode())
+
         assertNotNull(user)
-        assertTrue(user.username == "user")
+        assertTrue(user.username == "foobar")
+    }
+
+    @Test
+    fun `given lowercase username hash, findById must return the respective user`() = runBlocking {
+        val repository = prepareEnvUserRepository(
+            user("guest"),
+            user("FooBar"),
+            user("admin")
+        )
+
+        val user = repository.findById("foobar".hashCode())
+
+        assertNotNull(user)
+        assertTrue(user.username == "FooBar")
     }
 
     @Test
     fun `given username findByUsername must return the respective user`() = runBlocking {
-        val repository = getRepositoryWithUsers(USER1, USER2)
-        val user = repository.findByUsername("user")
+        val repository = prepareEnvUserRepository(
+            user("guest"),
+            user("foobar"),
+            user("foobar123")
+        )
+
+        val user = repository.findByUsername("foobar")
+
         assertNotNull(user)
-        assertTrue(user.username == "user")
+        assertTrue(user.username == "foobar")
     }
 
-    private fun getRepositoryWithUsers(vararg users: String): EnvUserRepository {
+    @Test
+    fun `given case insensitive username, findByUsername must return user`() = runBlocking {
+        val repository = prepareEnvUserRepository(
+            user("guest"),
+            user("fooBAR"),
+            user("FooBar123")
+        )
+
+        val user = repository.findByUsername("FooBar")
+
+        assertNotNull(user)
+        assertTrue(user.username == "fooBAR")
+    }
+
+    private fun prepareEnvUserRepository(vararg users: String): EnvUserRepository {
         whenever(passwordService.hashPassword(any())).thenAnswer { "hash" }
         val repository = EnvUserRepository(
             MapApplicationConfig().apply {
@@ -75,3 +116,9 @@ class EnvRepositoryTest {
         return repository
     }
 }
+
+private fun user(
+    username: String,
+    password: String = "secret",
+    role: Role = Role.USER
+) = "{\"username\": \"$username\", \"password\": \"$password\", \"role\": \"${role.name}\"}"

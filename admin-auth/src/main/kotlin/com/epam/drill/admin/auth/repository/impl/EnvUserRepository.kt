@@ -55,7 +55,7 @@ class EnvUserRepository(
     }
 
     override suspend fun findByUsername(username: String): UserEntity? {
-        return users[genId(username)]
+        return users[genId(username.lowercase())]
     }
 
     override suspend fun create(entity: UserEntity): Id {
@@ -70,7 +70,7 @@ class EnvUserRepository(
 
     private fun UserConfig.toEntity(): UserEntity {
         return UserEntity(
-            id = genId(username),
+            id = genId(username.lowercase()),
             username = this.username,
             passwordHash = passwordService.hashPassword(password),
             role = role.name)
