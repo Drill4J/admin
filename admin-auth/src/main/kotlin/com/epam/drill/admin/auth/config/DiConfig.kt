@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.config.UserRepoType.DB
+import com.epam.drill.admin.auth.config.UserRepoType.ENV
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
@@ -24,7 +25,10 @@ import com.epam.drill.admin.auth.service.impl.*
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagementService
 import io.ktor.application.*
+import mu.KotlinLogging
 import org.kodein.di.*
+
+private val logger = KotlinLogging.logger {}
 
 enum class UserRepoType {
     DB,
@@ -78,9 +82,10 @@ fun DI.Builder.userServicesConfig(userRepoType: UserRepoType) {
 
 fun DI.Builder.userRepositoriesConfig(userRepoType: UserRepoType) {
     bind<UserRepository>() with singleton {
+        logger.info { "The user repository type is $userRepoType" }
         when (userRepoType) {
             DB ->  UserRepositoryImpl()
-            UserRepoType.ENV -> EnvUserRepository(
+            ENV -> EnvUserRepository(
                 env = instance<Application>().environment.config,
                 passwordService = instance()
             )

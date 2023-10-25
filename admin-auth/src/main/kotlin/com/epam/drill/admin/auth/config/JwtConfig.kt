@@ -22,7 +22,7 @@ import org.kodein.di.*
 import javax.crypto.KeyGenerator
 import kotlin.time.*
 
-val logger = KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
 class JwtConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
