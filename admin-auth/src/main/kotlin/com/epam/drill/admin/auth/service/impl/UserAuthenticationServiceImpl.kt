@@ -33,6 +33,8 @@ class UserAuthenticationServiceImpl(
         val userEntity = userRepository.findByUsername(payload.username)?.takeIf { userEntity ->
             passwordService.matchPasswords(payload.password, userEntity.passwordHash)
         } ?: throw NotAuthenticatedException("Username or password is incorrect")
+        if (userEntity.blocked)
+            throw NotAuthorizedException()
         return userEntity.toView()
     }
 

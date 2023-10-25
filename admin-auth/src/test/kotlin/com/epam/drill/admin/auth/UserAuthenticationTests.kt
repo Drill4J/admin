@@ -179,6 +179,28 @@ class UserAuthenticationTest {
     }
 
     @Test
+    fun `given username of blocked user 'POST sign-in' must fail with 403 status`() {
+        wheneverBlocking(userRepository) { findByUsername("blocked_user") }
+            .thenReturn(
+                UserEntity(
+                    id = 1, username = "blocked_user", passwordHash = "hash", role = "USER", blocked = true
+                )
+            )
+        whenever(passwordService.matchPasswords("secret", "hash"))
+            .thenReturn(true)
+
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginPayload(username = "blocked_user", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Forbidden, response.status())
+            }
+        }
+    }
+
+    @Test
     fun `given already existing username 'POST sign-up' must fail with 400 status`() {
         wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
