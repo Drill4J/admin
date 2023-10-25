@@ -428,10 +428,10 @@ class Plugin(
      */
     private fun finishSessionJob() = AsyncJobDispatcher.launch {
         while (isActive) {
-            delay(SAVE_DATA_JOB_INTERVAL_MS)
             sessionHolder.sessions.values.forEach { activeSession ->
                 state.saveSession(activeSession.id)
             }
+            delay(SAVE_DATA_JOB_INTERVAL_MS)
         }
     }
 
@@ -440,8 +440,8 @@ class Plugin(
      */
     private fun calculateMetricsJob() = AsyncJobDispatcher.launch {
         while (isActive) {
-            delay(METRICS_JOB_INTERVAL_MS)
             calculateAndSendBuildCoverage()
+            delay(METRICS_JOB_INTERVAL_MS)
         }
     }
 
