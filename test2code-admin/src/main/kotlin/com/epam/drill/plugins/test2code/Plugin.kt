@@ -426,7 +426,7 @@ class Plugin(
      * Saves sessions from SessionHolder to DB with a specified interval
      * @features  Session saving
      */
-    private fun sessionFinishingJob() = AsyncJobDispatcher.launch {
+    private fun finishSessionJob() = AsyncJobDispatcher.launch {
         while (isActive) {
             delay(SAVE_DATA_JOB_INTERVAL_MS)
             sessionHolder.sessions.values.forEach { activeSession ->
@@ -464,7 +464,7 @@ class Plugin(
         sendFilters()
         sendActiveSessions()
         
-        sessionFinishingJob()
+        finishSessionJob()
         calculateMetricsJob()
     }
 
