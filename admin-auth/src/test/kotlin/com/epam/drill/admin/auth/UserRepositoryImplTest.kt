@@ -173,13 +173,13 @@ class UserRepositoryImplTest {
         assertNull(user)
     }
 
-    @Ignore //TODO Test failed. Will be fixed in a following task
     @Test
     fun `given case insensitive username, findByUsername must return user`() = withTransaction {
         insertRandomUsers(1..10)
         insertRandomUsers(11..11) {
             it[username] = "FooBar"
         }
+        insertRandomUsers(12..20)
 
         val user = repository.findByUsername("foobar")
 

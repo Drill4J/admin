@@ -31,7 +31,7 @@ class UserRepositoryImpl : UserRepository {
     }
 
     override suspend fun findByUsername(username: String): UserEntity? {
-        return UserTable.select { UserTable.username eq username }.map { it.toEntity() }.firstOrNull()
+        return UserTable.select { UserTable.username.lowerCase() eq username.lowercase() }.map { it.toEntity() }.firstOrNull()
     }
 
     override suspend fun create(entity: UserEntity): Int {
