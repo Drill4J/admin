@@ -24,6 +24,7 @@ internal class RuntimeConfig(private val pluginId: String) {
 }
 
 val SAVE_DATA_JOB_INTERVAL_MS: Long
-    get() = System.getenv("DRILL_SAVE_DATA_JOB_INTERVAL_MS").toLongOrNull() ?: 10_000L
+    get() = System.getenv("DRILL_SAVE_DATA_JOB_INTERVAL_MS")?.toLongOrNull() ?: 10_000L
+
 val METRICS_JOB_INTERVAL_MS: Long
-    get() = System.getenv("DRILL_METRICS_JOB_INTERVAL_MS").toLongOrNull() ?: 30_000L
+    get() = System.getenv("DRILL_METRICS_JOB_INTERVAL_MS")?.toLongOrNull() ?: 30_000L
