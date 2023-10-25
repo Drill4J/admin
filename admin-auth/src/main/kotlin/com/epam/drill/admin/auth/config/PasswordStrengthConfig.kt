@@ -21,10 +21,10 @@ import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
 
-class PasswordRequirementsConfig(override val di: DI) : DIAware {
+class PasswordStrengthConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val jwt: ApplicationConfig
-        get() = app.environment.config.config("drill").config("passwordRequirements")
+        get() = app.environment.config.config("drill").config("password")
 
     val minLength: Int
         get() = jwt.propertyOrNull("minLength")?.getString()?.toInt() ?: 6

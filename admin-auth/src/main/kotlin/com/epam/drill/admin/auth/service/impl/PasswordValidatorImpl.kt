@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
-import com.epam.drill.admin.auth.config.PasswordRequirementsConfig
+import com.epam.drill.admin.auth.config.PasswordStrengthConfig
 import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.service.PasswordValidator
 
@@ -30,7 +30,7 @@ class PasswordValidatorImpl(
     private val hasLowercase = { password: String -> password.any { it.isLowerCase() } }
     private val hasDigit = { password: String -> password.any { it.isDigit() } }
 
-    constructor(config: PasswordRequirementsConfig) : this(
+    constructor(config: PasswordStrengthConfig) : this(
         minLength = config.minLength,
         mustHaveUppercase = config.mustHaveUppercase,
         mustHaveLowercase = config.mustHaveLowercase,

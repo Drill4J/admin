@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
-import com.epam.drill.admin.auth.config.PasswordRequirementsConfig
+import com.epam.drill.admin.auth.config.PasswordStrengthConfig
 import com.epam.drill.admin.auth.service.PasswordGenerator
 import kotlin.random.Random
 
@@ -32,7 +32,7 @@ class PasswordGeneratorImpl(
 ) : PasswordGenerator {
     private val random = Random.Default
 
-    constructor(config: PasswordRequirementsConfig) : this(
+    constructor(config: PasswordStrengthConfig) : this(
         minLength = config.minLength,
         mustHaveUppercase = config.mustHaveUppercase,
         mustHaveLowercase = config.mustHaveLowercase,
