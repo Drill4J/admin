@@ -48,10 +48,6 @@ internal object AsyncJobDispatcher : CoroutineScope {
         Executors.newFixedThreadPool(availableProcessors).asCoroutineDispatcher() + SupervisorJob()
 }
 
-//TODO move to config
-private const val SAVE_DATA_JOB_INTERVAL_MS = 10000L
-private const val METRICS_JOB_INTERVAL_MS = 30000L
-
 /**
  * The all information related to the plugin
  *
