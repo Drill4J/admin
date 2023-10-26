@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.config.UserRepoType.DB
 import com.epam.drill.admin.auth.config.UserRepoType.ENV
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
-import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
+import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
@@ -84,7 +84,7 @@ fun DI.Builder.userRepositoriesConfig(userRepoType: UserRepoType) {
     bind<UserRepository>() with singleton {
         logger.info { "The user repository type is $userRepoType" }
         when (userRepoType) {
-            DB ->  UserRepositoryImpl()
+            DB ->  DatabaseUserRepository()
             ENV -> EnvUserRepository(
                 env = instance<Application>().environment.config,
                 passwordService = instance()
@@ -96,6 +96,7 @@ fun DI.Builder.userRepositoriesConfig(userRepoType: UserRepoType) {
 private val Application.userRepoType: UserRepoType
     get() = environment.config
         .config("drill")
+        .config("auth")
         .propertyOrNull("userRepoType")
         ?.getString()?.let { UserRepoType.valueOf(it) }
         ?: DB

@@ -21,9 +21,9 @@ import com.epam.drill.admin.auth.service.PasswordValidator
 
 class PasswordValidatorImpl(
     private val minLength: Int = 6,
-    private val mustHaveUppercase: Boolean = false,
-    private val mustHaveLowercase: Boolean = false,
-    private val mustHaveDigit: Boolean = false
+    private val mustContainUppercase: Boolean = false,
+    private val mustContainLowercase: Boolean = false,
+    private val mustContainDigit: Boolean = false
 ) : PasswordValidator {
     private val hasAtLeastMinLength = { password: String -> password.length >= minLength }
     private val hasUppercase = { password: String -> password.any { it.isUpperCase() } }
@@ -32,19 +32,19 @@ class PasswordValidatorImpl(
 
     constructor(config: PasswordStrengthConfig) : this(
         minLength = config.minLength,
-        mustHaveUppercase = config.mustHaveUppercase,
-        mustHaveLowercase = config.mustHaveLowercase,
-        mustHaveDigit = config.mustHaveDigit
+        mustContainUppercase = config.mustContainUppercase,
+        mustContainLowercase = config.mustContainLowercase,
+        mustContainDigit = config.mustContainDigit
     )
 
     override fun validatePasswordRequirements(password: String) {
         if (!hasAtLeastMinLength(password))
             throw UserValidationException("Password must have at least $minLength characters")
-        if (mustHaveUppercase && !hasUppercase(password))
+        if (mustContainUppercase && !hasUppercase(password))
             throw UserValidationException("Password must contain uppercase letters")
-        if (mustHaveLowercase && !hasLowercase(password))
+        if (mustContainLowercase && !hasLowercase(password))
             throw UserValidationException("Password must contain lowercase letters")
-        if (mustHaveDigit && !hasDigit(password))
+        if (mustContainDigit && !hasDigit(password))
             throw UserValidationException("Password must contain numbers")
     }
 }
