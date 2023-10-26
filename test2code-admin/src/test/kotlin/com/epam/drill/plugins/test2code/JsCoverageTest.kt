@@ -30,7 +30,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
     private val manualTestType = "MANUAL"
 
     @Test
-    fun `coverageData for scope with custom js probes`() {
+    fun `coverageData for sessionHolder with custom js probes`() {
         runBlocking {
             val coverageData = calculateCoverage() {
                 this.execSession(manualTestType) { sessionId ->
@@ -122,7 +122,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
 
     private suspend fun SessionHolder.execSession(testType: String, block: suspend SessionHolder.(String) -> Unit) {
         val sessionId = genUuid()
-        startSession(sessionId = sessionId, testType = testType)
+        createSession(sessionId = sessionId, testType = testType)
         block(sessionId)
     }
 }

@@ -17,15 +17,10 @@ package com.epam.drill.plugins.test2code
 
 import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.common.api.*
-import com.epam.drill.plugins.test2code.coverage.*
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.*
-import kotlinx.atomicfu.*
-import kotlinx.collections.immutable.*
-import kotlinx.coroutines.*
 import kotlinx.serialization.*
-import java.lang.ref.*
 
 interface ISessionHolder : Sequence<Session> {
     val id: String
@@ -51,7 +46,7 @@ data class SessionHolder(
      * Start the test session
      * @features Session starting
      */
-    fun startSession(
+    fun createSession(
         sessionId: String,
         testType: String,
         isGlobal: Boolean = false,
@@ -69,12 +64,6 @@ data class SessionHolder(
         probeProvider: () -> Collection<ExecClassData>,
     ): TestSession? = sessions[sessionId]?.apply { addAll(probeProvider()) }
 
-    fun cancelSession(
-        sessionId: String,
-    ): TestSession? = removeSession(sessionId)
-
-    fun cancelAllSessions() = sessions.clear()
-
     /**
      * Close the session-holder:
      * - clear the active sessions
@@ -88,11 +77,6 @@ data class SessionHolder(
 
     override fun toString() = "session-holder($id)"
 
-    private fun removeSession(id: String): TestSession? = sessions.run {
-        val testSession = get(id)
-        this.remove(id)
-        testSession
-    }
 }
 
 @Serializable

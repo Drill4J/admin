@@ -55,8 +55,8 @@ internal suspend fun StoreClient.loadSessions(
             id = stored.id,
             testType = stored.testType,
             testName = stored.testName,
-        ).also { session ->
-            session.addAll(stored.probes)
+        ).apply {
+            this.addAll(stored.probes)
         }
     }
 }

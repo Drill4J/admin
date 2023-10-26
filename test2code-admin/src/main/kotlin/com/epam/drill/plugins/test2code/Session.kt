@@ -80,9 +80,6 @@ class TestSession(
 
     private val _updatedTests = atomic(setOf<String>())
 
-    val updatedTests: Set<TestKey>
-        get() = _updatedTests.getAndUpdate { setOf() }.mapTo(mutableSetOf()) { it.testKey(testType) }
-
     /**
      * Add and merge new probes with current
      * @param dataPart a collection of new probes

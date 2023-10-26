@@ -256,7 +256,7 @@ class Plugin(
             val newSessionId = sessionId.ifEmpty(::genUuid)
             val isRealtimeSession = runtimeConfig.realtime && isRealtime
             val labels = labels + Label("Session", newSessionId)
-            sessionHolder.startSession(
+            sessionHolder.createSession(
                 newSessionId,
                 testType,
                 isGlobal,
@@ -274,7 +274,7 @@ class Plugin(
         is StopSession -> action.payload.run {
             sessionHolder.sessions[sessionId]?.let { session ->
                 session.addTests(tests)
-                state.finishSession(sessionId)
+                state.saveSession(sessionId)
                     ?: logger.info {
                         "No active session with id $sessionId."
                     }
@@ -290,7 +290,6 @@ class Plugin(
         }
 
         is CancelAllSessions -> {
-            sessionHolder.cancelAllSessions()
             okResult
         }
 
@@ -364,7 +363,7 @@ class Plugin(
                 .forEach { (probeSessionId, data) ->
                     val sessionId = probeSessionId ?: message.sessionId ?: GLOBAL_SESSION_ID
                     if (sessionHolder.sessions[sessionId] == null) {
-                        sessionHolder.startSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
+                        sessionHolder.createSession(sessionId = sessionId, testType = DEFAULT_TEST_TYPE, isRealtime = true, isGlobal = sessionId == GLOBAL_SESSION_ID)
                     }
                     sessionHolder.sessions[sessionId]?.let {
                         sessionHolder.addProbes(sessionId) { data }
@@ -378,23 +377,20 @@ class Plugin(
 
         is SessionCancelled -> logger.info { "$instanceId: Agent session ${message.sessionId} cancelled." }
 
-        is SessionsCancelled -> message.run {
-            sessionHolder.let { ids.forEach { id: String -> it.cancelSession(id) } }
-            logger.info { "$instanceId: Agent sessions cancelled: $ids." }
-        }
+        is SessionsCancelled -> logger.info { "$instanceId: Agent sessions cancelled: ${message.ids}." }
 
         /**
          * @features Session finishing
          */
         is SessionFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
-            state.finishSession(message.sessionId) ?: logger.info {
+            state.saveSession(message.sessionId) ?: logger.info {
                 "$instanceId: No active session with id ${message.sessionId}."
             }
         }
         is SessionsFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
-            message.ids.forEach { state.finishSession(it) }
+            message.ids.forEach { state.saveSession(it) }
         }
 
         //TODO EPMDJ-10398 send on agent attach
@@ -429,26 +425,25 @@ class Plugin(
     }
 
     /**
-     * That job each 10 seconds will save all sessions from SessionHolder to DB
+     * Saves sessions from SessionHolder to DB with a specified interval
      * @features  Session saving
      */
-    private fun sessionFinishingJob() = AsyncJobDispatcher.launch {
+    private fun finishSessionJob() = AsyncJobDispatcher.launch {
         while (isActive) {
-            delay(SAVE_DATA_JOB_INTERVAL_MS)
-            calculateAndSendBuildCoverage()
             sessionHolder.sessions.values.forEach { activeSession ->
-                state.finishSession(activeSession.id)
+                state.saveSession(activeSession.id)
             }
+            delay(SAVE_DATA_JOB_INTERVAL_MS)
         }
     }
 
     /**
-     * That job each 30 seconds recalculate build coverage
+     * Recalculate build coverage with a specified interval
      */
     private fun calculateMetricsJob() = AsyncJobDispatcher.launch {
         while (isActive) {
-            delay(METRICS_JOB_INTERVAL_MS)
             calculateAndSendBuildCoverage()
+            delay(METRICS_JOB_INTERVAL_MS)
         }
     }
 
@@ -460,16 +455,18 @@ class Plugin(
      */
     private suspend fun Plugin.processInitialized() {
         initGateSettings()
+
         sendGateSettings()
         sendParentBuild()
         sendBaseline()
         sendParentTestsToRunStats()
         state.classDataOrNull()?.sendBuildStats()
-        calculateAndSendCachedCoverage()
+        calculateSavedCoverage()
         sendLabels()
         sendFilters()
         sendActiveSessions()
-        sessionFinishingJob()
+        
+        finishSessionJob()
         calculateMetricsJob()
     }
 
@@ -514,12 +511,12 @@ class Plugin(
     private suspend fun ClassData.sendBuildStats() {
         send(buildVersion, Routes.Data().let(Routes.Data::Build), state.coverContext().toBuildStatsDto())
     }
-
+    
     /**
      * Calculate coverage and send to the UI
      * @features Agent registration
      */
-    private suspend fun calculateAndSendCachedCoverage() = state.coverContext().build.let { build ->
+    private suspend fun calculateSavedCoverage() = state.coverContext().build.let { build ->
         val coverContext = state.coverContext()
         build.bundleCounters.calculateAndSendBuildCoverage(coverContext)
     }

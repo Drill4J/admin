@@ -32,7 +32,7 @@ class SessionHolderManager(private val storage: StoreClient) {
         }
     }
 
-    internal suspend fun counter(agentKey: AgentKey): SessionHolderInfo? = storage.findById(agentKey)
+    internal suspend fun getSessionHolderInfo(agentKey: AgentKey): SessionHolderInfo? = storage.findById(agentKey)
 
-    internal suspend fun storeCounter(sessionHolderInfo: SessionHolderInfo) = storage.store(sessionHolderInfo)
+    internal suspend fun saveSessionHolderInfo(sessionHolderInfo: SessionHolderInfo) = storage.store(sessionHolderInfo)
 }

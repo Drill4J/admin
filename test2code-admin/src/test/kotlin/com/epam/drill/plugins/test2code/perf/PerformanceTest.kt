@@ -51,7 +51,7 @@ class PerformanceTest : PluginTest() {
         sizeExec: Int = 100,
         sizeProbes: Int = 10_000,
     ): TestSession? {
-        plugin.sessionHolder.startSession(
+        plugin.sessionHolder.createSession(
             sessionId = sessionId,
             testType = "MANUAL",
         )
@@ -63,7 +63,7 @@ class PerformanceTest : PluginTest() {
             sizeProbes = sizeProbes
         )
         println("it has added probes, starting finish session...")
-        val finishedSession = plugin.state.finishSession(sessionId)
+        val finishedSession = plugin.state.saveSession(sessionId)
         println("finished session with size peerobes = ${finishedSession?.probes?.size}")
         return finishedSession
     }
