@@ -16,7 +16,7 @@
 
 CREATE TABLE auth.user (
   id serial PRIMARY KEY,
-  username VARCHAR (30) NOT NULL,
+  username VARCHAR (100) NOT NULL,
   password_hash VARCHAR (100) NOT NULL,
   role VARCHAR (20) NOT NULL,
   blocked BOOLEAN NOT NULL DEFAULT FALSE,
