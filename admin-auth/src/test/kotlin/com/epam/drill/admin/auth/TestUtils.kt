@@ -23,8 +23,11 @@ import io.ktor.application.*
 import io.ktor.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.mockito.kotlin.whenever
+import org.mockito.stubbing.OngoingStubbing
 import kotlin.test.assertNotNull
 import java.util.*
 
@@ -62,5 +65,9 @@ fun Application.environment(configuration: MapApplicationConfig.() -> Unit) {
     (this.environment.config as MapApplicationConfig).apply {
         configuration()
     }
+}
+
+fun <M, T> wheneverBlocking(mock: M, methodCall: suspend M.() -> T): OngoingStubbing<T> {
+    return runBlocking { whenever(mock.methodCall()) }
 }
 

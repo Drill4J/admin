@@ -52,8 +52,8 @@ class SecurityConfigTest {
 
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
-        whenever(authService.signIn(LoginPayload(username = "admin", password = "secret")))
-            .thenReturn(UserView(username = "admin", role = Role.ADMIN, blocked = false))
+        wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
+            .thenReturn(UserView(id = 1, username = "admin", role = Role.ADMIN, blocked = false))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")
@@ -130,10 +130,10 @@ class SecurityConfigTest {
 
     private val config: Application.() -> Unit = {
         environment {
-            put("drill.jwt.issuer", "test issuer")
-            put("drill.jwt.lifetime", "1m")
-            put("drill.jwt.audience", "test audience")
-            put("drill.jwt.secret", testSecret)
+            put("drill.auth.jwt.issuer", "test issuer")
+            put("drill.auth.jwt.lifetime", "1m")
+            put("drill.auth.jwt.audience", "test audience")
+            put("drill.auth.jwt.secret", testSecret)
         }
         di {
             bind<JwtTokenService>() with singleton { JwtTokenService(JwtConfig(di)) }

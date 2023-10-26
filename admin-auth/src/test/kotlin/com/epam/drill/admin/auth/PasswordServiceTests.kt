@@ -36,21 +36,21 @@ class PasswordGeneratorTest {
 
     @Test
     fun `given mustHaveUppercase set to true, generatePassword result must contain uppercase characters`() {
-        val generator = PasswordGeneratorImpl(mustHaveUppercase = true)
+        val generator = PasswordGeneratorImpl(mustContainUppercase = true)
         val password = generator.generatePassword()
         assertTrue { password.any { it.isUpperCase() } }
     }
 
     @Test
     fun `given mustHaveLowercase set to true, generatePassword result must contain lowercase characters`() {
-        val generator = PasswordGeneratorImpl(mustHaveLowercase = true)
+        val generator = PasswordGeneratorImpl(mustContainLowercase = true)
         val password = generator.generatePassword()
         assertTrue { password.any { it.isLowerCase() } }
     }
 
     @Test
     fun `given mustHaveDigits set to true, generatePassword result must contain digits`() {
-        val generator = PasswordGeneratorImpl(mustHaveDigit = true)
+        val generator = PasswordGeneratorImpl(mustContainDigit = true)
         val password = generator.generatePassword()
         assertTrue { password.any { it.isDigit() } }
     }
@@ -79,19 +79,19 @@ class ValidatePasswordTest {
 
     @Test
     fun `given password without upper case characters validatePassword must fail`() {
-        val validator = PasswordValidatorImpl(mustHaveUppercase = true)
+        val validator = PasswordValidatorImpl(mustContainUppercase = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("onlylowercase") }
     }
 
     @Test
     fun `given password without lower case characters validatePassword must fail`() {
-        val validator = PasswordValidatorImpl(mustHaveLowercase = true)
+        val validator = PasswordValidatorImpl(mustContainLowercase = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("ONLYUPPERCASE") }
     }
 
     @Test
     fun `given password without digits characters validatePassword must fail`() {
-        val validator = PasswordValidatorImpl(mustHaveDigit = true)
+        val validator = PasswordValidatorImpl(mustContainDigit = true)
         assertThrows<UserValidationException> { validator.validatePasswordRequirements("AlphabeticCharsOnly") }
     }
 
@@ -99,16 +99,16 @@ class ValidatePasswordTest {
     fun `given password satisfying all requirements validatePassword must succeed`() {
         val validator = PasswordValidatorImpl(
             minLength = 10,
-            mustHaveUppercase = true,
-            mustHaveLowercase = true,
-            mustHaveDigit = true)
+            mustContainUppercase = true,
+            mustContainLowercase = true,
+            mustContainDigit = true)
 
         assertDoesNotThrow { validator.validatePasswordRequirements("ABCabc12345") }
     }
 
     @Test
     fun `given password with non-latin characters validatePassword must succeed`() {
-        val validator = PasswordValidatorImpl(mustHaveLowercase = true, mustHaveUppercase = true)
+        val validator = PasswordValidatorImpl(mustContainLowercase = true, mustContainUppercase = true)
         assertDoesNotThrow { validator.validatePasswordRequirements("Котик123") }
     }
 

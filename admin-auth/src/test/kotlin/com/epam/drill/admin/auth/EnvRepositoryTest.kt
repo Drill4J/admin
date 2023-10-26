@@ -18,6 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
+import kotlinx.coroutines.runBlocking
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
@@ -37,7 +38,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given users from env config, findAllNotDeleted must return all users not deleted users`() {
+    fun `given users from env config, findAllNotDeleted must return all users not deleted users`() = runBlocking {
         val repository = getRepositoryWithUsers(USER1, USER2)
 
         val users = repository.findAllNotDeleted()
@@ -48,7 +49,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given username hash, findById must return the respective user`() {
+    fun `given username hash, findById must return the respective user`() = runBlocking {
         val repository = getRepositoryWithUsers(USER1, USER2)
         val user = repository.findById("user".hashCode())
         assertNotNull(user)
@@ -56,7 +57,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given username findByUsername must return the respective user`() {
+    fun `given username findByUsername must return the respective user`() = runBlocking {
         val repository = getRepositoryWithUsers(USER1, USER2)
         val user = repository.findByUsername("user")
         assertNotNull(user)
@@ -67,7 +68,7 @@ class EnvRepositoryTest {
         whenever(passwordService.hashPassword(any())).thenAnswer { "hash" }
         val repository = EnvUserRepository(
             MapApplicationConfig().apply {
-                put("drill.users", users.toList())
+                put("drill.auth.envUsers", users.toList())
             },
             passwordService
         )

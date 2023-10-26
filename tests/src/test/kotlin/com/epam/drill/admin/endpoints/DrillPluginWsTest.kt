@@ -68,7 +68,8 @@ class PluginWsTest {
 
     private val testApp: Application.() -> Unit = {
         (environment.config as MapApplicationConfig).apply {
-            put("drill.users", listOf(GUEST_USER))
+            put("drill.auth.userRepoType", "ENV")
+            put("drill.auth.envUsers", listOf(GUEST_USER))
         }
         install(Locations)
         install(WebSockets)

@@ -19,6 +19,9 @@ val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val jbcryptVersion: String by parent!!.extra
+val exposedVersion: String by parent!!.extra
+val flywaydbVersion: String by parent!!.extra
+val h2Version: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -47,10 +50,14 @@ dependencies {
     implementation("io.ktor:ktor-auth:$ktorVersion")
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("org.mindrot:jbcrypt:$jbcryptVersion")
+    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    api("org.flywaydb:flyway-core:$flywaydbVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
+    testImplementation("com.h2database:h2:$h2Version")
 }
 
 tasks {

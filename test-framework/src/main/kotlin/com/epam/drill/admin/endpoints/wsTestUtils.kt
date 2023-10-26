@@ -32,7 +32,7 @@ fun TestApplicationEngine.requestToken(): String {
     val loginUrl = "/api/login"
     val token = handleRequest(HttpMethod.Post, loginUrl) {
         addHeader(HttpHeaders.ContentType, "${ContentType.Application.Json}")
-        setBody(UserData.serializer() stringify UserData("guest", "guest"))
+        setBody(UserData.serializer() stringify UserData("user", "user"))
     }.run { response.headers[HttpHeaders.Authorization] }
     assertNotNull(token, "token can't be empty")
     return token

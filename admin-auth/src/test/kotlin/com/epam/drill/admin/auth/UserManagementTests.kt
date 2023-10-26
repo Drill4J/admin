@@ -39,7 +39,7 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
@@ -66,7 +66,7 @@ class UserManagementTest {
 
     @Test
     fun `'GET users' must return the expected number of users from repository`() {
-        whenever(userRepository.findAllNotDeleted())
+        wheneverBlocking(userRepository) { findAllNotDeleted() }
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
         withTestApplication(config) {
@@ -82,7 +82,7 @@ class UserManagementTest {
 
     @Test
     fun `given existing user identifier 'GET users {id}' must return the respective user`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
@@ -98,7 +98,7 @@ class UserManagementTest {
 
     @Test
     fun `given user identifier and role 'PUT users {id}' must change user role in repository and return changed user`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
@@ -107,7 +107,7 @@ class UserManagementTest {
                 val form = EditUserPayload(role = Role.USER)
                 setBody(Json.encodeToString(EditUserPayload.serializer(), form))
             }) {
-                verify(userRepository).update(USER_ADMIN.copy(role = "USER"))
+                verifyBlocking(userRepository) { update(USER_ADMIN.copy(role = "USER")) }
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: UserView = assertResponseNotNull(UserView.serializer())
                 assertEquals(Role.USER, response.role)
@@ -117,7 +117,7 @@ class UserManagementTest {
 
     @Test
     fun `given user identifier 'DELETE users {id}' must delete that user in repository`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
@@ -125,14 +125,14 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(USER_ADMIN.copy(deleted = true))
+                verifyBlocking(userRepository) { update(USER_ADMIN.copy(deleted = true)) }
             }
         }
     }
 
     @Test
     fun `given user identifier 'PATCH users {id} block' must block that user in repository`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
@@ -140,14 +140,14 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(USER_ADMIN.copy(blocked = true))
+                verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = true)) }
             }
         }
     }
 
     @Test
     fun `given user identifier 'PATCH users {id} unblock' must unblock that user in repository`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
         withTestApplication(config) {
@@ -155,14 +155,14 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(USER_ADMIN.copy(blocked = false))
+                verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = false)) }
             }
         }
     }
 
     @Test
     fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
-        whenever(userRepository.findById(1))
+        wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
         whenever(passwordService.generatePassword())
             .thenReturn("newsecret")
@@ -174,7 +174,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verify(userRepository).update(USER_ADMIN.copy(passwordHash = "newhash"))
+                verifyBlocking(userRepository) { update(USER_ADMIN.copy(passwordHash = "newhash")) }
             }
         }
     }

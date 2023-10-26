@@ -29,40 +29,40 @@ class UserManagementServiceImpl(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService
 ) : UserManagementService {
-    override fun getUsers(): List<UserView> {
+    override suspend fun getUsers(): List<UserView> {
         return userRepository.findAllNotDeleted().map { it.toView() }
     }
 
-    override fun getUser(userId: Int): UserView {
+    override suspend fun getUser(userId: Int): UserView {
         return findUser(userId).toView()
     }
 
-    override fun updateUser(userId: Int, payload: EditUserPayload): UserView {
+    override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
         val userEntity = findUser(userId)
         userEntity.role = payload.role.name
         userRepository.update(userEntity)
         return userEntity.toView()
     }
 
-    override fun deleteUser(userId: Int) {
+    override suspend fun deleteUser(userId: Int) {
         val userEntity = findUser(userId)
         userEntity.deleted = true
         userRepository.update(userEntity)
     }
 
-    override fun blockUser(userId: Int) {
+    override suspend fun blockUser(userId: Int) {
         val userEntity = findUser(userId)
         userEntity.blocked = true
         userRepository.update(userEntity)
     }
 
-    override fun unblockUser(userId: Int) {
+    override suspend fun unblockUser(userId: Int) {
         val userEntity = findUser(userId)
         userEntity.blocked = false
         userRepository.update(userEntity)
     }
 
-    override fun resetPassword(userId: Int): CredentialsView {
+    override suspend fun resetPassword(userId: Int): CredentialsView {
         val userEntity = findUser(userId)
         val newPassword = passwordService.generatePassword()
         userEntity.passwordHash = passwordService.hashPassword(newPassword)
@@ -70,7 +70,7 @@ class UserManagementServiceImpl(
         return userEntity.toCredentialsView(newPassword)
     }
 
-    private fun findUser(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
+    private suspend fun findUser(userId: Int) = userRepository.findById(userId) ?: throw UserNotFoundException()
 }
 
 private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
@@ -82,6 +82,7 @@ private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
 
 private fun UserEntity.toView(): UserView {
     return UserView(
+        id = this.id,
         username = this.username,
         role = Role.valueOf(this.role),
         blocked = this.blocked

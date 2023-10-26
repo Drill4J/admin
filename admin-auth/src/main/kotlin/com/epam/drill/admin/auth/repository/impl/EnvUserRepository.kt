@@ -46,32 +46,35 @@ class EnvUserRepository(
             .toMap()
     }
 
-    override fun findAllNotDeleted(): List<UserEntity> {
-        return users.values.filter { !it.deleted }.map(UserEntity::copy)
+    override suspend fun findAllNotDeleted(): List<UserEntity> {
+        return users.values.filter { !it.deleted }
     }
 
-    override fun findById(id: Int): UserEntity? {
-        return users[id]?.copy()
+    override suspend fun findById(id: Int): UserEntity? {
+        return users[id]
     }
 
-    override fun findByUsername(username: String): UserEntity? {
-        return users[genId(username)]?.copy()
+    override suspend fun findByUsername(username: String): UserEntity? {
+        return users[genId(username)]
     }
 
-    override fun create(entity: UserEntity): Id {
+    override suspend fun create(entity: UserEntity): Id {
         throw UnsupportedOperationException("User creation is not supported")
     }
 
-    override fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity) {
         throw UnsupportedOperationException("User update is not supported")
     }
 
-    private fun getUsersFromEnv() = env.config("drill").propertyOrNull("users")?.getList() ?: emptyList()
+    private fun getUsersFromEnv() = env
+        .config("drill")
+        .config("auth")
+        .propertyOrNull("envUsers")?.getList() ?: emptyList()
 
     private fun UserConfig.toEntity(): UserEntity {
         return UserEntity(
             id = genId(username),
-            username = username,
+            username = this.username,
             passwordHash = passwordService.hashPassword(password),
             role = role.name)
     }

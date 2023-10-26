@@ -20,18 +20,18 @@ import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
 
 interface UserManagementService {
-    fun getUsers(): List<UserView>
+    suspend fun getUsers(): List<UserView>
 
-    fun getUser(userId: Int): UserView
+    suspend fun getUser(userId: Int): UserView
 
-    fun updateUser(userId: Int, payload: EditUserPayload): UserView
+    suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView
 
-    fun deleteUser(userId: Int)
+    suspend fun deleteUser(userId: Int)
 
-    fun blockUser(userId: Int)
+    suspend fun blockUser(userId: Int)
 
-    fun unblockUser(userId: Int)
+    suspend fun unblockUser(userId: Int)
 
-    fun resetPassword(userId: Int): CredentialsView
+    suspend fun resetPassword(userId: Int): CredentialsView
 
 }
