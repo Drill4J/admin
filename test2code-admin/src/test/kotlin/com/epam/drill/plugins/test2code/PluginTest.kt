@@ -21,6 +21,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
+import kotlinx.coroutines.delay
 
 
 abstract class PluginTest : PostgresBased("plugin") {
@@ -53,6 +54,7 @@ abstract class PluginTest : PostgresBased("plugin") {
         "test2code"
     ).apply {
         initialize()
+        delay(2000)
         processData("smth_$buildVersion", Initialized(""))
         return this
     }
