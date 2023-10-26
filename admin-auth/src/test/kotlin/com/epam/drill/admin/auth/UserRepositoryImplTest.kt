@@ -210,7 +210,7 @@ class UserRepositoryImplTest {
         insertUser(11) {
             it[username] = "FooBar"
         }
-        insertRandomUsers(12..20)
+        insertUsers(12..20)
 
         val user = repository.findByUsername("foobar")
 
