@@ -25,14 +25,14 @@ internal class RuntimeConfig(private val pluginId: String) {
 
 val Plugin.SAVE_DATA_JOB_INTERVAL_MS: Long
     get() = appConfig.config("test2code")
-        .propertyOrNull("DRILL_SAVE_DATA_JOB_INTERVAL_MS")
+        .propertyOrNull("saveDataJobIntervalMs")
         ?.getString()
         ?.takeIf { it.isNotBlank() }
         ?.toLong() ?: 10_000L
 
 val Plugin.METRICS_JOB_INTERVAL_MS: Long
     get() = appConfig.config("test2code")
-        .propertyOrNull("DRILL_METRICS_JOB_INTERVAL_MS")
+        .propertyOrNull("metricsJobIntervalMs")
         ?.getString()
         ?.takeIf { it.isNotBlank() }
         ?.toLong() ?: 30_000L
