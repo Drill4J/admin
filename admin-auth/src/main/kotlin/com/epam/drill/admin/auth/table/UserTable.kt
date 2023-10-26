@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth.table
 import org.jetbrains.exposed.dao.id.IntIdTable
 
 object UserTable: IntIdTable(name = "auth.user") {
-    val username = varchar("username", 30)
+    val username = varchar("username", 100)
     val passwordHash = varchar("password_hash", 100)
     val role = varchar("role", 20)
     var blocked = bool("blocked")
