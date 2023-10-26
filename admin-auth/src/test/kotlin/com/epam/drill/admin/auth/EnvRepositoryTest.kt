@@ -36,13 +36,13 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given users from env config, findAllNotDeleted must return all users not deleted users`() = runBlocking {
+    fun `given users from env config, findAll must return all users not deleted users`() = runBlocking {
         val repository = prepareEnvUserRepository(
             user("user", role = Role.USER),
             user("admin", role = Role.ADMIN)
         )
 
-        val users = repository.findAllNotDeleted()
+        val users = repository.findAll()
 
         assertEquals(2, users.size)
         assertTrue(users.any { it.username == "user" && it.passwordHash == "hash" && it.role == "USER" })

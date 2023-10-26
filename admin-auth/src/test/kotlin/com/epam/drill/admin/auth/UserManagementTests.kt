@@ -66,7 +66,7 @@ class UserManagementTest {
 
     @Test
     fun `'GET users' must return the expected number of users from repository`() {
-        wheneverBlocking(userRepository) { findAllNotDeleted() }
+        wheneverBlocking(userRepository) { findAll() }
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
         withTestApplication(config) {

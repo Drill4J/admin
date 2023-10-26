@@ -22,7 +22,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class DatabaseUserRepository : UserRepository {
-    override suspend fun findAllNotDeleted(): List<UserEntity> {
+    override suspend fun findAll(): List<UserEntity> {
         return UserTable.select { UserTable.deleted eq false }.map { it.toEntity() }
     }
 

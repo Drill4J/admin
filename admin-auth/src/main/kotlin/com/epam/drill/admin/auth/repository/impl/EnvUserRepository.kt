@@ -46,7 +46,7 @@ class EnvUserRepository(
             .toMap()
     }
 
-    override suspend fun findAllNotDeleted(): List<UserEntity> {
+    override suspend fun findAll(): List<UserEntity> {
         return users.values.filter { !it.deleted }
     }
 

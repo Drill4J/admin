@@ -30,7 +30,7 @@ class UserManagementServiceImpl(
     private val passwordService: PasswordService
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
-        return userRepository.findAllNotDeleted().map { it.toView() }
+        return userRepository.findAll().map { it.toView() }
     }
 
     override suspend fun getUser(userId: Int): UserView {
