@@ -21,6 +21,7 @@ import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
+import io.ktor.config.*
 import kotlinx.coroutines.delay
 
 
@@ -51,7 +52,8 @@ abstract class PluginTest : PostgresBased("plugin") {
         sender,
         storeClient,
         agentInfo.copy(buildVersion = buildVersion),
-        "test2code"
+        "test2code",
+        appConfig = NoopApplicationConfig
     ).apply {
         initialize()
         delay(2000)
@@ -59,6 +61,16 @@ abstract class PluginTest : PostgresBased("plugin") {
         return this
     }
 
+}
+object NoopApplicationConfig : ApplicationConfig {
+    object NoopApplicationConfigValue : ApplicationConfigValue {
+        override fun getString() = ""
+        override fun getList() = emptyList<String>()
+    }
+    override fun property(path: String) = NoopApplicationConfigValue
+    override fun propertyOrNull(path: String) = NoopApplicationConfigValue
+    override fun config(path: String) = this
+    override fun configList(path: String) = emptyList<ApplicationConfig>()
 }
 
 private object EmptySender : Sender {
