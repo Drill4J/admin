@@ -22,3 +22,15 @@ internal class RuntimeConfig(private val pluginId: String) {
 
     private fun sysProp(key: String): String? = System.getProperty("drill.plugins.$pluginId.$key")
 }
+
+val Plugin.SAVE_DATA_JOB_INTERVAL_MS: Long
+    get() = appConfig.config("test2code")
+        .propertyOrNull("DRILL_SAVE_DATA_JOB_INTERVAL_MS")
+        ?.getString()
+        ?.toLong() ?: 10_000L
+
+val Plugin.METRICS_JOB_INTERVAL_MS: Long
+    get() = appConfig.config("test2code")
+        .propertyOrNull("DRILL_METRICS_JOB_INTERVAL_MS")
+        ?.getString()
+        ?.toLong() ?: 30_000L
