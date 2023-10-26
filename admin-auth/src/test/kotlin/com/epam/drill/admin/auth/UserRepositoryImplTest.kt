@@ -15,27 +15,53 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
 import com.epam.drill.admin.auth.table.UserTable
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
 import kotlin.test.*
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
 
+@Testcontainers
 class UserRepositoryImplTest {
 
     private val repository = UserRepositoryImpl()
 
-    @BeforeTest
-    fun setup() {
-        Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "org.h2.Driver", user = "root", password = "")
-        transaction {
-            SchemaUtils.createSchema(Schema("auth"))
-            SchemaUtils.create(UserTable)
+    companion object {
+        @Container
+        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
+            DockerImageName.parse("postgres:14.1")
+        ).apply {
+            withDatabaseName("testdb")
+            withUsername("testuser")
+            withPassword("testpassword")
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun setup() {
+            postgresqlContainer.start()
+            val dataSource = HikariDataSource(HikariConfig().apply {
+                this.jdbcUrl = postgresqlContainer.jdbcUrl
+                this.username = postgresqlContainer.username
+                this.password = postgresqlContainer.password
+                this.driverClassName = postgresqlContainer.driverClassName
+                this.validate()
+            })
+            DatabaseConfig.init(dataSource)
         }
     }
 
@@ -57,7 +83,6 @@ class UserRepositoryImplTest {
         }
     }
 
-    @Ignore //TODO Test failed. To solve this need to use postgres and migration scripts.
     @Test
     fun `given non-unique username, create must fail`() = withTransaction {
         insertRandomUsers(1..1) {
@@ -73,7 +98,6 @@ class UserRepositoryImplTest {
         }
     }
 
-    @Ignore //TODO Test failed. To solve this need to use postgres and migration scripts.
     @Test
     fun `given case insensitive username, create must fail`() = withTransaction {
         insertRandomUsers(1..1) {
@@ -116,6 +140,14 @@ class UserRepositoryImplTest {
     }
 
     @Test
+    fun `after database migration 2 default users must be inserted`() = withTransaction {
+        val users = repository.findAllNotDeleted()
+        assertEquals(2, users.size)
+        assertTrue(users.any { it.username == "user" })
+        assertTrue(users.any { it.username == "admin" })
+    }
+
+    @Test
     fun `findAllNotDeleted must return all not deleted users`() = withTransaction {
         insertRandomUsers(1..10)
         insertRandomUsers(11..15) {
@@ -125,7 +157,7 @@ class UserRepositoryImplTest {
 
         val users = repository.findAllNotDeleted()
 
-        assertEquals(20 - 5, users.size)
+        assertEquals( 2 + 20 - 5, users.size)//2 default users + 20 inserted - 5 deleted
     }
 
     @Test
