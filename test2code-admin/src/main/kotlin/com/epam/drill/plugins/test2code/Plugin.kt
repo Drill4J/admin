@@ -16,7 +16,6 @@
 package com.epam.drill.plugins.test2code
 
 
-import com.epam.drill.admin.config.*
 import com.epam.drill.common.AgentInfo
 import com.epam.drill.plugin.api.AdminData
 import com.epam.drill.plugin.api.end.*

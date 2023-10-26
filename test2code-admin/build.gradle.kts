@@ -47,7 +47,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation(project(":plugin-api-admin"))
-    implementation(project(":admin-core"))
     api(project(":dsm"))
     api(project(":dsm-annotations")) { isTransitive = false }
     api(project(":admin-analytics"))
