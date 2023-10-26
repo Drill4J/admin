@@ -68,7 +68,7 @@ class EnvRepositoryTest {
         whenever(passwordService.hashPassword(any())).thenAnswer { "hash" }
         val repository = EnvUserRepository(
             MapApplicationConfig().apply {
-                put("drill.users", users.toList())
+                put("drill.auth.envUsers", users.toList())
             },
             passwordService
         )

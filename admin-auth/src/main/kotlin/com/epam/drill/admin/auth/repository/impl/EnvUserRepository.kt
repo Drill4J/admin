@@ -66,7 +66,10 @@ class EnvUserRepository(
         throw UnsupportedOperationException("User update is not supported")
     }
 
-    private fun getUsersFromEnv() = env.config("drill").propertyOrNull("users")?.getList() ?: emptyList()
+    private fun getUsersFromEnv() = env
+        .config("drill")
+        .config("auth")
+        .propertyOrNull("envUsers")?.getList() ?: emptyList()
 
     private fun UserConfig.toEntity(): UserEntity {
         return UserEntity(

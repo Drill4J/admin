@@ -96,6 +96,7 @@ fun DI.Builder.userRepositoriesConfig(userRepoType: UserRepoType) {
 private val Application.userRepoType: UserRepoType
     get() = environment.config
         .config("drill")
+        .config("auth")
         .propertyOrNull("userRepoType")
         ?.getString()?.let { UserRepoType.valueOf(it) }
         ?: DB
