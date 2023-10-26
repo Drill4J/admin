@@ -30,4 +30,5 @@ interface UserRepository {
 
     suspend fun update(entity: UserEntity)
 
+    suspend fun deleteById(id: Int)
 }

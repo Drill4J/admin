@@ -19,8 +19,7 @@ CREATE TABLE auth.user (
   username VARCHAR (100) NOT NULL,
   password_hash VARCHAR (100) NOT NULL,
   role VARCHAR (20) NOT NULL,
-  blocked BOOLEAN NOT NULL DEFAULT FALSE,
-  deleted BOOLEAN NOT NULL DEFAULT FALSE
+  blocked BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE UNIQUE INDEX user_username_idx ON auth.user ((lower(username)));

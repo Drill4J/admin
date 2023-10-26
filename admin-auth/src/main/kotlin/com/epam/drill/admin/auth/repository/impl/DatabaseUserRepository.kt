@@ -23,7 +23,7 @@ import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class DatabaseUserRepository : UserRepository {
     override suspend fun findAll(): List<UserEntity> {
-        return UserTable.select { UserTable.deleted eq false }.map { it.toEntity() }
+        return UserTable.selectAll().map { it.toEntity() }
     }
 
     override suspend fun findById(id: Int): UserEntity? {
@@ -44,6 +44,10 @@ class DatabaseUserRepository : UserRepository {
             body = { entity.mapTo(it) }
         )
     }
+
+    override suspend fun deleteById(id: Int) {
+        UserTable.deleteWhere { UserTable.id eq id }
+    }
 }
 
 private fun ResultRow.toEntity() = UserEntity(
@@ -51,8 +55,7 @@ private fun ResultRow.toEntity() = UserEntity(
     username = this[UserTable.username],
     passwordHash = this[UserTable.passwordHash],
     role = this[UserTable.role],
-    blocked = this[UserTable.blocked],
-    deleted = this[UserTable.deleted],
+    blocked = this[UserTable.blocked]
 )
 
 private fun UserEntity.mapTo(it: UpdateBuilder<Int>) {
@@ -60,5 +63,4 @@ private fun UserEntity.mapTo(it: UpdateBuilder<Int>) {
     it[UserTable.passwordHash] = passwordHash
     it[UserTable.role] = role
     it[UserTable.blocked] = blocked
-    it[UserTable.deleted] = deleted
 }

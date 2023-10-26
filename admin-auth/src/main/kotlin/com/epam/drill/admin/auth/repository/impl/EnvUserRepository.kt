@@ -66,6 +66,10 @@ class EnvUserRepository(
         throw UnsupportedOperationException("User update is not supported")
     }
 
+    override suspend fun deleteById(id: Int) {
+        throw UnsupportedOperationException("User deletion is not supported")
+    }
+
     private fun getUsersFromEnv() = env
         .config("drill")
         .config("auth")
