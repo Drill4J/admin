@@ -26,17 +26,17 @@ const val DIGITS_CHARSET = "0123456789"
 
 class PasswordGeneratorImpl(
     private val minLength: Int = 6,
-    private val mustHaveUppercase: Boolean = false,
-    private val mustHaveLowercase: Boolean = false,
-    private val mustHaveDigit: Boolean = false
+    private val mustContainUppercase: Boolean = false,
+    private val mustContainLowercase: Boolean = false,
+    private val mustContainDigit: Boolean = false
 ) : PasswordGenerator {
     private val random = Random.Default
 
     constructor(config: PasswordStrengthConfig) : this(
         minLength = config.minLength,
-        mustHaveUppercase = config.mustHaveUppercase,
-        mustHaveLowercase = config.mustHaveLowercase,
-        mustHaveDigit = config.mustHaveDigit
+        mustContainUppercase = config.mustContainUppercase,
+        mustContainLowercase = config.mustContainLowercase,
+        mustContainDigit = config.mustContainDigit
     )
 
     override fun generatePassword(): String {
@@ -48,9 +48,9 @@ class PasswordGeneratorImpl(
         val passwordLength = minLength
         val password = buildString {
             //It is guaranteed that an additional character of each type will be added if required
-            if (mustHaveUppercase) append(ALPHABETIC_UPPERCASE_CHARSET[random.nextInt(ALPHABETIC_UPPERCASE_CHARSET.length)])
-            if (mustHaveLowercase) append(ALPHABETIC_LOWERCASE_CHARSET[random.nextInt(ALPHABETIC_LOWERCASE_CHARSET.length)])
-            if (mustHaveDigit) append(DIGITS_CHARSET[random.nextInt(DIGITS_CHARSET.length)])
+            if (mustContainUppercase) append(ALPHABETIC_UPPERCASE_CHARSET[random.nextInt(ALPHABETIC_UPPERCASE_CHARSET.length)])
+            if (mustContainLowercase) append(ALPHABETIC_LOWERCASE_CHARSET[random.nextInt(ALPHABETIC_LOWERCASE_CHARSET.length)])
+            if (mustContainDigit) append(DIGITS_CHARSET[random.nextInt(DIGITS_CHARSET.length)])
 
             //Fill in the rest of the password with random characters
             repeat(passwordLength - length) {

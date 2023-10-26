@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
+import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.table.UserTable
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.*
@@ -28,7 +28,7 @@ import kotlin.test.*
 
 class UserRepositoryImplTest {
 
-    private val repository = UserRepositoryImpl()
+    private val repository = DatabaseUserRepository()
 
     @BeforeTest
     fun setup() {
@@ -41,26 +41,25 @@ class UserRepositoryImplTest {
 
     @Test
     fun `given unique username, create must insert user and return id`() = withTransaction {
-        val id = repository.create(
-            UserEntity(
-                username = "uniquename", passwordHash = "hash", role = "USER"
-            )
+        val userEntity = UserEntity(
+            username = "uniquename", passwordHash = "hash", role = "USER"
         )
+        val id = repository.create(userEntity)
 
         assertEquals(1, UserTable.select { UserTable.id eq id }.count())
         UserTable.select { UserTable.id eq id }.first().let {
-            assertEquals("uniquename", it[UserTable.username])
-            assertEquals("hash", it[UserTable.passwordHash])
-            assertEquals("USER", it[UserTable.role])
-            assertFalse(it[UserTable.deleted])
-            assertFalse(it[UserTable.blocked])
+            assertEquals(userEntity.username, it[UserTable.username])
+            assertEquals(userEntity.passwordHash, it[UserTable.passwordHash])
+            assertEquals(userEntity.role, it[UserTable.role])
+            assertEquals(userEntity.deleted, it[UserTable.deleted])
+            assertEquals(userEntity.blocked, it[UserTable.blocked])
         }
     }
 
     @Ignore //TODO Test failed. To solve this need to use postgres and migration scripts.
     @Test
     fun `given non-unique username, create must fail`() = withTransaction {
-        insertRandomUsers(1..1) {
+        insertUser {
             it[username] = "nonuniquename"
         }
 
@@ -76,7 +75,7 @@ class UserRepositoryImplTest {
     @Ignore //TODO Test failed. To solve this need to use postgres and migration scripts.
     @Test
     fun `given case insensitive username, create must fail`() = withTransaction {
-        insertRandomUsers(1..1) {
+        insertUser {
             it[username] = "FooBar"
         }
 
@@ -90,14 +89,14 @@ class UserRepositoryImplTest {
     }
 
     @Test
-    fun `given existing id, update must change user`() = withTransaction {
-        insertRandomUsers(1..10)
-        val id = insertRandomUsers(11..11) {
+    fun `given existing id, update must change fields for exactly one user`() = withTransaction {
+        insertUsers(1..10)
+        val id = insertUser(11) {
             it[username] = "foo"
             it[passwordHash] = "hash1"
             it[role] = "USER"
-        }.first()
-        insertRandomUsers(12..20)
+        }
+        insertUsers(12..20)
 
         repository.update(
             UserEntity(
@@ -117,11 +116,11 @@ class UserRepositoryImplTest {
 
     @Test
     fun `findAllNotDeleted must return all not deleted users`() = withTransaction {
-        insertRandomUsers(1..10)
-        insertRandomUsers(11..15) {
+        insertUsers(1..10)
+        insertUsers(11..15) {
             it[deleted] = true //insert 5 deleted users
         }
-        insertRandomUsers(16..20)
+        insertUsers(16..20)
 
         val users = repository.findAllNotDeleted()
 
@@ -130,11 +129,11 @@ class UserRepositoryImplTest {
 
     @Test
     fun `given existing username, findByUsername must return user`() = withTransaction {
-        insertRandomUsers(1..10)
-        insertRandomUsers(11..11) {
+        insertUsers(1..10)
+        insertUser(11) {
             it[username] = "foobar"
         }
-        insertRandomUsers(12..20)
+        insertUsers(12..20)
 
         val user = repository.findByUsername("foobar")
 
@@ -144,12 +143,12 @@ class UserRepositoryImplTest {
 
     @Test
     fun `findByUsername must return even blocked user`() = withTransaction {
-        insertRandomUsers(1..10)
-        insertRandomUsers(11..11) {
+        insertUsers(1..10)
+        insertUser(11) {
             it[username] = "foobar"
             it[blocked] = true
         }
-        insertRandomUsers(12..20)
+        insertUsers(12..20)
 
         val user = repository.findByUsername("foobar")
 
@@ -161,12 +160,12 @@ class UserRepositoryImplTest {
     @Ignore //TODO Test failed. Will be fixed in a following task
     @Test
     fun `findByUsername mustn't return deleted user`() = withTransaction {
-        insertRandomUsers(1..10)
-        insertRandomUsers(11..11) {
+        insertUsers(1..10)
+        insertUser(11) {
             it[username] = "foobar"
             it[deleted] = true
         }
-        insertRandomUsers(12..20)
+        insertUsers(12..20)
 
         val user = repository.findByUsername("foobar")
 
@@ -175,9 +174,9 @@ class UserRepositoryImplTest {
 
     @Ignore //TODO Test failed. Will be fixed in a following task
     @Test
-    fun `given case insensitive username, findByUsername must return user`() = withTransaction {
-        insertRandomUsers(1..10)
-        insertRandomUsers(11..11) {
+    fun `findByUsername must be case insensitive`() = withTransaction {
+        insertUsers(1..10)
+        insertUser(11) {
             it[username] = "FooBar"
         }
 
@@ -189,17 +188,19 @@ class UserRepositoryImplTest {
 
     @Test
     fun `given existing id, findById must return user`() = withTransaction {
-        val id = insertRandomUsers(1..10).random()
+        val ids = insertUsers(1..10)
+        ids.forEach { id ->
 
-        val user = repository.findById(id)
+            val user = repository.findById(id)
 
-        assertNotNull(user)
-        assertEquals(id, user.id)
+            assertNotNull(user)
+            assertEquals(id, user.id)
+        }
     }
 
     @Test
     fun `given non-existent id, findById must return null`() = withTransaction {
-        val ids = insertRandomUsers(1..10)
+        val ids = insertUsers(1..10)
         assertFalse { ids.contains(404) }
 
         val user = repository.findById(404)
@@ -209,18 +210,19 @@ class UserRepositoryImplTest {
 
     @Test
     fun `findById must return even deleted user`() = withTransaction {
-        insertRandomUsers(1..10)
-        val id = insertRandomUsers(11..15) {
+        insertUsers(1..10)
+        val deletedIds = insertUsers(11..15) {
             it[deleted] = true
-        }.random()
-        insertRandomUsers(16..20)
+        }
+        insertUsers(16..20)
+        deletedIds.forEach { id ->
 
+            val user = repository.findById(id)
 
-        val user = repository.findById(id)
-
-        assertNotNull(user)
-        assertEquals(id, user.id)
-        assertTrue(user.deleted)
+            assertNotNull(user)
+            assertEquals(id, user.id)
+            assertTrue(user.deleted)
+        }
     }
 }
 
@@ -233,20 +235,22 @@ private fun withTransaction(test: suspend () -> Unit) {
     }
 }
 
-private fun insertRandomUsers(
+private fun insertUsers(
     range: IntRange, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}
 ): Set<Int> {
     val ids = mutableSetOf<Int>()
     range.forEach { index ->
-        ids += UserTable.insertAndGetId {
-            it[username] = "username$index"
-            it[passwordHash] = "hash$index"
-            it[role] = Role.values()[index % Role.values().size].name
-            it[blocked] = false
-            it[deleted] = false
-            overrideColumns(it)
-        }.value
+        ids += insertUser(index, overrideColumns)
     }
     return ids
 }
+
+private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) = UserTable.insertAndGetId {
+    it[username] = "username$index"
+    it[passwordHash] = "hash$index"
+    it[role] = Role.values()[index % Role.values().size].name
+    it[blocked] = false
+    it[deleted] = false
+    overrideColumns(it)
+}.value
 

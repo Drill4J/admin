@@ -51,7 +51,6 @@ dependencies {
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("org.mindrot:jbcrypt:$jbcryptVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     testImplementation(kotlin("test-junit5"))
