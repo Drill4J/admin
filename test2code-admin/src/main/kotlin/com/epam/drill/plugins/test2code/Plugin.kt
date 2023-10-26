@@ -33,6 +33,7 @@ import com.epam.dsm.find.Expr.Companion.ANY
 import com.epam.dsm.find.get
 import com.epam.dsm.find.getAndMap
 import com.epam.dsm.util.logPoolStats
+import io.ktor.config.*
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
 import kotlinx.coroutines.*
@@ -65,6 +66,7 @@ class Plugin(
     val storeClient: StoreClient,
     agentInfo: AgentInfo,
     id: String,
+    val appConfig : ApplicationConfig
 ) : AdminPluginPart<Action>(
     id = id,
     agentInfo = agentInfo,
