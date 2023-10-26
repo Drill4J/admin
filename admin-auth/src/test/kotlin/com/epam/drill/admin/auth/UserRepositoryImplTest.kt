@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.repository.impl.UserRepositoryImpl
+import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.table.UserTable
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.*
@@ -28,7 +28,7 @@ import kotlin.test.*
 
 class UserRepositoryImplTest {
 
-    private val repository = UserRepositoryImpl()
+    private val repository = DatabaseUserRepository()
 
     @BeforeTest
     fun setup() {
