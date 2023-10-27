@@ -106,7 +106,9 @@ internal class DrillServerWsTest {
         }
 
         routing {
-            userAuthenticationRoutes()
+            route("/api") {
+                userAuthenticationRoutes()
+            }
         }
     }
 

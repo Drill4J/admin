@@ -15,21 +15,26 @@
  */
 package com.epam.drill.admin.endpoints
 
-import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.common.message.*
-import com.epam.drill.e2e.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.server.testing.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.*
 import kotlin.test.*
 
-//TODO move under com.epam.drill.e2e
 
+@Serializable
+data class UserData(
+    val username: String,
+    val password: String,
+)
+
+//TODO move under com.epam.drill.e2e
 fun TestApplicationEngine.requestToken(): String {
-    val loginUrl = "/api/login"
+    val loginUrl = "/api/sign-in"
     val token = handleRequest(HttpMethod.Post, loginUrl) {
         addHeader(HttpHeaders.ContentType, "${ContentType.Application.Json}")
         setBody(UserData.serializer() stringify UserData("user", "user"))
