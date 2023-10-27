@@ -46,7 +46,7 @@ class EnvUserRepository(
             .toMap()
     }
 
-    override suspend fun findAllNotDeleted(): List<UserEntity> {
+    override suspend fun findAll(): List<UserEntity> {
         return users.values.filter { !it.deleted }
     }
 
@@ -64,6 +64,10 @@ class EnvUserRepository(
 
     override suspend fun update(entity: UserEntity) {
         throw UnsupportedOperationException("User update is not supported")
+    }
+
+    override suspend fun deleteById(id: Int) {
+        throw UnsupportedOperationException("User deletion is not supported")
     }
 
     private fun getUsersFromEnv() = env

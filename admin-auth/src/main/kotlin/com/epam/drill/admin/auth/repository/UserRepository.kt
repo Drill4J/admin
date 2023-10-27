@@ -20,7 +20,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 typealias Id = Int
 
 interface UserRepository {
-    suspend fun findAllNotDeleted(): List<UserEntity>
+    suspend fun findAll(): List<UserEntity>
 
     suspend fun findById(id: Int): UserEntity?
 
@@ -30,4 +30,5 @@ interface UserRepository {
 
     suspend fun update(entity: UserEntity)
 
+    suspend fun deleteById(id: Int)
 }

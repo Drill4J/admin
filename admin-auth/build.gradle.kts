@@ -75,17 +75,7 @@ tasks {
     }
 }
 
-@Suppress("UNUSED_VARIABLE")
 license {
     headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
-    val licenseFormatSources by tasks.registering(LicenseFormat::class) {
-        source = fileTree("$projectDir/src").also {
-            include("**/*.kt", "**/*.java", "**/*.groovy")
-        }
-    }
-    val licenseCheckSources by tasks.registering(LicenseCheck::class) {
-        source = fileTree("$projectDir/src").also {
-            include("**/*.kt", "**/*.java", "**/*.groovy")
-        }
-    }
+    include("**/*.kt")
 }

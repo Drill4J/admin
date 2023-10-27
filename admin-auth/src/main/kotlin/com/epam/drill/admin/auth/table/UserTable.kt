@@ -22,5 +22,4 @@ object UserTable: IntIdTable(name = "auth.user") {
     val passwordHash = varchar("password_hash", 100)
     val role = varchar("role", 20)
     var blocked = bool("blocked")
-    var deleted = bool("deleted")
 }

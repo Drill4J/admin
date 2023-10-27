@@ -29,6 +29,7 @@ import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import kotlin.test.*
@@ -77,7 +78,6 @@ class UserRepositoryImplTest {
             assertEquals(userEntity.username, it[UserTable.username])
             assertEquals(userEntity.passwordHash, it[UserTable.passwordHash])
             assertEquals(userEntity.role, it[UserTable.role])
-            assertEquals(userEntity.deleted, it[UserTable.deleted])
             assertEquals(userEntity.blocked, it[UserTable.blocked])
         }
     }
@@ -133,30 +133,17 @@ class UserRepositoryImplTest {
             assertEquals("bar", it[UserTable.username])
             assertEquals("hash2", it[UserTable.passwordHash])
             assertEquals("ADMIN", it[UserTable.role])
-            assertTrue(it[UserTable.deleted])
             assertTrue(it[UserTable.blocked])
         }
     }
 
     @Test
-    fun `after database migration all default users must be inserted`() = withTransaction {
-        val users = repository.findAllNotDeleted()
-        assertEquals(2, users.size)
+    fun `after database migration, findAll must return default users`() = withTransaction {
+        val users = repository.findAll()
+
+        assertEquals(2, users.size)//insert after db migration
         assertTrue(users.any { it.username == "user" })
         assertTrue(users.any { it.username == "admin" })
-    }
-
-    @Test
-    fun `findAllNotDeleted must return all not deleted users`() = withTransaction {
-        insertUsers(1..10)
-        insertUsers(11..15) {
-            it[deleted] = true //insert 5 deleted users
-        }
-        insertUsers(16..20)
-
-        val users = repository.findAllNotDeleted()
-
-        assertTrue(users.none { it.deleted })
     }
 
     @Test
@@ -189,21 +176,6 @@ class UserRepositoryImplTest {
         assertTrue(user.blocked)
     }
 
-    @Ignore //TODO Test failed. Will be fixed in a following task
-    @Test
-    fun `findByUsername mustn't return deleted user`() = withTransaction {
-        insertUsers(1..10)
-        insertUser(11) {
-            it[username] = "foobar"
-            it[deleted] = true
-        }
-        insertUsers(12..20)
-
-        val user = repository.findByUsername("foobar")
-
-        assertNull(user)
-    }
-
     @Test
     fun `findByUsername must be case insensitive`() = withTransaction {
         insertUsers(1..10)
@@ -233,27 +205,28 @@ class UserRepositoryImplTest {
     @Test
     fun `given non-existent id, findById must return null`() = withTransaction {
         val ids = insertUsers(1..10)
-        assertFalse { ids.contains(404) }
+        assertFalse { ids.contains(12345) }
 
-        val user = repository.findById(404)
+        val user = repository.findById(12345)
 
         assertNull(user)
     }
 
     @Test
-    fun `findById must return even deleted user`() = withTransaction {
-        insertUsers(1..10)
-        val deletedIds = insertUsers(11..15) {
-            it[deleted] = true
+    fun `given existent id, delete must delete user`() = withTransaction {
+        val id = insertUser {
+            it[username] = "foo"
         }
-        insertUsers(16..20)
-        deletedIds.forEach { id ->
 
-            val user = repository.findById(id)
+        repository.deleteById(id)
 
-            assertNotNull(user)
-            assertEquals(id, user.id)
-            assertTrue(user.deleted)
+        assertEquals(0, UserTable.select { UserTable.id eq id }.count())
+    }
+
+    @Test
+    fun `given non-existent id, delete must not fail`() = withTransaction {
+        assertDoesNotThrow {
+            repository.deleteById(12345)
         }
     }
 }
@@ -282,7 +255,6 @@ private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStateme
     it[passwordHash] = "hash$index"
     it[role] = Role.values()[index % Role.values().size].name
     it[blocked] = false
-    it[deleted] = false
     overrideColumns(it)
 }.value
 
