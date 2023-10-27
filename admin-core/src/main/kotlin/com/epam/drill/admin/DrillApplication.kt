@@ -37,13 +37,8 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
-import java.io.*
 import java.time.*
 
-
-val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
-
-val drillWorkDir = drillHomeDir.resolve("work")
 
 private val logger = KotlinLogging.logger {}
 

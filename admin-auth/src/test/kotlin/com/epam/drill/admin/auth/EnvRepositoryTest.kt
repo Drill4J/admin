@@ -36,7 +36,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given users from env config, findAll must return all users not deleted users`() = runBlocking {
+    fun `given users from env config, findAll must return all users`() = runBlocking {
         val repository = prepareEnvUserRepository(
             user("user", role = Role.USER),
             user("admin", role = Role.ADMIN)
