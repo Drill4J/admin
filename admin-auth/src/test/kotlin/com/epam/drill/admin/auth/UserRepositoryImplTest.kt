@@ -205,9 +205,9 @@ class UserRepositoryImplTest {
     @Test
     fun `given non-existent id, findById must return null`() = withTransaction {
         val ids = insertUsers(1..10)
-        assertFalse { ids.contains(404) }
+        assertFalse { ids.contains(12345) }
 
-        val user = repository.findById(404)
+        val user = repository.findById(12345)
 
         assertNull(user)
     }
@@ -226,7 +226,7 @@ class UserRepositoryImplTest {
     @Test
     fun `given non-existent id, delete must not fail`() = withTransaction {
         assertDoesNotThrow {
-            repository.deleteById(404)
+            repository.deleteById(12345)
         }
     }
 }
