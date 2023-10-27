@@ -64,7 +64,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given lowercase username hash, findById must return the respective user`() = runBlocking {
+    fun `given id generated from username in lowercase, findById must return the respective user`() = runBlocking {
         val repository = prepareEnvUserRepository(
             user("guest"),
             user("FooBar"),
@@ -92,7 +92,7 @@ class EnvRepositoryTest {
     }
 
     @Test
-    fun `given case insensitive username, findByUsername must return user`() = runBlocking {
+    fun `given username with variable casing, findByUsername must return corresponding user`() = runBlocking {
         val repository = prepareEnvUserRepository(
             user("guest"),
             user("fooBAR"),

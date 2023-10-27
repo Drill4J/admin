@@ -138,7 +138,7 @@ class UserRepositoryImplTest {
     }
 
     @Test
-    fun `after database migration findAll must return default users`() = withTransaction {
+    fun `after database migration, findAll must return default users`() = withTransaction {
         val users = repository.findAll()
 
         assertEquals(2, users.size)//insert after db migration
