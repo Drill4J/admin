@@ -25,9 +25,11 @@ import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
+import io.ktor.locations.post
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.Route
+import io.ktor.response.header
+import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
@@ -66,8 +68,16 @@ fun StatusPages.Configuration.authStatusPages() {
 
 fun Route.userAuthenticationRoutes() {
     loginRoute()
-    signInRoute()
-    signUpRoute()
+    route("/api") {
+        signInRoute()
+        signUpRoute()
+    }
+}
+
+fun Route.userProfileRoutes() {
+    route("/api") {
+        updatePasswordRoute()
+    }
 }
 
 fun Route.signInRoute() {
