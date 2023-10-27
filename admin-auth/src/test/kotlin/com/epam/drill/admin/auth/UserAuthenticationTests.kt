@@ -30,6 +30,7 @@ import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.RegistrationPayload
 import com.epam.drill.admin.auth.model.TokenView
 import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.route.userProfileRoutes
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -278,7 +279,7 @@ class UserAuthenticationTest {
         routing {
             userAuthenticationRoutes()
             authenticate {
-                updatePasswordRoute()
+                userProfileRoutes()
             }
         }
     }

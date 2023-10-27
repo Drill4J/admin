@@ -19,10 +19,7 @@ import com.epam.drill.admin.auth.*
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
-import com.epam.drill.admin.auth.route.authStatusPages
-import com.epam.drill.admin.auth.route.updatePasswordRoute
-import com.epam.drill.admin.auth.route.userAuthenticationRoutes
-import com.epam.drill.admin.auth.route.userManagementRoutes
+import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.kodein.*
@@ -99,13 +96,16 @@ fun Application.module() {
     }
 
     routing {
-        userAuthenticationRoutes()
-        authenticate("jwt") {
-            updatePasswordRoute()
-        }
-        authenticate("jwt", "basic") {
-            withRole(ADMIN) {
-                userManagementRoutes()
+        loginRoute()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt", "basic") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
             }
         }
     }

@@ -92,7 +92,9 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
         }
 
         routing {
-            userAuthenticationRoutes()
+            route("/api") {
+                userAuthenticationRoutes()
+            }
         }
 
         environment.monitor.subscribe(ApplicationStopped) {

@@ -104,7 +104,9 @@ class PluginWsTest {
         }
 
         routing {
-            userAuthenticationRoutes()
+            route("/api") {
+                userAuthenticationRoutes()
+            }
         }
     }
 
