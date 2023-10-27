@@ -75,7 +75,6 @@ tasks {
     }
 }
 
-@Suppress("UNUSED_VARIABLE")
 license {
     headerURI = URI("https://raw.githubusercontent.com/Drill4J/drill4j/develop/COPYRIGHT")
     include("**/*.kt")
