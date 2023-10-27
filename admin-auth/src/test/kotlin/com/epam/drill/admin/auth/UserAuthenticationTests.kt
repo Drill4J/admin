@@ -82,7 +82,7 @@ class UserAuthenticationTest {
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-in") {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val payload = LoginPayload(username = "guest", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), payload))
@@ -104,7 +104,7 @@ class UserAuthenticationTest {
             .thenReturn(1)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-up") {
+            with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "foobar", password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
@@ -133,7 +133,7 @@ class UserAuthenticationTest {
             .thenReturn("hash2")
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/update-password") {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
                 val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
@@ -151,7 +151,7 @@ class UserAuthenticationTest {
             .thenReturn(null)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-in") {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "unknown", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
@@ -169,7 +169,7 @@ class UserAuthenticationTest {
             .thenReturn(false)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-in") {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "guest", password = "incorrect")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
@@ -191,7 +191,7 @@ class UserAuthenticationTest {
             .thenReturn(true)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-in") {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "blocked_user", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
@@ -207,7 +207,7 @@ class UserAuthenticationTest {
             .thenReturn(USER_GUEST)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/sign-up") {
+            with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "guest", password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
@@ -220,7 +220,7 @@ class UserAuthenticationTest {
     @Test
     fun `without authentication 'POST update-password' must fail with 401 status`() {
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/update-password") {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 //not add auth
                 val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
@@ -239,7 +239,7 @@ class UserAuthenticationTest {
             .thenReturn(false)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/api/update-password") {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
                 val form = ChangePasswordPayload(oldPassword = "incorrect", newPassword = "secret2")

@@ -44,15 +44,13 @@ object Users {
 }
 
 fun Route.userManagementRoutes() {
-    route("/api") {
-        getUsersRoute()
-        getUserRoute()
-        editUserRoute()
-        deleteUserRoute()
-        blockUserRoute()
-        unblockUserRoute()
-        resetPasswordRoute()
-    }
+    getUsersRoute()
+    getUserRoute()
+    editUserRoute()
+    deleteUserRoute()
+    blockUserRoute()
+    unblockUserRoute()
+    resetPasswordRoute()
 }
 
 fun Route.getUsersRoute() {

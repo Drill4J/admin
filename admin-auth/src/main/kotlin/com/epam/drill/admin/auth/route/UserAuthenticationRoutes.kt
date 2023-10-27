@@ -67,17 +67,12 @@ fun StatusPages.Configuration.authStatusPages() {
 }
 
 fun Route.userAuthenticationRoutes() {
-    loginRoute()
-    route("/api") {
-        signInRoute()
-        signUpRoute()
-    }
+    signInRoute()
+    signUpRoute()
 }
 
 fun Route.userProfileRoutes() {
-    route("/api") {
-        updatePasswordRoute()
-    }
+    updatePasswordRoute()
 }
 
 fun Route.signInRoute() {

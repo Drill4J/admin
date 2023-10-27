@@ -70,7 +70,7 @@ class UserManagementTest {
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/api/users") {
+            with(handleRequest(HttpMethod.Get, "/users") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -86,7 +86,7 @@ class UserManagementTest {
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/api/users/1") {
+            with(handleRequest(HttpMethod.Get, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -102,7 +102,7 @@ class UserManagementTest {
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Put, "/api/users/1") {
+            with(handleRequest(HttpMethod.Put, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
                 setBody(Json.encodeToString(EditUserPayload.serializer(), form))
@@ -121,7 +121,7 @@ class UserManagementTest {
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Delete, "/api/users/1") {
+            with(handleRequest(HttpMethod.Delete, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -136,7 +136,7 @@ class UserManagementTest {
             .thenReturn(USER_ADMIN)
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Patch, "/api/users/1/block") {
+            with(handleRequest(HttpMethod.Patch, "/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -151,7 +151,7 @@ class UserManagementTest {
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Patch, "/api/users/1/unblock") {
+            with(handleRequest(HttpMethod.Patch, "/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -170,7 +170,7 @@ class UserManagementTest {
             .thenReturn("newhash")
 
         withTestApplication(config) {
-            with(handleRequest(HttpMethod.Patch, "/api/users/1/reset-password") {
+            with(handleRequest(HttpMethod.Patch, "/users/1/reset-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
