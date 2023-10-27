@@ -31,28 +31,17 @@ import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.http.content.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.*
 import mu.*
 import org.flywaydb.core.*
-import ru.yandex.qatools.embed.postgresql.*
-import ru.yandex.qatools.embed.postgresql.distribution.*
-import ru.yandex.qatools.embed.postgresql.distribution.Version
-import java.io.*
 import java.time.*
 
-
-val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
-
-val drillWorkDir = drillHomeDir.resolve("work")
 
 private val logger = KotlinLogging.logger {}
 
@@ -129,17 +118,6 @@ private fun Application.initDB() {
     val userName = drillDatabaseUserName
     val password = drillDatabasePassword
     val maxPoolSize = drillDatabaseMaxPoolSize
-    if (isEmbeddedMode) {
-        logger.info { "starting dev mode for db..." }
-        val postgres = EmbeddedPostgres(Version.V11_1, drillWorkDir.absolutePath)
-        postgres.start(
-            host,
-            port,
-            dbName,
-            userName,
-            password
-        )
-    }
     hikariConfig = HikariConfig().apply {
         this.driverClassName = "org.postgresql.Driver"
         this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"

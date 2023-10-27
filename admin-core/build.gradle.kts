@@ -26,7 +26,6 @@ val kodeinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
 val mapdbVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
-val postgresEmbeddedVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -63,7 +62,6 @@ dependencies {
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
     implementation(project(":admin-auth"))
     implementation(project(":admin-analytics"))
