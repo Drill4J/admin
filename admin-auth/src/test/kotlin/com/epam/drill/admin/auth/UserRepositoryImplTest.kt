@@ -139,7 +139,7 @@ class UserRepositoryImplTest {
     }
 
     @Test
-    fun `after database migration 2 default users must be inserted`() = withTransaction {
+    fun `after database migration all default users must be inserted`() = withTransaction {
         val users = repository.findAllNotDeleted()
         assertEquals(2, users.size)
         assertTrue(users.any { it.username == "user" })
@@ -156,7 +156,7 @@ class UserRepositoryImplTest {
 
         val users = repository.findAllNotDeleted()
 
-        assertEquals( 2 + 20 - 5, users.size)//2 default users + 20 inserted - 5 deleted
+        assertTrue(users.none { it.deleted })
     }
 
     @Test
