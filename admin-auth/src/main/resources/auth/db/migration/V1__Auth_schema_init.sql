@@ -16,12 +16,14 @@
 
 CREATE TABLE auth.user (
   id serial PRIMARY KEY,
-  username VARCHAR (30) UNIQUE NOT NULL,
+  username VARCHAR (100) NOT NULL,
   password_hash VARCHAR (100) NOT NULL,
   role VARCHAR (20) NOT NULL,
   blocked BOOLEAN NOT NULL DEFAULT FALSE,
   deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+CREATE UNIQUE INDEX user_username_idx ON auth.user ((lower(username)));
 
 --INSERT DEFAULT USER user:user
 INSERT INTO auth.user (username, password_hash, role)
