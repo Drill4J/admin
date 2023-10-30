@@ -125,10 +125,6 @@ class Plugin(
         data: Any?,
     ): ActionResult = when (action) {
         is ToggleBaseline -> toggleBaseline()
-        is SwitchActiveScope -> {okResult }
-        is RenameScope -> { okResult}
-        is ToggleScope -> { okResult }
-        is DropScope -> { okResult}
 
         is CreateFilter -> {
             val newFilter = action.payload
