@@ -245,50 +245,6 @@ class Plugin(
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
         }
 
-        /**
-         * @features Session starting
-         */
-        is StartNewSession -> action.payload.run {
-            val newSessionId = sessionId.ifEmpty(::genUuid)
-            val isRealtimeSession = runtimeConfig.realtime && isRealtime
-            val labels = labels + Label("Session", newSessionId)
-            sessionHolder.createSession(
-                newSessionId,
-                testType,
-                isGlobal,
-                isRealtimeSession,
-                testName,
-                labels
-            )
-            //Leave okResult as stub (for autotest-agent)
-            okResult
-        }
-
-        /**
-         * @features Session finishing
-         */
-        is StopSession -> action.payload.run {
-            sessionHolder.sessions[sessionId]?.let { session ->
-                session.addTests(tests)
-                state.saveSession(sessionId)
-                    ?: logger.info {
-                        "No active session with id $sessionId."
-                    }
-                okResult
-            } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
-        }
-        is CancelSession -> action.payload.run {
-            deprecatedResult
-        }
-
-        is StopAllSessions -> {
-            okResult
-        }
-
-        is CancelAllSessions -> {
-            okResult
-        }
-
         else -> "Action '$action' is not supported!".let { message ->
             logger.error { message }
             ActionResult(StatusCodes.BAD_REQUEST, message)
@@ -827,16 +783,14 @@ class Plugin(
         }
     }
 
-    private suspend fun createGlobalSession() {
-        doAction(StartNewSession(
-            payload = StartPayload(
-                testType = GLOBAL_SESSION_ID,
-                sessionId = GLOBAL_SESSION_ID,
-                testName = GLOBAL_SESSION_ID,
-                isRealtime = true,
-                isGlobal = true)
-            ),
-            data = null
+    private fun createGlobalSession() {
+        sessionHolder.createSession(
+            sessionId = GLOBAL_SESSION_ID,
+            testType = GLOBAL_SESSION_ID,
+            isGlobal = true,
+            isRealtime = true,
+            testName = GLOBAL_SESSION_ID,
+            labels = setOf(Label("Session", GLOBAL_SESSION_ID))
         )
         logger.debug { "Global session for agent $agentId was created." }
     }
