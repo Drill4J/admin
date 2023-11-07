@@ -104,7 +104,7 @@ fun findByTestType(
                          from $testOverviewTable
                          where $PARENT_ID_COLUMN ${sessionsIds.toSqlIn()}
                            and ${FieldPath(TestOverview::testId).extractText()} ${testIds.toSqlIn()})
-            select $sessionTable.${FieldPath(StoredSession::data, FinishedSession::testType).extractText()},
+            select $sessionTable.${FieldPath(StoredSession::probes, TestSession::testType).extractText()},
                    $tempTable.$JSON_COLUMN
             from $sessionTable,
                  $tempTable

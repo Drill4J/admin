@@ -24,6 +24,7 @@ import com.epam.drill.admin.build.AgentBuildData
 import com.epam.drill.admin.build.AgentBuildId
 import com.epam.drill.admin.cache.CacheService
 import com.epam.drill.admin.cache.impl.MapDBCacheService
+import com.epam.drill.admin.config.drillConfig
 import com.epam.drill.admin.endpoints.agent.AgentWsSession
 import com.epam.drill.admin.endpoints.agent.WsDeferred
 import com.epam.drill.admin.group.GroupManager
@@ -306,6 +307,7 @@ class AgentManager(override val di: DI) : DIAware {
         val info: AgentInfo = agent.update { info ->
             info.copy(
                 name = dto.name,
+                agentStatus = AgentStatus.REGISTERING,
                 plugins = setOf("test2code")
             )
         }.apply { notifyAgents(id) }
@@ -465,7 +467,8 @@ class AgentManager(override val di: DI) : DIAware {
                 agentInfo = info,
                 data = agentData,
                 sender = pluginSenders.sender(plugin.pluginBean.id),
-                store = pluginStore
+                store = pluginStore,
+                config = app.drillConfig
             )
         }.apply {
             logger.info { "initializing ${plugin.pluginBean.id} plugin for agent(id=$agentId, version=$buildVersion)..." }

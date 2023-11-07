@@ -38,8 +38,7 @@ data class BuildStats(
     @Id val agentKey: AgentKey,
     val coverage: Count = zeroCount,
     val methodCount: Count = zeroCount,
-    val coverageByType: Map<String, Count> = emptyMap(),
-    val scopeCount: Int = 0,
+    val coverageByType: Map<String, Count> = emptyMap()
 )
 
 internal fun BuildCoverage.toCachedBuildStats(
@@ -53,7 +52,6 @@ internal fun BuildCoverage.toCachedBuildStats(
             it.summary.coverage.count.total
         )
     },
-    scopeCount = finishedScopesCount
 )
 
 internal fun AgentSummary.recommendations(): Set<String> = sequenceOf(
