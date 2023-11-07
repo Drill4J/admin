@@ -19,7 +19,6 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.authStatusPages
-import com.epam.drill.admin.auth.route.updatePasswordRoute
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -75,8 +74,9 @@ class UserAuthenticationTest {
 
     @Test
     fun `given correct username and password 'POST sign-in' must return an access token`() {
-        wheneverBlocking(userRepository) { findByUsername("guest") }
-            .thenReturn(USER_GUEST)
+        val testUsername = "foobar"
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }
+            .thenReturn(UserEntity(id = 1, username = testUsername, passwordHash = "hash", role = "USER"))
         whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
@@ -84,7 +84,7 @@ class UserAuthenticationTest {
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val payload = LoginPayload(username = "guest", password = "secret")
+                val payload = LoginPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), payload))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -194,6 +194,28 @@ class UserAuthenticationTest {
             with(handleRequest(HttpMethod.Post, "/sign-in") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "blocked_user", password = "secret")
+                setBody(Json.encodeToString(LoginPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.Forbidden, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given username of user without role 'POST sign-in' must fail with 403 status`() {
+        wheneverBlocking(userRepository) { findByUsername("undefined_role") }
+            .thenReturn(
+                UserEntity(
+                    id = 1, username = "undefined_role", passwordHash = "hash", role = "UNDEFINED", blocked = false
+                )
+            )
+        whenever(passwordService.matchPasswords("secret", "hash"))
+            .thenReturn(true)
+
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/sign-in") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = LoginPayload(username = "undefined_role", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.Forbidden, response.status())
