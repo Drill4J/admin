@@ -75,7 +75,7 @@ class SecurityConfig(override val di: DI) : DIAware {
                 it.payload.toPrincipal()
             }
             authHeader { call ->
-                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"]}"
+                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
                 parseAuthorizationHeader(headerValue)
             }
         }
