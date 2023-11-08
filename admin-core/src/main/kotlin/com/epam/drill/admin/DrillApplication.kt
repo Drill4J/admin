@@ -99,10 +99,10 @@ fun Application.module() {
         loginRoute()
         route("/api") {
             userAuthenticationRoutes()
-            authenticate("jwt") {
+            authenticate("session", "jwt") {
                 userProfileRoutes()
             }
-            authenticate("jwt", "basic") {
+            authenticate("session", "jwt", "basic") {
                 withRole(ADMIN) {
                     userManagementRoutes()
                 }

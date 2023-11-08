@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.principal.UserSession
 import com.epam.drill.admin.auth.route.unauthorizedError
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -33,13 +34,16 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.HttpHeaders.Authorization
 import io.ktor.http.auth.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.sessions.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
+import kotlin.time.Duration.Companion.minutes
 
 
 class SecurityConfig(override val di: DI) : DIAware {
@@ -52,6 +56,15 @@ class SecurityConfig(override val di: DI) : DIAware {
 //            configureJwt("jwt")
             configureBasic("basic")
             configureOAuth()
+        }
+        app.install(Sessions) {
+            cookie<UserSession>(
+                "drill_session",
+                storage = CacheStorage(SessionStorageMemory(), 60.minutes.inWholeMilliseconds)
+            ) {
+                cookie.path = "/"
+                cookie.maxAge = 60.minutes
+            }
         }
         app.routing {
             oauthRoutes()
@@ -75,22 +88,28 @@ class SecurityConfig(override val di: DI) : DIAware {
                 it.payload.toPrincipal()
             }
             authHeader { call ->
-                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
+                val headerValue = call.request.headers[Authorization]
+                    ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
                 parseAuthorizationHeader(headerValue)
             }
         }
     }
 
     private fun Authentication.Configuration.configureOAuth() {
-        val keycloakAddress = "http://localhost:8080"
+        session<UserSession>("session") {
+            validate { session ->
+                session.principal
+            }
+            challenge {
+                call.respondRedirect("/oauth/login")
+            }
+        }
+
         jwt("jwt") {
             realm = "Access to the http(s) and the ws(s) services"
             verifier((tokenService as JwkTokenService).provider, (tokenService as JwkTokenService).issuer)
-            validate {
-                User(
-                    username = it["preferred_username"].toString(),
-                    role = findRole(it.payload.getClaim("realm_access").asMap()["roles"] as List<String>)
-                )
+            validate { credential ->
+                credential.toPrincipal()
             }
             authHeader { call ->
                 val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"]}"
@@ -98,6 +117,7 @@ class SecurityConfig(override val di: DI) : DIAware {
             }
         }
 
+        val keycloakAddress = "http://localhost:8080"
         oauth("oauth") {
             urlProvider = { "http://localhost:8090/oauth/callback" }
             providerLookup = {
@@ -119,30 +139,24 @@ class SecurityConfig(override val di: DI) : DIAware {
 fun Routing.oauthRoutes() {
     authenticate("oauth") {
         get("/oauth/login") {
-            // Redirects to "authorizeUrl" if authentication fails
-            // or redirect to root otherwise
-            call.respondRedirect("/")
-        }
-        get("/oauth/logout") {
-            call.principal<OAuthAccessTokenResponse.OAuth2>()?.let { principal ->
-                val httpClient = HttpClient(Apache)
-                httpClient.post<HttpResponse>("http://localhost:8080/realms/master/protocol/openid-connect/logout") {
-                    headers {
-                        append(HttpHeaders.Authorization, "Bearer ${principal.accessToken}")
-                    }
-                }
-            }
+            // Redirects to "authorizeUrl" automatically
         }
         get("/oauth/callback") {
-            val principal: OAuthAccessTokenResponse.OAuth2? = call.principal()
-            if (principal != null) {
-                getUserInfo(principal.accessToken)
-
-                call.response.cookies.append(Cookie("jwt", principal.accessToken, httpOnly = true, path = "/"))
-                call.respondRedirect("/")
-            } else {
+            val oauthPrincipal: OAuthAccessTokenResponse.OAuth2? = call.principal()
+            if (oauthPrincipal == null) {
                 call.unauthorizedError()
+                return@get
             }
+
+            val user = getUserInfo(oauthPrincipal.accessToken)
+            if (user == null) {
+                call.unauthorizedError()
+                return@get
+            }
+
+            call.sessions.set(UserSession(user, oauthPrincipal.accessToken, oauthPrincipal.refreshToken))
+            call.response.cookies.append(Cookie("jwt", oauthPrincipal.accessToken, httpOnly = true, path = "/"))
+            call.respondRedirect("/")
         }
     }
 }
@@ -165,10 +179,15 @@ private suspend fun getUserInfo(accessToken: String): User? {
 private fun JsonElement.toPrincipal(): User {
     val jsonObject = this.jsonObject
     return User(
-        username = jsonObject["username"]?.jsonPrimitive?.contentOrNull ?: "",
-        role = findRole(jsonObject["roles"]?.jsonArray?.map { it.toString() } ?: emptyList())
+        username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
+        role = findRole(jsonObject.getValue("roles").jsonArray.map { it.jsonPrimitive.content })
     )
 }
+
+private fun JWTCredential.toPrincipal() = User(
+    username = this["preferred_username"].toString(),
+    role = findRole(this.payload.getClaim("realm_access").asMap()["roles"] as List<String>)
+)
 
 private fun Payload.toPrincipal(): User {
     return User(

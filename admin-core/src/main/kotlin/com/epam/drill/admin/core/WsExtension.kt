@@ -18,12 +18,14 @@ package com.epam.drill.admin.core
 import com.auth0.jwt.exceptions.*
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.principal.UserSession
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.auth.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
+import io.ktor.sessions.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
@@ -40,7 +42,7 @@ fun Route.authWebSocket(
 ) {
     val tokenService by di().instance<TokenService>()
 
-    authenticate("jwt") {
+    authenticate("session", "jwt") {
         withRole(Role.USER) {
             webSocket(path, protocol) {
                 socketAuthentication(tokenService)
@@ -55,7 +57,8 @@ fun Route.authWebSocket(
 }
 
 private suspend fun DefaultWebSocketServerSession.socketAuthentication(tokenService: TokenService) {
-    val token = call.request.cookies["jwt"] ?: call.parameters["token"]
+    val userSession = call.sessions.get<UserSession>()
+    val token = userSession?.accessToken ?: call.request.cookies["jwt"] ?: call.parameters["token"]
 
     if (token.isNullOrEmpty()) {
         logger.warn { "Authentication token is empty" }
