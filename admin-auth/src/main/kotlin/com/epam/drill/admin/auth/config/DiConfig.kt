@@ -36,7 +36,8 @@ enum class UserRepoType {
 }
 
 val securityDiConfig: DI.Builder.(Application) -> Unit = { _ ->
-    bindJwt()
+//    bindJwt()
+    bindOAuth()
     bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
     bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
 }
@@ -50,6 +51,12 @@ fun DI.Builder.bindJwt() {
     bind<JwtConfig>() with singleton { JwtConfig(di) }
     bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
     bind<TokenService>() with provider { instance<JwtTokenService>() }
+}
+
+fun DI.Builder.bindOAuth() {
+    bind<OAuthConfig>() with singleton { OAuthConfig(di) }
+    bind<JwkTokenService>() with singleton { JwkTokenService(instance()) }
+    bind<TokenService>() with provider { instance<JwkTokenService>() }
 }
 
 fun DI.Builder.userServicesConfig(userRepoType: UserRepoType) {
