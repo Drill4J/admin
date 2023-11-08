@@ -16,9 +16,12 @@
 package com.epam.drill.admin.core
 
 import com.auth0.jwt.exceptions.*
+import com.epam.drill.admin.auth.config.withRole
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.auth.service.TokenService
+import io.ktor.auth.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -37,12 +40,16 @@ fun Route.authWebSocket(
 ) {
     val tokenService by di().instance<TokenService>()
 
-    webSocket(path, protocol) {
-        socketAuthentication(tokenService)
-        try {
-            handler(this)
-        } catch (ex: Exception) {
-            closeExceptionally(ex)
+    authenticate("jwt") {
+        withRole(Role.USER) {
+            webSocket(path, protocol) {
+                socketAuthentication(tokenService)
+                try {
+                    handler(this)
+                } catch (ex: Exception) {
+                    closeExceptionally(ex)
+                }
+            }
         }
     }
 }
@@ -56,7 +63,6 @@ private suspend fun DefaultWebSocketServerSession.socketAuthentication(tokenServ
         close()
         return
     }
-    verifyToken(token, tokenService)
 
     launch {
         while (true) {

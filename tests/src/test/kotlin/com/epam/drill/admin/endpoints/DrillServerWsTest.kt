@@ -217,12 +217,8 @@ internal class DrillServerWsTest {
     fun `get UNAUTHORIZED event if token is invalid`() {
         withTestApplication(testApp) {
             val invalidToken = requestToken() + "1"
-            handleWebSocketConversation("/ws/drill-admin-socket?token=${invalidToken}") { incoming, _ ->
-                val tmp = incoming.receive()
-                assertTrue { tmp is Frame.Text }
-                val response = JsonObject.serializer() parse (tmp as Frame.Text).readText()
-                assertEquals(WsMessageType.UNAUTHORIZED.name, response[WsSendMessage::type.name]?.toContentString())
-            }
+            val call = handleWebSocket("/ws/drill-admin-socket?token=${invalidToken}") {}
+            assertEquals(401, call.response.status()?.value)
         }
     }
 
