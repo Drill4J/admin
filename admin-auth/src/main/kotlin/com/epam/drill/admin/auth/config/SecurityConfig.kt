@@ -99,7 +99,7 @@ class SecurityConfig(override val di: DI) : DIAware {
         }
 
         oauth("oauth") {
-            urlProvider = { "http://localhost:8090/auth" }
+            urlProvider = { "http://localhost:8090/oauth/callback" }
             providerLookup = {
                 OAuthServerSettings.OAuth2ServerSettings(
                     name = "keycloak",
@@ -138,7 +138,7 @@ fun Routing.oauthRoutes() {
             if (principal != null) {
                 getUserInfo(principal.accessToken)
 
-                call.response.cookies.append(Cookie("jwt", principal.accessToken, httpOnly = true))
+                call.response.cookies.append(Cookie("jwt", principal.accessToken, httpOnly = true, path = "/"))
                 call.respondRedirect("/")
             } else {
                 call.unauthorizedError()

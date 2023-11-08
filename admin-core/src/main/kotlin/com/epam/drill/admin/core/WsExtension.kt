@@ -55,9 +55,9 @@ fun Route.authWebSocket(
 }
 
 private suspend fun DefaultWebSocketServerSession.socketAuthentication(tokenService: TokenService) {
-    val token = call.parameters["token"].takeIf { !it.isNullOrBlank() } ?: call.request.cookies["jwt"]
+    val token = call.request.cookies["jwt"]
 
-    if (token == null) {
+    if (token.isNullOrEmpty()) {
         logger.warn { "Authentication token is empty" }
         send(WsSendMessage.serializer() stringify WsSendMessage(WsMessageType.UNAUTHORIZED))
         close()
