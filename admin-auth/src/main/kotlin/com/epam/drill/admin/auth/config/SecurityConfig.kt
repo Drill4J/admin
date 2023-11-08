@@ -180,7 +180,7 @@ private fun JsonElement.toPrincipal(): User {
     val jsonObject = this.jsonObject
     return User(
         username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
-        role = findRole(jsonObject.getValue("roles").jsonArray.map { it.jsonPrimitive.content })
+        role = jsonObject["roles"]?.jsonArray?.map { it.jsonPrimitive.content }.let { findRole(it ?: emptyList()) }
     )
 }
 
