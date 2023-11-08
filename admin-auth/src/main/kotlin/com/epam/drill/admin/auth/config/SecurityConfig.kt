@@ -75,7 +75,8 @@ class SecurityConfig(override val di: DI) : DIAware {
                 it.payload.toPrincipal()
             }
             authHeader { call ->
-                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
+                val headerValue = call.request.headers[Authorization]
+                    ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
                 parseAuthorizationHeader(headerValue)
             }
         }
@@ -135,14 +136,13 @@ fun Routing.oauthRoutes() {
         }
         get("/oauth/callback") {
             val principal: OAuthAccessTokenResponse.OAuth2? = call.principal()
-            if (principal != null) {
-                getUserInfo(principal.accessToken)
-
-                call.response.cookies.append(Cookie("jwt", principal.accessToken, httpOnly = true, path = "/"))
-                call.respondRedirect("/")
-            } else {
+            if (principal == null) {
                 call.unauthorizedError()
+                return@get
             }
+
+            call.response.cookies.append(Cookie("jwt", principal.accessToken, httpOnly = true, path = "/"))
+            call.respondRedirect("/") //TODO configurable redirect target
         }
     }
 }
@@ -166,7 +166,7 @@ private fun JsonElement.toPrincipal(): User {
     val jsonObject = this.jsonObject
     return User(
         username = jsonObject["username"]?.jsonPrimitive?.contentOrNull ?: "",
-        role = findRole(jsonObject["roles"]?.jsonArray?.map { it.toString() } ?: emptyList())
+        role = jsonObject["roles"]?.jsonArray?.map { it.jsonPrimitive.content }.let { findRole(it ?: emptyList()) }
     )
 }
 
