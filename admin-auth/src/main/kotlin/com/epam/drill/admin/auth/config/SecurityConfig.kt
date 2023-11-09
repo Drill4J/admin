@@ -25,6 +25,8 @@ import com.epam.drill.admin.auth.model.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
+import io.ktor.http.*
+import io.ktor.http.auth.*
 import org.kodein.di.*
 
 
@@ -55,6 +57,10 @@ class SecurityConfig(override val di: DI) : DIAware {
             verifier(jwtTokenService.verifier)
             validate {
                 it.payload.toPrincipal()
+            }
+            authHeader { call ->
+                val headerValue = call.request.headers[HttpHeaders.Authorization] ?: "Bearer ${call.parameters["token"]}"
+                parseAuthorizationHeader(headerValue)
             }
         }
     }
