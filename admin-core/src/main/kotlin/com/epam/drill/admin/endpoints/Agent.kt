@@ -20,6 +20,7 @@ import com.epam.drill.admin.plugins.*
 import com.epam.drill.plugin.api.*
 import com.epam.drill.plugin.api.end.*
 import com.epam.dsm.*
+import io.ktor.config.*
 import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import mu.*
@@ -79,6 +80,7 @@ internal fun Plugin.createInstance(
     data: AdminData,
     sender: Sender,
     store: StoreClient,
+    config: ApplicationConfig
 ): AdminPluginPart<*> {
     @Suppress("UNCHECKED_CAST")
     val constructor = pluginClass.constructors.run {
@@ -91,6 +93,7 @@ internal fun Plugin.createInstance(
             AdminData::class.java -> data
             Sender::class.java -> sender
             StoreClient::class.java -> store
+            ApplicationConfig::class.java -> config
             else -> error("${pluginClass.name}: unsupported constructor parameter type $it.")
         }
     }
