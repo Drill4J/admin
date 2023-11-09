@@ -36,7 +36,7 @@ private val logger = logger {}
  * @param classBytes java class bytes of the build
  * @param cache the current cache of build coverage
  * @return various sets of build coverages
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<Session>.calcBundleCounters(
     context: CoverContext,
@@ -119,14 +119,12 @@ suspend fun List<TestOverviewFilter>.calcBundleCounters(
 }
 
 /**
- * Calculate coverage data by scope
+ * Calculate coverage data by sessionHolder
  * @param context the build context
- * @param scope the scope
  * @return various sets of coverage information
  */
 internal fun BundleCounters.calculateCoverageData(
     context: CoverContext,
-    scope: Scope? = null,
 ): CoverageInfoSet {
     val bundle = all
     val bundlesByTests = byTest
@@ -152,31 +150,16 @@ internal fun BundleCounters.calculateCoverageData(
     val methodCount = bundle.methodCount.copy(total = tree.totalMethodCount)
     val classCount = bundle.classCount.copy(total = tree.totalClassCount)
     val packageCount = bundle.packageCount.copy(total = tree.packages.count())
-    val coverageBlock: Coverage = when (scope) {
-        null -> {
-            BuildCoverage(
-                percentage = totalCoveragePercent,
-                count = coverageCount,
-                methodCount = methodCount,
-                classCount = classCount,
-                packageCount = packageCount,
-                testTypeOverlap = testTypeOverlap.toCoverDto(tree),
-                byTestType = coverageByTests.byType
-            )
-        }
-
-        is FinishedScope -> scope.summary.coverage
-        else -> ScopeCoverage(
+    val coverageBlock: Coverage =
+        BuildCoverage(
             percentage = totalCoveragePercent,
             count = coverageCount,
-            overlap = overlap.toCoverDto(tree),
             methodCount = methodCount,
             classCount = classCount,
             packageCount = packageCount,
             testTypeOverlap = testTypeOverlap.toCoverDto(tree),
             byTestType = coverageByTests.byType
         )
-    }
     logger.info { coverageBlock }
 
     val buildMethods = trackTime("calculateBundleMethods") { context.calculateBundleMethods(bundle) }
@@ -258,7 +241,7 @@ private fun Sequence<Session>.testsWithBundle(
  * @param context the context of the coverage
  * @param classBytes the map when keys are class names and values are class bytes
  * @return a calculated build coverage
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<ExecClassData>.overlappingBundle(
     context: CoverContext,
@@ -271,7 +254,7 @@ internal fun Sequence<ExecClassData>.overlappingBundle(
  * @param context the context of the coverage
  * @param classBytes the map when keys are class names and values are class bytes
  * @return a calculated build coverage
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<ExecClassData>.bundle(
     context: CoverContext,
