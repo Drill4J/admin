@@ -49,14 +49,11 @@ val usersDiConfig: DI.Builder.(Application) -> Unit = { application ->
 
 fun DI.Builder.bindJwt() {
     bind<JwtConfig>() with singleton { JwtConfig(di) }
-    bind<JwtTokenService>() with singleton { JwtTokenService(instance()) }
     bind<TokenService>() with provider { instance<JwtTokenService>() }
 }
 
 fun DI.Builder.bindOAuth() {
     bind<OAuthConfig>() with singleton { OAuthConfig(di) }
-    bind<OAuthTokenService>() with singleton { OAuthTokenService(instance()) }
-    bind<TokenService>() with provider { instance<OAuthTokenService>() }
 }
 
 fun DI.Builder.userServicesConfig(userRepoType: UserRepoType) {

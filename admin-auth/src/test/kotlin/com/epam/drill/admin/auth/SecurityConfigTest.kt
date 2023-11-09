@@ -23,6 +23,7 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.config.*
@@ -136,7 +137,7 @@ class SecurityConfigTest {
             put("drill.auth.jwt.secret", testSecret)
         }
         di {
-            bind<JwtTokenService>() with singleton { JwtTokenService(JwtConfig(di)) }
+            bind<TokenService>() with singleton { JwtTokenService(JwtConfig(di)) }
             bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
             bind<UserAuthenticationService>() with provider { authService }
         }

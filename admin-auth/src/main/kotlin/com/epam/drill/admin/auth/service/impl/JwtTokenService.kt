@@ -31,10 +31,6 @@ class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
     private val audience: String? = jwtConfig.audience
     private val lifetime: Duration = jwtConfig.lifetime
 
-    val verifier: JWTVerifier = JWT.require(algorithm)
-        .withIssuer(jwtConfig.issuer)
-        .build()
-
     override fun issueToken(user: UserView): String = JWT.create()
         .withSubject(user.username)
         .withIssuer(issuer)
@@ -42,10 +38,6 @@ class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
         .withClaim("role", user.role.name)
         .withExpiresAt(lifetime.toExpiration())
         .sign(algorithm)
-
-    override fun verifyToken(token: String) {
-        verifier.verify(token)
-    }
 
     private fun Duration.toExpiration() = Date(System.currentTimeMillis() + this.inWholeMilliseconds)
 }
