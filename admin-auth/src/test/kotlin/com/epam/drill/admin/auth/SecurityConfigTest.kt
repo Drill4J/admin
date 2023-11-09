@@ -137,7 +137,8 @@ class SecurityConfigTest {
             put("drill.auth.jwt.secret", testSecret)
         }
         di {
-            bind<TokenService>() with singleton { JwtTokenService(JwtConfig(di)) }
+            bind<JwtConfig>() with singleton { JwtConfig(di) }
+            bind<TokenService>() with singleton { JwtTokenService(instance()) }
             bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
             bind<UserAuthenticationService>() with provider { authService }
         }

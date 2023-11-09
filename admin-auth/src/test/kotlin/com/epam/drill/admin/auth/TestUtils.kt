@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
@@ -39,19 +40,21 @@ fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
 
 fun TestApplicationRequest.addJwtToken(
     username: String,
-    secret: String,
+    secret: String = "secret",
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
     role: String = Role.UNDEFINED.name,
-    issuer: String? = "test issuer",
-    audience: String? = null
+    issuer: String? = "issuer",
+    audience: String? = null,
+    algorithm: Algorithm = Algorithm.HMAC256(secret),
+    configure: JWTCreator.Builder.() -> Unit = { withClaim("role", role) }
 ) {
     val token = JWT.create()
         .withSubject(username)
         .withIssuer(issuer)
         .withAudience(audience)
-        .withClaim("role", role)
         .withExpiresAt(expiresAt)
-        .sign(Algorithm.HMAC512(secret))
+        .apply(configure)
+        .sign(algorithm)
     addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 
