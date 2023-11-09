@@ -24,7 +24,7 @@ import com.epam.drill.admin.auth.principal.UserSession
 import com.epam.drill.admin.auth.route.unauthorizedError
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.service.impl.JwkTokenService
+import com.epam.drill.admin.auth.service.impl.OAuthTokenService
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -43,13 +43,19 @@ import io.ktor.routing.*
 import io.ktor.sessions.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
+import java.net.URI
 import kotlin.time.Duration.Companion.minutes
+import org.kodein.di.ktor.closestDI as di
 
+
+private const val JWT_COOKIE = "jwt"
+private const val SESSION_COOKIE = "drill_session"
 
 class SecurityConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val authService by instance<UserAuthenticationService>()
     private val tokenService by instance<TokenService>()
+    private val oauthConfig by instance<OAuthConfig>()
 
     init {
         app.install(Authentication) {
@@ -59,7 +65,7 @@ class SecurityConfig(override val di: DI) : DIAware {
         }
         app.install(Sessions) {
             cookie<UserSession>(
-                "drill_session",
+                SESSION_COOKIE,
                 storage = CacheStorage(SessionStorageMemory(), 60.minutes.inWholeMilliseconds)
             ) {
                 cookie.path = "/"
@@ -89,7 +95,7 @@ class SecurityConfig(override val di: DI) : DIAware {
             }
             authHeader { call ->
                 val headerValue = call.request.headers[Authorization]
-                    ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
+                    ?: "Bearer ${call.request.cookies[JWT_COOKIE] ?: call.parameters["token"]}"
                 parseAuthorizationHeader(headerValue)
             }
         }
@@ -105,30 +111,29 @@ class SecurityConfig(override val di: DI) : DIAware {
             }
         }
 
-        jwt("jwt") {
+        jwt(JWT_COOKIE) {
             realm = "Access to the http(s) and the ws(s) services"
-            verifier((tokenService as JwkTokenService).provider, (tokenService as JwkTokenService).issuer)
+            verifier((tokenService as OAuthTokenService).provider, (tokenService as OAuthTokenService).issuer)
             validate { credential ->
                 credential.toPrincipal()
             }
             authHeader { call ->
-                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies["jwt"]}"
+                val headerValue = call.request.headers[Authorization] ?: "Bearer ${call.request.cookies[JWT_COOKIE]}"
                 parseAuthorizationHeader(headerValue)
             }
         }
 
-        val keycloakAddress = "http://localhost:8080"
         oauth("oauth") {
-            urlProvider = { "http://localhost:8090/oauth/callback" }
+            urlProvider = { URI(oauthConfig.uiRootUrl).resolve("/oauth/callback").toString() }
             providerLookup = {
                 OAuthServerSettings.OAuth2ServerSettings(
-                    name = "keycloak",
-                    authorizeUrl = "$keycloakAddress/realms/master/protocol/openid-connect/auth",
-                    accessTokenUrl = "$keycloakAddress/realms/master/protocol/openid-connect/token",
+                    name = "oauth2",
+                    authorizeUrl = oauthConfig.authorizeUrl,
+                    accessTokenUrl = oauthConfig.accessTokenUrl,
                     requestMethod = HttpMethod.Post,
-                    clientId = "drill4j",
-                    clientSecret = "u8pI2hH3dZhsSL1K6kzGsJRQMxj5EcNn",
-                    defaultScopes = listOf("roles", "openid")
+                    clientId = oauthConfig.clientId,
+                    clientSecret = oauthConfig.clientSecret,
+                    defaultScopes = oauthConfig.scopes
                 )
             }
             client = HttpClient(Apache)
@@ -137,6 +142,8 @@ class SecurityConfig(override val di: DI) : DIAware {
 }
 
 fun Routing.oauthRoutes() {
+    val oauthConfig by di().instance<OAuthConfig>()
+
     authenticate("oauth") {
         get("/oauth/login") {
             // Redirects to "authorizeUrl" automatically
@@ -148,23 +155,23 @@ fun Routing.oauthRoutes() {
                 return@get
             }
 
-            val user = getUserInfo(oauthPrincipal.accessToken)
+            val user = getUserInfo(oauthConfig.userInfoUrl, oauthPrincipal.accessToken)
             if (user == null) {
                 call.unauthorizedError()
                 return@get
             }
 
             call.sessions.set(UserSession(user, oauthPrincipal.accessToken, oauthPrincipal.refreshToken))
-            call.response.cookies.append(Cookie("jwt", oauthPrincipal.accessToken, httpOnly = true, path = "/"))
-            call.respondRedirect("/")
+            call.response.cookies.append(Cookie(JWT_COOKIE, oauthPrincipal.accessToken, httpOnly = true, path = oauthConfig.uiRootPath))
+            call.respondRedirect(oauthConfig.uiRootUrl)
         }
     }
 }
 
-private suspend fun getUserInfo(accessToken: String): User? {
+private suspend fun getUserInfo(userInfoUrl: String, accessToken: String): User? {
     val httpClient = HttpClient(Apache)
     val response =
-        httpClient.get<HttpResponse>("http://localhost:8080/realms/master/protocol/openid-connect/userinfo") {
+        httpClient.get<HttpResponse>(userInfoUrl) {
             headers {
                 append(Authorization, "Bearer $accessToken")
             }

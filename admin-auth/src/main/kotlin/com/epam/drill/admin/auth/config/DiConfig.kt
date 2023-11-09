@@ -55,8 +55,8 @@ fun DI.Builder.bindJwt() {
 
 fun DI.Builder.bindOAuth() {
     bind<OAuthConfig>() with singleton { OAuthConfig(di) }
-    bind<JwkTokenService>() with singleton { JwkTokenService(instance()) }
-    bind<TokenService>() with provider { instance<JwkTokenService>() }
+    bind<OAuthTokenService>() with singleton { OAuthTokenService(instance()) }
+    bind<TokenService>() with provider { instance<OAuthTokenService>() }
 }
 
 fun DI.Builder.userServicesConfig(userRepoType: UserRepoType) {
