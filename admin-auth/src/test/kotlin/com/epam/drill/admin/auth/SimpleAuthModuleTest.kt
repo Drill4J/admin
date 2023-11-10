@@ -15,30 +15,25 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.SecurityConfig
-import com.epam.drill.admin.auth.config.JwtConfig
-import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import com.epam.drill.admin.auth.config.generateSecret
+import com.epam.drill.admin.auth.config.simpleAuthModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserView
-import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.config.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.*
-import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import java.util.*
 import kotlin.test.*
 
-class SecurityConfigTest {
+class SimpleAuthModuleTest {
 
     private val testSecret = generateSecret()
     private val testIssuer = "test-issuer"
@@ -137,12 +132,10 @@ class SecurityConfigTest {
             put("drill.auth.jwt.audience", "test audience")
             put("drill.auth.jwt.secret", testSecret)
         }
-        di {
-            bind<JwtConfig>() with singleton { JwtConfig(di) }
-            bind<TokenService>() with singleton { JwtTokenService(instance()) }
-            bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
-            bind<UserAuthenticationService>() with provider { authService }
+        simpleAuthModule {
+            bind<UserAuthenticationService>(overrides = true) with provider { authService }
         }
+
         routing {
             authenticate("jwt") {
                 get("/jwt-only") {

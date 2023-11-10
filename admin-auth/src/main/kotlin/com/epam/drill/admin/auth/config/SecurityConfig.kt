@@ -30,47 +30,6 @@ import io.ktor.http.HttpHeaders.Authorization
 import io.ktor.http.auth.*
 import org.kodein.di.*
 
-class SecurityConfig(override val di: DI) : DIAware {
-    private val app by instance<Application>()
-    private val authService by instance<UserAuthenticationService>()
-    private val jwtConfig by instance<JwtConfig>()
-
-    init {
-        app.install(Authentication) {
-            configureJwt("jwt")
-            configureBasic("basic")
-        }
-    }
-
-    private fun Authentication.Configuration.configureBasic(name: String? = null) {
-        basic(name) {
-            realm = "Access to the http(s) services"
-            validate {
-                authService.signIn(LoginPayload(username = it.name, password = it.password)).toPrincipal()
-            }
-        }
-    }
-
-    private fun Authentication.Configuration.configureJwt(name: String? = null) {
-        jwt(name) {
-            realm = "Access to the http(s) and the ws(s) services"
-            verifier(
-                JWT.require(Algorithm.HMAC512(jwtConfig.secret))
-                    .withIssuer(jwtConfig.issuer)
-                    .build()
-            )
-            validate {
-                it.payload.toPrincipal()
-            }
-            authHeader { call ->
-                val headerValue = call.request.headers[Authorization]
-                    ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
-                parseAuthorizationHeader(headerValue)
-            }
-        }
-    }
-}
-
 private fun Payload.toPrincipal(): User {
     return User(
         username = subject,
