@@ -35,13 +35,13 @@ import org.kodein.di.*
 import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.whenever
 import java.util.*
 import kotlin.test.*
 
 class SecurityConfigTest {
 
     private val testSecret = generateSecret()
+    private val testIssuer = "test-issuer"
 
     @Mock
     lateinit var authService: UserAuthenticationService
@@ -81,6 +81,7 @@ class SecurityConfigTest {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 addJwtToken(
                     username = "admin",
+                    issuer = testIssuer,
                     secret = testSecret
                 )
             }) {
@@ -131,7 +132,7 @@ class SecurityConfigTest {
 
     private val config: Application.() -> Unit = {
         environment {
-            put("drill.auth.jwt.issuer", "test issuer")
+            put("drill.auth.jwt.issuer", testIssuer)
             put("drill.auth.jwt.lifetime", "1m")
             put("drill.auth.jwt.audience", "test audience")
             put("drill.auth.jwt.secret", testSecret)

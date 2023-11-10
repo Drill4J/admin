@@ -1,3 +1,18 @@
+/**
+ * Copyright 2020 - 2022 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.epam.drill.admin.auth.config
 
 import com.auth0.jwk.JwkProvider
@@ -32,8 +47,8 @@ import java.net.URL
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.minutes
 
-private const val JWT_COOKIE = "jwt"
-private const val SESSION_COOKIE = "drill_session"
+const val JWT_COOKIE = "jwt"
+const val SESSION_COOKIE = "drill_session"
 
 fun Application.oauthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
     di {
@@ -83,7 +98,7 @@ private fun Authentication.Configuration.configureOAuth(di: DI) {
         }
     }
 
-    jwt(JWT_COOKIE) {
+    jwt("jwt") {
         realm = "Access to the http(s) and the ws(s) services"
         verifier(jwkProvider, oauthConfig.issuer)
         validate { credential ->

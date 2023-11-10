@@ -21,16 +21,21 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
-import kotlin.test.assertNotNull
+import java.net.URLDecoder
 import java.util.*
+import kotlin.test.assertNotNull
 
 
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
@@ -45,7 +50,7 @@ fun TestApplicationRequest.addJwtToken(
     role: String = Role.UNDEFINED.name,
     issuer: String? = "issuer",
     audience: String? = null,
-    algorithm: Algorithm = Algorithm.HMAC256(secret),
+    algorithm: Algorithm = Algorithm.HMAC512(secret),
     configure: JWTCreator.Builder.() -> Unit = { withClaim("role", role) }
 ) {
     val token = JWT.create()
@@ -74,3 +79,17 @@ fun <M, T> wheneverBlocking(mock: M, methodCall: suspend M.() -> T): OngoingStub
     return runBlocking { whenever(mock.methodCall()) }
 }
 
+suspend fun HttpRequestData.formData(): Map<String, String> {
+    val parameters = String(this.body.toByteArray())
+    val parameterPairs = parameters.split("&")
+    val parameterMap = mutableMapOf<String, String>()
+
+    for (pair in parameterPairs) {
+        val (key, value) = pair.split("=")
+        parameterMap[key] = withContext(Dispatchers.IO) {
+            URLDecoder.decode(value, "UTF-8")
+        }
+    }
+
+    return parameterMap
+}
