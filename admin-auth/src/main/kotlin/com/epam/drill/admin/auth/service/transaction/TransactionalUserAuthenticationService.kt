@@ -15,18 +15,15 @@
  */
 package com.epam.drill.admin.auth.service.transaction
 
-import com.epam.drill.admin.auth.model.ChangePasswordPayload
-import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.RegistrationPayload
-import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
+import com.epam.drill.admin.auth.model.*
 
 class TransactionalUserAuthenticationService(
     private val delegate: UserAuthenticationService
 ) : UserAuthenticationService by delegate {
-    override suspend fun signIn(payload: LoginPayload): UserView = transaction {
+    override suspend fun signIn(payload: LoginPayload) = transaction {
         delegate.signIn(payload)
     }
 
@@ -36,5 +33,9 @@ class TransactionalUserAuthenticationService(
 
     override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) = transaction {
         delegate.updatePassword(principal, payload)
+    }
+
+    override suspend fun getUserInfo(principal: User) = transaction {
+        delegate.getUserInfo(principal)
     }
 }
