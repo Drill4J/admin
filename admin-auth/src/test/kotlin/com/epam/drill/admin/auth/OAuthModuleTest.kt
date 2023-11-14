@@ -21,7 +21,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.config.SESSION_COOKIE
-import com.epam.drill.admin.auth.config.oauthModule
+import com.epam.drill.admin.auth.config.oauthLazyModule
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
@@ -75,8 +75,10 @@ class OAuthModuleTest {
             environment {
                 put("drill.auth.oauth2.issuer", testIssuer)
             }
-            oauthModule {
-                mockJwkProvider()
+            withLazyModules {
+                oauthLazyModule {
+                    mockJwkProvider()
+                }
             }
             routing {
                 authenticate("jwt") {
@@ -113,7 +115,9 @@ class OAuthModuleTest {
     fun `oauth login request must be redirected to oauth2 authorize url`() {
         withTestApplication({
             oauthTestEnvironment()
-            oauthModule()
+            withLazyModules {
+                oauthLazyModule()
+            }
         }) {
             with(handleRequest(HttpMethod.Get, "/oauth/login")) {
                 assertEquals(HttpStatusCode.Found, response.status())
@@ -145,36 +149,38 @@ class OAuthModuleTest {
 
         withTestApplication({
             oauthTestEnvironment()
-            oauthModule {
-                mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" to { request ->
-                        request.formData().apply {
-                            assertEquals(testClientId, this["client_id"])
-                            assertEquals(testClientSecret, this["client_secret"])
-                            assertEquals(testAuthenticationCode, this["code"])
-                            assertEquals(testState, this["state"])
-                        }
-                        respondOk(
-                            """
+            withLazyModules {
+                oauthLazyModule {
+                    mockHttpClient("oauthHttpClient",
+                        "/accessTokenUrl" to { request ->
+                            request.formData().apply {
+                                assertEquals(testClientId, this["client_id"])
+                                assertEquals(testClientSecret, this["client_secret"])
+                                assertEquals(testAuthenticationCode, this["code"])
+                                assertEquals(testState, this["state"])
+                            }
+                            respondOk(
+                                """
                             {
                               "access_token":"$testAccessToken",                                                            
                               "refresh_token":"test-refresh-token"                              
                             }
                             """.trimIndent()
-                        )
-                    },
-                    "/userInfoUrl" to { request ->
-                        assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
-                        respondOk(
-                            """
+                            )
+                        },
+                        "/userInfoUrl" to { request ->
+                            assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
+                            respondOk(
+                                """
                             {                              
                               "preferred_username":"$testUsername",
                               "roles":["user"]                             
                             }     
                             """.trimIndent()
-                        )
-                    }
-                )
+                            )
+                        }
+                    )
+                }
             }
         }) {
             with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {

@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.generateSecret
-import com.epam.drill.admin.auth.config.simpleAuthModule
+import com.epam.drill.admin.auth.config.simpleAuthLazyModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
@@ -132,8 +132,10 @@ class SimpleAuthModuleTest {
             put("drill.auth.jwt.audience", "test audience")
             put("drill.auth.jwt.secret", testSecret)
         }
-        simpleAuthModule {
-            bind<UserAuthenticationService>(overrides = true) with provider { authService }
+        withLazyModules {
+            simpleAuthLazyModule {
+                bind<UserAuthenticationService>(overrides = true) with provider { authService }
+            }
         }
 
         routing {

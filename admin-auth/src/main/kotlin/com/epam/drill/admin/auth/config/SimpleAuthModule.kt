@@ -6,6 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.module.lazyModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -25,43 +26,34 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
-import org.kodein.di.ktor.di
 import org.kodein.di.singleton
 
 private val logger = KotlinLogging.logger {}
 
 enum class UserRepoType {
-    DB,
-    ENV
+    DB, ENV
 }
 
-fun Application.simpleAuthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
-    di {
-        bind<JwtConfig>() with singleton { JwtConfig(di) }
-        bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
-        bind<TokenService>() with singleton { JwtTokenService(instance()) }
-        bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
+fun Application.simpleAuthLazyModule(diConfigure: DI.MainBuilder.() -> Unit = {}) = lazyModule().withDI {
+    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
+    bind<TokenService>() with singleton { JwtTokenService(instance()) }
+    bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
 
-        userRepositoriesConfig()
-        userServicesConfig()
+    userRepositoriesConfig()
+    userServicesConfig()
 
-        diConfigure()
-    }
-
-    install(Authentication) {
-        configureJwt(closestDI())
-        configureBasic(closestDI())
-    }
+    diConfigure()
+}.withAuthentication {
+    configureJwt(closestDI())
+    configureBasic(closestDI())
 }
 
-private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
-    .require(Algorithm.HMAC512(jwtConfig.secret))
-    .withIssuer(jwtConfig.issuer)
-    .build()
+private fun buildJwkVerifier(jwtConfig: JwtConfig) =
+    JWT.require(Algorithm.HMAC512(jwtConfig.secret)).withIssuer(jwtConfig.issuer).build()
 
 
 private fun Authentication.Configuration.configureJwt(di: DI) {
-    val jwtConfig by di.instance<JwtConfig>()
     val jwtVerifier by di.instance<JWTVerifier>()
 
     jwt("jwt") {
@@ -93,25 +85,19 @@ private fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with singleton {
         val app: Application = instance()
         UserAuthenticationServiceImpl(
-            userRepository = instance(),
-            passwordService = instance()
+            userRepository = instance(), passwordService = instance()
         ).let { service ->
-            if (app.userRepoType == UserRepoType.DB)
-                TransactionalUserAuthenticationService(service)
-            else
-                service
+            if (app.userRepoType == UserRepoType.DB) TransactionalUserAuthenticationService(service)
+            else service
         }
     }
     bind<UserManagementService>() with singleton {
         val app: Application = instance()
         UserManagementServiceImpl(
-            userRepository = instance(),
-            passwordService = instance()
+            userRepository = instance(), passwordService = instance()
         ).let { service ->
-            if (app.userRepoType == UserRepoType.DB)
-                TransactionalUserManagementService(service)
-            else
-                service
+            if (app.userRepoType == UserRepoType.DB) TransactionalUserManagementService(service)
+            else service
         }
     }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
@@ -126,31 +112,24 @@ private fun DI.Builder.userRepositoriesConfig() {
         when (app.userRepoType) {
             UserRepoType.DB -> DatabaseUserRepository()
             UserRepoType.ENV -> EnvUserRepository(
-                env = instance<Application>().environment.config,
-                passwordService = instance()
+                env = instance<Application>().environment.config, passwordService = instance()
             )
         }
     }
 }
 
 private val Application.userRepoType: UserRepoType
-    get() = environment.config
-        .config("drill")
-        .config("auth")
-        .propertyOrNull("userRepoType")
-        ?.getString()?.let { UserRepoType.valueOf(it) }
-        ?: UserRepoType.DB
+    get() = environment.config.config("drill").config("auth").propertyOrNull("userRepoType")?.getString()
+        ?.let { UserRepoType.valueOf(it) } ?: UserRepoType.DB
 
 private fun Payload.toPrincipal(): User {
     return User(
-        username = subject,
-        role = Role.valueOf(getClaim("role").asString())
+        username = subject, role = Role.valueOf(getClaim("role").asString())
     )
 }
 
 private fun UserView.toPrincipal(): User {
     return User(
-        username = username,
-        role = role
+        username = username, role = role
     )
 }

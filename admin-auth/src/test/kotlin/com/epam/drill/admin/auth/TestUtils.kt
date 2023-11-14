@@ -19,6 +19,9 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
+import com.epam.drill.admin.auth.module.LazyConfigurationContainer
+import com.epam.drill.admin.auth.module.LazyModules
+import com.epam.drill.admin.auth.module.initLazyModules
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
 import io.ktor.client.engine.mock.*
@@ -77,6 +80,12 @@ fun Application.environment(configuration: MapApplicationConfig.() -> Unit) {
 
 fun <M, T> wheneverBlocking(mock: M, methodCall: suspend M.() -> T): OngoingStubbing<T> {
     return runBlocking { whenever(mock.methodCall()) }
+}
+
+fun Application.withLazyModules(modules: Application.() -> Unit) {
+    install(LazyModules)
+    modules()
+    initLazyModules()
 }
 
 suspend fun HttpRequestData.formData(): Map<String, String> {

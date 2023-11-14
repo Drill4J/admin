@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth.config
 
 import com.auth0.jwk.JwkProvider
 import com.auth0.jwk.JwkProviderBuilder
+import com.epam.drill.admin.auth.module.lazyModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.principal.UserSession
@@ -41,7 +42,6 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.kodein.di.ktor.closestDI
-import org.kodein.di.ktor.di
 import java.net.URI
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -50,18 +50,7 @@ import kotlin.time.Duration.Companion.minutes
 const val JWT_COOKIE = "jwt"
 const val SESSION_COOKIE = "drill_session"
 
-fun Application.oauthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
-    di {
-        bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-        bind<OAuthConfig>() with singleton { OAuthConfig(di) }
-        bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }
-        diConfigure()
-    }
-
-    install(Authentication) {
-        configureOAuth(closestDI())
-    }
-
+fun Application.oauthLazyModule(diConfigure: DI.MainBuilder.() -> Unit = {}) = lazyModule {
     install(Sessions) {
         cookie<UserSession>(
             SESSION_COOKIE,
@@ -71,10 +60,15 @@ fun Application.oauthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
             cookie.maxAge = 60.minutes
         }
     }
-
-    routing {
-        oauthRoutes()
-    }
+}.withDI {
+    bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
+    bind<OAuthConfig>() with singleton { OAuthConfig(di) }
+    bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }
+    diConfigure()
+}.withAuthentication {
+    configureOAuth(closestDI())
+}.withRouting {
+    oauthRoutes()
 }
 
 private fun buildJwkProvider(oauthConfig: OAuthConfig): JwkProvider {
@@ -149,7 +143,13 @@ fun Routing.oauthRoutes() {
                 return@get
             }
 
-            call.sessions.set(UserSession(userInfo.toPrincipal(), oauthPrincipal.accessToken, oauthPrincipal.refreshToken))
+            call.sessions.set(
+                UserSession(
+                    userInfo.toPrincipal(),
+                    oauthPrincipal.accessToken,
+                    oauthPrincipal.refreshToken
+                )
+            )
             call.response.cookies.append(
                 Cookie(
                     JWT_COOKIE,
