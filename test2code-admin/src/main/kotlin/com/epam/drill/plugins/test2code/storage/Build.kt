@@ -100,13 +100,13 @@ internal suspend fun StoreClient.removeBuild(
 
 internal suspend fun StoreClient.removeBuildData(
     agentKey: AgentKey,
-    scopeManager: ScopeManager,
+    sessionHolderManager: SessionHolderManager,
 ) = executeInAsyncTransaction {
     trackTime("Remove build $agentKey") {
         logger.debug { "starting to remove build '$agentKey' data..." }
         removeClassData(agentKey)
         removeBuild(agentKey)
-        scopeManager.deleteByVersion(agentKey)
+        sessionHolderManager.deleteByVersion(agentKey)
     }
 }
 
@@ -120,8 +120,7 @@ internal suspend fun StoreClient.removeAllPluginData(
         deleteBy<StoredBundles> { FieldPath(StoredBundles::agentKey, AgentKey::agentId) eq agent }
         deleteBy<StoredBuildTests> { FieldPath(StoredBuildTests::agentKey, AgentKey::agentId) eq agent }
         deleteBy<BaselineRisks> { FieldPath(BaselineRisks::baseline, AgentKey::agentId) eq agent }
-        deleteBy<FinishedScope> { FieldPath(FinishedScope::agentKey, AgentKey::agentId) eq agent }
-        deleteBy<ScopeDataEntity> { FieldPath(ScopeDataEntity::agentKey, AgentKey::agentId) eq agent }
+        deleteBy<SessionHolder> { FieldPath(SessionHolder::agentKey, AgentKey::agentId) eq agent }
         deleteBy<StoredSession> { FieldPath(StoredSession::agentKey, AgentKey::agentId) eq agent }
     }
 }

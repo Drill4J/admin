@@ -34,7 +34,7 @@ private val propertyNames = staticPropertyNames()
 
 /**
  * Collect and send labels to the UI
- * @features Agent registration, Scope finishing
+ * @features Agent registration, Session saving
  */
 suspend fun Plugin.sendLabels() {
     val attributesRoute = Routes.Build().let(Routes.Build::Attributes)

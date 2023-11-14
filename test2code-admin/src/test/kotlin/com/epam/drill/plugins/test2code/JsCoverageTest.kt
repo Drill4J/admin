@@ -30,7 +30,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
     private val manualTestType = "MANUAL"
 
     @Test
-    fun `coverageData for active scope with custom js probes`() {
+    fun `coverageData for sessionHolder with custom js probes`() {
         runBlocking {
             val coverageData = calculateCoverage {
                 this.execSession(manualTestType) { sessionId ->
@@ -104,7 +104,7 @@ class JsCoverageTest : PostgresBased("js_coverage") {
         }
     }
 
-    private suspend fun calculateCoverage(addProbes: suspend ActiveScope.() -> Unit): CoverageInfoSet {
+    private suspend fun calculateCoverage(addProbes: suspend SessionHolder.() -> Unit): CoverageInfoSet {
         val adminData = object : AdminData {
         }
         val state = AgentState(
@@ -113,18 +113,16 @@ class JsCoverageTest : PostgresBased("js_coverage") {
         state.init()
         (state.data as DataBuilder) += ast
         state.initialized()
-        val active = state.activeScope
+        val active = state.sessionHolder
         active.addProbes()
-        val finished = active.finish(enabled = true)
         val context = state.coverContext()
-        val bundleCounters = finished.calcBundleCounters(context, emptyMap())
+        val bundleCounters = active.calcBundleCounters(context, emptyMap())
         return bundleCounters.calculateCoverageData(context)
     }
 
-    private suspend fun ActiveScope.execSession(testType: String, block: suspend ActiveScope.(String) -> Unit) {
+    private suspend fun SessionHolder.execSession(testType: String, block: suspend SessionHolder.(String) -> Unit) {
         val sessionId = genUuid()
-        startSession(sessionId = sessionId, testType = testType)
+        createSession(sessionId = sessionId, testType = testType)
         block(sessionId)
-        finishSession(sessionId)
     }
 }

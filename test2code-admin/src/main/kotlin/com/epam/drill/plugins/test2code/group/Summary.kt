@@ -29,7 +29,6 @@ internal data class AgentSummary(
     val coverage: Count,
     val coverageByType: Map<String, Count>,
     val methodCount: Count,
-    val scopeCount: Int,
     val arrow: ArrowType,
     val riskCounts: RiskCounts = RiskCounts(),
     val risks: TypedRisks,
@@ -82,7 +81,6 @@ internal fun CachedBuild.toSummary(
         coverage = stats.coverage,
         methodCount = stats.methodCount,
         coverageByType = stats.coverageByType,
-        scopeCount = stats.scopeCount,
         arrow = parentCoverageCount.arrowType(stats.coverage),
         riskCounts = uncoveredRisks.toCounts(),
         risks = uncoveredRisks,
@@ -107,7 +105,6 @@ internal fun AgentSummary.toDto() = SummaryDto(
     coverage = coverage.percentage(),
     coverageCount = coverage,
     methodCount = methodCount,
-    scopeCount = scopeCount,
     arrow = arrow,
     risks = riskCounts.total, //TODO remove after changes on frontend
     riskCounts = riskCounts,
@@ -125,7 +122,6 @@ internal operator fun AgentSummary.plus(
     coverageByType = coverageByType.merge(other.coverageByType) { count1, count2 ->
         count1 + count2
     },
-    scopeCount = scopeCount + other.scopeCount,
     arrow = ArrowType.UNCHANGED,
     risks = emptyMap(),
     riskCounts = riskCounts + other.riskCounts,
