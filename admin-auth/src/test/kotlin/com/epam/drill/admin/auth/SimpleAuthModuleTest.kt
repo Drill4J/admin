@@ -15,8 +15,9 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.config.configureSimpleAuthAuthentication
+import com.epam.drill.admin.auth.config.configureSimpleAuthDI
 import com.epam.drill.admin.auth.config.generateSecret
-import com.epam.drill.admin.auth.config.simpleAuthModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
@@ -28,6 +29,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import java.util.*
@@ -132,7 +135,7 @@ class SimpleAuthModuleTest {
             put("drill.auth.jwt.audience", "test audience")
             put("drill.auth.jwt.secret", testSecret)
         }
-        simpleAuthModule {
+        withTestSimpleAuthModule {
             bind<UserAuthenticationService>(overrides = true) with provider { authService }
         }
 
@@ -147,6 +150,17 @@ class SimpleAuthModuleTest {
                     call.respond(HttpStatusCode.OK)
                 }
             }
+        }
+    }
+
+    private fun Application.withTestSimpleAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
+        di {
+            configureSimpleAuthDI()
+            configureDI()
+        }
+
+        install(Authentication) {
+            configureSimpleAuthAuthentication(closestDI())
         }
     }
 }

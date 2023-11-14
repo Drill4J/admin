@@ -41,7 +41,6 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.kodein.di.ktor.closestDI
-import org.kodein.di.ktor.di
 import java.net.URI
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -50,18 +49,7 @@ import kotlin.time.Duration.Companion.minutes
 const val JWT_COOKIE = "jwt"
 const val SESSION_COOKIE = "drill_session"
 
-fun Application.oauthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
-    di {
-        bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-        bind<OAuthConfig>() with singleton { OAuthConfig(di) }
-        bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }
-        diConfigure()
-    }
-
-    install(Authentication) {
-        configureOAuth(closestDI())
-    }
-
+fun Application.configureOAuthSessions() {
     install(Sessions) {
         cookie<UserSession>(
             SESSION_COOKIE,
@@ -71,20 +59,15 @@ fun Application.oauthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
             cookie.maxAge = 60.minutes
         }
     }
-
-    routing {
-        oauthRoutes()
-    }
 }
 
-private fun buildJwkProvider(oauthConfig: OAuthConfig): JwkProvider {
-    return JwkProviderBuilder(URL(oauthConfig.jwkSetUrl))
-        .cached(10, 24, TimeUnit.HOURS)
-        .rateLimited(10, 1, TimeUnit.MINUTES)
-        .build()
+fun DI.MainBuilder.configureOAuthDI() {
+    bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
+    bind<OAuthConfig>() with singleton { OAuthConfig(di) }
+    bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }
 }
 
-private fun Authentication.Configuration.configureOAuth(di: DI) {
+fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     val oauthConfig by di.instance<OAuthConfig>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
     val jwkProvider by di.instance<JwkProvider>()
@@ -128,7 +111,7 @@ private fun Authentication.Configuration.configureOAuth(di: DI) {
     }
 }
 
-fun Routing.oauthRoutes() {
+fun Routing.configureOAuthRoutes() {
     val oauthConfig by closestDI().instance<OAuthConfig>()
     val httpClient by closestDI().instance<HttpClient>("oauthHttpClient")
 
@@ -198,4 +181,11 @@ private fun findRole(roleNames: List<String>): Role {
     return Role.values().find { role ->
         roleNames.toSet().map { it.lowercase() }.contains(role.name.lowercase())
     } ?: Role.UNDEFINED
+}
+
+private fun buildJwkProvider(oauthConfig: OAuthConfig): JwkProvider {
+    return JwkProviderBuilder(URL(oauthConfig.jwkSetUrl))
+        .cached(10, 24, TimeUnit.HOURS)
+        .rateLimited(10, 1, TimeUnit.MINUTES)
+        .build()
 }

@@ -19,9 +19,7 @@ import com.auth0.jwk.Jwk
 import com.auth0.jwk.JwkProvider
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import com.epam.drill.admin.auth.config.JWT_COOKIE
-import com.epam.drill.admin.auth.config.SESSION_COOKIE
-import com.epam.drill.admin.auth.config.oauthModule
+import com.epam.drill.admin.auth.config.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
@@ -33,6 +31,8 @@ import io.ktor.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.DI
 import org.kodein.di.bind
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import org.kodein.di.singleton
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
@@ -75,7 +75,7 @@ class OAuthModuleTest {
             environment {
                 put("drill.auth.oauth2.issuer", testIssuer)
             }
-            oauthModule {
+            withTestOAuthModule {
                 mockJwkProvider()
             }
             routing {
@@ -112,8 +112,8 @@ class OAuthModuleTest {
     @Test
     fun `oauth login request must be redirected to oauth2 authorize url`() {
         withTestApplication({
-            oauthTestEnvironment()
-            oauthModule()
+            withOAuthTestEnvironment()
+            withTestOAuthModule()
         }) {
             with(handleRequest(HttpMethod.Get, "/oauth/login")) {
                 assertEquals(HttpStatusCode.Found, response.status())
@@ -144,8 +144,8 @@ class OAuthModuleTest {
             .sign(rsa256)
 
         withTestApplication({
-            oauthTestEnvironment()
-            oauthModule {
+            withOAuthTestEnvironment()
+            withTestOAuthModule {
                 mockHttpClient("oauthHttpClient",
                     "/accessTokenUrl" to { request ->
                         request.formData().apply {
@@ -196,7 +196,7 @@ class OAuthModuleTest {
         return keyPairGenerator.generateKeyPair()
     }
 
-    private fun Application.oauthTestEnvironment() {
+    private fun Application.withOAuthTestEnvironment() {
         environment {
             put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
             put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
@@ -222,6 +222,23 @@ class OAuthModuleTest {
                     }
                     ?: respondBadRequest()
             })
+        }
+    }
+
+    private fun Application.withTestOAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
+        di {
+            configureOAuthDI()
+            configureDI()
+        }
+
+        install(Authentication) {
+            configureOAuthAuthentication(closestDI())
+        }
+
+        configureOAuthSessions()
+
+        routing {
+            configureOAuthRoutes()
         }
     }
 

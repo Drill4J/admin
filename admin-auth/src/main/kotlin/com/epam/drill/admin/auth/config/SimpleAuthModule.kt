@@ -35,23 +35,19 @@ enum class UserRepoType {
     ENV
 }
 
-fun Application.simpleAuthModule(diConfigure: DI.MainBuilder.() -> Unit = {}) {
-    di {
-        bind<JwtConfig>() with singleton { JwtConfig(di) }
-        bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
-        bind<TokenService>() with singleton { JwtTokenService(instance()) }
-        bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
+fun DI.MainBuilder.configureSimpleAuthDI() {
+    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
+    bind<TokenService>() with singleton { JwtTokenService(instance()) }
+    bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
 
-        userRepositoriesConfig()
-        userServicesConfig()
+    userRepositoriesConfig()
+    userServicesConfig()
+}
 
-        diConfigure()
-    }
-
-    install(Authentication) {
-        configureJwt(closestDI())
-        configureBasic(closestDI())
-    }
+fun Authentication.Configuration.configureSimpleAuthAuthentication(di: DI) {
+    configureJwt(di)
+    configureBasic(di)
 }
 
 private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
