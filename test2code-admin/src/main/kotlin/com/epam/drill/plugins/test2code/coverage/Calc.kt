@@ -24,7 +24,7 @@ import com.epam.dsm.util.*
  * Calculate a build coverage for non java agents
  * @param tree the tree of application packages
  * @return a calculated build coverage
- * @features Scope finishing
+ * @features Session saving
  */
 internal fun Sequence<ExecClassData>.bundle(
     tree: PackageTree
