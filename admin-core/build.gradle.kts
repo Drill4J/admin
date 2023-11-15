@@ -192,6 +192,14 @@ tasks {
     withType<JibTask> {
         dependsOn(processJibExtraDirs)
     }
+    val createDockerImage by registering(Exec::class) {
+        workingDir(projectDir)
+        commandLine(
+            "docker", "build",
+            "-t", "ghcr.io/drill4j/admin:$version",
+            "."
+        )
+    }
 }
 
 publishing {
