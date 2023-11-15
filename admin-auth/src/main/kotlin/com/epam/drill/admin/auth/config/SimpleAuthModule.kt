@@ -5,6 +5,7 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.LoginPayload
+import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
@@ -144,7 +145,7 @@ private fun Payload.toPrincipal(): User {
     )
 }
 
-private fun UserView.toPrincipal(): User {
+private fun UserInfoView.toPrincipal(): User {
     return User(
         username = username,
         role = role
