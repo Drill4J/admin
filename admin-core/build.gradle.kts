@@ -122,17 +122,21 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
+val fullImageTag = "ghcr.io/drill4j/admin"
+val apiPort = "8090"
+val debugPort = "5006"
+val securityApiPort = "8453"
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
 jib {
     from {
         image = "adoptopenjdk/openjdk11:latest"
     }
     to {
-        image = "ghcr.io/drill4j/admin"
+        image = fullImageTag
         tags = setOf(version.toString())
     }
     container {
-        ports = listOf("8090", "5006", "8453")
+        ports = listOf(apiPort, debugPort , securityApiPort)
         volumes = listOf("/distr", "/work")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
@@ -192,11 +196,17 @@ tasks {
     withType<JibTask> {
         dependsOn(processJibExtraDirs)
     }
-    val createDockerImage by registering(Exec::class) {
+    val createWindowsDockerImage by registering(Exec::class) {
         workingDir(projectDir)
         commandLine(
             "docker", "build",
-            "-t", "ghcr.io/drill4j/admin:$version",
+            "--build-arg", "ADMIN_VERSION=$version",
+            "--build-arg", "API_PORT=$apiPort",
+            "--build-arg", "DEBUG_PORT=$debugPort",
+            "--build-arg", "SECURE_API_PORT=$securityApiPort",
+            "--build-arg", "JVM_ARGS=${defaultJvmArgs.joinToString(" ")}",
+            "--build-arg", "MAIN_CLASS_NAME=$jarMainClassName",
+            "-t", "$fullImageTag:$version",
             "."
         )
     }

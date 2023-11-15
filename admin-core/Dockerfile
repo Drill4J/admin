@@ -1,12 +1,22 @@
 FROM eclipse-temurin:11.0.21_9-jdk-nanoserver
 
-RUN mkdir distr
-RUN mkdir work
+ARG ADMIN_VERSION
+ARG API_PORT
+ARG DEBUG_PORT
+ARG SECURE_API_PORT
+ARG JVM_ARGS
+ARG MAIN_CLASS_NAME
 
-COPY build/libs/admin-core-0.8.3-all.jar ./app/admin-core-0.8.3-all.jar
+ENV ADMIN_VERSION_ENV=${ADMIN_VERSION}
+ENV JVM_ARGS_ENV=${JVM_ARGS}
+ENV MAIN_CLASS_NAME_ENV=${MAIN_CLASS_NAME}
 
-EXPOSE 8090
-EXPOSE 5006
-EXPOSE 8453
+RUN mkdir distr && mkdir work
 
-CMD ["java", "-server", "-Djava.awt.headless=true", "-XX:+UseG1GC","-XX:+UseStringDeduplication", "-XX:MaxDirectMemorySize=2G", "-cp", "/app/admin-core-0.8.3-all.jar", "io.ktor.server.netty.EngineMain"]
+COPY build/libs/admin-core-${ADMIN_VERSION_ENV}-all.jar ./app/drill-admin-${ADMIN_VERSION_ENV}.jar
+
+EXPOSE ${API_PORT}
+EXPOSE ${DEBUG_PORT}
+EXPOSE ${SECURE_API_PORT}
+
+CMD java %JVM_ARGS_ENV% -cp /app/drill-admin-%ADMIN_VERSION_ENV%.jar %MAIN_CLASS_NAME_ENV%
