@@ -21,6 +21,7 @@ import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
+import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.model.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -52,7 +53,7 @@ class SimpleAuthModuleTest {
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
         wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
-            .thenReturn(UserView(id = 1, username = "admin", role = Role.ADMIN, blocked = false))
+            .thenReturn(UserInfoView(username = "admin", role = Role.ADMIN))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")

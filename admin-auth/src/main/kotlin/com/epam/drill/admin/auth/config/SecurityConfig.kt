@@ -23,6 +23,8 @@ import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
+import com.epam.drill.admin.auth.model.LoginPayload
+import com.epam.drill.admin.auth.model.UserInfoView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -37,7 +39,7 @@ private fun Payload.toPrincipal(): User {
     )
 }
 
-private fun UserView.toPrincipal(): User {
+private fun UserInfoView.toPrincipal(): User {
     return User(
         username = username,
         role = role
