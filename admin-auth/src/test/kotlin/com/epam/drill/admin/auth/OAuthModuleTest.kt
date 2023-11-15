@@ -180,7 +180,6 @@ class OAuthModuleTest {
             with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
                 assertEquals(HttpStatusCode.Found, response.status())
                 assertEquals("http://$testDrillHost/drill", response.headers[HttpHeaders.Location])
-                assertNotNull(response.cookies[SESSION_COOKIE])
                 assertNotNull(response.cookies[JWT_COOKIE]).let { jwtCookie ->
                     assertEquals(testAccessToken, jwtCookie.value)
                     assertTrue(jwtCookie.httpOnly)
@@ -234,8 +233,6 @@ class OAuthModuleTest {
         install(Authentication) {
             configureOAuthAuthentication(closestDI())
         }
-
-        configureOAuthSessions()
 
         routing {
             configureOAuthRoutes()

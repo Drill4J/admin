@@ -93,7 +93,6 @@ fun Application.moduleWithOAuth() {
         import(drillAdminDIModule)
         import(oauthDIModule)
     }
-    configureOAuthSessions()
     install(Authentication) {
         configureOAuthAuthentication(closestDI())
     }
