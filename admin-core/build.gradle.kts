@@ -125,7 +125,7 @@ application {
 val fullImageTag = "ghcr.io/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
-val securityApiPort = "8453"
+val secureApiPort = "8453"
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
 jib {
     from {
@@ -136,7 +136,7 @@ jib {
         tags = setOf(version.toString())
     }
     container {
-        ports = listOf(apiPort, debugPort , securityApiPort)
+        ports = listOf(apiPort, debugPort , secureApiPort)
         volumes = listOf("/distr", "/work")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
@@ -203,7 +203,7 @@ tasks {
             "--build-arg", "ADMIN_VERSION=$version",
             "--build-arg", "API_PORT=$apiPort",
             "--build-arg", "DEBUG_PORT=$debugPort",
-            "--build-arg", "SECURE_API_PORT=$securityApiPort",
+            "--build-arg", "SECURE_API_PORT=$secureApiPort",
             "--build-arg", "JVM_ARGS=${defaultJvmArgs.joinToString(" ")}",
             "--build-arg", "MAIN_CLASS_NAME=$jarMainClassName",
             "-t", "$fullImageTag:$version",
