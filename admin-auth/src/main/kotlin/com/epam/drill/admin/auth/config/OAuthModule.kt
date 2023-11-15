@@ -73,6 +73,13 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
         }
     }
 
+    basic("basic") {
+        realm = "Access to the http(s) services"
+        validate {
+            null //Basic authentication is not supported for the OAuth2 provider, but must be declared
+        }
+    }
+
     oauth("oauth") {
         urlProvider = { URI(oauthConfig.uiRootUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
