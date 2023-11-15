@@ -19,9 +19,9 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.auth.config.RoleBasedAuthorization
+import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
-import com.epam.drill.admin.auth.config.securityDiConfig
-import com.epam.drill.admin.auth.config.usersDiConfig
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
@@ -29,9 +29,15 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.*
+import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
+import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
+import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
+import com.epam.drill.admin.group.groupRoutes
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
+import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.version.versionRoutes
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.e2e.GUEST_USER
 import com.epam.drill.e2e.testPluginServices
@@ -53,7 +59,8 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.*
 import org.kodein.di.*
-import org.kodein.di.ktor.closestDI as di
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import kotlin.test.*
 
 
@@ -78,34 +85,38 @@ internal class DrillServerWsTest {
 
         TestDatabaseContainer.startOnce()
         hikariConfig = TestDatabaseContainer.createDataSource()
-        kodein {
-            withKModule { kodeinModule("securityConfig", securityDiConfig) }
-            withKModule { kodeinModule("usersConfig", usersDiConfig) }
-            withKModule { kodeinModule("pluginServices", testPluginServices()) }
-            withKModule { kodeinModule("wsHandler", wsHandler) }
-            withKModule {
-                kodeinModule("test") {
-                    bind<AgentStorage>() with eagerSingleton { AgentStorage() }
-                    if (app.drillCacheType == "mapdb") {
-                        bind<CacheService>() with eagerSingleton { MapDBCacheService() }
-                    } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<SessionStorage>() with eagerSingleton { sessionStorage }
-                    bind<NotificationManager>() with eagerSingleton {
-                        notificationsManager = NotificationManager(di)
-                        notificationsManager
-                    }
-                    bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
-                    bind<AgentManager>() with eagerSingleton { AgentManager(di) }
-                    bind<BuildStorage>() with eagerSingleton { BuildStorage() }
-                    bind<BuildManager>() with eagerSingleton { BuildManager(di) }
-                    bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(di) }
-                    bind<DrillAdminEndpoints>() with eagerSingleton { DrillAdminEndpoints(di) }
+        di {
+            testPluginServices()
+            import(wsHandler)
+            import(DI.Module("testModule") {
+                bind<AgentStorage>() with eagerSingleton { AgentStorage() }
+                bind<CacheService>() with eagerSingleton {
+                    val app by di.instance<Application>()
+                    if (app.drillCacheType == "mapdb")
+                        MapDBCacheService()
+                    else
+                        JvmCacheService()
                 }
+                bind<SessionStorage>() with eagerSingleton { sessionStorage }
+                bind<NotificationManager>() with eagerSingleton {
+                    notificationsManager = NotificationManager(di)
+                    notificationsManager
+                }
+                bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+                bind<BuildStorage>() with eagerSingleton { BuildStorage() }
+                bind<BuildManager>() with eagerSingleton { BuildManager(di) }
+                bind<ServerStubTopics>() with eagerSingleton { ServerStubTopics(di) }
+            })
+            import(simpleAuthDIModule)
+        }
 
-            }
+        install(Authentication) {
+            configureSimpleAuthentication(closestDI())
         }
 
         routing {
+            adminWebSocketRoute()
+            notificationRoutes()
             route("/api") {
                 userAuthenticationRoutes()
             }

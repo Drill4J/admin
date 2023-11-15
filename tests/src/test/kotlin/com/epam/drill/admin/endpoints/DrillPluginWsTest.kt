@@ -18,25 +18,34 @@ package com.epam.drill.admin.endpoints
 import com.epam.drill.admin.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.auth.config.RoleBasedAuthorization
+import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
-import com.epam.drill.admin.auth.config.securityDiConfig
-import com.epam.drill.admin.auth.config.usersDiConfig
 import com.epam.drill.admin.cache.*
 import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
+import com.epam.drill.admin.endpoints.admin.adminRoutes
+import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
+import com.epam.drill.admin.endpoints.admin.agentRoutes
+import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
 import com.epam.drill.admin.endpoints.plugin.*
+import com.epam.drill.admin.group.groupRoutes
 import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.notification.notificationRoutes
 import com.epam.drill.admin.plugin.*
+import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.storage.*
+import com.epam.drill.admin.version.versionRoutes
 import com.epam.drill.e2e.GUEST_USER
 import com.epam.drill.e2e.testPluginServices
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.testdata.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
+import io.ktor.auth.*
 import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.cio.websocket.*
@@ -49,7 +58,8 @@ import kotlinx.coroutines.channels.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.kodein.di.*
-import org.kodein.di.ktor.closestDI as di
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import java.io.*
 import java.util.*
 import kotlin.test.*
@@ -83,27 +93,32 @@ class PluginWsTest {
         enableSwaggerSupport()
         hikariConfig = TestDatabaseContainer.createDataSource()
         TestDatabaseContainer.startOnce()
-        kodein {
-            withKModule { kodeinModule("securityConfig", securityDiConfig) }
-            withKModule { kodeinModule("usersConfig", usersDiConfig) }
-            withKModule { kodeinModule("pluginServices", testPluginServices()) }
-            withKModule {
-                kodeinModule("test") {
-                    bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
-                    bind<WsTopic>() with singleton { WsTopic(di) }
-                    if (app.drillCacheType == "mapdb") {
-                        bind<CacheService>() with eagerSingleton { MapDBCacheService() }
-                    } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-                    bind<AgentManager>() with eagerSingleton { AgentManager(di) }
-                    bind<BuildManager>() with eagerSingleton { BuildManager(di) }
-                    bind<AgentStorage>() with eagerSingleton { AgentStorage() }
-                    bind<BuildStorage>() with eagerSingleton { BuildStorage() }
+        di {
+            testPluginServices()
+            import(DI.Module("testModule") {
+                bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
+                bind<WsTopic>() with singleton { WsTopic(di) }
+                bind<CacheService>() with eagerSingleton {
+                    val app by di.instance<Application>()
+                    if (app.drillCacheType == "mapdb")
+                        MapDBCacheService()
+                    else
+                        JvmCacheService()
                 }
+                bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+                bind<BuildManager>() with eagerSingleton { BuildManager(di) }
+                bind<AgentStorage>() with eagerSingleton { AgentStorage() }
+                bind<BuildStorage>() with eagerSingleton { BuildStorage() }
+            })
+            import(simpleAuthDIModule)
+        }
 
-            }
+        install(Authentication) {
+            configureSimpleAuthentication(closestDI())
         }
 
         routing {
+            pluginWebSocketRoute()
             route("/api") {
                 userAuthenticationRoutes()
             }
