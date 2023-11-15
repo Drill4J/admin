@@ -61,7 +61,11 @@ fun Application.configureOAuthSessions() {
     }
 }
 
-fun DI.MainBuilder.configureOAuthDI() {
+val oauthDIModule = DI.Module("oauth") {
+    configureOAuthDI()
+}
+
+fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuthConfig>() with singleton { OAuthConfig(di) }
     bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }

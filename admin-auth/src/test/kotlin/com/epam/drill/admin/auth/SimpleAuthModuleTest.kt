@@ -15,14 +15,13 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.configureSimpleAuthAuthentication
+import com.epam.drill.admin.auth.config.configureSimpleAuthentication
 import com.epam.drill.admin.auth.config.configureSimpleAuthDI
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.model.UserView
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.http.*
@@ -161,7 +160,7 @@ class SimpleAuthModuleTest {
         }
 
         install(Authentication) {
-            configureSimpleAuthAuthentication(closestDI())
+            configureSimpleAuthentication(closestDI())
         }
     }
 }

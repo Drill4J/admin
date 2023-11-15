@@ -31,10 +31,6 @@ class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
     private val audience: String? = jwtConfig.audience
     private val lifetime: Duration = jwtConfig.lifetime
 
-    val verifier: JWTVerifier = JWT.require(algorithm)
-        .withIssuer(jwtConfig.issuer)
-        .build()
-
     override fun issueToken(user: UserInfoView): String = JWT.create()
         .withSubject(user.username)
         .withIssuer(issuer)
