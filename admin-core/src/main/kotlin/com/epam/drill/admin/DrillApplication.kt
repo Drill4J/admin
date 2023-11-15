@@ -99,6 +99,7 @@ fun Application.moduleWithOAuth() {
     }
     routing {
         drillAdminRoutes()
+        configureOAuthRoutes()
     }
 }
 
