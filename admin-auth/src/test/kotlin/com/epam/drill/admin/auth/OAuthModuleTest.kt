@@ -118,13 +118,10 @@ class OAuthModuleTest {
             with(handleRequest(HttpMethod.Get, "/oauth/login")) {
                 assertEquals(HttpStatusCode.Found, response.status())
 
-                val url = URL(response.headers[HttpHeaders.Location])
-                val queryParams = url.query?.split("&")?.associate {
-                    val (key, value) = it.split("=")
-                    key to value
-                } ?: emptyMap()
-                assertEquals(testOAuthServerHost, url.host)
-                assertEquals("/authorizeUrl", url.path)
+                val redirectedUrl = URL(response.headers[HttpHeaders.Location])
+                val queryParams = redirectedUrl.queryParams()
+                assertEquals(testOAuthServerHost, redirectedUrl.host)
+                assertEquals("/authorizeUrl", redirectedUrl.path)
                 assertEquals(testClientId, queryParams["client_id"])
                 assertEquals("http://$testDrillHost/oauth/callback", queryParams["redirect_uri"])
                 assertEquals("code", queryParams["response_type"])

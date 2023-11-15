@@ -126,6 +126,5 @@ class DrillPluginWs(override val di: DI) : DIAware {
 
 fun Routing.pluginWebSocketRoute() {
     val handler by closestDI().instance<DrillPluginWs>()
-
     handler.initRouting(this)
 }

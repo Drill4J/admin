@@ -135,38 +135,38 @@ private suspend fun getUserInfo(
     httpClient: HttpClient,
     userInfoUrl: String,
     accessToken: String
-): JsonElement? {
-    val response =
-        httpClient.get<HttpResponse>(userInfoUrl) {
-            headers {
-                append(HttpHeaders.Authorization, "Bearer $accessToken")
-            }
+) = httpClient
+    .get<HttpResponse>(userInfoUrl) {
+        headers {
+            append(HttpHeaders.Authorization, "Bearer $accessToken")
         }
-    return response.status.takeIf { it.isSuccess() }?.let { _ ->
-        val stringBody = response.receive<String>()
-        val jsonBody = Json.parseToJsonElement(stringBody)
-        jsonBody
-    }
-}
+    }.takeIf { it.status.isSuccess() }
+    ?.receive<String>()
+    ?.let { Json.parseToJsonElement(it) }
 
-private fun JsonElement.toPrincipal(): User {
-    val jsonObject = this.jsonObject
-    return User(
-        username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
-        role = jsonObject["roles"]?.jsonArray?.map { it.jsonPrimitive.content }.let { findRole(it ?: emptyList()) }
-    )
-}
+private fun JsonElement.toPrincipal(): User = User(
+    username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
+    role = jsonObject["roles"]
+        ?.jsonArray
+        ?.map { it.jsonPrimitive.content }
+        .let { findRole(it) }
+)
 
 private fun JWTCredential.toPrincipal() = User(
     username = this["preferred_username"].toString(),
     role = findRole(this.payload.getClaim("realm_access").asMap()["roles"] as List<String>)
 )
 
-private fun findRole(roleNames: List<String>): Role {
-    return Role.values().find { role ->
-        roleNames.toSet().map { it.lowercase() }.contains(role.name.lowercase())
-    } ?: Role.UNDEFINED
-}
+private fun findRole(roleNames: List<String>?): Role = roleNames
+    ?.takeIf { it.isNotEmpty() } // this also avoids calling map and find for an empty list
+    ?.distinct()
+    ?.map { it.lowercase() }
+    ?.let { roleNamesList ->
+        Role.values().find { role ->
+            roleNamesList.contains(role.name.lowercase())
+        }
+    }
+    ?: Role.UNDEFINED
 
 private fun buildJwkProvider(oauthConfig: OAuthConfig): JwkProvider {
     return JwkProviderBuilder(URL(oauthConfig.jwkSetUrl))

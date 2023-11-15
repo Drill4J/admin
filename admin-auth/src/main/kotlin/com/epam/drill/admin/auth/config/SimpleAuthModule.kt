@@ -103,15 +103,14 @@ private fun Authentication.Configuration.configureBasic(di: DI) {
 
 private fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with singleton {
-        val app: Application = instance()
         UserAuthenticationServiceImpl(
             userRepository = instance(),
             passwordService = instance()
         ).let { service ->
-            if (app.userRepoType == UserRepoType.DB)
-                TransactionalUserAuthenticationService(service)
-            else
-                service
+            when (instance<Application>().userRepoType) {
+                UserRepoType.DB -> TransactionalUserAuthenticationService(service)
+                else -> service
+            }
         }
     }
     bind<UserManagementService>() with singleton {
@@ -120,10 +119,10 @@ private fun DI.Builder.userServicesConfig() {
             userRepository = instance(),
             passwordService = instance()
         ).let { service ->
-            if (app.userRepoType == UserRepoType.DB)
-                TransactionalUserManagementService(service)
-            else
-                service
+            when (instance<Application>().userRepoType) {
+                UserRepoType.DB -> TransactionalUserManagementService(service)
+                else -> service
+            }
         }
     }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }

@@ -33,6 +33,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
+import java.net.URL
 import java.net.URLDecoder
 import java.util.*
 import kotlin.test.assertNotNull
@@ -79,17 +80,16 @@ fun <M, T> wheneverBlocking(mock: M, methodCall: suspend M.() -> T): OngoingStub
     return runBlocking { whenever(mock.methodCall()) }
 }
 
-suspend fun HttpRequestData.formData(): Map<String, String> {
-    val parameters = String(this.body.toByteArray())
-    val parameterPairs = parameters.split("&")
-    val parameterMap = mutableMapOf<String, String>()
-
-    for (pair in parameterPairs) {
-        val (key, value) = pair.split("=")
-        parameterMap[key] = withContext(Dispatchers.IO) {
+suspend fun HttpRequestData.formData() = String(this.body.toByteArray())
+    .split("&")
+    .map { it.split("=") }
+    .associate { (key, value) ->
+        key to withContext(Dispatchers.IO) {
             URLDecoder.decode(value, "UTF-8")
         }
     }
 
-    return parameterMap
-}
+fun URL.queryParams() = query?.split("&")?.associate {
+    val (key, value) = it.split("=")
+    key to value
+} ?: emptyMap()

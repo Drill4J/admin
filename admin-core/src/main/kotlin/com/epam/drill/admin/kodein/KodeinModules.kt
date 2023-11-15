@@ -72,7 +72,6 @@ val storage = DI.Module("storage") {
 
 val wsHandler = DI.Module("wsHandler") {
     bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
-
     bind<TopicResolver>() with eagerSingleton {
         TopicResolver(
             di

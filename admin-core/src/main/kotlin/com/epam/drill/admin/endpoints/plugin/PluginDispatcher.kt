@@ -437,7 +437,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
 
 fun Routing.pluginDispatcherRoutes() {
     val pluginDispatcher by closestDI().instance<PluginDispatcher>()
-
     pluginDispatcher.initRouting(this)
 }
 

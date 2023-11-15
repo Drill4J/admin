@@ -63,7 +63,7 @@ class OAuthConfig(override val di: DI) : DIAware {
             ?: listOf()
 
     val uiRootUrl: String
-        get() =  ui.propertyOrNull("rootUrl")?.getString() ?: "http://localhost:9090"
+        get() =  ui.property("rootUrl").getString()
 
     val uiRootPath: String
         get() = ui.propertyOrNull("rootPath")?.getString() ?: "/"
