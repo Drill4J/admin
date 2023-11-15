@@ -32,7 +32,7 @@ fun Route.authWebSocket(
 ) {
     val tokenService by di().instance<TokenService>()
 
-    authenticate("session", "jwt") {
+    authenticate("jwt") {
         withRole(Role.USER) {
             webSocket(path, protocol) {
                 try {
