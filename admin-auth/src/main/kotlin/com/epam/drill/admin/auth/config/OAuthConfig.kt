@@ -60,7 +60,7 @@ class OAuthConfig(override val di: DI) : DIAware {
     val scopes: List<String>
         get() = oauth2.propertyOrNull("scopes")?.getString()
             ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
-            ?: listOf("read", "write")
+            ?: listOf()
 
     val uiRootUrl: String
         get() =  ui.propertyOrNull("rootUrl")?.getString() ?: "http://localhost:9090"
