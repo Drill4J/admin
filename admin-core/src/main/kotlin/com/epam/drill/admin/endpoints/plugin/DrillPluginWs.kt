@@ -30,6 +30,7 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.channels.*
 import mu.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
 
 private val logger = KotlinLogging.logger {}
 
@@ -45,8 +46,8 @@ class DrillPluginWs(override val di: DI) : DIAware {
     private val plugins by instance<Plugins>()
     private val agentManager by instance<AgentManager>()
 
-    init {
-        app.routing {
+    fun initRouting(routing: Routing) {
+        with(routing) {
             plugins.keys.forEach { pluginId ->
                 authWebSocket("/ws/plugins/$pluginId") { handle(pluginId) }
             }
@@ -121,4 +122,10 @@ class DrillPluginWs(override val di: DI) : DIAware {
     private fun Subscription.ensureBuildVersion() = if (this is AgentSubscription && buildVersion == null) {
         copy(buildVersion = agentManager.buildVersionByAgentId(agentId))
     } else this
+}
+
+fun Routing.pluginWebSocketRoute() {
+    val handler by closestDI().instance<DrillPluginWs>()
+
+    handler.initRouting(this)
 }
