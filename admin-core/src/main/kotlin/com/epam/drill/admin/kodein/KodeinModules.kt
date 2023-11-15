@@ -34,6 +34,13 @@ import io.ktor.application.*
 import io.ktor.locations.*
 import org.kodein.di.*
 
+val drillAdminDIModule = DI.Module("drillAdmin") {
+    import(storage)
+    import(wsHandler)
+    import(handlers)
+    import(pluginServices)
+}
+
 
 val pluginServices = DI.Module("pluginServices") {
     bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }

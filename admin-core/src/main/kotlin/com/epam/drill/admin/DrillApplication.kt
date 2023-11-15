@@ -53,7 +53,56 @@ import java.time.*
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
-fun Application.module() {
+fun Application.moduleWithSimpleAuth() {
+
+    installPlugins()
+    initDB()
+
+    di {
+        import(drillAdminDIModule)
+        import(simpleAuthDIModule)
+    }
+
+    install(Authentication) {
+        configureSimpleAuthentication(closestDI())
+    }
+
+    routing {
+        drillAdminRoutes()
+
+        loginRoute()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt", "basic") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
+            }
+        }
+    }
+}
+
+@Suppress("unused")
+fun Application.moduleWithOAuth() {
+    installPlugins()
+    initDB()
+    di {
+        import(drillAdminDIModule)
+        import(oauthDIModule)
+    }
+    configureOAuthSessions()
+    install(Authentication) {
+        configureOAuthAuthentication(closestDI())
+    }
+    routing {
+        drillAdminRoutes()
+    }
+}
+
+private fun Application.installPlugins() {
     install(StatusPages) {
         exception<Throwable> { cause ->
             logger.error(cause) { "Build application finished with exception" }
@@ -94,37 +143,6 @@ fun Application.module() {
     }
 
     install(RoleBasedAuthorization)
-
-    initDB()
-
-    di {
-        import(storage)
-        import(wsHandler)
-        import(handlers)
-        import(pluginServices)
-        import(simpleAuthDIModule)
-    }
-
-    install(Authentication) {
-        configureSimpleAuthentication(closestDI())
-    }
-
-    routing {
-        drillAdminRoutes()
-
-        loginRoute()
-        route("/api") {
-            userAuthenticationRoutes()
-            authenticate("jwt") {
-                userProfileRoutes()
-            }
-            authenticate("jwt", "basic") {
-                withRole(ADMIN) {
-                    userManagementRoutes()
-                }
-            }
-        }
-    }
 }
 
 fun Routing.drillAdminRoutes() {
