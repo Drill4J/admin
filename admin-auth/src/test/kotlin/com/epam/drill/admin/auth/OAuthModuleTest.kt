@@ -15,11 +15,10 @@
  */
 package com.epam.drill.admin.auth
 
-import com.auth0.jwk.Jwk
-import com.auth0.jwk.JwkProvider
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
@@ -34,14 +33,12 @@ import org.kodein.di.bind
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import org.kodein.di.singleton
-import org.mockito.Mock
-import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.whenever
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.net.URL
+import java.util.*
 import kotlin.test.*
 
 typealias RequestHandler = Pair<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>
@@ -55,29 +52,18 @@ class OAuthModuleTest {
     private val keyPair = generateRSAKeyPair()
     private val rsa256 = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
 
-    @Mock
-    lateinit var mockJwkProvider: JwkProvider
-    @Mock
-    lateinit var jwk: Jwk
-
-    @BeforeTest
-    fun setup() {
-        MockitoAnnotations.openMocks(this)
-    }
-
     @Test
-    fun `given valid oauth2 token, jwt protected request must succeed`() {
+    fun `given valid jwt cookie, jwt protected request must succeed`() {
         val testUsername = "test-user"
-        val testJwkKey = "test-jwk"
         val testIssuer = "test-issuer"
+        val testSecret = "secret"
 
         withTestApplication({
             environment {
-                put("drill.auth.oauth2.issuer", testIssuer)
+                put("drill.auth.jwt.issuer", testIssuer)
+                put("drill.auth.jwt.secret", testSecret)
             }
-            withTestOAuthModule {
-                mockJwkProvider()
-            }
+            withTestOAuthModule()
             routing {
                 authenticate("jwt") {
                     get("/protected") {
@@ -86,22 +72,13 @@ class OAuthModuleTest {
                 }
             }
         }) {
-            whenever(mockJwkProvider.get(testJwkKey)).thenReturn(jwk)
-            whenever(jwk.publicKey).thenReturn(keyPair.public)
-            whenever(jwk.algorithm).thenReturn("RS256")
-
             with(handleRequest(HttpMethod.Get, "/protected") {
+                addHeader("Cookie", "jwt=$testUsername")
                 addJwtToken(
                     username = testUsername,
                     issuer = testIssuer,
-                    algorithm = rsa256
-                ) {
-                    withHeader(mapOf("kid" to testJwkKey))
-                    withClaim("preferred_username", testUsername)
-                    withClaim(
-                        "realm_access",
-                        mapOf("roles" to listOf("USER"))
-                    ) //TODO remove after adding claim mapping tests
+                    secret = testSecret) {
+                    addHeader("Cookie", "$JWT_COOKIE=$it")
                 }
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
@@ -112,7 +89,14 @@ class OAuthModuleTest {
     @Test
     fun `oauth login request must be redirected to oauth2 authorize url`() {
         withTestApplication({
-            withOAuthTestEnvironment()
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.auth.oauth2.scopes", "scope1, scope2")
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+            }
             withTestOAuthModule()
         }) {
             with(handleRequest(HttpMethod.Get, "/oauth/login")) {
@@ -133,6 +117,7 @@ class OAuthModuleTest {
     @Test
     fun `given valid authentication code, oauth callback request must set cookies and redirect to root url`() {
         val testUsername = "test-user"
+        val testIssuer = "test-issuer"
         val testAuthenticationCode = "test-code"
         val testState = "test-state"
         val testAccessToken = JWT.create()
@@ -141,7 +126,16 @@ class OAuthModuleTest {
             .sign(rsa256)
 
         withTestApplication({
-            withOAuthTestEnvironment()
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.userInfoUrl", "http://$testOAuthServerHost/userInfoUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.auth.jwt.issuer", testIssuer)
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.ui.rootPath", "/drill")
+            }
             withTestOAuthModule {
                 mockHttpClient("oauthHttpClient",
                     "/accessTokenUrl" to { request ->
@@ -178,7 +172,12 @@ class OAuthModuleTest {
                 assertEquals(HttpStatusCode.Found, response.status())
                 assertEquals("http://$testDrillHost/drill", response.headers[HttpHeaders.Location])
                 assertNotNull(response.cookies[JWT_COOKIE]).let { jwtCookie ->
-                    assertEquals(testAccessToken, jwtCookie.value)
+                    assertNotNull(jwtCookie.value)
+                    JWT.decode(jwtCookie.value).apply {
+                        assertEquals(testUsername, subject)
+                        assertEquals(testIssuer, issuer)
+                        assertEquals(Role.USER.name, getClaim("role").asString())
+                    }
                     assertTrue(jwtCookie.httpOnly)
                     assertEquals("/drill", jwtCookie.path)
                 }
@@ -190,21 +189,6 @@ class OAuthModuleTest {
         val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
         keyPairGenerator.initialize(2048)
         return keyPairGenerator.generateKeyPair()
-    }
-
-    private fun Application.withOAuthTestEnvironment() {
-        environment {
-            put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
-            put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-            put("drill.auth.oauth2.userInfoUrl", "http://$testOAuthServerHost/userInfoUrl")
-            put("drill.auth.oauth2.jwkSetUrl", "http://$testOAuthServerHost/jwkSetUrl")
-            put("drill.auth.oauth2.clientId", testClientId)
-            put("drill.auth.oauth2.clientSecret", testClientSecret)
-            put("drill.auth.oauth2.scopes", "scope1, scope2")
-            put("drill.auth.oauth2.issuer", "test-issuer")
-            put("drill.ui.rootUrl", "http://$testDrillHost/drill")
-            put("drill.ui.rootPath", "/drill")
-        }
     }
 
     private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: RequestHandler) {
@@ -223,7 +207,7 @@ class OAuthModuleTest {
 
     private fun Application.withTestOAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
         di {
-            configureOAuthDI()
+            import(oauthDIModule)
             configureDI()
         }
 
@@ -236,7 +220,4 @@ class OAuthModuleTest {
         }
     }
 
-    private fun DI.MainBuilder.mockJwkProvider() {
-        bind<JwkProvider>(overrides = true) with singleton { mockJwkProvider }
-    }
 }

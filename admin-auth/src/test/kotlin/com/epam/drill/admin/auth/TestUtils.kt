@@ -52,16 +52,17 @@ fun TestApplicationRequest.addJwtToken(
     issuer: String? = "issuer",
     audience: String? = null,
     algorithm: Algorithm = Algorithm.HMAC512(secret),
-    configure: JWTCreator.Builder.() -> Unit = { withClaim("role", role) }
+    configureJwt: JWTCreator.Builder.() -> Unit = { withClaim("role", role) },
+    configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
 ) {
     val token = JWT.create()
         .withSubject(username)
         .withIssuer(issuer)
         .withAudience(audience)
         .withExpiresAt(expiresAt)
-        .apply(configure)
+        .apply(configureJwt)
         .sign(algorithm)
-    addHeader(HttpHeaders.Authorization, "Bearer $token")
+    configureHeader(token)
 }
 
 fun <T> TestApplicationCall.assertResponseNotNull(serializer: KSerializer<T>): T {

@@ -45,17 +45,11 @@ class OAuthConfig(override val di: DI) : DIAware {
     val userInfoUrl: String
         get() = oauth2.property("userInfoUrl").getString()
 
-    val jwkSetUrl: String
-        get() = oauth2.property("jwkSetUrl").getString()
-
     val clientId: String
         get() = oauth2.property("clientId").getString()
 
     val clientSecret: String
         get() = oauth2.property("clientSecret").getString()
-
-    val issuer: String
-        get() = oauth2.property("issuer").getString()
 
     val scopes: List<String>
         get() = oauth2.propertyOrNull("scopes")?.getString()

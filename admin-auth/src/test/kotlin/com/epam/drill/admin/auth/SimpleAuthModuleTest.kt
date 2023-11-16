@@ -16,8 +16,8 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.configureSimpleAuthentication
-import com.epam.drill.admin.auth.config.configureSimpleAuthDI
 import com.epam.drill.admin.auth.config.generateSecret
+import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
@@ -155,7 +155,7 @@ class SimpleAuthModuleTest {
 
     private fun Application.withTestSimpleAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
         di {
-            configureSimpleAuthDI()
+            import(simpleAuthDIModule)
             configureDI()
         }
 
