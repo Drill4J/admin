@@ -222,7 +222,7 @@ tasks {
         dependsOn(createWindowsDockerImage)
         workingDir(projectDir)
         commandLine(
-            "docker", "push", "$version-win"
+            "docker", "push", "$fullImageTag:$version-win"
         )
     }
 }
