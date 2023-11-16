@@ -54,9 +54,11 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
-    when (authType) {
-        AuthType.SIMPLE -> moduleWithSimpleAuth()
-        AuthType.OAUTH -> moduleWithOAuth()
+    when (authType.lowercase()) {
+        "simple" -> moduleWithSimpleAuth()
+        "oauth" -> moduleWithOAuth()
+        else -> throw IllegalArgumentException("Unknown auth type: $authType. " +
+                "Please set the env variable DRILL_AUTH_TYPE to either 'simple' or 'oauth'.")
     }
 }
 
@@ -112,14 +114,19 @@ fun Application.moduleWithOAuth() {
 
 enum class AuthType {
     SIMPLE,
-    OAUTH
+    OAUTH;
+
+    companion object {
+        fun byName(input: String): AuthType? {
+            return values().firstOrNull { it.name.equals(input, true) }
+        }
+    }
 }
 
-private val Application.authType: AuthType
+private val Application.authType: String
     get() = environment.config
         .propertyOrNull("drill.auth.type")
-        ?.getString()?.let { AuthType.valueOf(it.uppercase()) }
-        ?: AuthType.SIMPLE
+        ?.getString() ?: "simple"
 
 private fun Application.installPlugins() {
     install(StatusPages) {
