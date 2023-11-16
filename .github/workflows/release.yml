@@ -101,7 +101,7 @@ jobs:
         with:
           arguments: |
             ${{ (matrix.config.preset == 'linuxX64') && 'assemble jib' || '' }}
-            ${{ (matrix.config.preset == 'mingwX64') && 'assemble admin-core:createWindowsDockerImage' || '' }}
+            ${{ (matrix.config.preset == 'mingwX64') && 'assemble createWindowsDockerImage' || '' }}
         env:
           GRADLE_OPTS: >
             -DgitPassword=${{ secrets.GH_PACKAGE_USERNAME }}
