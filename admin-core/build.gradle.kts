@@ -127,8 +127,8 @@ val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
-val gitUsername = ""
-val gitPassword = ""
+val gitUsername = System.getenv("GH_USERNAME") ?: ""
+val gitPassword = System.getenv("GH_TOKEN") ?: ""
 jib {
     from {
         image = "adoptopenjdk/openjdk11:latest"
