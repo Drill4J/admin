@@ -53,6 +53,14 @@ import java.time.*
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
+fun Application.module() {
+    when (authType) {
+        AuthType.SIMPLE -> moduleWithSimpleAuth()
+        AuthType.OAUTH -> moduleWithOAuth()
+    }
+}
+
+@Suppress("unused")
 fun Application.moduleWithSimpleAuth() {
 
     installPlugins()
@@ -101,6 +109,17 @@ fun Application.moduleWithOAuth() {
         configureOAuthRoutes()
     }
 }
+
+enum class AuthType {
+    SIMPLE,
+    OAUTH
+}
+
+private val Application.authType: AuthType
+    get() = environment.config
+        .propertyOrNull("drill.auth.type")
+        ?.getString()?.let { AuthType.valueOf(it.uppercase()) }
+        ?: AuthType.SIMPLE
 
 private fun Application.installPlugins() {
     install(StatusPages) {
