@@ -217,7 +217,7 @@ tasks {
             "-t", "$fullImageTag:$version-win",
             "."
         )
-        println("Image name: $fullImageTag:$version-win")
+        commandLine("docker images")
         commandLine(
             "docker", "push", "$version-win"
         )
