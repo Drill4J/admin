@@ -64,7 +64,7 @@ fun Routing.agentWebSocketRoute() {
             else -> FrameType.BINARY
         }
         val agentSession = AgentWsSession(
-            this@agentWebsocket,
+            this,
             frameType,
             application.agentSocketTimeout,
             agentConfig.id,
