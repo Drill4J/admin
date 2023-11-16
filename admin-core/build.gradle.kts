@@ -219,7 +219,7 @@ tasks {
         )
         println("Image name: $fullImageTag:$version-win")
         commandLine(
-            "docker", "push", "$fullImageTag:$version-win"
+            "docker", "push", "$version-win"
         )
         println("After-push")
     }
