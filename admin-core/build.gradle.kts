@@ -127,6 +127,8 @@ val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
 val jibExtraDirs = "$buildDir/jib-extra-dirs"
+val gitUsername = ""
+val gitPassword = ""
 jib {
     from {
         image = "adoptopenjdk/openjdk11:latest"
@@ -134,6 +136,10 @@ jib {
     to {
         image = fullImageTag
         tags = setOf(version.toString())
+        auth {
+            username=gitUsername
+            password=gitPassword
+        }
     }
     container {
         ports = listOf(apiPort, debugPort , secureApiPort)
@@ -206,9 +212,14 @@ tasks {
             "--build-arg", "SECURE_API_PORT=$secureApiPort",
             "--build-arg", "JVM_ARGS=${defaultJvmArgs.joinToString(" ")}",
             "--build-arg", "MAIN_CLASS_NAME=$jarMainClassName",
-            "-t", "$fullImageTag:$version",
+            "-t", "$fullImageTag:$version-win",
             "."
         )
+
+        commandLine("docker login -u $gitUsername -p $gitPassword")
+//        commandLine(
+//            "docker", "push", "$fullImageTag:$version-win"
+//        )
     }
 }
 

@@ -13,6 +13,7 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, preset: linuxX64}
+          - {os: windows-latest, preset: mingwX64}
     runs-on: ${{ matrix.config.os }}
     steps:
       - uses: actions/checkout@v3
@@ -74,6 +75,7 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, preset: linuxX64}
+          - {os: windows-latest, preset: mingwX64}
     runs-on: ${{ matrix.config.os }}
     outputs:
       tag: ${{ needs.release.outputs.tag }}
@@ -98,12 +100,13 @@ jobs:
         run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
-          arguments: assemble jib
+          arguments: |
+            ${{ (matrix.config.preset == 'linuxX64') && 'assemble jib' || '' }}
+            ${{ (matrix.config.preset == 'mingwX64') && 'assemble admin-core:createWindowsDockerImage' || '' }}
         env:
           GRADLE_OPTS: >
-            -Djib.to.image=ghcr.io/drill4j/admin
-            -Djib.to.auth.username=${{ secrets.GH_PACKAGE_USERNAME }}
-            -Djib.to.auth.password=${{ secrets.GH_PACKAGE_TOKEN }}
+            -DgitPassword=${{ secrets.GH_PACKAGE_USERNAME }}
+            -DgitUsername=${{ secrets.GH_PACKAGE_TOKEN }}
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
