@@ -203,6 +203,7 @@ tasks {
         dependsOn(processJibExtraDirs)
     }
     val createWindowsDockerImage by registering(Exec::class) {
+        dependsOn(assemble)
         workingDir(projectDir)
         commandLine(
             "docker", "build",
@@ -216,7 +217,7 @@ tasks {
             "."
         )
 
-        commandLine("docker login -u $gitUsername -p $gitPassword")
+//        commandLine("docker login -u $gitUsername -p $gitPassword")
 //        commandLine(
 //            "docker", "push", "$fullImageTag:$version-win"
 //        )
