@@ -217,10 +217,10 @@ tasks {
             "."
         )
 
-//        commandLine("docker login -u $gitUsername -p $gitPassword")
-//        commandLine(
-//            "docker", "push", "$fullImageTag:$version-win"
-//        )
+        commandLine("docker login -u $gitUsername -p $gitPassword")
+        commandLine(
+            "docker", "push", "$fullImageTag:$version-win"
+        )
     }
 }
 
