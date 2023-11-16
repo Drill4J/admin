@@ -221,9 +221,8 @@ tasks {
     val pushWindowsDockerImage by registering(Exec::class) {
         dependsOn(createWindowsDockerImage)
         workingDir(projectDir)
-        commandLine("docker", "images")
         commandLine(
-            "docker", "push", "$fullImageTag:$version-win"
+            "docker", "push", "$version-win"
         )
     }
 }
