@@ -205,6 +205,7 @@ tasks {
     val createWindowsDockerImage by registering(Exec::class) {
         dependsOn(assemble)
         workingDir(projectDir)
+        commandLine("docker login -u $gitUsername -p $gitPassword")
         commandLine(
             "docker", "build",
             "--build-arg", "ADMIN_VERSION=$version",
@@ -216,11 +217,11 @@ tasks {
             "-t", "$fullImageTag:$version-win",
             "."
         )
-
-        commandLine("docker login -u $gitUsername -p $gitPassword")
+        println("Image name: $fullImageTag:$version-win")
         commandLine(
             "docker", "push", "$fullImageTag:$version-win"
         )
+        println("After-push")
     }
 }
 
