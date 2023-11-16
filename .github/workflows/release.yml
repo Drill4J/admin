@@ -101,7 +101,7 @@ jobs:
         with:
           arguments: |
             ${{ (matrix.config.preset == 'linuxX64') && 'assemble jib' || '' }}
-            ${{ (matrix.config.preset == 'mingwX64') && 'assemble' || '' }}
+            ${{ (matrix.config.preset == 'mingwX64') && 'assemble createWindowsDockerImage' || '' }}
         env:
           GH_USERNAME: ${{ secrets.GH_PACKAGE_USERNAME }}
           GH_TOKEN: ${{ secrets.GH_PACKAGE_TOKEN }}
