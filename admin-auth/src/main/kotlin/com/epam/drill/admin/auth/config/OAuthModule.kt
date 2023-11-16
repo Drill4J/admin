@@ -158,7 +158,7 @@ private fun JWTCredential.toPrincipal() = User(
 )
 
 private fun findRole(roleNames: List<String>?): Role = roleNames
-    ?.takeIf { it.isNotEmpty() } // this also avoids calling map and find for an empty list
+    ?.takeIf { it.isNotEmpty() }
     ?.distinct()
     ?.map { it.lowercase() }
     ?.let { roleNamesList ->
