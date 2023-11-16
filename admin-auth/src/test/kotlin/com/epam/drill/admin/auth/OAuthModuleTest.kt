@@ -73,7 +73,6 @@ class OAuthModuleTest {
             }
         }) {
             with(handleRequest(HttpMethod.Get, "/protected") {
-                addHeader("Cookie", "jwt=$testUsername")
                 addJwtToken(
                     username = testUsername,
                     issuer = testIssuer,
