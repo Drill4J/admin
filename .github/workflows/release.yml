@@ -13,7 +13,6 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, preset: linuxX64}
-          - {os: windows-latest, preset: mingwX64}
     runs-on: ${{ matrix.config.os }}
     steps:
       - uses: actions/checkout@v3
