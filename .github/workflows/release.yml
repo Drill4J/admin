@@ -110,8 +110,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/build/distributions/admin-core-${{ needs.release.outputs.version }}.zip
-          asset_name: admin-${{ needs.release.outputs.version }}.zip
+          asset_path: ${{ (matrix.config.preset == 'mingwX64') && github.workspace + '/build/distributions/admin-core-' + needs.release.outputs.version + '-win.zip' || github.workspace + '/build/distributions/admin-core-' + needs.release.outputs.version + '.zip' }}
+          asset_name: ${{ (matrix.config.preset == 'mingwX64') && 'admin-' + needs.release.outputs.version + '-win.zip' || 'admin-' + needs.release.outputs.version + '.zip' }}
           asset_content_type: application/zip
       - uses: actions/upload-release-asset@v1
         env:
