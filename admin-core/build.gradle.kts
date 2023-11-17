@@ -202,10 +202,14 @@ tasks {
     withType<JibTask> {
         dependsOn(processJibExtraDirs)
     }
-    val createWindowsDockerImage by registering(Exec::class) {
+    val loginToDocker by registering(Exec::class) {
         dependsOn(assemble)
         workingDir(projectDir)
-        commandLine("docker login -u $gitUsername -p $gitPassword")
+        commandLine("docker login ghcr.io -u $gitUsername -p $gitPassword")
+    }
+    val createWindowsDockerImage by registering(Exec::class) {
+        dependsOn(loginToDocker)
+        workingDir(projectDir)
         commandLine(
             "docker", "build",
             "--build-arg", "ADMIN_VERSION=$version",
