@@ -103,8 +103,8 @@ jobs:
             ${{ (matrix.config.preset == 'linuxX64') && 'assemble jib' || '' }}
             ${{ (matrix.config.preset == 'mingwX64') && 'assemble createWindowsDockerImage pushWindowsDockerImage' || '' }}
         env:
-          GH_USERNAME: "123"
-          GH_TOKEN: "123"
+          GH_USERNAME: ${{ secrets.GH_PACKAGE_USERNAME }}
+          GH_TOKEN: ${{ secrets.GH_PACKAGE_TOKEN }}
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
