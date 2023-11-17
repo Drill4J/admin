@@ -205,7 +205,7 @@ tasks {
     val loginToDocker by registering(Exec::class) {
         dependsOn(assemble)
         workingDir(projectDir)
-        commandLine("docker login ghcr.io -u $gitUsername -p $gitPassword")
+        commandLine("docker", "login", "ghcr.io", "-u $gitUsername", "-p $gitPassword")
     }
     val createWindowsDockerImage by registering(Exec::class) {
         dependsOn(loginToDocker)
