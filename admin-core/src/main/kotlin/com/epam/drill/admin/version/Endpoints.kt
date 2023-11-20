@@ -25,40 +25,35 @@ import io.ktor.application.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
 
-class VersionEndpoints(override val di: DI) : DIAware {
+fun Routing.versionRoutes() {
+    val plugins by closestDI().instance<Plugins>()
+    val agentManager by closestDI().instance<AgentManager>()
+    val buildManager by closestDI().instance<BuildManager>()
 
-    private val app by instance<Application>()
-    private val plugins by instance<Plugins>()
-    private val agentManager by instance<AgentManager>()
-    private val buildManager by instance<BuildManager>()
 
-    init {
-        app.routing { versionRoutes() }
-    }
-
-    private fun Route.versionRoutes() {
-        val versionMeta = "Get versions".responds(
-            ok<VersionDto>(example("sample", VersionDto("0.1.0", adminVersion)))
-        )
-        get<ApiRoot.Version>(versionMeta) {
-            call.respond(
-                VersionDto(
-                    admin = adminVersionDto.admin,
-                    java = adminVersionDto.java,
-                    plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
-                    agents = agentManager.activeAgents.flatMap { agentInfo ->
-                        buildManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
-                            ComponentVersion(
-                                id = listOf("${agentInfo.toAgentBuildKey()}/${instanceId}", agentInfo.groupId)
-                                    .filter(String::any)
-                                    .joinToString("@"),
-                                version = agentInfo.build.agentVersion
-                            )
-                        }
+    val versionMeta = "Get versions".responds(
+        ok<VersionDto>(example("sample", VersionDto("0.1.0", adminVersion)))
+    )
+    get<ApiRoot.Version>(versionMeta) {
+        call.respond(
+            VersionDto(
+                admin = adminVersionDto.admin,
+                java = adminVersionDto.java,
+                plugins = plugins.values.map { ComponentVersion(it.pluginBean.id, it.version) },
+                agents = agentManager.activeAgents.flatMap { agentInfo ->
+                    buildManager.instanceIds(agentInfo.id).map { (instanceId, _) ->
+                        ComponentVersion(
+                            id = listOf("${agentInfo.toAgentBuildKey()}/${instanceId}", agentInfo.groupId)
+                                .filter(String::any)
+                                .joinToString("@"),
+                            version = agentInfo.build.agentVersion
+                        )
                     }
-                )
+                }
             )
-        }
+        )
     }
 }
+

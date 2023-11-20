@@ -16,20 +16,27 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.OngoingStubbing
-import kotlin.test.assertNotNull
+import java.net.URL
+import java.net.URLDecoder
 import java.util.*
+import kotlin.test.assertNotNull
 
 
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
@@ -39,19 +46,21 @@ fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
 
 fun TestApplicationRequest.addJwtToken(
     username: String,
-    secret: String,
+    secret: String = "secret",
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
     role: String = Role.UNDEFINED.name,
-    issuer: String? = "test issuer",
-    audience: String? = null
+    issuer: String? = "issuer",
+    audience: String? = null,
+    algorithm: Algorithm = Algorithm.HMAC512(secret),
+    configure: JWTCreator.Builder.() -> Unit = { withClaim("role", role) }
 ) {
     val token = JWT.create()
         .withSubject(username)
         .withIssuer(issuer)
         .withAudience(audience)
-        .withClaim("role", role)
         .withExpiresAt(expiresAt)
-        .sign(Algorithm.HMAC512(secret))
+        .apply(configure)
+        .sign(algorithm)
     addHeader(HttpHeaders.Authorization, "Bearer $token")
 }
 
@@ -71,3 +80,16 @@ fun <M, T> wheneverBlocking(mock: M, methodCall: suspend M.() -> T): OngoingStub
     return runBlocking { whenever(mock.methodCall()) }
 }
 
+suspend fun HttpRequestData.formData() = String(this.body.toByteArray())
+    .split("&")
+    .map { it.split("=") }
+    .associate { (key, value) ->
+        key to withContext(Dispatchers.IO) {
+            URLDecoder.decode(value, "UTF-8")
+        }
+    }
+
+fun URL.queryParams() = query?.split("&")?.associate {
+    val (key, value) = it.split("=")
+    key to value
+} ?: emptyMap()

@@ -17,7 +17,6 @@ package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.auth.config.*
-import com.epam.drill.admin.auth.config.usersDiConfig
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
@@ -41,8 +40,10 @@ import org.kodein.di.*
 import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
+import io.ktor.auth.*
 import io.ktor.routing.*
-import javax.sql.DataSource
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 
 const val GUEST_USER = "{\"username\": \"user\", \"password\": \"user\", \"role\": \"USER\"}"
 
@@ -71,27 +72,28 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
 
         enableSwaggerSupport()
 
-        kodein {
-            withKModule { kodeinModule("securityConfig", securityDiConfig) }
-            withKModule { kodeinModule("usersConfig", usersDiConfig) }
-            withKModule { kodeinModule("pluginServices", testPluginServices(useTest2CodePlugin)) }
-            withKModule { kodeinModule("storage", storage) }
-            withKModule { kodeinModule("wsHandler", wsHandler) }
-            withKModule { kodeinModule("handlers", handlers) }
-
-            withKModule {
-                kodeinModule("addition") {
-                    hikariConfig = TestDatabaseContainer.createDataSource()
-                    storeManager = StoreClient(hikariConfig.copyConfig("admin_test"))
-                    bind<WsTopic>() with singleton {
-                        wsTopic = WsTopic(di)
-                        wsTopic
-                    }
+        di {
+            testPluginServices(useTest2CodePlugin)
+            import(storage)
+            import(wsHandler)
+            import(handlers)
+            import(DI.Module("addition") {
+                hikariConfig = TestDatabaseContainer.createDataSource()
+                storeManager = StoreClient(hikariConfig.copyConfig("admin_test"))
+                bind<WsTopic>(overrides = true) with singleton {
+                    wsTopic = WsTopic(di)
+                    wsTopic
                 }
-            }
+            }, allowOverride = true)
+            import(simpleAuthDIModule)
+        }
+
+        install(Authentication) {
+            configureSimpleAuthentication(closestDI())
         }
 
         routing {
+            drillAdminRoutes()
             route("/api") {
                 userAuthenticationRoutes()
             }
@@ -108,14 +110,14 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
     }
 }
 
-fun testPluginServices(useTest2CodePlugin: Boolean = false): DI.Builder.(Application) -> Unit = { application ->
+fun DI.Builder.testPluginServices(useTest2CodePlugin: Boolean = false) {
     if (useTest2CodePlugin)
         bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
     else
         bind<Plugins>() with singleton { Plugins(mapOf("test2code" to testPlugin())) }
     bind<PluginCaches>() with singleton {
         PluginCaches(
-            application,
+            instance(),
             instance(),
             instance()
         )

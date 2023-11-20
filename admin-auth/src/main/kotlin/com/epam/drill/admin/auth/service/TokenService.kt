@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.model.UserInfoView
 
 interface TokenService {
-    fun issueToken(user: UserView): String
-    fun verifyToken(token: String)
+    fun issueToken(user: UserInfoView): String
 }

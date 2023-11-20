@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth.config
 
 import io.ktor.application.*
+import io.ktor.config.*
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
@@ -23,4 +24,47 @@ import org.kodein.di.instance
 class OAuthConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
 
+    private val drill: ApplicationConfig
+        get() = app.environment.config
+            .config("drill")
+
+    private val ui: ApplicationConfig
+        get() = drill.config("ui")
+
+    private val oauth2: ApplicationConfig
+        get() = drill
+            .config("auth")
+            .config("oauth2")
+
+    val authorizeUrl: String
+        get() = oauth2.property("authorizeUrl").getString()
+
+    val accessTokenUrl: String
+        get() = oauth2.property("accessTokenUrl").getString()
+
+    val userInfoUrl: String
+        get() = oauth2.property("userInfoUrl").getString()
+
+    val jwkSetUrl: String
+        get() = oauth2.property("jwkSetUrl").getString()
+
+    val clientId: String
+        get() = oauth2.property("clientId").getString()
+
+    val clientSecret: String
+        get() = oauth2.property("clientSecret").getString()
+
+    val issuer: String
+        get() = oauth2.property("issuer").getString()
+
+    val scopes: List<String>
+        get() = oauth2.propertyOrNull("scopes")?.getString()
+            ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+            ?: listOf()
+
+    val uiRootUrl: String
+        get() =  ui.property("rootUrl").getString()
+
+    val uiRootPath: String
+        get() = ui.propertyOrNull("rootPath")?.getString() ?: "/"
 }

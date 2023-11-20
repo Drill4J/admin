@@ -13,17 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.auth.principal
 
-import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.User
-
-interface UserAuthenticationService {
-    suspend fun signIn(payload: LoginPayload): UserInfoView
-
-    suspend fun signUp(payload: RegistrationPayload)
-
-    suspend fun getUserInfo(principal: User): UserInfoView
-
-    suspend fun updatePassword(principal: User, payload: ChangePasswordPayload)
-}
+data class UserSession(
+    val principal: User,
+    val accessToken: String,
+    val refreshToken: String? = null
+)

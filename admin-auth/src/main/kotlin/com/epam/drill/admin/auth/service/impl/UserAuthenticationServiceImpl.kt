@@ -29,7 +29,7 @@ class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService
 ) : UserAuthenticationService {
-    override suspend fun signIn(payload: LoginPayload): UserView {
+    override suspend fun signIn(payload: LoginPayload): UserInfoView {
         val userEntity = userRepository.findByUsername(payload.username)?.takeIf { userEntity ->
             passwordService.matchPasswords(payload.password, userEntity.passwordHash)
         } ?: throw NotAuthenticatedException("Username or password is incorrect")
@@ -44,6 +44,11 @@ class UserAuthenticationServiceImpl(
         passwordService.validatePasswordRequirements(payload.password)
         val passwordHash = passwordService.hashPassword(payload.password)
         userRepository.create(payload.toUserEntity(passwordHash))
+    }
+
+    override suspend fun getUserInfo(principal: User): UserInfoView {
+        val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
+        return userEntity.toView()
     }
 
     override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) {
@@ -65,11 +70,9 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
     )
 }
 
-private fun UserEntity.toView(): UserView {
-    return UserView(
-        id = this.id,
+private fun UserEntity.toView(): UserInfoView {
+    return UserInfoView(
         username = this.username,
-        role = Role.valueOf(this.role),
-        blocked = this.blocked
+        role = Role.valueOf(this.role)
     )
 }

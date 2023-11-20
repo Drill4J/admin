@@ -28,6 +28,12 @@ data class MessageResponse(val message: String)
 data class TokenView(val token: String)
 
 @Serializable
+data class UserInfoView(
+    val username: String,
+    val role: Role
+)
+
+@Serializable
 data class UserView(
     val id: Int?,
     val username: String,

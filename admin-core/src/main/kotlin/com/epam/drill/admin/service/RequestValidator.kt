@@ -27,52 +27,49 @@ import io.ktor.routing.*
 import kotlinx.serialization.*
 import mu.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
 
 const val agentIsBusyMessage =
     "Sorry, this agent is busy at the moment. Please try again later"
 
-internal class RequestValidator(override val di: DI) : DIAware {
-    private val logger = KotlinLogging.logger { }
+fun Routing.requestValidatorRoutes() {
+    val logger = KotlinLogging.logger { }
+    val agentManager by closestDI().instance<AgentManager>()
+    val buildManager by closestDI().instance<BuildManager>()
 
-    val app by instance<Application>()
-    private val agentManager by instance<AgentManager>()
-    private val buildManager by instance<BuildManager>()
 
-    init {
-        app.routing {
-            intercept(ApplicationCallPipeline.Call) {
-                if (context is RoutingApplicationCall) {
-                    val agentId = context.parameters["agentId"]
-                    if (agentId != null) {
-                        val agentInfo = agentManager.getOrNull(agentId)
-                        when (buildManager.buildStatus(agentId)) {
-                            BuildStatus.BUSY -> {
-                                val agentPath = locations.href(
-                                    ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
+    intercept(ApplicationCallPipeline.Call) {
+        if (context is RoutingApplicationCall) {
+            val agentId = context.parameters["agentId"]
+            if (agentId != null) {
+                val agentInfo = agentManager.getOrNull(agentId)
+                when (buildManager.buildStatus(agentId)) {
+                    BuildStatus.BUSY -> {
+                        val agentPath = locations.href(
+                            ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
+                        )
+                        with(context.request) {
+                            if (path() != agentPath && httpMethod != HttpMethod.Post) {
+                                logger.info { "Agent status is busy" }
+
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    ValidationResponse(agentIsBusyMessage)
                                 )
-                                with(context.request) {
-                                    if (path() != agentPath && httpMethod != HttpMethod.Post) {
-                                        logger.info { "Agent status is busy" }
+                                return@intercept finish()
+                            }
+                        }
+                    }
 
-                                        call.respond(
-                                            HttpStatusCode.BadRequest,
-                                            ValidationResponse(agentIsBusyMessage)
-                                        )
-                                        return@intercept finish()
-                                    }
-                                }
-                            }
-                            else -> {
-                                if (agentInfo == null &&
-                                    agentManager.allEntries().none { it.info.groupId == agentId }
-                                ) {
-                                    call.respond(
-                                        HttpStatusCode.BadRequest,
-                                        ValidationResponse("Agent '$agentId' not found")
-                                    )
-                                    return@intercept finish()
-                                }
-                            }
+                    else -> {
+                        if (agentInfo == null &&
+                            agentManager.allEntries().none { it.info.groupId == agentId }
+                        ) {
+                            call.respond(
+                                HttpStatusCode.BadRequest,
+                                ValidationResponse("Agent '$agentId' not found")
+                            )
+                            return@intercept finish()
                         }
                     }
                 }

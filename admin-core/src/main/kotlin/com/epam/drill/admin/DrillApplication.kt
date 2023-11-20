@@ -15,15 +15,23 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.auth.*
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
-import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.endpoints.admin.adminRoutes
+import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
+import com.epam.drill.admin.endpoints.admin.agentRoutes
+import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
+import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
+import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
+import com.epam.drill.admin.group.groupRoutes
+import com.epam.drill.admin.notification.notificationRoutes
+import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.version.versionRoutes
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -37,6 +45,8 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import java.time.*
 
 
@@ -44,6 +54,79 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
+    when (authType.uppercase()) {
+        AuthType.SIMPLE.name -> moduleWithSimpleAuth()
+        AuthType.OAUTH2.name -> moduleWithOAuth2()
+        else -> throw IllegalArgumentException("Unknown auth type \"$authType\". " +
+                "Please set the env variable DRILL_AUTH_TYPE to either " +
+                "${
+                    AuthType.values().joinToString(separator = "\", \"", prefix = "\"", postfix = "\"") { it.name }
+                }."
+        )
+    }
+}
+
+@Suppress("unused")
+fun Application.moduleWithSimpleAuth() {
+
+    installPlugins()
+    initDB()
+
+    di {
+        import(drillAdminDIModule)
+        import(simpleAuthDIModule)
+    }
+
+    install(Authentication) {
+        configureSimpleAuthentication(closestDI())
+    }
+
+    routing {
+        drillAdminRoutes()
+
+        loginRoute()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt", "basic") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
+            }
+        }
+    }
+}
+
+@Suppress("unused")
+fun Application.moduleWithOAuth2() {
+    installPlugins()
+    initDB()
+    di {
+        import(drillAdminDIModule)
+        import(oauthDIModule)
+    }
+    install(Authentication) {
+        configureOAuthAuthentication(closestDI())
+    }
+    routing {
+        drillAdminRoutes()
+        configureOAuthRoutes()
+    }
+}
+
+enum class AuthType {
+    SIMPLE,
+    OAUTH2
+}
+
+private val Application.authType: String
+    get() = environment.config
+        .propertyOrNull("drill.auth.type")
+        ?.getString() ?: AuthType.SIMPLE.name
+
+private fun Application.installPlugins() {
     install(StatusPages) {
         exception<Throwable> { cause ->
             logger.error(cause) { "Build application finished with exception" }
@@ -84,31 +167,19 @@ fun Application.module() {
     }
 
     install(RoleBasedAuthorization)
+}
 
-    kodein {
-        withKModule { kodeinModule("securityConfig", securityDiConfig) }
-        withKModule { kodeinModule("usersConfig", usersDiConfig) }
-        withKModule { kodeinModule("storage", storage) }
-        withKModule { kodeinModule("wsHandler", wsHandler) }
-        withKModule { kodeinModule("handlers", handlers) }
-        withKModule { kodeinModule("pluginServices", pluginServices) }
-        initDB()
-    }
-
-    routing {
-        loginRoute()
-        route("/api") {
-            userAuthenticationRoutes()
-            authenticate("jwt") {
-                userProfileRoutes()
-            }
-            authenticate("jwt", "basic") {
-                withRole(ADMIN) {
-                    userManagementRoutes()
-                }
-            }
-        }
-    }
+fun Routing.drillAdminRoutes() {
+    adminWebSocketRoute()
+    agentRoutes()
+    versionRoutes()
+    requestValidatorRoutes()
+    agentWebSocketRoute()
+    pluginDispatcherRoutes()
+    adminRoutes()
+    groupRoutes()
+    notificationRoutes()
+    pluginWebSocketRoute()
 }
 
 private fun Application.initDB() {

@@ -25,24 +25,14 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import mu.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
 
+fun Route.notificationRoutes() {
+    val logger = KotlinLogging.logger {}
+    val notificationManager by closestDI().instance<NotificationManager>()
+    val topicResolver by closestDI().instance<TopicResolver>()
 
-class NotificationEndpoints(override val di: DI) : DIAware {
-    private val logger = KotlinLogging.logger {}
-
-    private val notificationManager by instance<NotificationManager>()
-    private val topicResolver by instance<TopicResolver>()
-    private val app by instance<Application>()
-
-    init {
-        app.routing {
-            authenticate("jwt", "basic") {
-                notificationRoutes()
-            }
-        }
-    }
-
-    private fun Route.notificationRoutes() {
+    authenticate("jwt", "basic") {
         val toggle = "Read/Unread notification"
             .examples(
                 example("Read/Unread notification",
@@ -82,4 +72,6 @@ class NotificationEndpoints(override val di: DI) : DIAware {
             call.respond(HttpStatusCode.OK, EmptyContent)
         }
     }
+
+
 }

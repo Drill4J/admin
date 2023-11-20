@@ -30,7 +30,6 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.response.header
 import io.ktor.routing.*
-import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
@@ -43,6 +42,9 @@ object SignIn
 
 @Location("/sign-up")
 object SignUp
+
+@Location("/user-info")
+object UserInfo
 
 @Location("/update-password")
 object UpdatePassword
@@ -72,6 +74,7 @@ fun Route.userAuthenticationRoutes() {
 }
 
 fun Route.userProfileRoutes() {
+    userInfoRoute()
     updatePasswordRoute()
 }
 
@@ -98,6 +101,16 @@ fun Route.signUpRoute() {
             "User registration request accepted. " +
                     "Please contact the administrator to confirm the registration."
         )
+    }
+}
+
+fun Route.userInfoRoute() {
+    val authService by di().instance<UserAuthenticationService>()
+
+    get<UserInfo> {
+        val principal = call.principal<User>() ?: throw NotAuthenticatedException()
+        val userInfoView = authService.getUserInfo(principal)
+        call.ok(userInfoView)
     }
 }
 

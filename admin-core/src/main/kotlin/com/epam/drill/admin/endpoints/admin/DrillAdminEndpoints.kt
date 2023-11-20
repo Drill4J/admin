@@ -43,118 +43,112 @@ import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.DIAware
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 
-class DrillAdminEndpoints(override val di: DI) : DIAware {
-    private val logger = KotlinLogging.logger {}
+fun Routing.adminRoutes() {
+    val logger = KotlinLogging.logger {}
 
-    private val app by instance<Application>()
-    private val agentManager by instance<AgentManager>()
-    private val buildManager by instance<BuildManager>()
-    private val loggingHandler by instance<LoggingHandler>()
-    private val plugins by instance<Plugins>()
-    private val cacheService by instance<CacheService>()
-    private val topicResolver by instance<TopicResolver>()
-
-    init {
-        app.routing {
-
-            authenticate("jwt", "basic") {
-                withRole(Role.USER) {
-                    post<ApiRoot.Agents.ToggleAgent>(
-                        "Agent Toggle StandBy"
-                            .responds(
-                                ok<Unit>(), notFound(), badRequest()
-                            )
-                    ) { params ->
-                        val (_, agentId) = params
-                        logger.info { "Toggle agent $agentId" }
-                        val (status, response) = agentManager[agentId]?.let { agentInfo ->
-                            val status = buildManager.buildStatus(agentId)
-                            val agentBuildKey = agentInfo.toAgentBuildKey()
-                            when (status) {
-                                BuildStatus.OFFLINE -> BuildStatus.ONLINE
-                                BuildStatus.ONLINE -> BuildStatus.OFFLINE
-                                else -> null
-                            }?.let { newStatus ->
-                                buildManager.instanceIds(agentId).forEach { (id, value) ->
-                                    buildManager.updateInstanceStatus(agentBuildKey, id, newStatus)
-                                    val toggleValue = newStatus == BuildStatus.ONLINE
-                                    agentInfo.plugins.map { pluginId ->
-                                        value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                                            TogglePayload(pluginId, toggleValue)
-                                        )
-                                    }.forEach { it.await() } //TODO coroutine scope (supervisor)
-                                }
-                                buildManager.notifyBuild(agentBuildKey)
-                                logger.info { "Agent $agentId toggled, new build status - $newStatus." }
-                                HttpStatusCode.OK to EmptyContent
-                            } ?: (HttpStatusCode.Conflict to ErrorResponse(
-                                "Cannot toggle agent $agentId on status $status"
-                            ))
-                        } ?: (HttpStatusCode.NotFound to EmptyContent)
-                        call.respond(status, response)
-                    }
+    val agentManager by closestDI().instance<AgentManager>()
+    val buildManager by closestDI().instance<BuildManager>()
+    val loggingHandler by closestDI().instance<LoggingHandler>()
+    val plugins by closestDI().instance<Plugins>()
+    val cacheService by closestDI().instance<CacheService>()
+    val topicResolver by closestDI().instance<TopicResolver>()
 
 
-                    put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(
-                        "Configure agent logging levels"
-                            .examples(
-                                example("Agent logging configuration", defaultLoggingConfig)
-                            )
-                            .responds(
-                                ok<Unit>(), notFound(), badRequest()
-                            )
-                    ) { (_, agentId), loggingConfig ->
-                        logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
-                        loggingHandler.updateConfig(agentId, loggingConfig)
-                        logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
-                        call.respond(HttpStatusCode.OK, EmptyContent)
-                    }
-
-                    get<ApiRoot.Cache.Stats>(
-                        "Return cache stats"
-                            .examples()
-                            .responds(
-                                ok<String>()
-                            )
-                    ) {
-                        val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
-                        call.respond(HttpStatusCode.OK, cacheStats)
-                    }
-
-                    get<ApiRoot.Cache.Clear>(
-                        "Clear cache"
-                            .examples()
-                            .responds(
-                                ok<String>()
-                            )
-                    ) {
-                        (cacheService as? MapDBCacheService)?.clear()
-                        call.respond(HttpStatusCode.OK)
-                    }
-                }
+    authenticate("jwt", "basic") {
+        withRole(Role.USER) {
+            post<ApiRoot.Agents.ToggleAgent>(
+                "Agent Toggle StandBy"
+                    .responds(
+                        ok<Unit>(), notFound(), badRequest()
+                    )
+            ) { params ->
+                val (_, agentId) = params
+                logger.info { "Toggle agent $agentId" }
+                val (status, response) = agentManager[agentId]?.let { agentInfo ->
+                    val status = buildManager.buildStatus(agentId)
+                    val agentBuildKey = agentInfo.toAgentBuildKey()
+                    when (status) {
+                        BuildStatus.OFFLINE -> BuildStatus.ONLINE
+                        BuildStatus.ONLINE -> BuildStatus.OFFLINE
+                        else -> null
+                    }?.let { newStatus ->
+                        buildManager.instanceIds(agentId).forEach { (id, value) ->
+                            buildManager.updateInstanceStatus(agentBuildKey, id, newStatus)
+                            val toggleValue = newStatus == BuildStatus.ONLINE
+                            agentInfo.plugins.map { pluginId ->
+                                value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+                                    TogglePayload(pluginId, toggleValue)
+                                )
+                            }.forEach { it.await() } //TODO coroutine scope (supervisor)
+                        }
+                        buildManager.notifyBuild(agentBuildKey)
+                        logger.info { "Agent $agentId toggled, new build status - $newStatus." }
+                        HttpStatusCode.OK to EmptyContent
+                    } ?: (HttpStatusCode.Conflict to ErrorResponse(
+                        "Cannot toggle agent $agentId on status $status"
+                    ))
+                } ?: (HttpStatusCode.NotFound to EmptyContent)
+                call.respond(status, response)
             }
 
-            patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(
-                "Toggle google analytics"
+
+            put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(
+                "Configure agent logging levels"
                     .examples(
-                        example(
-                            "analytics toggle request",
-                            AnalyticsToggleDto(disable = true)
-                        )
+                        example("Agent logging configuration", defaultLoggingConfig)
                     )
                     .responds(
-                        ok<AnalyticsToggleDto>()
+                        ok<Unit>(), notFound(), badRequest()
                     )
-            ) { _, toggleDto ->
-                System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
-                logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
-                topicResolver.sendToAllSubscribed(WsRoot.Analytics)
-                call.respond(HttpStatusCode.OK, toggleDto)
+            ) { (_, agentId), loggingConfig ->
+                logger.debug { "Attempt to configure logging levels for agent with id $agentId" }
+                loggingHandler.updateConfig(agentId, loggingConfig)
+                logger.debug { "Successfully sent request for logging levels configuration for agent with id $agentId" }
+                call.respond(HttpStatusCode.OK, EmptyContent)
+            }
+
+            get<ApiRoot.Cache.Stats>(
+                "Return cache stats"
+                    .examples()
+                    .responds(
+                        ok<String>()
+                    )
+            ) {
+                val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
+                call.respond(HttpStatusCode.OK, cacheStats)
+            }
+
+            get<ApiRoot.Cache.Clear>(
+                "Clear cache"
+                    .examples()
+                    .responds(
+                        ok<String>()
+                    )
+            ) {
+                (cacheService as? MapDBCacheService)?.clear()
+                call.respond(HttpStatusCode.OK)
             }
         }
+    }
+
+    patch<ApiRoot.ToggleAnalytic, AnalyticsToggleDto>(
+        "Toggle google analytics"
+            .examples(
+                example(
+                    "analytics toggle request",
+                    AnalyticsToggleDto(disable = true)
+                )
+            )
+            .responds(
+                ok<AnalyticsToggleDto>()
+            )
+    ) { _, toggleDto ->
+        System.setProperty(ANALYTIC_DISABLE, "${toggleDto.disable}")
+        logger.info { "Analytics $ANALYTIC_DISABLE=${toggleDto.disable}" }
+        topicResolver.sendToAllSubscribed(WsRoot.Analytics)
+        call.respond(HttpStatusCode.OK, toggleDto)
     }
 }

@@ -44,6 +44,7 @@ import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 
 /**
  * REST Controller for groups
@@ -64,8 +65,8 @@ class GroupHandler(override val di: DI) : DIAware {
         }
     }
 
-    init {
-        app.routing {
+    fun initRouting(routing: Routing) {
+        with(routing) {
             authenticate("jwt", "basic") {
                 withRole(Role.USER) {
                     put<ApiRoot.AgentGroup, GroupUpdateDto>(
@@ -188,4 +189,9 @@ class GroupHandler(override val di: DI) : DIAware {
         val destination = app.toLocation(this)
         sessions.sendTo(destination, message)
     }
+}
+
+fun Routing.groupRoutes() {
+    val groupHandler by closestDI().instance<GroupHandler>()
+    groupHandler.initRouting(this)
 }

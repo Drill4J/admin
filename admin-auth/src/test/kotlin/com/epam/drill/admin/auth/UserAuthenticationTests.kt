@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.UserEntity
+import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.authStatusPages
@@ -24,10 +25,6 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
-import com.epam.drill.admin.auth.model.ChangePasswordPayload
-import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.RegistrationPayload
-import com.epam.drill.admin.auth.model.TokenView
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.userProfileRoutes
 import io.ktor.auth.*
@@ -54,7 +51,7 @@ val USER_GUEST
     get() = UserEntity(id = 1, username = "guest", passwordHash = "hash", role = "UNDEFINED").copy()
 
 /**
- * Testing /sign-in, /sign-up and /reset-password routers and UserAuthenticationServiceImpl
+ * Testing /sign-in, /sign-up, /user-info and /reset-password routers and UserAuthenticationServiceImpl
  */
 class UserAuthenticationTest {
 
@@ -119,6 +116,25 @@ class UserAuthenticationTest {
                         )
                     )
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `'GET user-info' must return user info`() {
+        val testUsername = "johnny"
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }
+            .thenReturn(UserEntity(id = 1, username = testUsername, passwordHash = "hash", role = "USER"))
+
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Get, "/user-info") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth(testUsername, "secret")
+            }) {
+                assertEquals(HttpStatusCode.OK, response.status())
+                val userInfo = assertResponseNotNull(UserInfoView.serializer())
+                assertEquals(testUsername, userInfo.username)
+                assertEquals(Role.USER, userInfo.role)
             }
         }
     }

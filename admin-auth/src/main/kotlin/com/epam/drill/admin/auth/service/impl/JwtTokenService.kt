@@ -19,8 +19,8 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.JwtConfig
+import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.service.TokenService
-import com.epam.drill.admin.auth.model.UserView
 import java.util.*
 import kotlin.time.Duration
 
@@ -31,21 +31,13 @@ class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
     private val audience: String? = jwtConfig.audience
     private val lifetime: Duration = jwtConfig.lifetime
 
-    val verifier: JWTVerifier = JWT.require(algorithm)
-        .withIssuer(jwtConfig.issuer)
-        .build()
-
-    override fun issueToken(user: UserView): String = JWT.create()
+    override fun issueToken(user: UserInfoView): String = JWT.create()
         .withSubject(user.username)
         .withIssuer(issuer)
         .withAudience(audience)
         .withClaim("role", user.role.name)
         .withExpiresAt(lifetime.toExpiration())
         .sign(algorithm)
-
-    override fun verifyToken(token: String) {
-        verifier.verify(token)
-    }
 
     private fun Duration.toExpiration() = Date(System.currentTimeMillis() + this.inWholeMilliseconds)
 }

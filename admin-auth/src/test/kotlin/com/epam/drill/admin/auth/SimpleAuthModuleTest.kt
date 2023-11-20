@@ -15,32 +15,31 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.SecurityConfig
-import com.epam.drill.admin.auth.config.JwtConfig
-import com.epam.drill.admin.auth.service.impl.JwtTokenService
+import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.configureSimpleAuthDI
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.model.UserInfoView
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.config.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.*
+import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.whenever
 import java.util.*
 import kotlin.test.*
 
-class SecurityConfigTest {
+class SimpleAuthModuleTest {
 
     private val testSecret = generateSecret()
+    private val testIssuer = "test-issuer"
 
     @Mock
     lateinit var authService: UserAuthenticationService
@@ -53,7 +52,7 @@ class SecurityConfigTest {
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
         wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
-            .thenReturn(UserView(id = 1, username = "admin", role = Role.ADMIN, blocked = false))
+            .thenReturn(UserInfoView(username = "admin", role = Role.ADMIN))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")
@@ -80,6 +79,7 @@ class SecurityConfigTest {
             with(handleRequest(HttpMethod.Get, "/jwt-only") {
                 addJwtToken(
                     username = "admin",
+                    issuer = testIssuer,
                     secret = testSecret
                 )
             }) {
@@ -130,16 +130,15 @@ class SecurityConfigTest {
 
     private val config: Application.() -> Unit = {
         environment {
-            put("drill.auth.jwt.issuer", "test issuer")
+            put("drill.auth.jwt.issuer", testIssuer)
             put("drill.auth.jwt.lifetime", "1m")
             put("drill.auth.jwt.audience", "test audience")
             put("drill.auth.jwt.secret", testSecret)
         }
-        di {
-            bind<JwtTokenService>() with singleton { JwtTokenService(JwtConfig(di)) }
-            bind<SecurityConfig>() with eagerSingleton { SecurityConfig(di) }
-            bind<UserAuthenticationService>() with provider { authService }
+        withTestSimpleAuthModule {
+            bind<UserAuthenticationService>(overrides = true) with provider { authService }
         }
+
         routing {
             authenticate("jwt") {
                 get("/jwt-only") {
@@ -151,6 +150,17 @@ class SecurityConfigTest {
                     call.respond(HttpStatusCode.OK)
                 }
             }
+        }
+    }
+
+    private fun Application.withTestSimpleAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
+        di {
+            configureSimpleAuthDI()
+            configureDI()
+        }
+
+        install(Authentication) {
+            configureSimpleAuthentication(closestDI())
         }
     }
 }

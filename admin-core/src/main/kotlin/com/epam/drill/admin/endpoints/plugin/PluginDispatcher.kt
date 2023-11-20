@@ -52,6 +52,7 @@ import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
+import org.kodein.di.ktor.closestDI
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -103,8 +104,8 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
-    init {
-        app.routing {
+    fun initRouting(routing: Routing) {
+        with(routing) {
             plugins.forEach { (pluginId, plugin) ->
                 val pluginRouters = pluginRoutes(pluginId)
                 logger.debug { "start register routes for '$pluginId' size ${pluginRouters.size} $pluginRouters..." }
@@ -158,9 +159,9 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                                 example(
                                     "Petclinic",
                                     """Multipart form-data with key-value pairs: 
-                                "action":{"type":"IMPORT_COVERAGE"},
-                                "data": File(jacoco.exec)
-                            """.trimIndent()
+                                    "action":{"type":"IMPORT_COVERAGE"},
+                                    "data": File(jacoco.exec)
+                                """.trimIndent()
                                 )
                             )
                             .description("To try out this request, please use the Postman")
@@ -432,6 +433,11 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
         return HttpStatusCode.OK to statusesResponse
     }
+}
+
+fun Routing.pluginDispatcherRoutes() {
+    val pluginDispatcher by closestDI().instance<PluginDispatcher>()
+    pluginDispatcher.initRouting(this)
 }
 
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {
