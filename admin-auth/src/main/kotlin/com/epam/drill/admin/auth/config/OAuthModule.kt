@@ -15,10 +15,16 @@
  */
 package com.epam.drill.admin.auth.config
 
+import com.epam.drill.admin.auth.exception.NotAuthenticatedException
+import com.epam.drill.admin.auth.exception.NotAuthorizedException
+import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.route.accessDeniedError
 import com.epam.drill.admin.auth.route.unauthorizedError
+import com.epam.drill.admin.auth.route.validationError
+import com.epam.drill.admin.auth.service.OAuthService
 import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -28,9 +34,11 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.util.pipeline.*
 import kotlinx.serialization.json.*
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -49,7 +57,7 @@ val oauthDIModule = DI.Module("oauth") {
 
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-    bind<OAuthConfig>() with singleton { OAuthConfig(di) }
+    bind<OAuthConfig>() with singleton { OAuthConfig(instance<Application>().environment.config) }
 }
 
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
@@ -82,28 +90,17 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
 
 fun Routing.configureOAuthRoutes() {
     val oauthConfig by closestDI().instance<OAuthConfig>()
-    val httpClient by closestDI().instance<HttpClient>("oauthHttpClient")
     val tokenService by closestDI().instance<TokenService>()
+    val oauthService by closestDI().instance<OAuthService>()
 
     authenticate("oauth") {
         get("/oauth/login") {
             // Redirects to "authorizeUrl" automatically
         }
         get("/oauth/callback") {
-            val oauthPrincipal: OAuthAccessTokenResponse.OAuth2? = call.principal()
-            if (oauthPrincipal == null) {
-                call.unauthorizedError()
-                return@get
-            }
-
-            val userInfoJson = getUserInfo(httpClient, oauthConfig.userInfoUrl, oauthPrincipal.accessToken)
-            if (userInfoJson == null) {
-                call.unauthorizedError()
-                return@get
-            }
-            val userInfoView = userInfoJson.toView()
-
-            val jwt = tokenService.issueToken(userInfoView)
+            val oauthPrincipal: OAuthAccessTokenResponse.OAuth2 = call.principal() ?: throw OAuthUnauthorizedException("No principal")
+            val userInfo = oauthService.signInThroughOAuth(oauthPrincipal)
+            val jwt = tokenService.issueToken(userInfo)
             call.response.cookies.append(
                 Cookie(
                     JWT_COOKIE,
@@ -117,39 +114,10 @@ fun Routing.configureOAuthRoutes() {
     }
 }
 
-private suspend fun getUserInfo(
-    httpClient: HttpClient,
-    userInfoUrl: String,
-    accessToken: String
-) = httpClient
-    .get<HttpResponse>(userInfoUrl) {
-        headers {
-            append(HttpHeaders.Authorization, "Bearer $accessToken")
-        }
-    }.takeIf { it.status.isSuccess() }
-    ?.receive<String>()
-    ?.let { Json.parseToJsonElement(it) }
+class OAuthUnauthorizedException(message: String) : RuntimeException(message)
 
-private fun JsonElement.toView(): UserInfoView = UserInfoView(
-    username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
-    role = jsonObject["roles"]
-        ?.jsonArray
-        ?.map { it.jsonPrimitive.content }
-        .let { findRole(it) }
-)
-
-private fun JWTCredential.toPrincipal() = User(
-    username = this["preferred_username"].toString(),
-    role = findRole(this.payload.getClaim("realm_access").asMap()["roles"] as List<String>)
-)
-
-private fun findRole(roleNames: List<String>?): Role = roleNames
-    ?.takeIf { it.isNotEmpty() }
-    ?.distinct()
-    ?.map { it.lowercase() }
-    ?.let { roleNamesList ->
-        Role.values().find { role ->
-            roleNamesList.contains(role.name.lowercase())
-        }
+fun StatusPages.Configuration.oauthStatusPages() {
+    exception<OAuthUnauthorizedException> { cause ->
+        call.unauthorizedError(cause)
     }
-    ?: Role.UNDEFINED
+}

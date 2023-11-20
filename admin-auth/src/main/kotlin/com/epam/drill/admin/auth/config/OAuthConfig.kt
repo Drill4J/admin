@@ -15,18 +15,12 @@
  */
 package com.epam.drill.admin.auth.config
 
-import io.ktor.application.*
 import io.ktor.config.*
-import org.kodein.di.DI
-import org.kodein.di.DIAware
-import org.kodein.di.instance
 
-class OAuthConfig(override val di: DI) : DIAware {
-    private val app by instance<Application>()
+class OAuthConfig(private val config: ApplicationConfig) {
 
     private val drill: ApplicationConfig
-        get() = app.environment.config
-            .config("drill")
+        get() = config.config("drill")
 
     private val ui: ApplicationConfig
         get() = drill.config("ui")

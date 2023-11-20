@@ -58,9 +58,9 @@ private fun ResultRow.toEntity() = UserEntity(
     blocked = this[UserTable.blocked]
 )
 
-private fun UserEntity.mapTo(it: UpdateBuilder<Int>) {
-    it[UserTable.username] = username
-    it[UserTable.passwordHash] = passwordHash
-    it[UserTable.role] = role
-    it[UserTable.blocked] = blocked
+private fun UserEntity.mapTo(builder: UpdateBuilder<Int>) {
+    builder[UserTable.username] = username
+    passwordHash?.let { builder[UserTable.passwordHash] = it }
+    builder[UserTable.role] = role
+    builder[UserTable.blocked] = blocked
 }
