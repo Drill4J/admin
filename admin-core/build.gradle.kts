@@ -122,7 +122,8 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val fullImageTag = "ghcr.io/drill4j/admin"
+val registryName = "ghcr.io"
+val fullImageTag = "$registryName/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
@@ -205,7 +206,7 @@ tasks {
     val loginToDocker by registering(Exec::class) {
         dependsOn(assemble)
         workingDir(projectDir)
-        commandLine("docker", "login", "ghcr.io", "-u $gitUsername", "-p $gitPassword")
+        commandLine("docker", "login", registryName, "-u $gitUsername", "-p $gitPassword")
     }
     val createWindowsDockerImage by registering(Exec::class) {
         dependsOn(loginToDocker)
