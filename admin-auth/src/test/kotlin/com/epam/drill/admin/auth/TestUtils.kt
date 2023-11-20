@@ -21,6 +21,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
+import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.config.*
@@ -38,6 +39,8 @@ import java.net.URLDecoder
 import java.util.*
 import kotlin.test.assertNotNull
 
+
+typealias RequestHandler = Pair<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>
 
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
@@ -94,3 +97,13 @@ fun URL.queryParams() = query?.split("&")?.associate {
     val (key, value) = it.split("=")
     key to value
 } ?: emptyMap()
+
+fun mockHttpClient(vararg requestHandlers: RequestHandler) = HttpClient(MockEngine { request ->
+    requestHandlers
+        .find { request.url.encodedPath == it.first }
+        ?.runCatching { this@MockEngine.second(request) }
+        ?.getOrElse { exception ->
+            respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
+        }
+        ?: respondBadRequest()
+})

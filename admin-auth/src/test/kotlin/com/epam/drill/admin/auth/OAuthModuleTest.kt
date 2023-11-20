@@ -41,8 +41,6 @@ import java.net.URL
 import java.util.*
 import kotlin.test.*
 
-typealias RequestHandler = Pair<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>
-
 class OAuthModuleTest {
 
     private val testOAuthServerHost = "some-oauth-server.com"
@@ -192,15 +190,7 @@ class OAuthModuleTest {
 
     private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: RequestHandler) {
         bind<HttpClient>(tag, overrides = true) with singleton {
-            HttpClient(MockEngine { request ->
-                requestHandlers
-                    .find { request.url.encodedPath == it.first }
-                    ?.runCatching { this@MockEngine.second(request) }
-                    ?.getOrElse { exception ->
-                        respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
-                    }
-                    ?: respondBadRequest()
-            })
+            mockHttpClient(*requestHandlers)
         }
     }
 
