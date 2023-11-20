@@ -49,22 +49,24 @@ enum class UserRepoType {
 }
 
 val simpleAuthDIModule = DI.Module("simpleAuth") {
+    configureJwtDI()
     configureSimpleAuthDI()
 }
 
 fun DI.Builder.configureSimpleAuthDI() {
-    bind<JwtConfig>() with singleton { JwtConfig(di) }
-    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
-    bind<TokenService>() with singleton { JwtTokenService(instance()) }
-    bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
-
     userRepositoriesConfig()
     userServicesConfig()
 }
 
+fun DI.Builder.configureJwtDI() {
+    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
+    bind<TokenService>() with singleton { JwtTokenService(instance()) }
+}
+
 fun Authentication.Configuration.configureSimpleAuthentication(di: DI) {
-    configureJwt(di)
-    configureBasic(di)
+    configureJwtAuthentication(di)
+    configureBasicAuthentication(di)
 }
 
 private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
@@ -73,7 +75,7 @@ private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
     .build()
 
 
-private fun Authentication.Configuration.configureJwt(di: DI) {
+fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
     val jwtVerifier by di.instance<JWTVerifier>()
 
     jwt("jwt") {
@@ -90,7 +92,7 @@ private fun Authentication.Configuration.configureJwt(di: DI) {
     }
 }
 
-private fun Authentication.Configuration.configureBasic(di: DI) {
+fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
     val authService by di.instance<UserAuthenticationService>()
 
     basic("basic") {
@@ -114,7 +116,6 @@ private fun DI.Builder.userServicesConfig() {
         }
     }
     bind<UserManagementService>() with singleton {
-        val app: Application = instance()
         UserManagementServiceImpl(
             userRepository = instance(),
             passwordService = instance()
@@ -125,6 +126,7 @@ private fun DI.Builder.userServicesConfig() {
             }
         }
     }
+    bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }

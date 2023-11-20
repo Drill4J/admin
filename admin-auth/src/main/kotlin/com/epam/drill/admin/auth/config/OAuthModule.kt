@@ -15,11 +15,11 @@
  */
 package com.epam.drill.admin.auth.config
 
-import com.auth0.jwk.JwkProvider
-import com.auth0.jwk.JwkProviderBuilder
+import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.unauthorizedError
+import com.epam.drill.admin.auth.service.TokenService
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -29,7 +29,6 @@ import io.ktor.client.engine.apache.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.http.auth.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.serialization.json.*
@@ -39,47 +38,31 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.kodein.di.ktor.closestDI
 import java.net.URI
-import java.net.URL
-import java.util.concurrent.TimeUnit
 
 const val JWT_COOKIE = "jwt"
 
 
 val oauthDIModule = DI.Module("oauth") {
     configureOAuthDI()
+    configureJwtDI()
 }
 
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuthConfig>() with singleton { OAuthConfig(di) }
-    bind<JwkProvider>() with singleton { buildJwkProvider(instance()) }
 }
 
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     val oauthConfig by di.instance<OAuthConfig>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
-    val jwkProvider by di.instance<JwkProvider>()
 
-    jwt("jwt") {
-        realm = "Access to the http(s) and the ws(s) services"
-        verifier(jwkProvider, oauthConfig.issuer)
-        validate { credential ->
-            credential.toPrincipal()
-        }
-        authHeader { call ->
-            val headerValue =
-                call.request.headers[HttpHeaders.Authorization] ?: "Bearer ${call.request.cookies[JWT_COOKIE]}"
-            parseAuthorizationHeader(headerValue)
-        }
-    }
-
+    configureJwtAuthentication(di)
     basic("basic") {
         realm = "Access to the http(s) services"
         validate {
             null //Basic authentication is not supported for the OAuth2 provider, but must be declared
         }
     }
-
     oauth("oauth") {
         urlProvider = { URI(oauthConfig.uiRootUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
@@ -100,6 +83,7 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
 fun Routing.configureOAuthRoutes() {
     val oauthConfig by closestDI().instance<OAuthConfig>()
     val httpClient by closestDI().instance<HttpClient>("oauthHttpClient")
+    val tokenService by closestDI().instance<TokenService>()
 
     authenticate("oauth") {
         get("/oauth/login") {
@@ -112,16 +96,18 @@ fun Routing.configureOAuthRoutes() {
                 return@get
             }
 
-            val userInfo = getUserInfo(httpClient, oauthConfig.userInfoUrl, oauthPrincipal.accessToken)
-            if (userInfo == null) {
+            val userInfoJson = getUserInfo(httpClient, oauthConfig.userInfoUrl, oauthPrincipal.accessToken)
+            if (userInfoJson == null) {
                 call.unauthorizedError()
                 return@get
             }
+            val userInfoView = userInfoJson.toView()
 
+            val jwt = tokenService.issueToken(userInfoView)
             call.response.cookies.append(
                 Cookie(
                     JWT_COOKIE,
-                    oauthPrincipal.accessToken,
+                    jwt,
                     httpOnly = true,
                     path = oauthConfig.uiRootPath
                 )
@@ -144,7 +130,7 @@ private suspend fun getUserInfo(
     ?.receive<String>()
     ?.let { Json.parseToJsonElement(it) }
 
-private fun JsonElement.toPrincipal(): User = User(
+private fun JsonElement.toView(): UserInfoView = UserInfoView(
     username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
     role = jsonObject["roles"]
         ?.jsonArray
@@ -167,10 +153,3 @@ private fun findRole(roleNames: List<String>?): Role = roleNames
         }
     }
     ?: Role.UNDEFINED
-
-private fun buildJwkProvider(oauthConfig: OAuthConfig): JwkProvider {
-    return JwkProviderBuilder(URL(oauthConfig.jwkSetUrl))
-        .cached(10, 24, TimeUnit.HOURS)
-        .rateLimited(10, 1, TimeUnit.MINUTES)
-        .build()
-}
