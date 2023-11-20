@@ -1,7 +1,9 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.OAuthConfig
+import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
+import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
@@ -11,6 +13,7 @@ import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.assertThrows
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
@@ -21,6 +24,9 @@ import kotlin.test.*
 class OAuthServiceTest {
     @Mock
     lateinit var userRepository: UserRepository
+    private val config = MapApplicationConfig().apply {
+        put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+    }
 
     @BeforeTest
     fun setup() {
@@ -36,27 +42,18 @@ class OAuthServiceTest {
         val httpClient = mockHttpClient(
             "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
         )
-        val config = MapApplicationConfig().apply {
-            put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
-        }
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
         whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
         whenever(userRepository.create(any())).thenReturn(1)
 
-        val principal = OAuthAccessTokenResponse.OAuth2(
-            accessToken = testAccessToken,
-            tokenType = "Bearer",
-            expiresIn = 3600,
-            refreshToken = null
-        )
-        val userInfo = oauthService.signInThroughOAuth(principal)
+        val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
         verify(userRepository).create(any())
         assertEquals(testUsername, userInfo.username)
         assertTrue(testRole.equals(userInfo.role.name, true))
     }
 
     @Test
-    fun `given OAuth2 principal that was already logged in, signInThroughOAuth must update user`() = runBlocking {
+    fun `given OAuth2 principal that was already logged in, signInThroughOAuth must update user role`() = runBlocking {
         val testUsername = "some-username"
         val testRole = "user"
         val testAccessToken = "test-access-token"
@@ -64,9 +61,6 @@ class OAuthServiceTest {
         val httpClient = mockHttpClient(
             "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
         )
-        val config = MapApplicationConfig().apply {
-            put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
-        }
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
         whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
             id = 1,
@@ -74,17 +68,41 @@ class OAuthServiceTest {
             role = Role.UNDEFINED.name
         ))
 
-        val principal = OAuthAccessTokenResponse.OAuth2(
-            accessToken = testAccessToken,
-            tokenType = "Bearer",
-            expiresIn = 3600,
-            refreshToken = null
-        )
-        val userInfo = oauthService.signInThroughOAuth(principal)
+        val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
         verify(userRepository).update(any())
         assertEquals(testUsername, userInfo.username)
         assertTrue(testRole.equals(userInfo.role.name, true))
     }
+
+    @Test
+    fun `given blocked OAuth2 principal, signInThroughOAuth must failed`(): Unit = runBlocking {
+        val testUsername = "some-username"
+        val testRole = "user"
+        val testAccessToken = "test-access-token"
+
+        val httpClient = mockHttpClient(
+            "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
+        )
+        val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
+        whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
+            id = 1,
+            username = testUsername,
+            role = Role.USER.name,
+            blocked = true
+        ))
+
+        val principal = withPrincipal(testAccessToken)
+        assertThrows<OAuthUnauthorizedException> {
+            oauthService.signInThroughOAuth(principal)
+        }
+    }
+
+    private fun withPrincipal(testAccessToken: String) = OAuthAccessTokenResponse.OAuth2(
+        accessToken = testAccessToken,
+        tokenType = "Bearer",
+        expiresIn = 3600,
+        refreshToken = null
+    )
 
     private fun userInfoResponse(
         testAccessToken: String,

@@ -3,6 +3,7 @@ package com.epam.drill.admin.auth.service.impl
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
+import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -24,15 +25,20 @@ class OAuthServiceImpl(
     override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView {
         val oauthUser = getUserInfo(principal.accessToken).toEntity()
         val dbUser = userRepository.findByUsername(oauthUser.username)
-        return dbUser
-            ?.merge(oauthUser)
-            ?.apply { userRepository.update(this) }
-            ?.toView()
-            ?: oauthUser
-                .run { userRepository.create(this) }
-                .let { oauthUser.copy(id = it) }
-                .toView()
+        if (dbUser?.blocked == true)
+            throw OAuthUnauthorizedException("User is blocked")
+        return createOrUpdateUser(oauthUser, dbUser).toView()
     }
+
+    private suspend fun createOrUpdateUser(
+        oauthUser: UserEntity,
+        dbUser: UserEntity?
+    ): UserEntity = dbUser
+        ?.merge(oauthUser)
+        ?.apply { userRepository.update(this) }
+        ?: oauthUser
+            .run { userRepository.create(this) }
+            .let { oauthUser.copy(id = it) }
 
     private suspend fun getUserInfo(
         accessToken: String
