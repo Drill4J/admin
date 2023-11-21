@@ -25,7 +25,7 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.request.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -39,7 +39,6 @@ import org.kodein.di.singleton
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
@@ -192,6 +191,70 @@ class OAuthModuleTest {
         }
     }
 
+    @Test
+    fun `given invalid authentication code, oauth callback request must fail with 401 status`() {
+        val wrongAuthenticationCode = "invalid-code"
+        val testState = "test-state"
+
+        withTestApplication({
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+            }
+            withTestOAuthModule {
+                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                mockHttpClient("oauthHttpClient",
+                    "/accessTokenUrl" to { request ->
+                        respondError(HttpStatusCode.Unauthorized, "Invalid authentication code")
+                    }
+                )
+            }
+        }) {
+            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$wrongAuthenticationCode&state=$testState")) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given OAuthUnauthorizedException, oauth callback request must fail with 401 status`() {
+        val testAuthenticationCode = "test-code"
+        val testState = "test-state"
+
+        withTestApplication({
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+            }
+            withTestOAuthModule {
+                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                mockHttpClient("oauthHttpClient",
+                    "/accessTokenUrl" to { request ->
+                        respondOk(
+                            """
+                            {
+                              "access_token":"test-access-token",                                                            
+                              "refresh_token":"test-refresh-token"                              
+                            }
+                            """.trimIndent()
+                        )
+                    }
+                )
+            }
+        }) {
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenThrow(OAuthUnauthorizedException())
+            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
     private fun generateRSAKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
         keyPairGenerator.initialize(2048)
@@ -205,6 +268,10 @@ class OAuthModuleTest {
     }
 
     private fun Application.withTestOAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
+        install(StatusPages) {
+            oauthStatusPages()
+        }
+
         di {
             import(oauthDIModule)
             configureDI()
