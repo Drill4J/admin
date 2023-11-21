@@ -41,19 +41,18 @@ class OAuthServiceImpl(
 
     private suspend fun getUserInfo(
         accessToken: String
-    ): JsonElement {
-        val response = httpClient
+    ): JsonElement = runCatching {
+        httpClient
             .get<HttpResponse>(oauthConfig.userInfoUrl) {
                 headers {
                     append(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
             }
-        if (response.status.isSuccess()) {
-            return response.receive<String>().let { Json.parseToJsonElement(it) }
-        } else {
-            throw OAuthUnauthorizedException("User info request failed: ${response.status.description}")
-        }
-    }
+            .receive<String>()
+            .let { Json.parseToJsonElement(it) }
+    }.onFailure { cause ->
+        throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
+    }.getOrThrow()
 }
 
 private fun JsonElement.toEntity(): UserEntity = UserEntity(

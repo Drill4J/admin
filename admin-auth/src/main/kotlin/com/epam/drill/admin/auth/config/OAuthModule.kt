@@ -106,7 +106,7 @@ fun Routing.configureOAuthRoutes() {
     }
 }
 
-class OAuthUnauthorizedException(message: String? = null) : RuntimeException(message)
+class OAuthUnauthorizedException(message: String? = null, cause: Throwable? = null) : RuntimeException(message, cause)
 
 fun StatusPages.Configuration.oauthStatusPages() {
     exception<OAuthUnauthorizedException> { cause ->

@@ -9,6 +9,7 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
 import io.ktor.auth.*
 import io.ktor.client.engine.mock.*
+import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
@@ -82,6 +83,30 @@ class OAuthServiceTest {
 
         val httpClient = mockHttpClient(
             "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
+        )
+        val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
+        whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
+            id = 1,
+            username = testUsername,
+            role = Role.USER.name,
+            blocked = true
+        ))
+
+        val principal = withPrincipal(testAccessToken)
+        assertThrows<OAuthUnauthorizedException> {
+            oauthService.signInThroughOAuth(principal)
+        }
+    }
+
+    @Test
+    fun `given invalid accessToken, signInThroughOAuth must failed`(): Unit = runBlocking {
+        val testUsername = "some-username"
+        val testAccessToken = "invalid-token"
+
+        val httpClient = mockHttpClient(
+            "/userInfoUrl" to { _ ->
+                respondError(HttpStatusCode.Unauthorized, "Invalid token")
+            }
         )
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
         whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
