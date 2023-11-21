@@ -3,7 +3,6 @@ package com.epam.drill.admin.auth.service.impl
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -62,10 +61,10 @@ private fun JsonElement.toEntity(): UserEntity = UserEntity(
     role = jsonObject["roles"]
         ?.jsonArray
         ?.map { it.jsonPrimitive.content }
-        .let { findRole(it).name }
+        .let { findRole(it)?.name }
 )
 
-private fun findRole(roleNames: List<String>?): Role = roleNames
+private fun findRole(roleNames: List<String>?): Role? = roleNames
     ?.takeIf { it.isNotEmpty() }
     ?.distinct()
     ?.map { it.lowercase() }
@@ -74,15 +73,14 @@ private fun findRole(roleNames: List<String>?): Role = roleNames
             roleNamesList.contains(role.name.lowercase())
         }
     }
-    ?: Role.UNDEFINED
 
 private fun UserEntity.merge(other: UserEntity) = copy(
-    role = other.role
+    role = other.role ?: this.role
 )
 
 private fun UserEntity.toView(): UserInfoView {
     return UserInfoView(
         username = this.username,
-        role = Role.valueOf(this.role)
+        role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
     )
 }

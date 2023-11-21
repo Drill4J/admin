@@ -73,6 +73,6 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
 private fun UserEntity.toView(): UserInfoView {
     return UserInfoView(
         username = this.username,
-        role = Role.valueOf(this.role)
+        role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
     )
 }

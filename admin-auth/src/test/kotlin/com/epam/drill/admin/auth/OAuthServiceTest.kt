@@ -55,7 +55,7 @@ class OAuthServiceTest {
     @Test
     fun `given OAuth2 principal that was already logged in, signInThroughOAuth must update user role`() = runBlocking {
         val testUsername = "some-username"
-        val testRole = "user"
+        val testRole = "nonexistent-role"
         val testAccessToken = "test-access-token"
 
         val httpClient = mockHttpClient(
@@ -65,13 +65,13 @@ class OAuthServiceTest {
         whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
             id = 1,
             username = testUsername,
-            role = Role.UNDEFINED.name
+            role = Role.USER.name
         ))
 
         val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
         verify(userRepository).update(any())
         assertEquals(testUsername, userInfo.username)
-        assertTrue(testRole.equals(userInfo.role.name, true))
+        assertEquals(Role.USER, userInfo.role)
     }
 
     @Test

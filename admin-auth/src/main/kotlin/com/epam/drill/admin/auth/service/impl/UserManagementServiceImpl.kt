@@ -84,7 +84,7 @@ private fun UserEntity.toView(): UserView {
     return UserView(
         id = this.id,
         username = this.username,
-        role = Role.valueOf(this.role),
+        role = Role.valueOf(this.role ?: Role.UNDEFINED.name),
         blocked = this.blocked
     )
 }

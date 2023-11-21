@@ -60,7 +60,7 @@ private fun ResultRow.toEntity() = UserEntity(
 
 private fun UserEntity.mapTo(builder: UpdateBuilder<Int>) {
     builder[UserTable.username] = username
-    passwordHash?.let { builder[UserTable.passwordHash] = it }
+    builder[UserTable.passwordHash] = passwordHash
     builder[UserTable.role] = role
     builder[UserTable.blocked] = blocked
 }
