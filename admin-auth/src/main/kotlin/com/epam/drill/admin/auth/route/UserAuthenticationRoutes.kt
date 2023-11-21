@@ -53,7 +53,7 @@ object UpdatePassword
 @Location("/api/login")
 object Login
 
-fun StatusPages.Configuration.authStatusPages() {
+fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)

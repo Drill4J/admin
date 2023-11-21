@@ -68,7 +68,10 @@ fun Application.module() {
 
 @Suppress("unused")
 fun Application.moduleWithSimpleAuth() {
-
+    install(StatusPages) {
+        simpleAuthStatusPages()
+        defaultStatusPages()
+    }
     installPlugins()
     initDB()
 
@@ -101,6 +104,11 @@ fun Application.moduleWithSimpleAuth() {
 
 @Suppress("unused")
 fun Application.moduleWithOAuth2() {
+    install(StatusPages) {
+        simpleAuthStatusPages()
+        oauthStatusPages()
+        defaultStatusPages()
+    }
     installPlugins()
     initDB()
     di {
@@ -113,6 +121,21 @@ fun Application.moduleWithOAuth2() {
     routing {
         drillAdminRoutes()
         configureOAuthRoutes()
+        route("/api") {
+            authenticate("jwt") {
+                userInfoRoute()
+            }
+            authenticate("jwt") {
+                withRole(ADMIN) {
+                    getUsersRoute()
+                    getUserRoute()
+                    editUserRoute()
+                    deleteUserRoute()
+                    blockUserRoute()
+                    unblockUserRoute()
+                }
+            }
+        }
     }
 }
 
@@ -127,14 +150,6 @@ private val Application.authType: String
         ?.getString() ?: AuthType.SIMPLE.name
 
 private fun Application.installPlugins() {
-    install(StatusPages) {
-        exception<Throwable> { cause ->
-            logger.error(cause) { "Build application finished with exception" }
-            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-            throw cause
-        }
-        authStatusPages()
-    }
     install(CallLogging)
     install(Locations)
     install(WebSockets) {
@@ -167,6 +182,14 @@ private fun Application.installPlugins() {
     }
 
     install(RoleBasedAuthorization)
+}
+
+private fun StatusPages.Configuration.defaultStatusPages() {
+    exception<Throwable> { cause ->
+        logger.error(cause) { "Build application finished with exception" }
+        call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+        throw cause
+    }
 }
 
 fun Routing.drillAdminRoutes() {

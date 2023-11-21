@@ -9,7 +9,6 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
 import io.ktor.auth.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
@@ -22,6 +21,9 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import kotlin.test.*
 
+/**
+ * Testing [OAuthServiceImpl]
+ */
 class OAuthServiceTest {
     @Mock
     lateinit var userRepository: UserRepository
@@ -138,11 +140,11 @@ class OAuthServiceTest {
             assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
             respondOk(
                 """
-                                {                              
-                                  "preferred_username":"$testUsername",
-                                  "roles":["$testRole"]                             
-                                }     
-                                """.trimIndent()
+                    {                              
+                      "preferred_username":"$testUsername",
+                      "roles":["$testRole"]                             
+                    }     
+                    """.trimIndent()
             )
         }
 
