@@ -144,13 +144,11 @@ jib {
     }
     container {
         ports = listOf(apiPort, debugPort , secureApiPort)
-        volumes = listOf("/distr", "/work")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
     }
     extraDirectories {
         setPaths(jibExtraDirs)
-        permissions = mapOf("/distr" to "775", "/work" to "775")
     }
 }
 
