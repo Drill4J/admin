@@ -59,7 +59,7 @@ class OAuthConfig(private val config: ApplicationConfig) {
     val tokenMapping: UserMapping
         get() = oauth2.config("tokenMapping").run {
             UserMapping(
-                username = propertyOrNull("username")?.getString() ?: "username",
+                username = propertyOrNull("username")?.getString() ?: "sub",
                 roles = propertyOrNull("roles")?.getString() ?: "roles"
             )
         }
