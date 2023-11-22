@@ -15,8 +15,10 @@
  */
 package com.epam.drill.admin.auth.config
 
+import com.epam.drill.admin.auth.service.OAuthMapper
 import com.epam.drill.admin.auth.service.OAuthService
 import com.epam.drill.admin.auth.service.TokenService
+import com.epam.drill.admin.auth.service.impl.OAuthMapperImpl
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
 import com.epam.drill.admin.auth.service.transaction.TransactionalOAuthService
 import io.ktor.application.*
@@ -47,10 +49,12 @@ val oauthDIModule = DI.Module("oauth") {
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuthConfig>() with singleton { OAuthConfig(instance<Application>().environment.config) }
+    bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
     bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
         httpClient = instance("oauthHttpClient"),
         oauthConfig = instance(),
-        userRepository = instance()))
+        userRepository = instance(),
+        oauthMapper = instance()))
     }
 }
 

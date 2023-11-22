@@ -15,17 +15,14 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.interfaces.DecodedJWT
 import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
-import com.epam.drill.admin.auth.config.RoleMapping
-import com.epam.drill.admin.auth.config.UserMapping
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.service.OAuthMapper
 import com.epam.drill.admin.auth.service.OAuthService
 import io.ktor.auth.*
 import io.ktor.client.*
@@ -33,21 +30,19 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.*
 
 class OAuthServiceImpl(
     private val httpClient: HttpClient,
     private val oauthConfig: OAuthConfig,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val oauthMapper: OAuthMapper
 ) : OAuthService {
 
     override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView {
         val oauthUser = oauthConfig.userInfoUrl
-            ?.let {
-                getUserInfo(it, principal.accessToken)
-            }?.toUserEntity(oauthConfig.userInfoMapping, oauthConfig.roleMapping)
-            ?: JWT.decode(principal.accessToken)
-                .toUserEntity(oauthConfig.tokenMapping, oauthConfig.roleMapping)
+            ?.let { getUserInfo(it, principal.accessToken) }
+            ?.let { oauthMapper.mapUserInfoToUserEntity(it) }
+            ?: oauthMapper.mapAccessTokenToUserEntity(principal.accessToken)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthAccessDeniedException()
@@ -58,14 +53,14 @@ class OAuthServiceImpl(
         oauthUser: UserEntity,
         dbUser: UserEntity?
     ): UserEntity = dbUser
-        ?.merge(oauthUser)
+        ?.let { oauthMapper.mergeUserEntities(dbUser, oauthUser) }
         ?.apply { userRepository.update(this) }
         ?: userRepository.create(oauthUser)
 
     private suspend fun getUserInfo(
         userInfoUrl: String,
         accessToken: String
-    ): JsonElement = runCatching {
+    ): String = runCatching {
         httpClient
             .get<HttpResponse>(userInfoUrl) {
                 headers {
@@ -73,52 +68,12 @@ class OAuthServiceImpl(
                 }
             }
             .receive<String>()
-            .let { Json.parseToJsonElement(it) }
     }.onFailure { cause ->
         throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
     }.getOrThrow()
 }
 
-
-private fun UserEntity.merge(other: UserEntity) = copy(
-    role = if (Role.UNDEFINED.name != other.role) other.role else this.role
-)
-
 private fun UserEntity.toView() = UserInfoView(
     username = this.username,
-    role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
+    role = Role.valueOf(this.role)
 )
-
-private fun JsonElement.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
-    username = findStringValue(userMapping.username)
-        ?: throw OAuthUnauthorizedException("The key \"${userMapping.username}\" is not found in userinfo response"),
-    role = mapRole(
-        findStringArray(userMapping.roles),
-        roleMapping
-    ).name
-)
-
-private fun DecodedJWT.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
-    username = getClaim(userMapping.username).asString()
-        ?: throw OAuthUnauthorizedException("The claim \"${userMapping.username}\" is not found in access token"),
-    role = mapRole(
-        getClaim(userMapping.roles).asList(String::class.java),
-        roleMapping
-    ).name
-)
-
-private fun mapRole(roleNames: List<String>?, roleMapping: RoleMapping): Role {
-    roleNames?.forEach {
-        when (it.lowercase()) {
-            roleMapping.user.lowercase() -> return Role.USER
-            roleMapping.admin.lowercase() -> return Role.ADMIN
-        }
-    }
-    return Role.UNDEFINED
-}
-
-private fun JsonElement.findStringValue(key: String) =
-    this.jsonObject[key]?.jsonPrimitive?.contentOrNull
-
-private fun JsonElement.findStringArray(key: String) =
-    this.jsonObject[key]?.jsonArray?.map { it.jsonPrimitive.content }
