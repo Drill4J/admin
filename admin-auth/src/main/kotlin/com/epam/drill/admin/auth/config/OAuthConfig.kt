@@ -55,4 +55,31 @@ class OAuthConfig(private val config: ApplicationConfig) {
 
     val uiRootPath: String
         get() = ui.propertyOrNull("rootPath")?.getString() ?: "/"
+
+    val tokenMapping: UserMapping
+        get() = oauth2.config("tokenMapping").run {
+            UserMapping(
+                username = propertyOrNull("username")?.getString() ?: "username",
+                roles = propertyOrNull("roles")?.getString() ?: "roles"
+            )
+        }
+
+    val userInfoMapping: UserMapping
+        get() = oauth2.config("userInfoMapping").run {
+            UserMapping(
+                username = propertyOrNull("username")?.getString() ?: "username",
+                roles = propertyOrNull("roles")?.getString() ?: "roles"
+            )
+        }
+
+    val roleMapping: RoleMapping
+        get() = oauth2.config("roleMapping").run {
+            RoleMapping(
+                user = propertyOrNull("user")?.getString() ?: "USER",
+                admin = propertyOrNull("admin")?.getString() ?: "ADMIN"
+            )
+        }
 }
+
+data class UserMapping(val username: String, val roles: String)
+data class RoleMapping(val user: String, val admin: String)
