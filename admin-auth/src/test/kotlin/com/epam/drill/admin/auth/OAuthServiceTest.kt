@@ -59,7 +59,7 @@ class OAuthServiceTest {
                 .sign(testAlgorithm)
             val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
-            whenever(userRepository.create(any())).thenReturn(123)
+            whenever(userRepository.create(any())).thenReturn(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
 
             oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             verify(userRepository).create(UserEntity(username = testUsername, role = Role.UNDEFINED.name))

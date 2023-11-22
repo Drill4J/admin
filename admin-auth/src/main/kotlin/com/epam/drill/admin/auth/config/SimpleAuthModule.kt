@@ -50,13 +50,10 @@ enum class UserRepoType {
 
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     configureJwtDI()
-    configureSimpleAuthDI()
-}
-
-fun DI.Builder.configureSimpleAuthDI() {
     userRepositoriesConfig()
     userServicesConfig()
 }
+
 
 fun DI.Builder.configureJwtDI() {
     bind<JwtConfig>() with singleton { JwtConfig(di) }
@@ -103,7 +100,7 @@ fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
     }
 }
 
-private fun DI.Builder.userServicesConfig() {
+fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with singleton {
         UserAuthenticationServiceImpl(
             userRepository = instance(),
@@ -132,7 +129,7 @@ private fun DI.Builder.userServicesConfig() {
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
 
-private fun DI.Builder.userRepositoriesConfig() {
+fun DI.Builder.userRepositoriesConfig() {
     bind<UserRepository>() with singleton {
         val app: Application = instance()
         logger.info { "The user repository type is ${app.userRepoType}" }

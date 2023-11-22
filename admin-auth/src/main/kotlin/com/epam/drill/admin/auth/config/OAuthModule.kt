@@ -38,7 +38,8 @@ const val JWT_COOKIE = "jwt"
 
 
 val oauthDIModule = DI.Module("oauth") {
-    configureSimpleAuthDI()
+    userRepositoriesConfig()
+    userServicesConfig()
     configureJwtDI()
     configureOAuthDI()
 }

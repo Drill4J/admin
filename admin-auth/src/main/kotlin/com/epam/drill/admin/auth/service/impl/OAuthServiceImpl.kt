@@ -60,9 +60,7 @@ class OAuthServiceImpl(
     ): UserEntity = dbUser
         ?.merge(oauthUser)
         ?.apply { userRepository.update(this) }
-        ?: oauthUser
-            .run { userRepository.create(this) }
-            .let { oauthUser.copy(id = it) }
+        ?: userRepository.create(oauthUser)
 
     private suspend fun getUserInfo(
         userInfoUrl: String,
