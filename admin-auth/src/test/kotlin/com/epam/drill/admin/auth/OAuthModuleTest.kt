@@ -153,7 +153,7 @@ class OAuthModuleTest {
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
                 mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" to { request ->
+                    "/accessTokenUrl" shouldRespond { request ->
                         request.formData().apply {
                             assertEquals(testClientId, this["client_id"])
                             assertEquals(testClientSecret, this["client_secret"])
@@ -207,7 +207,7 @@ class OAuthModuleTest {
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
                 mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" to { request ->
+                    "/accessTokenUrl" shouldRespond {
                         respondError(HttpStatusCode.Unauthorized, "Invalid authentication code")
                     }
                 )
@@ -220,7 +220,7 @@ class OAuthModuleTest {
     }
 
     @Test
-    fun `given OAuthUnauthorizedException, oauth callback request must fail with 401 status`() {
+    fun `if signInThroughOAuth throws OAuthUnauthorizedException, oauth callback request must fail with 401 status`() {
         val testAuthenticationCode = "test-code"
         val testState = "test-state"
 
@@ -235,7 +235,7 @@ class OAuthModuleTest {
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
                 mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" to { request ->
+                    "/accessTokenUrl" shouldRespond { request ->
                         respondOk(
                             """
                             {
@@ -261,7 +261,7 @@ class OAuthModuleTest {
         return keyPairGenerator.generateKeyPair()
     }
 
-    private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: RequestHandler) {
+    private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: MockHttpRequest) {
         bind<HttpClient>(tag, overrides = true) with singleton {
             mockHttpClient(*requestHandlers)
         }

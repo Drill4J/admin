@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth.service.impl
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.interfaces.DecodedJWT
+import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.config.RoleMapping
@@ -49,7 +50,7 @@ class OAuthServiceImpl(
                 .toUserEntity(oauthConfig.tokenMapping, oauthConfig.roleMapping)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
-            throw OAuthUnauthorizedException("User is blocked")
+            throw OAuthAccessDeniedException()
         return createOrUpdateUser(oauthUser, dbUser).toView()
     }
 
@@ -82,7 +83,7 @@ class OAuthServiceImpl(
 
 
 private fun UserEntity.merge(other: UserEntity) = copy(
-    role = other.role ?: this.role
+    role = if (Role.UNDEFINED.name != other.role) other.role else this.role
 )
 
 private fun UserEntity.toView() = UserInfoView(

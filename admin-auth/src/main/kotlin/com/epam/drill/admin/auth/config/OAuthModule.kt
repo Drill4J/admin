@@ -109,8 +109,13 @@ fun Routing.configureOAuthRoutes() {
 
 class OAuthUnauthorizedException(message: String? = null, cause: Throwable? = null) : RuntimeException(message, cause)
 
+class OAuthAccessDeniedException(message: String? = null) : RuntimeException(message)
+
 fun StatusPages.Configuration.oauthStatusPages() {
     exception<OAuthUnauthorizedException> { cause ->
-        call.respond(HttpStatusCode.Unauthorized, cause.message ?: "User is not authenticated through OAuth2 provider")
+        call.respond(HttpStatusCode.Unauthorized, cause.message ?: "Failed to verify authentication through OAuth2 provider")
+    }
+    exception<OAuthAccessDeniedException> { cause ->
+        call.respond(HttpStatusCode.Forbidden, cause.message ?: "Access denied")
     }
 }
