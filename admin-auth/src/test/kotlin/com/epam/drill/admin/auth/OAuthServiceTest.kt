@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
@@ -113,7 +114,7 @@ class OAuthServiceTest {
         )
 
         val principal = withPrincipal(testAccessToken)
-        assertThrows<OAuthUnauthorizedException> {
+        assertThrows<OAuthAccessDeniedException> {
             oauthService.signInThroughOAuth(principal)
         }
     }
