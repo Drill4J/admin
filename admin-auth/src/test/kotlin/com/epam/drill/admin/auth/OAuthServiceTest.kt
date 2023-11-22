@@ -18,13 +18,11 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
 import io.ktor.auth.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.request.*
 import io.ktor.config.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
@@ -52,39 +50,42 @@ class OAuthServiceTest {
     }
 
     @Test
-    fun `given new OAuth2 principal, signInThroughOAuth must create new user`() = runBlocking {
-        val testUsername = "some-username"
-        val testRole = "user"
-        val testAccessToken = "test-access-token"
+    fun `given user that is authenticated through the OAuth2 first time, signInThroughOAuth must create new user`() =
+        runBlocking {
+            val testUsername = "some-username"
+            val testRole = "user"
+            val testAccessToken = "test-access-token"
 
-        val httpClient = mockHttpClient(
-            "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
-        )
-        val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
-        whenever(userRepository.create(any())).thenReturn(1)
+            val httpClient = mockHttpClient(
+                "/userInfoUrl" shouldRespond assertTokenAndRespondSuccess(testAccessToken, testUsername, testRole)
+            )
+            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
+            whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
+            whenever(userRepository.create(any())).thenReturn(1)
 
-        val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-        verify(userRepository).create(any())
-        assertEquals(testUsername, userInfo.username)
-        assertTrue(testRole.equals(userInfo.role.name, true))
-    }
+            val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
+            verify(userRepository).create(any())
+            assertEquals(testUsername, userInfo.username)
+            assertTrue(testRole.equals(userInfo.role.name, true))
+        }
 
     @Test
-    fun `given OAuth2 principal that was already logged in, signInThroughOAuth must update user role`() = runBlocking {
+    fun `given user that is authenticated through OAuth2 again, signInThroughOAuth must update user`() = runBlocking {
         val testUsername = "some-username"
         val testRole = "nonexistent-role"
         val testAccessToken = "test-access-token"
 
         val httpClient = mockHttpClient(
-            "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
+            "/userInfoUrl" shouldRespond assertTokenAndRespondSuccess(testAccessToken, testUsername, testRole)
         )
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
-            id = 1,
-            username = testUsername,
-            role = Role.USER.name
-        ))
+        whenever(userRepository.findByUsername(testUsername)).thenReturn(
+            UserEntity(
+                id = 1,
+                username = testUsername,
+                role = Role.USER.name
+            )
+        )
 
         val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
         verify(userRepository).update(any())
@@ -93,21 +94,23 @@ class OAuthServiceTest {
     }
 
     @Test
-    fun `given blocked OAuth2 principal, signInThroughOAuth must failed`(): Unit = runBlocking {
+    fun `given blocked OAuth2 principal, signInThroughOAuth must fail`(): Unit = runBlocking {
         val testUsername = "some-username"
         val testRole = "user"
         val testAccessToken = "test-access-token"
 
         val httpClient = mockHttpClient(
-            "/userInfoUrl" to userInfoResponse(testAccessToken, testUsername, testRole)
+            "/userInfoUrl" shouldRespond assertTokenAndRespondSuccess(testAccessToken, testUsername, testRole)
         )
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
-            id = 1,
-            username = testUsername,
-            role = Role.USER.name,
-            blocked = true
-        ))
+        whenever(userRepository.findByUsername(testUsername)).thenReturn(
+            UserEntity(
+                id = 1,
+                username = testUsername,
+                role = Role.USER.name,
+                blocked = true
+            )
+        )
 
         val principal = withPrincipal(testAccessToken)
         assertThrows<OAuthUnauthorizedException> {
@@ -116,22 +119,24 @@ class OAuthServiceTest {
     }
 
     @Test
-    fun `given invalid accessToken, signInThroughOAuth must failed`(): Unit = runBlocking {
+    fun `given invalid accessToken, signInThroughOAuth must fail`(): Unit = runBlocking {
         val testUsername = "some-username"
         val testAccessToken = "invalid-token"
 
         val httpClient = mockHttpClient(
-            "/userInfoUrl" to { _ ->
+            "/userInfoUrl" shouldRespond { _ ->
                 respondError(HttpStatusCode.Unauthorized, "Invalid token")
             }
         )
         val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(UserEntity(
-            id = 1,
-            username = testUsername,
-            role = Role.USER.name,
-            blocked = true
-        ))
+        whenever(userRepository.findByUsername(testUsername)).thenReturn(
+            UserEntity(
+                id = 1,
+                username = testUsername,
+                role = Role.USER.name,
+                blocked = true
+            )
+        )
 
         val principal = withPrincipal(testAccessToken)
         assertThrows<OAuthUnauthorizedException> {
@@ -146,22 +151,21 @@ class OAuthServiceTest {
         refreshToken = null
     )
 
-    private fun userInfoResponse(
+    private fun assertTokenAndRespondSuccess(
         testAccessToken: String,
         testUsername: String,
         testRole: String
-    ): suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData =
-        { request ->
-            assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
-            respondOk(
-                """
+    ): ResponseHandler = { request ->
+        assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
+        respondOk(
+            """
                     {                              
                       "preferred_username":"$testUsername",
                       "roles":["$testRole"]                             
                     }     
                     """.trimIndent()
-            )
-        }
+        )
+    }
 
 }
 

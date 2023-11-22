@@ -29,8 +29,7 @@ class PasswordServiceImpl(
     }
 
     override fun matchPasswords(candidate: String, hashed: String?): Boolean {
-        if (hashed == null) return false
-        return BCrypt.checkpw(candidate, hashed)
+        return hashed != null && BCrypt.checkpw(candidate, hashed)
     }
 
     override fun generatePassword(): String {

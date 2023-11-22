@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
@@ -40,7 +41,7 @@ class OAuthServiceImpl(
         val oauthUser = getUserInfo(principal.accessToken).toEntity()
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
-            throw OAuthUnauthorizedException("User is blocked")
+            throw OAuthAccessDeniedException()
         return createOrUpdateUser(oauthUser, dbUser).toView()
     }
 

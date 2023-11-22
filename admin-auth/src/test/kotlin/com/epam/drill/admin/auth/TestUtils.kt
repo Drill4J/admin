@@ -40,8 +40,6 @@ import java.util.*
 import kotlin.test.assertNotNull
 
 
-typealias RequestHandler = Pair<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>
-
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
     addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
@@ -98,10 +96,17 @@ fun URL.queryParams() = query?.split("&")?.associate {
     key to value
 } ?: emptyMap()
 
-fun mockHttpClient(vararg requestHandlers: RequestHandler) = HttpClient(MockEngine { request ->
+
+typealias ResponseHandler = suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
+
+data class MockHttpRequest(val path: String, val responseHandler: ResponseHandler)
+
+infix fun String.shouldRespond(that: ResponseHandler): MockHttpRequest = MockHttpRequest(this, that)
+
+fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEngine { request ->
     requestHandlers
-        .find { request.url.encodedPath == it.first }
-        ?.runCatching { this@MockEngine.second(request) }
+        .find { request.url.encodedPath == it.path }
+        ?.runCatching { this@MockEngine.responseHandler(request) }
         ?.getOrElse { exception ->
             respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
         }
