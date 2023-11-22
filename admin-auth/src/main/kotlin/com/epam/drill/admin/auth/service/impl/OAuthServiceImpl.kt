@@ -15,8 +15,12 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.interfaces.DecodedJWT
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
+import com.epam.drill.admin.auth.config.RoleMapping
+import com.epam.drill.admin.auth.config.UserMapping
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
@@ -37,7 +41,12 @@ class OAuthServiceImpl(
 ) : OAuthService {
 
     override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView {
-        val oauthUser = getUserInfo(principal.accessToken).toEntity()
+        val oauthUser = oauthConfig.userInfoUrl
+            ?.let {
+                getUserInfo(it, principal.accessToken)
+            }?.toUserEntity(oauthConfig.userInfoMapping, oauthConfig.roleMapping)
+            ?: JWT.decode(principal.accessToken)
+                .toUserEntity(oauthConfig.tokenMapping, oauthConfig.roleMapping)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthUnauthorizedException("User is blocked")
@@ -55,10 +64,11 @@ class OAuthServiceImpl(
             .let { oauthUser.copy(id = it) }
 
     private suspend fun getUserInfo(
+        userInfoUrl: String,
         accessToken: String
     ): JsonElement = runCatching {
         httpClient
-            .get<HttpResponse>(oauthConfig.userInfoUrl) {
+            .get<HttpResponse>(userInfoUrl) {
                 headers {
                     append(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
@@ -70,31 +80,46 @@ class OAuthServiceImpl(
     }.getOrThrow()
 }
 
-private fun JsonElement.toEntity(): UserEntity = UserEntity(
-    username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
-    role = jsonObject["roles"]
-        ?.jsonArray
-        ?.map { it.jsonPrimitive.content }
-        .let { findRole(it)?.name }
-)
-
-private fun findRole(roleNames: List<String>?): Role? = roleNames
-    ?.takeIf { it.isNotEmpty() }
-    ?.distinct()
-    ?.map { it.lowercase() }
-    ?.let { roleNamesList ->
-        Role.values().find { role ->
-            roleNamesList.contains(role.name.lowercase())
-        }
-    }
 
 private fun UserEntity.merge(other: UserEntity) = copy(
     role = other.role ?: this.role
 )
 
-private fun UserEntity.toView(): UserInfoView {
-    return UserInfoView(
-        username = this.username,
-        role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
-    )
+private fun UserEntity.toView() = UserInfoView(
+    username = this.username,
+    role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
+)
+
+private fun JsonElement.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
+    username = findStringValue(userMapping.username)
+        ?: throw OAuthUnauthorizedException("The key \"${userMapping.username}\" is not found in userinfo response"),
+    role = findRole(
+        findStringArray(userMapping.roles),
+        roleMapping
+    )?.name
+)
+
+private fun DecodedJWT.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
+    username = getClaim(userMapping.username).asString()
+        ?: throw OAuthUnauthorizedException("The claim \"${userMapping.username}\" is not found in access token"),
+    role = findRole(
+        getClaim(userMapping.roles).asList(String::class.java),
+        roleMapping
+    )?.name
+)
+
+private fun findRole(roleNames: List<String>?, roleMapping: RoleMapping): Role? {
+    roleNames?.forEach {
+        when (it.lowercase()) {
+            roleMapping.user.lowercase() -> return Role.USER
+            roleMapping.admin.lowercase() -> return Role.ADMIN
+        }
+    }
+    return null
 }
+
+private fun JsonElement.findStringValue(key: String) =
+    this.jsonObject[key]?.jsonPrimitive?.contentOrNull
+
+private fun JsonElement.findStringArray(key: String) =
+    this.jsonObject[key]?.jsonArray?.map { it.jsonPrimitive.content }

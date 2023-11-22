@@ -36,8 +36,8 @@ class OAuthConfig(private val config: ApplicationConfig) {
     val accessTokenUrl: String
         get() = oauth2.property("accessTokenUrl").getString()
 
-    val userInfoUrl: String
-        get() = oauth2.property("userInfoUrl").getString()
+    val userInfoUrl: String?
+        get() = oauth2.propertyOrNull("userInfoUrl")?.getString()
 
     val clientId: String
         get() = oauth2.property("clientId").getString()
