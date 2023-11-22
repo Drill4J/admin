@@ -51,141 +51,137 @@ class OAuthServiceTest {
     }
 
     @Test
-    fun `given user that is authenticated through the OAuth2 first time, signInThroughOAuth must create new user`() =
+    fun `given user, authenticating with OAuth2 first time, signInThroughOAuth must create user entity with data from OAuth2`(): Unit =
         runBlocking {
             val testUsername = "some-username"
             val testAccessToken = JWT.create()
                 .withSubject(testUsername)
                 .sign(testAlgorithm)
-
             val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
             whenever(userRepository.create(any())).thenReturn(123)
 
-            val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
+            oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             verify(userRepository).create(UserEntity(username = testUsername, role = Role.UNDEFINED.name))
-            assertEquals(testUsername, userInfo.username)
         }
 
     @Test
-    fun `given user that is authenticated through OAuth2 again, signInThroughOAuth must update user`() = runBlocking {
-        val testUsername = "some-username"
-        val testAccessToken = JWT.create()
-            .withSubject(testUsername)
-            .sign(testAlgorithm)
-
-        val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(
-            UserEntity(id = 123, username = testUsername, role = Role.USER.name)
-        )
-
-        val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-        verify(userRepository).update(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
-        assertEquals(testUsername, userInfo.username)
-    }
-
-    @Test
-    fun `given blocked OAuth2 principal, signInThroughOAuth must fail`(): Unit = runBlocking {
-        val testUsername = "some-username"
-        val testAccessToken = JWT.create()
-            .withSubject(testUsername)
-            .sign(testAlgorithm)
-
-        val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
-        whenever(userRepository.findByUsername(testUsername)).thenReturn(
-            UserEntity(
-                id = 123,
-                username = testUsername,
-                role = Role.USER.name,
-                blocked = true
+    fun `given existing user, authenticating with OAuth2, signInThroughOAuth must update user entity with data from OAuth2`() =
+        runBlocking {
+            val testUsername = "some-username"
+            val testAccessToken = JWT.create()
+                .withSubject(testUsername)
+                .sign(testAlgorithm)
+            val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
+            whenever(userRepository.findByUsername(testUsername)).thenReturn(
+                UserEntity(id = 123, username = testUsername, role = Role.USER.name)
             )
-        )
 
-        assertThrows<OAuthAccessDeniedException> {
             oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
+            verify(userRepository).update(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
         }
-    }
 
     @Test
-    fun `if userinfo request fails, signInThroughOAuth must fail`(): Unit = runBlocking {
-        val testAccessToken = "invalid-token"
+    fun `given blocked user, authenticating with OAuth2, signInThroughOAuth must fail`(): Unit =
+        runBlocking {
+            val testUsername = "some-username"
+            val testAccessToken = JWT.create()
+                .withSubject(testUsername)
+                .sign(testAlgorithm)
+            val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(MapApplicationConfig()), userRepository)
+            whenever(userRepository.findByUsername(testUsername)).thenReturn(
+                UserEntity(
+                    id = 123,
+                    username = testUsername,
+                    role = Role.USER.name,
+                    blocked = true
+                )
+            )
 
-        val config = MapApplicationConfig().apply {
-            put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
-        }
-        val httpClient = mockHttpClient(
-            "/userInfoUrl" shouldRespond {
-                respondError(HttpStatusCode.Unauthorized, "Invalid token")
+            assertThrows<OAuthAccessDeniedException> {
+                oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             }
-        )
-        val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-
-        assertThrows<OAuthUnauthorizedException> {
-            oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
         }
-    }
 
     @Test
-    fun `access token username and role mapping`(): Unit = runBlocking {
-        val testUsername = "some-username"
-        val testAccessToken = JWT.create()
-            .withClaim("login", testUsername)
-            .withClaim("authorities", listOf("one-role", "Dev", "another-role"))
-            .sign(testAlgorithm)
+    fun `if user-info request fails, signInThroughOAuth must fail`(): Unit =
+        runBlocking {
+            val config = MapApplicationConfig().apply {
+                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+            }
+            val httpClient = mockHttpClient(
+                "/userInfoUrl" shouldRespond {
+                    respondError(HttpStatusCode.Unauthorized, "Invalid token")
+                }
+            )
+            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
 
-        val config = MapApplicationConfig().apply {
-            put("drill.auth.oauth2.tokenMapping.username", "login")
-            put("drill.auth.oauth2.tokenMapping.roles", "authorities")
-            put("drill.auth.oauth2.roleMapping.user", "DEV")
-            put("drill.auth.oauth2.roleMapping.admin", "OPS")
+            assertThrows<OAuthUnauthorizedException> {
+                oauthService.signInThroughOAuth(withPrincipal("invalid-token"))
+            }
         }
-        val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(config), userRepository)
-        whenever(userRepository.findByUsername(testUsername))
-            .thenReturn(UserEntity(id = 123, username = testUsername, role = Role.UNDEFINED.name))
-        whenever(userRepository.update(any())).thenReturn(Unit)
-
-        val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-        verify(userRepository).update(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
-        assertEquals(testUsername, userInfo.username)
-        assertEquals(Role.USER, userInfo.role)
-    }
 
     @Test
-    fun `user info username and role mapping`(): Unit = runBlocking {
-        val testUsername = "some-username"
+    fun `signInThroughOAuth must extract user data from access token`(): Unit =
+        runBlocking {
+            val testUsername = "some-username"
+            val testAccessToken = JWT.create()
+                .withClaim("login", testUsername)
+                .withClaim("authorities", listOf("one-role", "Dev", "another-role"))
+                .sign(testAlgorithm)
 
-        val config = MapApplicationConfig().apply {
-            put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
-            put("drill.auth.oauth2.userInfoMapping.username", "user_name")
-            put("drill.auth.oauth2.userInfoMapping.roles", "realm_roles")
-            put("drill.auth.oauth2.roleMapping.user", "DEV")
-            put("drill.auth.oauth2.roleMapping.admin", "OPS")
+            val config = MapApplicationConfig().apply {
+                put("drill.auth.oauth2.tokenMapping.username", "login")
+                put("drill.auth.oauth2.tokenMapping.roles", "authorities")
+                put("drill.auth.oauth2.roleMapping.user", "DEV")
+                put("drill.auth.oauth2.roleMapping.admin", "OPS")
+            }
+            val oauthService = OAuthServiceImpl(mockHttpClient(), OAuthConfig(config), userRepository)
+            whenever(userRepository.findByUsername(testUsername))
+                .thenReturn(UserEntity(id = 123, username = testUsername, role = Role.UNDEFINED.name))
+            whenever(userRepository.update(any())).thenReturn(Unit)
+
+            val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
+            assertEquals(testUsername, userInfo.username)
+            assertEquals(Role.USER, userInfo.role)
         }
-        val httpClient = mockHttpClient(
-            "/userInfoUrl" shouldRespond {
-                respondOk(
-                    """
+
+    @Test
+    fun `signInThroughOAuth must extract user data from user-info response`(): Unit =
+        runBlocking {
+            val testUsername = "some-username"
+
+            val config = MapApplicationConfig().apply {
+                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+                put("drill.auth.oauth2.userInfoMapping.username", "user_name")
+                put("drill.auth.oauth2.userInfoMapping.roles", "realm_roles")
+                put("drill.auth.oauth2.roleMapping.user", "DEV")
+                put("drill.auth.oauth2.roleMapping.admin", "OPS")
+            }
+            val httpClient = mockHttpClient(
+                "/userInfoUrl" shouldRespond {
+                    respondOk(
+                        """
                     {                              
                       "user_name":"$testUsername",
                       "realm_roles":["one-role", "Dev", "another-role"]                             
                     }     
                     """.trimIndent()
-                )
-            }
-        )
-        val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
-        whenever(
-            userRepository.findByUsername(testUsername)
-        ).thenReturn(
-            UserEntity(id = 123, username = testUsername, role = Role.UNDEFINED.name)
-        )
-        whenever(userRepository.update(any())).thenReturn(Unit)
+                    )
+                }
+            )
+            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
+            whenever(
+                userRepository.findByUsername(testUsername)
+            ).thenReturn(
+                UserEntity(id = 123, username = testUsername, role = Role.UNDEFINED.name)
+            )
+            whenever(userRepository.update(any())).thenReturn(Unit)
 
-        val userInfo = oauthService.signInThroughOAuth(withPrincipal("test-access-token"))
-        verify(userRepository).update(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
-        assertEquals(testUsername, userInfo.username)
-        assertEquals(Role.USER, userInfo.role)
-    }
+            val userInfo = oauthService.signInThroughOAuth(withPrincipal("test-access-token"))
+            assertEquals(testUsername, userInfo.username)
+            assertEquals(Role.USER, userInfo.role)
+        }
 
     private fun withPrincipal(testAccessToken: String) = OAuthAccessTokenResponse.OAuth2(
         accessToken = testAccessToken,
@@ -193,22 +189,6 @@ class OAuthServiceTest {
         expiresIn = 3600,
         refreshToken = null
     )
-
-    private fun assertTokenAndRespondSuccess(
-        testAccessToken: String,
-        testUsername: String,
-        testRole: String
-    ): ResponseHandler = { request ->
-        assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
-        respondOk(
-            """
-                    {                              
-                      "username":"$testUsername",
-                      "roles":["$testRole"]                             
-                    }     
-                    """.trimIndent()
-        )
-    }
 
 }
 
