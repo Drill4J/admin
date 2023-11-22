@@ -67,14 +67,14 @@ class UserRepositoryImplTest {
     }
 
     @Test
-    fun `given unique username, create must insert user and return id`() = withTransaction {
+    fun `given unique username, create must insert user and return user entity with id`() = withTransaction {
         val userEntity = UserEntity(
             username = "uniquename", passwordHash = "hash", role = "USER"
         )
-        val id = repository.create(userEntity)
+        val createdUserEntity = repository.create(userEntity)
 
-        assertEquals(1, UserTable.select { UserTable.id eq id }.count())
-        UserTable.select { UserTable.id eq id }.first().let {
+        assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
+        UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
             assertEquals(userEntity.username, it[UserTable.username])
             assertEquals(userEntity.passwordHash, it[UserTable.passwordHash])
             assertEquals(userEntity.role, it[UserTable.role])

@@ -34,8 +34,8 @@ class DatabaseUserRepository : UserRepository {
         return UserTable.select { UserTable.username.lowerCase() eq username.lowercase() }.map { it.toEntity() }.firstOrNull()
     }
 
-    override suspend fun create(entity: UserEntity): Int {
-        return UserTable.insertAndGetId { entity.mapTo(it) }.value
+    override suspend fun create(entity: UserEntity): UserEntity {
+        return UserTable.insertAndGetId { entity.mapTo(it) }.value.let { entity.copy(id = it) }
     }
 
     override suspend fun update(entity: UserEntity) {

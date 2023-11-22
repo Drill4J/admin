@@ -62,7 +62,7 @@ class OAuthServiceTest {
             )
             val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
-            whenever(userRepository.create(any())).thenReturn(1)
+            whenever(userRepository.create(any())).thenReturn(UserEntity(id = 123, username = testUsername, role = Role.USER.name))
 
             val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             verify(userRepository).create(any())
