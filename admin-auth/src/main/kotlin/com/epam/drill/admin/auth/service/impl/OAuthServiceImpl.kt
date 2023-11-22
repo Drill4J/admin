@@ -94,29 +94,29 @@ private fun UserEntity.toView() = UserInfoView(
 private fun JsonElement.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
     username = findStringValue(userMapping.username)
         ?: throw OAuthUnauthorizedException("The key \"${userMapping.username}\" is not found in userinfo response"),
-    role = findRole(
+    role = mapRole(
         findStringArray(userMapping.roles),
         roleMapping
-    )?.name
+    ).name
 )
 
 private fun DecodedJWT.toUserEntity(userMapping: UserMapping, roleMapping: RoleMapping) = UserEntity(
     username = getClaim(userMapping.username).asString()
         ?: throw OAuthUnauthorizedException("The claim \"${userMapping.username}\" is not found in access token"),
-    role = findRole(
+    role = mapRole(
         getClaim(userMapping.roles).asList(String::class.java),
         roleMapping
-    )?.name
+    ).name
 )
 
-private fun findRole(roleNames: List<String>?, roleMapping: RoleMapping): Role? {
+private fun mapRole(roleNames: List<String>?, roleMapping: RoleMapping): Role {
     roleNames?.forEach {
         when (it.lowercase()) {
             roleMapping.user.lowercase() -> return Role.USER
             roleMapping.admin.lowercase() -> return Role.ADMIN
         }
     }
-    return null
+    return Role.UNDEFINED
 }
 
 private fun JsonElement.findStringValue(key: String) =
