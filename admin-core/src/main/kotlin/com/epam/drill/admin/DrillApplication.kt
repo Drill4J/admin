@@ -40,6 +40,7 @@ import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -186,7 +187,7 @@ private fun Application.installPlugins() {
 
 private fun StatusPages.Configuration.defaultStatusPages() {
     exception<Throwable> { cause ->
-        logger.error(cause) { "Build application finished with exception" }
+        logger.error(cause) { "Failed to process the request ${this.context.request.path()}" }
         call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
         throw cause
     }
