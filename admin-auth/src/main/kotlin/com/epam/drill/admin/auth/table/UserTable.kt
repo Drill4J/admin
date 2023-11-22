@@ -20,6 +20,6 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 object UserTable: IntIdTable(name = "auth.user") {
     val username = varchar("username", 100)
     val passwordHash = varchar("password_hash", 100).nullable()
-    val role = varchar("role", 20).nullable()
+    val role = varchar("role", 20)
     var blocked = bool("blocked")
 }

@@ -76,6 +76,7 @@ private fun JsonElement.toEntity(): UserEntity = UserEntity(
         ?.jsonArray
         ?.map { it.jsonPrimitive.content }
         .let { findRole(it)?.name }
+        ?: Role.UNDEFINED.name
 )
 
 private fun findRole(roleNames: List<String>?): Role? = roleNames
@@ -89,12 +90,12 @@ private fun findRole(roleNames: List<String>?): Role? = roleNames
     }
 
 private fun UserEntity.merge(other: UserEntity) = copy(
-    role = other.role ?: this.role
+    role = if (Role.UNDEFINED.name != other.role) other.role else this.role
 )
 
 private fun UserEntity.toView(): UserInfoView {
     return UserInfoView(
         username = this.username,
-        role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
+        role = Role.valueOf(this.role)
     )
 }
