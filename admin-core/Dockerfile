@@ -1,5 +1,7 @@
 FROM eclipse-temurin:11.0.21_9-jdk-nanoserver
 
+USER ContainerUser
+
 ARG ADMIN_VERSION
 ARG API_PORT
 ARG DEBUG_PORT
