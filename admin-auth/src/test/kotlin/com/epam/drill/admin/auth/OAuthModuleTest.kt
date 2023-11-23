@@ -165,7 +165,7 @@ class OAuthModuleTest {
                 )
             }
         }) {
-            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(testUsername, Role.USER))
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(id = 123, testUsername, Role.USER))
 
             with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
                 assertEquals(HttpStatusCode.Found, response.status())

@@ -43,6 +43,9 @@ import org.kodein.di.singleton
 
 private val logger = KotlinLogging.logger {}
 
+const val CLAIM_USER_ID = "userId"
+const val CLAIM_ROLE = "role"
+
 enum class UserRepoType {
     DB,
     ENV
@@ -153,13 +156,15 @@ private val Application.userRepoType: UserRepoType
 
 private fun Payload.toPrincipal(): User {
     return User(
+        id = getClaim(CLAIM_USER_ID).asInt(),
         username = subject,
-        role = Role.valueOf(getClaim("role").asString())
+        role = Role.valueOf(getClaim(CLAIM_ROLE).asString())
     )
 }
 
 private fun UserInfoView.toPrincipal(): User {
     return User(
+        id = id,
         username = username,
         role = role
     )

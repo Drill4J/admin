@@ -74,6 +74,7 @@ class OAuthServiceImpl(
 }
 
 private fun UserEntity.toView() = UserInfoView(
+    id = this.id!!, //the user entity must be inserted and have id
     username = this.username,
     role = Role.valueOf(this.role)
 )

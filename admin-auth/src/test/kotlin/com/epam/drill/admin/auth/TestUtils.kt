@@ -18,6 +18,8 @@ package com.epam.drill.admin.auth
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.config.CLAIM_ROLE
+import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
@@ -50,10 +52,14 @@ fun TestApplicationRequest.addJwtToken(
     secret: String = "secret",
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
     role: String = Role.UNDEFINED.name,
+    userId: Int = 123,
     issuer: String? = "issuer",
     audience: String? = null,
     algorithm: Algorithm = Algorithm.HMAC512(secret),
-    configureJwt: JWTCreator.Builder.() -> Unit = { withClaim("role", role) },
+    configureJwt: JWTCreator.Builder.() -> Unit = {
+        withClaim(CLAIM_ROLE, role).
+        withClaim(CLAIM_USER_ID, userId)
+    },
     configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
 ) {
     val token = JWT.create()
