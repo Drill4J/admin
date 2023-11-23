@@ -134,7 +134,7 @@ class UserManagementTest {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { update(USER_ADMIN.copy(deleted = true)) }
+                verifyBlocking(userRepository) { deleteById(1) }
             }
         }
     }

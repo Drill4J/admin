@@ -124,7 +124,7 @@ class UserRepositoryImplTest {
 
         repository.update(
             UserEntity(
-                id = id, username = "bar", passwordHash = "hash2", role = "ADMIN", deleted = true, blocked = true
+                id = id, username = "bar", passwordHash = "hash2", role = "ADMIN", blocked = true
             )
         )
 
