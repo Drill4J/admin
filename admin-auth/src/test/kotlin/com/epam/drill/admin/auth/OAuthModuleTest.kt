@@ -18,12 +18,14 @@ package com.epam.drill.admin.auth
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.service.OAuthService
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.request.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -32,17 +34,21 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
+import org.kodein.di.provider
 import org.kodein.di.singleton
+import org.mockito.Mock
+import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.net.URL
-import java.util.*
 import kotlin.test.*
 
-typealias RequestHandler = Pair<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>
-
+/**
+ * Testing /oauth routes, [configureOAuthAuthentication]
+ */
 class OAuthModuleTest {
 
     private val testOAuthServerHost = "some-oauth-server.com"
@@ -51,6 +57,14 @@ class OAuthModuleTest {
     private val testClientSecret = "test-secret"
     private val keyPair = generateRSAKeyPair()
     private val rsa256 = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
+
+    @Mock
+    lateinit var mockOAuthService: OAuthService
+
+    @BeforeTest
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+    }
 
     @Test
     fun `given valid jwt cookie, jwt protected request must succeed`() {
@@ -76,7 +90,8 @@ class OAuthModuleTest {
                 addJwtToken(
                     username = testUsername,
                     issuer = testIssuer,
-                    secret = testSecret) {
+                    secret = testSecret
+                ) {
                     addHeader("Cookie", "$JWT_COOKIE=$it")
                 }
             }) {
@@ -136,8 +151,9 @@ class OAuthModuleTest {
                 put("drill.ui.rootPath", "/drill")
             }
             withTestOAuthModule {
+                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
                 mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" to { request ->
+                    "/accessTokenUrl" shouldRespond { request ->
                         request.formData().apply {
                             assertEquals(testClientId, this["client_id"])
                             assertEquals(testClientSecret, this["client_secret"])
@@ -152,21 +168,12 @@ class OAuthModuleTest {
                             }
                             """.trimIndent()
                         )
-                    },
-                    "/userInfoUrl" to { request ->
-                        assertEquals("Bearer $testAccessToken", request.headers[HttpHeaders.Authorization])
-                        respondOk(
-                            """
-                            {                              
-                              "preferred_username":"$testUsername",
-                              "roles":["user"]                             
-                            }     
-                            """.trimIndent()
-                        )
                     }
                 )
             }
         }) {
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(testUsername, Role.USER))
+
             with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
                 assertEquals(HttpStatusCode.Found, response.status())
                 assertEquals("http://$testDrillHost/drill", response.headers[HttpHeaders.Location])
@@ -184,27 +191,87 @@ class OAuthModuleTest {
         }
     }
 
+    @Test
+    fun `given invalid authentication code, oauth callback request must fail with 401 status`() {
+        val wrongAuthenticationCode = "invalid-code"
+        val testState = "test-state"
+
+        withTestApplication({
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+            }
+            withTestOAuthModule {
+                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                mockHttpClient("oauthHttpClient",
+                    "/accessTokenUrl" shouldRespond {
+                        respondError(HttpStatusCode.Unauthorized, "Invalid authentication code")
+                    }
+                )
+            }
+        }) {
+            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$wrongAuthenticationCode&state=$testState")) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `if signInThroughOAuth throws OAuthUnauthorizedException, oauth callback request must fail with 401 status`() {
+        val testAuthenticationCode = "test-code"
+        val testState = "test-state"
+
+        withTestApplication({
+            environment {
+                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                put("drill.auth.oauth2.clientId", testClientId)
+                put("drill.auth.oauth2.clientSecret", testClientSecret)
+                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+            }
+            withTestOAuthModule {
+                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                mockHttpClient("oauthHttpClient",
+                    "/accessTokenUrl" shouldRespond { request ->
+                        respondOk(
+                            """
+                            {
+                              "access_token":"test-access-token",                                                            
+                              "refresh_token":"test-refresh-token"                              
+                            }
+                            """.trimIndent()
+                        )
+                    }
+                )
+            }
+        }) {
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenThrow(OAuthUnauthorizedException())
+            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
+                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            }
+        }
+    }
+
     private fun generateRSAKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
         keyPairGenerator.initialize(2048)
         return keyPairGenerator.generateKeyPair()
     }
 
-    private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: RequestHandler) {
+    private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: MockHttpRequest) {
         bind<HttpClient>(tag, overrides = true) with singleton {
-            HttpClient(MockEngine { request ->
-                requestHandlers
-                    .find { request.url.encodedPath == it.first }
-                    ?.runCatching { this@MockEngine.second(request) }
-                    ?.getOrElse { exception ->
-                        respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
-                    }
-                    ?: respondBadRequest()
-            })
+            mockHttpClient(*requestHandlers)
         }
     }
 
     private fun Application.withTestOAuthModule(configureDI: DI.MainBuilder.() -> Unit = {}) {
+        install(StatusPages) {
+            oauthStatusPages()
+        }
+
         di {
             import(oauthDIModule)
             configureDI()

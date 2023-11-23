@@ -21,6 +21,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
+import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.config.*
@@ -94,3 +95,20 @@ fun URL.queryParams() = query?.split("&")?.associate {
     val (key, value) = it.split("=")
     key to value
 } ?: emptyMap()
+
+
+typealias ResponseHandler = suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
+
+data class MockHttpRequest(val path: String, val responseHandler: ResponseHandler)
+
+infix fun String.shouldRespond(that: ResponseHandler): MockHttpRequest = MockHttpRequest(this, that)
+
+fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEngine { request ->
+    requestHandlers
+        .find { request.url.encodedPath == it.path }
+        ?.runCatching { this@MockEngine.responseHandler(request) }
+        ?.getOrElse { exception ->
+            respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
+        }
+        ?: respondBadRequest()
+})

@@ -34,8 +34,8 @@ class DatabaseUserRepository : UserRepository {
         return UserTable.select { UserTable.username.lowerCase() eq username.lowercase() }.map { it.toEntity() }.firstOrNull()
     }
 
-    override suspend fun create(entity: UserEntity): Int {
-        return UserTable.insertAndGetId { entity.mapTo(it) }.value
+    override suspend fun create(entity: UserEntity): UserEntity {
+        return UserTable.insertAndGetId { entity.mapTo(it) }.value.let { entity.copy(id = it) }
     }
 
     override suspend fun update(entity: UserEntity) {
@@ -58,9 +58,9 @@ private fun ResultRow.toEntity() = UserEntity(
     blocked = this[UserTable.blocked]
 )
 
-private fun UserEntity.mapTo(it: UpdateBuilder<Int>) {
-    it[UserTable.username] = username
-    it[UserTable.passwordHash] = passwordHash
-    it[UserTable.role] = role
-    it[UserTable.blocked] = blocked
+private fun UserEntity.mapTo(builder: UpdateBuilder<Int>) {
+    builder[UserTable.username] = username
+    builder[UserTable.passwordHash] = passwordHash
+    builder[UserTable.role] = role
+    builder[UserTable.blocked] = blocked
 }

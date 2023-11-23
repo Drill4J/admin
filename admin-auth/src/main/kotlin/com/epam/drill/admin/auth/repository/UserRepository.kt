@@ -17,7 +17,6 @@ package com.epam.drill.admin.auth.repository
 
 import com.epam.drill.admin.auth.entity.UserEntity
 
-typealias Id = Int
 
 interface UserRepository {
     suspend fun findAll(): List<UserEntity>
@@ -26,7 +25,7 @@ interface UserRepository {
 
     suspend fun findByUsername(username: String): UserEntity?
 
-    suspend fun create(entity: UserEntity): Id
+    suspend fun create(entity: UserEntity): UserEntity
 
     suspend fun update(entity: UserEntity)
 

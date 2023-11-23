@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.authStatusPages
+import com.epam.drill.admin.auth.route.simpleAuthStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -93,24 +93,25 @@ class UserAuthenticationTest {
 
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
-        wheneverBlocking(userRepository) { findByUsername("foobar") }
+        val testUsername = "foobar"
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }
             .thenReturn(null)
         whenever(passwordService.hashPassword("secret"))
             .thenReturn("hash")
         wheneverBlocking(userRepository) { create(any()) }
-            .thenReturn(1)
+            .thenReturn(UserEntity(id = 123, username = testUsername, passwordHash = "hash", role = Role.UNDEFINED.name))
 
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationPayload(username = "foobar", password = "secret")
+                val form = RegistrationPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verifyBlocking(userRepository) {
                     create(
                         UserEntity(
-                            username = "foobar",
+                            username = testUsername,
                             passwordHash = "hash",
                             role = Role.UNDEFINED.name
                         )
@@ -294,7 +295,7 @@ class UserAuthenticationTest {
             json()
         }
         install(StatusPages) {
-            authStatusPages()
+            simpleAuthStatusPages()
         }
         install(Authentication) {
             basic {

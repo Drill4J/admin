@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service
 
 interface PasswordService: PasswordGenerator, PasswordValidator {
     fun hashPassword(password: String): String
-    fun matchPasswords(candidate: String, hashed: String): Boolean
+    fun matchPasswords(candidate: String, hashed: String?): Boolean
 }
 
 interface PasswordGenerator {
