@@ -3,10 +3,12 @@ package com.epam.drill.admin.auth
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.OAuthConfig
+import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.impl.OAuthMapperImpl
 import io.ktor.config.*
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.*
 
 /**
@@ -19,7 +21,7 @@ class OAuthMapperTest {
     private val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig()))
 
     @Test
-    fun `given token mapping config, mapAccessTokenToUserEntity map access token data to user entity`() {
+    fun `given token mapping config, mapAccessTokenToUserEntity must map access token data to user entity`() {
         val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.tokenMapping.username", "user_name")
             put("drill.auth.oauth2.tokenMapping.roles", "realm_roles")
@@ -37,7 +39,7 @@ class OAuthMapperTest {
     }
 
     @Test
-    fun `given userinfo mapping config, mapUserInfoToUserEntity map user-info json response to user entity`() {
+    fun `given userinfo mapping config, mapUserInfoToUserEntity must map user-info json response to user entity`() {
         val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.userInfoMapping.username", "user_name")
         })
@@ -56,7 +58,7 @@ class OAuthMapperTest {
     }
 
     @Test
-    fun `given role mapping config, mapAccessTokenToUserEntity map roles from access token to Drill4J roles`() {
+    fun `given role mapping config, mapAccessTokenToUserEntity must map roles from access token to Drill4J roles`() {
         val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.roleMapping.user", "Dev")
             put("drill.auth.oauth2.roleMapping.admin", "Ops")
@@ -119,5 +121,39 @@ class OAuthMapperTest {
         )
 
         assertEquals(Role.USER.name, mergedUserEntity.role)
+    }
+
+    @Test
+    fun `given not matchable username token mapping config, mapAccessTokenToUserEntity must fail`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            put("drill.auth.oauth2.tokenMapping.username", "username")
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        assertThrows<OAuthUnauthorizedException> {
+            oauthMapper.mapAccessTokenToUserEntity(
+                JWT.create()
+                    .withClaim("login", "some-username")
+                    .sign(testAlgorithm)
+            )
+        }
+    }
+
+    @Test
+    fun `given not matchable username userinfo mapping config, mapUserInfoToUserEntity must fail`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            put("drill.auth.oauth2.userInfoMapping.username", "username")
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        assertThrows<OAuthUnauthorizedException> {
+            oauthMapper.mapUserInfoToUserEntity(
+                """
+                {
+                    "login": "some-username"                                                   
+                }
+            """.trimIndent()
+            )
+        }
     }
 }
