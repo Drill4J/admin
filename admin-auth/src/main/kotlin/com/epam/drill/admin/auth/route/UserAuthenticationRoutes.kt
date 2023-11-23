@@ -66,6 +66,10 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
+    exception<SelfDestructException> { cause ->
+        logger.trace(cause) { "422 Self-destruction cannot be processed" }
+        call.unprocessableEntity(cause)
+    }
 }
 
 fun Route.userAuthenticationRoutes() {

@@ -40,3 +40,7 @@ suspend fun ApplicationCall.unauthorizedError(cause: Exception? = null) {
 suspend fun ApplicationCall.accessDeniedError(cause: Exception? = null) {
     respond(HttpStatusCode.Forbidden, MessageResponse(cause?.message ?: "Access denied"))
 }
+
+suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null) {
+    respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: "Unprocessable entity"))
+}

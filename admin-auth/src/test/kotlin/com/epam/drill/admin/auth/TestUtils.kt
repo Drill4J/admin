@@ -41,6 +41,7 @@ import java.net.URLDecoder
 import java.util.*
 import kotlin.test.assertNotNull
 
+const val TEST_JWT_SECRET = "secret"
 
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
@@ -49,7 +50,7 @@ fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
 
 fun TestApplicationRequest.addJwtToken(
     username: String,
-    secret: String = "secret",
+    secret: String = TEST_JWT_SECRET,
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
     role: String = Role.UNDEFINED.name,
     userId: Int = 123,

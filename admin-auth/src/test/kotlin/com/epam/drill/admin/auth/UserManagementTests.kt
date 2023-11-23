@@ -15,16 +15,24 @@
  */
 package com.epam.drill.admin.auth
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTVerifier
+import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.config.CLAIM_ROLE
+import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.route.*
 import io.ktor.application.*
+import io.ktor.auth.*
+import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -55,6 +63,7 @@ class UserManagementTest {
 
     @Mock
     lateinit var userRepository: UserRepository
+
     @Mock
     lateinit var passwordService: PasswordService
 
@@ -69,7 +78,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findAll() }
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { getUsersRoute() }) {
             with(handleRequest(HttpMethod.Get, "/users") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -85,7 +94,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { getUserRoute() }) {
             with(handleRequest(HttpMethod.Get, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -101,7 +110,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { editUserRoute() }) {
             with(handleRequest(HttpMethod.Put, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
@@ -120,7 +129,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { deleteUserRoute() }) {
             with(handleRequest(HttpMethod.Delete, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -135,7 +144,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { blockUserRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -150,7 +159,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { unblockUserRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -169,7 +178,7 @@ class UserManagementTest {
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { resetPasswordRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/reset-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -179,7 +188,57 @@ class UserManagementTest {
         }
     }
 
-    private val config: Application.() -> Unit = {
+    @Test
+    fun `given user identifier equal to current user, 'DELETE users {id}' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                deleteUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Delete, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given user identifier equal to current user, 'PATCH users {id} block' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                blockUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Patch, "/users/123/block") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given user identifier equal to current user, 'PUT users {id}' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                editUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Put, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = EditUserPayload(role = Role.USER)
+                setBody(Json.encodeToString(EditUserPayload.serializer(), form))
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {
             json()
@@ -194,8 +253,23 @@ class UserManagementTest {
                 )
             }
         }
+        install(StatusPages) {
+            simpleAuthStatusPages()
+        }
+        install(Authentication) {
+            jwt {
+                verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
+                validate {
+                    User(
+                        id = it.payload.getClaim(CLAIM_USER_ID).asInt(),
+                        username = it.payload.subject,
+                        role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
+                    )
+                }
+            }
+        }
         routing {
-            userManagementRoutes()
+            route()
         }
     }
 }
