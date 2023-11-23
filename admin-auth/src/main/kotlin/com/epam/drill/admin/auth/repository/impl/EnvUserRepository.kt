@@ -47,7 +47,7 @@ class EnvUserRepository(
     }
 
     override suspend fun findAll(): List<UserEntity> {
-        return users.values.filter { !it.deleted }
+        return users.values.toList()
     }
 
     override suspend fun findById(id: Int): UserEntity? {
