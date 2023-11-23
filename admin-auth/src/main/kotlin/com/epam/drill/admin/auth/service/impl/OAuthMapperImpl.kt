@@ -4,12 +4,13 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
+import com.epam.drill.admin.auth.config.UserMapping
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.OAuthMapper
 import kotlinx.serialization.json.*
 
-class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
+class OAuthMapperImpl(oauthConfig: OAuthConfig) : OAuthMapper {
     private val tokenMapping = oauthConfig.tokenMapping
     private val userInfoMapping = oauthConfig.userInfoMapping
     private val roleMapping = oauthConfig.roleMapping
@@ -21,21 +22,21 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
     }
 
     override fun mapUserInfoToUserEntity(userInfoResponse: String): UserEntity {
-        return Json.parseToJsonElement(userInfoResponse).run {
-            UserEntity(
-                username = getStringValue(userInfoMapping.username),
-                role = mapRole(getStringArray(userInfoMapping.roles)).name
-            )
-        }
+        return Json.parseToJsonElement(userInfoResponse).toUserEntity(userInfoMapping)
     }
 
     override fun mapAccessTokenToUserEntity(accessToken: String): UserEntity {
-        return JWT.decode(accessToken).run {
-            UserEntity(
-                username = getStringValue(tokenMapping.username),
-                role = mapRole(getStringArray(tokenMapping.roles)).name
-            )
-        }
+        return JWT.decode(accessToken).toUserEntity(tokenMapping)
+    }
+
+    private fun <T> T.toUserEntity(userMapping: UserMapping) = UserEntity(
+        username = getStringValue(userMapping.username),
+        role = getRole(userMapping.roles).name
+    )
+
+    private fun <T> T.getRole(rolesMapping: String?): Role {
+        if (rolesMapping == null) return Role.UNDEFINED
+        return mapRole(getStringArray(rolesMapping))
     }
 
     private fun mapRole(roleNames: List<String>?): Role {
@@ -48,6 +49,19 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
         return Role.UNDEFINED
     }
 }
+
+private fun <T> T.getStringValue(key: String) = when (this) {
+    is JsonElement -> getStringValue(key)
+    is DecodedJWT -> getStringValue(key)
+    else -> throw OAuthUnauthorizedException("Unsupported source type ${this!!::class}")
+}
+
+private fun <T> T.getStringArray(key: String) = when (this) {
+    is JsonElement -> getStringArray(key)
+    is DecodedJWT -> getStringArray(key)
+    else -> throw OAuthUnauthorizedException("Unsupported source type ${this!!::class}")
+}
+
 
 private fun JsonElement.getStringValue(key: String): String =
     this.jsonObject[key]?.jsonPrimitive?.contentOrNull

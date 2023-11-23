@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.config
 
+import com.epam.drill.admin.auth.principal.Role
 import io.ktor.config.*
 
 class OAuthConfig(private val config: ApplicationConfig) {
@@ -60,7 +61,7 @@ class OAuthConfig(private val config: ApplicationConfig) {
         get() = oauth2.config("tokenMapping").run {
             UserMapping(
                 username = propertyOrNull("username")?.getString() ?: "sub",
-                roles = propertyOrNull("roles")?.getString() ?: "roles"
+                roles = propertyOrNull("roles")?.getString()
             )
         }
 
@@ -68,18 +69,18 @@ class OAuthConfig(private val config: ApplicationConfig) {
         get() = oauth2.config("userInfoMapping").run {
             UserMapping(
                 username = propertyOrNull("username")?.getString() ?: "username",
-                roles = propertyOrNull("roles")?.getString() ?: "roles"
+                roles = propertyOrNull("roles")?.getString()
             )
         }
 
     val roleMapping: RoleMapping
         get() = oauth2.config("roleMapping").run {
             RoleMapping(
-                user = propertyOrNull("user")?.getString() ?: "USER",
-                admin = propertyOrNull("admin")?.getString() ?: "ADMIN"
+                user = propertyOrNull("user")?.getString() ?: Role.USER.name,
+                admin = propertyOrNull("admin")?.getString() ?: Role.ADMIN.name
             )
         }
 }
 
-data class UserMapping(val username: String, val roles: String)
+data class UserMapping(val username: String, val roles: String?)
 data class RoleMapping(val user: String, val admin: String)

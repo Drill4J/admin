@@ -42,6 +42,7 @@ class OAuthMapperTest {
     fun `given userinfo mapping config, mapUserInfoToUserEntity must map user-info json response to user entity`() {
         val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.userInfoMapping.username", "user_name")
+            put("drill.auth.oauth2.userInfoMapping.roles", "authorities")
         })
         val oauthMapper = OAuthMapperImpl(oauthConfig)
 
@@ -49,7 +50,7 @@ class OAuthMapperTest {
             """
                 {
                     "user_name": "some-username",
-                    "roles": ["user"]                                                       
+                    "authorities": ["user"]                                                       
                 }
             """.trimIndent()
         )
@@ -99,6 +100,72 @@ class OAuthMapperTest {
                 .sign(testAlgorithm)
         )
 
+        assertEquals(Role.UNDEFINED.name, userEntity.role)
+    }
+
+    @Test
+    fun `if token username mapping is not specified, mapAccessTokenToUserEntity must use default username mapping`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            // no username mapping, default value is "sub"
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        val userEntity = oauthMapper.mapAccessTokenToUserEntity(
+            JWT.create()
+                .withSubject("some-username")  //this is claim "sub"
+                .sign(testAlgorithm)
+        )
+        assertEquals("some-username", userEntity.username)
+    }
+
+    @Test
+    fun `if userinfo username mapping is not specified, mapUserInfoToUserEntity must use default username mapping`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            // no username mapping, default value is "username"
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(
+            """
+                {
+                    "username": "some-username"                                               
+                }
+            """.trimIndent()
+        )
+        assertEquals("some-username", userEntity.username)
+    }
+
+    @Test
+    fun `if token roles mapping is not specified, mapAccessTokenToUserEntity must return undefined role`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            // no roles mapping, no default value
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        val userEntity = oauthMapper.mapAccessTokenToUserEntity(
+            JWT.create()
+                .withSubject("some-username")
+                .withClaim("roles", listOf("user"))
+                .sign(testAlgorithm)
+        )
+        assertEquals(Role.UNDEFINED.name, userEntity.role)
+    }
+
+    @Test
+    fun `if userinfo roles mapping is not specified, mapUserInfoToUserEntity must return undefined role`() {
+        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+            // no roles mapping, no default value
+        })
+        val oauthMapper = OAuthMapperImpl(oauthConfig)
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(
+            """
+                {
+                    "username": "some-username",
+                    "roles": ["user"]                                                       
+                }
+            """.trimIndent()
+        )
         assertEquals(Role.UNDEFINED.name, userEntity.role)
     }
 
