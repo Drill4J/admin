@@ -10,7 +10,8 @@ import com.epam.drill.admin.auth.service.OAuthMapper
 import kotlinx.serialization.json.*
 
 class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
-    private val userMapping = oauthConfig.userInfoMapping
+    private val tokenMapping = oauthConfig.tokenMapping
+    private val userInfoMapping = oauthConfig.userInfoMapping
     private val roleMapping = oauthConfig.roleMapping
 
     override fun mergeUserEntities(userFromDatabase: UserEntity, userFromOAuth: UserEntity): UserEntity {
@@ -22,8 +23,8 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
     override fun mapUserInfoToUserEntity(userInfoResponse: String): UserEntity {
         return Json.parseToJsonElement(userInfoResponse).run {
             UserEntity(
-                username = getStringValue(userMapping.username),
-                role = mapRole(getStringArray(userMapping.roles)).name
+                username = getStringValue(userInfoMapping.username),
+                role = mapRole(getStringArray(userInfoMapping.roles)).name
             )
         }
     }
@@ -31,8 +32,8 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig): OAuthMapper {
     override fun mapAccessTokenToUserEntity(accessToken: String): UserEntity {
         return JWT.decode(accessToken).run {
             UserEntity(
-                username = getStringValue(userMapping.username),
-                role = mapRole(getStringArray(userMapping.roles)).name
+                username = getStringValue(tokenMapping.username),
+                role = mapRole(getStringArray(tokenMapping.roles)).name
             )
         }
     }
@@ -60,5 +61,5 @@ private fun DecodedJWT.getStringValue(key: String): String =
         ?: throw OAuthUnauthorizedException("The claim \"$key\" is not found in access token")
 
 private fun DecodedJWT.getStringArray(key: String): List<String> =
-    getClaim(key).asList(String::class.java)
+    getClaim(key)?.takeIf { !it.isNull }?.asList(String::class.java) ?: emptyList()
 
