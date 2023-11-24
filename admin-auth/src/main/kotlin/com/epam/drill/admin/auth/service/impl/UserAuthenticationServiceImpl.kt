@@ -66,14 +66,14 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
     return UserEntity(
         username = this.username,
         passwordHash = passwordHash,
-        role = Role.UNDEFINED.name,
+        role = Role.UNDEFINED.name
     )
 }
 
 private fun UserEntity.toView(): UserInfoView {
     return UserInfoView(
-        id = this.id!!, //the user entity must be inserted and have id
+        id = this.id ?: throw NullPointerException("User must be inserted and have id"),
         username = this.username,
-        role = Role.valueOf(this.role ?: Role.UNDEFINED.name)
+        role = Role.valueOf(this.role)
     )
 }

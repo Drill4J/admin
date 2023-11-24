@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.table.UserTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
+import java.time.LocalDateTime
 
 class DatabaseUserRepository : UserRepository {
     override suspend fun findAll(): List<UserEntity> {
@@ -55,7 +56,8 @@ private fun ResultRow.toEntity() = UserEntity(
     username = this[UserTable.username],
     passwordHash = this[UserTable.passwordHash],
     role = this[UserTable.role],
-    blocked = this[UserTable.blocked]
+    blocked = this[UserTable.blocked],
+    registrationDate = this[UserTable.registrationDate]
 )
 
 private fun UserEntity.mapTo(builder: UpdateBuilder<Int>) {
@@ -63,4 +65,5 @@ private fun UserEntity.mapTo(builder: UpdateBuilder<Int>) {
     builder[UserTable.passwordHash] = passwordHash
     builder[UserTable.role] = role
     builder[UserTable.blocked] = blocked
+    builder[UserTable.registrationDate] = registrationDate ?: LocalDateTime.now()
 }

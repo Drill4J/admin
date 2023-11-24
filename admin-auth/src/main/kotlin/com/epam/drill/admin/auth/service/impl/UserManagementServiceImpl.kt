@@ -80,7 +80,7 @@ private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
 
 private fun UserEntity.toView(): UserView {
     return UserView(
-        id = this.id,
+        id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
         blocked = this.blocked

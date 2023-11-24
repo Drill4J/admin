@@ -15,10 +15,13 @@
  */
 package com.epam.drill.admin.auth.entity
 
+import java.time.LocalDateTime
+
 data class UserEntity(
     var id: Int? = null,
     var username: String,
     var passwordHash: String? = null,
     var role: String,
-    var blocked: Boolean = false
+    var blocked: Boolean = false,
+    var registrationDate: LocalDateTime? = null
 )
