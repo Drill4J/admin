@@ -10,6 +10,8 @@ ARG MAIN_CLASS_NAME
 ENV JVM_ARGS_ENV=${JVM_ARGS}
 ENV MAIN_CLASS_NAME_ENV=${MAIN_CLASS_NAME}
 
+RUN mkdir config && cd config && mkdir ssl
+COPY build/resources/main/application.conf ./config/application.conf
 COPY build/libs/admin-core-${ADMIN_VERSION}-all.jar ./app/drill-admin.jar
 
 EXPOSE ${API_PORT}
