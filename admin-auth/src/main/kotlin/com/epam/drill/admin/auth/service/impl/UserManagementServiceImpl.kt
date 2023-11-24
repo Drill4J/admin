@@ -24,6 +24,7 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
@@ -83,6 +84,7 @@ private fun UserEntity.toView(): UserView {
         id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
-        blocked = this.blocked
+        blocked = this.blocked,
+        registrationDate = this.registrationDate?.toKotlinLocalDateTime()
     )
 }

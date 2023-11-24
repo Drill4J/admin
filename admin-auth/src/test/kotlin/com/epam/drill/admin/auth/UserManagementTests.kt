@@ -16,7 +16,6 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
-import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
@@ -39,6 +38,7 @@ import io.ktor.locations.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -49,6 +49,7 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
+import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_ADMIN
@@ -91,8 +92,13 @@ class UserManagementTest {
 
     @Test
     fun `given existing user identifier 'GET users {id}' must return the respective user`() {
-        wheneverBlocking(userRepository) { findById(1) }
-            .thenReturn(USER_ADMIN)
+        val testRegistrationDate = LocalDateTime.of(2023, 1, 10, 12, 0, 0)
+        wheneverBlocking(userRepository) { findById(1) }.thenReturn(
+            UserEntity(
+                id = 1, username = "admin", passwordHash = "hash", role = Role.ADMIN.name,
+                registrationDate = testRegistrationDate
+            )
+        )
 
         withTestApplication(withRoute { getUserRoute() }) {
             with(handleRequest(HttpMethod.Get, "/users/1") {
@@ -101,6 +107,8 @@ class UserManagementTest {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: UserView = assertResponseNotNull(UserView.serializer())
                 assertEquals("admin", response.username)
+                assertEquals(Role.ADMIN, response.role)
+                assertEquals(testRegistrationDate.toKotlinLocalDateTime(), response.registrationDate)
             }
         }
     }
