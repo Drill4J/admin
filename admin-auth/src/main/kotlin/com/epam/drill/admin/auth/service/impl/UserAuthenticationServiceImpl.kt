@@ -72,7 +72,7 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
 
 private fun UserEntity.toView(): UserInfoView {
     return UserInfoView(
-        id = this.id ?: throw NullPointerException("User must be inserted and have id"),
+        id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role)
     )
