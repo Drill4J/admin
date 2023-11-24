@@ -56,8 +56,8 @@ class UserAuthenticationServiceImpl(
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
         passwordService.validatePasswordRequirements(payload.newPassword)
-        userEntity.passwordHash = passwordService.hashPassword(payload.newPassword)
-        userRepository.update(userEntity)
+        val newPasswordHash = passwordService.hashPassword(payload.newPassword)
+        userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
     }
 
 }

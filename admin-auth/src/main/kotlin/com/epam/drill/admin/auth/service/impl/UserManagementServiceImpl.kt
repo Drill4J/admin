@@ -39,10 +39,9 @@ class UserManagementServiceImpl(
     }
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
-        val userEntity = findUser(userId)
-        userEntity.role = payload.role.name
-        userRepository.update(userEntity)
-        return userEntity.toView()
+        val oldUserEntity = findUser(userId)
+        val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
+        return updatedUserEntity.toView()
     }
 
     override suspend fun deleteUser(userId: Int) {
@@ -51,21 +50,19 @@ class UserManagementServiceImpl(
 
     override suspend fun blockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = true
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = true))
     }
 
     override suspend fun unblockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = false
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = false))
     }
 
     override suspend fun resetPassword(userId: Int): CredentialsView {
         val userEntity = findUser(userId)
         val newPassword = passwordService.generatePassword()
-        userEntity.passwordHash = passwordService.hashPassword(newPassword)
-        userRepository.update(userEntity)
+        val newPasswordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
         return userEntity.toCredentialsView(newPassword)
     }
 
@@ -88,3 +85,7 @@ private fun UserEntity.toView(): UserView {
         registrationDate = this.registrationDate?.toKotlinLocalDateTime()
     )
 }
+
+private fun EditUserPayload.toEntity(oldUserEntity: UserEntity) = oldUserEntity.copy(
+    role = this.role.name
+)

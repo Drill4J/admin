@@ -126,3 +126,7 @@ fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEng
 object CopyUserWithID: Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
 }
+
+object CopyUser: Answer<UserEntity> {
+    override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
+}

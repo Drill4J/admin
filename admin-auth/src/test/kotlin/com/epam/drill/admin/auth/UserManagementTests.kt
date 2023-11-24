@@ -47,15 +47,16 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
 import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_ADMIN
-    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN").copy()
+    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN")
 val USER_USER
-    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER").copy()
+    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER")
 
 /**
  * Testing /users routers and UserManagementServiceImpl
@@ -116,7 +117,9 @@ class UserManagementTest {
     @Test
     fun `given user identifier and role 'PUT users {id}' must change user role in repository and return changed user`() {
         wheneverBlocking(userRepository) { findById(1) }
-            .thenReturn(USER_ADMIN)
+            .thenReturn(UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = Role.ADMIN.name))
+        wheneverBlocking(userRepository) { update(any()) }
+            .thenAnswer(CopyUser)
 
         withTestApplication(withRoute { editUserRoute() }) {
             with(handleRequest(HttpMethod.Put, "/users/1") {

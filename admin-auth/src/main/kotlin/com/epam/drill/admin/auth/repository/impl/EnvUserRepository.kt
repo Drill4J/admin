@@ -61,7 +61,7 @@ class EnvUserRepository(
         throw UnsupportedOperationException("User creation is not supported")
     }
 
-    override suspend fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity): UserEntity {
         throw UnsupportedOperationException("User update is not supported")
     }
 

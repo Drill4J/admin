@@ -39,11 +39,12 @@ class DatabaseUserRepository : UserRepository {
         return UserTable.insertAndGetId { entity.mapTo(it) }.value.let { entity.copy(id = it) }
     }
 
-    override suspend fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity): UserEntity {
         UserTable.update(
             where = { UserTable.id eq entity.id },
             body = { entity.mapTo(it) }
         )
+        return entity
     }
 
     override suspend fun deleteById(id: Int) {
