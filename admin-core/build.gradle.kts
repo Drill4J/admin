@@ -127,7 +127,6 @@ val fullImageTag = "$registryName/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
-val jibExtraDirs = "$buildDir/jib-extra-dirs"
 val gitUsername = System.getenv("GH_USERNAME") ?: ""
 val gitPassword = System.getenv("GH_TOKEN") ?: ""
 jib {
@@ -144,11 +143,20 @@ jib {
     }
     container {
         ports = listOf(apiPort, debugPort , secureApiPort)
+        volumes = listOf("/config", "/config/ssl")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
     }
     extraDirectories {
-        setPaths(jibExtraDirs)
+        setPaths("/config/ssl")
+        permissions = mapOf("/config" to "775","/config/ssl" to "775")
+        paths {
+            path{
+                setFrom("build/resources/main/")
+                into = "/config"
+                includes.set(listOf("application.conf"))
+            }
+        }
     }
 }
 
@@ -188,18 +196,6 @@ tasks {
     val firstRun by registering {
         group = "application"
         dependsOn(cleanData, run)
-    }
-    val processJibExtraDirs by registering(Copy::class) {
-        group = "jib"
-        from("src/main/jib")
-        into(jibExtraDirs)
-        outputs.upToDateWhen(Specs.satisfyNone())
-        doLast {
-            listOf("distr", "work").map(destinationDir::resolve).forEach { mkdir(it) }
-        }
-    }
-    withType<JibTask> {
-        dependsOn(processJibExtraDirs)
     }
     val loginToDocker by registering(Exec::class) {
         dependsOn(assemble)
