@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -91,6 +92,7 @@ fun Route.signInRoute() {
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
         call.response.header(HttpHeaders.Authorization, token)
+        call.response.cookies.append(Cookie(JWT_COOKIE, token, httpOnly = true, path = "/"))
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }

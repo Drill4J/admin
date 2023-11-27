@@ -43,6 +43,7 @@ import org.kodein.di.singleton
 
 private val logger = KotlinLogging.logger {}
 
+const val JWT_COOKIE = "jwt"
 const val CLAIM_USER_ID = "userId"
 const val CLAIM_ROLE = "role"
 
@@ -86,7 +87,7 @@ fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
         }
         authHeader { call ->
             val headerValue = call.request.headers[HttpHeaders.Authorization]
-                ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
+                ?: "Bearer ${call.request.cookies[JWT_COOKIE] ?: call.parameters["token"]}"
             parseAuthorizationHeader(headerValue)
         }
     }

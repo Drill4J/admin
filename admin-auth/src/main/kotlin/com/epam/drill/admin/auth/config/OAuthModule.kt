@@ -36,8 +36,6 @@ import org.kodein.di.singleton
 import org.kodein.di.ktor.closestDI
 import java.net.URI
 
-const val JWT_COOKIE = "jwt"
-
 
 val oauthDIModule = DI.Module("oauth") {
     userRepositoriesConfig()
