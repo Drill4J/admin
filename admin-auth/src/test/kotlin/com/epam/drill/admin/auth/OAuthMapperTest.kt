@@ -37,11 +37,10 @@ class OAuthMapperTest {
 
     @Test
     fun `given token mapping config, mapAccessTokenPayloadToUserEntity must map access token data to user entity`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.tokenMapping.username", "user_name")
             put("drill.auth.oauth2.tokenMapping.roles", "realm_roles")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
             JWT.create()
@@ -55,11 +54,10 @@ class OAuthMapperTest {
 
     @Test
     fun `given userinfo mapping config, mapUserInfoToUserEntity must map user-info json response to user entity`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.userInfoMapping.username", "user_name")
             put("drill.auth.oauth2.userInfoMapping.roles", "authorities")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapUserInfoToUserEntity(
             """
@@ -75,12 +73,11 @@ class OAuthMapperTest {
 
     @Test
     fun `given role mapping config, mapAccessTokenPayloadToUserEntity must map roles from access token to Drill4J roles`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.roleMapping.user", "Dev")
             put("drill.auth.oauth2.roleMapping.admin", "Ops")
             put("drill.auth.oauth2.tokenMapping.roles", "roles")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userOps = oauthMapper.mapAccessTokenPayloadToUserEntity(
             JWT.create()
@@ -101,12 +98,11 @@ class OAuthMapperTest {
 
     @Test
     fun `if roles cannot be matched, mapAccessTokenPayloadToUserEntity must return undefined role`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.roleMapping.user", "Dev")
             put("drill.auth.oauth2.roleMapping.admin", "Ops")
             put("drill.auth.oauth2.tokenMapping.roles", "roles")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
             JWT.create()
@@ -120,10 +116,9 @@ class OAuthMapperTest {
 
     @Test
     fun `if token username mapping is not specified, mapAccessTokenPayloadToUserEntity must use default username mapping`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no username mapping, default value is "sub"
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
             JWT.create()
@@ -135,10 +130,9 @@ class OAuthMapperTest {
 
     @Test
     fun `if userinfo username mapping is not specified, mapUserInfoToUserEntity must use default username mapping`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no username mapping, default value is "username"
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapUserInfoToUserEntity(
             """
@@ -152,10 +146,9 @@ class OAuthMapperTest {
 
     @Test
     fun `if token roles mapping is not specified, mapAccessTokenPayloadToUserEntity must return undefined role`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no roles mapping, no default value
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
             JWT.create()
@@ -168,10 +161,9 @@ class OAuthMapperTest {
 
     @Test
     fun `if userinfo roles mapping is not specified, mapUserInfoToUserEntity must return undefined role`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no roles mapping, no default value
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         val userEntity = oauthMapper.mapUserInfoToUserEntity(
             """
@@ -207,10 +199,9 @@ class OAuthMapperTest {
 
     @Test
     fun `given not matchable username token mapping config, mapAccessTokenPayloadToUserEntity must fail`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.tokenMapping.username", "username")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         assertThrows<OAuthUnauthorizedException> {
             oauthMapper.mapAccessTokenPayloadToUserEntity(
@@ -223,10 +214,9 @@ class OAuthMapperTest {
 
     @Test
     fun `given not matchable username userinfo mapping config, mapUserInfoToUserEntity must fail`() {
-        val oauthConfig = OAuthConfig(MapApplicationConfig().apply {
+        val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.userInfoMapping.username", "username")
-        })
-        val oauthMapper = OAuthMapperImpl(oauthConfig)
+        }))
 
         assertThrows<OAuthUnauthorizedException> {
             oauthMapper.mapUserInfoToUserEntity(
