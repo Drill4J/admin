@@ -45,9 +45,7 @@ class UserManagementServiceImpl(
     }
 
     override suspend fun deleteUser(userId: Int) {
-        val userEntity = findUser(userId)
-        userEntity.deleted = true
-        userRepository.update(userEntity)
+        userRepository.deleteById(userId)
     }
 
     override suspend fun blockUser(userId: Int) {

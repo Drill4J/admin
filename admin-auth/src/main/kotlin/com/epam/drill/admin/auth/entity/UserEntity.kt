@@ -20,6 +20,5 @@ data class UserEntity(
     var username: String,
     var passwordHash: String,
     var role: String,
-    var blocked: Boolean = false,
-    var deleted: Boolean = false
+    var blocked: Boolean = false
 )
