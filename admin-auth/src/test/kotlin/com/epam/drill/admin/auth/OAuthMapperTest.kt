@@ -41,13 +41,13 @@ class OAuthMapperTest {
             put("drill.auth.oauth2.tokenMapping.username", "user_name")
             put("drill.auth.oauth2.tokenMapping.roles", "realm_roles")
         }))
+        val externalJwt = JWT.create()
+            .withClaim("user_name", "some-username")
+            .withClaim("realm_roles", listOf("user"))
+            .sign(testAlgorithm)
 
-        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withClaim("user_name", "some-username")
-                .withClaim("realm_roles", listOf("user"))
-                .sign(testAlgorithm)
-        )
+        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(externalJwt)
+
         assertEquals("some-username", userEntity.username)
         assertEquals(Role.USER.name, userEntity.role)
     }
@@ -78,19 +78,17 @@ class OAuthMapperTest {
             put("drill.auth.oauth2.roleMapping.admin", "Ops")
             put("drill.auth.oauth2.tokenMapping.roles", "roles")
         }))
+        val externalOpsJwt = JWT.create()
+            .withSubject("user-ops")
+            .withClaim("roles", listOf("Ops", "Manager"))
+            .sign(testAlgorithm)
+        val externalDevJwt = JWT.create()
+            .withSubject("user-dev")
+            .withClaim("roles", listOf("QA", "Dev"))
+            .sign(testAlgorithm)
 
-        val userOps = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withSubject("user-ops")
-                .withClaim("roles", listOf("Ops", "Manager"))
-                .sign(testAlgorithm)
-        )
-        val userDev = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withSubject("user-dev")
-                .withClaim("roles", listOf("QA", "Dev"))
-                .sign(testAlgorithm)
-        )
+        val userOps = oauthMapper.mapAccessTokenPayloadToUserEntity(externalOpsJwt)
+        val userDev = oauthMapper.mapAccessTokenPayloadToUserEntity(externalDevJwt)
 
         assertEquals(Role.ADMIN.name, userOps.role)
         assertEquals(Role.USER.name, userDev.role)
@@ -103,13 +101,12 @@ class OAuthMapperTest {
             put("drill.auth.oauth2.roleMapping.admin", "Ops")
             put("drill.auth.oauth2.tokenMapping.roles", "roles")
         }))
+        val externalJwt = JWT.create()
+            .withSubject("some-username")
+            .withClaim("roles", listOf("QA", "Analyst"))
+            .sign(testAlgorithm)
 
-        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withSubject("some-username")
-                .withClaim("roles", listOf("QA", "Analyst"))
-                .sign(testAlgorithm)
-        )
+        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(externalJwt)
 
         assertEquals(Role.UNDEFINED.name, userEntity.role)
     }
@@ -119,12 +116,12 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no username mapping, default value is "sub"
         }))
+        val externalJwt = JWT.create()
+            .withSubject("some-username")  //this is claim "sub"
+            .sign(testAlgorithm)
 
-        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withSubject("some-username")  //this is claim "sub"
-                .sign(testAlgorithm)
-        )
+        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(externalJwt)
+
         assertEquals("some-username", userEntity.username)
     }
 
@@ -133,14 +130,14 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no username mapping, default value is "username"
         }))
-
-        val userEntity = oauthMapper.mapUserInfoToUserEntity(
-            """
+        val userInfo = """
                 {
                     "username": "some-username"                                               
                 }
             """.trimIndent()
-        )
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(userInfo)
+
         assertEquals("some-username", userEntity.username)
     }
 
@@ -149,13 +146,13 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no roles mapping, no default value
         }))
+        val externalJwt = JWT.create()
+            .withSubject("some-username")
+            .withClaim("roles", listOf("user"))
+            .sign(testAlgorithm)
 
-        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(
-            JWT.create()
-                .withSubject("some-username")
-                .withClaim("roles", listOf("user"))
-                .sign(testAlgorithm)
-        )
+        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(externalJwt)
+
         assertEquals(Role.UNDEFINED.name, userEntity.role)
     }
 
@@ -164,15 +161,15 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             // no roles mapping, no default value
         }))
-
-        val userEntity = oauthMapper.mapUserInfoToUserEntity(
-            """
+        val userInfo = """
                 {
                     "username": "some-username",
                     "roles": ["user"]                                                       
                 }
             """.trimIndent()
-        )
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(userInfo)
+
         assertEquals(Role.UNDEFINED.name, userEntity.role)
     }
 
@@ -202,13 +199,12 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.tokenMapping.username", "username")
         }))
+        val externalJwt = JWT.create()
+            .withClaim("login", "some-username")
+            .sign(testAlgorithm)
 
         assertThrows<OAuthUnauthorizedException> {
-            oauthMapper.mapAccessTokenPayloadToUserEntity(
-                JWT.create()
-                    .withClaim("login", "some-username")
-                    .sign(testAlgorithm)
-            )
+            oauthMapper.mapAccessTokenPayloadToUserEntity(externalJwt)
         }
     }
 
@@ -217,15 +213,14 @@ class OAuthMapperTest {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.userInfoMapping.username", "username")
         }))
-
-        assertThrows<OAuthUnauthorizedException> {
-            oauthMapper.mapUserInfoToUserEntity(
-                """
+        val userInfo = """
                 {
                     "login": "some-username"                                                   
                 }
             """.trimIndent()
-            )
+
+        assertThrows<OAuthUnauthorizedException> {
+            oauthMapper.mapUserInfoToUserEntity(userInfo)
         }
     }
 }
