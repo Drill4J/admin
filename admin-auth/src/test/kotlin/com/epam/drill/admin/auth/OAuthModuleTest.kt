@@ -55,8 +55,6 @@ class OAuthModuleTest {
     private val testDrillHost = "example.com"
     private val testClientId = "test-client"
     private val testClientSecret = "test-secret"
-    private val keyPair = generateRSAKeyPair()
-    private val rsa256 = Algorithm.RSA256(keyPair.public as RSAPublicKey, keyPair.private as RSAPrivateKey)
 
     @Mock
     lateinit var mockOAuthService: OAuthService
@@ -134,16 +132,11 @@ class OAuthModuleTest {
         val testIssuer = "test-issuer"
         val testAuthenticationCode = "test-code"
         val testState = "test-state"
-        val testAccessToken = JWT.create()
-            .withClaim("preferred_username", testUsername)
-            .withClaim("realm_access", mapOf("roles" to listOf("user")))  //TODO remove after adding claim mapping tests
-            .sign(rsa256)
 
         withTestApplication({
             environment {
                 put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
                 put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-                put("drill.auth.oauth2.userInfoUrl", "http://$testOAuthServerHost/userInfoUrl")
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
                 put("drill.auth.jwt.issuer", testIssuer)
@@ -163,7 +156,7 @@ class OAuthModuleTest {
                         respondOk(
                             """
                             {
-                              "access_token":"$testAccessToken",                                                            
+                              "access_token":"test-access-token",                                                            
                               "refresh_token":"test-refresh-token"                              
                             }
                             """.trimIndent()
@@ -253,12 +246,6 @@ class OAuthModuleTest {
                 assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
         }
-    }
-
-    private fun generateRSAKeyPair(): KeyPair {
-        val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-        keyPairGenerator.initialize(2048)
-        return keyPairGenerator.generateKeyPair()
     }
 
     private fun DI.MainBuilder.mockHttpClient(tag: String, vararg requestHandlers: MockHttpRequest) {

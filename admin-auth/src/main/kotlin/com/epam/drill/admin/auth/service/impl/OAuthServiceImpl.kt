@@ -22,6 +22,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
+import com.epam.drill.admin.auth.service.OAuthMapper
 import com.epam.drill.admin.auth.service.OAuthService
 import io.ktor.auth.*
 import io.ktor.client.*
@@ -29,72 +30,50 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.*
 
 class OAuthServiceImpl(
     private val httpClient: HttpClient,
     private val oauthConfig: OAuthConfig,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val oauthMapper: OAuthMapper
 ) : OAuthService {
 
     override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView {
-        val oauthUser = getUserInfo(principal.accessToken).toEntity()
+        val oauthUser = oauthConfig.userInfoUrl
+            ?.let { getUserInfo(it, principal.accessToken) }
+            ?.let { oauthMapper.mapUserInfoToUserEntity(it) }
+            ?: oauthMapper.mapAccessTokenPayloadToUserEntity(principal.accessToken)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthAccessDeniedException()
-        return createOrUpdateUser(oauthUser, dbUser).toView()
+        return createOrUpdateUser(dbUser, oauthUser).toView()
     }
 
     private suspend fun createOrUpdateUser(
-        oauthUser: UserEntity,
-        dbUser: UserEntity?
+        dbUser: UserEntity?,
+        oauthUser: UserEntity
     ): UserEntity = dbUser
-        ?.merge(oauthUser)
+        ?.let { oauthMapper.updateDatabaseUserEntity(dbUser, oauthUser) }
         ?.apply { userRepository.update(this) }
         ?: userRepository.create(oauthUser)
 
     private suspend fun getUserInfo(
+        userInfoUrl: String,
         accessToken: String
-    ): JsonElement = runCatching {
+    ): String = runCatching {
         httpClient
-            .get<HttpResponse>(oauthConfig.userInfoUrl) {
+            .get<HttpResponse>(userInfoUrl) {
                 headers {
                     append(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
             }
             .receive<String>()
-            .let { Json.parseToJsonElement(it) }
     }.onFailure { cause ->
         throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
     }.getOrThrow()
 }
 
-private fun JsonElement.toEntity(): UserEntity = UserEntity(
-    username = jsonObject.getValue("preferred_username").jsonPrimitive.content,
-    role = jsonObject["roles"]
-        ?.jsonArray
-        ?.map { it.jsonPrimitive.content }
-        .let { findRole(it)?.name }
-        ?: Role.UNDEFINED.name
+private fun UserEntity.toView() = UserInfoView(
+    username = this.username,
+    role = Role.valueOf(this.role)
 )
-
-private fun findRole(roleNames: List<String>?): Role? = roleNames
-    ?.takeIf { it.isNotEmpty() }
-    ?.distinct()
-    ?.map { it.lowercase() }
-    ?.let { roleNamesList ->
-        Role.values().find { role ->
-            roleNamesList.contains(role.name.lowercase())
-        }
-    }
-
-private fun UserEntity.merge(other: UserEntity) = copy(
-    role = if (Role.UNDEFINED.name != other.role) other.role else this.role
-)
-
-private fun UserEntity.toView(): UserInfoView {
-    return UserInfoView(
-        username = this.username,
-        role = Role.valueOf(this.role)
-    )
-}
