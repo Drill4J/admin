@@ -15,16 +15,16 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.model.EditUserPayload
+import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
-import io.ktor.response.*
 import io.ktor.routing.Route
-import io.ktor.routing.route
+import io.ktor.util.pipeline.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
@@ -75,6 +75,7 @@ fun Route.editUserRoute() {
     val service by di().instance<UserManagementService>()
 
     put<Users.Id> { (userId) ->
+        throwExceptionIfCurrentUserIs(userId, "You cannot change your own role")
         val editUserPayload = call.receive<EditUserPayload>()
         val userView = service.updateUser(userId, editUserPayload)
         call.ok(userView, "User successfully edited.")
@@ -85,6 +86,7 @@ fun Route.deleteUserRoute() {
     val service by di().instance<UserManagementService>()
 
     delete<Users.Id> { (userId) ->
+        throwExceptionIfCurrentUserIs(userId, "You cannot delete your own user")
         service.deleteUser(userId)
         call.ok("User successfully deleted.")
     }
@@ -94,6 +96,7 @@ fun Route.blockUserRoute() {
     val service by di().instance<UserManagementService>()
 
     patch<Users.Block> { (userId) ->
+        throwExceptionIfCurrentUserIs(userId, "You cannot block your own user")
         service.blockUser(userId)
         call.ok("User successfully blocked.")
     }
@@ -117,3 +120,7 @@ fun Route.resetPasswordRoute() {
     }
 }
 
+private fun PipelineContext<Unit, ApplicationCall>.throwExceptionIfCurrentUserIs(userId: Int, message: String) {
+    if (call.principal<User>()?.id == userId)
+        throw ForbiddenOperationException(message)
+}

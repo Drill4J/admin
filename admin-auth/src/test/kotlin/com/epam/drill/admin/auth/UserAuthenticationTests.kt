@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.authStatusPages
+import com.epam.drill.admin.auth.route.simpleAuthStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -45,6 +45,7 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
+import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_GUEST
@@ -93,24 +94,22 @@ class UserAuthenticationTest {
 
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
-        wheneverBlocking(userRepository) { findByUsername("foobar") }
-            .thenReturn(null)
-        whenever(passwordService.hashPassword("secret"))
-            .thenReturn("hash")
-        wheneverBlocking(userRepository) { create(any()) }
-            .thenReturn(1)
+        val testUsername = "foobar"
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }.thenReturn(null)
+        whenever(passwordService.hashPassword("secret")).thenReturn("hash")
+        wheneverBlocking(userRepository) { create(any()) }.thenAnswer(CopyUserWithID)
 
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationPayload(username = "foobar", password = "secret")
+                val form = RegistrationPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verifyBlocking(userRepository) {
                     create(
                         UserEntity(
-                            username = "foobar",
+                            username = testUsername,
                             passwordHash = "hash",
                             role = Role.UNDEFINED.name
                         )
@@ -294,12 +293,12 @@ class UserAuthenticationTest {
             json()
         }
         install(StatusPages) {
-            authStatusPages()
+            simpleAuthStatusPages()
         }
         install(Authentication) {
             basic {
                 validate {
-                    User(it.name, Role.UNDEFINED)
+                    User(123, it.name, Role.UNDEFINED)
                 }
             }
         }

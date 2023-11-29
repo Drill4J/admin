@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.auth.service
 
+import com.epam.drill.admin.auth.model.UserInfoView
 import io.ktor.auth.*
 
-data class User(
-    val id: Int,
-    val username: String,
-    val role: Role
-) : Principal
+interface OAuthService {
+    suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView
+}

@@ -53,7 +53,7 @@ object UpdatePassword
 @Location("/api/login")
 object Login
 
-fun StatusPages.Configuration.authStatusPages() {
+fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
@@ -65,6 +65,10 @@ fun StatusPages.Configuration.authStatusPages() {
     exception<NotAuthorizedException> { cause ->
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
+    }
+    exception<ForbiddenOperationException> { cause ->
+        logger.trace(cause) { "422 Cannot modify own profile" }
+        call.unprocessableEntity(cause)
     }
 }
 

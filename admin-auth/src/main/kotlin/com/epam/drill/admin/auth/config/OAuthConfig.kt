@@ -15,18 +15,13 @@
  */
 package com.epam.drill.admin.auth.config
 
-import io.ktor.application.*
+import com.epam.drill.admin.auth.principal.Role
 import io.ktor.config.*
-import org.kodein.di.DI
-import org.kodein.di.DIAware
-import org.kodein.di.instance
 
-class OAuthConfig(override val di: DI) : DIAware {
-    private val app by instance<Application>()
+class OAuthConfig(private val config: ApplicationConfig) {
 
     private val drill: ApplicationConfig
-        get() = app.environment.config
-            .config("drill")
+        get() = config.config("drill")
 
     private val ui: ApplicationConfig
         get() = drill.config("ui")
@@ -42,8 +37,8 @@ class OAuthConfig(override val di: DI) : DIAware {
     val accessTokenUrl: String
         get() = oauth2.property("accessTokenUrl").getString()
 
-    val userInfoUrl: String
-        get() = oauth2.property("userInfoUrl").getString()
+    val userInfoUrl: String?
+        get() = oauth2.propertyOrNull("userInfoUrl")?.getString()
 
     val clientId: String
         get() = oauth2.property("clientId").getString()
@@ -61,4 +56,31 @@ class OAuthConfig(override val di: DI) : DIAware {
 
     val uiRootPath: String
         get() = ui.propertyOrNull("rootPath")?.getString() ?: "/"
+
+    val tokenMapping: UserMapping
+        get() = oauth2.config("tokenMapping").run {
+            UserMapping(
+                username = propertyOrNull("username")?.getString() ?: "sub", //see https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
+                roles = propertyOrNull("roles")?.getString()
+            )
+        }
+
+    val userInfoMapping: UserMapping
+        get() = oauth2.config("userInfoMapping").run {
+            UserMapping(
+                username = propertyOrNull("username")?.getString() ?: "username",
+                roles = propertyOrNull("roles")?.getString()
+            )
+        }
+
+    val roleMapping: RoleMapping
+        get() = oauth2.config("roleMapping").run {
+            RoleMapping(
+                user = propertyOrNull("user")?.getString() ?: Role.USER.name,
+                admin = propertyOrNull("admin")?.getString() ?: Role.ADMIN.name
+            )
+        }
 }
+
+data class UserMapping(val username: String, val roles: String?)
+data class RoleMapping(val user: String, val admin: String)

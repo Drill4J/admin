@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.auth.service
 
-import io.ktor.auth.*
+import com.epam.drill.admin.auth.entity.UserEntity
 
-data class User(
-    val id: Int,
-    val username: String,
-    val role: Role
-) : Principal
+interface OAuthMapper {
+    fun updateDatabaseUserEntity(userFromDatabase: UserEntity, userFromOAuth: UserEntity): UserEntity
+
+    fun mapUserInfoToUserEntity(userInfoResponse: String): UserEntity
+
+    fun mapAccessTokenPayloadToUserEntity(accessToken: String): UserEntity
+}

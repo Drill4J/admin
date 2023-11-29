@@ -18,9 +18,13 @@ package com.epam.drill.admin.auth
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.config.CLAIM_ROLE
+import com.epam.drill.admin.auth.config.CLAIM_USER_ID
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
+import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.config.*
@@ -31,13 +35,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.whenever
+import org.mockito.stubbing.Answer
 import org.mockito.stubbing.OngoingStubbing
 import java.net.URL
 import java.net.URLDecoder
 import java.util.*
 import kotlin.test.assertNotNull
 
+const val TEST_JWT_SECRET = "secret"
 
 fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
@@ -46,13 +53,17 @@ fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
 
 fun TestApplicationRequest.addJwtToken(
     username: String,
-    secret: String = "secret",
+    secret: String = TEST_JWT_SECRET,
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
     role: String = Role.UNDEFINED.name,
+    userId: Int = 123,
     issuer: String? = "issuer",
     audience: String? = null,
     algorithm: Algorithm = Algorithm.HMAC512(secret),
-    configureJwt: JWTCreator.Builder.() -> Unit = { withClaim("role", role) },
+    configureJwt: JWTCreator.Builder.() -> Unit = {
+        withClaim(CLAIM_ROLE, role).
+        withClaim(CLAIM_USER_ID, userId)
+    },
     configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
 ) {
     val token = JWT.create()
@@ -94,3 +105,28 @@ fun URL.queryParams() = query?.split("&")?.associate {
     val (key, value) = it.split("=")
     key to value
 } ?: emptyMap()
+
+
+typealias ResponseHandler = suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
+
+data class MockHttpRequest(val path: String, val responseHandler: ResponseHandler)
+
+infix fun String.shouldRespond(that: ResponseHandler): MockHttpRequest = MockHttpRequest(this, that)
+
+fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEngine { request ->
+    requestHandlers
+        .find { request.url.encodedPath == it.path }
+        ?.runCatching { this@MockEngine.responseHandler(request) }
+        ?.getOrElse { exception ->
+            respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
+        }
+        ?: respondBadRequest()
+})
+
+object CopyUserWithID: Answer<UserEntity> {
+    override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
+}
+
+object CopyUser: Answer<UserEntity> {
+    override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
+}

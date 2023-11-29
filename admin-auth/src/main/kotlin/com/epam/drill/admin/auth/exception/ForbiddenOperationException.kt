@@ -13,10 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.auth.exception
 
-data class UserSession(
-    val principal: User,
-    val accessToken: String,
-    val refreshToken: String? = null
-)
+class ForbiddenOperationException(message: String): RuntimeException(message)

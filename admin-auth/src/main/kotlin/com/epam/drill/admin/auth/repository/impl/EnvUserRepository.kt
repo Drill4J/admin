@@ -17,7 +17,6 @@ package com.epam.drill.admin.auth.repository.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.repository.Id
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.PasswordService
 import io.ktor.config.*
@@ -58,11 +57,11 @@ class EnvUserRepository(
         return users[genId(username.lowercase())]
     }
 
-    override suspend fun create(entity: UserEntity): Id {
+    override suspend fun create(entity: UserEntity): UserEntity {
         throw UnsupportedOperationException("User creation is not supported")
     }
 
-    override suspend fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity): UserEntity {
         throw UnsupportedOperationException("User update is not supported")
     }
 

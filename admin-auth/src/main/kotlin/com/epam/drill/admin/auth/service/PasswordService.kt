@@ -34,7 +34,7 @@ interface PasswordService: PasswordGenerator, PasswordValidator {
      * @param hashed the hashed password to compare
      * @return true if the passwords match
      */
-    fun matchPasswords(candidate: String, hashed: String): Boolean
+    fun matchPasswords(candidate: String, hashed: String?): Boolean
 }
 
 /**
