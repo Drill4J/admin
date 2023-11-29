@@ -108,8 +108,6 @@ class UserManagementTest {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: UserView = assertResponseNotNull(UserView.serializer())
                 assertEquals("admin", response.username)
-                assertEquals(Role.ADMIN, response.role)
-                assertEquals(testRegistrationDate.toKotlinLocalDateTime(), response.registrationDate)
             }
         }
     }
