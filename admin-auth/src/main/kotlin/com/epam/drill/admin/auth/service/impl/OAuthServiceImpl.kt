@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.config.OAuthConfig
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.UserInfoView
+import com.epam.drill.admin.auth.model.toUserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.OAuthMapper
@@ -46,7 +47,7 @@ class OAuthServiceImpl(
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthAccessDeniedException()
-        return createOrUpdateUser(dbUser, oauthUser).toView()
+        return createOrUpdateUser(dbUser, oauthUser).toUserInfoView()
     }
 
     private suspend fun createOrUpdateUser(
@@ -72,9 +73,3 @@ class OAuthServiceImpl(
         throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
     }.getOrThrow()
 }
-
-private fun UserEntity.toView() = UserInfoView(
-    id = this.id!!, //the user entity must be inserted and have id
-    username = this.username,
-    role = Role.valueOf(this.role)
-)

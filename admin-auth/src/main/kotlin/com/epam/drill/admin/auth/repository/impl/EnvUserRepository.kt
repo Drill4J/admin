@@ -46,7 +46,7 @@ class EnvUserRepository(
     }
 
     override suspend fun findAll(): List<UserEntity> {
-        return users.values.filter { !it.deleted }
+        return users.values.toList()
     }
 
     override suspend fun findById(id: Int): UserEntity? {
@@ -61,7 +61,7 @@ class EnvUserRepository(
         throw UnsupportedOperationException("User creation is not supported")
     }
 
-    override suspend fun update(entity: UserEntity) {
+    override suspend fun update(entity: UserEntity): UserEntity {
         throw UnsupportedOperationException("User update is not supported")
     }
 

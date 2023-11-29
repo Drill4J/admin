@@ -45,6 +45,7 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
+import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_GUEST
@@ -94,12 +95,9 @@ class UserAuthenticationTest {
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
         val testUsername = "foobar"
-        wheneverBlocking(userRepository) { findByUsername(testUsername) }
-            .thenReturn(null)
-        whenever(passwordService.hashPassword("secret"))
-            .thenReturn("hash")
-        wheneverBlocking(userRepository) { create(any()) }
-            .thenReturn(UserEntity(id = 123, username = testUsername, passwordHash = "hash", role = Role.UNDEFINED.name))
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }.thenReturn(null)
+        whenever(passwordService.hashPassword("secret")).thenReturn("hash")
+        wheneverBlocking(userRepository) { create(any()) }.thenAnswer(CopyUserWithID)
 
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {

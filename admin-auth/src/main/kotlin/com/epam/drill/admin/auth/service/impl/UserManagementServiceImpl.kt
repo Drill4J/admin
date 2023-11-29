@@ -24,6 +24,7 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
@@ -38,35 +39,30 @@ class UserManagementServiceImpl(
     }
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
-        val userEntity = findUser(userId)
-        userEntity.role = payload.role.name
-        userRepository.update(userEntity)
-        return userEntity.toView()
+        val oldUserEntity = findUser(userId)
+        val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
+        return updatedUserEntity.toView()
     }
 
     override suspend fun deleteUser(userId: Int) {
-        val userEntity = findUser(userId)
-        userEntity.deleted = true
-        userRepository.update(userEntity)
+        userRepository.deleteById(userId)
     }
 
     override suspend fun blockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = true
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = true))
     }
 
     override suspend fun unblockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = false
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = false))
     }
 
     override suspend fun resetPassword(userId: Int): CredentialsView {
         val userEntity = findUser(userId)
         val newPassword = passwordService.generatePassword()
-        userEntity.passwordHash = passwordService.hashPassword(newPassword)
-        userRepository.update(userEntity)
+        val newPasswordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
         return userEntity.toCredentialsView(newPassword)
     }
 
@@ -82,9 +78,14 @@ private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
 
 private fun UserEntity.toView(): UserView {
     return UserView(
-        id = this.id,
+        id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
-        blocked = this.blocked
+        blocked = this.blocked,
+        registrationDate = this.registrationDate?.toKotlinLocalDateTime()
     )
 }
+
+private fun EditUserPayload.toEntity(oldUserEntity: UserEntity) = oldUserEntity.copy(
+    role = this.role.name
+)

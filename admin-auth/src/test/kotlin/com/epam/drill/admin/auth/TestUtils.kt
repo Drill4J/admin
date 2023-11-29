@@ -20,6 +20,7 @@ import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.application.*
@@ -34,7 +35,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.whenever
+import org.mockito.stubbing.Answer
 import org.mockito.stubbing.OngoingStubbing
 import java.net.URL
 import java.net.URLDecoder
@@ -119,3 +122,11 @@ fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEng
         }
         ?: respondBadRequest()
 })
+
+object CopyUserWithID: Answer<UserEntity> {
+    override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
+}
+
+object CopyUser: Answer<UserEntity> {
+    override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
+}

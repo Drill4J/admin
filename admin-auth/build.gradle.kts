@@ -17,6 +17,7 @@ val microutilsLoggingVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
+val kotlinxDatetimeVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val jbcryptVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
@@ -43,6 +44,7 @@ kotlin.sourceSets {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -56,6 +58,7 @@ dependencies {
     implementation("org.mindrot:jbcrypt:$jbcryptVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

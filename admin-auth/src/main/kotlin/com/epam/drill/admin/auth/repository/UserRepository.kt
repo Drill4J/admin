@@ -27,7 +27,7 @@ interface UserRepository {
 
     suspend fun create(entity: UserEntity): UserEntity
 
-    suspend fun update(entity: UserEntity)
+    suspend fun update(entity: UserEntity): UserEntity
 
     suspend fun deleteById(id: Int)
 }
