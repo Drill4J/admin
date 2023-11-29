@@ -42,7 +42,7 @@ class OAuthServiceImpl(
         val oauthUser = oauthConfig.userInfoUrl
             ?.let { getUserInfo(it, principal.accessToken) }
             ?.let { oauthMapper.mapUserInfoToUserEntity(it) }
-            ?: oauthMapper.mapAccessTokenToUserEntity(principal.accessToken)
+            ?: oauthMapper.mapAccessTokenPayloadToUserEntity(principal.accessToken)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthAccessDeniedException()

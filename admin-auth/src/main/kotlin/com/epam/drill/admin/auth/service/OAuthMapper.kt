@@ -22,5 +22,5 @@ interface OAuthMapper {
 
     fun mapUserInfoToUserEntity(userInfoResponse: String): UserEntity
 
-    fun mapAccessTokenToUserEntity(accessToken: String): UserEntity
+    fun mapAccessTokenPayloadToUserEntity(accessToken: String): UserEntity
 }

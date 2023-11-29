@@ -40,7 +40,7 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig) : OAuthMapper {
         return Json.parseToJsonElement(userInfoResponse).toUserEntity(userInfoMapping)
     }
 
-    override fun mapAccessTokenToUserEntity(accessToken: String): UserEntity {
+    override fun mapAccessTokenPayloadToUserEntity(accessToken: String): UserEntity {
         return JWT.decode(accessToken).toUserEntity(tokenMapping)
     }
 
