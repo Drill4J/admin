@@ -195,7 +195,7 @@ class OAuthMapperTest {
     }
 
     @Test
-    fun `given not matchable username token mapping config, mapAccessTokenPayloadToUserEntity must fail`() {
+    fun `if token mapping username value is not present in token content, mapAccessTokenPayloadToUserEntity must fail`() {
         val oauthMapper = OAuthMapperImpl(OAuthConfig(MapApplicationConfig().apply {
             put("drill.auth.oauth2.tokenMapping.username", "username")
         }))
