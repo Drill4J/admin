@@ -43,18 +43,18 @@ class OAuthServiceImpl(
         val oauthUser = oauthConfig.userInfoUrl
             ?.let { getUserInfo(it, principal.accessToken) }
             ?.let { oauthMapper.mapUserInfoToUserEntity(it) }
-            ?: oauthMapper.mapAccessTokenToUserEntity(principal.accessToken)
+            ?: oauthMapper.mapAccessTokenPayloadToUserEntity(principal.accessToken)
         val dbUser = userRepository.findByUsername(oauthUser.username)
         if (dbUser?.blocked == true)
             throw OAuthAccessDeniedException()
-        return createOrUpdateUser(oauthUser, dbUser).toUserInfoView()
+        return createOrUpdateUser(dbUser, oauthUser).toUserInfoView()
     }
 
     private suspend fun createOrUpdateUser(
-        oauthUser: UserEntity,
-        dbUser: UserEntity?
+        dbUser: UserEntity?,
+        oauthUser: UserEntity
     ): UserEntity = dbUser
-        ?.let { oauthMapper.mergeUserEntities(dbUser, oauthUser) }
+        ?.let { oauthMapper.updateDatabaseUserEntity(dbUser, oauthUser) }
         ?.apply { userRepository.update(this) }
         ?: userRepository.create(oauthUser)
 

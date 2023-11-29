@@ -60,7 +60,7 @@ class OAuthConfig(private val config: ApplicationConfig) {
     val tokenMapping: UserMapping
         get() = oauth2.config("tokenMapping").run {
             UserMapping(
-                username = propertyOrNull("username")?.getString() ?: "sub",
+                username = propertyOrNull("username")?.getString() ?: "sub", //see https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
                 roles = propertyOrNull("roles")?.getString()
             )
         }

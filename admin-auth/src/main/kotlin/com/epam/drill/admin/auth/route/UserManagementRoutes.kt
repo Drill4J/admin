@@ -15,19 +15,15 @@
  */
 package com.epam.drill.admin.auth.route
 
-import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.exception.SelfDestructException
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.request.*
-import io.ktor.response.*
 import io.ktor.routing.Route
-import io.ktor.routing.route
 import io.ktor.util.pipeline.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
@@ -126,5 +122,5 @@ fun Route.resetPasswordRoute() {
 
 private fun PipelineContext<Unit, ApplicationCall>.throwExceptionIfCurrentUserIs(userId: Int, message: String) {
     if (call.principal<User>()?.id == userId)
-        throw SelfDestructException(message)
+        throw ForbiddenOperationException(message)
 }
