@@ -13,12 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.auth.exception
 
-import io.ktor.auth.*
-
-data class User(
-    val id: Int,
-    val username: String,
-    val role: Role
-) : Principal
+class ForbiddenOperationException(message: String): RuntimeException(message)

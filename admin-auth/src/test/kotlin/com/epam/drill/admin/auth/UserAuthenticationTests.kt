@@ -300,7 +300,7 @@ class UserAuthenticationTest {
         install(Authentication) {
             basic {
                 validate {
-                    User(it.name, Role.UNDEFINED)
+                    User(123, it.name, Role.UNDEFINED)
                 }
             }
         }

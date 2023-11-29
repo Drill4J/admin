@@ -16,8 +16,9 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.auth0.jwt.JWT
-import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
+import com.epam.drill.admin.auth.config.CLAIM_ROLE
+import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.config.JwtConfig
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.service.TokenService
@@ -35,7 +36,8 @@ class JwtTokenService(jwtConfig: JwtConfig) : TokenService {
         .withSubject(user.username)
         .withIssuer(issuer)
         .withAudience(audience)
-        .withClaim("role", user.role.name)
+        .withClaim(CLAIM_USER_ID, user.id)
+        .withClaim(CLAIM_ROLE, user.role.name)
         .withExpiresAt(lifetime.toExpiration())
         .sign(algorithm)
 

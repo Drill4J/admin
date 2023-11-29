@@ -66,6 +66,10 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
+    exception<ForbiddenOperationException> { cause ->
+        logger.trace(cause) { "422 Cannot modify own profile" }
+        call.unprocessableEntity(cause)
+    }
 }
 
 fun Route.userAuthenticationRoutes() {

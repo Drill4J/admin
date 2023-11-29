@@ -52,7 +52,7 @@ class SimpleAuthModuleTest {
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
         wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
-            .thenReturn(UserInfoView(username = "admin", role = Role.ADMIN))
+            .thenReturn(UserInfoView(id = 123, username = "admin", role = Role.ADMIN))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")
