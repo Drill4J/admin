@@ -80,7 +80,7 @@ class OAuthServiceTest {
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
             whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(testUserFromDatabase)
-            whenever(oauthMapper.mergeUserEntities(any(), any())).thenReturn(testUserMustUpdate)
+            whenever(oauthMapper.updateDatabaseUserEntity(any(), any())).thenReturn(testUserMustUpdate)
 
             oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             verify(userRepository).update(testUserMustUpdate)
@@ -185,12 +185,12 @@ class OAuthServiceTest {
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
             whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(testUserFromDatabase)
-            whenever(oauthMapper.mergeUserEntities(testUserFromDatabase, testUserFromOAuth)).thenReturn(
+            whenever(oauthMapper.updateDatabaseUserEntity(testUserFromDatabase, testUserFromOAuth)).thenReturn(
                 UserEntity(id = testUserId, username = testUsername, role = mergedRole.name)
             )
 
             val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-            verify(oauthMapper).mergeUserEntities(testUserFromDatabase, testUserFromOAuth)
+            verify(oauthMapper).updateDatabaseUserEntity(testUserFromDatabase, testUserFromOAuth)
             verify(userRepository).update(UserEntity(id = testUserId, username = testUsername, role = mergedRole.name))
             assertEquals(testUsername, userInfo.username)
             assertEquals(mergedRole, userInfo.role)

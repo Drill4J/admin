@@ -53,7 +53,7 @@ class OAuthServiceImpl(
         dbUser: UserEntity?,
         oauthUser: UserEntity
     ): UserEntity = dbUser
-        ?.let { oauthMapper.mergeUserEntities(dbUser, oauthUser) }
+        ?.let { oauthMapper.updateDatabaseUserEntity(dbUser, oauthUser) }
         ?.apply { userRepository.update(this) }
         ?: userRepository.create(oauthUser)
 

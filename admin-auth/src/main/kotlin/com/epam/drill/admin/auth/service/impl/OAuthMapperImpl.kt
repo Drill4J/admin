@@ -30,7 +30,7 @@ class OAuthMapperImpl(oauthConfig: OAuthConfig) : OAuthMapper {
     private val userInfoMapping = oauthConfig.userInfoMapping
     private val roleMapping = oauthConfig.roleMapping
 
-    override fun mergeUserEntities(userFromDatabase: UserEntity, userFromOAuth: UserEntity): UserEntity {
+    override fun updateDatabaseUserEntity(userFromDatabase: UserEntity, userFromOAuth: UserEntity): UserEntity {
         return userFromDatabase.copy(
             role = if (Role.UNDEFINED.name != userFromOAuth.role) userFromOAuth.role else userFromDatabase.role
         )

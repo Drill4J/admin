@@ -174,8 +174,8 @@ class OAuthMapperTest {
     }
 
     @Test
-    fun `mergeUserEntities must override Database fields with not null fields from OAuth2`() {
-        val mergedUserEntity = oauthMapper.mergeUserEntities(
+    fun `updateDatabaseUserEntity must override Database fields with not null fields from OAuth2`() {
+        val mergedUserEntity = oauthMapper.updateDatabaseUserEntity(
             userFromDatabase = UserEntity(username = testUsername, role = Role.USER.name, id = 123),
             userFromOAuth = UserEntity(username = testUsername, role = Role.ADMIN.name)
         )
@@ -185,8 +185,8 @@ class OAuthMapperTest {
     }
 
     @Test
-    fun `given undefined role from OAuth2, mergeUserEntities return user entity with role from Database`() {
-        val mergedUserEntity = oauthMapper.mergeUserEntities(
+    fun `given undefined role from OAuth2, updateDatabaseUserEntity return user entity with role from Database`() {
+        val mergedUserEntity = oauthMapper.updateDatabaseUserEntity(
             userFromDatabase = UserEntity(username = testUsername, role = Role.USER.name),
             userFromOAuth = UserEntity(username = testUsername, role = Role.UNDEFINED.name)
         )
