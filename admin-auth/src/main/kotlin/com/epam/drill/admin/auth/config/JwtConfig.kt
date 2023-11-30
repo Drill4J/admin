@@ -24,6 +24,9 @@ import kotlin.time.*
 
 private val logger = KotlinLogging.logger {}
 
+/**
+ * A Ktor configuration for JWT based on the key "drill.auth.jwt".
+ */
 class JwtConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val jwt: ApplicationConfig
@@ -39,15 +42,28 @@ class JwtConfig(override val di: DI) : DIAware {
         }
         generateSecret()
     }
+
+    /**
+     * A secret for algorithm SHA512. Optional, a generated secret by default.
+     */
     val secret: String
         get() = jwt.propertyOrNull("secret")?.getString() ?: generatedSecret
 
+    /**
+     * A JWT issuer. Optional, "Drill4J App" by default.
+     */
     val issuer: String
         get() = jwt.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
+    /**
+     * A lifetime of a JWT. Optional, 30 minutes by default.
+     */
     val lifetime: Duration
         get() = jwt.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(30)
 
+    /**
+     * An JWT audience. Optional, empty by default.
+     */
     val audience: String?
         get() = jwt.propertyOrNull("audience")?.getString()
 }
