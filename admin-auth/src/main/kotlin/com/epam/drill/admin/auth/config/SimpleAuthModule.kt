@@ -51,6 +51,9 @@ enum class UserRepoType {
     ENV
 }
 
+/**
+ * The DI module including all services and configurations for simple authentication.
+ */
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     configureJwtDI()
     userRepositoriesConfig()
@@ -58,12 +61,18 @@ val simpleAuthDIModule = DI.Module("simpleAuth") {
 }
 
 
+/**
+ * A DI builder extension function registering all Kodein bindings for JWT based authentication.
+ */
 fun DI.Builder.configureJwtDI() {
     bind<JwtConfig>() with singleton { JwtConfig(di) }
     bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
     bind<TokenService>() with singleton { JwtTokenService(instance()) }
 }
 
+/**
+ * A Ktor Authentication plugin configuration including JWT and Basic based authentication.
+ */
 fun Authentication.Configuration.configureSimpleAuthentication(di: DI) {
     configureJwtAuthentication(di)
     configureBasicAuthentication(di)
@@ -75,6 +84,9 @@ private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
     .build()
 
 
+/**
+ * A Ktor Authentication plugin configuration for JWT based authentication.
+ */
 fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
     val jwtVerifier by di.instance<JWTVerifier>()
 
@@ -92,6 +104,9 @@ fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
     }
 }
 
+/**
+ * A Ktor Authentication plugin configuration for Basic based authentication.
+ */
 fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
     val authService by di.instance<UserAuthenticationService>()
 
@@ -103,6 +118,9 @@ fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
     }
 }
 
+/**
+ * A DI builder extension function registering all Kodein bindings for user authentication and management services.
+ */
 fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with singleton {
         UserAuthenticationServiceImpl(
@@ -132,6 +150,9 @@ fun DI.Builder.userServicesConfig() {
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
 
+/**
+ * A DI builder extension function registering all Kodein bindings for user repositories.
+ */
 fun DI.Builder.userRepositoriesConfig() {
     bind<UserRepository>() with singleton {
         val app: Application = instance()
