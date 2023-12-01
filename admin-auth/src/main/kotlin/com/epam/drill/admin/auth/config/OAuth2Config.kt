@@ -17,72 +17,51 @@ package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.principal.Role
 import io.ktor.config.*
+import java.lang.Boolean.parseBoolean
 
 /**
- * A Ktor configuration for OAuth2 based on the key "drill.auth.oauth2".
+ * An OAuth2 configuration.
+ * @param config the Ktor configuration
  */
-class OAuthConfig(private val config: ApplicationConfig) {
-
-    private val drill: ApplicationConfig
-        get() = config.config("drill")
-
-    private val ui: ApplicationConfig
-        get() = drill.config("ui")
-
-    private val oauth2: ApplicationConfig
-        get() = drill
-            .config("auth")
-            .config("oauth2")
+class OAuth2Config(private val config: ApplicationConfig) {
 
     /**
      * An OAuth2 authorize URL.
      */
     val authorizeUrl: String
-        get() = oauth2.property("authorizeUrl").getString()
+        get() = config.property("authorizeUrl").getString()
 
     /**
      * An OAuth2 access token URL.
      */
     val accessTokenUrl: String
-        get() = oauth2.property("accessTokenUrl").getString()
+        get() = config.property("accessTokenUrl").getString()
 
     /**
      * An OAuth2 user info URL. Optional, if not set, the request for user information will not be used.
      */
     val userInfoUrl: String?
-        get() = oauth2.propertyOrNull("userInfoUrl")?.getString()
+        get() = config.propertyOrNull("userInfoUrl")?.getString()
 
     /**
      * A OAuth2 client ID.
-      */
+     */
     val clientId: String
-        get() = oauth2.property("clientId").getString()
+        get() = config.property("clientId").getString()
 
     /**
      * A OAuth2 client secret.
      */
     val clientSecret: String
-        get() = oauth2.property("clientSecret").getString()
+        get() = config.property("clientSecret").getString()
 
     /**
      * Scopes to OAuth2 request. Optional, empty list by default.
      */
     val scopes: List<String>
-        get() = oauth2.propertyOrNull("scopes")?.getString()
+        get() = config.propertyOrNull("scopes")?.getString()
             ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
             ?: listOf()
-
-    /**
-     * UI application root URL. The key is "drill.ui.rootUrl".
-     */
-    val uiRootUrl: String
-        get() =  ui.property("rootUrl").getString()
-
-    /**
-     * UI application root path. The key is "drill.ui.rootPath". Optional, "/" by default.
-     */
-    val uiRootPath: String
-        get() = ui.propertyOrNull("rootPath")?.getString() ?: "/"
 
     /**
      * OAuth2 access token payload mapping.
@@ -95,7 +74,7 @@ class OAuthConfig(private val config: ApplicationConfig) {
      * @see [Standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)
      */
     val tokenMapping: UserMapping
-        get() = oauth2.config("tokenMapping").run {
+        get() = config.config("tokenMapping").run {
             UserMapping(
                 username = propertyOrNull("username")?.getString() ?: "sub",
                 roles = propertyOrNull("roles")?.getString()
@@ -111,7 +90,7 @@ class OAuthConfig(private val config: ApplicationConfig) {
      * A roles mapping is a name of field containing roles in OAuth2 user info response. Optional, if not set, roles are not mapped.
      */
     val userInfoMapping: UserMapping
-        get() = oauth2.config("userInfoMapping").run {
+        get() = config.config("userInfoMapping").run {
             UserMapping(
                 username = propertyOrNull("username")?.getString() ?: "username",
                 roles = propertyOrNull("roles")?.getString()
@@ -127,12 +106,24 @@ class OAuthConfig(private val config: ApplicationConfig) {
      * An admin role mapping is a name of OAuth2 role matching the Drill4J admin role. Optional, "admin" by default.
      */
     val roleMapping: RoleMapping
-        get() = oauth2.config("roleMapping").run {
+        get() = config.config("roleMapping").run {
             RoleMapping(
                 user = propertyOrNull("user")?.getString() ?: Role.USER.name,
                 admin = propertyOrNull("admin")?.getString() ?: Role.ADMIN.name
             )
         }
+
+    /**
+     * A title of the OAuth2 sign-in button. Optional, "Sign in with SSO" by default.
+     */
+    val signInButtonTitle: String
+        get() = config.propertyOrNull("buttonTitle")?.getString() ?: "Sign in with SSO"
+
+    /**
+     * A flag that indicates whether the automatic sign-in is enabled. Optional, true by default.
+     */
+    val automaticSignIn: Boolean
+        get() = config.propertyOrNull("automaticSignIn")?.getString()?.let { parseBoolean(it) } ?: true
 }
 
 data class UserMapping(val username: String, val roles: String?)

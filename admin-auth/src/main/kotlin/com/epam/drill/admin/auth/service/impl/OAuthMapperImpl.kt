@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service.impl
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.interfaces.DecodedJWT
-import com.epam.drill.admin.auth.config.OAuthConfig
+import com.epam.drill.admin.auth.config.OAuth2Config
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.config.UserMapping
 import com.epam.drill.admin.auth.entity.UserEntity
@@ -25,10 +25,10 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.OAuthMapper
 import kotlinx.serialization.json.*
 
-class OAuthMapperImpl(oauthConfig: OAuthConfig) : OAuthMapper {
-    private val tokenMapping = oauthConfig.tokenMapping
-    private val userInfoMapping = oauthConfig.userInfoMapping
-    private val roleMapping = oauthConfig.roleMapping
+class OAuthMapperImpl(oauth2Config: OAuth2Config) : OAuthMapper {
+    private val tokenMapping = oauth2Config.tokenMapping
+    private val userInfoMapping = oauth2Config.userInfoMapping
+    private val roleMapping = oauth2Config.roleMapping
 
     override fun updateDatabaseUserEntity(userFromDatabase: UserEntity, userFromOAuth: UserEntity): UserEntity {
         return userFromDatabase.copy(

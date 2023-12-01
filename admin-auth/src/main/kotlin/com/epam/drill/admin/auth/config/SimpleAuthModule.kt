@@ -56,8 +56,25 @@ enum class UserRepoType {
  */
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     configureJwtDI()
+    configureSimpleAuthDI()
     userRepositoriesConfig()
     userServicesConfig()
+}
+
+/**
+ * A DI builder extension function registering all Kodein bindings for simple authentication.
+ */
+fun DI.Builder.configureSimpleAuthDI() {
+    bind<SimpleAuthConfig>() with singleton {
+        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
+    }
+    bind<AuthConfig>() with singleton {
+        AuthConfig(
+            config = instance<Application>().environment.config.config("drill.auth"),
+            simpleAuth = instance(),
+            jwt = instance(),
+        )
+    }
 }
 
 
@@ -65,7 +82,9 @@ val simpleAuthDIModule = DI.Module("simpleAuth") {
  * A DI builder extension function registering all Kodein bindings for JWT based authentication.
  */
 fun DI.Builder.configureJwtDI() {
-    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JwtConfig>() with singleton {
+        JwtConfig(instance<Application>().environment.config.config("drill.auth.jwt"))
+    }
     bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
     bind<TokenService>() with singleton { JwtTokenService(instance()) }
 }

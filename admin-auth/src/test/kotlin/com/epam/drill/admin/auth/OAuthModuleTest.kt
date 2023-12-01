@@ -16,7 +16,6 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
@@ -39,10 +38,6 @@ import org.kodein.di.singleton
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.net.URL
 import kotlin.test.*
 

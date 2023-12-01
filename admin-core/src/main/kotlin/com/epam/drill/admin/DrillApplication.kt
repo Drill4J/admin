@@ -55,15 +55,9 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
-    when (authType.uppercase()) {
-        AuthType.SIMPLE.name -> moduleWithSimpleAuth()
-        AuthType.OAUTH2.name -> moduleWithOAuth2()
-        else -> throw IllegalArgumentException("Unknown auth type \"$authType\". " +
-                "Please set the env variable DRILL_AUTH_TYPE to either " +
-                "${
-                    AuthType.values().joinToString(separator = "\", \"", prefix = "\"", postfix = "\"") { it.name }
-                }."
-        )
+    when (environment.config.config("drill.auth").getAuthType()) {
+        AuthType.SIMPLE -> moduleWithSimpleAuth()
+        AuthType.OAUTH2 -> moduleWithOAuth2()
     }
 }
 
@@ -140,15 +134,6 @@ fun Application.moduleWithOAuth2() {
     }
 }
 
-enum class AuthType {
-    SIMPLE,
-    OAUTH2
-}
-
-private val Application.authType: String
-    get() = environment.config
-        .propertyOrNull("drill.auth.type")
-        ?.getString() ?: AuthType.SIMPLE.name
 
 private fun Application.installPlugins() {
     install(CallLogging)
