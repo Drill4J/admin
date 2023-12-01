@@ -179,6 +179,7 @@ private fun StatusPages.Configuration.defaultStatusPages() {
 }
 
 fun Routing.drillAdminRoutes() {
+    uiConfigRoute()
     adminWebSocketRoute()
     agentRoutes()
     versionRoutes()

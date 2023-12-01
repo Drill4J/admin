@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.model
 
+import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import kotlinx.serialization.*
@@ -81,3 +82,46 @@ fun UserEntity.toUserInfoView(): UserInfoView {
         role = Role.valueOf(this.role)
     )
 }
+
+@Serializable
+data class AuthConfigView(
+    val simpleAuth: SimpleAuthConfigView? = null,
+    val oauth2: OAuth2ConfigView? = null
+)
+
+@Serializable
+data class SimpleAuthConfigView(
+    val enabled: Boolean,
+    val signUpEnabled: Boolean
+)
+
+@Serializable
+data class OAuth2ConfigView(
+    val enabled: Boolean,
+    val buttonTitle: String,
+    val automaticSignIn: Boolean
+)
+
+fun AuthConfig.toView() = when (type) {
+    AuthType.OAUTH2 -> {
+        AuthConfigView(
+            oauth2 = oauth2?.toView()
+        )
+    }
+    AuthType.SIMPLE -> {
+        AuthConfigView(
+            simpleAuth = simpleAuth?.toView()
+        )
+    }
+}
+
+fun OAuth2Config.toView() = OAuth2ConfigView(
+    enabled = true,
+    buttonTitle = signInButtonTitle,
+    automaticSignIn = automaticSignIn
+)
+
+fun SimpleAuthConfig.toView() = SimpleAuthConfigView(
+    enabled = true,
+    signUpEnabled = signUpEnabled
+)
