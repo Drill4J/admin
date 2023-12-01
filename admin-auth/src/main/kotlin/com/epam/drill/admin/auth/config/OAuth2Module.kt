@@ -46,6 +46,7 @@ val oauthDIModule = DI.Module("oauth") {
     userServicesConfig()
     configureJwtDI()
     configureOAuthDI()
+    bindAuthConfig()
 }
 
 /**
@@ -56,13 +57,6 @@ fun DI.Builder.configureOAuthDI() {
     bindUiConfig()
     bind<OAuth2Config>() with singleton {
         OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
-    }
-    bind<AuthConfig>() with singleton {
-        AuthConfig(
-            config = instance<Application>().environment.config.config("drill.auth"),
-            oauth2 = instance(),
-            jwt = instance(),
-        )
     }
     bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
     bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
@@ -87,13 +81,6 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     val uiConfig by di.instance<UIConfig>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
 
-    configureJwtAuthentication(di)
-    basic("basic") {
-        realm = "Access to the http(s) services"
-        validate {
-            null //Basic authentication is not supported for the OAuth2 provider, but must be declared
-        }
-    }
     oauth("oauth") {
         urlProvider = { URI(uiConfig.uiRootUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
@@ -108,6 +95,15 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
             )
         }
         client = httpClient
+    }
+}
+
+fun Authentication.Configuration.configureBasicStubAuthentication() {
+    basic("basic") {
+        realm = "Access to the http(s) services"
+        validate {
+            null //Basic authentication is not supported for the OAuth2 provider, but must be declared
+        }
     }
 }
 

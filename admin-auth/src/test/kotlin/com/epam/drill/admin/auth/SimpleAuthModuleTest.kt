@@ -15,7 +15,8 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.configureBasicAuthentication
+import com.epam.drill.admin.auth.config.configureJwtAuthentication
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.principal.Role
@@ -160,7 +161,8 @@ class SimpleAuthModuleTest {
         }
 
         install(Authentication) {
-            configureSimpleAuthentication(closestDI())
+            configureJwtAuthentication(closestDI())
+            configureBasicAuthentication(closestDI())
         }
     }
 }

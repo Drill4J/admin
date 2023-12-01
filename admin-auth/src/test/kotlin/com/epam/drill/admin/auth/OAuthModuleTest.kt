@@ -260,6 +260,7 @@ class OAuthModuleTest {
         }
 
         install(Authentication) {
+            configureJwtAuthentication(closestDI())
             configureOAuthAuthentication(closestDI())
         }
 

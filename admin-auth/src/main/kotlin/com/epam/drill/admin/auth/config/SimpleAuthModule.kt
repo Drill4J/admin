@@ -36,10 +36,7 @@ import io.ktor.auth.jwt.*
 import io.ktor.http.*
 import io.ktor.http.auth.*
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.instance
-import org.kodein.di.singleton
+import org.kodein.di.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -57,6 +54,7 @@ enum class UserRepoType {
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     configureJwtDI()
     configureSimpleAuthDI()
+    bindAuthConfig()
     userRepositoriesConfig()
     userServicesConfig()
 }
@@ -68,15 +66,18 @@ fun DI.Builder.configureSimpleAuthDI() {
     bind<SimpleAuthConfig>() with singleton {
         SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
     }
+}
+
+fun DI.Builder.bindAuthConfig() {
     bind<AuthConfig>() with singleton {
         AuthConfig(
             config = instance<Application>().environment.config.config("drill.auth"),
-            simpleAuth = instance(),
+            oauth2 = instanceOrNull(),
+            simpleAuth = instanceOrNull(),
             jwt = instance(),
         )
     }
 }
-
 
 /**
  * A DI builder extension function registering all Kodein bindings for JWT based authentication.
@@ -89,13 +90,6 @@ fun DI.Builder.configureJwtDI() {
     bind<TokenService>() with singleton { JwtTokenService(instance()) }
 }
 
-/**
- * A Ktor Authentication plugin configuration including JWT and Basic based authentication.
- */
-fun Authentication.Configuration.configureSimpleAuthentication(di: DI) {
-    configureJwtAuthentication(di)
-    configureBasicAuthentication(di)
-}
 
 private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
     .require(Algorithm.HMAC512(jwtConfig.secret))

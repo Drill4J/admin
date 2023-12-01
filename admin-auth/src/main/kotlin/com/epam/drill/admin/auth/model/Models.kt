@@ -113,6 +113,12 @@ fun AuthConfig.toView() = when (type) {
             simpleAuth = simpleAuth?.toView()
         )
     }
+    AuthType.SIMPLE_WITH_OAUTH2 -> {
+        AuthConfigView(
+            simpleAuth = simpleAuth?.toView(),
+            oauth2 = oauth2?.toView()
+        )
+    }
 }
 
 fun OAuth2Config.toView() = OAuth2ConfigView(

@@ -19,7 +19,7 @@ package com.epam.drill.admin.endpoints
 
 import com.epam.drill.admin.*
 import com.epam.drill.admin.auth.config.RoleBasedAuthorization
-import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.configureBasicAuthentication
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.cache.*
@@ -29,22 +29,14 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.*
-import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
-import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
-import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
-import com.epam.drill.admin.group.groupRoutes
-import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.notification.*
-import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.version.versionRoutes
 import com.epam.drill.admin.websocket.*
 import com.epam.drill.e2e.GUEST_USER
 import com.epam.drill.e2e.testPluginServices
 import com.epam.dsm.test.*
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -111,7 +103,7 @@ internal class DrillServerWsTest {
         }
 
         install(Authentication) {
-            configureSimpleAuthentication(closestDI())
+            configureBasicAuthentication(closestDI())
         }
 
         routing {

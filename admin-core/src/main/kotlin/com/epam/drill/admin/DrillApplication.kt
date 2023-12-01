@@ -46,6 +46,7 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
+import org.kodein.di.DI
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import java.time.*
@@ -58,6 +59,7 @@ fun Application.module() {
     when (environment.config.config("drill.auth").getAuthType()) {
         AuthType.SIMPLE -> moduleWithSimpleAuth()
         AuthType.OAUTH2 -> moduleWithOAuth2()
+        AuthType.SIMPLE_WITH_OAUTH2 -> moduleWithSimpleAuthAndOAuth2()
     }
 }
 
@@ -76,7 +78,8 @@ fun Application.moduleWithSimpleAuth() {
     }
 
     install(Authentication) {
-        configureSimpleAuthentication(closestDI())
+        configureJwtAuthentication(closestDI())
+        configureBasicAuthentication(closestDI())
     }
 
     routing {
@@ -111,7 +114,9 @@ fun Application.moduleWithOAuth2() {
         import(oauthDIModule)
     }
     install(Authentication) {
+        configureJwtAuthentication(closestDI())
         configureOAuthAuthentication(closestDI())
+        configureBasicStubAuthentication()
     }
     routing {
         drillAdminRoutes()
@@ -132,6 +137,50 @@ fun Application.moduleWithOAuth2() {
             }
         }
     }
+}
+
+@Suppress("unused")
+fun Application.moduleWithSimpleAuthAndOAuth2() {
+    install(StatusPages) {
+        simpleAuthStatusPages()
+        oauthStatusPages()
+        defaultStatusPages()
+    }
+    installPlugins()
+    initDB()
+    di {
+        import(drillAdminDIModule)
+        import(simpleWithOAuth2DIModule)
+    }
+    install(Authentication) {
+        configureJwtAuthentication(closestDI())
+        configureOAuthAuthentication(closestDI())
+        configureBasicAuthentication(closestDI())
+    }
+    routing {
+        drillAdminRoutes()
+        configureOAuthRoutes()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
+            }
+        }
+    }
+}
+
+val simpleWithOAuth2DIModule = DI.Module("simpleWithOAuth2") {
+    userRepositoriesConfig()
+    userServicesConfig()
+    configureJwtDI()
+    configureOAuthDI()
+    configureSimpleAuthDI()
+    bindAuthConfig()
 }
 
 
