@@ -53,6 +53,8 @@ class UserAuthenticationServiceImpl(
 
     override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
+        if (userEntity.external)
+            throw ForbiddenOperationException("Cannot update password for external user")
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
         passwordService.validatePasswordRequirements(payload.newPassword)

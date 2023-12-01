@@ -84,7 +84,6 @@ fun Application.moduleWithSimpleAuth() {
 
     routing {
         drillAdminRoutes()
-
         loginRoute()
         route("/api") {
             userAuthenticationRoutes()

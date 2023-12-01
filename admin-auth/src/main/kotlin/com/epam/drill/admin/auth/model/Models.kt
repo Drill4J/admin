@@ -34,7 +34,8 @@ data class TokenView(val token: String)
 data class UserInfoView(
     val id: Int,
     val username: String,
-    val role: Role
+    val role: Role,
+    val external: Boolean
 )
 
 @Serializable
@@ -43,7 +44,8 @@ data class UserView(
     val username: String,
     val role: Role,
     val blocked: Boolean,
-    val registrationDate: LocalDateTime?
+    val registrationDate: LocalDateTime?,
+    val external: Boolean
 )
 
 @Serializable
@@ -79,7 +81,8 @@ fun UserEntity.toUserInfoView(): UserInfoView {
     return UserInfoView(
         id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,
-        role = Role.valueOf(this.role)
+        role = Role.valueOf(this.role),
+        external = this.external
     )
 }
 
