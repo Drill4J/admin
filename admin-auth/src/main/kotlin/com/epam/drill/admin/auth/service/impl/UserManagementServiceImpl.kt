@@ -29,7 +29,8 @@ import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val externalRoleManagement: Boolean = false
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
         return userRepository.findAll().map { it.toView() }
@@ -41,6 +42,8 @@ class UserManagementServiceImpl(
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
         val oldUserEntity = findUser(userId)
+        if (externalRoleManagement && oldUserEntity.external)
+            throw ForbiddenOperationException("Cannot update role for external user")
         val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
         return updatedUserEntity.toView()
     }

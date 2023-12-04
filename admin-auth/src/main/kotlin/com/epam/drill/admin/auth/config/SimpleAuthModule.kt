@@ -149,7 +149,8 @@ fun DI.Builder.userServicesConfig() {
     bind<UserManagementService>() with singleton {
         UserManagementServiceImpl(
             userRepository = instance(),
-            passwordService = instance()
+            passwordService = instance(),
+            externalRoleManagement = isExternalRoleManagement(instanceOrNull<OAuth2Config>())
         ).let { service ->
             when (instance<Application>().userRepoType) {
                 UserRepoType.DB -> TransactionalUserManagementService(service)
@@ -187,6 +188,11 @@ private val Application.userRepoType: UserRepoType
         .propertyOrNull("userRepoType")
         ?.getString()?.let { UserRepoType.valueOf(it) }
         ?: UserRepoType.DB
+
+private fun isExternalRoleManagement(config: OAuth2Config?): Boolean {
+    return (config?.userInfoUrl == null && config?.tokenMapping?.roles != null) ||
+            (config?.userInfoUrl != null && config.userInfoMapping.roles != null)
+}
 
 private fun Payload.toPrincipal(): User {
     return User(
