@@ -19,6 +19,7 @@ import com.epam.drill.admin.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.auth.config.RoleBasedAuthorization
 import com.epam.drill.admin.auth.config.configureBasicAuthentication
+import com.epam.drill.admin.auth.config.configureJwtAuthentication
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.cache.*
@@ -106,6 +107,7 @@ class PluginWsTest {
         }
 
         install(Authentication) {
+            configureJwtAuthentication(closestDI())
             configureBasicAuthentication(closestDI())
         }
 
