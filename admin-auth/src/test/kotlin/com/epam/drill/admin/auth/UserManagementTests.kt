@@ -247,6 +247,25 @@ class UserManagementTest {
         }
     }
 
+    @Test
+    fun `given external user, 'PATCH users {id} reset-password' must fail`() {
+        wheneverBlocking(userRepository) { findById(123) }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(withRoute {
+            resetPasswordRoute()
+        }) {
+            with(handleRequest(HttpMethod.Patch, "/users/123/reset-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
     private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {
