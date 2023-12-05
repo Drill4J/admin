@@ -127,7 +127,7 @@ class OAuth2Config(private val config: ApplicationConfig) {
      * A flag that indicates whether the automatic sign-in is enabled. Optional, true by default.
      */
     val automaticSignIn: Boolean
-        get() = config.propertyOrNull("automaticSignIn")?.getString()?.let { parseBoolean(it) } ?: true
+        get() = config.propertyOrNull("automaticSignIn")?.getString()?.let { parseBoolean(it) } ?: false
 }
 
 data class UserMapping(val username: String, val roles: String?)
