@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
-import com.epam.drill.admin.auth.config.OAuthConfig
+import com.epam.drill.admin.auth.config.OAuth2Config
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
@@ -31,11 +31,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.mockito.stubbing.Answer
 import kotlin.test.*
 
 /**
@@ -47,7 +45,7 @@ class OAuthServiceTest {
     @Mock
     lateinit var oauthMapper: OAuthMapper
 
-    private val mockConfig = OAuthConfig(MapApplicationConfig())
+    private val mockConfig = OAuth2Config(MapApplicationConfig())
 
     @BeforeTest
     fun setup() {
@@ -112,14 +110,14 @@ class OAuthServiceTest {
     fun `if user-info request fails, signInThroughOAuth must fail`(): Unit =
         runBlocking {
             val config = MapApplicationConfig().apply {
-                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+                put("userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
             }
             val httpClient = mockHttpClient(
                 "/userInfoUrl" shouldRespond {
                     respondError(HttpStatusCode.Unauthorized, "Invalid token")
                 }
             )
-            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository, oauthMapper)
+            val oauthService = OAuthServiceImpl(httpClient, OAuth2Config(config), userRepository, oauthMapper)
 
             assertThrows<OAuthUnauthorizedException> {
                 oauthService.signInThroughOAuth(withPrincipal("invalid-token"))
@@ -152,14 +150,14 @@ class OAuthServiceTest {
             val testRole = Role.USER
             val testUserInfoResponse = "some-username-with-role-user"
             val config = MapApplicationConfig().apply {
-                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+                put("userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
             }
             val httpClient = mockHttpClient(
                 "/userInfoUrl" shouldRespond {
                     respondOk(testUserInfoResponse)
                 }
             )
-            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository, oauthMapper)
+            val oauthService = OAuthServiceImpl(httpClient, OAuth2Config(config), userRepository, oauthMapper)
             whenever(oauthMapper.mapUserInfoToUserEntity(testUserInfoResponse)).thenReturn(
                 UserEntity(username = testUsername, role = testRole.name)
             )

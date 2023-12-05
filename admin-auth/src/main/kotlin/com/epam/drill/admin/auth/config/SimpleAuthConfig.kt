@@ -13,18 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.auth.config
 
-import com.epam.drill.admin.auth.model.UserInfoView
+import io.ktor.config.*
+import java.lang.Boolean.parseBoolean
 
 /**
- * A service for issuing access tokens.
+ * A configuration for simple authentication.
+ * @param config the Ktor configuration
  */
-interface TokenService {
+class SimpleAuthConfig(
+    private val config: ApplicationConfig
+) {
+
     /**
-     * Issues an access token.
-     * @param user the user information based on which a token should be issued
-     * @return the issued access token
+     * A flag indicating whether the sign-up is enabled. Optional, true by default.
      */
-    fun issueToken(user: UserInfoView): String
+    val signUpEnabled: Boolean
+        get() = config.propertyOrNull("signUpEnabled")?.getString()?.let { parseBoolean(it) } ?: true
 }

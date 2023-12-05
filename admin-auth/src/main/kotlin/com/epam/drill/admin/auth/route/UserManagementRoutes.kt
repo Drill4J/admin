@@ -43,6 +43,9 @@ object Users {
     data class ResetPassword(val userId: Int)
 }
 
+/**
+ * A set of routes for user management
+ */
 fun Route.userManagementRoutes() {
     getUsersRoute()
     getUserRoute()
@@ -53,6 +56,9 @@ fun Route.userManagementRoutes() {
     resetPasswordRoute()
 }
 
+/**
+ * A route for getting users
+ */
 fun Route.getUsersRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -62,6 +68,9 @@ fun Route.getUsersRoute() {
     }
 }
 
+/**
+ * A route for getting user by id
+ */
 fun Route.getUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -71,6 +80,9 @@ fun Route.getUserRoute() {
     }
 }
 
+/**
+ * A route for editing user
+ */
 fun Route.editUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -82,6 +94,9 @@ fun Route.editUserRoute() {
     }
 }
 
+/**
+ * A route for deleting user by id
+ */
 fun Route.deleteUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -92,6 +107,9 @@ fun Route.deleteUserRoute() {
     }
 }
 
+/**
+ * A route for blocking user by id
+ */
 fun Route.blockUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -102,6 +120,9 @@ fun Route.blockUserRoute() {
     }
 }
 
+/**
+ * A route for unblocking user by id
+ */
 fun Route.unblockUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -111,6 +132,9 @@ fun Route.unblockUserRoute() {
     }
 }
 
+/**
+ * A reset user password route
+ */
 fun Route.resetPasswordRoute() {
     val service by di().instance<UserManagementService>()
 

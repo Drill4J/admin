@@ -25,6 +25,9 @@ import io.ktor.routing.*
 import io.ktor.util.*
 import io.ktor.util.pipeline.*
 
+/**
+ * A Ktor plugin for role based authorization.
+ */
 class RoleBasedAuthorization {
 
     fun interceptPipeline(

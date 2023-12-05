@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.config.SimpleAuthConfig
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -33,6 +34,7 @@ import io.ktor.routing.*
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
+import org.kodein.di.instanceOrNull
 import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
@@ -56,6 +58,9 @@ object Login
 @Location("/user-keys")
 object UserApiKeys
 
+/**
+ * The Ktor StatusPages plugin configuration for simple authentication status pages.
+ */
 fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
@@ -75,11 +80,17 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
     }
 }
 
+/**
+ * A user authentication and registration routes configuration.
+ */
 fun Route.userAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
 }
 
+/**
+ * A user profile routes configuration.
+ */
 fun Route.userProfileRoutes() {
     userInfoRoute()
     updatePasswordRoute()
@@ -91,6 +102,9 @@ fun Route.userApiKeyRoutes() {
     deleteUserApiKeyRoute()
 }
 
+/**
+ * A user authentication route configuration.
+ */
 fun Route.signInRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
@@ -104,19 +118,28 @@ fun Route.signInRoute() {
     }
 }
 
+/**
+ * A user registration route configuration.
+ */
 fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
+    val simpleAuthConfig by di().instanceOrNull<SimpleAuthConfig>()
 
-    post<SignUp> {
-        val payload = call.receive<RegistrationPayload>()
-        authService.signUp(payload)
-        call.ok(
-            "User registration request accepted. " +
-                    "Please contact the administrator to confirm the registration."
-        )
+    if (simpleAuthConfig?.signUpEnabled != false) {
+        post<SignUp> {
+            val payload = call.receive<RegistrationPayload>()
+            authService.signUp(payload)
+            call.ok(
+                "User registration request accepted. " +
+                        "Please contact the administrator to confirm the registration."
+            )
+        }
     }
 }
 
+/**
+ * A user profile route configuration.
+ */
 fun Route.userInfoRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -127,6 +150,9 @@ fun Route.userInfoRoute() {
     }
 }
 
+/**
+ * An update password route configuration.
+ */
 fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 

@@ -38,56 +38,73 @@ import java.net.URI
 
 const val JWT_COOKIE = "jwt"
 
-
+/**
+ * The DI module including all services and configurations for OAuth2 authentication.
+ */
 val oauthDIModule = DI.Module("oauth") {
     userRepositoriesConfig()
     userServicesConfig()
     configureJwtDI()
     configureOAuthDI()
+    bindAuthConfig()
 }
 
+/**
+ * A DI Builder extension function registering all Kodein bindings for OAuth2 based authentication.
+ */
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-    bind<OAuthConfig>() with singleton { OAuthConfig(instance<Application>().environment.config) }
+    bind<OAuth2Config>() with singleton {
+        OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
+    }
     bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
     bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
         httpClient = instance("oauthHttpClient"),
-        oauthConfig = instance(),
+        oauth2Config = instance(),
         userRepository = instance(),
         oauthMapper = instance()))
     }
 }
 
+
+/**
+ * A Ktor Authentication configuration for OAuth2 based authentication.
+ */
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
-    val oauthConfig by di.instance<OAuthConfig>()
+    val oauth2Config by di.instance<OAuth2Config>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
 
-    configureJwtAuthentication(di)
-    basic("basic") {
-        realm = "Access to the http(s) services"
-        validate {
-            null //Basic authentication is not supported for the OAuth2 provider, but must be declared
-        }
-    }
     oauth("oauth") {
-        urlProvider = { URI(oauthConfig.uiRootUrl).resolve("/oauth/callback").toString() }
+        urlProvider = { URI(oauth2Config.redirectUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
             OAuthServerSettings.OAuth2ServerSettings(
                 name = "oauth2",
-                authorizeUrl = oauthConfig.authorizeUrl,
-                accessTokenUrl = oauthConfig.accessTokenUrl,
+                authorizeUrl = oauth2Config.authorizeUrl,
+                accessTokenUrl = oauth2Config.accessTokenUrl,
                 requestMethod = HttpMethod.Post,
-                clientId = oauthConfig.clientId,
-                clientSecret = oauthConfig.clientSecret,
-                defaultScopes = oauthConfig.scopes
+                clientId = oauth2Config.clientId,
+                clientSecret = oauth2Config.clientSecret,
+                defaultScopes = oauth2Config.scopes
             )
         }
         client = httpClient
     }
 }
 
+fun Authentication.Configuration.configureBasicStubAuthentication() {
+    basic("basic") {
+        realm = "Access to the http(s) services"
+        validate {
+            null //Basic authentication is not supported for the OAuth2 provider, but must be declared, due to the use of a basic authenticator on some routes
+        }
+    }
+}
+
+/**
+ * A Ktor routes configuration for OAuth2 based authentication.
+ */
 fun Routing.configureOAuthRoutes() {
-    val oauthConfig by closestDI().instance<OAuthConfig>()
+    val oauth2Config by closestDI().instance<OAuth2Config>()
     val tokenService by closestDI().instance<TokenService>()
     val oauthService by closestDI().instance<OAuthService>()
 
@@ -104,10 +121,10 @@ fun Routing.configureOAuthRoutes() {
                     JWT_COOKIE,
                     jwt,
                     httpOnly = true,
-                    path = oauthConfig.uiRootPath
+                    path = "/"
                 )
             )
-            call.respondRedirect(oauthConfig.uiRootUrl)
+            call.respondRedirect(oauth2Config.redirectUrl)
         }
     }
 }

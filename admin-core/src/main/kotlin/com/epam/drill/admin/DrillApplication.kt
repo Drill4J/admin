@@ -46,6 +46,7 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
+import org.kodein.di.DI
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import java.time.*
@@ -55,15 +56,10 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
-    when (authType.uppercase()) {
-        AuthType.SIMPLE.name -> moduleWithSimpleAuth()
-        AuthType.OAUTH2.name -> moduleWithOAuth2()
-        else -> throw IllegalArgumentException("Unknown auth type \"$authType\". " +
-                "Please set the env variable DRILL_AUTH_TYPE to either " +
-                "${
-                    AuthType.values().joinToString(separator = "\", \"", prefix = "\"", postfix = "\"") { it.name }
-                }."
-        )
+    when (environment.config.config("drill.auth").getAuthType()) {
+        AuthType.SIMPLE -> moduleWithSimpleAuth()
+        AuthType.OAUTH2 -> moduleWithOAuth2()
+        AuthType.SIMPLE_AND_OAUTH2 -> moduleWithSimpleAuthAndOAuth2()
     }
 }
 
@@ -82,12 +78,12 @@ fun Application.moduleWithSimpleAuth() {
     }
 
     install(Authentication) {
-        configureSimpleAuthentication(closestDI())
+        configureJwtAuthentication(closestDI())
+        configureBasicAuthentication(closestDI())
     }
 
     routing {
         drillAdminRoutes()
-
         loginRoute()
         route("/api") {
             userAuthenticationRoutes()
@@ -117,7 +113,9 @@ fun Application.moduleWithOAuth2() {
         import(oauthDIModule)
     }
     install(Authentication) {
+        configureJwtAuthentication(closestDI())
         configureOAuthAuthentication(closestDI())
+        configureBasicStubAuthentication()
     }
     routing {
         drillAdminRoutes()
@@ -140,15 +138,50 @@ fun Application.moduleWithOAuth2() {
     }
 }
 
-enum class AuthType {
-    SIMPLE,
-    OAUTH2
+@Suppress("unused")
+fun Application.moduleWithSimpleAuthAndOAuth2() {
+    install(StatusPages) {
+        simpleAuthStatusPages()
+        oauthStatusPages()
+        defaultStatusPages()
+    }
+    installPlugins()
+    initDB()
+    di {
+        import(drillAdminDIModule)
+        import(simpleWithOAuth2DIModule)
+    }
+    install(Authentication) {
+        configureJwtAuthentication(closestDI())
+        configureOAuthAuthentication(closestDI())
+        configureBasicAuthentication(closestDI())
+    }
+    routing {
+        drillAdminRoutes()
+        configureOAuthRoutes()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
+            }
+        }
+    }
 }
 
-private val Application.authType: String
-    get() = environment.config
-        .propertyOrNull("drill.auth.type")
-        ?.getString() ?: AuthType.SIMPLE.name
+val simpleWithOAuth2DIModule = DI.Module("simpleWithOAuth2") {
+    userRepositoriesConfig()
+    userServicesConfig()
+    configureJwtDI()
+    configureOAuthDI()
+    configureSimpleAuthDI()
+    bindAuthConfig()
+}
+
 
 private fun Application.installPlugins() {
     install(CallLogging)
@@ -194,6 +227,7 @@ private fun StatusPages.Configuration.defaultStatusPages() {
 }
 
 fun Routing.drillAdminRoutes() {
+    uiConfigRoute()
     adminWebSocketRoute()
     agentRoutes()
     versionRoutes()
