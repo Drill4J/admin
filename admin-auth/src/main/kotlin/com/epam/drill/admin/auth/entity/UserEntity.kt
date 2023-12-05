@@ -24,4 +24,7 @@ data class UserEntity(
     val role: String,
     val blocked: Boolean = false,
     val registrationDate: LocalDateTime? = null
-)
+) {
+    val external: Boolean
+        get() = passwordHash == null
+}

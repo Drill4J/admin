@@ -287,6 +287,26 @@ class UserAuthenticationTest {
         }
     }
 
+    @Test
+    fun `given external user 'POST update-password' must fail with 422 status`() {
+        wheneverBlocking(userRepository) { findByUsername("external-user") }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth("external-user", "")
+                val form = ChangePasswordPayload(oldPassword = "", newPassword = "secret")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
     private val config: Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {

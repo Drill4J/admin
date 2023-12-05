@@ -15,7 +15,8 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.configureSimpleAuthentication
+import com.epam.drill.admin.auth.config.configureBasicAuthentication
+import com.epam.drill.admin.auth.config.configureJwtAuthentication
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
 import com.epam.drill.admin.auth.principal.Role
@@ -52,7 +53,7 @@ class SimpleAuthModuleTest {
     @Test
     fun `given user with basic auth, request basic-only must succeed`() {
         wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
-            .thenReturn(UserInfoView(id = 123, username = "admin", role = Role.ADMIN))
+            .thenReturn(UserInfoView(id = 123, username = "admin", role = Role.ADMIN, external = false))
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Get, "/basic-only") {
                 addBasicAuth("admin", "secret")
@@ -160,7 +161,8 @@ class SimpleAuthModuleTest {
         }
 
         install(Authentication) {
-            configureSimpleAuthentication(closestDI())
+            configureJwtAuthentication(closestDI())
+            configureBasicAuthentication(closestDI())
         }
     }
 }

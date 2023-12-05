@@ -247,6 +247,66 @@ class UserManagementTest {
         }
     }
 
+    @Test
+    fun `given external user, 'PATCH users {id} reset-password' must fail`() {
+        wheneverBlocking(userRepository) { findById(123) }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(withRoute {
+            resetPasswordRoute()
+        }) {
+            with(handleRequest(HttpMethod.Patch, "/users/123/reset-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given external user with external role management, 'PUT users {id}' must fail`() {
+        wheneverBlocking(userRepository) { findById(123) }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(moduleFunction = {
+            install(Locations)
+            install(ContentNegotiation) {
+                json()
+            }
+            di {
+                bind<UserRepository>() with eagerSingleton { userRepository }
+                bind<PasswordService>() with eagerSingleton { passwordService }
+                bind<UserManagementService>() with eagerSingleton {
+                    UserManagementServiceImpl(
+                        instance(),
+                        instance(),
+                        externalRoleManagement = true
+                    )
+                }
+            }
+            install(StatusPages) {
+                simpleAuthStatusPages()
+            }
+            routing {
+                editUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Put, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = EditUserPayload(role = Role.ADMIN)
+                setBody(Json.encodeToString(EditUserPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
     private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {

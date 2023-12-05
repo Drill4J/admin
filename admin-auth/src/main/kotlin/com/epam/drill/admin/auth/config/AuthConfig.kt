@@ -19,7 +19,8 @@ import io.ktor.config.*
 
 enum class AuthType {
     SIMPLE,
-    OAUTH2
+    OAUTH2,
+    SIMPLE_AND_OAUTH2
 }
 
 /**
@@ -57,6 +58,7 @@ fun ApplicationConfig.getAuthType() = propertyOrNull("type")
         when (authType.uppercase()) {
             AuthType.SIMPLE.name -> AuthType.SIMPLE
             AuthType.OAUTH2.name -> AuthType.OAUTH2
+            AuthType.SIMPLE_AND_OAUTH2.name -> AuthType.SIMPLE_AND_OAUTH2
             else -> throw IllegalArgumentException("Unknown auth type \"$authType\". " +
                     "Please set the env variable DRILL_AUTH_TYPE to either " +
                     "${
