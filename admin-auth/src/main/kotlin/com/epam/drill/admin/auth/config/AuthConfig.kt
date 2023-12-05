@@ -38,6 +38,11 @@ class AuthConfig(
 ) {
     val type: AuthType
         get() = config.getAuthType()
+
+    val userRepoType: UserRepoType
+        get() = config.propertyOrNull("userRepoType")
+            ?.getString()?.let { UserRepoType.valueOf(it) }
+            ?: UserRepoType.DB
 }
 
 /**

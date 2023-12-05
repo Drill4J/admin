@@ -102,7 +102,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
                 put("drill.auth.oauth2.scopes", "scope1, scope2")
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule()
         }) {
@@ -135,8 +135,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
                 put("drill.auth.jwt.issuer", testIssuer)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
-                put("drill.ui.rootPath", "/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
@@ -173,7 +172,7 @@ class OAuthModuleTest {
                         assertEquals(Role.USER.name, getClaim("role").asString())
                     }
                     assertTrue(jwtCookie.httpOnly)
-                    assertEquals("/drill", jwtCookie.path)
+                    assertEquals("/", jwtCookie.path)
                 }
             }
         }
@@ -190,7 +189,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
@@ -218,7 +217,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }

@@ -54,7 +54,6 @@ val oauthDIModule = DI.Module("oauth") {
  */
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-    bindUiConfig()
     bind<OAuth2Config>() with singleton {
         OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
     }
@@ -67,22 +66,16 @@ fun DI.Builder.configureOAuthDI() {
     }
 }
 
-private fun DI.Builder.bindUiConfig() {
-    bind<UIConfig>() with singleton {
-        UIConfig(instance<Application>().environment.config.config("drill.ui"))
-    }
-}
 
 /**
  * A Ktor Authentication configuration for OAuth2 based authentication.
  */
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     val oauth2Config by di.instance<OAuth2Config>()
-    val uiConfig by di.instance<UIConfig>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
 
     oauth("oauth") {
-        urlProvider = { URI(uiConfig.uiRootUrl).resolve("/oauth/callback").toString() }
+        urlProvider = { URI(oauth2Config.redirectUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
             OAuthServerSettings.OAuth2ServerSettings(
                 name = "oauth2",
@@ -111,7 +104,7 @@ fun Authentication.Configuration.configureBasicStubAuthentication() {
  * A Ktor routes configuration for OAuth2 based authentication.
  */
 fun Routing.configureOAuthRoutes() {
-    val uiConfig by closestDI().instance<UIConfig>()
+    val oauth2Config by closestDI().instance<OAuth2Config>()
     val tokenService by closestDI().instance<TokenService>()
     val oauthService by closestDI().instance<OAuthService>()
 
@@ -128,10 +121,10 @@ fun Routing.configureOAuthRoutes() {
                     JWT_COOKIE,
                     jwt,
                     httpOnly = true,
-                    path = uiConfig.uiRootPath
+                    path = "/"
                 )
             )
-            call.respondRedirect(uiConfig.uiRootUrl)
+            call.respondRedirect(oauth2Config.redirectUrl)
         }
     }
 }
