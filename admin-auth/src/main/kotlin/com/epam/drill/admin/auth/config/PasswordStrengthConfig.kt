@@ -21,6 +21,9 @@ import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
 
+/**
+ * A Ktor configuration for password strength settings based on the key "drill.auth.password".
+ */
 class PasswordStrengthConfig(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val jwt: ApplicationConfig
@@ -29,15 +32,27 @@ class PasswordStrengthConfig(override val di: DI) : DIAware {
             .config("auth")
             .config("password")
 
+    /**
+     * A minimum password length. Optional, 6 by default.
+     */
     val minLength: Int
         get() = jwt.propertyOrNull("minLength")?.getString()?.toInt() ?: 6
 
+    /**
+     * Must the password contain uppercase. Optional, false by default.
+     */
     val mustContainUppercase: Boolean
         get() = jwt.propertyOrNull("mustContainUppercase")?.getString()?.toBoolean() ?: false
 
+    /**
+     * Must the password contain lowercase. Optional, false by default.
+     */
     val mustContainLowercase: Boolean
         get() = jwt.propertyOrNull("mustContainLowercase")?.getString()?.toBoolean() ?: false
 
+    /**
+     * Must the password contain digits. Optional, false by default.
+     */
     val mustContainDigit: Boolean
         get() = jwt.propertyOrNull("mustContainDigit")?.getString()?.toBoolean() ?: false
 }

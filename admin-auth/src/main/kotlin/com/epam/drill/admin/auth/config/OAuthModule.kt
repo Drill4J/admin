@@ -38,7 +38,9 @@ import java.net.URI
 
 const val JWT_COOKIE = "jwt"
 
-
+/**
+ * The DI module including all services and configurations for OAuth2 authentication.
+ */
 val oauthDIModule = DI.Module("oauth") {
     userRepositoriesConfig()
     userServicesConfig()
@@ -46,6 +48,9 @@ val oauthDIModule = DI.Module("oauth") {
     configureOAuthDI()
 }
 
+/**
+ * A DI Builder extension function registering all Kodein bindings for OAuth2 based authentication.
+ */
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuthConfig>() with singleton { OAuthConfig(instance<Application>().environment.config) }
@@ -58,6 +63,9 @@ fun DI.Builder.configureOAuthDI() {
     }
 }
 
+/**
+ * A Ktor Authentication configuration for OAuth2 based authentication.
+ */
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     val oauthConfig by di.instance<OAuthConfig>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
@@ -86,6 +94,9 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
     }
 }
 
+/**
+ * A Ktor routes configuration for OAuth2 based authentication.
+ */
 fun Routing.configureOAuthRoutes() {
     val oauthConfig by closestDI().instance<OAuthConfig>()
     val tokenService by closestDI().instance<TokenService>()

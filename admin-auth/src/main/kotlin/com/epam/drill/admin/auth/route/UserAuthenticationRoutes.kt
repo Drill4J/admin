@@ -53,6 +53,9 @@ object UpdatePassword
 @Location("/api/login")
 object Login
 
+/**
+ * The Ktor StatusPages plugin configuration for simple authentication status pages.
+ */
 fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
@@ -72,16 +75,25 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
     }
 }
 
+/**
+ * A user authentication and registration routes configuration.
+ */
 fun Route.userAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
 }
 
+/**
+ * A user profile routes configuration.
+ */
 fun Route.userProfileRoutes() {
     userInfoRoute()
     updatePasswordRoute()
 }
 
+/**
+ * A user authentication route configuration.
+ */
 fun Route.signInRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
@@ -95,6 +107,9 @@ fun Route.signInRoute() {
     }
 }
 
+/**
+ * A user registration route configuration.
+ */
 fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -108,6 +123,9 @@ fun Route.signUpRoute() {
     }
 }
 
+/**
+ * A user profile route configuration.
+ */
 fun Route.userInfoRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -118,6 +136,9 @@ fun Route.userInfoRoute() {
     }
 }
 
+/**
+ * An update password route configuration.
+ */
 fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
