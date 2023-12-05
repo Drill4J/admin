@@ -59,7 +59,7 @@ fun Application.module() {
     when (environment.config.config("drill.auth").getAuthType()) {
         AuthType.SIMPLE -> moduleWithSimpleAuth()
         AuthType.OAUTH2 -> moduleWithOAuth2()
-        AuthType.SIMPLE_WITH_OAUTH2 -> moduleWithSimpleAuthAndOAuth2()
+        AuthType.SIMPLE_AND_OAUTH2 -> moduleWithSimpleAuthAndOAuth2()
     }
 }
 
