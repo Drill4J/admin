@@ -118,6 +118,12 @@ class OAuth2Config(private val config: ApplicationConfig) {
         }
 
     /**
+     * Application root URL to redirect after successfully authentication
+     */
+    val redirectUrl: String
+        get() = config.property("redirectUrl").getString()
+
+    /**
      * A title of the OAuth2 sign-in button. Optional, "Sign in with SSO" by default.
      */
     val signInButtonTitle: String
