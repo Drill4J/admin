@@ -56,8 +56,25 @@ enum class UserRepoType {
  */
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     configureJwtDI()
+    configureSimpleAuthDI()
     userRepositoriesConfig()
     userServicesConfig()
+}
+
+/**
+ * A DI builder extension function registering all Kodein bindings for simple authentication.
+ */
+fun DI.Builder.configureSimpleAuthDI() {
+    bind<SimpleAuthConfig>() with singleton {
+        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
+    }
+    bind<AuthConfig>() with singleton {
+        AuthConfig(
+            config = instance<Application>().environment.config.config("drill.auth"),
+            simpleAuth = instance(),
+            jwt = instance(),
+        )
+    }
 }
 
 
@@ -65,7 +82,9 @@ val simpleAuthDIModule = DI.Module("simpleAuth") {
  * A DI builder extension function registering all Kodein bindings for JWT based authentication.
  */
 fun DI.Builder.configureJwtDI() {
-    bind<JwtConfig>() with singleton { JwtConfig(di) }
+    bind<JwtConfig>() with singleton {
+        JwtConfig(instance<Application>().environment.config.config("drill.auth.jwt"))
+    }
     bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
     bind<TokenService>() with singleton { JwtTokenService(instance()) }
 }
@@ -127,7 +146,7 @@ fun DI.Builder.userServicesConfig() {
             userRepository = instance(),
             passwordService = instance()
         ).let { service ->
-            when (instance<Application>().userRepoType) {
+            when (instance<AuthConfig>().userRepoType) {
                 UserRepoType.DB -> TransactionalUserAuthenticationService(service)
                 else -> service
             }
@@ -138,13 +157,17 @@ fun DI.Builder.userServicesConfig() {
             userRepository = instance(),
             passwordService = instance()
         ).let { service ->
-            when (instance<Application>().userRepoType) {
+            when (instance<AuthConfig>().userRepoType) {
                 UserRepoType.DB -> TransactionalUserManagementService(service)
                 else -> service
             }
         }
     }
-    bind<PasswordStrengthConfig>() with singleton { PasswordStrengthConfig(di) }
+    bind<PasswordStrengthConfig>() with singleton {
+        PasswordStrengthConfig(
+            instance<Application>().environment.config.config("drill.auth.password")
+        )
+    }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
     bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
@@ -155,9 +178,9 @@ fun DI.Builder.userServicesConfig() {
  */
 fun DI.Builder.userRepositoriesConfig() {
     bind<UserRepository>() with singleton {
-        val app: Application = instance()
-        logger.info { "The user repository type is ${app.userRepoType}" }
-        when (app.userRepoType) {
+        val authConfig: AuthConfig = instance()
+        logger.info { "The user repository type is ${authConfig.userRepoType}" }
+        when (authConfig.userRepoType) {
             UserRepoType.DB -> DatabaseUserRepository()
             UserRepoType.ENV -> EnvUserRepository(
                 env = instance<Application>().environment.config,
@@ -167,13 +190,6 @@ fun DI.Builder.userRepositoriesConfig() {
     }
 }
 
-private val Application.userRepoType: UserRepoType
-    get() = environment.config
-        .config("drill")
-        .config("auth")
-        .propertyOrNull("userRepoType")
-        ?.getString()?.let { UserRepoType.valueOf(it) }
-        ?: UserRepoType.DB
 
 private fun Payload.toPrincipal(): User {
     return User(

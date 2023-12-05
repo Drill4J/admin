@@ -53,21 +53,31 @@ val oauthDIModule = DI.Module("oauth") {
  */
 fun DI.Builder.configureOAuthDI() {
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-    bind<OAuthConfig>() with singleton { OAuthConfig(instance<Application>().environment.config) }
+    bind<OAuth2Config>() with singleton {
+        OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
+    }
+    bind<AuthConfig>() with singleton {
+        AuthConfig(
+            config = instance<Application>().environment.config.config("drill.auth"),
+            oauth2 = instance(),
+            jwt = instance(),
+        )
+    }
     bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
     bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
         httpClient = instance("oauthHttpClient"),
-        oauthConfig = instance(),
+        oauth2Config = instance(),
         userRepository = instance(),
         oauthMapper = instance()))
     }
 }
 
+
 /**
  * A Ktor Authentication configuration for OAuth2 based authentication.
  */
 fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
-    val oauthConfig by di.instance<OAuthConfig>()
+    val oauth2Config by di.instance<OAuth2Config>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
 
     configureJwtAuthentication(di)
@@ -78,16 +88,16 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
         }
     }
     oauth("oauth") {
-        urlProvider = { URI(oauthConfig.uiRootUrl).resolve("/oauth/callback").toString() }
+        urlProvider = { URI(oauth2Config.redirectUrl).resolve("/oauth/callback").toString() }
         providerLookup = {
             OAuthServerSettings.OAuth2ServerSettings(
                 name = "oauth2",
-                authorizeUrl = oauthConfig.authorizeUrl,
-                accessTokenUrl = oauthConfig.accessTokenUrl,
+                authorizeUrl = oauth2Config.authorizeUrl,
+                accessTokenUrl = oauth2Config.accessTokenUrl,
                 requestMethod = HttpMethod.Post,
-                clientId = oauthConfig.clientId,
-                clientSecret = oauthConfig.clientSecret,
-                defaultScopes = oauthConfig.scopes
+                clientId = oauth2Config.clientId,
+                clientSecret = oauth2Config.clientSecret,
+                defaultScopes = oauth2Config.scopes
             )
         }
         client = httpClient
@@ -98,7 +108,7 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
  * A Ktor routes configuration for OAuth2 based authentication.
  */
 fun Routing.configureOAuthRoutes() {
-    val oauthConfig by closestDI().instance<OAuthConfig>()
+    val oauth2Config by closestDI().instance<OAuth2Config>()
     val tokenService by closestDI().instance<TokenService>()
     val oauthService by closestDI().instance<OAuthService>()
 
@@ -115,10 +125,10 @@ fun Routing.configureOAuthRoutes() {
                     JWT_COOKIE,
                     jwt,
                     httpOnly = true,
-                    path = oauthConfig.uiRootPath
+                    path = "/"
                 )
             )
-            call.respondRedirect(oauthConfig.uiRootUrl)
+            call.respondRedirect(oauth2Config.redirectUrl)
         }
     }
 }
