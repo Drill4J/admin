@@ -66,10 +66,11 @@ class OAuth2Config(private val config: ApplicationConfig) {
     /**
      * OAuth2 access token payload mapping.
      *
-     * Used for map access token claims to [com.epam.drill.admin.auth.model.UserInfoView].
+     * Used for mapping access token claims to [com.epam.drill.admin.auth.model.UserInfoView].
      * Includes username and roles mapping:
-     * A username mapping is a name of field containing the username field in the access token payload. Optional, "sub" by default.
-     * A roles mapping is a name of field containing roles in access token payload. Optional, if not set, roles are not mapped.
+     *   "username" must contain name of a claim. Value of that claim is going to be treated as username.
+     *   "roles" must contain name of a claim which value contains list of roles. Leave empty for no mapping.
+     * NOTE: This is only the _name_ of the claim containing roles - actual mapping is specified in [roleMapping] section
      *
      * @see [Standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)
      */
@@ -84,10 +85,13 @@ class OAuth2Config(private val config: ApplicationConfig) {
     /**
      * OAuth2 user info mapping.
      *
+     *
      * Used for map response to [com.epam.drill.admin.auth.model.UserInfoView].
      * Includes username and roles mapping:
-     * A username mapping is a name of field containing the username field in the OAuth2 user info response. Optional, "username" by default.
-     * A roles mapping is a name of field containing roles in OAuth2 user info response. Optional, if not set, roles are not mapped.
+     *   "username" must contain name of a field in /user-info response body. Value of that field is going to be treated as username.
+     *   "roles" must contain name of a field in /user-info response body response which value contains list of roles. Leave empty for no mapping.
+     * NOTE: This is only the _name_ of the field containing roles - actual mapping is specified in [roleMapping] section
+     * NOTE: If [userInfoUrl] is specified values extracted from token [tokenMapping] are ignored (values mapped from /user-info take precedence)
      */
     val userInfoMapping: UserMapping
         get() = config.config("userInfoMapping").run {
@@ -98,7 +102,7 @@ class OAuth2Config(private val config: ApplicationConfig) {
         }
 
     /**
-     * A mapping OAuth2 roles to Drill4J roles.
+     * Mapping configuration from OAuth2 roles to Drill4J roles.
      *
      * Used for map a list of OAuth2 roles to [com.epam.drill.admin.auth.principal.Role].
      * Includes user and admin roles mapping:
