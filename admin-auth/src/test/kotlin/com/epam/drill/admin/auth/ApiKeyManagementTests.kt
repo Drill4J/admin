@@ -1,24 +1,10 @@
 package com.epam.drill.admin.auth
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
-import com.epam.drill.admin.auth.config.CLAIM_ROLE
-import com.epam.drill.admin.auth.config.CLAIM_USER_ID
-import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.ApiKeyView
-import com.epam.drill.admin.auth.model.EditUserPayload
-import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.auth.service.ApiKeyService
-import com.epam.drill.admin.auth.service.PasswordService
-import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -27,15 +13,12 @@ import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
 import org.kodein.di.bind
 import org.kodein.di.ktor.di
 import org.kodein.di.provider
 import kotlin.test.*
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.any
-import org.mockito.kotlin.verifyBlocking
 
 /**
  * Testing /keys routers
