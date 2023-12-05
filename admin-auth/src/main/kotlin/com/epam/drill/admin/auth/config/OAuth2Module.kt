@@ -95,7 +95,7 @@ fun Authentication.Configuration.configureBasicStubAuthentication() {
     basic("basic") {
         realm = "Access to the http(s) services"
         validate {
-            null //Basic authentication is not supported for the OAuth2 provider, but must be declared
+            null //Basic authentication is not supported for the OAuth2 provider, but must be declared, due to the use of a basic authenticator on some routes
         }
     }
 }
