@@ -13,11 +13,17 @@ object ApiKeys {
     data class Id(val id: Int)
 }
 
+/**
+ * Management API keys routes configuration.
+ */
 fun Routing.apiKeyManagementRoutes() {
     getAllApiKeysRoute()
     deleteApiKeyRoute()
 }
 
+/**
+ * A route for getting all API keys.
+ */
 fun Route.getAllApiKeysRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 
@@ -27,6 +33,9 @@ fun Route.getAllApiKeysRoute() {
     }
 }
 
+/**
+ * A route for deleting API keys.
+ */
 fun Route.deleteApiKeyRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 

@@ -13,6 +13,21 @@ import io.ktor.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
+@Location("/user-keys")
+object UserApiKeys
+
+/**
+ * A user API keys routes configuration.
+ */
+fun Route.userApiKeyRoutes() {
+    getUserApiKeysRoute()
+    generateUserApiKeyRoute()
+    deleteUserApiKeyRoute()
+}
+
+/**
+ * A route for getting user API keys.
+ */
 fun Route.getUserApiKeysRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 
@@ -23,6 +38,9 @@ fun Route.getUserApiKeysRoute() {
     }
 }
 
+/**
+ * A route for generating user API keys.
+ */
 fun Route.generateUserApiKeyRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 
@@ -34,6 +52,9 @@ fun Route.generateUserApiKeyRoute() {
     }
 }
 
+/**
+ * A route for deleting user API keys.
+ */
 fun Route.deleteUserApiKeyRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 

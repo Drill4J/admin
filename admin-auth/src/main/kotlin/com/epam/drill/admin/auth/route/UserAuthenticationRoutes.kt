@@ -55,9 +55,6 @@ object UpdatePassword
 @Location("/api/login")
 object Login
 
-@Location("/user-keys")
-object UserApiKeys
-
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
@@ -94,12 +91,6 @@ fun Route.userAuthenticationRoutes() {
 fun Route.userProfileRoutes() {
     userInfoRoute()
     updatePasswordRoute()
-}
-
-fun Route.userApiKeyRoutes() {
-    getUserApiKeysRoute()
-    generateUserApiKeyRoute()
-    deleteUserApiKeyRoute()
 }
 
 /**
