@@ -109,9 +109,6 @@ internal fun AgentInfo.toCommonInfo() = CommonAgentInfo(
 
 internal fun AgentInfo.toAgentBuildKey() = AgentBuildKey(id, build.version)
 
-internal suspend fun Iterable<AgentWsSession>.applyEach(block: suspend AgentWsSession.() -> Unit) = forEach {
-    block(it)
-}
 
 internal fun AgentInfo.debugString(
     instanceId: String,

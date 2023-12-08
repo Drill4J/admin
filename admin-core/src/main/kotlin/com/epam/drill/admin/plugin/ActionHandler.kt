@@ -16,13 +16,10 @@
 package com.epam.drill.admin.plugin
 
 import com.epam.drill.admin.common.serialization.*
-import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import kotlinx.serialization.*
 import mu.*
-import java.util.*
 import kotlin.reflect.full.*
 
 private val logger = KotlinLogging.logger { }
@@ -33,8 +30,7 @@ private val logger = KotlinLogging.logger { }
  * @param agentSessions the function which returns a list of agent websocket sessions by an agent ID
  */
 internal suspend fun AdminPluginPart<*>.processAction(
-    action: String,
-    agentSessions: (String) -> Iterable<AgentWsSession>,
+    action: String
 ): Any = runCatching {
     doRawAction(action).also { result ->
         (result as? ActionResult)?.agentAction?.let { parsedAction ->
@@ -48,16 +44,6 @@ internal suspend fun AdminPluginPart<*>.processAction(
             }
 
             if (actionStr.isNullOrEmpty()) throw Exception("failed to stringify action payload")
-
-            val agentAction = PluginAction(id, actionStr, "${UUID.randomUUID()}")
-
-            agentSessions(agentInfo.id).map {
-                //TODO EPMDJ-8233 move to the api
-                it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
-                    agentAction,
-                    topicName = "/plugin/action/${agentAction.confirmationKey}"
-                )
-            }.forEach { it.await() }
         }
     }
 }.getOrElse {

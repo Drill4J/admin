@@ -25,6 +25,7 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
+import com.epam.drill.admin.endpoints.instance.AgentInstanceEndpoints
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.endpoints.system.*
 import com.epam.drill.admin.group.*
@@ -105,7 +106,7 @@ val handlers: DI.Builder.(Application) -> Unit
         bind<LoginEndpoint>() with eagerSingleton { LoginEndpoint(instance()) }
         bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(di) }
         bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
-        bind<AgentHandler>() with eagerSingleton { AgentHandler(di) }
+        bind<AgentInstanceEndpoints>() with eagerSingleton { AgentInstanceEndpoints(di) }
         bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
         bind<RequestValidator>() with eagerSingleton { RequestValidator(di) }
     }

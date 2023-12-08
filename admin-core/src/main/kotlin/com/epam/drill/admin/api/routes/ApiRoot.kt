@@ -32,6 +32,7 @@ class ApiRoot(val prefix: String = "api") {
         const val AGENT = "Agent Endpoints"
         const val AGENT_PLUGIN = "Agent Plugin Endpoints"
         const val GROUP = "Group Endpoints"
+        const val AGENT_INSTANCE = "Agent Instance Endpoints"
     }
 
     @Group(SYSTEM)
@@ -70,9 +71,6 @@ class ApiRoot(val prefix: String = "api") {
         @Location("/{agentId}")
         data class Agent(val parent: Agents, val agentId: String)
 
-        @Group(AGENT)
-        @Location("/{agentId}/info")
-        data class AgentInfo(val parent: Agents, val agentId: String)
 
         @Group(AGENT)
         @Location("/{agentId}/toggle")
@@ -82,9 +80,6 @@ class ApiRoot(val prefix: String = "api") {
         @Location("/{agentId}/logging")
         data class AgentLogging(val parent: Agents, val agentId: String)
 
-        @Group(AGENT)
-        @Location("/{agentId}/parameters")
-        data class Parameters(val parent: Agents, val agentId: String)
 
 
         @Group(AGENT_PLUGIN)

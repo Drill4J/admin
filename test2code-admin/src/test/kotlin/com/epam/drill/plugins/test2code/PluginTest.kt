@@ -57,7 +57,7 @@ abstract class PluginTest : PostgresBased("plugin") {
     ).apply {
         initialize()
         delay(2000)
-        processData("smth_$buildVersion", Initialized(""))
+        processData(Initialized(""))
         return this
     }
 

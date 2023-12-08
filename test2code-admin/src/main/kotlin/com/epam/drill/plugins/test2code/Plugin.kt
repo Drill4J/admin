@@ -44,6 +44,8 @@ import java.io.InputStream
 import java.util.*
 import java.util.concurrent.Executors
 
+const val TEST2CODE_PLUGIN = "test2code"
+
 internal object AsyncJobDispatcher : CoroutineScope {
     override val coroutineContext =
         Executors.newFixedThreadPool(availableProcessors).asCoroutineDispatcher() + SupervisorJob()
@@ -309,41 +311,22 @@ class Plugin(
 
     /**
      * Process data from agents
-     * @param instanceId the agent instance ID
-     * @param content data to be processed
+     * @param message data to be processed
      */
     override suspend fun processData(
-        instanceId: String,
-        attachedAgentVersion: String,
-        content: String,
-    ): Any = run {
-        if (attachedAgentVersion != buildVersion) return "";
-
-        val message = if (content.isJson())
-            json.decodeFromString(CoverMessage.serializer(), content)
-        else {
-            val decode = Base64.getDecoder().decode(content)
-            ProtoBuf.decodeFromByteArray(CoverMessage.serializer(), decode)
-        }
-        processData(instanceId, message)
-            .let { "" } //TODO eliminate magic empty strings from API
-    }
-
-    suspend fun processData(
-        instanceId: String,
-        message: CoverMessage,
+        message: Any,
     ) = when (message) {
         is InitInfo -> {
             state.init()
-            logger.info { "$instanceId: ${message.message}" } //log init message
-            logger.info { "$instanceId: ${message.classesCount} classes to load" }
+            logger.info { "$agentId ($buildVersion): ${message.message}" } //log init message
+            logger.info { "$agentId ($buildVersion): ${message.classesCount} classes to load" }
         }
         /**
          * @features Class data sending
          */
         is InitDataPart -> {
             (state.data as? DataBuilder)?.also {
-                logger.info { "$instanceId: $message" }
+                logger.info { "$agentId ($buildVersion): $message" }
                 it += message.astEntities
             }
         }
@@ -354,7 +337,7 @@ class Plugin(
         /**
          * @features Session starting
          */
-        is SessionStarted -> logger.info { "$instanceId: Agent session ${message.sessionId} started." }
+        is SessionStarted -> logger.info { "$agentId ($buildVersion): Agent session ${message.sessionId} started." }
             .also { logPoolStats() }
 
         is CoverDataPart -> {
@@ -375,9 +358,9 @@ class Plugin(
             okResult
         }
 
-        is SessionCancelled -> logger.info { "$instanceId: Agent session ${message.sessionId} cancelled." }
+        is SessionCancelled -> logger.info { "$agentId ($buildVersion): Agent session ${message.sessionId} cancelled." }
 
-        is SessionsCancelled -> logger.info { "$instanceId: Agent sessions cancelled: ${message.ids}." }
+        is SessionsCancelled -> logger.info { "$agentId ($buildVersion): Agent sessions cancelled: ${message.ids}." }
 
         /**
          * @features Session finishing
@@ -385,7 +368,7 @@ class Plugin(
         is SessionFinished -> {
             delay(500L) //TODO remove after multi-instance core is implemented
             state.saveSession(message.sessionId) ?: logger.info {
-                "$instanceId: No active session with id ${message.sessionId}."
+                "$agentId ($buildVersion): No active session with id ${message.sessionId}."
             }
         }
         is SessionsFinished -> {
@@ -421,7 +404,7 @@ class Plugin(
             }
         }
 
-        else -> logger.info { "$instanceId: Message is not supported! $message" }
+        else -> logger.info { "$agentId ($buildVersion): Message is not supported! $message" }
     }
 
     /**

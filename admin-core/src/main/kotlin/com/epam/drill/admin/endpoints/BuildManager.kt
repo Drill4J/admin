@@ -22,6 +22,7 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.storage.*
 import io.ktor.application.*
 import kotlinx.collections.immutable.*
+import kotlinx.coroutines.delay
 import mu.*
 import org.kodein.di.*
 
@@ -53,11 +54,10 @@ class BuildManager(override val di: DI) : DIAware {
     suspend fun addBuildInstance(
         key: AgentBuildKey,
         instanceId: String,
-        session: AgentWsSession,
     ) {
         val current = buildStorage[key] ?: persistentMapOf()
-        logger.info { "put new instance id '${instanceId}' with key $key instance status is ${BuildStatus.ONLINE}" }
-        buildStorage.put(key, current + (instanceId to InstanceState(session, BuildStatus.ONLINE)))
+        logger.info { "put new instance id '${instanceId}' with key $key instance status is ${BuildStatus.BUSY}" }
+        buildStorage.put(key, current + (instanceId to InstanceState(BuildStatus.BUSY)))
     }
 
     fun instanceIds(
@@ -84,32 +84,6 @@ class BuildManager(override val di: DI) : DIAware {
         }
     }
 
-    // TODO EPMDJ-10011 instances spamming ONLINE
-    suspend fun processInstance(
-        agentId: String,
-        instanceId: String,
-        block: suspend AgentWsSession.() -> Unit,
-    ): Unit = agentManager.getOrNull(agentId)?.run {
-        val buildId = toAgentBuildKey()
-        getInstanceState(buildId, instanceId)?.let { instanceState ->
-            updateInstanceStatus(buildId, instanceId, BuildStatus.BUSY).also { instance ->
-                if (instance.all { it.value.status == BuildStatus.BUSY }) {
-                    notifyBuild(buildId)
-                    logger.debug { "Build $buildId is ${BuildStatus.BUSY}." }
-                }
-                logger.trace { "Instance $instanceId of agent $id is ${BuildStatus.BUSY}." }
-            }
-            try {
-                block(instanceState.agentWsSession)
-            } finally {
-                updateInstanceStatus(buildId, instanceId, BuildStatus.ONLINE).also {
-                    notifyBuild(buildId)
-                    logger.debug { "Build $buildId is ${BuildStatus.ONLINE}." }
-                }
-            }
-        } ?: logger.warn { "Instance $instanceId is not found" }
-    } ?: logger.warn { "Agent $agentId not found" }
-
     /**
      * Update status of the build
      * @param instanceId the build instance ID
@@ -129,6 +103,7 @@ class BuildManager(override val di: DI) : DIAware {
             } ?: instances
         }
     } ?: persistentMapOf()
+
 
     private fun getInstanceState(
         agentBuildKey: AgentBuildKey,
@@ -151,9 +126,6 @@ class BuildManager(override val di: DI) : DIAware {
         )
     }
 
-    fun agentSessions(k: String) = instanceIds(k).values.mapNotNull { state ->
-        state.takeIf { it.status == BuildStatus.ONLINE }?.agentWsSession
-    }
 
     /**
      * Notify subscribers when a build is updated

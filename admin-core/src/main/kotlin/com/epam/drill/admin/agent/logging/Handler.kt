@@ -15,52 +15,19 @@
  */
 package com.epam.drill.admin.agent.logging
 
-import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.*
-import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.store.*
-import com.epam.drill.common.ws.*
-import com.epam.drill.common.ws.dto.*
 import com.epam.dsm.*
 import org.kodein.di.*
 
 //todo remove after testing EPMDJ-7890
 class LoggingHandler(override val di: DI) : DIAware {
-    private val buildManager by instance<BuildManager>()
 
     suspend fun updateConfig(agentId: String, loggingConfig: LoggingConfigDto) {
-        buildManager.agentSessions(agentId).applyEach {
-            sendConfig(loggingConfig)
-            adminStore.store(AgentLoggingConfig(agentId, loggingConfig))
-        }
-    }
-
-    /**
-     * Send the information about logging to the agent
-     * @param agentId the agent ID
-     * @param agentSession the agent WebSocket session
-     * @features Agent attaching
-     */
-    suspend fun sync(agentId: String, agentSession: AgentWsSession?) {
-        adminStore.loadConfig(agentId)?.apply {
-            agentSession?.sendConfig(config)
-        }
+        adminStore.store(AgentLoggingConfig(agentId, loggingConfig))
     }
 
     private suspend fun StoreClient.loadConfig(agentId: String) = run {
         findById<AgentLoggingConfig>(agentId)
     }
 }
-
-suspend fun AgentWsSession.sendConfig(loggingConfig: LoggingConfigDto) {
-    sendToTopic<Communication.Agent.UpdateLoggingConfigEvent, LoggingConfig>(loggingConfig.level.toConfig())
-}
-
-private fun LogLevel.toConfig(): LoggingConfig = LoggingConfig(
-    trace = this == LogLevel.TRACE,
-    debug = this <= LogLevel.DEBUG,
-    info = this <= LogLevel.INFO,
-    warn = this <= LogLevel.WARN,
-    error = true
-)

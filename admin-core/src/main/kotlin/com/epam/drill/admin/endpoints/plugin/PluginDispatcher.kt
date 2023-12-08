@@ -18,7 +18,6 @@ package com.epam.drill.admin.endpoints.plugin
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.AgentStatus.*
 import com.epam.drill.admin.api.agent.BuildStatus.*
-import com.epam.drill.admin.api.plugin.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
@@ -31,8 +30,6 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.message.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -51,6 +48,7 @@ import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
+import com.epam.drill.plugins.test2code.common.api.CoverMessage
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -63,41 +61,15 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
     private val cacheService by instance<CacheService>()
 
-    /**
-     * Receive data from agents
-     * @param agentInfo the information about the agent
-     * @param instanceId the agent instance ID
-     * @param pluginData the application data
-     */
     suspend fun processPluginData(
         agentInfo: AgentInfo,
-        instanceId: String,
-        pluginData: String,
+        pluginId: String,
+        pluginData: CoverMessage
     ) {
-        val message = DrillMessageWrapper.serializer().parse(pluginData)
-        val pluginId = message.pluginId
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
-                processData(instanceId, agentInfo.build.version, message.drillMessage.content)
-            } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
-        } ?: logger.error { "Plugin $pluginId not loaded!" }
-    }
-
-    suspend fun dispatchAction(
-        agentInfo: AgentInfo,
-        instanceId: String,
-        message: String,
-    ) = run {
-        val wrapper = DrillMessageWrapper.serializer().parse(message)
-        val pluginId = wrapper.pluginId
-        val action = wrapper.drillMessage.content
-        logger.info { "Attempting to dispatch action from agent ${agentInfo.debugString(instanceId)} : $action" }
-        plugins[pluginId]?.let {
-            val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
-            agentEntry[pluginId]?.run {
-                val result = processAction(action, buildManager::agentSessions)
-                logger.info { "Response ${result.toStatusResponse()} " }
+                this.processData(pluginData)
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
@@ -134,7 +106,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                             val adminPluginPart = this[pluginId]
                             if (info.agentStatus == REGISTERED) {
                                 adminPluginPart?.let { adminPart ->
-                                    val result = adminPart.processAction(action, buildManager::agentSessions)
+                                    val result = adminPart.processAction(action)
                                     val statusResponse = result.toStatusResponse()
                                     HttpStatusCode.fromValue(statusResponse.code) to statusResponse
                                 } ?: (HttpStatusCode.BadRequest to ErrorResponse(
@@ -247,16 +219,9 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     val (_, agentId, pluginId) = params
                     logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
                     val dp: Plugin? = plugins[pluginId]
-                    val session = buildManager.agentSessions(agentId)
                     val (statusCode, response) = when {
                         (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
-                        (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
                         else -> {
-                            session.applyEach {
-                                sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                                    message = TogglePayload(pluginId)
-                                )
-                            }
                             HttpStatusCode.OK to EmptyContent
                         }
                     }
@@ -410,7 +375,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     val status = buildManager.buildStatus(agentId)
                     if (agentStatus == REGISTERED) {
                         agent[pluginId]?.run {
-                            val adminActionResult = processAction(action, buildManager::agentSessions)
+                            val adminActionResult = processAction(action)
                             adminActionResult.toStatusResponse()
                         }
                     } else if (agentStatus == NOT_REGISTERED || status == OFFLINE) {

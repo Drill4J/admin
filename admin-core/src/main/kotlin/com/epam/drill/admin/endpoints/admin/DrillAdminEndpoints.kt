@@ -28,11 +28,9 @@ import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.BuildManager
 import com.epam.drill.admin.endpoints.ErrorResponse
 import com.epam.drill.admin.endpoints.TopicResolver
-import com.epam.drill.admin.plugin.TogglePayload
 import com.epam.drill.admin.plugins.Plugins
 import com.epam.drill.admin.version.AnalyticsToggleDto
 import com.epam.drill.analytics.AnalyticService.ANALYTIC_DISABLE
-import com.epam.drill.common.ws.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -80,11 +78,12 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                             buildManager.instanceIds(agentId).forEach { (id, value) ->
                                 buildManager.updateInstanceStatus(agentBuildKey, id, newStatus)
                                 val toggleValue = newStatus == BuildStatus.ONLINE
-                                agentInfo.plugins.map { pluginId ->
-                                    value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                                        TogglePayload(pluginId, toggleValue)
-                                    )
-                                }.forEach { it.await() } //TODO coroutine scope (supervisor)
+//                                TODO
+//                                agentInfo.plugins.map { pluginId ->
+//                                    value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
+//                                        TogglePayload(pluginId, toggleValue)
+//                                    )
+//                                }.forEach { it.await() } //TODO coroutine scope (supervisor)
                             }
                             buildManager.notifyBuild(agentBuildKey)
                             logger.info { "Agent $agentId toggled, new build status - $newStatus." }

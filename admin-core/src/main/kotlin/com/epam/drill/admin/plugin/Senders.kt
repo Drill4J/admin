@@ -21,7 +21,6 @@ import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import io.ktor.application.*
 import io.ktor.http.*
@@ -96,18 +95,7 @@ class PluginSenders(override val di: DI) : DIAware {
          * Send an action to the plugin on the agent side
          */
         override suspend fun sendAgentAction(agentId: String, pluginId: String, message: Any) {
-            message.actionSerializerOrNull()?.let { serializer ->
-                val actionStr = serializer stringify message
-                val agentAction = PluginAction(pluginId, actionStr, "${UUID.randomUUID()}")
-                buildManager.agentSessions(agentId).map {
-                    //TODO EPMDJ-8233 move to the api
-                    it.sendToTopic<Communication.Plugin.DispatchEvent, PluginAction>(
-                        agentAction,
-                        topicName = "/plugin/action/${agentAction.confirmationKey}",
-                        callback = { logger.info { "Action $actionStr was successfully performed on the agent" } }
-                    ).await()
-                }
-            }
+            //TODO remove sendAgentAction
         }
     }
 }
