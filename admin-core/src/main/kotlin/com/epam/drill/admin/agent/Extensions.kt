@@ -87,7 +87,6 @@ internal fun AgentInfo.toAgentBuildDto(
 ): AgentBuildInfoDto = build.run {
     AgentBuildInfoDto(
         buildVersion = version,
-        buildStatus = buildManager.buildStatus(id),
         ipAddress = ipAddress,
         agentVersion = agentVersion,
         systemSettings = buildManager.buildData(id).settings,

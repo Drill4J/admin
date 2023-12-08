@@ -21,11 +21,7 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
-import com.epam.drill.admin.cache.*
-import com.epam.drill.admin.cache.impl.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.plugin.*
-import com.epam.drill.admin.plugin.AgentCacheKey
 import com.epam.drill.admin.store.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -109,14 +105,8 @@ class AgentEndpoints(override val di: DI) : DIAware {
                     val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
                         HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."
                     } else {
-                        //TODO EPMDJ-10354 Think about ability to remove online agent
-                        if (buildManager.buildStatus(agentId) == BuildStatus.OFFLINE) {
-                            agentManager.removeOfflineAgent(agentId)
-                            HttpStatusCode.OK to "Offline Agent '$agentId' has been completely removed."
-                        } else {
-                            logger.debug { "Deleting online Agent '$agentId' isn't available." }
-                            HttpStatusCode.BadRequest to ErrorResponse("Deleting online Agent '$agentId' isn't availabl.e")
-                        }
+                        agentManager.removeAgent(agentId)
+                        HttpStatusCode.OK to "Agent '$agentId' has been completely removed."
                     }
                     call.respond(status, message)
                 }

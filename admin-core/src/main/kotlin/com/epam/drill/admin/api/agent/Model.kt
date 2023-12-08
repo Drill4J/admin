@@ -31,15 +31,6 @@ enum class AgentStatus {
     REGISTERED,
 }
 
-/**
- * Agent statuses
- */
-enum class BuildStatus {
-    ONLINE,
-    OFFLINE,
-    BUSY,
-}
-
 @Serializable
 data class SystemSettingsDto(
     val packages: List<String> = emptyList(),
@@ -64,7 +55,6 @@ data class AgentInfoDto(
 @Serializable
 data class AgentBuildInfoDto(
     val buildVersion: String,
-    val buildStatus: BuildStatus,
     val ipAddress: String = "",
     val agentVersion: String,
     val systemSettings: SystemSettingsDto = SystemSettingsDto(),

@@ -17,7 +17,6 @@ package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.AgentStatus.*
-import com.epam.drill.admin.api.agent.BuildStatus.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.build.*
@@ -102,7 +101,6 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     val (statusCode, response) = agent?.run {
                         val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
                         if (plugin != null) {
-                            val buildStatus = buildManager.buildStatus(agentId)
                             val adminPluginPart = this[pluginId]
                             if (info.agentStatus == REGISTERED) {
                                 adminPluginPart?.let { adminPart ->
@@ -113,8 +111,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                                     "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
                                 )).also { logger.warn { "BadRequest with action: $action" } }
                             } else HttpStatusCode.BadRequest to ErrorResponse(
-                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
-                                        " status of build is $buildStatus."
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}"
                             ).also { logger.warn { "BadRequest with action: $action" } }
                         } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
                     } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
@@ -372,16 +369,15 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 val agentId = agent.info.id
                 val agentStatus = agent.info.agentStatus
                 async {
-                    val status = buildManager.buildStatus(agentId)
                     if (agentStatus == REGISTERED) {
                         agent[pluginId]?.run {
                             val adminActionResult = processAction(action)
                             adminActionResult.toStatusResponse()
                         }
-                    } else if (agentStatus == NOT_REGISTERED || status == OFFLINE) {
+                    } else if (agentStatus == NOT_REGISTERED) {
                         null
                     } else {
-                        "Agent $agentId is in the wrong state: Agent status: '$agentStatus', build status '$status'".run {
+                        "Agent $agentId is in the wrong state: Agent status: '$agentStatus'".run {
                             StatusMessageResponse(
                                 code = HttpStatusCode.Conflict.value,
                                 message = this

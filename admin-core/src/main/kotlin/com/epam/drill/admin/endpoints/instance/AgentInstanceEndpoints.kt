@@ -16,7 +16,6 @@
 package com.epam.drill.admin.endpoints.instance
 
 import com.epam.drill.admin.agent.AgentInfo
-import com.epam.drill.admin.api.agent.BuildStatus
 import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.BuildManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
@@ -58,7 +57,6 @@ data class Agents(val agentId: String) {
 class AgentInstanceEndpoints(override val di: DI) : DIAware {
     private val app by instance<Application>()
     private val agentManager by instance<AgentManager>()
-    private val buildManager by instance<BuildManager>()
     private val pd by instance<PluginDispatcher>()
 
     init {

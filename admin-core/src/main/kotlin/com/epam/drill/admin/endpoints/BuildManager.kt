@@ -22,7 +22,6 @@ import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.storage.*
 import io.ktor.application.*
 import kotlinx.collections.immutable.*
-import kotlinx.coroutines.delay
 import mu.*
 import org.kodein.di.*
 
@@ -56,8 +55,8 @@ class BuildManager(override val di: DI) : DIAware {
         instanceId: String,
     ) {
         val current = buildStorage[key] ?: persistentMapOf()
-        logger.info { "put new instance id '${instanceId}' with key $key instance status is ${BuildStatus.BUSY}" }
-        buildStorage.put(key, current + (instanceId to InstanceState(BuildStatus.BUSY)))
+        logger.info { "put new instance id '${instanceId}'" }
+        buildStorage.put(key, current + (instanceId to InstanceState()))
     }
 
     fun instanceIds(
@@ -84,39 +83,6 @@ class BuildManager(override val di: DI) : DIAware {
         }
     }
 
-    /**
-     * Update status of the build
-     * @param instanceId the build instance ID
-     * @param status the status which have to update
-     * @param agentBuildKey the pair of the agent ID and the build version
-     * @features Agent registration, Agent attaching
-     */
-    internal fun updateInstanceStatus(
-        agentBuildKey: AgentBuildKey,
-        instanceId: String,
-        status: BuildStatus,
-    ) = getInstanceState(agentBuildKey, instanceId)?.let { instanceState ->
-        buildStorage.updateValue(agentBuildKey) { instances ->
-            logger.trace { "Instance $instanceId changed status, new status is $status" }
-            instances[agentBuildKey]?.let {
-                instances.put(agentBuildKey, it.put(instanceId, instanceState.copy(status = status)))
-            } ?: instances
-        }
-    } ?: persistentMapOf()
-
-
-    private fun getInstanceState(
-        agentBuildKey: AgentBuildKey,
-        instanceId: String,
-    ) = buildStorage.targetMap[agentBuildKey]?.get(instanceId)
-
-    fun buildStatus(agentId: String): BuildStatus = instanceIds(agentId).let { instances ->
-        when {
-            instances.isEmpty() || instances.all { it.value.status == BuildStatus.OFFLINE } -> BuildStatus.OFFLINE
-            instances.any { it.value.status == BuildStatus.ONLINE } -> BuildStatus.ONLINE
-            else -> BuildStatus.BUSY
-        }
-    }
 
     internal fun buildData(agentId: String): AgentData = agentDataCache.getOrPut(agentId) {
         logger.debug { "put adminData with id=$agentId" }

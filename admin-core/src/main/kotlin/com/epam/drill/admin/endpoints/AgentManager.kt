@@ -52,7 +52,6 @@ import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
 import java.util.*
-import kotlin.time.measureTime
 
 /**
  * Service for managing agents
@@ -117,7 +116,7 @@ class AgentManager(override val di: DI) : DIAware {
         return false
     }
 
-    internal suspend fun removeOfflineAgent(
+    internal suspend fun removeAgent(
         agentId: String,
     ) = trackTime("Remove $agentId") {
         (get(agentId) ?: loadAgentInfo(agentId))?.let { storedInfo ->
@@ -394,6 +393,4 @@ internal suspend fun StoreClient.loadAgentMetadata(
     agentBuildKey: AgentBuildKey,
 ): AgentMetadata = findById(agentBuildKey) ?: AgentMetadata(agentBuildKey)
 
-data class InstanceState(
-    val status: BuildStatus,
-)
+class InstanceState

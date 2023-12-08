@@ -45,34 +45,14 @@ internal class RequestValidator(override val di: DI) : DIAware {
                     val agentId = context.parameters["agentId"]
                     if (agentId != null) {
                         val agentInfo = agentManager.getOrNull(agentId)
-                        when (buildManager.buildStatus(agentId)) {
-                            BuildStatus.BUSY -> {
-                                val agentPath = locations.href(
-                                    ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
-                                )
-                                with(context.request) {
-                                    if (path() != agentPath && httpMethod != HttpMethod.Post) {
-                                        logger.info { "Agent status is busy" }
-
-                                        call.respond(
-                                            HttpStatusCode.BadRequest,
-                                            ValidationResponse(agentIsBusyMessage)
-                                        )
-                                        return@intercept finish()
-                                    }
-                                }
-                            }
-                            else -> {
-                                if (agentInfo == null &&
-                                    agentManager.allEntries().none { it.info.groupId == agentId }
-                                ) {
-                                    call.respond(
-                                        HttpStatusCode.BadRequest,
-                                        ValidationResponse("Agent '$agentId' not found")
-                                    )
-                                    return@intercept finish()
-                                }
-                            }
+                        if (agentInfo == null &&
+                            agentManager.allEntries().none { it.info.groupId == agentId }
+                        ) {
+                            call.respond(
+                                HttpStatusCode.BadRequest,
+                                ValidationResponse("Agent '$agentId' not found")
+                            )
+                            return@intercept finish()
                         }
                     }
                 }

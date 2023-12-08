@@ -19,7 +19,6 @@ import com.epam.drill.admin.agent.logging.LoggingHandler
 import com.epam.drill.admin.agent.logging.defaultLoggingConfig
 import com.epam.drill.admin.agent.toAgentBuildKey
 import com.epam.drill.admin.api.LoggingConfigDto
-import com.epam.drill.admin.api.agent.BuildStatus
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
 import com.epam.drill.admin.cache.CacheService
@@ -58,44 +57,6 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
         app.routing {
 
             authenticate("jwt", "basic") {
-
-                post<ApiRoot.Agents.ToggleAgent>(
-                    "Agent Toggle StandBy"
-                        .responds(
-                            ok<Unit>(), notFound(), badRequest()
-                        )
-                ) { params ->
-                    val (_, agentId) = params
-                    logger.info { "Toggle agent $agentId" }
-                    val (status, response) = agentManager[agentId]?.let { agentInfo ->
-                        val status = buildManager.buildStatus(agentId)
-                        val agentBuildKey = agentInfo.toAgentBuildKey()
-                        when (status) {
-                            BuildStatus.OFFLINE -> BuildStatus.ONLINE
-                            BuildStatus.ONLINE -> BuildStatus.OFFLINE
-                            else -> null
-                        }?.let { newStatus ->
-                            buildManager.instanceIds(agentId).forEach { (id, value) ->
-                                buildManager.updateInstanceStatus(agentBuildKey, id, newStatus)
-                                val toggleValue = newStatus == BuildStatus.ONLINE
-//                                TODO
-//                                agentInfo.plugins.map { pluginId ->
-//                                    value.agentWsSession.sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-//                                        TogglePayload(pluginId, toggleValue)
-//                                    )
-//                                }.forEach { it.await() } //TODO coroutine scope (supervisor)
-                            }
-                            buildManager.notifyBuild(agentBuildKey)
-                            logger.info { "Agent $agentId toggled, new build status - $newStatus." }
-                            HttpStatusCode.OK to EmptyContent
-                        } ?: (HttpStatusCode.Conflict to ErrorResponse(
-                            "Cannot toggle agent $agentId on status $status"
-                        ))
-                    } ?: (HttpStatusCode.NotFound to EmptyContent)
-                    call.respond(status, response)
-                }
-
-
                 put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(
                     "Configure agent logging levels"
                         .examples(
