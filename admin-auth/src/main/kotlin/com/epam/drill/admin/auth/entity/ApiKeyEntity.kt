@@ -4,9 +4,9 @@ import java.time.LocalDateTime
 
 data class ApiKeyEntity(
     val id: Int? = null,
-    val user: UserEntity,
+    val userId: Int,
     val description: String,
     val apiKeyHash: String,
     val expiresAt: LocalDateTime,
-    val createdAt: LocalDateTime? = null
+    val createdAt: LocalDateTime
 )

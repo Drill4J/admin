@@ -39,7 +39,7 @@ import java.time.Month
 import kotlin.test.*
 
 @Testcontainers
-class UserRepositoryImplTest {
+class DatabaseUserRepositoryTest {
 
     private val repository = DatabaseUserRepository()
 
@@ -275,7 +275,7 @@ private fun insertUsers(
     return ids
 }
 
-private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
+fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
     UserTable.insertAndGetId {
         it[username] = "username$index"
         it[passwordHash] = "hash$index"
