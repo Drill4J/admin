@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.jwt.user
+package com.epam.drill.admin.auth.principal
 
 import io.ktor.auth.*
 
 data class User(
-    val id: Int,
-    val name: String,
-    val password: String,
-    val role: String,
+    val username: String,
+    val role: Role
 ) : Principal

@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.common
+package com.epam.drill.admin.auth.service
 
-import kotlinx.serialization.Serializable
+import com.epam.drill.admin.auth.model.UserInfoView
 
-
-@Serializable
-data class UserData(
-    val name: String,
-    val password: String,
-)
+interface TokenService {
+    fun issueToken(user: UserInfoView): String
+    fun verifyToken(token: String)
+}

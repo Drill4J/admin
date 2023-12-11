@@ -20,7 +20,6 @@ import com.epam.drill.admin.common.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.core.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.jwt.config.jwtConfig
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.websocket.*
@@ -49,7 +48,7 @@ class DrillPluginWs(override val di: DI) : DIAware {
     init {
         app.routing {
             plugins.keys.forEach { pluginId ->
-                authWebSocket("/ws/plugins/$pluginId", app.jwtConfig) { handle(pluginId) }
+                authWebSocket("/ws/plugins/$pluginId") { handle(pluginId) }
             }
         }
     }

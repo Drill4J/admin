@@ -26,7 +26,6 @@ val kodeinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
 val mapdbVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
-val postgresEmbeddedVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -52,7 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
-    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("org.flywaydb:flyway-core:$flywaydbVersion")
     implementation("org.mapdb:mapdb:$mapdbVersion") {
         exclude(group = "org.eclipse.collections", module = "eclipse-collections")
@@ -63,8 +62,8 @@ dependencies {
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
+    implementation(project(":admin-auth"))
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))

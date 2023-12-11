@@ -13,13 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.jwt.user.source
+package com.epam.drill.admin.auth.exception
 
-import com.epam.drill.admin.jwt.user.*
-import io.ktor.auth.*
-
-interface UserSource {
-    fun findUserById(id: Int): User?
-
-    fun findUserByCredentials(credential: UserPasswordCredential): User?
-}
+class NotAuthenticatedException(message: String? = null): Exception(message ?: "Invalid credentials")

@@ -16,10 +16,12 @@
 package com.epam.drill.e2e
 
 import com.epam.drill.admin.*
+import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.config.usersDiConfig
+import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.jwt.config.*
 import com.epam.drill.admin.kodein.*
 import com.epam.drill.admin.plugin.PluginCaches
 import com.epam.drill.admin.plugin.PluginMetadata
@@ -31,8 +33,6 @@ import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.epam.dsm.test.*
 import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.config.*
 import io.ktor.features.*
 import io.ktor.locations.*
@@ -41,7 +41,10 @@ import org.kodein.di.*
 import java.io.*
 import com.epam.drill.admin.plugins.coverage.TestAdminPart
 import com.epam.drill.admin.plugins.test2CodePlugin
-import com.epam.drill.admin.security.installAuthentication
+import io.ktor.routing.*
+import javax.sql.DataSource
+
+const val GUEST_USER = "{\"username\": \"user\", \"password\": \"user\", \"role\": \"USER\"}"
 
 class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePlugin: Boolean = false) {
     lateinit var wsTopic: WsTopic
@@ -54,17 +57,23 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
             put("drill.plugins.remote.enabled", "false")
             put("drill.agents.socket.timeout", "90")
             put("drill.cache.type", "jvm")
+            put("drill.auth.userRepoType", "ENV")
+            put("drill.auth.envUsers", listOf(GUEST_USER))
         }
         install(Locations)
         install(WebSockets)
-        installAuthentication()
+
         install(ContentNegotiation) {
             converters()
         }
 
+        install(RoleBasedAuthorization)
+
         enableSwaggerSupport()
 
-        kodeinApplication(AppBuilder {
+        kodein {
+            withKModule { kodeinModule("securityConfig", securityDiConfig) }
+            withKModule { kodeinModule("usersConfig", usersDiConfig) }
             withKModule { kodeinModule("pluginServices", testPluginServices(useTest2CodePlugin)) }
             withKModule { kodeinModule("storage", storage) }
             withKModule { kodeinModule("wsHandler", wsHandler) }
@@ -80,7 +89,14 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
                     }
                 }
             }
-        })
+        }
+
+        routing {
+            route("/api") {
+                userAuthenticationRoutes()
+            }
+        }
+
         environment.monitor.subscribe(ApplicationStopped) {
             println("test app stopping...")
             Thread.sleep(delayBeforeClearData)//for parallel tests, example: MultipleAgentRegistrationTest
