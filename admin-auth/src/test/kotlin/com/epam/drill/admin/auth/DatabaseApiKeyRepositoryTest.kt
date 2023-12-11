@@ -2,8 +2,10 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
+import com.epam.drill.admin.auth.table.UserTable
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
@@ -11,6 +13,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
@@ -49,6 +52,12 @@ class DatabaseApiKeyRepositoryTest {
             })
             DatabaseConfig.init(dataSource)
         }
+
+        @JvmStatic
+        @AfterAll
+        fun finish() {
+            postgresqlContainer.stop()
+        }
     }
 
     @Test
@@ -69,8 +78,8 @@ class DatabaseApiKeyRepositoryTest {
 
     @Test
     fun `given userId, getAllByUserId must return all api-keys of this user`() = withTransaction {
-        val userId1 = insertUser()
-        val userId2 = insertUser()
+        val userId1 = insertUser(1)
+        val userId2 = insertUser(2)
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId2 }
@@ -84,8 +93,8 @@ class DatabaseApiKeyRepositoryTest {
 
     @Test
     fun `getAll must return all api-keys of all users`() = withTransaction {
-        val userId1 = insertUser()
-        val userId2 = insertUser()
+        val userId1 = insertUser(1)
+        val userId2 = insertUser(2)
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId2 }
@@ -109,13 +118,16 @@ class DatabaseApiKeyRepositoryTest {
 private fun withTransaction(test: suspend () -> Unit) {
     runBlocking {
         newSuspendedTransaction {
-            test()
-            rollback()
+            try {
+                test()
+            } finally {
+                rollback()
+            }
         }
     }
 }
 
-fun insertApiKey(overrideColumns: ApiKeyTable.(InsertStatement<*>) -> Unit = {}) =
+private fun insertApiKey(overrideColumns: ApiKeyTable.(InsertStatement<*>) -> Unit = {}) =
     ApiKeyTable.insertAndGetId {
         it[description] = "for testing"
         it[apiKeyHash] = "hash"
@@ -123,3 +135,14 @@ fun insertApiKey(overrideColumns: ApiKeyTable.(InsertStatement<*>) -> Unit = {})
         it[createdAt] = LocalDateTime.now()
         overrideColumns(it)
     }.value
+
+private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
+    UserTable.insertAndGetId {
+        it[username] = "apikey-username$index"
+        it[passwordHash] = "hash$index"
+        it[role] = Role.values()[index % Role.values().size].name
+        it[blocked] = false
+        it[registrationDate] = LocalDateTime.now()
+        overrideColumns(it)
+    }.value
+

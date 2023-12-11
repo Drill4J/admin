@@ -27,6 +27,7 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -65,6 +66,12 @@ class DatabaseUserRepositoryTest {
                 this.validate()
             })
             DatabaseConfig.init(dataSource)
+        }
+
+        @JvmStatic
+        @AfterAll
+        fun finish() {
+            postgresqlContainer.stop()
         }
     }
 
@@ -259,8 +266,11 @@ class DatabaseUserRepositoryTest {
 private fun withTransaction(test: suspend () -> Unit) {
     runBlocking {
         newSuspendedTransaction {
-            test()
-            rollback()
+            try {
+                test()
+            } finally {
+                rollback()
+            }
         }
     }
 }
