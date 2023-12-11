@@ -7,6 +7,6 @@ data class ApiKeyEntity(
     val user: UserEntity,
     val description: String,
     val apiKeyHash: String,
-    val expired: LocalDateTime,
-    val created: LocalDateTime? = null
+    val expiresAt: LocalDateTime,
+    val createdAt: LocalDateTime? = null
 )
