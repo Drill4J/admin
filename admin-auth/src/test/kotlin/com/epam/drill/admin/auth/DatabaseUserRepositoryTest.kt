@@ -285,7 +285,7 @@ private fun insertUsers(
     return ids
 }
 
-fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
+private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
     UserTable.insertAndGetId {
         it[username] = "username$index"
         it[passwordHash] = "hash$index"
