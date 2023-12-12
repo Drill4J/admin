@@ -16,6 +16,7 @@ import io.ktor.locations.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -27,6 +28,8 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import java.time.LocalDateTime
+import java.time.Month
+
 
 /**
  * Testing /user-keys routers
@@ -37,6 +40,11 @@ class UserApiKeyTests {
 
     @Mock
     lateinit var passwordService: PasswordService
+
+    @Mock
+    lateinit var currentTimeProvider: CurrentTimeProvider
+
+    val firstJanuary2023 = LocalDateTime.of(2023, Month.JANUARY, 1, 0, 0)
 
     @BeforeTest
     fun setup() {
@@ -74,6 +82,7 @@ class UserApiKeyTests {
         val testUserId = 43
         val testApiKeyId = 123
         wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
+        wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
         wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(testApiKeyId))
 
         withTestApplication(withRoute {
@@ -95,6 +104,33 @@ class UserApiKeyTests {
                 assertEquals(testApiKeyId, response.id)
                 assertNotNull(response.apiKey)
                 assertNotNull(response.expiresAt)
+            }
+        }
+    }
+
+    @Test
+    fun `given three month expiry period, 'POST user-keys' must return api key with expiration date in three month from current date`() {
+        wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
+        wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
+        wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(123))
+
+        withTestApplication(withRoute {
+            authenticate {
+                generateUserApiKeyRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Post, "/user-keys") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = GenerateApiKeyPayload(
+                    description = "for some client",
+                    expiryPeriod = ExpiryPeriod.THREE_MONTHS
+                )
+                setBody(Json.encodeToString(GenerateApiKeyPayload.serializer(), form))
+                addJwtToken(username = "test-user", userId = 43)
+            }) {
+                assertEquals(HttpStatusCode.OK, response.status())
+                val response: ApiKeyCredentialsView = assertResponseNotNull(ApiKeyCredentialsView.serializer())
+                assertEquals(firstJanuary2023.plusMonths(3).toKotlinLocalDateTime(), response.expiresAt)
             }
         }
     }
@@ -124,7 +160,13 @@ class UserApiKeyTests {
             json()
         }
         di {
-            bind<ApiKeyService>() with provider { ApiKeyServiceImpl(apiKeyRepository, passwordService) }
+            bind<ApiKeyService>() with provider {
+                ApiKeyServiceImpl(
+                    repository = apiKeyRepository,
+                    passwordService = passwordService,
+                    currentDateTimeProvider = { currentTimeProvider.getCurrentTime() }
+                )
+            }
         }
         install(Authentication) {
             jwtMock()
@@ -154,4 +196,8 @@ class UserApiKeyTests {
         createdAt = createdAt,
         user = user
     )
+}
+
+interface CurrentTimeProvider {
+    fun getCurrentTime(): LocalDateTime
 }

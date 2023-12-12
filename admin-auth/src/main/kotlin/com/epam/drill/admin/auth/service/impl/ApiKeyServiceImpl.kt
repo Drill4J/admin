@@ -16,7 +16,8 @@ import java.util.*
 
 class ApiKeyServiceImpl(
     private val repository: ApiKeyRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val currentDateTimeProvider: () -> LocalDateTime = { LocalDateTime.now() }
 ): ApiKeyService {
     override suspend fun getAllApiKeys(): List<ApiKeyView> {
         return repository.getAll()
@@ -39,8 +40,8 @@ class ApiKeyServiceImpl(
             userId = userId,
             description = payload.description,
             apiKeyHash = apiKeyHash,
-            expiresAt = LocalDateTime.now().plusMonths(payload.expiryPeriod.months.toLong()),
-            createdAt = LocalDateTime.now()
+            expiresAt = currentDateTimeProvider().plusMonths(payload.expiryPeriod.months.toLong()),
+            createdAt = currentDateTimeProvider()
         )
         val entityWithId = repository.create(entity)
         return ApiKeyCredentialsView(
