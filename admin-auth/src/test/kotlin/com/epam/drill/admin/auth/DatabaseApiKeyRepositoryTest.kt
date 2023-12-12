@@ -109,9 +109,32 @@ class DatabaseApiKeyRepositoryTest {
         val testUserId = insertUser()
         val testApiKeyId = insertApiKey { it[userId] = testUserId }
 
-        repository.delete(testApiKeyId)
+        repository.deleteById(testApiKeyId)
 
         assertEquals(0, ApiKeyTable.select { ApiKeyTable.id eq testApiKeyId }.count())
+    }
+
+
+    @Test
+    fun `getAll must return not null user entity in every api-key entity`() = withTransaction {
+        val testUserId = insertUser()
+        insertApiKey { it[userId] = testUserId }
+        insertApiKey { it[userId] = testUserId }
+
+        val allApiKeys = repository.getAll()
+
+        assertTrue(allApiKeys.all { it.user != null })
+    }
+
+    @Test
+    fun `getAllByUserId must return null user entity in every api-key entity`() = withTransaction {
+        val testUserId = insertUser()
+        insertApiKey { it[userId] = testUserId }
+        insertApiKey { it[userId] = testUserId }
+
+        val apiKeys = repository.getAllByUserId(testUserId)
+
+        assertTrue(apiKeys.all { it.user == null })
     }
 }
 

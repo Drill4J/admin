@@ -20,6 +20,7 @@ import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
+import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
@@ -131,6 +132,10 @@ object CopyUserWithID : Answer<UserEntity> {
 
 object CopyUser : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
+}
+
+fun copyApiKeyWithId(id: Int) = Answer<ApiKeyEntity> { invocation ->
+    invocation?.getArgument<ApiKeyEntity>(0)?.copy(id = id)
 }
 
 fun Authentication.Configuration.jwtMock() {

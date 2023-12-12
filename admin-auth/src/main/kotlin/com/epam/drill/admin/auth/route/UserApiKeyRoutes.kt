@@ -14,7 +14,10 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
 @Location("/user-keys")
-object UserApiKeys
+object UserApiKeys {
+    @Location("/{id}")
+    data class Id(val id: Int)
+}
 
 /**
  * A user API keys routes configuration.
@@ -58,9 +61,10 @@ fun Route.generateUserApiKeyRoute() {
 fun Route.deleteUserApiKeyRoute() {
     val apiKeyService by closestDI().instance<ApiKeyService>()
 
-    delete<UserApiKeys> {
+    delete<UserApiKeys.Id> { params ->
         val principal = call.principal<User>() ?: throw NotAuthenticatedException()
-        apiKeyService.deleteApiKey(principal.id)
+        val apiKeyId = params.id
+        apiKeyService.deleteApiKey(apiKeyId)
         call.ok("API Key successfully deleted.")
     }
 }

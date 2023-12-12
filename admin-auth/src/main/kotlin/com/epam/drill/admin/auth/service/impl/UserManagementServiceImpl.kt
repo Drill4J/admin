@@ -33,11 +33,11 @@ class UserManagementServiceImpl(
     private val externalRoleManagement: Boolean = false
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
-        return userRepository.findAll().map { it.toView() }
+        return userRepository.findAll().map { it.toApiKeyView() }
     }
 
     override suspend fun getUser(userId: Int): UserView {
-        return findUser(userId).toView()
+        return findUser(userId).toApiKeyView()
     }
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
@@ -45,7 +45,7 @@ class UserManagementServiceImpl(
         if (externalRoleManagement && oldUserEntity.external)
             throw ForbiddenOperationException("Cannot update role for external user")
         val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
-        return updatedUserEntity.toView()
+        return updatedUserEntity.toApiKeyView()
     }
 
     override suspend fun deleteUser(userId: Int) {
@@ -82,7 +82,7 @@ private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
     )
 }
 
-private fun UserEntity.toView(): UserView {
+private fun UserEntity.toApiKeyView(): UserView {
     return UserView(
         id = this.id ?: throw NullPointerException("User id cannot be null"),
         username = this.username,

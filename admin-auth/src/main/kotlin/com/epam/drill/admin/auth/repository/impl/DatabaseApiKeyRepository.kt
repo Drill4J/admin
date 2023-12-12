@@ -17,7 +17,7 @@ class DatabaseApiKeyRepository: ApiKeyRepository {
         return ApiKeyTable.select { ApiKeyTable.userId eq userId }.map { it.toEntity() }
     }
 
-    override suspend fun delete(id: Int) {
+    override suspend fun deleteById(id: Int) {
         ApiKeyTable.deleteWhere { ApiKeyTable.id eq id }
     }
 
@@ -32,7 +32,17 @@ private fun ResultRow.toEntity() = ApiKeyEntity(
     description = this[ApiKeyTable.description],
     apiKeyHash = this[ApiKeyTable.apiKeyHash],
     expiresAt = this[ApiKeyTable.expiresAt],
-    createdAt = this[ApiKeyTable.createdAt]
+    createdAt = this[ApiKeyTable.createdAt],
+    user = this.hasValue(UserTable.username).takeIf { it }?.let {
+        UserEntity(
+            id = this[ApiKeyTable.userId],
+            username = this[UserTable.username],
+            passwordHash = this[UserTable.passwordHash],
+            role = this[UserTable.role],
+            blocked = this[UserTable.blocked],
+            registrationDate = this[UserTable.registrationDate]
+        )
+    },
 )
 
 private fun ApiKeyEntity.mapTo(builder: UpdateBuilder<Int>) {

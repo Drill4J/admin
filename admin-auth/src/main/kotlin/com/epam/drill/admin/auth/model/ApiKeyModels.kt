@@ -9,17 +9,25 @@ data class ApiKeyView(
     val id: Int,
     val userId: Int,
     val description: String,
-    val expired: LocalDateTime,
-    val created: LocalDateTime,
+    val expiresAt: LocalDateTime,
+    val createdAt: LocalDateTime,
     val username: String,
-    val role: Role
+    val role: Role,
+)
+
+@Serializable
+data class UserApiKeyView(
+    val id: Int,
+    val description: String,
+    val expiresAt: LocalDateTime,
+    val createdAt: LocalDateTime,
 )
 
 @Serializable
 data class ApiKeyCredentialsView(
     val id: Int,
     val apiKey: String,
-    val expired: LocalDateTime
+    val expiresAt: LocalDateTime
 )
 
 @Serializable
