@@ -23,7 +23,10 @@ import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.principal.User
 import io.ktor.application.*
+import io.ktor.auth.*
+import io.ktor.auth.jwt.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
@@ -61,8 +64,7 @@ fun TestApplicationRequest.addJwtToken(
     audience: String? = null,
     algorithm: Algorithm = Algorithm.HMAC512(secret),
     configureJwt: JWTCreator.Builder.() -> Unit = {
-        withClaim(CLAIM_ROLE, role).
-        withClaim(CLAIM_USER_ID, userId)
+        withClaim(CLAIM_ROLE, role).withClaim(CLAIM_USER_ID, userId)
     },
     configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
 ) {
@@ -123,10 +125,23 @@ fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEng
         ?: respondBadRequest()
 })
 
-object CopyUserWithID: Answer<UserEntity> {
+object CopyUserWithID : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
 }
 
-object CopyUser: Answer<UserEntity> {
+object CopyUser : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
+}
+
+fun Authentication.Configuration.jwtMock() {
+    jwt {
+        verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
+        validate {
+            User(
+                id = it.payload.getClaim(CLAIM_USER_ID).asInt(),
+                username = it.payload.subject,
+                role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
+            )
+        }
+    }
 }

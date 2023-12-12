@@ -15,10 +15,6 @@
  */
 package com.epam.drill.admin.auth
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
-import com.epam.drill.admin.auth.config.CLAIM_ROLE
-import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -27,18 +23,15 @@ import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
-import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.*
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
-import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -326,16 +319,7 @@ class UserManagementTest {
             simpleAuthStatusPages()
         }
         install(Authentication) {
-            jwt {
-                verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
-                validate {
-                    User(
-                        id = it.payload.getClaim(CLAIM_USER_ID).asInt(),
-                        username = it.payload.subject,
-                        role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
-                    )
-                }
-            }
+            jwtMock()
         }
         routing {
             route()
