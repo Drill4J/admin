@@ -20,11 +20,14 @@ import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
+import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
@@ -39,10 +42,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.Answer
 import org.mockito.stubbing.OngoingStubbing
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
 import java.net.URL
 import java.net.URLDecoder
 import java.util.*
@@ -147,6 +156,40 @@ fun Authentication.Configuration.jwtMock() {
                 username = it.payload.subject,
                 role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
             )
+        }
+    }
+}
+
+@Testcontainers
+open class DatabaseTests {
+    companion object {
+        @Container
+        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
+            DockerImageName.parse("postgres:14.1")
+        ).apply {
+            withDatabaseName("testdb")
+            withUsername("testuser")
+            withPassword("testpassword")
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun setup() {
+            postgresqlContainer.start()
+            val dataSource = HikariDataSource(HikariConfig().apply {
+                this.jdbcUrl = postgresqlContainer.jdbcUrl
+                this.username = postgresqlContainer.username
+                this.password = postgresqlContainer.password
+                this.driverClassName = postgresqlContainer.driverClassName
+                this.validate()
+            })
+            DatabaseConfig.init(dataSource)
+        }
+
+        @JvmStatic
+        @AfterAll
+        fun finish() {
+            postgresqlContainer.stop()
         }
     }
 }

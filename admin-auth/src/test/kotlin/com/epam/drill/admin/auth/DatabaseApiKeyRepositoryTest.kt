@@ -1,64 +1,23 @@
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
 import com.epam.drill.admin.auth.table.UserTable
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import java.time.LocalDateTime
 import java.time.Month
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@Testcontainers
-class DatabaseApiKeyRepositoryTest {
+class DatabaseApiKeyRepositoryTest: DatabaseTests() {
     private val repository = DatabaseApiKeyRepository()
-
-    companion object {
-        @Container
-        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
-            DockerImageName.parse("postgres:14.1")
-        ).apply {
-            withDatabaseName("testdb")
-            withUsername("testuser")
-            withPassword("testpassword")
-        }
-
-        @JvmStatic
-        @BeforeAll
-        fun setup() {
-            postgresqlContainer.start()
-            val dataSource = HikariDataSource(HikariConfig().apply {
-                this.jdbcUrl = postgresqlContainer.jdbcUrl
-                this.username = postgresqlContainer.username
-                this.password = postgresqlContainer.password
-                this.driverClassName = postgresqlContainer.driverClassName
-                this.validate()
-            })
-            DatabaseConfig.init(dataSource)
-        }
-
-        @JvmStatic
-        @AfterAll
-        fun finish() {
-            postgresqlContainer.stop()
-        }
-    }
 
     @Test
     fun `given api-key entity, create must insert api-key and return api-key entity with id`() = withTransaction {
