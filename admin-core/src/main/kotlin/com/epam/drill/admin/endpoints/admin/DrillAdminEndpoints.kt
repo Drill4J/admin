@@ -62,7 +62,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
         app.routing {
 
             authenticate("jwt", "basic") {
-                withRole(Role.USER) {
+                withRole(Role.USER, Role.ADMIN) {
                     post<ApiRoot.Agents.ToggleAgent>(
                         "Agent Toggle StandBy"
                             .responds(

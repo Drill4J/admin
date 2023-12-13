@@ -113,7 +113,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 }
             }
             authenticate("jwt", "basic") {
-                withRole(Role.USER) {
+                withRole(Role.USER, Role.ADMIN) {
                     post<ApiRoot.Agents.DispatchPluginAction, String>(
                         "Dispatch Plugin Action"
                             .examples(

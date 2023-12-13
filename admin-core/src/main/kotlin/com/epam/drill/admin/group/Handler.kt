@@ -67,7 +67,7 @@ class GroupHandler(override val di: DI) : DIAware {
     init {
         app.routing {
             authenticate("jwt", "basic") {
-                withRole(Role.USER) {
+                withRole(Role.USER, Role.ADMIN) {
                     put<ApiRoot.AgentGroup, GroupUpdateDto>(
                         "Update group"
                             .examples(
