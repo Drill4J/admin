@@ -1,9 +1,6 @@
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.model.ApiKeyCredentialsView
-import com.epam.drill.admin.auth.model.ApiKeyView
-import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
-import com.epam.drill.admin.auth.model.UserApiKeyView
+import com.epam.drill.admin.auth.model.*
 
 interface ApiKeyService {
     suspend fun getAllApiKeys(): List<ApiKeyView>
@@ -13,4 +10,6 @@ interface ApiKeyService {
     suspend fun deleteApiKey(id: Int)
 
     suspend fun generateApiKey(userId: Int, payload: GenerateApiKeyPayload): ApiKeyCredentialsView
+
+    suspend fun signInThroughApiKey(apiKey: String): UserInfoView
 }

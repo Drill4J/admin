@@ -1,10 +1,9 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
-import com.epam.drill.admin.auth.model.ApiKeyCredentialsView
-import com.epam.drill.admin.auth.model.ApiKeyView
-import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
-import com.epam.drill.admin.auth.model.UserApiKeyView
+import com.epam.drill.admin.auth.exception.NotAuthenticatedException
+import com.epam.drill.admin.auth.exception.NotAuthorizedException
+import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.service.ApiKeyService
@@ -49,6 +48,20 @@ class ApiKeyServiceImpl(
             apiKey = entityWithId.apiKeyHash,
             expiresAt = entityWithId.expiresAt.toKotlinLocalDateTime()
         )
+    }
+
+    override suspend fun signInThroughApiKey(apiKey: String): UserInfoView {
+        val apiKeyEntity = repository.getAll().find { entity ->
+            passwordService.matchPasswords(apiKey, entity.apiKeyHash)
+        } ?: throw NotAuthenticatedException("Api key is incorrect")
+
+        if (apiKeyEntity.expiresAt < currentDateTimeProvider())
+            throw NotAuthenticatedException("Api key expired")
+
+        if (apiKeyEntity.user?.blocked == true || Role.UNDEFINED.name == apiKeyEntity.user?.role)
+            throw NotAuthorizedException()
+
+        return apiKeyEntity.user?.toUserInfoView() ?: throw NullPointerException("Api key user cannot be null")
     }
 
     private fun generateKey(): String {

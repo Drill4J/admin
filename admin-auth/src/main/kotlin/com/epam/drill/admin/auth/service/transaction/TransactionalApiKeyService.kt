@@ -21,4 +21,8 @@ class TransactionalApiKeyService(private val delegate: ApiKeyService
     override suspend fun generateApiKey(userId: Int, payload: GenerateApiKeyPayload) = transaction {
         delegate.generateApiKey(userId, payload)
     }
+
+    override suspend fun signInThroughApiKey(apiKey: String) = transaction {
+        delegate.signInThroughApiKey(apiKey)
+    }
 }

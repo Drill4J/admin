@@ -20,7 +20,7 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.UserInfoView
+import com.epam.drill.admin.auth.model.toPrincipal
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -205,13 +205,5 @@ private fun Payload.toPrincipal(): User {
         id = getClaim(CLAIM_USER_ID).asInt(),
         username = subject,
         role = Role.valueOf(getClaim(CLAIM_ROLE).asString())
-    )
-}
-
-private fun UserInfoView.toPrincipal(): User {
-    return User(
-        id = id,
-        username = username,
-        role = role
     )
 }
