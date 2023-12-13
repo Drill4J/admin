@@ -54,6 +54,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URL
 import java.net.URLDecoder
+import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertNotNull
 
@@ -193,3 +194,35 @@ open class DatabaseTests {
         }
     }
 }
+
+fun createTestApiKeyEntity(
+    id: Int? = null,
+    userId: Int = 101,
+    description: String = "for testing",
+    apiKeyHash: String = "hash$id",
+    expiresAt: LocalDateTime = LocalDateTime.now().plusYears(1),
+    createdAt: LocalDateTime = LocalDateTime.now(),
+    user: UserEntity? = createTestUserEntity(id = userId)
+) = ApiKeyEntity(
+    id = id,
+    userId = userId,
+    description = description,
+    apiKeyHash = apiKeyHash,
+    expiresAt = expiresAt,
+    createdAt = createdAt,
+    user = user
+)
+
+fun createTestUserEntity(
+    id: Int = 101,
+    username: String = "test$id",
+    role: Role = Role.USER,
+    passwordHash: String = "hash$id",
+    blocked: Boolean = false
+) = UserEntity(
+    id = id,
+    username = username,
+    role = role.name,
+    passwordHash = passwordHash,
+    blocked = blocked
+)

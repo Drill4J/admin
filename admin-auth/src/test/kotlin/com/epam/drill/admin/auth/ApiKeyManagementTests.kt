@@ -1,9 +1,6 @@
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.entity.ApiKeyEntity
-import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.ApiKeyView
-import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.auth.service.ApiKeyService
@@ -24,7 +21,6 @@ import kotlin.test.*
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.verifyBlocking
-import java.time.LocalDateTime
 
 /**
  * Testing /keys routers
@@ -88,35 +84,5 @@ class ApiKeyManagementTests {
             route()
         }
     }
-
-    private fun createTestApiKeyEntity(
-        id: Int? = null,
-        userId: Int = 101,
-        description: String = "for testing",
-        apiKeyHash: String = "hash$id",
-        expiresAt: LocalDateTime = LocalDateTime.now().plusYears(1),
-        createdAt: LocalDateTime = LocalDateTime.now(),
-        user: UserEntity? = createTestUserEntity(id = userId)
-    ) = ApiKeyEntity(
-        id = id,
-        userId = userId,
-        description = description,
-        apiKeyHash = apiKeyHash,
-        expiresAt = expiresAt,
-        createdAt = createdAt,
-        user = user
-    )
-
-    private fun createTestUserEntity(
-        id: Int,
-        username: String = "test$id",
-        role: Role = Role.USER,
-        passwordHash: String = "hash$id"
-    ) = UserEntity(
-        id = id,
-        username = username,
-        role = role.name,
-        passwordHash = passwordHash
-    )
 
 }
