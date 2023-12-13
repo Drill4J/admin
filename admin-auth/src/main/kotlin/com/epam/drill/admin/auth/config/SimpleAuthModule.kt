@@ -138,7 +138,8 @@ fun DI.Builder.userServicesConfig() {
     bind<UserAuthenticationService>() with singleton {
         UserAuthenticationServiceImpl(
             userRepository = instance(),
-            passwordService = instance()
+            passwordService = instance(),
+            passwordValidator = instance()
         ).let { service ->
             when (instance<AuthConfig>().userRepoType) {
                 UserRepoType.DB -> TransactionalUserAuthenticationService(service)
@@ -150,6 +151,7 @@ fun DI.Builder.userServicesConfig() {
         UserManagementServiceImpl(
             userRepository = instance(),
             passwordService = instance(),
+            passwordGenerator = instance(),
             externalRoleManagement = isExternalRoleManagement(instanceOrNull<OAuth2Config>())
         ).let { service ->
             when (instance<AuthConfig>().userRepoType) {
@@ -163,9 +165,7 @@ fun DI.Builder.userServicesConfig() {
             instance<Application>().environment.config.config("drill.auth.password")
         )
     }
-    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
-    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
-    bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
+    passwordServicesConfig()
 }
 
 /**
@@ -183,6 +183,15 @@ fun DI.Builder.userRepositoriesConfig() {
             )
         }
     }
+}
+
+/**
+ * A DI builder extension function registering all Kodein bindings for password services.
+ */
+fun DI.Builder.passwordServicesConfig() {
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
+    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
+    bind<PasswordService>() with singleton { PasswordServiceImpl() }
 }
 
 

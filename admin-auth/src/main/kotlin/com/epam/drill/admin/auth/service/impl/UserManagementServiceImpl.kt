@@ -25,11 +25,13 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
     private val passwordService: PasswordService,
+    private val passwordGenerator: PasswordGenerator,
     private val externalRoleManagement: Boolean = false
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
@@ -66,7 +68,7 @@ class UserManagementServiceImpl(
         val userEntity = findUser(userId)
         if (userEntity.external)
             throw ForbiddenOperationException("Cannot reset password for external user")
-        val newPassword = passwordService.generatePassword()
+        val newPassword = passwordGenerator.generatePassword()
         val newPasswordHash = passwordService.hashPassword(newPassword)
         userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
         return userEntity.toCredentialsView(newPassword)

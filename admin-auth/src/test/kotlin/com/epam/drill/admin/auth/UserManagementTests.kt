@@ -24,6 +24,7 @@ import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -58,9 +59,10 @@ class UserManagementTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
+    @Mock
+    lateinit var passwordGenerator: PasswordGenerator
 
     @BeforeTest
     fun setup() {
@@ -175,7 +177,7 @@ class UserManagementTest {
     fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
-        whenever(passwordService.generatePassword())
+        whenever(passwordGenerator.generatePassword())
             .thenReturn("newsecret")
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
@@ -275,10 +277,12 @@ class UserManagementTest {
             di {
                 bind<UserRepository>() with eagerSingleton { userRepository }
                 bind<PasswordService>() with eagerSingleton { passwordService }
+                bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
                 bind<UserManagementService>() with eagerSingleton {
                     UserManagementServiceImpl(
-                        instance(),
-                        instance(),
+                        userRepository = instance(),
+                        passwordService = instance(),
+                        passwordGenerator = instance(),
                         externalRoleManagement = true
                     )
                 }
@@ -308,10 +312,12 @@ class UserManagementTest {
         di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
             bind<UserManagementService>() with eagerSingleton {
                 UserManagementServiceImpl(
-                    instance(),
-                    instance()
+                    userRepository = instance(),
+                    passwordService = instance(),
+                    passwordGenerator = instance(),
                 )
             }
         }
