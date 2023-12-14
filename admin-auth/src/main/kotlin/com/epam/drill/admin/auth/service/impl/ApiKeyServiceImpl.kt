@@ -45,7 +45,7 @@ class ApiKeyServiceImpl(
         val entityWithId = repository.create(entity)
         return ApiKeyCredentialsView(
             id = entityWithId.id ?: throw NullPointerException("Api key id cannot be null after creation"),
-            apiKey = entityWithId.apiKeyHash,
+            apiKey = apiKey,
             expiresAt = entityWithId.expiresAt.toKotlinLocalDateTime()
         )
     }
