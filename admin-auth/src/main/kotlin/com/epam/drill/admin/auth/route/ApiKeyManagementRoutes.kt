@@ -16,7 +16,7 @@ object ApiKeys {
 /**
  * Management API keys routes configuration.
  */
-fun Routing.apiKeyManagementRoutes() {
+fun Route.apiKeyManagementRoutes() {
     getAllApiKeysRoute()
     deleteApiKeyRoute()
 }

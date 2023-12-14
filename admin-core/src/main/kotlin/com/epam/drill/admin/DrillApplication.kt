@@ -71,17 +71,16 @@ fun Application.moduleWithSimpleAuth() {
     }
     installPlugins()
     initDB()
-
     di {
         import(drillAdminDIModule)
         import(simpleAuthDIModule)
+        import(apiKeyServicesDIModule)
     }
-
     install(Authentication) {
         configureJwtAuthentication(closestDI())
         configureBasicAuthentication(closestDI())
+        configureApiKeyAuthentication(closestDI())
     }
-
     routing {
         drillAdminRoutes()
         loginRoute()
@@ -89,10 +88,12 @@ fun Application.moduleWithSimpleAuth() {
             userAuthenticationRoutes()
             authenticate("jwt") {
                 userProfileRoutes()
+                userApiKeyRoutes()
             }
-            authenticate("jwt", "basic") {
+            authenticate("jwt", "basic", "api-key") {
                 withRole(ADMIN) {
                     userManagementRoutes()
+                    apiKeyManagementRoutes()
                 }
             }
         }
@@ -111,11 +112,13 @@ fun Application.moduleWithOAuth2() {
     di {
         import(drillAdminDIModule)
         import(oauthDIModule)
+        import(apiKeyServicesDIModule)
     }
     install(Authentication) {
         configureJwtAuthentication(closestDI())
         configureOAuthAuthentication(closestDI())
         configureBasicStubAuthentication()
+        configureApiKeyAuthentication(closestDI())
     }
     routing {
         drillAdminRoutes()
@@ -123,6 +126,7 @@ fun Application.moduleWithOAuth2() {
         route("/api") {
             authenticate("jwt") {
                 userInfoRoute()
+                userApiKeyRoutes()
             }
             authenticate("jwt") {
                 withRole(ADMIN) {
@@ -132,6 +136,7 @@ fun Application.moduleWithOAuth2() {
                     deleteUserRoute()
                     blockUserRoute()
                     unblockUserRoute()
+                    apiKeyManagementRoutes()
                 }
             }
         }
@@ -149,12 +154,15 @@ fun Application.moduleWithSimpleAuthAndOAuth2() {
     initDB()
     di {
         import(drillAdminDIModule)
-        import(simpleWithOAuth2DIModule)
+        import(simpleAuthDIModule)
+        import(oauthDIModule)
+        import(apiKeyServicesDIModule)
     }
     install(Authentication) {
         configureJwtAuthentication(closestDI())
         configureOAuthAuthentication(closestDI())
         configureBasicAuthentication(closestDI())
+        configureApiKeyAuthentication(closestDI())
     }
     routing {
         drillAdminRoutes()
@@ -163,25 +171,17 @@ fun Application.moduleWithSimpleAuthAndOAuth2() {
             userAuthenticationRoutes()
             authenticate("jwt") {
                 userProfileRoutes()
+                userApiKeyRoutes()
             }
             authenticate("jwt") {
                 withRole(ADMIN) {
                     userManagementRoutes()
+                    apiKeyManagementRoutes()
                 }
             }
         }
     }
 }
-
-val simpleWithOAuth2DIModule = DI.Module("simpleWithOAuth2") {
-    userRepositoriesConfig()
-    userServicesConfig()
-    configureJwtDI()
-    configureOAuthDI()
-    configureSimpleAuthDI()
-    bindAuthConfig()
-}
-
 
 private fun Application.installPlugins() {
     install(CallLogging)

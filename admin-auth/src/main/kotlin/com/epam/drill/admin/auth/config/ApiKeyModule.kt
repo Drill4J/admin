@@ -15,17 +15,10 @@ import org.kodein.di.singleton
 
 
 /**
- * The DI module including all services and configurations for API key authentication.
+ * The DI module including API key services.
  */
-val apiKeyDIModule = DI.Module("apiKey") {
-    passwordServicesConfig()
-    configureApiKeyDI()
-}
-
-/**
- * A DI Builder extension function registering all Kodein bindings for API key authentication.
- */
-fun DI.Builder.configureApiKeyDI() {
+val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
+    importOnce(passwordHashServiceDIModule)
     bind<ApiKeyRepository>() with singleton { DatabaseApiKeyRepository() }
     bind<ApiKeyService>() with singleton {
         TransactionalApiKeyService(

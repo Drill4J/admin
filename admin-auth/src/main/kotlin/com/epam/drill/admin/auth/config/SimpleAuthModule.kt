@@ -48,27 +48,20 @@ enum class UserRepoType {
     ENV
 }
 
-/**
- * The DI module including all services and configurations for simple authentication.
- */
 val simpleAuthDIModule = DI.Module("simpleAuth") {
-    configureJwtDI()
-    configureSimpleAuthDI()
-    bindAuthConfig()
-    userRepositoriesConfig()
-    userServicesConfig()
+    importOnce(jwtServicesDIModule)
+    importOnce(userServicesDIModule)
+    importOnce(simpleAuthConfigDIModule)
+    importOnce(authConfigDIModule)
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for simple authentication.
- */
-fun DI.Builder.configureSimpleAuthDI() {
+val simpleAuthConfigDIModule = DI.Module("simpleAuthConfig") {
     bind<SimpleAuthConfig>() with singleton {
         SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
     }
 }
 
-fun DI.Builder.bindAuthConfig() {
+val authConfigDIModule = DI.Module("authConfig") {
     bind<AuthConfig>() with singleton {
         AuthConfig(
             config = instance<Application>().environment.config.config("drill.auth"),
@@ -79,22 +72,13 @@ fun DI.Builder.bindAuthConfig() {
     }
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for JWT based authentication.
- */
-fun DI.Builder.configureJwtDI() {
+val jwtServicesDIModule = DI.Module("jwtServices") {
     bind<JwtConfig>() with singleton {
         JwtConfig(instance<Application>().environment.config.config("drill.auth.jwt"))
     }
     bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
     bind<TokenService>() with singleton { JwtTokenService(instance()) }
 }
-
-
-private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
-    .require(Algorithm.HMAC512(jwtConfig.secret))
-    .withIssuer(jwtConfig.issuer)
-    .build()
 
 
 /**
@@ -131,10 +115,10 @@ fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
     }
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for user authentication and management services.
- */
-fun DI.Builder.userServicesConfig() {
+val userServicesDIModule = DI.Module("userServices") {
+    importOnce(userRepositoryDIModule)
+    importOnce(passwordHashServiceDIModule)
+    importOnce(passwordIssuingServicesDIModule)
     bind<UserAuthenticationService>() with singleton {
         UserAuthenticationServiceImpl(
             userRepository = instance(),
@@ -160,18 +144,9 @@ fun DI.Builder.userServicesConfig() {
             }
         }
     }
-    bind<PasswordStrengthConfig>() with singleton {
-        PasswordStrengthConfig(
-            instance<Application>().environment.config.config("drill.auth.password")
-        )
-    }
-    passwordServicesConfig()
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for user repositories.
- */
-fun DI.Builder.userRepositoriesConfig() {
+val userRepositoryDIModule = DI.Module("userRepository") {
     bind<UserRepository>() with singleton {
         val authConfig: AuthConfig = instance()
         logger.info { "The user repository type is ${authConfig.userRepoType}" }
@@ -185,14 +160,24 @@ fun DI.Builder.userRepositoriesConfig() {
     }
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for password services.
- */
-fun DI.Builder.passwordServicesConfig() {
-    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
-    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
+val passwordHashServiceDIModule = DI.Module("passwordHashService") {
     bind<PasswordService>() with singleton { PasswordServiceImpl() }
 }
+
+val passwordIssuingServicesDIModule = DI.Module("passwordIssuingServices") {
+    bind<PasswordStrengthConfig>() with singleton {
+        PasswordStrengthConfig(
+            instance<Application>().environment.config.config("drill.auth.password")
+        )
+    }
+    bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
+    bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
+}
+
+private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
+    .require(Algorithm.HMAC512(jwtConfig.secret))
+    .withIssuer(jwtConfig.issuer)
+    .build()
 
 
 private fun isExternalRoleManagement(config: OAuth2Config?): Boolean {

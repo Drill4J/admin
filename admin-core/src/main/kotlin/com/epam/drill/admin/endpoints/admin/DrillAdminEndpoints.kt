@@ -57,7 +57,7 @@ fun Routing.adminRoutes() {
     val topicResolver by closestDI().instance<TopicResolver>()
 
 
-    authenticate("jwt", "basic") {
+    authenticate("jwt", "basic", "api-key") {
         withRole(Role.USER) {
             post<ApiRoot.Agents.ToggleAgent>(
                 "Agent Toggle StandBy"

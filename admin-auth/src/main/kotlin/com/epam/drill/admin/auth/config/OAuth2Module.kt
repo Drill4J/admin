@@ -42,17 +42,17 @@ const val JWT_COOKIE = "jwt"
  * The DI module including all services and configurations for OAuth2 authentication.
  */
 val oauthDIModule = DI.Module("oauth") {
-    userRepositoriesConfig()
-    userServicesConfig()
-    configureJwtDI()
-    configureOAuthDI()
-    bindAuthConfig()
+    importOnce(jwtServicesDIModule)
+    importOnce(userServicesDIModule)
+    importOnce(oauthServicesDIModule)
+    importOnce(authConfigDIModule)
 }
 
 /**
- * A DI Builder extension function registering all Kodein bindings for OAuth2 based authentication.
+ * A DI module for OAuth2 services.
  */
-fun DI.Builder.configureOAuthDI() {
+val oauthServicesDIModule = DI.Module("oauthServices") {
+    importOnce(userRepositoryDIModule)
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuth2Config>() with singleton {
         OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
