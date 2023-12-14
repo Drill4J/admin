@@ -128,7 +128,7 @@ fun Application.moduleWithOAuth2() {
                 userInfoRoute()
                 userApiKeyRoutes()
             }
-            authenticate("jwt") {
+            authenticate("jwt", "api-key") {
                 withRole(ADMIN) {
                     getUsersRoute()
                     getUserRoute()
@@ -173,7 +173,7 @@ fun Application.moduleWithSimpleAuthAndOAuth2() {
                 userProfileRoutes()
                 userApiKeyRoutes()
             }
-            authenticate("jwt") {
+            authenticate("jwt", "basic", "api-key") {
                 withRole(ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()

@@ -19,6 +19,8 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.simpleAuthStatusPages
+import com.epam.drill.admin.auth.service.ApiKey
+import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
@@ -53,6 +55,9 @@ class ApiKeyModuleTest {
     @Mock
     private lateinit var mockPasswordService: PasswordService
 
+    @Mock
+    private lateinit var mockApiKeyBuilder: ApiKeyBuilder
+
     @BeforeTest
     fun setup() {
         MockitoAnnotations.openMocks(this)
@@ -61,13 +66,13 @@ class ApiKeyModuleTest {
     @Test
     fun `given valid api key, api-key authenticated request must succeed`() {
         val validApiKey = "valid-api-key"
-        wheneverBlocking(mockApiKeyRepository) { getAll() }
-            .doReturn(listOf(createTestApiKeyEntity()))
-        whenever(mockPasswordService.matchPasswords(eq(validApiKey), any())).doReturn(true)
+        whenever(mockApiKeyBuilder.parse(validApiKey)).doReturn(ApiKey(123, "key-secret"))
+        wheneverBlocking(mockApiKeyRepository) { findById(123) }.doReturn(createTestApiKeyEntity())
+        whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -87,7 +92,7 @@ class ApiKeyModuleTest {
     fun `without api key, api-key authenticated request must fail with 401 status`() {
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -106,13 +111,13 @@ class ApiKeyModuleTest {
     @Test
     fun `given invalid api key, api-key authenticated request must fail with 401 status`() {
         val invalidApiKey = "invalid-api-key"
-        wheneverBlocking(mockApiKeyRepository) { getAll() }
-            .doReturn(listOf(createTestApiKeyEntity(apiKeyHash = "hash")))
-        whenever(mockPasswordService.matchPasswords(invalidApiKey, "hash")).doReturn(false)
+        whenever(mockApiKeyBuilder.parse(invalidApiKey)).doReturn(ApiKey(123, "wrong-secret"))
+        wheneverBlocking(mockApiKeyRepository) { findById(123) }.doReturn(createTestApiKeyEntity(apiKeyHash = "hash"))
+        whenever(mockPasswordService.matchPasswords("wrong-secret", "hash")).doReturn(false)
 
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -131,13 +136,14 @@ class ApiKeyModuleTest {
     @Test
     fun `given expired api key, api-key authenticated request must fail with 401 status`() {
         val expiredApiKey = "expired-api-key"
-        wheneverBlocking(mockApiKeyRepository) { getAll() }
-            .doReturn(listOf(createTestApiKeyEntity(expiresAt = LocalDateTime.now().minusDays(1))))
-        whenever(mockPasswordService.matchPasswords(eq(expiredApiKey), any())).doReturn(true)
+        whenever(mockApiKeyBuilder.parse(expiredApiKey)).doReturn(ApiKey(123, "key-secret"))
+        wheneverBlocking(mockApiKeyRepository) { findById(123) }
+            .doReturn(createTestApiKeyEntity(expiresAt = LocalDateTime.now().minusDays(1)))
+        whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -156,13 +162,14 @@ class ApiKeyModuleTest {
     @Test
     fun `given blocked api key, api-key authenticated request must fail with 403 status`() {
         val blockedApiKey = "blocked-api-key"
-        wheneverBlocking(mockApiKeyRepository) { getAll() }
-            .doReturn(listOf(createTestApiKeyEntity(user = createTestUserEntity(blocked = true))))
-        whenever(mockPasswordService.matchPasswords(eq(blockedApiKey), any())).doReturn(true)
+        whenever(mockApiKeyBuilder.parse(blockedApiKey)).doReturn(ApiKey(123, "key-secret"))
+        wheneverBlocking(mockApiKeyRepository) { findById(123) }
+            .doReturn(createTestApiKeyEntity(user = createTestUserEntity(blocked = true)))
+        whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -181,13 +188,14 @@ class ApiKeyModuleTest {
     @Test
     fun `given undefined role if api key, api-key authenticated request must fail with 403 status`() {
         val undefinedRoleApiKey = "undefined-role-api-key"
-        wheneverBlocking(mockApiKeyRepository) { getAll() }
-            .doReturn(listOf(createTestApiKeyEntity(user = createTestUserEntity(role = Role.UNDEFINED))))
-        whenever(mockPasswordService.matchPasswords(eq(undefinedRoleApiKey), any())).doReturn(true)
+        whenever(mockApiKeyBuilder.parse(undefinedRoleApiKey)).doReturn(ApiKey(123, "key-secret"))
+        wheneverBlocking(mockApiKeyRepository) { findById(123) }
+            .doReturn(createTestApiKeyEntity(user = createTestUserEntity(role = Role.UNDEFINED)))
+        whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
         withTestApplication({
             withApiKeyModule {
-                configureMocks(mockApiKeyRepository, mockPasswordService)
+                configureMocks()
             }
             routing {
                 authenticate("api-key") {
@@ -228,16 +236,15 @@ class ApiKeyModuleTest {
         }
     }
 
-    private fun DI.MainBuilder.configureMocks(
-        mockApiKeyRepository: ApiKeyRepository,
-        mockPasswordService: PasswordService
-    ) {
+    private fun DI.MainBuilder.configureMocks() {
         bind<PasswordService>(overrides = true) with provider { mockPasswordService }
         bind<ApiKeyRepository>(overrides = true) with provider { mockApiKeyRepository }
+        bind<ApiKeyBuilder>(overrides = true) with provider { mockApiKeyBuilder }
         bind<ApiKeyService>(overrides = true) with singleton {
             ApiKeyServiceImpl(
                 repository = instance(),
                 passwordService = instance(),
+                apiKeyBuilder = instance()
             )
         }
     }

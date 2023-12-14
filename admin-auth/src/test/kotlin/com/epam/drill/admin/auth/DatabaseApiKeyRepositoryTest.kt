@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import java.time.Month
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DatabaseApiKeyRepositoryTest: DatabaseTests() {
@@ -58,8 +59,8 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId2 }
 
-        val apiKeysByUserId1 = repository.getAllByUserId(userId1)
-        val apiKeysByUserId2 = repository.getAllByUserId(userId2)
+        val apiKeysByUserId1 = repository.findAllByUserId(userId1)
+        val apiKeysByUserId2 = repository.findAllByUserId(userId2)
 
         assertEquals(2, apiKeysByUserId1.size)
         assertEquals(1, apiKeysByUserId2.size)
@@ -73,7 +74,7 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
         insertApiKey { it[userId] = userId1 }
         insertApiKey { it[userId] = userId2 }
 
-        val allApiKeys = repository.getAll()
+        val allApiKeys = repository.findAll()
 
         assertEquals(3, allApiKeys.size)
     }
@@ -95,7 +96,7 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
         insertApiKey { it[userId] = testUserId }
         insertApiKey { it[userId] = testUserId }
 
-        val allApiKeys = repository.getAll()
+        val allApiKeys = repository.findAll()
 
         assertTrue(allApiKeys.all { it.user != null })
     }
@@ -106,9 +107,20 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
         insertApiKey { it[userId] = testUserId }
         insertApiKey { it[userId] = testUserId }
 
-        val apiKeys = repository.getAllByUserId(testUserId)
+        val apiKeys = repository.findAllByUserId(testUserId)
 
         assertTrue(apiKeys.all { it.user == null })
+    }
+
+    @Test
+    fun `given existing api key identifier, getByIdAll must return api key entity with non null user`() = withTransaction {
+        val testUserId = insertUser()
+        val testApiKeyId = insertApiKey { it[userId] = testUserId }
+
+        val apiKey = repository.findById(testApiKeyId)
+
+        assertNotNull(apiKey)
+        assertNotNull(apiKey.user)
     }
 }
 

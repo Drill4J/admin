@@ -18,6 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.model.ApiKeyView
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
@@ -47,6 +48,9 @@ class ApiKeyManagementTests {
     @Mock
     lateinit var passwordService: PasswordService
 
+    @Mock
+    lateinit var apiKeyBuilder: ApiKeyBuilder
+
     @BeforeTest
     fun setup() {
         MockitoAnnotations.openMocks(this)
@@ -54,7 +58,7 @@ class ApiKeyManagementTests {
 
     @Test
     fun `'GET keys' must return the expected number of api keys from repository`() {
-        wheneverBlocking(apiKeyRepository) { getAll() }.thenReturn(
+        wheneverBlocking(apiKeyRepository) { findAll() }.thenReturn(
             listOf(
                 createTestApiKeyEntity(id = 1),
                 createTestApiKeyEntity(id = 2),
@@ -90,7 +94,7 @@ class ApiKeyManagementTests {
             json()
         }
         di {
-            bind<ApiKeyService>() with provider { ApiKeyServiceImpl(apiKeyRepository, passwordService) }
+            bind<ApiKeyService>() with provider { ApiKeyServiceImpl(apiKeyRepository, passwordService, apiKeyBuilder) }
         }
         install(StatusPages) {
             simpleAuthStatusPages()

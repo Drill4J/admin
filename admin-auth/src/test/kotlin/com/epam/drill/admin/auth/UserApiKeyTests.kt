@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
@@ -57,6 +58,9 @@ class UserApiKeyTests {
     lateinit var passwordService: PasswordService
 
     @Mock
+    lateinit var apiKeyBuilder: ApiKeyBuilder
+
+    @Mock
     lateinit var currentTimeProvider: CurrentTimeProvider
 
     val firstJanuary2023 = LocalDateTime.of(2023, Month.JANUARY, 1, 0, 0)
@@ -69,7 +73,7 @@ class UserApiKeyTests {
     @Test
     fun `'GET user-keys' must return the expected number of user's api keys`() {
         val testUserId = 43
-        wheneverBlocking(apiKeyRepository) { getAllByUserId(testUserId) }.thenReturn(
+        wheneverBlocking(apiKeyRepository) { findAllByUserId(testUserId) }.thenReturn(
             listOf(
                 createTestApiKeyEntity(id = 1, userId = testUserId, user = null),
                 createTestApiKeyEntity(id = 2, userId = testUserId, user = null),
@@ -96,9 +100,11 @@ class UserApiKeyTests {
     fun `given api key payload, 'POST user-keys' must return generated api key`() {
         val testUserId = 43
         val testApiKeyId = 123
+        val testApiKey = "test-api-key"
         wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
         wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
         wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(testApiKeyId))
+        wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn(testApiKey)
 
         withTestApplication(withRoute {
             authenticate {
@@ -117,7 +123,7 @@ class UserApiKeyTests {
                 assertEquals(HttpStatusCode.OK, response.status())
                 val response: ApiKeyCredentialsView = assertResponseNotNull(ApiKeyCredentialsView.serializer())
                 assertEquals(testApiKeyId, response.id)
-                assertNotNull(response.apiKey)
+                assertEquals(testApiKey, response.apiKey)
                 assertNotNull(response.expiresAt)
             }
         }
@@ -128,6 +134,7 @@ class UserApiKeyTests {
         wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
         wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
         wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(123))
+        wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn("test-api-key")
 
         withTestApplication(withRoute {
             authenticate {
@@ -179,6 +186,7 @@ class UserApiKeyTests {
                 ApiKeyServiceImpl(
                     repository = apiKeyRepository,
                     passwordService = passwordService,
+                    apiKeyBuilder = apiKeyBuilder,
                     currentDateTimeProvider = { currentTimeProvider.getCurrentTime() }
                 )
             }

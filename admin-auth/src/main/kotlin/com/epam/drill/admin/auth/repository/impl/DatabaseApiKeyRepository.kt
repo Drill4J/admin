@@ -24,12 +24,16 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class DatabaseApiKeyRepository: ApiKeyRepository {
-    override suspend fun getAll(): List<ApiKeyEntity> {
+    override suspend fun findAll(): List<ApiKeyEntity> {
         return (ApiKeyTable innerJoin UserTable).selectAll().map { it.toEntity() }
     }
 
-    override suspend fun getAllByUserId(userId: Int): List<ApiKeyEntity> {
+    override suspend fun findAllByUserId(userId: Int): List<ApiKeyEntity> {
         return ApiKeyTable.select { ApiKeyTable.userId eq userId }.map { it.toEntity() }
+    }
+
+    override suspend fun findById(id: Int): ApiKeyEntity? {
+        return (ApiKeyTable innerJoin UserTable).select { ApiKeyTable.id eq id }.map { it.toEntity() }.firstOrNull()
     }
 
     override suspend fun deleteById(id: Int) {
