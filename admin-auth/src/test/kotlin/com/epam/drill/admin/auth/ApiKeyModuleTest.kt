@@ -19,10 +19,7 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.simpleAuthStatusPages
-import com.epam.drill.admin.auth.service.ApiKey
-import com.epam.drill.admin.auth.service.ApiKeyBuilder
-import com.epam.drill.admin.auth.service.ApiKeyService
-import com.epam.drill.admin.auth.service.PasswordService
+import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -57,6 +54,9 @@ class ApiKeyModuleTest {
 
     @Mock
     private lateinit var mockApiKeyBuilder: ApiKeyBuilder
+
+    @Mock
+    private lateinit var mockSecretGenerator: SecretGenerator
 
     @BeforeTest
     fun setup() {
@@ -237,14 +237,12 @@ class ApiKeyModuleTest {
     }
 
     private fun DI.MainBuilder.configureMocks() {
-        bind<PasswordService>(overrides = true) with provider { mockPasswordService }
-        bind<ApiKeyRepository>(overrides = true) with provider { mockApiKeyRepository }
-        bind<ApiKeyBuilder>(overrides = true) with provider { mockApiKeyBuilder }
         bind<ApiKeyService>(overrides = true) with singleton {
             ApiKeyServiceImpl(
-                repository = instance(),
-                passwordService = instance(),
-                apiKeyBuilder = instance()
+                repository = mockApiKeyRepository,
+                passwordService = mockPasswordService,
+                apiKeyBuilder = mockApiKeyBuilder,
+                secretGenerator = mockSecretGenerator,
             )
         }
     }

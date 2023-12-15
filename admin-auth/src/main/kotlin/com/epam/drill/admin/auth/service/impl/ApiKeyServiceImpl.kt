@@ -21,10 +21,7 @@ import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
-import com.epam.drill.admin.auth.service.ApiKey
-import com.epam.drill.admin.auth.service.ApiKeyBuilder
-import com.epam.drill.admin.auth.service.ApiKeyService
-import com.epam.drill.admin.auth.service.PasswordService
+import com.epam.drill.admin.auth.service.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.security.SecureRandom
 import java.time.LocalDateTime
@@ -33,8 +30,8 @@ class ApiKeyServiceImpl(
     private val repository: ApiKeyRepository,
     private val passwordService: PasswordService,
     private val apiKeyBuilder: ApiKeyBuilder,
+    private val secretGenerator: SecretGenerator,
     private val currentDateTimeProvider: () -> LocalDateTime = { LocalDateTime.now() },
-    private val secretGenerator: () -> String = { generateKey() }
 ): ApiKeyService {
     override suspend fun getAllApiKeys(): List<ApiKeyView> {
         return repository.findAll()
@@ -51,7 +48,7 @@ class ApiKeyServiceImpl(
     }
 
     override suspend fun generateApiKey(userId: Int, payload: GenerateApiKeyPayload): ApiKeyCredentialsView {
-        val secret = secretGenerator()
+        val secret = secretGenerator.generate()
         val hash = passwordService.hashPassword(secret)
         val entity = ApiKeyEntity(
             userId = userId,
@@ -103,12 +100,3 @@ private fun ApiKeyEntity.toUserApiKeyView() = UserApiKeyView(
     expiresAt = expiresAt.toKotlinLocalDateTime(),
     createdAt = createdAt.toKotlinLocalDateTime(),
 )
-
-private fun generateKey(): String {
-    val random = SecureRandom()
-    val keyBytes = ByteArray(32)
-    random.nextBytes(keyBytes)
-    return keyBytes.toHex()
-}
-
-private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }

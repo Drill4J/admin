@@ -23,6 +23,7 @@ import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
+import com.epam.drill.admin.auth.service.SecretGenerator
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -59,6 +60,9 @@ class UserApiKeyTests {
 
     @Mock
     lateinit var apiKeyBuilder: ApiKeyBuilder
+
+    @Mock
+    lateinit var secretGenerator: SecretGenerator
 
     @Mock
     lateinit var currentTimeProvider: CurrentTimeProvider
@@ -104,6 +108,7 @@ class UserApiKeyTests {
         wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
         wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
         wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(testApiKeyId))
+        wheneverBlocking(secretGenerator) { generate() }.thenReturn("secret")
         wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn(testApiKey)
 
         withTestApplication(withRoute {
@@ -134,6 +139,7 @@ class UserApiKeyTests {
         wheneverBlocking(passwordService) { hashPassword(any()) }.thenReturn("hash")
         wheneverBlocking(currentTimeProvider) { getCurrentTime() }.thenReturn(firstJanuary2023)
         wheneverBlocking(apiKeyRepository) { create(any()) }.thenAnswer(copyApiKeyWithId(123))
+        wheneverBlocking(secretGenerator) { generate() }.thenReturn("secret")
         wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn("test-api-key")
 
         withTestApplication(withRoute {
@@ -187,6 +193,7 @@ class UserApiKeyTests {
                     repository = apiKeyRepository,
                     passwordService = passwordService,
                     apiKeyBuilder = apiKeyBuilder,
+                    secretGenerator = secretGenerator,
                     currentDateTimeProvider = { currentTimeProvider.getCurrentTime() }
                 )
             }

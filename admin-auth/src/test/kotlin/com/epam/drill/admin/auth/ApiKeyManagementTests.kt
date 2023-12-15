@@ -21,6 +21,7 @@ import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
+import com.epam.drill.admin.auth.service.SecretGenerator
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.application.*
 import io.ktor.features.*
@@ -50,6 +51,9 @@ class ApiKeyManagementTests {
 
     @Mock
     lateinit var apiKeyBuilder: ApiKeyBuilder
+
+    @Mock
+    lateinit var secretGenerator: SecretGenerator
 
     @BeforeTest
     fun setup() {
@@ -94,7 +98,14 @@ class ApiKeyManagementTests {
             json()
         }
         di {
-            bind<ApiKeyService>() with provider { ApiKeyServiceImpl(apiKeyRepository, passwordService, apiKeyBuilder) }
+            bind<ApiKeyService>() with provider {
+                ApiKeyServiceImpl(
+                    repository = apiKeyRepository,
+                    passwordService = passwordService,
+                    apiKeyBuilder = apiKeyBuilder,
+                    secretGenerator = secretGenerator,
+                )
+            }
         }
         install(StatusPages) {
             simpleAuthStatusPages()
