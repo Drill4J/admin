@@ -22,7 +22,7 @@ import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
-import com.epam.drill.admin.auth.service.impl.HexSecretGenerator
+import com.epam.drill.admin.auth.service.impl.RandomHexSecretGenerator
 import com.epam.drill.admin.auth.service.transaction.TransactionalApiKeyService
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -48,7 +48,7 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
                 repository = instance(),
                 passwordService = instance(),
                 apiKeyBuilder = instance(),
-                secretGenerator = HexSecretGenerator(instance<ApiKeyConfig>().secretLength)
+                secretGenerator = RandomHexSecretGenerator(instance<ApiKeyConfig>().secretLength)
             )
         )
     }
