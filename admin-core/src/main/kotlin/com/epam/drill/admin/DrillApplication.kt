@@ -83,7 +83,6 @@ fun Application.module() {
     }
     routing {
         if (oauth2Enabled) configureOAuthRoutes()
-        if (simpleAuthEnabled) loginRoute()
         route("/api") {
             if (simpleAuthEnabled) userAuthenticationRoutes()
             authenticate("jwt") {
