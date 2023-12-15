@@ -58,9 +58,10 @@ fun Application.module() {
     installPlugins()
     initDB()
     di {
+        import(jwtServicesDIModule)
+        import(apiKeyServicesDIModule)
         if (simpleAuthEnabled) import(simpleAuthDIModule)
         if (oauth2Enabled) import(oauthDIModule)
-        import(apiKeyServicesDIModule)
         import(authConfigDIModule)
         import(drillAdminDIModule)
     }

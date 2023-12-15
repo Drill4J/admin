@@ -40,9 +40,6 @@ import org.kodein.di.*
 
 private val logger = KotlinLogging.logger {}
 
-const val CLAIM_USER_ID = "userId"
-const val CLAIM_ROLE = "role"
-
 enum class UserRepoType {
     DB,
     ENV
@@ -52,7 +49,6 @@ val simpleAuthDIModule = DI.Module("simpleAuth") {
     importOnce(jwtServicesDIModule)
     importOnce(userServicesDIModule)
     importOnce(simpleAuthConfigDIModule)
-    importOnce(authConfigDIModule)
 }
 
 val simpleAuthConfigDIModule = DI.Module("simpleAuthConfig") {
@@ -72,34 +68,6 @@ val authConfigDIModule = DI.Module("authConfig") {
     }
 }
 
-val jwtServicesDIModule = DI.Module("jwtServices") {
-    bind<JwtConfig>() with singleton {
-        JwtConfig(instance<Application>().environment.config.config("drill.auth.jwt"))
-    }
-    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
-    bind<TokenService>() with singleton { JwtTokenService(instance()) }
-}
-
-
-/**
- * A Ktor Authentication plugin configuration for JWT based authentication.
- */
-fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
-    val jwtVerifier by di.instance<JWTVerifier>()
-
-    jwt("jwt") {
-        realm = "Access to the http(s) and the ws(s) services"
-        verifier(jwtVerifier)
-        validate {
-            it.payload.toPrincipal()
-        }
-        authHeader { call ->
-            val headerValue = call.request.headers[HttpHeaders.Authorization]
-                ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
-            parseAuthorizationHeader(headerValue)
-        }
-    }
-}
 
 /**
  * A Ktor Authentication plugin configuration for Basic based authentication.
@@ -174,21 +142,7 @@ val passwordIssuingServicesDIModule = DI.Module("passwordIssuingServices") {
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
 }
 
-private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
-    .require(Algorithm.HMAC512(jwtConfig.secret))
-    .withIssuer(jwtConfig.issuer)
-    .build()
-
-
 private fun isExternalRoleManagement(config: OAuth2Config?): Boolean {
     return (config?.userInfoUrl == null && config?.tokenMapping?.roles != null) ||
             (config?.userInfoUrl != null && config.userInfoMapping.roles != null)
-}
-
-private fun Payload.toPrincipal(): User {
-    return User(
-        id = getClaim(CLAIM_USER_ID).asInt(),
-        username = subject,
-        role = Role.valueOf(getClaim(CLAIM_ROLE).asString())
-    )
 }
