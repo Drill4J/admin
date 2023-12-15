@@ -45,7 +45,6 @@ val oauthDIModule = DI.Module("oauth") {
     importOnce(jwtServicesDIModule)
     importOnce(userServicesDIModule)
     importOnce(oauthServicesDIModule)
-    importOnce(authConfigDIModule)
 }
 
 /**
@@ -54,9 +53,6 @@ val oauthDIModule = DI.Module("oauth") {
 val oauthServicesDIModule = DI.Module("oauthServices") {
     importOnce(userRepositoryDIModule)
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
-    bind<OAuth2Config>() with singleton {
-        OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
-    }
     bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
     bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
         httpClient = instance("oauthHttpClient"),

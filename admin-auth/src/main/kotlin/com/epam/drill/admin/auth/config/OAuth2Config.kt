@@ -26,6 +26,12 @@ import java.lang.Boolean.parseBoolean
 class OAuth2Config(private val config: ApplicationConfig) {
 
     /**
+     * A flag indicating whether the OAuth2 authentication is enabled. Optional, true by default.
+     */
+    val enabled: Boolean
+        get() = config.property("enabled").getString().toBoolean()
+
+    /**
      * An OAuth2 authorize URL.
      */
     val authorizeUrl: String
