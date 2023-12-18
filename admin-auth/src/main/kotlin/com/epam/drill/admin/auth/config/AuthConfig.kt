@@ -29,9 +29,4 @@ class AuthConfig(
     val simpleAuth: SimpleAuthConfig? = null,
     val oauth2: OAuth2Config? = null,
     val jwt: JwtConfig
-) {
-    val userRepoType: UserRepoType
-        get() = config.propertyOrNull("userRepoType")
-            ?.getString()?.let { UserRepoType.valueOf(it) }
-            ?: UserRepoType.DB
-}
+)

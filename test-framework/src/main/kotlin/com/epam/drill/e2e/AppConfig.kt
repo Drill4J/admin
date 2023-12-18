@@ -58,8 +58,6 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
             put("drill.plugins.remote.enabled", "false")
             put("drill.agents.socket.timeout", "90")
             put("drill.cache.type", "jvm")
-            put("drill.auth.userRepoType", "ENV")
-            put("drill.auth.envUsers", listOf(GUEST_USER))
         }
         install(Locations)
         install(WebSockets)

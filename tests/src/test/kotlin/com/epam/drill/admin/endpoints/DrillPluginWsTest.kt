@@ -70,10 +70,6 @@ class PluginWsTest {
     private val storageDir = File("build/tmp/test/${this::class.simpleName}-${UUID.randomUUID()}")
 
     private val testApp: Application.() -> Unit = {
-        (environment.config as MapApplicationConfig).apply {
-            put("drill.auth.userRepoType", "ENV")
-            put("drill.auth.envUsers", listOf(GUEST_USER))
-        }
         install(Locations)
         install(WebSockets)
 

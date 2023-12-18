@@ -61,10 +61,6 @@ internal class DrillServerWsTest {
 
     private lateinit var notificationsManager: NotificationManager
     private val testApp: Application.() -> Unit = {
-        (environment.config as MapApplicationConfig).apply {
-            put("drill.auth.userRepoType", "ENV")
-            put("drill.auth.envUsers", listOf(GUEST_USER))
-        }
         install(Locations)
         install(WebSockets)
 
