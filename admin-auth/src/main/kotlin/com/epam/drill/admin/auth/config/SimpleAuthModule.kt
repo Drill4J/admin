@@ -35,7 +35,7 @@ val simpleAuthDIModule = DI.Module("simpleAuth") {
 
 val simpleAuthConfigDIModule = DI.Module("simpleAuthConfig") {
     bind<SimpleAuthConfig>() with singleton {
-        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
+        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simple"))
     }
 }
 
@@ -97,7 +97,7 @@ val passwordHashServiceDIModule = DI.Module("passwordHashService") {
 val passwordIssuingServicesDIModule = DI.Module("passwordIssuingServices") {
     bind<PasswordStrengthConfig>() with singleton {
         PasswordStrengthConfig(
-            instance<Application>().environment.config.config("drill.auth.password")
+            instance<Application>().environment.config.config("drill.auth.simple.passwordStrength")
         )
     }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
