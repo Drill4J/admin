@@ -17,6 +17,10 @@ class DatabaseApiKeyRepository: ApiKeyRepository {
         return ApiKeyTable.select { ApiKeyTable.userId eq userId }.map { it.toEntity() }
     }
 
+    override suspend fun findById(id: Int): ApiKeyEntity? {
+        return (ApiKeyTable innerJoin UserTable).select { ApiKeyTable.id eq id }.map { it.toEntity() }.firstOrNull()
+    }
+
     override suspend fun deleteById(id: Int) {
         ApiKeyTable.deleteWhere { ApiKeyTable.id eq id }
     }

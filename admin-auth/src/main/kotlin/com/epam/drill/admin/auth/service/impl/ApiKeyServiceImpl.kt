@@ -1,6 +1,7 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
+import com.epam.drill.admin.auth.exception.ApiKeyNotFoundException
 import com.epam.drill.admin.auth.model.ApiKeyCredentialsView
 import com.epam.drill.admin.auth.model.ApiKeyView
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
@@ -9,6 +10,7 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
+import io.ktor.features.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.security.SecureRandom
 import java.time.LocalDateTime
@@ -27,6 +29,10 @@ class ApiKeyServiceImpl(
     override suspend fun getApiKeysByUser(userId: Int): List<UserApiKeyView> {
         return repository.getAllByUserId(userId)
             .map { it.toUserApiKeyView() }
+    }
+
+    override suspend fun getApiKeyById(id: Int): ApiKeyView {
+        return repository.findById(id)?.toApiKeyView() ?: throw ApiKeyNotFoundException()
     }
 
     override suspend fun deleteApiKey(id: Int) {

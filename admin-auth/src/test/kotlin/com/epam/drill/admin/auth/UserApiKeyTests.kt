@@ -139,6 +139,12 @@ class UserApiKeyTests {
     fun `given api key identifier 'DELETE user-keys {id}' must delete user's api key`() {
         val testUserId = 43
         val testApiKey = 123
+        wheneverBlocking(apiKeyRepository) { findById(testApiKey) }.thenReturn(
+            createTestApiKeyEntity(
+                id = testApiKey, userId = testUserId,
+                user = UserEntity(id = testUserId, username = "test-user", role = "USER")
+            )
+        )
         withTestApplication(withRoute {
             authenticate {
                 deleteUserApiKeyRoute()
@@ -150,6 +156,31 @@ class UserApiKeyTests {
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verifyBlocking(apiKeyRepository) { deleteById(testApiKey) }
+            }
+        }
+    }
+
+    @Test
+    fun `given api key identifier issued by another user, 'DELETE user-keys {id}' must fail`() {
+        val testUserId = 43
+        val anotherUserId = 89
+        val testApiKey = 123
+        wheneverBlocking(apiKeyRepository) { findById(testApiKey) }.thenReturn(
+            createTestApiKeyEntity(
+                id = testApiKey, userId = anotherUserId,
+                user = UserEntity(id = anotherUserId, username = "another-user", role = "USER")
+            )
+        )
+        withTestApplication(withRoute {
+            authenticate {
+                deleteUserApiKeyRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Delete, "/user-keys/$testApiKey") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken(username = "test-user", userId = testUserId)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
         }
     }

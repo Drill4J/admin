@@ -10,6 +10,8 @@ interface ApiKeyService {
 
     suspend fun getApiKeysByUser(userId: Int): List<UserApiKeyView>
 
+    suspend fun getApiKeyById(id: Int): ApiKeyView
+
     suspend fun deleteApiKey(id: Int)
 
     suspend fun generateApiKey(userId: Int, payload: GenerateApiKeyPayload): ApiKeyCredentialsView
