@@ -32,7 +32,7 @@ fun Route.notificationRoutes() {
     val notificationManager by closestDI().instance<NotificationManager>()
     val topicResolver by closestDI().instance<TopicResolver>()
 
-    authenticate("jwt", "basic", "api-key") {
+    authenticate("jwt", "api-key") {
         val toggle = "Read/Unread notification"
             .examples(
                 example("Read/Unread notification",
