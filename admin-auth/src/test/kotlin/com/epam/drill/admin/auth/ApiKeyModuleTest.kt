@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
-import com.epam.drill.admin.auth.route.simpleAuthStatusPages
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.application.*
@@ -160,7 +160,7 @@ class ApiKeyModuleTest {
     }
 
     @Test
-    fun `given blocked api key, api-key authenticated request must fail with 403 status`() {
+    fun `given api key of blocked user, api-key authenticated request must fail with 403 status`() {
         val blockedApiKey = "blocked-api-key"
         whenever(mockApiKeyBuilder.parse(blockedApiKey)).doReturn(ApiKey(123, "key-secret"))
         wheneverBlocking(mockApiKeyRepository) { findById(123) }
@@ -186,7 +186,7 @@ class ApiKeyModuleTest {
     }
 
     @Test
-    fun `given undefined role if api key, api-key authenticated request must fail with 403 status`() {
+    fun `given api key of user with undefined role, api-key authenticated request must fail with 403 status`() {
         val undefinedRoleApiKey = "undefined-role-api-key"
         whenever(mockApiKeyBuilder.parse(undefinedRoleApiKey)).doReturn(ApiKey(123, "key-secret"))
         wheneverBlocking(mockApiKeyRepository) { findById(123) }
@@ -223,7 +223,7 @@ class ApiKeyModuleTest {
             json()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
 
         di {
@@ -240,7 +240,7 @@ class ApiKeyModuleTest {
         bind<ApiKeyService>(overrides = true) with singleton {
             ApiKeyServiceImpl(
                 repository = mockApiKeyRepository,
-                passwordService = mockPasswordService,
+                secretService = mockPasswordService,
                 apiKeyBuilder = mockApiKeyBuilder,
                 secretGenerator = mockSecretGenerator,
             )

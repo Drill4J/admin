@@ -50,21 +50,6 @@ val authConfigDIModule = DI.Module("authConfig") {
     }
 }
 
-
-/**
- * A Ktor Authentication plugin configuration for Basic based authentication.
- */
-fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
-    val authService by di.instance<UserAuthenticationService>()
-
-    basic("basic") {
-        realm = "Access to the http(s) services"
-        validate {
-            authService.signIn(LoginPayload(username = it.name, password = it.password)).toPrincipal()
-        }
-    }
-}
-
 val userServicesDIModule = DI.Module("userServices") {
     importOnce(userRepositoryDIModule)
     importOnce(passwordHashServiceDIModule)

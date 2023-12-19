@@ -67,7 +67,7 @@ fun Application.module() {
     }
 
     install(StatusPages) {
-        simpleAuthStatusPages() //TODO rename so as not to be associated with simple form based auth
+        authStatusPages()
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
     }
@@ -75,7 +75,6 @@ fun Application.module() {
 
         configureJwtAuthentication(closestDI())
         configureApiKeyAuthentication(closestDI())
-        if (simpleAuthEnabled) configureBasicAuthentication(closestDI()) else configureBasicStubAuthentication()
         if (oauth2Enabled) configureOAuthAuthentication(closestDI())
     }
     routing {
@@ -83,14 +82,13 @@ fun Application.module() {
     }
     routing {
         if (oauth2Enabled) configureOAuthRoutes()
-        if (simpleAuthEnabled) loginRoute()
         route("/api") {
             if (simpleAuthEnabled) userAuthenticationRoutes()
             authenticate("jwt") {
                 userProfileRoutes()
                 userApiKeyRoutes()
             }
-            authenticate("jwt", "basic", "api-key") {
+            authenticate("jwt", "api-key") {
                 withRole(ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()

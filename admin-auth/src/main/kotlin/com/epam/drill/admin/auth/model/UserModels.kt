@@ -88,7 +88,7 @@ data class ChangePasswordPayload(
 
 fun UserEntity.toUserInfoView(): UserInfoView {
     return UserInfoView(
-        id = this.id ?: throw NullPointerException("User id cannot be null"),
+        id = this.id ?: throw IllegalStateException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
         external = this.external

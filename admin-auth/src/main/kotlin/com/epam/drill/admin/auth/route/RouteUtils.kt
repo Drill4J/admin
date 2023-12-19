@@ -44,3 +44,7 @@ suspend fun ApplicationCall.accessDeniedError(cause: Exception? = null) {
 suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null) {
     respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: "Unprocessable entity"))
 }
+
+suspend fun ApplicationCall.notFound(cause: Exception) {
+    respond(HttpStatusCode.NotFound, MessageResponse(cause.message ?: "Entity not found"))
+}

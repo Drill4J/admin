@@ -167,6 +167,12 @@ class UserApiKeyTests {
     fun `given api key identifier 'DELETE user-keys {id}' must delete user's api key`() {
         val testUserId = 43
         val testApiKey = 123
+        wheneverBlocking(apiKeyRepository) { findById(testApiKey) }.thenReturn(
+            createTestApiKeyEntity(
+                id = testApiKey, userId = testUserId,
+                user = UserEntity(id = testUserId, username = "test-user", role = "USER")
+            )
+        )
         withTestApplication(withRoute {
             authenticate {
                 deleteUserApiKeyRoute()
@@ -182,6 +188,31 @@ class UserApiKeyTests {
         }
     }
 
+    @Test
+    fun `given api key identifier issued by another user, 'DELETE user-keys {id}' must fail`() {
+        val testUserId = 43
+        val anotherUserId = 89
+        val testApiKey = 123
+        wheneverBlocking(apiKeyRepository) { findById(testApiKey) }.thenReturn(
+            createTestApiKeyEntity(
+                id = testApiKey, userId = anotherUserId,
+                user = UserEntity(id = anotherUserId, username = "another-user", role = "USER")
+            )
+        )
+        withTestApplication(withRoute {
+            authenticate {
+                deleteUserApiKeyRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Delete, "/user-keys/$testApiKey") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken(username = "test-user", userId = testUserId)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
     private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {
@@ -191,7 +222,7 @@ class UserApiKeyTests {
             bind<ApiKeyService>() with provider {
                 ApiKeyServiceImpl(
                     repository = apiKeyRepository,
-                    passwordService = passwordService,
+                    secretService = passwordService,
                     apiKeyBuilder = apiKeyBuilder,
                     secretGenerator = secretGenerator,
                     currentDateTimeProvider = { currentTimeProvider.getCurrentTime() }
@@ -202,7 +233,7 @@ class UserApiKeyTests {
             jwtMock()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         routing {
             route()

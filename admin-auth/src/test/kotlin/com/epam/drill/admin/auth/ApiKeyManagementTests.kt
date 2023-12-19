@@ -101,14 +101,14 @@ class ApiKeyManagementTests {
             bind<ApiKeyService>() with provider {
                 ApiKeyServiceImpl(
                     repository = apiKeyRepository,
-                    passwordService = passwordService,
+                    secretService = passwordService,
                     apiKeyBuilder = apiKeyBuilder,
                     secretGenerator = secretGenerator,
                 )
             }
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         routing {
             route()

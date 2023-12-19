@@ -95,6 +95,35 @@ class ApiKeyAuthenticationProviderTest {
         }
     }
 
+    @Test
+    fun `given custom api key header, authenticated request must succeed in retrieving api key from that header`() {
+        val testHeader = "X-Test-Api-Key"
+        val testApiKey = "test-api-key"
+        withTestApplication({
+            install(Authentication) {
+                apiKey {
+                    headerName = testHeader
+                    validate { apiKey ->
+                        apiKey
+                            .takeIf { it == testApiKey }
+                            ?.let { UserIdPrincipal("username") }
+                    }
+                }
+            }
+            routing {
+                authenticate {
+                    configureGetApiRoute()
+                }
+            }
+        }) {
+            with(handleRequest(HttpMethod.Get, "/api") {
+                addHeader(testHeader, testApiKey)
+            }) {
+                assertEquals(HttpStatusCode.OK, response.status())
+            }
+        }
+    }
+
 
     private fun Route.configureGetApiRoute() {
         get("/api") {
