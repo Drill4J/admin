@@ -108,7 +108,7 @@ class ApiKeyManagementTests {
             }
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         routing {
             route()

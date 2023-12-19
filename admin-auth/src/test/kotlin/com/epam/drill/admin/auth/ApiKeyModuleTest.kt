@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
-import com.epam.drill.admin.auth.route.simpleAuthStatusPages
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.application.*
@@ -223,7 +223,7 @@ class ApiKeyModuleTest {
             json()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
 
         di {

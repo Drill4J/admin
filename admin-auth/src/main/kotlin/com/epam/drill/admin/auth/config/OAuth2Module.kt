@@ -45,7 +45,6 @@ val oauthDIModule = DI.Module("oauth") {
     importOnce(jwtServicesDIModule)
     importOnce(userServicesDIModule)
     importOnce(oauthServicesDIModule)
-    importOnce(authConfigDIModule)
 }
 
 /**

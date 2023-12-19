@@ -114,32 +114,18 @@ data class OAuth2ConfigView(
     val automaticSignIn: Boolean
 )
 
-fun AuthConfig.toView() = when (type) {
-    AuthType.OAUTH2 -> {
-        AuthConfigView(
-            oauth2 = oauth2?.toView()
-        )
-    }
-    AuthType.SIMPLE -> {
-        AuthConfigView(
-            simpleAuth = simpleAuth?.toView()
-        )
-    }
-    AuthType.SIMPLE_AND_OAUTH2 -> {
-        AuthConfigView(
-            simpleAuth = simpleAuth?.toView(),
-            oauth2 = oauth2?.toView()
-        )
-    }
-}
+fun AuthConfig.toView() = AuthConfigView(
+    simpleAuth = simpleAuth?.toView(),
+    oauth2 = oauth2?.toView()
+)
 
 fun OAuth2Config.toView() = OAuth2ConfigView(
-    enabled = true,
+    enabled = enabled,
     buttonTitle = signInButtonTitle,
     automaticSignIn = automaticSignIn
 )
 
 fun SimpleAuthConfig.toView() = SimpleAuthConfigView(
-    enabled = true,
+    enabled = enabled,
     signUpEnabled = signUpEnabled
 )
