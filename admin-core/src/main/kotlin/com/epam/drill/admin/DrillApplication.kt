@@ -103,7 +103,6 @@ fun Application.moduleWithSimpleAuth() {
 fun Application.moduleWithOAuth2() {
     install(StatusPages) {
         simpleAuthStatusPages()
-        oauthStatusPages()
         defaultStatusPages()
     }
     installPlugins()
@@ -142,7 +141,6 @@ fun Application.moduleWithOAuth2() {
 fun Application.moduleWithSimpleAuthAndOAuth2() {
     install(StatusPages) {
         simpleAuthStatusPages()
-        oauthStatusPages()
         defaultStatusPages()
     }
     installPlugins()
