@@ -16,6 +16,11 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
+import com.epam.drill.admin.auth.exception.ApiKeyNotFoundException
+import com.epam.drill.admin.auth.model.ApiKeyCredentialsView
+import com.epam.drill.admin.auth.model.ApiKeyView
+import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
+import com.epam.drill.admin.auth.model.UserApiKeyView
 import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.model.*
@@ -43,6 +48,10 @@ class ApiKeyServiceImpl(
             .map { it.toUserApiKeyView() }
     }
 
+    override suspend fun getApiKeyById(id: Int): ApiKeyView {
+        return repository.findById(id)?.toApiKeyView() ?: throw ApiKeyNotFoundException()
+    }
+
     override suspend fun deleteApiKey(id: Int) {
         repository.deleteById(id)
     }
@@ -61,9 +70,9 @@ class ApiKeyServiceImpl(
         val apiKeyId: Int = createdEntity.id ?: throw NullPointerException("Api key id cannot be null after creation")
         val apiKey = apiKeyBuilder.format(ApiKey(apiKeyId, secret))
         return ApiKeyCredentialsView(
-            id = apiKeyId,
-            apiKey = apiKey,
-            expiresAt = createdEntity.expiresAt.toKotlinLocalDateTime()
+            id = entityWithId.id ?: throw IllegalStateException("Api key id cannot be null after creation"),
+            apiKey = entityWithId.apiKeyHash,
+            expiresAt = entityWithId.expiresAt.toKotlinLocalDateTime()
         )
     }
 
@@ -85,17 +94,17 @@ class ApiKeyServiceImpl(
 }
 
 private fun ApiKeyEntity.toApiKeyView() = ApiKeyView(
-    id = id ?: throw NullPointerException("Api Key id cannot be null"),
+    id = id ?: throw IllegalStateException("Api Key id cannot be null"),
     userId = userId,
     description = description,
     expiresAt = expiresAt.toKotlinLocalDateTime(),
     createdAt = createdAt.toKotlinLocalDateTime(),
-    username = user?.username ?: throw NullPointerException("User property cannot be null in ApiKeyEntity"),
+    username = user?.username ?: throw IllegalStateException("User property cannot be null in ApiKeyEntity"),
     role = user.role.let { Role.valueOf(it) },
 )
 
 private fun ApiKeyEntity.toUserApiKeyView() = UserApiKeyView(
-    id = id ?: throw NullPointerException("Api Key id cannot be null"),
+    id = id ?: throw IllegalStateException("Api Key id cannot be null"),
     description = description,
     expiresAt = expiresAt.toKotlinLocalDateTime(),
     createdAt = createdAt.toKotlinLocalDateTime(),

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
 import com.epam.drill.admin.auth.principal.User
@@ -79,6 +80,9 @@ fun Route.deleteUserApiKeyRoute() {
     delete<UserApiKeys.Id> { params ->
         val principal = call.principal<User>() ?: throw NotAuthenticatedException()
         val apiKeyId = params.id
+        apiKeyService.getApiKeyById(apiKeyId)
+            .takeIf { it.userId == principal.id }
+            ?: throw ForbiddenOperationException("API key $apiKeyId was issued by another user.")
         apiKeyService.deleteApiKey(apiKeyId)
         call.ok("API Key successfully deleted.")
     }
