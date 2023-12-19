@@ -18,6 +18,7 @@ package com.epam.drill.admin.config
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.auth.config.AuthConfig
 import com.epam.drill.admin.auth.model.toView
+import com.epam.drill.admin.auth.route.ok
 import de.nielsfalk.ktor.swagger.examples
 import de.nielsfalk.ktor.swagger.get
 import de.nielsfalk.ktor.swagger.ok
@@ -39,8 +40,8 @@ fun Route.uiConfigRoute() {
                 ok<UIConfigDto>()
             )
     ) {
-        call.respond(
-            HttpStatusCode.OK, UIConfigDto(
+        call.ok(
+            UIConfigDto(
                 auth = authConfig.toView()
             )
         )
