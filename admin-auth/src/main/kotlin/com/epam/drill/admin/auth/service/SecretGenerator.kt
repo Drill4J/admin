@@ -21,6 +21,7 @@ package com.epam.drill.admin.auth.service
 interface SecretGenerator {
     /**
      * Generates a secret.
+     * @return the generated secret
      */
     fun generate(): String
 }
