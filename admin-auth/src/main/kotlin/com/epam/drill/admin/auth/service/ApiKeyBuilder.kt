@@ -15,9 +15,26 @@
  */
 package com.epam.drill.admin.auth.service
 
+/**
+ * A builder for API keys.
+ */
 interface ApiKeyBuilder {
+    /**
+     * Converts the API key to string format.
+     * @param apiKey the API key
+     * @return the string representation
+     */
     fun format(apiKey: ApiKey): String
+
+    /**
+     * Parses the API key from string format.
+     * @param apiKey the string representation
+     * @return the API key
+     */
     fun parse(apiKey: String): ApiKey
 }
 
+/**
+ * A model for API keys.
+ */
 data class ApiKey(val identifier: Int, val secret: String)

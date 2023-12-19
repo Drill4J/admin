@@ -50,10 +50,10 @@ class JwtConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
     /**
-     * A lifetime of a JWT. Optional, 30 minutes by default.
+     * A lifetime of a JWT. Optional, 60 minutes by default.
      */
     val lifetime: Duration
-        get() = config.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(30)
+        get() = config.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(60)
 
     /**
      * An JWT audience. Optional, empty by default.

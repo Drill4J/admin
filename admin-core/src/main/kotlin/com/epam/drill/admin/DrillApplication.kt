@@ -193,5 +193,5 @@ val Application.oauth2Enabled: Boolean
         .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
 
 val Application.simpleAuthEnabled: Boolean
-    get() = environment.config.config("drill.auth.simpleAuth")
+    get() = environment.config.config("drill.auth.simple")
         .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false

@@ -17,10 +17,40 @@ package com.epam.drill.admin.auth.repository
 
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
 
+/**
+ * A repository for storing API keys.
+ */
 interface ApiKeyRepository {
+    /**
+     * Finds all API keys.
+     * @return the list of API keys
+     */
     suspend fun findAll(): List<ApiKeyEntity>
+
+    /**
+     * Finds all API keys by user id.
+     * @param userId the id of the user
+     * @return the list of API keys
+     */
     suspend fun findAllByUserId(userId: Int): List<ApiKeyEntity>
+
+    /**
+     * Finds an API key by id.
+     * @param id the id of the API key
+     * @return the API key
+     */
     suspend fun findById(id: Int): ApiKeyEntity?
+
+    /**
+     * Deletes an API key.
+     * @param id the id of the API key
+     */
     suspend fun deleteById(id: Int)
+
+    /**
+     * Creates a new API key.
+     * @param entity the API key to be created
+     * @return the created API key
+     */
     suspend fun create(entity: ApiKeyEntity): ApiKeyEntity
 }
