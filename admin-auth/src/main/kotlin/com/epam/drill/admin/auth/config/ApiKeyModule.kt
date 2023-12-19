@@ -46,7 +46,7 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
         TransactionalApiKeyService(
             ApiKeyServiceImpl(
                 repository = instance(),
-                passwordService = instance(),
+                secretService = instance(),
                 apiKeyBuilder = instance(),
                 secretGenerator = RandomHexSecretGenerator(instance<ApiKeyConfig>().secretLength)
             )

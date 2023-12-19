@@ -240,7 +240,7 @@ class ApiKeyModuleTest {
         bind<ApiKeyService>(overrides = true) with singleton {
             ApiKeyServiceImpl(
                 repository = mockApiKeyRepository,
-                passwordService = mockPasswordService,
+                secretService = mockPasswordService,
                 apiKeyBuilder = mockApiKeyBuilder,
                 secretGenerator = mockSecretGenerator,
             )

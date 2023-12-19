@@ -28,12 +28,11 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.service.*
 import kotlinx.datetime.toKotlinLocalDateTime
-import java.security.SecureRandom
 import java.time.LocalDateTime
 
 class ApiKeyServiceImpl(
     private val repository: ApiKeyRepository,
-    private val passwordService: PasswordService,
+    private val secretService: PasswordService,
     private val apiKeyBuilder: ApiKeyBuilder,
     private val secretGenerator: SecretGenerator,
     private val currentDateTimeProvider: () -> LocalDateTime = { LocalDateTime.now() },
@@ -58,7 +57,7 @@ class ApiKeyServiceImpl(
 
     override suspend fun generateApiKey(userId: Int, payload: GenerateApiKeyPayload): ApiKeyCredentialsView {
         val secret = secretGenerator.generate()
-        val hash = passwordService.hashPassword(secret)
+        val hash = secretService.hashPassword(secret)
         val entity = ApiKeyEntity(
             userId = userId,
             description = payload.description,
@@ -80,7 +79,7 @@ class ApiKeyServiceImpl(
         val (apiKeyId, secret) = apiKeyBuilder.parse(apiKey)
         val entity = repository.findById(apiKeyId) ?: throw NotAuthenticatedException("Api key was not found")
 
-        if (!passwordService.matchPasswords(secret, entity.apiKeyHash))
+        if (!secretService.matchPasswords(secret, entity.apiKeyHash))
             throw NotAuthenticatedException("Api key is incorrect")
 
         if (entity.expiresAt < currentDateTimeProvider())
