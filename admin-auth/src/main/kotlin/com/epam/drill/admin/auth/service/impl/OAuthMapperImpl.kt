@@ -80,14 +80,14 @@ private fun <T> T.getStringArray(key: String) = when (this) {
 
 private fun JsonElement.getStringValue(key: String): String =
     this.jsonObject[key]?.jsonPrimitive?.contentOrNull
-        ?: throw OAuthUnauthorizedException("The key \"$key\" is not found in user-info response")
+        ?: throw OAuthUnauthorizedException("The key \"$key\" is not found in user-info response $this")
 
 private fun JsonElement.getStringArray(key: String): List<String> =
     this.jsonObject[key]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
 
 private fun DecodedJWT.getStringValue(key: String): String =
     getClaim(key).asString()
-        ?: throw OAuthUnauthorizedException("The claim \"$key\" is not found in access token")
+        ?: throw OAuthUnauthorizedException("The claim \"$key\" is not found in access token payload ${this.payload}")
 
 private fun DecodedJWT.getStringArray(key: String): List<String> =
     getClaim(key)?.takeIf { !it.isNull }?.asList(String::class.java) ?: emptyList()
