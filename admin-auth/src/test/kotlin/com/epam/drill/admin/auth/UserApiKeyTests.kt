@@ -233,7 +233,7 @@ class UserApiKeyTests {
             jwtMock()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         routing {
             route()

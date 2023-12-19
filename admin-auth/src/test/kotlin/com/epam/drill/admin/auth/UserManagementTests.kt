@@ -288,7 +288,7 @@ class UserManagementTest {
                 }
             }
             install(StatusPages) {
-                simpleAuthStatusPages()
+                authStatusPages()
             }
             routing {
                 editUserRoute()
@@ -322,7 +322,7 @@ class UserManagementTest {
             }
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         install(Authentication) {
             jwtMock()
