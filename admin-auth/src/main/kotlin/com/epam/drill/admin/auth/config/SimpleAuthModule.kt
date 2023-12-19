@@ -15,35 +15,17 @@
  */
 package com.epam.drill.admin.auth.config
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.JWTVerifier
-import com.auth0.jwt.algorithms.Algorithm
-import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.toPrincipal
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
-import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagementService
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
-import io.ktor.http.*
-import io.ktor.http.auth.*
-import mu.KotlinLogging
 import org.kodein.di.*
-
-private val logger = KotlinLogging.logger {}
-
-enum class UserRepoType {
-    DB,
-    ENV
-}
 
 val simpleAuthDIModule = DI.Module("simpleAuth") {
     importOnce(jwtServicesDIModule)
@@ -77,12 +59,7 @@ val userServicesDIModule = DI.Module("userServices") {
             userRepository = instance(),
             passwordService = instance(),
             passwordValidator = instance()
-        ).let { service ->
-            when (instance<AuthConfig>().userRepoType) {
-                UserRepoType.DB -> TransactionalUserAuthenticationService(service)
-                else -> service
-            }
-        }
+        ).let { TransactionalUserAuthenticationService(it) }
     }
     bind<UserManagementService>() with singleton {
         UserManagementServiceImpl(
@@ -90,27 +67,12 @@ val userServicesDIModule = DI.Module("userServices") {
             passwordService = instance(),
             passwordGenerator = instance(),
             externalRoleManagement = isExternalRoleManagement(instanceOrNull<OAuth2Config>())
-        ).let { service ->
-            when (instance<AuthConfig>().userRepoType) {
-                UserRepoType.DB -> TransactionalUserManagementService(service)
-                else -> service
-            }
-        }
+        ).let { TransactionalUserManagementService(it) }
     }
 }
 
 val userRepositoryDIModule = DI.Module("userRepository") {
-    bind<UserRepository>() with singleton {
-        val authConfig: AuthConfig = instance()
-        logger.info { "The user repository type is ${authConfig.userRepoType}" }
-        when (authConfig.userRepoType) {
-            UserRepoType.DB -> DatabaseUserRepository()
-            UserRepoType.ENV -> EnvUserRepository(
-                env = instance<Application>().environment.config,
-                passwordService = instance()
-            )
-        }
-    }
+    bind<UserRepository>() with singleton { DatabaseUserRepository() }
 }
 
 val passwordHashServiceDIModule = DI.Module("passwordHashService") {
