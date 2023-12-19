@@ -75,7 +75,6 @@ fun Application.module() {
 
         configureJwtAuthentication(closestDI())
         configureApiKeyAuthentication(closestDI())
-        if (simpleAuthEnabled) configureBasicAuthentication(closestDI()) else configureBasicStubAuthentication()
         if (oauth2Enabled) configureOAuthAuthentication(closestDI())
     }
     routing {
@@ -89,7 +88,7 @@ fun Application.module() {
                 userProfileRoutes()
                 userApiKeyRoutes()
             }
-            authenticate("jwt", "basic", "api-key") {
+            authenticate("jwt", "api-key") {
                 withRole(ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()

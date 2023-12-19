@@ -43,7 +43,7 @@ fun Routing.agentRoutes() {
     val configHandler by closestDI().instance<ConfigHandler>()
 
 
-    authenticate("jwt", "basic", "api-key") {
+    authenticate("jwt", "api-key") {
         withRole(Role.USER) {
             post<ApiRoot.Agents, AgentCreationDto>(
                 "Create agent"
