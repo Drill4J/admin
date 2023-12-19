@@ -66,12 +66,12 @@ class ApiKeyServiceImpl(
             expiresAt = currentDateTimeProvider().plusMonths(payload.expiryPeriod.months.toLong()),
             createdAt = currentDateTimeProvider()
         )
-        val createdEntity = repository.create(entity)
-        val apiKeyId: Int = createdEntity.id ?: throw NullPointerException("Api key id cannot be null after creation")
+        val entityWithId = repository.create(entity)
+        val apiKeyId: Int = entityWithId.id ?: throw IllegalStateException("Api key id cannot be null after creation")
         val apiKey = apiKeyBuilder.format(ApiKey(apiKeyId, secret))
         return ApiKeyCredentialsView(
-            id = entityWithId.id ?: throw IllegalStateException("Api key id cannot be null after creation"),
-            apiKey = entityWithId.apiKeyHash,
+            id = entityWithId.id,
+            apiKey = apiKey,
             expiresAt = entityWithId.expiresAt.toKotlinLocalDateTime()
         )
     }
