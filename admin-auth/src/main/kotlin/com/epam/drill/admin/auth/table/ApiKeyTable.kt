@@ -13,24 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.auth.table
 
-/**
- * A service for working with passwords.
- */
-interface PasswordService {
-    /**
-     * Hashes the given password.
-     * @param password the password to be hashed
-     * @return the hashed password
-     */
-    fun hashPassword(password: String): String
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.javatime.datetime
 
-    /**
-     * Compares the given non hashed password with the hashed one.
-     * @param candidate the non hashed password
-     * @param hashed the hashed password to compare
-     * @return true if the passwords match
-     */
-    fun matchPasswords(candidate: String, hashed: String?): Boolean
+object ApiKeyTable : IntIdTable(name = "auth.api_key") {
+    val userId = integer("user_id").references(UserTable.id)
+    val description = varchar("description", 200)
+    val apiKeyHash = varchar("api_key_hash", 100)
+    var expiresAt = datetime("expires_at")
+    var createdAt = datetime("created_at")
 }

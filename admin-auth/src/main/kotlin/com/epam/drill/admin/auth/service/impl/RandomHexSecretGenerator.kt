@@ -15,15 +15,20 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
-import com.epam.drill.admin.auth.service.PasswordService
-import org.mindrot.jbcrypt.BCrypt
+import com.epam.drill.admin.auth.service.SecretGenerator
+import java.security.SecureRandom
 
-class PasswordServiceImpl : PasswordService {
-    override fun hashPassword(password: String): String {
-        return BCrypt.hashpw(password, BCrypt.gensalt())
-    }
-
-    override fun matchPasswords(candidate: String, hashed: String?): Boolean {
-        return hashed != null && BCrypt.checkpw(candidate, hashed)
+/**
+ * A service for secret generation based on [SecureRandom] and HEX format.
+ * @param length length of bytes array of secret
+ */
+class RandomHexSecretGenerator(private val length: Int = 32): SecretGenerator {
+    override fun generate(): String {
+        val random = SecureRandom()
+        val keyBytes = ByteArray(length)
+        random.nextBytes(keyBytes)
+        return keyBytes.toHex()
     }
 }
+
+private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }

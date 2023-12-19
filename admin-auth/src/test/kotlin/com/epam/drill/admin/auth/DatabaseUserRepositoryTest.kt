@@ -15,58 +15,24 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.table.UserTable
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import java.time.LocalDateTime
 import java.time.Month
 import kotlin.test.*
 
-@Testcontainers
-class UserRepositoryImplTest {
+class DatabaseUserRepositoryTest: DatabaseTests() {
 
     private val repository = DatabaseUserRepository()
-
-    companion object {
-        @Container
-        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
-            DockerImageName.parse("postgres:14.1")
-        ).apply {
-            withDatabaseName("testdb")
-            withUsername("testuser")
-            withPassword("testpassword")
-        }
-
-        @JvmStatic
-        @BeforeAll
-        fun setup() {
-            postgresqlContainer.start()
-            val dataSource = HikariDataSource(HikariConfig().apply {
-                this.jdbcUrl = postgresqlContainer.jdbcUrl
-                this.username = postgresqlContainer.username
-                this.password = postgresqlContainer.password
-                this.driverClassName = postgresqlContainer.driverClassName
-                this.validate()
-            })
-            DatabaseConfig.init(dataSource)
-        }
-    }
 
     @Test
     fun `given unique username, create must insert user and return user entity with id`() = withTransaction {
@@ -259,8 +225,11 @@ class UserRepositoryImplTest {
 private fun withTransaction(test: suspend () -> Unit) {
     runBlocking {
         newSuspendedTransaction {
-            test()
-            rollback()
+            try {
+                test()
+            } finally {
+                rollback()
+            }
         }
     }
 }

@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth.config
 
 import io.ktor.config.*
 import mu.KotlinLogging
+import java.util.*
 import javax.crypto.KeyGenerator
 import kotlin.time.*
 
@@ -66,4 +67,5 @@ private fun ApplicationConfigValue.getDuration(): Duration {
 }
 
 
-internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()
+internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded
+    .let { Base64.getEncoder().encodeToString(it) }

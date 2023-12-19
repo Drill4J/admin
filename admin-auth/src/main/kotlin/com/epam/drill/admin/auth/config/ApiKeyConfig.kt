@@ -13,24 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.auth.config
+
+import io.ktor.config.*
 
 /**
- * A service for working with passwords.
+ * The API Key configuration.
+ * @param config the Ktor configuration
  */
-interface PasswordService {
+class ApiKeyConfig(private val config: ApplicationConfig) {
     /**
-     * Hashes the given password.
-     * @param password the password to be hashed
-     * @return the hashed password
+     * A length in bytes of the secret part of the API key. Optional, 32 by default.
      */
-    fun hashPassword(password: String): String
-
-    /**
-     * Compares the given non hashed password with the hashed one.
-     * @param candidate the non hashed password
-     * @param hashed the hashed password to compare
-     * @return true if the passwords match
-     */
-    fun matchPasswords(candidate: String, hashed: String?): Boolean
+    val secretLength: Int
+        get() = config.propertyOrNull("secretLength")?.getString()?.toInt() ?: 32
 }
