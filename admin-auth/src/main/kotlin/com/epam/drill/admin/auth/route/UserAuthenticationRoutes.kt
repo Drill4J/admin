@@ -28,10 +28,8 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.locations.post
 import io.ktor.request.*
-import io.ktor.response.*
 import io.ktor.response.header
 import io.ktor.routing.*
-import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
@@ -162,24 +160,3 @@ fun Route.updatePasswordRoute() {
         call.ok("Password successfully changed.")
     }
 }
-
-@Deprecated("The /api/login route is outdated, please use /sign-in")
-fun Route.loginRoute() {
-    val authService by di().instance<UserAuthenticationService>()
-    val tokenService by di().instance<TokenService>()
-
-    post<Login> {
-        val loginPayload = call.receive<UserData>()
-        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
-        val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenView(token))
-    }
-}
-
-@Serializable
-@Deprecated("use LoginPayload")
-data class UserData(
-    val name: String,
-    val password: String,
-)
