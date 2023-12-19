@@ -88,19 +88,18 @@ fun Authentication.Configuration.apiKey(
         val apiKey = context.call.request.header(provider.headerName)
         val principal = apiKey?.let { provider.authenticationFunction(context.call, it) }
 
-        val cause = when {
-            apiKey == null -> AuthenticationFailedCause.NoCredentials
-            principal == null -> AuthenticationFailedCause.InvalidCredentials
-            else -> null
-        }
-
-        if (cause != null) {
+        val challenge: (AuthenticationFailedCause) -> Unit = { cause ->
             context.challenge(provider.authScheme, cause) { challenge ->
                 provider.challengeFunction(context.call)
                 challenge.complete()
             }
         }
-        if (principal != null) {
+
+        if (apiKey == null) {
+            challenge(AuthenticationFailedCause.NoCredentials)
+        } else if (principal == null) {
+            challenge(AuthenticationFailedCause.InvalidCredentials)
+        } else {
             context.principal(principal)
         }
     }

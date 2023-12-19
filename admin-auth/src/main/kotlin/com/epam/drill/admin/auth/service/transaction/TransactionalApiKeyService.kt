@@ -29,6 +29,10 @@ class TransactionalApiKeyService(private val delegate: ApiKeyService
         delegate.getApiKeysByUser(userId)
     }
 
+    override suspend fun getApiKeyById(id: Int) = transaction {
+        delegate.getApiKeyById(id)
+    }
+
     override suspend fun deleteApiKey(id: Int) = transaction {
         delegate.deleteApiKey(id)
     }

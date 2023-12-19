@@ -160,7 +160,7 @@ class ApiKeyModuleTest {
     }
 
     @Test
-    fun `given blocked api key, api-key authenticated request must fail with 403 status`() {
+    fun `given api key of blocked user, api-key authenticated request must fail with 403 status`() {
         val blockedApiKey = "blocked-api-key"
         whenever(mockApiKeyBuilder.parse(blockedApiKey)).doReturn(ApiKey(123, "key-secret"))
         wheneverBlocking(mockApiKeyRepository) { findById(123) }
@@ -186,7 +186,7 @@ class ApiKeyModuleTest {
     }
 
     @Test
-    fun `given undefined role if api key, api-key authenticated request must fail with 403 status`() {
+    fun `given api key of user with undefined role, api-key authenticated request must fail with 403 status`() {
         val undefinedRoleApiKey = "undefined-role-api-key"
         whenever(mockApiKeyBuilder.parse(undefinedRoleApiKey)).doReturn(ApiKey(123, "key-secret"))
         wheneverBlocking(mockApiKeyRepository) { findById(123) }
@@ -240,7 +240,7 @@ class ApiKeyModuleTest {
         bind<ApiKeyService>(overrides = true) with singleton {
             ApiKeyServiceImpl(
                 repository = mockApiKeyRepository,
-                passwordService = mockPasswordService,
+                secretService = mockPasswordService,
                 apiKeyBuilder = mockApiKeyBuilder,
                 secretGenerator = mockSecretGenerator,
             )
