@@ -24,6 +24,10 @@ class ApiKeyBuilderImpl: ApiKeyBuilder {
     }
 
     override fun parse(apiKey: String): ApiKey {
-        return apiKey.split("_").let { ApiKey(it.first().toInt(), it.last()) }
+        val parts = apiKey.split("_")
+        if (parts.size != 2) throw IllegalArgumentException("Invalid api key format: must be 2 parts separated by '_'")
+        if (parts.first().isEmpty()) throw IllegalArgumentException("Invalid api key format: first part must not be empty")
+        if (parts.last().isEmpty()) throw IllegalArgumentException("Invalid api key format: second part must not be empty")
+        return parts.let { ApiKey(it.first().toInt(), it.last()) }
     }
 }

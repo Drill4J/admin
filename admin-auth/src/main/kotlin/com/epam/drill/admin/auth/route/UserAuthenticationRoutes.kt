@@ -56,7 +56,7 @@ object Login
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
-fun StatusPages.Configuration.simpleAuthStatusPages() {
+fun StatusPages.Configuration.authStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
@@ -72,6 +72,14 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<ForbiddenOperationException> { cause ->
         logger.trace(cause) { "422 Cannot modify own profile" }
         call.unprocessableEntity(cause)
+    }
+    exception<UserNotFoundException> { cause ->
+        logger.trace(cause) { "404 User not found" }
+        call.notFound(cause)
+    }
+    exception<ApiKeyNotFoundException> { cause ->
+        logger.trace(cause) { "404 Api key not found" }
+        call.notFound(cause)
     }
 }
 

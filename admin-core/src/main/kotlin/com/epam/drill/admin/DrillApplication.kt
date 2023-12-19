@@ -67,7 +67,7 @@ fun Application.module() {
     }
 
     install(StatusPages) {
-        simpleAuthStatusPages() //TODO rename so as not to be associated with simple form based auth
+        authStatusPages()
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
     }

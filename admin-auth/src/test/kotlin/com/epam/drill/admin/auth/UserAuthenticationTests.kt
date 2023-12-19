@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.simpleAuthStatusPages
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -42,7 +42,6 @@ import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
 import org.kodein.di.ktor.di
 import org.mockito.Mock
-import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
@@ -314,7 +313,7 @@ class UserAuthenticationTest {
             json()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         install(Authentication) {
             basic {
