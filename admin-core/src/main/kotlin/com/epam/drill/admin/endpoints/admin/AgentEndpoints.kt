@@ -43,33 +43,33 @@ fun Routing.agentRoutes() {
     val configHandler by closestDI().instance<ConfigHandler>()
 
 
-    authenticate("jwt", "basic") {
-        withRole(Role.USER) {
-            post<ApiRoot.Agents, AgentCreationDto>(
-                "Create agent"
-                    .examples(
-                        example(
-                            "Petclinic", AgentCreationDto(
-                                id = "petclinic",
-                                agentType = AgentType.JAVA,
-                                name = "Petclinic"
+            authenticate("jwt", "basic") {
+                withRole(Role.USER, Role.ADMIN) {
+                    post<ApiRoot.Agents, AgentCreationDto>(
+                        "Create agent"
+                            .examples(
+                                example(
+                                    "Petclinic", AgentCreationDto(
+                                        id = "petclinic",
+                                        agentType = AgentType.JAVA,
+                                        name = "Petclinic"
+                                    )
+                                )
                             )
-                        )
-                    )
-                    .responds(
-                        ok<AgentInfoDto>(),
-                        HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
-                    )
-            ) { _, payload ->
-                logger.debug { "Creating agent with id ${payload.id}..." }
-                agentManager.prepare(payload)?.run {
-                    logger.info { "Created agent ${payload.id}." }
-                    call.respond(HttpStatusCode.Created, toDto(agentManager))
-                } ?: run {
-                    logger.warn { "Agent ${payload.id} already exists." }
-                    call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))
-                }
-            }
+                            .responds(
+                                ok<AgentInfoDto>(),
+                                HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
+                            )
+                    ) { _, payload ->
+                        logger.debug { "Creating agent with id ${payload.id}..." }
+                        agentManager.prepare(payload)?.run {
+                            logger.info { "Created agent ${payload.id}." }
+                            call.respond(HttpStatusCode.Created, toDto(agentManager))
+                        } ?: run {
+                            logger.warn { "Agent ${payload.id} already exists." }
+                            call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))
+                        }
+                    }
 
             get<ApiRoot.Agents.Metadata>(
                 "Agents metadata"
