@@ -6,6 +6,7 @@ import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
 import com.epam.drill.admin.auth.table.UserTable
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
@@ -32,7 +33,7 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
 
         val createdApiKeyEntity = repository.create(apiKeyEntity)
 
-        assertEquals(1, ApiKeyTable.select { ApiKeyTable.id eq createdApiKeyEntity.id }.count())
+        assertEquals(1, ApiKeyTable.select { (ApiKeyTable.id eq createdApiKeyEntity.id) and (ApiKeyTable.userId eq testUserId) }.count())
     }
 
     @Test
@@ -47,7 +48,9 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
         val apiKeysByUserId2 = repository.getAllByUserId(userId2)
 
         assertEquals(2, apiKeysByUserId1.size)
+        assertTrue(apiKeysByUserId1.all { it.userId == userId1 })
         assertEquals(1, apiKeysByUserId2.size)
+        assertTrue(apiKeysByUserId2.all { it.userId == userId2 })
     }
 
     @Test
