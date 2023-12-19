@@ -10,7 +10,6 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.PasswordService
-import io.ktor.features.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.security.SecureRandom
 import java.time.LocalDateTime
@@ -51,7 +50,7 @@ class ApiKeyServiceImpl(
         )
         val entityWithId = repository.create(entity)
         return ApiKeyCredentialsView(
-            id = entityWithId.id ?: throw NullPointerException("Api key id cannot be null after creation"),
+            id = entityWithId.id ?: throw IllegalStateException("Api key id cannot be null after creation"),
             apiKey = entityWithId.apiKeyHash,
             expiresAt = entityWithId.expiresAt.toKotlinLocalDateTime()
         )
@@ -66,17 +65,17 @@ class ApiKeyServiceImpl(
 }
 
 private fun ApiKeyEntity.toApiKeyView() = ApiKeyView(
-    id = id ?: throw NullPointerException("Api Key id cannot be null"),
+    id = id ?: throw IllegalStateException("Api Key id cannot be null"),
     userId = userId,
     description = description,
     expiresAt = expiresAt.toKotlinLocalDateTime(),
     createdAt = createdAt.toKotlinLocalDateTime(),
-    username = user?.username ?: throw NullPointerException("User property cannot be null in ApiKeyEntity"),
+    username = user?.username ?: throw IllegalStateException("User property cannot be null in ApiKeyEntity"),
     role = user.role.let { Role.valueOf(it) },
 )
 
 private fun ApiKeyEntity.toUserApiKeyView() = UserApiKeyView(
-    id = id ?: throw NullPointerException("Api Key id cannot be null"),
+    id = id ?: throw IllegalStateException("Api Key id cannot be null"),
     description = description,
     expiresAt = expiresAt.toKotlinLocalDateTime(),
     createdAt = createdAt.toKotlinLocalDateTime(),
