@@ -257,4 +257,23 @@ class OAuthMapperTest {
 
         assertEquals(Role.ADMIN.name, userEntity.role)
     }
+
+    @Test
+    fun `if userinfo contains several roles, mapUserInfoToUserEntity must take role with greater privileges`() {
+        val oauthMapper = OAuthMapperImpl(OAuth2Config(MapApplicationConfig().apply {
+            put("roleMapping.user", "Dev")
+            put("roleMapping.admin", "Ops")
+            put("userInfoMapping.roles", "roles")
+        }))
+        val userInfo = """
+                {
+                    "username": "some-username",
+                    "roles": ["Dev", "Ops"]                                               
+                }
+            """.trimIndent()
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(userInfo)
+
+        assertEquals(Role.ADMIN.name, userEntity.role)
+    }
 }
