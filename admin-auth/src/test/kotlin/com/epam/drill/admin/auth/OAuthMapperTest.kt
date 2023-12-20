@@ -223,4 +223,57 @@ class OAuthMapperTest {
             oauthMapper.mapUserInfoToUserEntity(userInfo)
         }
     }
+
+    @Test
+    fun `given comma-separated list of roleMapping, mapUserInfoToUserEntity must find first matching role from list of mappings`() {
+        val oauthMapper = OAuthMapperImpl(OAuth2Config(MapApplicationConfig().apply {
+            put("roleMapping.user", "Developer, Tester")
+            put("userInfoMapping.roles", "roles")
+        }))
+        val userInfo = """
+                {
+                    "username": "some-username",
+                    "roles": ["Tester"]                                               
+                }
+            """.trimIndent()
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(userInfo)
+
+        assertEquals(Role.USER.name, userEntity.role)
+    }
+
+    @Test
+    fun `given comma-separated list of roleMapping, mapAccessTokenPayloadToUserEntity must find first matching role from list of mappings`() {
+        val oauthMapper = OAuthMapperImpl(OAuth2Config(MapApplicationConfig().apply {
+            put("roleMapping.admin", "Developer, Ops")
+            put("tokenMapping.roles", "roles")
+        }))
+        val accessToken = JWT.create()
+            .withSubject("some-username")
+            .withClaim("roles", listOf("Ops"))
+            .sign(testAlgorithm)
+
+        val userEntity = oauthMapper.mapAccessTokenPayloadToUserEntity(accessToken)
+
+        assertEquals(Role.ADMIN.name, userEntity.role)
+    }
+
+    @Test
+    fun `if userinfo contains several roles, mapUserInfoToUserEntity must take role with greater privileges`() {
+        val oauthMapper = OAuthMapperImpl(OAuth2Config(MapApplicationConfig().apply {
+            put("roleMapping.user", "Dev")
+            put("roleMapping.admin", "Ops")
+            put("userInfoMapping.roles", "roles")
+        }))
+        val userInfo = """
+                {
+                    "username": "some-username",
+                    "roles": ["Dev", "Ops"]                                               
+                }
+            """.trimIndent()
+
+        val userEntity = oauthMapper.mapUserInfoToUserEntity(userInfo)
+
+        assertEquals(Role.ADMIN.name, userEntity.role)
+    }
 }
