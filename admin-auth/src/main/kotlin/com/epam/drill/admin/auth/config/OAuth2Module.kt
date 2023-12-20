@@ -25,10 +25,12 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
+import io.ktor.content.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
@@ -37,6 +39,8 @@ import org.kodein.di.ktor.closestDI
 import java.net.URI
 
 const val JWT_COOKIE = "jwt"
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * The DI module including all services and configurations for OAuth2 authentication.
@@ -58,11 +62,15 @@ fun DI.Builder.configureOAuthDI() {
         OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
     }
     bind<OAuthMapper>() with singleton { OAuthMapperImpl(instance()) }
-    bind<OAuthService>() with singleton { TransactionalOAuthService(OAuthServiceImpl(
-        httpClient = instance("oauthHttpClient"),
-        oauth2Config = instance(),
-        userRepository = instance(),
-        oauthMapper = instance()))
+    bind<OAuthService>() with singleton {
+        TransactionalOAuthService(
+            OAuthServiceImpl(
+                httpClient = instance("oauthHttpClient"),
+                oauth2Config = instance(),
+                userRepository = instance(),
+                oauthMapper = instance()
+            )
+        )
     }
 }
 
@@ -108,23 +116,29 @@ fun Routing.configureOAuthRoutes() {
     val tokenService by closestDI().instance<TokenService>()
     val oauthService by closestDI().instance<OAuthService>()
 
-    authenticate("oauth") {
-        get("/oauth/login") {
-            // Redirects to "authorizeUrl" automatically
+    route("oauth") {
+        install(StatusPages) {
+            oauthStatusPages()
         }
-        get("/oauth/callback") {
-            val oauthPrincipal: OAuthAccessTokenResponse.OAuth2 = call.principal() ?: throw OAuthUnauthorizedException()
-            val userInfo = oauthService.signInThroughOAuth(oauthPrincipal)
-            val jwt = tokenService.issueToken(userInfo)
-            call.response.cookies.append(
-                Cookie(
-                    JWT_COOKIE,
-                    jwt,
-                    httpOnly = true,
-                    path = "/"
+        authenticate("oauth") {
+            get("/login") {
+                // Redirects to "authorizeUrl" automatically
+            }
+            get("/callback") {
+                val oauthPrincipal: OAuthAccessTokenResponse.OAuth2 =
+                    call.principal() ?: throw OAuthUnauthorizedException()
+                val userInfo = oauthService.signInThroughOAuth(oauthPrincipal)
+                val jwt = tokenService.issueToken(userInfo)
+                call.response.cookies.append(
+                    Cookie(
+                        JWT_COOKIE,
+                        jwt,
+                        httpOnly = true,
+                        path = "/"
+                    )
                 )
-            )
-            call.respondRedirect(oauth2Config.redirectUrl)
+                call.respondRedirect(oauth2Config.redirectUrl)
+            }
         }
     }
 }
@@ -135,9 +149,38 @@ class OAuthAccessDeniedException(message: String? = null) : RuntimeException(mes
 
 fun StatusPages.Configuration.oauthStatusPages() {
     exception<OAuthUnauthorizedException> { cause ->
-        call.respond(HttpStatusCode.Unauthorized, cause.message ?: "Failed to verify authentication through OAuth2 provider")
+        logger.trace(cause) { "401 User is not authenticated" }
+        call.respond(
+            htmlContent("Unauthorized Error", HttpStatusCode.Unauthorized)
+        )
     }
     exception<OAuthAccessDeniedException> { cause ->
-        call.respond(HttpStatusCode.Forbidden, cause.message ?: "Access denied")
+        logger.trace(cause) { "403 Access Denied" }
+        call.respond(
+            htmlContent("Access Denied Error", HttpStatusCode.Forbidden)
+        )
+    }
+    exception<Throwable> { cause ->
+        logger.trace(cause) { "500 Failed authentication through OAuth2" }
+        call.respond(
+            htmlContent("Internal Server Error", HttpStatusCode.InternalServerError)
+        )
     }
 }
+
+private fun htmlContent(message: String, status: HttpStatusCode) = TextContent(
+    """
+                <!DOCTYPE html>
+                <html lang="en">
+                  <head>
+                    <meta charset="utf-8">
+                    <title>$message</title>
+                  </head>
+                  <body>
+                      Drill4J responded with $message. Please contact Drill4J instance Administrator.
+                  </body>
+                </html>
+            """.trimIndent(),
+    ContentType.Text.Html.withCharset(Charsets.UTF_8),
+    status
+)
