@@ -149,19 +149,19 @@ class OAuthAccessDeniedException(message: String? = null) : RuntimeException(mes
 
 fun StatusPages.Configuration.oauthStatusPages() {
     exception<OAuthUnauthorizedException> { cause ->
-        logger.error("Failed to verify authentication through OAuth2 provider", cause)
+        logger.trace(cause) { "401 User is not authenticated" }
         call.respond(
             htmlContent("Unauthorized Error", HttpStatusCode.Unauthorized)
         )
     }
     exception<OAuthAccessDeniedException> { cause ->
-        logger.error("Failed to verify authentication through OAuth2 provider", cause)
+        logger.trace(cause) { "403 Access Denied" }
         call.respond(
             htmlContent("Access Denied Error", HttpStatusCode.Forbidden)
         )
     }
     exception<Throwable> { cause ->
-        logger.error("Failed to verify authentication through OAuth2 provider", cause)
+        logger.trace(cause) { "500 Failed authentication through OAuth2" }
         call.respond(
             htmlContent("Internal Server Error", HttpStatusCode.InternalServerError)
         )
