@@ -120,6 +120,7 @@ fun Application.moduleWithOAuth2() {
         drillAdminRoutes()
         configureOAuthRoutes()
         route("/api") {
+            signOutRoute()
             authenticate("jwt") {
                 userInfoRoute()
             }

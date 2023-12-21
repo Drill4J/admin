@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
@@ -303,6 +304,16 @@ class UserAuthenticationTest {
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `'POST sign-out' must clear jwt cookie`() {
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/sign-out")) {
+                assertEquals(HttpStatusCode.OK, response.status())
+                assertTrue(response.cookies[JWT_COOKIE]?.value.isNullOrEmpty())
             }
         }
     }
