@@ -15,11 +15,13 @@
  */
 package com.epam.drill.admin.auth.config
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.application.*
 import io.ktor.http.HttpStatusCode
 import io.ktor.auth.*
 import io.ktor.request.header
 import io.ktor.response.respond
+import java.time.Duration
 
 const val API_KEY_HEADER = "X-Api-Key"
 
@@ -34,6 +36,10 @@ class ApiKeyAuthenticationProvider internal constructor(
     internal val authenticationFunction = config.authenticationFunction
     internal val challengeFunction = config.challengeFunction
     internal val authScheme = config.authScheme
+    internal val cache = Caffeine.newBuilder()
+        .maximumSize(config.maximumCacheSize)
+        .expireAfterWrite(Duration.ofDays(30))
+        .build<String, Principal>()
 
     /**
      * Api key auth configuration.
@@ -55,6 +61,11 @@ class ApiKeyAuthenticationProvider internal constructor(
          * The header name that will be used as a source for the api key.
          */
         var headerName: String = API_KEY_HEADER
+
+        /**
+         * The size that will be used for the cache.
+         */
+        var maximumCacheSize: Long = 1000
 
         /**
          * A function that will check given API key retrieved from [headerName] and return [Principal],
@@ -86,7 +97,9 @@ fun Authentication.Configuration.apiKey(
 
     provider.pipeline.intercept(AuthenticationPipeline.RequestAuthentication) { context ->
         val apiKey = context.call.request.header(provider.headerName)
-        val principal = apiKey?.let { provider.authenticationFunction(context.call, it) }
+
+        val principal = runCatching { provider.cache.getIfPresent(apiKey) }.getOrNull()
+            ?: apiKey?.let { provider.authenticationFunction(context.call, it) }
 
         val challenge: (AuthenticationFailedCause) -> Unit = { cause ->
             context.challenge(provider.authScheme, cause) { challenge ->
@@ -100,6 +113,8 @@ fun Authentication.Configuration.apiKey(
         } else if (principal == null) {
             challenge(AuthenticationFailedCause.InvalidCredentials)
         } else {
+            //TODO put each times?
+            provider.cache.put(apiKey, principal)
             context.principal(principal)
         }
     }
