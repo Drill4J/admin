@@ -88,7 +88,6 @@ class AppConfig(var projectDir: File, delayBeforeClearData: Long, useTest2CodePl
 
         install(Authentication) {
             configureJwtAuthentication(closestDI())
-            configureBasicAuthentication(closestDI())
         }
 
         routing {
