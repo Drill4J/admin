@@ -64,9 +64,6 @@ fun Application.module() {
     install(ContentNegotiation) {
         converters()
     }
-    install(Compression) {
-        gzip()
-    }
 
     interceptorForApplicationJson()
 
