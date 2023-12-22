@@ -27,4 +27,19 @@ class ApiKeyConfig(private val config: ApplicationConfig) {
      */
     val secretLength: Int
         get() = config.propertyOrNull("secretLength")?.getString()?.toInt() ?: 32
+
+    /**
+     * The maximum number of items or data size that the cache can hold before it starts replacing or removing existing entries.
+     * By default, 1000.
+     */
+    val maximumCacheSize: Long
+        get() = config.propertyOrNull("maximumCacheSize")?.getString()?.toLong() ?: 1000
+
+    /**
+     * The duration in hours after which the stored data in the cache becomes invalid or expired.
+     * By default, 1 hour.
+     */
+    val ttlCacheInHours: Long
+        get() = config.propertyOrNull("ttlCacheInHours")?.getString()?.toLong() ?: 1
+
 }
