@@ -41,17 +41,17 @@ import io.ktor.util.pipeline.*
 
 private val logger = KotlinLogging.logger {}
 
-@Location("/api/agents/{agentId}")
-data class Agents(val agentId: String) {
+@Location("/api/agents")
+object Agents {
 
-    @Location("/builds/{buildVersion}/coverage")
-    data class Coverage(val parent: Agents, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/coverage")
+    data class Coverage(val agentId: String, val buildVersion: String)
 
-    @Location("/builds/{buildVersion}/class-metadata")
-    data class ClassMetadata(val parent: Agents, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/class-metadata")
+    data class ClassMetadata(val agentId: String, val buildVersion: String)
 
-    @Location("/builds/{buildVersion}/class-metadata/complete")
-    data class ClassMetadataComplete(val parent: Agents, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/class-metadata/complete")
+    data class ClassMetadataComplete(val agentId: String, val buildVersion: String)
 }
 
 class AgentInstanceEndpoints(override val di: DI) : DIAware {
@@ -81,7 +81,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
 
     private fun Route.sendCoverageRoute() {
         post<Agents.Coverage> { params ->
-            handleAgentRequest(params.parent.agentId, params.buildVersion) { agentInfo ->
+            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.receive<CoverageData>()
                 processPluginData(agentInfo, data.toCoverDataPart())
             }
@@ -90,7 +90,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
 
     private fun Route.sendClassMetadataRoute() {
         post<Agents.ClassMetadata> { params ->
-            handleAgentRequest(params.parent.agentId, params.buildVersion) { agentInfo ->
+            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.receive<ClassMetadata>()
                 processPluginData(agentInfo, data.toInitDataPart())
             }
@@ -99,7 +99,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
 
     private fun Route.completeSendingClassMetadataRoute() {
         post<Agents.ClassMetadataComplete> { params ->
-            handleAgentRequest(params.parent.agentId, params.buildVersion) { agentInfo ->
+            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 processPluginData(agentInfo, Initialized())
             }
         }
