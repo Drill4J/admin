@@ -447,7 +447,7 @@ class Plugin(
         sendLabels()
         sendFilters()
         sendActiveSessions()
-        
+
         finishSessionJob()
         calculateMetricsJob()
     }

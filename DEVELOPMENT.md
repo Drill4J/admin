@@ -134,3 +134,13 @@ There is following workflow to make changes to component code:
 - Commit and push changes
 - Create pull-request and merge changes in corresponding branch (**main**, **adoption** or **release**)
 - Run "**Release**" GitHub workflow to publish new release
+
+## Database migration
+
+There is the following workflow to modify the database:
+- Use flyway db migration tool for any changes in database scheme
+- The default location of flyway migration files is `/db/migration`
+- The format of flyway migration files is `V[version]__[description]` (e.g. `V1__create_user_table`), 
+where `[version]` is a migration sequence number (1,2,3,..), 
+`[description]` is a short description of the migration
+- It is not allowed to make any changes to migration files after merging into the main branch

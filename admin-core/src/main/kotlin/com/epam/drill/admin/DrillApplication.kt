@@ -15,126 +15,130 @@
  */
 package com.epam.drill.admin
 
+import com.epam.drill.admin.auth.*
+import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.config.DatabaseConfig
+import com.epam.drill.admin.auth.principal.Role.ADMIN
+import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
-import com.epam.drill.admin.jwt.config.*
-import com.epam.drill.admin.jwt.user.source.*
 import com.epam.drill.admin.kodein.*
-import com.epam.drill.admin.security.installAuthentication
 import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.response.*
+import io.ktor.routing.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.*
 import mu.*
 import org.flywaydb.core.*
-import ru.yandex.qatools.embed.postgresql.*
-import ru.yandex.qatools.embed.postgresql.distribution.*
-import java.io.*
 import java.time.*
 
-
-val drillHomeDir = File(System.getenv("DRILL_HOME") ?: "")
-
-val drillWorkDir = drillHomeDir.resolve("work")
-
-val userSource: UserSource = UserSourceImpl()
 
 private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
-fun Application.module() = kodeinApplication(
-    AppBuilder {
-        withInstallation {
-
-            install(StatusPages) {
-                exception<Throwable> { cause ->
-                    logger.error(cause) { "Build application finished with exception" }
-                    call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-                    throw cause
-                }
-            }
-            install(CallLogging)
-            install(Locations)
-            install(WebSockets) {
-                pingPeriod = Duration.ofSeconds(15)
-                timeout = Duration.ofSeconds(150)
-                maxFrameSize = Long.MAX_VALUE
-                masking = false
-            }
-
-            install(ContentNegotiation) {
-                converters()
-            }
-
-            interceptorForApplicationJson()
-
-            enableSwaggerSupport()
-
-            installAuthentication()
-
-            install(CORS) {
-                anyHost()
-                allowCredentials = true
-                method(HttpMethod.Post)
-                method(HttpMethod.Get)
-                method(HttpMethod.Delete)
-                method(HttpMethod.Put)
-                method(HttpMethod.Patch)
-                header(HttpHeaders.Authorization)
-                header(HttpHeaders.ContentType)
-                exposeHeader(HttpHeaders.Authorization)
-                exposeHeader(HttpHeaders.ContentType)
-            }
-
+fun Application.module() {
+    install(StatusPages) {
+        exception<Throwable> { cause ->
+            logger.error(cause) { "Build application finished with exception" }
+            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+            throw cause
         }
+        authStatusPages()
+    }
+    install(CallLogging)
+    install(Locations)
+    install(WebSockets) {
+        pingPeriod = Duration.ofSeconds(15)
+        timeout = Duration.ofSeconds(150)
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
+    }
+
+    install(ContentNegotiation) {
+        converters()
+    }
+
+    interceptorForApplicationJson()
+
+    enableSwaggerSupport()
+
+    install(CORS) {
+        anyHost()
+        allowCredentials = true
+        method(HttpMethod.Post)
+        method(HttpMethod.Get)
+        method(HttpMethod.Delete)
+        method(HttpMethod.Put)
+        method(HttpMethod.Patch)
+        header(HttpHeaders.Authorization)
+        header(HttpHeaders.ContentType)
+        exposeHeader(HttpHeaders.Authorization)
+        exposeHeader(HttpHeaders.ContentType)
+    }
+
+    install(RoleBasedAuthorization)
+
+    kodein {
+        withKModule { kodeinModule("securityConfig", securityDiConfig) }
+        withKModule { kodeinModule("usersConfig", usersDiConfig) }
         withKModule { kodeinModule("storage", storage) }
         withKModule { kodeinModule("wsHandler", wsHandler) }
         withKModule { kodeinModule("handlers", handlers) }
         withKModule { kodeinModule("pluginServices", pluginServices) }
-        val host = drillDatabaseHost
-        val port = drillDatabasePort
-        val dbName = drillDatabaseName
-        val userName = drillDatabaseUserName
-        val password = drillDatabasePassword
-        val maxPoolSize = drillDatabaseMaxPoolSize
-        if (isEmbeddedMode) {
-            logger.info { "starting dev mode for db..." }
-            val postgres = EmbeddedPostgres(Version.V11_1, drillWorkDir.absolutePath)
-            postgres.start(
-                host,
-                port,
-                dbName,
-                userName,
-                password
-            )
-        }
-        hikariConfig = HikariConfig().apply {
-            this.driverClassName = "org.postgresql.Driver"
-            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
-            this.username = userName
-            this.password = password
-            this.maximumPoolSize = maxPoolSize
-            this.isAutoCommit = true
-            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-            this.validate()
-        }
-        adminStore.createProcedureIfTableExist()
-        val flyway = Flyway.configure()
-            .dataSource(hikariConfig.jdbcUrl, hikariConfig.username, hikariConfig.password)
-            .schemas(adminStore.hikariConfig.schema)
-            .baselineOnMigrate(true)
-            .load()
-        flyway.migrate()
+        initDB()
     }
-)
+
+    routing {
+        loginRoute()
+        route("/api") {
+            userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+            }
+            authenticate("jwt", "basic") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                }
+            }
+        }
+    }
+}
+
+private fun Application.initDB() {
+    val host = drillDatabaseHost
+    val port = drillDatabasePort
+    val dbName = drillDatabaseName
+    val userName = drillDatabaseUserName
+    val password = drillDatabasePassword
+    val maxPoolSize = drillDatabaseMaxPoolSize
+    hikariConfig = HikariConfig().apply {
+        this.driverClassName = "org.postgresql.Driver"
+        this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
+        this.username = userName
+        this.password = password
+        this.maximumPoolSize = maxPoolSize
+        this.isAutoCommit = true
+        this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+        this.validate()
+    }
+    adminStore.createProcedureIfTableExist()
+    val dataSource = HikariDataSource(hikariConfig)
+
+    val flyway = Flyway.configure()
+        .dataSource(dataSource)
+        .schemas(adminStore.hikariConfig.schema)
+        .baselineOnMigrate(true)
+        .load()
+    flyway.migrate()
+
+    DatabaseConfig.init(dataSource)
+}
 
 lateinit var hikariConfig: HikariConfig

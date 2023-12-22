@@ -34,10 +34,10 @@ class VersionEndpoints(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
 
     init {
-        app.routing { routes() }
+        app.routing { versionRoutes() }
     }
 
-    private fun Routing.routes() {
+    private fun Route.versionRoutes() {
         val versionMeta = "Get versions".responds(
             ok<VersionDto>(example("sample", VersionDto("0.1.0", adminVersion)))
         )

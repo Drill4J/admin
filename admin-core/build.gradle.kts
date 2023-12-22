@@ -26,7 +26,6 @@ val kodeinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
 val mapdbVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
-val postgresEmbeddedVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -52,7 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
-    implementation("org.kodein.di:kodein-di-jvm:$kodeinVersion")
+    implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("org.flywaydb:flyway-core:$flywaydbVersion")
     implementation("org.mapdb:mapdb:$mapdbVersion") {
         exclude(group = "org.eclipse.collections", module = "eclipse-collections")
@@ -63,8 +62,8 @@ dependencies {
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("ru.yandex.qatools.embed:postgresql-embedded:$postgresEmbeddedVersion")
 
+    implementation(project(":admin-auth"))
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))
@@ -123,24 +122,41 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val jibExtraDirs = "$buildDir/jib-extra-dirs"
+val registryName = "ghcr.io"
+val fullImageTag = "$registryName/drill4j/admin"
+val apiPort = "8090"
+val debugPort = "5006"
+val secureApiPort = "8453"
+val gitUsername = System.getenv("GH_USERNAME") ?: ""
+val gitPassword = System.getenv("GH_TOKEN") ?: ""
 jib {
     from {
         image = "adoptopenjdk/openjdk11:latest"
     }
     to {
-        image = "ghcr.io/drill4j/admin"
+        image = fullImageTag
         tags = setOf(version.toString())
+        auth {
+            username=gitUsername
+            password=gitPassword
+        }
     }
     container {
-        ports = listOf("8090", "5006", "8453")
-        volumes = listOf("/distr", "/work")
+        ports = listOf(apiPort, debugPort , secureApiPort)
+        volumes = listOf("/config", "/config/ssl")
         mainClass = jarMainClassName
         jvmFlags = defaultJvmArgs
     }
     extraDirectories {
-        setPaths(jibExtraDirs)
-        permissions = mapOf("/distr" to "775", "/work" to "775")
+        setPaths("/config/ssl")
+        permissions = mapOf("/config" to "775","/config/ssl" to "775")
+        paths {
+            path{
+                setFrom("build/resources/main/")
+                into = "/config"
+                includes.set(listOf("application.conf"))
+            }
+        }
     }
 }
 
@@ -181,17 +197,32 @@ tasks {
         group = "application"
         dependsOn(cleanData, run)
     }
-    val processJibExtraDirs by registering(Copy::class) {
-        group = "jib"
-        from("src/main/jib")
-        into(jibExtraDirs)
-        outputs.upToDateWhen(Specs.satisfyNone())
-        doLast {
-            listOf("distr", "work").map(destinationDir::resolve).forEach { mkdir(it) }
-        }
+    val loginToDocker by registering(Exec::class) {
+        dependsOn(assemble)
+        workingDir(projectDir)
+        commandLine("docker", "login", registryName, "-u $gitUsername", "-p $gitPassword")
     }
-    withType<JibTask> {
-        dependsOn(processJibExtraDirs)
+    val createWindowsDockerImage by registering(Exec::class) {
+        dependsOn(loginToDocker)
+        workingDir(projectDir)
+        commandLine(
+            "docker", "build",
+            "--build-arg", "ADMIN_VERSION=$version",
+            "--build-arg", "API_PORT=$apiPort",
+            "--build-arg", "DEBUG_PORT=$debugPort",
+            "--build-arg", "SECURE_API_PORT=$secureApiPort",
+            "--build-arg", "JVM_ARGS=${defaultJvmArgs.joinToString(" ")}",
+            "--build-arg", "MAIN_CLASS_NAME=$jarMainClassName",
+            "-t", "$fullImageTag:$version-win",
+            "."
+        )
+    }
+    val pushWindowsDockerImage by registering(Exec::class) {
+        dependsOn(createWindowsDockerImage)
+        workingDir(projectDir)
+        commandLine(
+            "docker", "push", "$fullImageTag:$version-win"
+        )
     }
 }
 

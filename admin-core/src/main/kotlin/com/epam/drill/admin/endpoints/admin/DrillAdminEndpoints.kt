@@ -21,6 +21,8 @@ import com.epam.drill.admin.agent.toAgentBuildKey
 import com.epam.drill.admin.api.LoggingConfigDto
 import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.api.routes.WsRoot
+import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.cache.CacheService
 import com.epam.drill.admin.cache.impl.MapDBCacheService
 import com.epam.drill.admin.endpoints.AgentManager
@@ -57,6 +59,7 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
         app.routing {
 
             authenticate("jwt", "basic") {
+                withRole(Role.USER, Role.ADMIN) {
                 put<ApiRoot.Agents.AgentLogging, LoggingConfigDto>(
                     "Configure agent logging levels"
                         .examples(
@@ -72,26 +75,27 @@ class DrillAdminEndpoints(override val di: DI) : DIAware {
                     call.respond(HttpStatusCode.OK, EmptyContent)
                 }
 
-                get<ApiRoot.Cache.Stats>(
-                    "Return cache stats"
-                        .examples()
-                        .responds(
-                            ok<String>()
-                        )
-                ) {
-                    val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
-                    call.respond(HttpStatusCode.OK, cacheStats)
-                }
+                    get<ApiRoot.Cache.Stats>(
+                        "Return cache stats"
+                            .examples()
+                            .responds(
+                                ok<String>()
+                            )
+                    ) {
+                        val cacheStats = (cacheService as? MapDBCacheService)?.stats() ?: emptyList()
+                        call.respond(HttpStatusCode.OK, cacheStats)
+                    }
 
-                get<ApiRoot.Cache.Clear>(
-                    "Clear cache"
-                        .examples()
-                        .responds(
-                            ok<String>()
-                        )
-                ) {
-                    (cacheService as? MapDBCacheService)?.clear()
-                    call.respond(HttpStatusCode.OK)
+                    get<ApiRoot.Cache.Clear>(
+                        "Clear cache"
+                            .examples()
+                            .responds(
+                                ok<String>()
+                            )
+                    ) {
+                        (cacheService as? MapDBCacheService)?.clear()
+                        call.respond(HttpStatusCode.OK)
+                    }
                 }
             }
 

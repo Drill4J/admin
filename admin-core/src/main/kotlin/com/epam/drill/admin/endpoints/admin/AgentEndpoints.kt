@@ -21,6 +21,8 @@ import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.agent.config.*
 import com.epam.drill.admin.api.agent.*
 import com.epam.drill.admin.api.routes.*
+import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.store.*
 import de.nielsfalk.ktor.swagger.*
@@ -45,70 +47,71 @@ class AgentEndpoints(override val di: DI) : DIAware {
         app.routing {
 
             authenticate("jwt", "basic") {
-
-                get<ApiRoot.Agents.Metadata>(
-                    "Agents metadata"
-                        .examples()
-                        .responds(
-                            ok<String>()
-                        )
-                ) {
-                    val metadataAgents = agentManager.all().flatMap {
-                        buildManager.buildData(it.id).agentBuildManager.agentBuilds.map { agentBuild ->
-                            val agentBuildKey = AgentBuildKey(it.id, agentBuild.info.version)
-                            mapOf(agentBuildKey to adminStore.loadAgentMetadata(agentBuildKey))
+                withRole(Role.USER, Role.ADMIN) {
+                    get<ApiRoot.Agents.Metadata>(
+                        "Agents metadata"
+                            .examples()
+                            .responds(
+                                ok<String>()
+                            )
+                    ) {
+                        val metadataAgents = agentManager.all().flatMap {
+                            buildManager.buildData(it.id).agentBuildManager.agentBuilds.map { agentBuild ->
+                                val agentBuildKey = AgentBuildKey(it.id, agentBuild.info.version)
+                                mapOf(agentBuildKey to adminStore.loadAgentMetadata(agentBuildKey))
+                            }
                         }
+                        call.respond(HttpStatusCode.OK, metadataAgents)
                     }
-                    call.respond(HttpStatusCode.OK, metadataAgents)
-                }
 
 
 
 
-                post<ApiRoot.Agents.Agent, AgentRegistrationDto>(
-                    "Register agent"
-                        .examples(
-                            example("Petclinic", agentRegistrationExample)
-                        )
-                        .responds(
-                            ok<Unit>(), badRequest()
-                        )
-                ) { payload, regInfo ->
-                    logger.debug { "Registering agent with id ${payload.agentId}" }
-                    val agentId = payload.agentId
-                    val agInfo = agentManager[agentId]
-                    val (status, message) = if (agInfo != null) {
-                        agentManager.register(agInfo.id, regInfo)
-                        logger.debug { "Agent with id '$agentId' has been registered" }
-                        HttpStatusCode.OK to EmptyContent
-                    } else {
-                        logger.warn { "Agent with id'$agentId' was not found" }
-                        HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
+                    post<ApiRoot.Agents.Agent, AgentRegistrationDto>(
+                        "Register agent"
+                            .examples(
+                                example("Petclinic", agentRegistrationExample)
+                            )
+                            .responds(
+                                ok<Unit>(), badRequest()
+                            )
+                    ) { payload, regInfo ->
+                        logger.debug { "Registering agent with id ${payload.agentId}" }
+                        val agentId = payload.agentId
+                        val agInfo = agentManager[agentId]
+                        val (status, message) = if (agInfo != null) {
+                            agentManager.register(agInfo.id, regInfo)
+                            logger.debug { "Agent with id '$agentId' has been registered" }
+                            HttpStatusCode.OK to EmptyContent
+                        } else {
+                            logger.warn { "Agent with id'$agentId' was not found" }
+                            HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
+                        }
+                        call.respond(status, message)
                     }
-                    call.respond(status, message)
-                }
 
 
-                /**
-                 * Also you should send action to plugin
-                 * {
-                 *     "type": "REMOVE_PLUGIN_DATA"
-                 * }
-                 */
-                delete<ApiRoot.Agents.Agent>(
-                    "Remove all agent info"
-                        .responds(
-                            ok<Unit>(), notFound(), badRequest()
-                        )
-                ) { payload ->
-                    val agentId = payload.agentId
-                    val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
-                        HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."
-                    } else {
-                        agentManager.removeAgent(agentId)
-                        HttpStatusCode.OK to "Agent '$agentId' has been completely removed."
+                    /**
+                     * Also you should send action to plugin
+                     * {
+                     *     "type": "REMOVE_PLUGIN_DATA"
+                     * }
+                     */
+                    delete<ApiRoot.Agents.Agent>(
+                        "Remove all agent info"
+                            .responds(
+                                ok<Unit>(), notFound(), badRequest()
+                            )
+                    ) { payload ->
+                        val agentId = payload.agentId
+                        val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
+                            HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."
+                        } else {
+                            agentManager.removeAgent(agentId)
+                            HttpStatusCode.OK to "Agent '$agentId' has been completely removed."
+                        }
+                        call.respond(status, message)
                     }
-                    call.respond(status, message)
                 }
             }
         }
