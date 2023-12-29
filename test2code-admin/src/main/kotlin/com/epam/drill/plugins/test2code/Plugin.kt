@@ -26,6 +26,7 @@ import com.epam.drill.plugins.test2code.coverage.*
 import com.epam.drill.plugins.test2code.coverage.id
 import com.epam.drill.plugins.test2code.global_filter.*
 import com.epam.drill.plugins.test2code.group.*
+import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.StoreClient
@@ -342,6 +343,7 @@ class Plugin(
          * @features Class data sending
          */
         is InitDataPart -> {
+            RawDataRepositoryImpl.saveInitDataPart(instanceId, message)
             (state.data as? DataBuilder)?.also {
                 logger.info { "$instanceId: $message" }
                 it += message.astEntities
@@ -358,6 +360,8 @@ class Plugin(
             .also { logPoolStats() }
 
         is CoverDataPart -> {
+            RawDataRepositoryImpl.saveCoverDataPart(instanceId, message)
+
             message.data
                 .groupBy { it.sessionId }
                 .forEach { (probeSessionId, data) ->

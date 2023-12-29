@@ -70,6 +70,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:$testContainersVersion")
     testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
 }
 
 tasks {

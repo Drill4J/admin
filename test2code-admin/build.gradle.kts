@@ -22,6 +22,7 @@ val bcelVersion: String by parent!!.extra
 val jacocoVersion: String by parent!!.extra
 val atomicfuVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
+val flywaydbVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -47,16 +48,20 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation(project(":plugin-api-admin"))
+    implementation(project(":common"))
+
 
     api(project(":dsm"))
     api(project(":dsm-annotations")) { isTransitive = false }
     api(project(":admin-analytics"))
+    api("org.flywaydb:flyway-core:$flywaydbVersion")
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.jetbrains.kotlinx:atomicfu:$atomicfuVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("ch.qos.logback:logback-classic:1.2.3")
     testImplementation(project(":dsm-test-framework"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
 }
 
 kotlin.sourceSets.all {

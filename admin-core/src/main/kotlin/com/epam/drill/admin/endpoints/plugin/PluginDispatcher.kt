@@ -52,6 +52,8 @@ import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
+import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
+import com.epam.drill.plugins.test2code.multibranch.service.versionCoverage
 import org.kodein.di.ktor.closestDI
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
@@ -218,6 +220,10 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                         call.respond(statusCode, response)
                     }
 
+                    get<ApiRoot.Agents.Poke> { (_, agentId, buildVersion) ->
+//                        call.respond(HttpStatusCode.OK, versionCoverage(agentId, buildVersion))
+                        println("done")
+                    }
 
                     //todo remove it cause it is duplicated in another place. EPMDJ-6145
                     get<ApiRoot.Agents.PluginData> { (_, agentId, pluginId, dataType) ->

@@ -27,6 +27,7 @@ import com.epam.drill.common.agent.configuration.*
 import com.epam.drill.common.message.Message
 import com.epam.drill.common.message.MessageType
 import com.epam.drill.common.util.JavaZip
+import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
 import io.ktor.application.*
 import io.ktor.http.HttpHeaders.ContentEncoding
 import io.ktor.http.cio.websocket.*
@@ -55,6 +56,10 @@ fun Routing.agentWebSocketRoute() {
 
     agentWebsocket("/agent/attach") {
         val agentConfig = call.request.retrieveParams()
+
+        runBlocking {
+            RawDataRepositoryImpl.saveAgentConfig(agentConfig)
+        }
         val frameType = when (agentConfig.agentType) {
             AgentType.JAVA -> FrameType.BINARY
 

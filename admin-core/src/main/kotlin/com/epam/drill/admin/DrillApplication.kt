@@ -245,6 +245,10 @@ private fun Application.initDB() {
     val userName = drillDatabaseUserName
     val password = drillDatabasePassword
     val maxPoolSize = drillDatabaseMaxPoolSize
+
+    // TODO it might be beneficial to use separate JDBC driver instances for auth module and for test2code ops
+    //  why: auth module does not require batched operations, hence db interop code can be simplified
+    //  e.g. autoCommit might prevent batching, but is very handy for auth-related queries
     hikariConfig = HikariConfig().apply {
         this.driverClassName = "org.postgresql.Driver"
         this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
@@ -253,6 +257,16 @@ private fun Application.initDB() {
         this.maximumPoolSize = maxPoolSize
         this.isAutoCommit = true
         this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+
+        // cleaner way to set connection properties
+        // see https://jdbc.postgresql.org/documentation/use/#connection-parameters
+//        this.addDataSourceProperty("reWriteBatchedInserts", true)
+
+        // TODO investigate best-performing batched insertion
+        // 1. use prepared statement
+        // 2. set reWriteBatchedInserts to true
+        //      - it might _not_ work when isAutoCommit set to true (investigate)
+        // 3. set Statement.RETURN_GENERATED_KEYS to false
         this.validate()
     }
     adminStore.createProcedureIfTableExist()
@@ -265,7 +279,11 @@ private fun Application.initDB() {
         .load()
     flyway.migrate()
 
+    // auth db config
     DatabaseConfig.init(dataSource)
+
+    // test2code raw data db config
+    com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig.init(dataSource)
 }
 
 lateinit var hikariConfig: HikariConfig

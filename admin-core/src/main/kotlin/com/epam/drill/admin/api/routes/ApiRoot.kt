@@ -91,6 +91,9 @@ class ApiRoot(val prefix: String = "api") {
         @Location("/{agentId}/plugins/{pluginId}/dispatch-action")
         data class DispatchPluginAction(val parent: Agents, val agentId: String, val pluginId: String)
 
+        @Location("/{agentId}/builds/{buildVersion}/poke")
+        data class Poke(val parent: Agents, val agentId: String, val buildVersion: String)
+
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/process-data")
         data class ProcessData(val parent: Agents, val agentId: String, val pluginId: String)
