@@ -54,4 +54,10 @@ class CoffeineCacheServiceTest {
             assertNotNull(principal)
         }
 
+    @Test
+    fun `given principle with value null, then cache must not populate`(): Unit = runBlocking {
+        cacheService.getFromCacheOrPutIfAbsent("custom-key-1") { null }
+
+        Mockito.verify(caffeineMock, times(0)).put(any(), any())
+    }
 }
