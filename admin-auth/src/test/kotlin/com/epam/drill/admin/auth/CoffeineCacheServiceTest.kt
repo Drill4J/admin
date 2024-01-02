@@ -22,13 +22,8 @@ import com.github.benmanes.caffeine.cache.Cache
 import io.ktor.auth.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
-import org.mockito.Mockito
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.times
-import kotlin.test.Test
-import kotlin.test.assertNotNull
-import kotlin.test.fail
+import org.mockito.kotlin.*
+import kotlin.test.*
 
 
 /**
@@ -41,38 +36,42 @@ class CoffeineCacheServiceTest {
 
     @AfterEach
     fun reset() {
-        Mockito.reset(caffeineMock)
+        reset(caffeineMock)
     }
 
     @Test
-    fun `given apiKey, then should be called put method`(): Unit = runBlocking {
-        val key1 = "custom-key-1"
-        val user1 = User(1, "test1", Role.USER)
+    fun `if api key is not in cache, getFromCacheOrPutIfAbsent must return user from callback function and put it in cache`(): Unit =
+        runBlocking {
+            val key = "custom-key"
+            val user = User(1, "test1", Role.USER)
+            whenever(caffeineMock.getIfPresent(key)).thenReturn(null)
 
-        val principal = cacheService.getFromCacheOrPutIfAbsent(key1) { user1 }
+            val principal = cacheService.getFromCacheOrPutIfAbsent(key) { user }
 
-        Mockito.verify(caffeineMock, times(1)).put(key1, user1)
-        assertNotNull(principal)
-    }
+            verify(caffeineMock).put(key, user)
+            assertEquals(user, principal)
+        }
 
     @Test
     fun `if api key is already in cache, getFromCacheOrPutIfAbsent function must return user from cache`(): Unit =
         runBlocking {
             val user = User(1, "test1", Role.USER)
-            val key = "custom-key-1"
-            Mockito.`when`(caffeineMock.getIfPresent(key)).thenReturn(user)
+            val key = "custom-key"
+            whenever(caffeineMock.getIfPresent(key)).thenReturn(user)
 
             val principal = cacheService.getFromCacheOrPutIfAbsent(key) {
                 fail(message = "Must not be called")
             }
 
-            assertNotNull(principal)
+            assertEquals(user, principal)
         }
 
     @Test
-    fun `given principle with value null, then cache must not populate`(): Unit = runBlocking {
-        cacheService.getFromCacheOrPutIfAbsent("custom-key-1") { null }
+    fun `given null principle in callback function, getFromCacheOrPutIfAbsent must return null and cache must not populate`(): Unit =
+        runBlocking {
+            val principal = cacheService.getFromCacheOrPutIfAbsent("custom-key") { null }
 
-        Mockito.verify(caffeineMock, times(0)).put(any(), any())
-    }
+            assertNull(principal)
+            verify(caffeineMock, never()).put(any(), any())
+        }
 }
