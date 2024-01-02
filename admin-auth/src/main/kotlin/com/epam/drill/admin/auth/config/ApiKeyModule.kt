@@ -75,7 +75,7 @@ fun Authentication.Configuration.configureApiKeyAuthentication(di: DI) {
 
     apiKey("api-key") {
         validate { apiKey ->
-            cacheService.getFromCacheOrPutIfAbsent(apiKey){
+            cacheService.getFromCacheOrPutIfAbsent(apiKey) {
                 apiKeyService.signInThroughApiKey(apiKey).toPrincipal()
             }
         }
