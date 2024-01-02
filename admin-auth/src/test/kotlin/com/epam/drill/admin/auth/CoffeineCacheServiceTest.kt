@@ -5,9 +5,9 @@ import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.impl.CoffeineCacheService
 import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert
 import java.time.Duration
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * Tests for [CoffeineCacheService] logic
@@ -26,7 +26,7 @@ class CoffeineCacheServiceTest {
         cacheService.getFromCacheOrPutIfAbsent("custom-key-1") { User(1, "test1", Role.USER) }
         cacheService.getFromCacheOrPutIfAbsent("custom-key-2") { User(2, "test2", Role.USER) }
 
-        Assert.assertEquals(2, cacheService.cache.estimatedSize())
+        assertEquals(2, cacheService.cache.estimatedSize())
     }
 
     @Test
@@ -42,7 +42,7 @@ class CoffeineCacheServiceTest {
         cacheService.getFromCacheOrPutIfAbsent("custom-key-1") { user }
         cacheService.getFromCacheOrPutIfAbsent("custom-key-1") { user }
 
-        Assert.assertEquals(1, cacheService.cache.estimatedSize())
+        assertEquals(1, cacheService.cache.estimatedSize())
     }
 
 }
