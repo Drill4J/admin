@@ -2,7 +2,7 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.service.impl.ApiKeyCacheServiceImpl
+import com.epam.drill.admin.auth.service.impl.CoffeineCacheService
 import com.github.benmanes.caffeine.cache.Caffeine
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
@@ -10,13 +10,13 @@ import java.time.Duration
 import kotlin.test.Test
 
 /**
- * Tests for [ApiKeyCacheServiceImpl] logic
+ * Tests for [CoffeineCacheService] logic
  */
-class ApiKeyCacheServiceImplTest {
+class CoffeineCacheServiceTest {
 
     @Test
     fun `given two distinct apiKeys, then cache size should be two`(): Unit = runBlocking {
-        val cacheService = ApiKeyCacheServiceImpl(
+        val cacheService = CoffeineCacheService(
             Caffeine.newBuilder()
                 .maximumSize(5)
                 .expireAfterWrite(Duration.ofMinutes(1))
@@ -32,7 +32,7 @@ class ApiKeyCacheServiceImplTest {
     @Test
     fun `given only one apiKey two times, then cache size should be one`(): Unit = runBlocking {
         val user = User(1, "test1", Role.USER)
-        val cacheService = ApiKeyCacheServiceImpl(
+        val cacheService = CoffeineCacheService(
             Caffeine.newBuilder()
                 .maximumSize(5)
                 .expireAfterWrite(Duration.ofMinutes(1))
