@@ -5,7 +5,7 @@ import io.ktor.auth.*
 /**
  *  A service that manages the storage and retrieval of apiKeys.
  */
-interface CacheService {
+interface ApiKeyCacheService {
     /**
      * Retrieves a [Principal] object associated with the given [apiKey] from the cache.
      * If the key is not present in the cache, it invokes the [ifMissCallback] function to retrieve the value,

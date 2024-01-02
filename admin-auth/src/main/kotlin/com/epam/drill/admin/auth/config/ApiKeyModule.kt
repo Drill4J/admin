@@ -20,10 +20,10 @@ import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
-import com.epam.drill.admin.auth.service.CacheService
+import com.epam.drill.admin.auth.service.ApiKeyCacheService
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
-import com.epam.drill.admin.auth.service.impl.CacheServiceImpl
+import com.epam.drill.admin.auth.service.impl.ApiKeyCacheServiceImpl
 import com.epam.drill.admin.auth.service.impl.RandomHexSecretGenerator
 import com.epam.drill.admin.auth.service.transaction.TransactionalApiKeyService
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -56,8 +56,8 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
             )
         )
     }
-    bind<CacheService>() with singleton {
-        CacheServiceImpl(
+    bind<ApiKeyCacheService>() with singleton {
+        ApiKeyCacheServiceImpl(
             Caffeine.newBuilder()
             .maximumSize(instance<ApiKeyConfig>().maximumCacheSize)
             .expireAfterWrite(Duration.ofMinutes(instance<ApiKeyConfig>().ttlCacheInMinutes))
@@ -71,11 +71,11 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
  */
 fun Authentication.Configuration.configureApiKeyAuthentication(di: DI) {
     val apiKeyService by di.instance<ApiKeyService>()
-    val cacheService by di.instance<CacheService>()
+    val apiKeyCacheService by di.instance<ApiKeyCacheService>()
 
     apiKey("api-key") {
         validate { apiKey ->
-            cacheService.getFromCacheOrPutIfAbsent(apiKey) {
+            apiKeyCacheService.getFromCacheOrPutIfAbsent(apiKey) {
                 apiKeyService.signInThroughApiKey(apiKey).toPrincipal()
             }
         }
