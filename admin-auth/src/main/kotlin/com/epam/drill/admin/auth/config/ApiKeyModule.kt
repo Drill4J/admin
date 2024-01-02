@@ -60,7 +60,7 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
         CacheServiceImpl(
             Caffeine.newBuilder()
             .maximumSize(instance<ApiKeyConfig>().maximumCacheSize)
-            .expireAfterWrite(Duration.ofHours(instance<ApiKeyConfig>().ttlCacheInHours))
+            .expireAfterWrite(Duration.ofMinutes(instance<ApiKeyConfig>().ttlCacheInMinutes))
             .build()
         )
     }
