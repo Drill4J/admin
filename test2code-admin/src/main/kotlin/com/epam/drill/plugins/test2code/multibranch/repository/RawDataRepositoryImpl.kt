@@ -32,6 +32,7 @@ object AstMethodTable : IntIdTable("auth.ast_method") {
     val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
     val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
     val probesCount = integer("probes_count")
+    val probesStartPos = integer("probe_start_pos")
 }
 
 data class AstEntityData(
@@ -40,7 +41,8 @@ data class AstEntityData(
     val name: String,
     val params: String,
     val returnType: String,
-    val probesCount: Int
+    val probesCount: Int,
+    val probesStartPos: Int,
 )
 
 //object ExecClassDataTable : IntIdTable("test2code.exec_class_data") {
@@ -93,7 +95,8 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
                         name = astMethod.name,
                         params = astMethod.params.joinToString(","),
                         returnType = astMethod.returnType,
-                        probesCount = astMethod.count
+                        probesCount = astMethod.count,
+                        probesStartPos = astMethod.probesStartPos,
                     )
                 }
             }.let { dataToInsert ->
@@ -103,6 +106,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
                     this[AstMethodTable.name] = it.name
                     this[AstMethodTable.params] = it.params
                     this[AstMethodTable.returnType] = it.returnType
+                    this[AstMethodTable.probesStartPos] = it.probesStartPos
                     this[AstMethodTable.probesCount] = it.probesCount
                 }
             }
@@ -131,7 +135,8 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
                     preparedStatement.setString(1, instId)
                     preparedStatement.setString(2, className)
                     preparedStatement.setString(3, testId)
-                    preparedStatement.setString(4, probes.toBitString()) // Assuming probes is a BitSet or a suitable type
+                    // dropLast(1) to remove end of original array indicator - we don't need it in db
+                    preparedStatement.setString(4, probes.toBitString().dropLast(1))
 
                     preparedStatement.addBatch()
                     currentBatchSize++
@@ -241,7 +246,8 @@ private fun ResultRow.toAstEntityData() = AstEntityData(
     name = this[AstMethodTable.name],
     params = this[AstMethodTable.params],
     returnType = this[AstMethodTable.returnType],
-    probesCount = this[AstMethodTable.probesCount]
+    probesCount = this[AstMethodTable.probesCount],
+    probesStartPos = this[AstMethodTable.probesStartPos],
 )
 
 // TODO classId and sessionId are omitted. Decide if they are required

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS auth.ast_method (
     name VARCHAR(65535),
     params VARCHAR(65535),
     return_type VARCHAR(65535),
+    probe_start_pos INT,
     probes_count INT
 );
 
