@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS auth.ast_method (
     name VARCHAR(65535),
     params VARCHAR(65535),
     return_type VARCHAR(65535),
+    body_checksum VARCHAR(20), -- crc64 stringified hash
     probe_start_pos INT,
     probes_count INT
 );
@@ -31,4 +32,13 @@ CREATE TABLE IF NOT EXISTS auth.exec_class_data (
     class_name VARCHAR(65535),
     test_id VARCHAR(255),
     probes VARBIT
+);
+
+-- TestMetadataTable
+--CREATE TABLE IF NOT EXISTS test2code.test_metadata (
+CREATE TABLE IF NOT EXISTS auth.test_metadata (
+    id SERIAL PRIMARY KEY,
+    test_id VARCHAR(255),
+    type VARCHAR(255),
+    name VARCHAR(2000)
 );

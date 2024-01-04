@@ -240,6 +240,7 @@ class Plugin(
          * @features Running tests
          */
         is AddTests -> action.payload.run {
+            RawDataRepositoryImpl.saveTestMetadata(action.payload)
             sessionHolder.sessions[sessionId]?.let { session ->
                 session.addTests(tests)
                 ActionResult(

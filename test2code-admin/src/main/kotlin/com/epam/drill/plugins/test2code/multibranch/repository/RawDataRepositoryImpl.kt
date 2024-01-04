@@ -2,6 +2,7 @@ package com.epam.drill.plugins.test2code.multibranch.repository
 
 import com.epam.drill.common.agent.configuration.AgentConfig
 import com.epam.drill.common.agent.configuration.AgentType
+import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.*
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
@@ -10,7 +11,7 @@ import com.sun.tracing.Probe
 import io.ktor.util.reflect.*
 
 private const val LONG_TEXT_LENGTH = 65535 // java class name max len
-private const val MEDIUM_TEXT_LENGTH = 1000
+private const val MEDIUM_TEXT_LENGTH = 2000
 private const val SHORT_TEXT_LENGTH = 255
 //object AgentConfigTable : IntIdTable("test2code.agent_config") {
 
@@ -31,6 +32,7 @@ object AstMethodTable : IntIdTable("auth.ast_method") {
     val name = varchar("name",  LONG_TEXT_LENGTH)
     val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
     val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
+    val bodyChecksum = varchar("body_checksum",  20) // crc64 stringified hash
     val probesCount = integer("probes_count")
     val probesStartPos = integer("probe_start_pos")
 }
@@ -43,6 +45,7 @@ data class AstEntityData(
     val returnType: String,
     val probesCount: Int,
     val probesStartPos: Int,
+    val bodyChecksum: String,
 )
 
 //object ExecClassDataTable : IntIdTable("test2code.exec_class_data") {
@@ -67,6 +70,19 @@ class MyAwesomeColumnType(nullable: Boolean = false) : ColumnType(nullable) {
 fun Table.myAwesomeColumn(name: String, nullable: Boolean = false): Column<ByteArray> =
     registerColumn(name, MyAwesomeColumnType(nullable))
 
+
+object TestMetadataTable : IntIdTable("auth.test_metadata") {
+    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
+    val name = varchar("name",  MEDIUM_TEXT_LENGTH)
+    val type = varchar("type",  SHORT_TEXT_LENGTH)
+}
+
+data class TestMetadata (
+    val testId: String,
+    val name: String,
+    val type: String,
+    // TODO add field to store arbitrary data (key value? array?)
+)
 
 object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader {
 
@@ -97,6 +113,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
                         returnType = astMethod.returnType,
                         probesCount = astMethod.count,
                         probesStartPos = astMethod.probesStartPos,
+                        bodyChecksum = astMethod.checksum
                     )
                 }
             }.let { dataToInsert ->
@@ -107,6 +124,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
                     this[AstMethodTable.params] = it.params
                     this[AstMethodTable.returnType] = it.returnType
                     this[AstMethodTable.probesStartPos] = it.probesStartPos
+                    this[AstMethodTable.bodyChecksum] = it.bodyChecksum
                     this[AstMethodTable.probesCount] = it.probesCount
                 }
             }
@@ -121,6 +139,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
         DatabaseConfig.getDataSource()?.connection.use { connection ->
             if (connection === null) return
 
+            // TODO does it affect other connection consumers?
             // Disable auto-commit for batch processing
             connection.autoCommit = false
 
@@ -160,6 +179,25 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
             } finally {
                 // Close the resources
                 preparedStatement.close()
+            }
+        }
+    }
+
+    override suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload) {
+        DatabaseConfig.transaction {
+            // addTestsPayload.sessionId
+            addTestsPayload.tests.map { test ->
+                TestMetadata(
+                    testId = test.id,
+                    name = test.details.testName,
+                    type = "placeholder"
+                )
+            }.let { dataToInsert ->
+                TestMetadataTable.batchInsert(dataToInsert) {
+                    this[TestMetadataTable.testId] = it.testId
+                    this[TestMetadataTable.name] = it.name
+                    this[TestMetadataTable.type] = it.type
+                }
             }
         }
     }
@@ -248,6 +286,7 @@ private fun ResultRow.toAstEntityData() = AstEntityData(
     returnType = this[AstMethodTable.returnType],
     probesCount = this[AstMethodTable.probesCount],
     probesStartPos = this[AstMethodTable.probesStartPos],
+    bodyChecksum = this[AstMethodTable.bodyChecksum]
 )
 
 // TODO classId and sessionId are omitted. Decide if they are required
@@ -256,6 +295,8 @@ private fun ResultRow.toRawCoverageData() = RawCoverageData(
     className = this[ExecClassDataTable.className],
     testId = this[ExecClassDataTable.testId],
 
+    // TODO this is broken 100% since we remove last bit when writing to DB
+    //      probably there is no need to read it back - might as well delete getSomething* methods
     // TODO make sure it works "as intended" and preserves all probes in order
     //      as they were inserted
     probes = Probes.valueOf(this[ExecClassDataTable.probes]),
