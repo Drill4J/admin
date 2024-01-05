@@ -140,6 +140,97 @@ AND EXISTS (
 	AND q1.body_checksum <> q2.body_checksum
 );
 
+-- risks coverage
+
+WITH AggregatedData AS (
+    SELECT
+        instance_id,
+        class_name,
+        BIT_OR(probes) AS or_result
+    FROM
+        auth.exec_class_data
+    WHERE instance_id='8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+    GROUP BY
+        instance_id, class_name
+)
+SELECT
+	am.instance_id,
+	ad.instance_id,
+	am.probe_start_pos,
+	am.probes_count,
+	am.name,
+	am.class_name,
+    (BIT_COUNT(SUBSTRING(ad.or_result FROM am.probe_start_pos + 1 FOR am.probes_count)) * 100.0 / LENGTH(SUBSTRING(ad.or_result FROM am.probe_start_pos + 1 FOR am.probes_count))) AS set_bits_ratio,
+	SUBSTRING(ad.or_result FROM am.probe_start_pos + 1 FOR am.probes_count) AS substr_probes
+FROM
+    (
+         -- could be replaced with "optimized" version (see bellow)
+		SELECT *
+		FROM auth.ast_method AS q2
+		WHERE instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+		AND NOT EXISTS (
+			SELECT 1
+			FROM auth.ast_method AS q1
+			WHERE q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
+			AND q1.class_name = q2.class_name
+			AND q1.name = q2.name
+			AND q1.params = q2.params
+			AND q1.return_type = q2.return_type
+		)
+		UNION ALL
+		SELECT *
+		FROM auth.ast_method AS q2
+		WHERE instance_id =  '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+		AND EXISTS (
+			SELECT 1
+			FROM auth.ast_method AS q1
+			WHERE q1.instance_id =  '7f553ee8-0842-44c8-b488-7a80cff763e5'
+			AND q1.class_name = q2.class_name
+			AND q1.name = q2.name
+			AND q1.params = q2.params
+			AND q1.return_type = q2.return_type
+			AND q1.body_checksum <> q2.body_checksum
+		)
+	) as am
+LEFT JOIN
+    AggregatedData ad ON am.instance_id = ad.instance_id AND am.class_name = ad.class_name
+WHERE am.instance_id='8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+ORDER BY set_bits_ratio ASC
+
+-- all risks "optimized" version (TODO check if it works correctly)
+SELECT q2.*
+FROM auth.ast_method AS q2
+LEFT JOIN auth.ast_method AS q1
+    ON q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
+    AND q1.class_name = q2.class_name
+    AND q1.name = q2.name
+    AND q1.params = q2.params
+    AND q1.return_type = q2.return_type
+WHERE q2.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+  AND (
+    (q1.instance_id IS NULL) OR
+    (q1.body_checksum <> q2.body_checksum)
+  );
+
+
+-- associated tests
+SELECT
+	am.class_name,
+	am.name,
+	ARRAY_AGG(DISTINCT ed.test_id) AS test_ids,
+    am.*
+FROM
+    auth.ast_method am
+JOIN
+    auth.exec_class_data ed ON
+		am.class_name = ed.class_name
+    AND am.instance_id = ed.instance_id
+WHERE
+    am.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+	AND ed.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+    AND BIT_COUNT(SUBSTRING(ed.probes FROM am.probe_start_pos + 1 FOR am.probes_count)) > 0
+GROUP BY
+    am.id, am.instance_id, am.class_name, am.name, am.params, am.return_type, am.body_checksum, am.probe_start_pos, am.probes_count
 
 
 * */
