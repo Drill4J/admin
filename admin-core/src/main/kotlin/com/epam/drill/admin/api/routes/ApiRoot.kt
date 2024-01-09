@@ -58,6 +58,12 @@ class ApiRoot(val prefix: String = "api") {
     @Location("/analytic/toggle")
     data class ToggleAnalytic(val parent: ApiRoot)
 
+    @Location("/get-report")
+    data class GetReport(val parent: ApiRoot)
+
+    @Location("/get-report-html")
+    data class GetReportHTML(val parent: ApiRoot)
+
     @Group(AGENT)
     @Location("/agents")
     data class Agents(val parent: ApiRoot) {

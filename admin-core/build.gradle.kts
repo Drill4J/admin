@@ -62,6 +62,7 @@ dependencies {
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
     implementation("org.eclipse.collections:eclipse-collections-forkjoin:11.1.0")
     implementation("ch.qos.logback:logback-classic:1.2.3")
+    implementation("io.ktor:ktor-html-builder:$ktorVersion")
 
     implementation(project(":admin-auth"))
     implementation(project(":admin-analytics"))
@@ -121,7 +122,7 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val registryName = "ghcr.io"
+val registryName = "debug"
 val fullImageTag = "$registryName/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
@@ -134,7 +135,7 @@ jib {
     }
     to {
         image = fullImageTag
-        tags = setOf(version.toString())
+        tags = setOf("multibranch-1")
         auth {
             username=gitUsername
             password=gitPassword

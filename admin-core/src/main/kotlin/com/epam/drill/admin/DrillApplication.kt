@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin
 
+import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
@@ -24,6 +25,7 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.adminRoutes
 import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
 import com.epam.drill.admin.endpoints.admin.agentRoutes
+import com.epam.drill.admin.endpoints.admin.ensureQueryParams
 import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
 import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
 import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
@@ -32,11 +34,17 @@ import com.epam.drill.admin.notification.notificationRoutes
 import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.versionRoutes
+import com.epam.drill.plugins.test2code.multibranch.service.generateHtmlTable
+import com.epam.drill.plugins.test2code.multibranch.service.getNewRisks
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
+import de.nielsfalk.ktor.swagger.get
+import de.nielsfalk.ktor.swagger.ok
+import de.nielsfalk.ktor.swagger.responds
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
+import io.ktor.html.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -44,6 +52,8 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.html.*
 import mu.*
 import org.flywaydb.core.*
 import org.kodein.di.DI
@@ -83,6 +93,62 @@ fun Application.moduleWithSimpleAuth() {
     }
 
     routing {
+        get<ApiRoot.GetReport>(
+            "Get report"
+                .responds(
+                    ok<List<JsonElement>>()
+                )
+        ) {
+            call.request.ensureQueryParams("newInstanceId", "oldInstanceId")
+            val newInstanceId = call.request.queryParameters["newInstanceId"] ?: ""
+            val oldInstanceId = call.request.queryParameters["oldInstanceId"] ?: ""
+            val report = getNewRisks(newInstanceId, oldInstanceId)
+            call.respond(HttpStatusCode.OK, report)
+        }
+        get<ApiRoot.GetReportHTML>(
+            "Get report HTML"
+                .responds(
+                    ok<String>()
+                )
+        ) {
+            call.request.ensureQueryParams("newInstanceId", "oldInstanceId")
+            val newInstanceId = call.request.queryParameters["newInstanceId"] ?: ""
+            val oldInstanceId = call.request.queryParameters["oldInstanceId"] ?: ""
+            val report = generateHtmlTable(getNewRisks(newInstanceId, oldInstanceId))
+            call.respondHtml(HttpStatusCode.OK) {
+                head {
+                    title {
+                        +"Report"
+                    }
+                    link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css")
+                    link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap")
+                    // TODO figure out why DSL style {...} does not work (it gets encoded)
+                    unsafe {
+                        raw(
+                            """
+                            <style>
+                                body > * {
+                                    text-align: left;
+                                }
+                                table > td {
+                                    border: 1px solid black;
+                                }
+                            </style>
+                            """.trimIndent()
+                        )
+                    }
+                }
+                body {
+                    h1("font-bold") {
+                        +"Risks new"
+                    }
+                    div("mt-4") {
+                        unsafe { raw(report) }
+                    }
+                }
+            }
+
+        }
         drillAdminRoutes()
         loginRoute()
         route("/api") {
