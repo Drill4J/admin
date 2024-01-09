@@ -232,5 +232,68 @@ WHERE
 GROUP BY
     am.id, am.instance_id, am.class_name, am.name, am.params, am.return_type, am.body_checksum, am.probe_start_pos, am.probes_count
 
+-- covered methods
+SELECT
+    ed.test_id,
+	am.id as method_id,
+	am.class_name,
+    am.name
+FROM
+    auth.ast_method am
+JOIN
+    auth.exec_class_data ed ON
+        am.class_name = ed.class_name
+    AND am.instance_id = ed.instance_id
+WHERE
+    am.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+    AND ed.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+    AND BIT_COUNT(SUBSTRING(ed.probes FROM am.probe_start_pos + 1 FOR am.probes_count)) > 0
+GROUP BY
+    ed.test_id, am.id, am.instance_id, am.class_name, am.name, am.params, am.return_type
+ORDER BY ed.test_id
+
+-- recommended tests
+SELECT
+    tm.name AS test_name,
+    am.class_name,
+    am.name,
+    ed.test_id,
+    am.*
+FROM
+    auth.ast_method am
+JOIN
+    auth.exec_class_data ed ON
+        am.class_name = ed.class_name
+    AND am.instance_id = ed.instance_id
+LEFT JOIN
+    auth.test_metadata tm ON ed.test_id = tm.test_id
+WHERE
+    am.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
+    AND ed.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
+    AND BIT_COUNT(SUBSTRING(ed.probes FROM am.probe_start_pos + 1 FOR am.probes_count)) > 0
+    AND EXISTS (
+        SELECT 1
+        FROM auth.ast_method AS q2
+        LEFT JOIN auth.ast_method AS q1
+            ON q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
+            AND q1.class_name = q2.class_name
+            AND q1.name = q2.name
+            AND q1.params = q2.params
+            AND q1.return_type = q2.return_type
+        WHERE q2.instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
+          AND q1.body_checksum <> q2.body_checksum
+          AND q2.class_name = am.class_name
+          AND q2.name = am.name
+          AND q2.params = am.params
+          AND q2.return_type = am.return_type
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM auth.test_metadata tm
+        WHERE ed.test_id = tm.test_id
+    )
+GROUP BY
+    am.id, am.instance_id, am.class_name, am.name, am.params, am.return_type, am.body_checksum, am.probe_start_pos, am.probes_count, ed.test_id, tm.name
+
 
 * */
