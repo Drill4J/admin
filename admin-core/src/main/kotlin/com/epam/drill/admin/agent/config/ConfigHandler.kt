@@ -27,11 +27,11 @@ class ConfigHandler(override val di: DI) : DIAware {
      * @param parameters agent parameters
      * @features Agent attaching
      */
-    suspend fun store(agentId: String, parameters: Map<String, AgentParameter>) {
-        adminStore.store(StoredAgentConfig(agentId, parameters))
+    suspend fun store(agentId: String) {
+        adminStore.store(StoredAgentConfig(agentId))
     }
 
-    suspend fun load(agentId: String) = adminStore.findById<StoredAgentConfig>(agentId)?.params
+    suspend fun load(agentId: String) = adminStore.findById<StoredAgentConfig>(agentId)
 
     suspend fun remove(agentId: String) = adminStore.deleteById<StoredAgentConfig>(agentId)
 }

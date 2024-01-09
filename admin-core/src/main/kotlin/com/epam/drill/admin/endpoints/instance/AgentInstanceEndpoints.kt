@@ -18,7 +18,7 @@ package com.epam.drill.admin.endpoints.instance
 import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
-import com.epam.drill.common.agent.configuration.AgentConfig
+import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.TEST2CODE_PLUGIN
 import com.epam.drill.plugins.test2code.common.api.*
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +77,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
 
     private fun Route.registerAgentInstanceRoute() {
         put<Agents> {
-            val agentConfig = call.decompressAndReceive<AgentConfig>()
+            val agentConfig = call.decompressAndReceive<AgentMetadata>()
             val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                 agentManager.attach(agentConfig)
             }

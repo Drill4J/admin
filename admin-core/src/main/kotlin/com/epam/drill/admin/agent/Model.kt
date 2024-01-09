@@ -22,9 +22,8 @@ import com.epam.drill.admin.api.agent.SystemSettingsDto
 import com.epam.dsm.Id
 import kotlinx.serialization.Serializable
 
-typealias CommonAgentConfig = com.epam.drill.common.agent.configuration.AgentConfig
+typealias CommonAgentConfig = com.epam.drill.common.agent.configuration.AgentMetadata
 typealias CommonAgentInfo = com.epam.drill.common.AgentInfo
-typealias PackagesPrefixes = com.epam.drill.common.agent.configuration.PackagesPrefixes
 typealias BuildInfo = com.epam.drill.admin.build.BuildInfo
 
 @Serializable
