@@ -15,8 +15,10 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.service.ApiKey
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.*
 
 class ApiKeyBuilderTest {
@@ -39,6 +41,30 @@ class ApiKeyBuilderTest {
 
         assertEquals(100, apiKey.identifier)
         assertEquals("secret", apiKey.secret)
+    }
+
+    @Test
+    fun `given api key with invalid format, parse must throw NotAuthenticatedException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("test") }
+    }
+
+    @Test
+    fun `given api key with the first part, parse must throw NotAuthenticatedException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("test_") }
+    }
+
+    @Test
+    fun `given api key with the last part, parse must throw NotAuthenticatedException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("_test") }
+    }
+
+    @Test
+    fun `given api key with empty value, parse must throw NotAuthenticatedException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("") }
     }
 
 }
