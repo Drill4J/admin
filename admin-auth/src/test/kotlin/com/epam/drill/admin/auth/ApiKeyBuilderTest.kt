@@ -50,15 +50,15 @@ class ApiKeyBuilderTest {
     }
 
     @Test
-    fun `given api key with the first part, parse must throw NotAuthenticatedException`() {
+    fun `given api key without secret part, parse must throw NotAuthenticatedException`() {
         val apiKeyBuilder = ApiKeyBuilderImpl()
-        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("test_") }
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("id_") }
     }
 
     @Test
-    fun `given api key with the last part, parse must throw NotAuthenticatedException`() {
+    fun `given api key without id part, parse must throw NotAuthenticatedException`() {
         val apiKeyBuilder = ApiKeyBuilderImpl()
-        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("_test") }
+        assertThrows<NotAuthenticatedException> { apiKeyBuilder.parse("_secret") }
     }
 
     @Test
