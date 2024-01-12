@@ -18,16 +18,47 @@ package com.epam.drill.admin.auth.repository
 import com.epam.drill.admin.auth.entity.UserEntity
 
 
+/**
+ * A repository for storing users.
+ */
 interface UserRepository {
+    /**
+     * Finds all users.
+     * @return the list of users
+     */
     suspend fun findAll(): List<UserEntity>
 
+    /**
+     * Finds a user with the given id.
+     * @param id the id of the user
+     * @return the user or null if the user doesn't exist by given id
+     */
     suspend fun findById(id: Int): UserEntity?
 
+    /**
+     * Finds a user with the given username.
+     * @param username the username of the user
+     * @return the user or null if the user doesn't exist by given username
+     */
     suspend fun findByUsername(username: String): UserEntity?
 
+    /**
+     * Creates a new user.
+     * @param entity the user to be created
+     * @return the created user with filled id and registration date
+     */
     suspend fun create(entity: UserEntity): UserEntity
 
+    /**
+     * Updates an existing user.
+     * @param entity the user to be updated
+     * @return the updated user
+     */
     suspend fun update(entity: UserEntity): UserEntity
 
+    /**
+     * Deletes a user.
+     * @param id the id of the user to be deleted
+     */
     suspend fun deleteById(id: Int)
 }

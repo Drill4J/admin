@@ -32,11 +32,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
-import kotlin.test.*
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.time.LocalDateTime
 import java.time.Month
+import kotlin.test.*
 
 @Testcontainers
 class UserRepositoryImplTest {
@@ -89,23 +89,21 @@ class UserRepositoryImplTest {
     }
 
     @Test
-    fun `given not specified registration date, create must insert user and return registration date equal to current time`() =
+    fun `given not specified registration date, create must insert user and return registration date issued by date time provider`() =
         withTransaction {
             val userEntity = UserEntity(
                 username = "somename",
                 passwordHash = "hash",
                 role = "USER"
             )
+            val currentDateTimeStub = LocalDateTime.of(2023, Month.JANUARY, 1, 0, 0)
+            val repository = DatabaseUserRepository(currentDateTimeProvider = { currentDateTimeStub })
+
             val createdUserEntity = repository.create(userEntity)
 
             assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
             UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
-                assertTrue(
-                    it[UserTable.registrationDate].isAfter(LocalDateTime.now().minusMinutes(1))
-                            && it[UserTable.registrationDate].isBefore(LocalDateTime.now()),
-                    "The registration date was expected to be no older than one minute from the current time, " +
-                            "but was [${it[UserTable.registrationDate]}]"
-                )
+                assertEquals(it[UserTable.registrationDate], currentDateTimeStub)
             }
         }
 

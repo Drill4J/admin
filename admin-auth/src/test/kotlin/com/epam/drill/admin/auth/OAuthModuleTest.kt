@@ -16,7 +16,6 @@
 package com.epam.drill.admin.auth
 
 import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
@@ -39,10 +38,6 @@ import org.kodein.di.singleton
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.net.URL
 import kotlin.test.*
 
@@ -107,7 +102,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
                 put("drill.auth.oauth2.scopes", "scope1, scope2")
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule()
         }) {
@@ -140,8 +135,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
                 put("drill.auth.jwt.issuer", testIssuer)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
-                put("drill.ui.rootPath", "/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
@@ -165,7 +159,7 @@ class OAuthModuleTest {
                 )
             }
         }) {
-            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(id = 123, testUsername, Role.USER))
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(id = 123, testUsername, Role.USER, false))
 
             with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
                 assertEquals(HttpStatusCode.Found, response.status())
@@ -178,7 +172,7 @@ class OAuthModuleTest {
                         assertEquals(Role.USER.name, getClaim("role").asString())
                     }
                     assertTrue(jwtCookie.httpOnly)
-                    assertEquals("/drill", jwtCookie.path)
+                    assertEquals("/", jwtCookie.path)
                 }
             }
         }
@@ -195,7 +189,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
@@ -223,7 +217,7 @@ class OAuthModuleTest {
                 put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
                 put("drill.auth.oauth2.clientId", testClientId)
                 put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.ui.rootUrl", "http://$testDrillHost/drill")
+                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
             }
             withTestOAuthModule {
                 bind<OAuthService>(overrides = true) with provider { mockOAuthService }
@@ -265,6 +259,7 @@ class OAuthModuleTest {
         }
 
         install(Authentication) {
+            configureJwtAuthentication(closestDI())
             configureOAuthAuthentication(closestDI())
         }
 

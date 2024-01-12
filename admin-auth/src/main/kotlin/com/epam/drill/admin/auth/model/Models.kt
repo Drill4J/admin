@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.auth.model
 
+import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import kotlinx.serialization.*
 import kotlinx.datetime.LocalDateTime
@@ -32,7 +34,8 @@ data class TokenView(val token: String)
 data class UserInfoView(
     val id: Int,
     val username: String,
-    val role: Role
+    val role: Role,
+    val external: Boolean
 )
 
 @Serializable
@@ -41,7 +44,8 @@ data class UserView(
     val username: String,
     val role: Role,
     val blocked: Boolean,
-    val registrationDate: LocalDateTime?
+    val registrationDate: LocalDateTime?,
+    val external: Boolean
 )
 
 @Serializable
@@ -71,4 +75,62 @@ data class RegistrationPayload(
 data class ChangePasswordPayload(
     val oldPassword: String,
     val newPassword: String
+)
+
+fun UserEntity.toUserInfoView(): UserInfoView {
+    return UserInfoView(
+        id = this.id ?: throw NullPointerException("User id cannot be null"),
+        username = this.username,
+        role = Role.valueOf(this.role),
+        external = this.external
+    )
+}
+
+@Serializable
+data class AuthConfigView(
+    val simpleAuth: SimpleAuthConfigView? = null,
+    val oauth2: OAuth2ConfigView? = null
+)
+
+@Serializable
+data class SimpleAuthConfigView(
+    val enabled: Boolean,
+    val signUpEnabled: Boolean
+)
+
+@Serializable
+data class OAuth2ConfigView(
+    val enabled: Boolean,
+    val buttonTitle: String,
+    val automaticSignIn: Boolean
+)
+
+fun AuthConfig.toView() = when (type) {
+    AuthType.OAUTH2 -> {
+        AuthConfigView(
+            oauth2 = oauth2?.toView()
+        )
+    }
+    AuthType.SIMPLE -> {
+        AuthConfigView(
+            simpleAuth = simpleAuth?.toView()
+        )
+    }
+    AuthType.SIMPLE_AND_OAUTH2 -> {
+        AuthConfigView(
+            simpleAuth = simpleAuth?.toView(),
+            oauth2 = oauth2?.toView()
+        )
+    }
+}
+
+fun OAuth2Config.toView() = OAuth2ConfigView(
+    enabled = true,
+    buttonTitle = signInButtonTitle,
+    automaticSignIn = automaticSignIn
+)
+
+fun SimpleAuthConfig.toView() = SimpleAuthConfigView(
+    enabled = true,
+    signUpEnabled = signUpEnabled
 )

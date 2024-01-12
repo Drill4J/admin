@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.exception.UserNotFoundException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -28,7 +29,8 @@ import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val externalRoleManagement: Boolean = false
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
         return userRepository.findAll().map { it.toView() }
@@ -40,6 +42,8 @@ class UserManagementServiceImpl(
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
         val oldUserEntity = findUser(userId)
+        if (externalRoleManagement && oldUserEntity.external)
+            throw ForbiddenOperationException("Cannot update role for external user")
         val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
         return updatedUserEntity.toView()
     }
@@ -60,6 +64,8 @@ class UserManagementServiceImpl(
 
     override suspend fun resetPassword(userId: Int): CredentialsView {
         val userEntity = findUser(userId)
+        if (userEntity.external)
+            throw ForbiddenOperationException("Cannot reset password for external user")
         val newPassword = passwordService.generatePassword()
         val newPasswordHash = passwordService.hashPassword(newPassword)
         userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
@@ -82,7 +88,8 @@ private fun UserEntity.toView(): UserView {
         username = this.username,
         role = Role.valueOf(this.role),
         blocked = this.blocked,
-        registrationDate = this.registrationDate?.toKotlinLocalDateTime()
+        registrationDate = this.registrationDate?.toKotlinLocalDateTime(),
+        external = this.external
     )
 }
 

@@ -13,18 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service
+package com.epam.drill.admin.config
 
-import com.epam.drill.admin.auth.model.UserInfoView
+import com.epam.drill.admin.auth.model.AuthConfigView
+import kotlinx.serialization.Serializable
 
-/**
- * A service for issuing access tokens.
- */
-interface TokenService {
-    /**
-     * Issues an access token.
-     * @param user the user information based on which a token should be issued
-     * @return the issued access token
-     */
-    fun issueToken(user: UserInfoView): String
-}
+@Serializable
+data class UIConfigDto(
+    val auth: AuthConfigView
+)

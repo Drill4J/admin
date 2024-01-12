@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.OAuthAccessDeniedException
-import com.epam.drill.admin.auth.config.OAuthConfig
+import com.epam.drill.admin.auth.config.OAuth2Config
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
@@ -31,11 +31,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.mockito.stubbing.Answer
 import kotlin.test.*
 
 /**
@@ -47,7 +45,7 @@ class OAuthServiceTest {
     @Mock
     lateinit var oauthMapper: OAuthMapper
 
-    private val mockConfig = OAuthConfig(MapApplicationConfig())
+    private val mockConfig = OAuth2Config(MapApplicationConfig())
 
     @BeforeTest
     fun setup() {
@@ -61,7 +59,7 @@ class OAuthServiceTest {
             val testAccessToken = "test-access-token"
             val testUserFromOAuth = UserEntity(username = testUsername, role = Role.UNDEFINED.name)
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
-            whenever(oauthMapper.mapAccessTokenToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
+            whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
             whenever(userRepository.create(any())).thenAnswer(CopyUserWithID)
 
@@ -78,9 +76,9 @@ class OAuthServiceTest {
             val testUserFromDatabase = UserEntity(id = 123, username = testUsername, role = Role.USER.name)
             val testUserMustUpdate = UserEntity(id = 123, username = testUsername, role = Role.USER.name)
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
-            whenever(oauthMapper.mapAccessTokenToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
+            whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(testUserFromDatabase)
-            whenever(oauthMapper.mergeUserEntities(any(), any())).thenReturn(testUserMustUpdate)
+            whenever(oauthMapper.updateDatabaseUserEntity(any(), any())).thenReturn(testUserMustUpdate)
 
             oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
             verify(userRepository).update(testUserMustUpdate)
@@ -93,7 +91,7 @@ class OAuthServiceTest {
             val testAccessToken = "test-access-token"
             val testUserFromOAuth = UserEntity(username = testUsername, role = Role.USER.name)
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
-            whenever(oauthMapper.mapAccessTokenToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
+            whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(
                 UserEntity(
                     id = 123,
@@ -112,14 +110,14 @@ class OAuthServiceTest {
     fun `if user-info request fails, signInThroughOAuth must fail`(): Unit =
         runBlocking {
             val config = MapApplicationConfig().apply {
-                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+                put("userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
             }
             val httpClient = mockHttpClient(
                 "/userInfoUrl" shouldRespond {
                     respondError(HttpStatusCode.Unauthorized, "Invalid token")
                 }
             )
-            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository, oauthMapper)
+            val oauthService = OAuthServiceImpl(httpClient, OAuth2Config(config), userRepository, oauthMapper)
 
             assertThrows<OAuthUnauthorizedException> {
                 oauthService.signInThroughOAuth(withPrincipal("invalid-token"))
@@ -133,14 +131,14 @@ class OAuthServiceTest {
             val testRole = Role.USER
             val testAccessToken = "test-access-token"
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
-            whenever(oauthMapper.mapAccessTokenToUserEntity(testAccessToken)).thenReturn(
+            whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(
                 UserEntity(username = testUsername, role = testRole.name)
             )
             whenever(userRepository.findByUsername(testUsername)).thenReturn(null)
             whenever(userRepository.create(any())).thenAnswer(CopyUserWithID)
 
             val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-            verify(oauthMapper).mapAccessTokenToUserEntity(testAccessToken)
+            verify(oauthMapper).mapAccessTokenPayloadToUserEntity(testAccessToken)
             assertEquals(testUsername, userInfo.username)
             assertEquals(testRole, userInfo.role)
         }
@@ -152,14 +150,14 @@ class OAuthServiceTest {
             val testRole = Role.USER
             val testUserInfoResponse = "some-username-with-role-user"
             val config = MapApplicationConfig().apply {
-                put("drill.auth.oauth2.userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
+                put("userInfoUrl", "http://some-oauth-server.com/userInfoUrl")
             }
             val httpClient = mockHttpClient(
                 "/userInfoUrl" shouldRespond {
                     respondOk(testUserInfoResponse)
                 }
             )
-            val oauthService = OAuthServiceImpl(httpClient, OAuthConfig(config), userRepository, oauthMapper)
+            val oauthService = OAuthServiceImpl(httpClient, OAuth2Config(config), userRepository, oauthMapper)
             whenever(oauthMapper.mapUserInfoToUserEntity(testUserInfoResponse)).thenReturn(
                 UserEntity(username = testUsername, role = testRole.name)
             )
@@ -183,14 +181,14 @@ class OAuthServiceTest {
             val mergedRole = Role.UNDEFINED
 
             val oauthService = OAuthServiceImpl(mockHttpClient(), mockConfig, userRepository, oauthMapper)
-            whenever(oauthMapper.mapAccessTokenToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
+            whenever(oauthMapper.mapAccessTokenPayloadToUserEntity(testAccessToken)).thenReturn(testUserFromOAuth)
             whenever(userRepository.findByUsername(testUsername)).thenReturn(testUserFromDatabase)
-            whenever(oauthMapper.mergeUserEntities(testUserFromDatabase, testUserFromOAuth)).thenReturn(
+            whenever(oauthMapper.updateDatabaseUserEntity(testUserFromDatabase, testUserFromOAuth)).thenReturn(
                 UserEntity(id = testUserId, username = testUsername, role = mergedRole.name)
             )
 
             val userInfo = oauthService.signInThroughOAuth(withPrincipal(testAccessToken))
-            verify(oauthMapper).mergeUserEntities(testUserFromDatabase, testUserFromOAuth)
+            verify(oauthMapper).updateDatabaseUserEntity(testUserFromDatabase, testUserFromOAuth)
             verify(userRepository).update(UserEntity(id = testUserId, username = testUsername, role = mergedRole.name))
             assertEquals(testUsername, userInfo.username)
             assertEquals(mergedRole, userInfo.role)

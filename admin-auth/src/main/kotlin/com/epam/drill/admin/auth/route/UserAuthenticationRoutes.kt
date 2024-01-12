@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.config.JWT_COOKIE
+import com.epam.drill.admin.auth.config.SimpleAuthConfig
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -34,6 +35,7 @@ import io.ktor.routing.*
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
+import org.kodein.di.instanceOrNull
 import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
@@ -50,10 +52,16 @@ object UserInfo
 @Location("/update-password")
 object UpdatePassword
 
+@Location("/sign-out")
+object SignOut
+
 @Deprecated("Use /sign-in")
 @Location("/api/login")
 object Login
 
+/**
+ * The Ktor StatusPages plugin configuration for simple authentication status pages.
+ */
 fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
@@ -67,22 +75,32 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
-    exception<SelfDestructException> { cause ->
-        logger.trace(cause) { "422 Self-destruction cannot be processed" }
+    exception<ForbiddenOperationException> { cause ->
+        logger.trace(cause) { "422 Cannot modify own profile" }
         call.unprocessableEntity(cause)
     }
 }
 
+/**
+ * A user authentication and registration routes configuration.
+ */
 fun Route.userAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
+    signOutRoute()
 }
 
+/**
+ * A user profile routes configuration.
+ */
 fun Route.userProfileRoutes() {
     userInfoRoute()
     updatePasswordRoute()
 }
 
+/**
+ * A user authentication route configuration.
+ */
 fun Route.signInRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
@@ -97,19 +115,28 @@ fun Route.signInRoute() {
     }
 }
 
+/**
+ * A user registration route configuration.
+ */
 fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
+    val simpleAuthConfig by di().instanceOrNull<SimpleAuthConfig>()
 
-    post<SignUp> {
-        val payload = call.receive<RegistrationPayload>()
-        authService.signUp(payload)
-        call.ok(
-            "User registration request accepted. " +
-                    "Please contact the administrator to confirm the registration."
-        )
+    if (simpleAuthConfig?.signUpEnabled != false) {
+        post<SignUp> {
+            val payload = call.receive<RegistrationPayload>()
+            authService.signUp(payload)
+            call.ok(
+                "User registration request accepted. " +
+                        "Please contact the administrator to confirm the registration."
+            )
+        }
     }
 }
 
+/**
+ * A user profile route configuration.
+ */
 fun Route.userInfoRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -120,6 +147,9 @@ fun Route.userInfoRoute() {
     }
 }
 
+/**
+ * An update password route configuration.
+ */
 fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -128,6 +158,16 @@ fun Route.updatePasswordRoute() {
         val principal = call.principal<User>() ?: throw NotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
         call.ok("Password successfully changed.")
+    }
+}
+
+/**
+ * A user sign out route configuration.
+ */
+fun Route.signOutRoute() {
+    post<SignOut> {
+        call.response.cookies.appendExpired(JWT_COOKIE, null, "/")
+        call.ok("User successfully signed out.")
     }
 }
 

@@ -35,7 +35,7 @@ class UserAuthenticationServiceImpl(
         } ?: throw NotAuthenticatedException("Username or password is incorrect")
         if (userEntity.blocked || Role.UNDEFINED.name == userEntity.role)
             throw NotAuthorizedException()
-        return userEntity.toView()
+        return userEntity.toUserInfoView()
     }
 
     override suspend fun signUp(payload: RegistrationPayload) {
@@ -48,11 +48,13 @@ class UserAuthenticationServiceImpl(
 
     override suspend fun getUserInfo(principal: User): UserInfoView {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
-        return userEntity.toView()
+        return userEntity.toUserInfoView()
     }
 
     override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
+        if (userEntity.external)
+            throw ForbiddenOperationException("Cannot update password for external user")
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
         passwordService.validatePasswordRequirements(payload.newPassword)
@@ -67,13 +69,5 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
         username = this.username,
         passwordHash = passwordHash,
         role = Role.UNDEFINED.name
-    )
-}
-
-private fun UserEntity.toView(): UserInfoView {
-    return UserInfoView(
-        id = this.id ?: throw NullPointerException("User id cannot be null"),
-        username = this.username,
-        role = Role.valueOf(this.role)
     )
 }
