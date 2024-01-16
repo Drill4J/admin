@@ -111,9 +111,8 @@ fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
             it.payload.toPrincipal()
         }
         authHeader { call ->
-            val headerValue = call.request.headers[HttpHeaders.Authorization]
-                ?: "Bearer ${call.request.cookies[JWT_COOKIE] ?: call.parameters["token"]}"
-            parseAuthorizationHeader(headerValue)
+            val token = "Bearer ${call.request.cookies["jwt"]}"
+            parseAuthorizationHeader(token)
         }
     }
 }
