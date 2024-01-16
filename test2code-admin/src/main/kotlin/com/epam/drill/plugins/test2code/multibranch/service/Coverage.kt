@@ -382,6 +382,226 @@ fun recommendedTests() {
 
 
 /*
+-- Metrics by build version (merged data from all instances)
+-- method coverage
+    WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    CoverageData AS (
+        SELECT
+            ecd.class_name,
+            BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY ecd.class_name
+    )
+    SELECT
+        BuildMethods.class_name,
+        BuildMethods.name,
+        COALESCE((
+            BIT_COUNT(SUBSTRING(CoverageData.or_result FROM BuildMethods.probe_start_pos + 1 FOR BuildMethods.probes_count)) * 100.0
+            /
+            BuildMethods.probes_count
+        ), 0.0) AS set_bits_ratio,
+        BuildMethods.signature
+    FROM BuildMethods
+    LEFT JOIN CoverageData ON BuildMethods.class_name = CoverageData.class_name
+    ORDER BY
+        BuildMethods.class_name,
+        BuildMethods.probe_start_pos,
+        set_bits_ratio
+    ASC
+
+-- class coverage
+ WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+		WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
+    ),
+    BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+	BuildClasses AS (
+		SELECT
+			class_name,
+			SUM(BuildMethods.probes_count) as probes_count
+		FROM BuildMethods
+		GROUP BY class_name
+	),
+	CoverageData AS (
+        SELECT
+            ecd.class_name,
+            BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY ecd.class_name
+    )
+    SELECT
+        BuildClasses.class_name,
+        COALESCE((BIT_COUNT(CoverageData.or_result) * 100.0 / BuildClasses.probes_count ), 0.0) AS set_bits_ratio
+    FROM BuildClasses
+    LEFT JOIN CoverageData ON BuildClasses.class_name = CoverageData.class_name
+    ORDER BY
+        set_bits_ratio
+    ASC
+
+-- class coverage - "optimized" version with just the class_names (no extra join to get BuildClasses)
+ WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
+    ),
+    BuildClassNames AS (
+		SELECT class_name
+        -- !warning! one cannot simply do SUM(am.probes_count) to get class probe count - bc it'll aggregate dup entries from different instances
+		FROM auth.ast_method am
+		JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+		WHERE probes_count > 0
+		GROUP BY class_name
+    ),
+    CoverageData AS (
+        SELECT
+            ecd.class_name,
+            BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY ecd.class_name
+    )
+    SELECT
+        BuildClassNames.class_name,
+        COALESCE((BIT_COUNT(CoverageData.or_result) * 100.0 / LENGTH(CoverageData.or_result)), 0.0) AS set_bits_ratio
+    FROM BuildClassNames
+    LEFT JOIN CoverageData ON BuildClassNames.class_name = CoverageData.class_name
+    ORDER BY
+        set_bits_ratio
+    ASC
+
+-- package coverage
+    WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+	BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+	BuildClasses AS (
+		SELECT
+			class_name,
+			SUM(BuildMethods.probes_count) as probes_count
+		FROM BuildMethods
+		GROUP BY class_name
+	),
+    BuildPackages AS (
+        SELECT
+            REVERSE(
+                SUBSTRING(
+                    REVERSE(BuildClasses.class_name) FROM POSITION('/' IN REVERSE(BuildClasses.class_name)) + 1)) package_name,
+			SUM(BuildClasses.probes_count) as package_probes_count
+        FROM BuildClasses
+		GROUP BY package_name
+    ),
+    CoveredClasses AS (
+        SELECT
+            REVERSE(
+                SUBSTRING(
+                    REVERSE(class_name) FROM POSITION('/' IN REVERSE(class_name)) + 1)) AS package_name,
+            class_name,
+            BIT_COUNT(BIT_OR(probes)) AS set_bits_count
+        FROM
+            auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY
+            class_name, package_name
+    )
+    SELECT
+        BuildPackages.package_name,
+        COALESCE(
+			(SUM(CoveredClasses.set_bits_count) * 100.0 / BuildPackages.package_probes_count)
+		, 0) AS set_bits_ratio
+    FROM BuildPackages
+    LEFT JOIN CoveredClasses ON BuildPackages.package_name = CoveredClasses.package_name
+    GROUP BY BuildPackages.package_name,
+			BuildPackages.package_probes_count
+    ORDER BY
+        set_bits_ratio;
+
+-- total coverage
+    WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+		WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
+    ),
+    BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+	BuildClasses AS (
+		SELECT
+			class_name,
+			SUM(BuildMethods.probes_count) as probes_count
+		FROM BuildMethods
+		GROUP BY class_name
+	),
+	CoveredClasses AS (
+        SELECT
+            class_name,
+            BIT_COUNT(BIT_OR(probes)) AS set_bits_count
+        FROM
+            auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY
+            class_name
+    )
+    SELECT
+        SUM(CoveredClasses.set_bits_count) / SUM(BuildClasses.probes_count)
+    FROM BuildClasses
+    LEFT JOIN CoveredClasses ON BuildClasses.class_name = CoveredClasses.class_name
+
+*/
+
+/*
 
 -- all risks "cleaner" version (TODO check if it works correctly)
 SELECT q2.*
