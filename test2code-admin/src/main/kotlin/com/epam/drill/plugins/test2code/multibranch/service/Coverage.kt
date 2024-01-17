@@ -599,6 +599,323 @@ fun recommendedTests() {
     FROM BuildClasses
     LEFT JOIN CoveredClasses ON BuildClasses.class_name = CoveredClasses.class_name
 
+
+-- risks - find new methods
+    WITH
+    ABuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BBuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    ABuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    BBuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count
+        FROM auth.ast_method am
+        JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    )
+    SELECT *
+    FROM BBuildMethods AS q2
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ABuildMethods AS q1
+        WHERE q1.signature = q2.signature
+    )
+    ORDER BY class_name
+
+-- risks - find modified methods
+
+    WITH
+    ABuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BBuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    ABuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    BBuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    )
+    SELECT *
+    FROM BBuildMethods AS q2
+    WHERE EXISTS (
+        SELECT 1
+        FROM ABuildMethods AS q1
+        WHERE q1.signature = q2.signature
+        AND q1.body_checksum <> q2.body_checksum
+    )
+    ORDER BY class_name
+
+-- risks - all
+    WITH
+    ABuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BBuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    ABuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    BBuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    )
+    SELECT *
+    FROM BBuildMethods AS q2
+    WHERE
+        -- modifed
+        EXISTS (
+            SELECT 1
+            FROM ABuildMethods AS q1
+            WHERE q1.signature = q2.signature
+            AND q1.body_checksum <> q2.body_checksum
+        )
+        -- new
+        OR NOT EXISTS (
+            SELECT 1
+            FROM ABuildMethods AS q1
+            WHERE q1.signature = q2.signature
+        )
+    ORDER BY class_name
+
+-- risks coverage
+    WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    CoverageData AS (
+        SELECT
+            ecd.class_name,
+            BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+        GROUP BY ecd.class_name
+    ),
+    Risks AS (
+        WITH
+        ParentBuildInstanceIds AS (
+            SELECT DISTINCT instance_id
+            FROM auth.agent_config
+            WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+        ),
+        ParentBuildMethods AS (
+            SELECT DISTINCT
+                CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+                am.class_name,
+                am.name,
+                am.probe_start_pos,
+                am.probes_count,
+                am.body_checksum
+            FROM auth.ast_method am
+            JOIN ParentBuildInstanceIds ON am.instance_id = ParentBuildInstanceIds.instance_id
+            WHERE am.probes_count > 0
+        )
+        SELECT *
+        FROM BuildMethods AS q2
+        WHERE
+            -- modifed
+            EXISTS (
+                SELECT 1
+                FROM ParentBuildMethods AS q1
+                WHERE q1.signature = q2.signature
+                AND q1.body_checksum <> q2.body_checksum
+            )
+            -- new
+            OR NOT EXISTS (
+                SELECT 1
+                FROM ParentBuildMethods AS q1
+                WHERE q1.signature = q2.signature
+            )
+    )
+    SELECT
+        rsk.class_name,
+        rsk.name,
+        COALESCE(
+            (BIT_COUNT(SUBSTRING(cd.or_result FROM rsk.probe_start_pos + 1 FOR rsk.probes_count)) * 100.0 / rsk.probes_count)
+            , 0) AS set_bits_ratio
+    FROM Risks rsk
+    LEFT JOIN CoverageData cd ON cd.class_name = rsk.class_name
+    ORDER BY set_bits_ratio, class_name
+
+-- risks coverage - detailization by test metadata
+	WITH
+    BuildInstanceIds AS (
+        SELECT DISTINCT instance_id
+        FROM auth.agent_config
+        WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BuildMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum
+        FROM auth.ast_method am
+        JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    ClassCoverage AS (
+        SELECT
+            ecd.class_name,
+			ecd.test_id,
+			BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
+		GROUP BY ecd.class_name, ecd.test_id
+    ),
+    Risks AS (
+        WITH
+        ParentBuildInstanceIds AS (
+            SELECT DISTINCT instance_id
+            FROM auth.agent_config
+            WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+        ),
+        ParentBuildMethods AS (
+            SELECT DISTINCT
+                CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+                am.class_name,
+                am.name,
+                am.probe_start_pos,
+                am.probes_count,
+                am.body_checksum
+            FROM auth.ast_method am
+            JOIN ParentBuildInstanceIds ON am.instance_id = ParentBuildInstanceIds.instance_id
+            WHERE am.probes_count > 0
+        )
+        SELECT *
+        FROM BuildMethods AS q2
+        WHERE
+            -- modifed
+            EXISTS (
+                SELECT 1
+                FROM ParentBuildMethods AS q1
+                WHERE q1.signature = q2.signature
+                AND q1.body_checksum <> q2.body_checksum
+            )
+            -- new
+            OR NOT EXISTS (
+                SELECT 1
+                FROM ParentBuildMethods AS q1
+                WHERE q1.signature = q2.signature
+            )
+    ),
+	CoverageByRisk AS (
+		SELECT
+			rsk.*,
+			cc.test_id,
+	  		SUBSTRING(cc.or_result FROM rsk.probe_start_pos + 1 FOR rsk.probes_count) as method_or_result,
+			cc.or_result
+		FROM Risks rsk
+		LEFT JOIN ClassCoverage cc ON cc.class_name = rsk.class_name
+	),
+	Res AS (
+		SELECT
+			CoverageByRisk.signature,
+			CoverageByRisk.test_id,
+			tm.name as test_name,
+			tm.type as test_type,
+			COALESCE(
+				BIT_COUNT(BIT_OR(CoverageByRisk.method_or_result))
+				* 100.0
+				/ LENGTH(BIT_OR(CoverageByRisk.method_or_result)),
+				0) as set_bits_ratio
+		FROM CoverageByRisk
+		LEFT JOIN auth.test_metadata tm ON tm.test_id = CoverageByRisk.test_id
+		GROUP BY
+			CoverageByRisk.signature,
+			CoverageByRisk.test_id,
+			test_name,
+			test_type
+		ORDER BY
+			CoverageByRisk.signature
+	)
+	SELECT *
+	FROM Res
+	WHERE set_bits_ratio > 0
+	ORDER BY signature
+
 */
 
 /*
