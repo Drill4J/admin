@@ -916,6 +916,126 @@ fun recommendedTests() {
 	WHERE set_bits_ratio > 0
 	ORDER BY signature
 
+-- risks coverage - with intermediate builds coverage taken into account
+    -- it relies on ASCII order to get intermediate builds, see query comments
+    WITH
+    BaselineInstanceIds AS (
+        SELECT DISTINCT instance_id, build_version
+        FROM auth.agent_config
+        WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
+    ),
+    BaselineMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum,
+            BaselineInstanceIds.build_version
+        FROM auth.ast_method am
+        JOIN BaselineInstanceIds ON am.instance_id = BaselineInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    ChildrenInstanceIds AS (
+        SELECT DISTINCT instance_id, build_version
+        FROM auth.agent_config
+        WHERE
+            agent_id = 'spring-realworld-backend'
+                                         -- replace this with JOIN on table containing intermediate builds info
+            AND build_version <= '0.3.0' -- 0.3.0 is the subject build; all builds "less" than that are intermediate ones
+            AND build_version <> '0.1.0' -- 0.1.0 is the selected baseline build so its excluded
+        ORDER BY build_version desc
+    ),
+    ChildrenMethods AS (
+        SELECT DISTINCT
+            CONCAT(am.class_name, ', ', am.name, ', ', am.params, ', ', am.return_type) AS signature,
+            am.class_name,
+            am.name,
+            am.probe_start_pos,
+            am.probes_count,
+            am.body_checksum,
+            ChildrenInstanceIds.build_version
+        FROM auth.ast_method am
+        JOIN ChildrenInstanceIds ON am.instance_id = ChildrenInstanceIds.instance_id
+        WHERE am.probes_count > 0
+    ),
+    ChildrenRisks AS (
+        SELECT
+            build_version,
+            name,
+            class_name,
+            body_checksum,
+            signature,
+            probe_start_pos,
+            probes_count
+        FROM ChildrenMethods AS q2
+        WHERE
+        -- modifed
+        EXISTS (
+            SELECT 1
+            FROM BaselineMethods AS q1
+            WHERE q1.signature = q2.signature
+            AND q1.body_checksum <> q2.body_checksum
+        )
+        -- new
+        OR NOT EXISTS (
+            SELECT 1
+            FROM BaselineMethods AS q1
+            WHERE q1.signature = q2.signature
+        )
+        ORDER BY build_version desc, signature
+    ),
+    LatestRisks AS (
+        SELECT *
+        FROM ChildrenRisks
+        WHERE build_version = '0.3.0'
+    ),
+    IntermediateRisks AS (
+        SELECT *
+        FROM ChildrenRisks
+        WHERE build_version < '0.3.0'
+    ),
+    PreviousRisks AS (
+        SELECT
+            LatestRisks.class_name,
+            LatestRisks.name,
+            LatestRisks.signature,
+            LatestRisks.body_checksum,
+            LatestRisks.probe_start_pos,
+            LatestRisks.probes_count
+        FROM IntermediateRisks
+        JOIN LatestRisks ON
+            LatestRisks.signature = IntermediateRisks.signature
+            AND LatestRisks.body_checksum = IntermediateRisks.body_checksum
+    ),
+    ChildrenCoverage AS (
+        SELECT
+            ecd.class_name,
+            build_version,
+            BIT_OR(ecd.probes) AS or_result
+        FROM auth.exec_class_data ecd
+        JOIN ChildrenInstanceIds ON ecd.instance_id = ChildrenInstanceIds.instance_id
+        GROUP BY build_version, ecd.class_name
+    ),
+    ChildrenRiskCoverage AS (
+        SELECT
+            rsk.class_name,
+            rsk.name,
+            cd.build_version as covered_in_version,
+            COALESCE(
+                (BIT_COUNT(SUBSTRING(cd.or_result FROM rsk.probe_start_pos + 1 FOR rsk.probes_count)) * 100.0 / rsk.probes_count)
+                , 0) AS set_bits_ratio
+        FROM PreviousRisks rsk
+        LEFT JOIN ChildrenCoverage cd ON
+            rsk.class_name = cd.class_name
+            AND BIT_COUNT(SUBSTRING(cd.or_result FROM rsk.probe_start_pos + 1 FOR rsk.probes_count)) > 0
+    )
+    SELECT *
+    FROM ChildrenRiskCoverage
+    ORDER BY covered_in_version DESC
+
+
 */
 
 /*
