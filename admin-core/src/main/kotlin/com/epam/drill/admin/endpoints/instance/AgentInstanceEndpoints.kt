@@ -20,28 +20,39 @@ import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
 import com.epam.drill.common.agent.configuration.AgentConfig
 import com.epam.drill.plugins.test2code.TEST2CODE_PLUGIN
-import com.epam.drill.plugins.test2code.common.api.*
+import com.epam.drill.plugins.test2code.common.api.CoverDataPart
+import com.epam.drill.plugins.test2code.common.api.CoverMessage
+import com.epam.drill.plugins.test2code.common.api.InitDataPart
+import com.epam.drill.plugins.test2code.common.api.InitInfo
+import com.epam.drill.plugins.test2code.common.api.Initialized
+import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
+import com.epam.drill.plugins.test2code.common.transport.CoverageData
+import io.ktor.application.Application
+import io.ktor.application.ApplicationCall
+import io.ktor.application.call
+import io.ktor.features.UnsupportedMediaTypeException
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.locations.Location
+import io.ktor.locations.post
+import io.ktor.locations.put
+import io.ktor.request.receive
+import io.ktor.response.header
+import io.ktor.response.respond
+import io.ktor.routing.Route
+import io.ktor.routing.routing
+import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.DIAware
-import org.kodein.di.instance
-import com.epam.drill.plugins.test2code.common.transport.*
-import io.ktor.application.*
-import io.ktor.features.*
-import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.put
-import io.ktor.locations.post
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.util.pipeline.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
+import mu.KotlinLogging
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.instance
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
@@ -82,6 +93,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
                 agentManager.attach(agentConfig)
             }
             processPluginData(agentInfo, InitInfo())
+            call.addDrillInternalHeader()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -91,6 +103,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.decompressAndReceive<CoverageData>()
                 processPluginData(agentInfo, data.toCoverDataPart())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -100,6 +113,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.decompressAndReceive<ClassMetadata>()
                 processPluginData(agentInfo, data.toInitDataPart())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -108,6 +122,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
         post<Agents.ClassMetadataComplete> { params ->
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 processPluginData(agentInfo, Initialized())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -142,6 +157,8 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
         pd.processPluginData(agentInfo, TEST2CODE_PLUGIN, data)
     }
 }
+
+private fun ApplicationCall.addDrillInternalHeader() = this.response.header("drill-internal", "true")
 
 private fun ClassMetadata.toInitDataPart() = InitDataPart(
     astEntities = astEntities
