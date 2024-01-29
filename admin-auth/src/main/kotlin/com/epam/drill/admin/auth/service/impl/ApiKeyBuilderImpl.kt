@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.service.impl
 
+import com.epam.drill.admin.auth.exception.InvalidApiKeyFormatException
 import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.service.ApiKey
 import com.epam.drill.admin.auth.service.ApiKeyBuilder
@@ -26,9 +27,9 @@ class ApiKeyBuilderImpl: ApiKeyBuilder {
 
     override fun parse(apiKey: String): ApiKey {
         val parts = apiKey.split("_")
-        if (parts.size != 2) throw NotAuthenticatedException("Invalid api key format: must be 2 parts separated by '_'")
-        if (parts.first().isEmpty()) throw NotAuthenticatedException("Invalid api key format: first part must not be empty")
-        if (parts.last().isEmpty()) throw NotAuthenticatedException("Invalid api key format: second part must not be empty")
+        if (parts.size != 2) throw InvalidApiKeyFormatException("Invalid api key format: must be 2 parts separated by '_'")
+        if (parts.first().isEmpty()) throw InvalidApiKeyFormatException("Invalid api key format: first part must not be empty")
+        if (parts.last().isEmpty()) throw InvalidApiKeyFormatException("Invalid api key format: second part must not be empty")
         return parts.let { ApiKey(it.first().toInt(), it.last()) }
     }
 }
