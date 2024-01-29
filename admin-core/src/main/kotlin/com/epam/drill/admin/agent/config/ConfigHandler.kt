@@ -15,17 +15,11 @@
  */
 package com.epam.drill.admin.agent.config
 
-import com.epam.drill.admin.agent.*
-import com.epam.drill.admin.endpoints.*
-import com.epam.drill.admin.endpoints.agent.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.common.agent.configuration.*
-import com.epam.drill.common.ws.*
-import com.epam.drill.common.ws.dto.*
 import org.kodein.di.*
 
 class ConfigHandler(override val di: DI) : DIAware {
-    private val buildManager by instance<BuildManager>()
 
     /**
      * Store parameters of the agent
@@ -39,14 +33,6 @@ class ConfigHandler(override val di: DI) : DIAware {
 
     suspend fun load(agentId: String) = adminStore.findById<StoredAgentConfig>(agentId)?.params
 
-    suspend fun updateAgent(agentId: String, parameters: Map<String, String>) {
-        buildManager.agentSessions(agentId).applyEach {
-            updateParameters(parameters)
-        }
-    }
-
     suspend fun remove(agentId: String) = adminStore.deleteById<StoredAgentConfig>(agentId)
 }
 
-suspend fun AgentWsSession.updateParameters(params: Map<String, String>) =
-    sendToTopic<Communication.Agent.UpdateParametersEvent, UpdateInfo>(UpdateInfo(params)).await()

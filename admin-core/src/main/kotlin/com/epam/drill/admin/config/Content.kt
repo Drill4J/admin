@@ -24,11 +24,13 @@ import io.ktor.util.pipeline.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.streams.*
+import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.reflect.jvm.*
 import kotlin.text.Charsets
 
 fun ContentNegotiation.Configuration.converters() {
     json()
+    register(ContentType.Application.ProtoBuf, SerializationConverter(ProtoBuf))
     register(ContentType.Any, EmptyContentConverter)
 }
 

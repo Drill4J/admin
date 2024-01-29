@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":ktor-swagger"))
     implementation(project(":test2code-admin"))
     implementation(project(":test2code-api"))
+    implementation(project(":test2code-common"))
 
     api(project(":dsm-annotations"))
 

@@ -17,7 +17,6 @@ package com.epam.drill.admin.endpoints.plugin
 
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.api.agent.AgentStatus.*
-import com.epam.drill.admin.api.agent.BuildStatus.*
 import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.api.websocket.*
 import com.epam.drill.admin.auth.principal.Role
@@ -32,8 +31,6 @@ import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.websocket.*
-import com.epam.drill.common.message.*
-import com.epam.drill.common.ws.*
 import com.epam.drill.plugin.api.end.*
 import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
@@ -52,6 +49,7 @@ import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
+import com.epam.drill.plugins.test2code.common.api.CoverMessage
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
     private val logger = KotlinLogging.logger {}
@@ -64,41 +62,15 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
     private val cacheService by instance<CacheService>()
 
-    /**
-     * Receive data from agents
-     * @param agentInfo the information about the agent
-     * @param instanceId the agent instance ID
-     * @param pluginData the application data
-     */
     suspend fun processPluginData(
         agentInfo: AgentInfo,
-        instanceId: String,
-        pluginData: String,
+        pluginId: String,
+        pluginData: CoverMessage
     ) {
-        val message = DrillMessageWrapper.serializer().parse(pluginData)
-        val pluginId = message.pluginId
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
             agentEntry[pluginId]?.run {
-                processData(instanceId, agentInfo.build.version, message.drillMessage.content)
-            } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
-        } ?: logger.error { "Plugin $pluginId not loaded!" }
-    }
-
-    suspend fun dispatchAction(
-        agentInfo: AgentInfo,
-        instanceId: String,
-        message: String,
-    ) = run {
-        val wrapper = DrillMessageWrapper.serializer().parse(message)
-        val pluginId = wrapper.pluginId
-        val action = wrapper.drillMessage.content
-        logger.info { "Attempting to dispatch action from agent ${agentInfo.debugString(instanceId)} : $action" }
-        plugins[pluginId]?.let {
-            val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
-            agentEntry[pluginId]?.run {
-                val result = processAction(action, buildManager::agentSessions)
-                logger.info { "Response ${result.toStatusResponse()} " }
+                this.processData(pluginData)
             } ?: logger.error { "Plugin $pluginId not initialized for agent ${agentInfo.id}!" }
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
@@ -114,42 +86,40 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
             }
             authenticate("jwt", "basic") {
                 withRole(Role.USER, Role.ADMIN) {
-                    post<ApiRoot.Agents.DispatchPluginAction, String>(
-                        "Dispatch Plugin Action"
-                            .examples(
-                                example("action", "some action name")
-                            )
-                            .responds(
-                                ok<String>(
-                                    example("")
-                                ), notFound()
-                            )
-                    ) { payload, action ->
-                        val (_, agentId, pluginId) = payload
-                        logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
-                        val agent = agentManager.entryOrNull(agentId)
-                        val (statusCode, response) = agent?.run {
-                            val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
-                            if (plugin != null) {
-                                val buildStatus = buildManager.buildStatus(agentId)
-                                val adminPluginPart = this[pluginId]
-                                if (info.agentStatus == REGISTERED) {
-                                    adminPluginPart?.let { adminPart ->
-                                        val result = adminPart.processAction(action, buildManager::agentSessions)
-                                        val statusResponse = result.toStatusResponse()
-                                        HttpStatusCode.fromValue(statusResponse.code) to statusResponse
-                                    } ?: (HttpStatusCode.BadRequest to ErrorResponse(
-                                        "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
-                                    )).also { logger.warn { "BadRequest with action: $action" } }
-                                } else HttpStatusCode.BadRequest to ErrorResponse(
-                                    "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}," +
-                                            " status of build is $buildStatus."
-                                ).also { logger.warn { "BadRequest with action: $action" } }
-                            } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
-                        } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
-                        logger.info { "response for '$agentId': $response" }
-                        sendResponse(response, statusCode)
-                    }
+                post<ApiRoot.Agents.DispatchPluginAction, String>(
+                    "Dispatch Plugin Action"
+                        .examples(
+                            example("action", "some action name")
+                        )
+                        .responds(
+                            ok<String>(
+                                example("")
+                            ), notFound()
+                        )
+                ) { payload, action ->
+                    val (_, agentId, pluginId) = payload
+                    logger.debug { "Dispatch action plugin with id $pluginId for agent with id $agentId" }
+                    val agent = agentManager.entryOrNull(agentId)
+                    val (statusCode, response) = agent?.run {
+                        val plugin: Plugin? = this@PluginDispatcher.plugins[pluginId]
+                        if (plugin != null) {
+                            val adminPluginPart = this[pluginId]
+                            if (info.agentStatus == REGISTERED) {
+                                adminPluginPart?.let { adminPart ->
+                                    val result = adminPart.processAction(action)
+                                    val statusResponse = result.toStatusResponse()
+                                    HttpStatusCode.fromValue(statusResponse.code) to statusResponse
+                                } ?: (HttpStatusCode.BadRequest to ErrorResponse(
+                                    "Cannot dispatch action: plugin $pluginId not initialized for agent $agentId."
+                                )).also { logger.warn { "BadRequest with action: $action" } }
+                            } else HttpStatusCode.BadRequest to ErrorResponse(
+                                "Cannot dispatch action for plugin '$pluginId', agent '$agentId' is ${info.agentStatus}"
+                            ).also { logger.warn { "BadRequest with action: $action" } }
+                        } else HttpStatusCode.NotFound to ErrorResponse("Plugin with id $pluginId not found")
+                    } ?: (HttpStatusCode.NotFound to ErrorResponse("Agent with id $pluginId not found"))
+                    logger.info { "response for '$agentId': $response" }
+                    sendResponse(response, statusCode)
+                }
 
                     // TODO EPMDJ-8531 Support multipart/form-data in ktor-swagger
                     post<ApiRoot.Agents.ProcessData, MultiPartData>(
@@ -239,31 +209,24 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                         sendResponse(response, statusCode)
                     }
 
-                    post<ApiRoot.Agents.TogglePlugin>(
-                        "Toggle Plugin"
-                            .responds(
-                                ok<Unit>(), notFound()
-                            )
-                    ) { params ->
-                        val (_, agentId, pluginId) = params
-                        logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
-                        val dp: Plugin? = plugins[pluginId]
-                        val session = buildManager.agentSessions(agentId)
-                        val (statusCode, response) = when {
-                            (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
-                            (session.isEmpty()) -> HttpStatusCode.NotFound to ErrorResponse("agent with id $agentId not found")
-                            else -> {
-                                session.applyEach {
-                                    sendToTopic<Communication.Plugin.ToggleEvent, TogglePayload>(
-                                        message = TogglePayload(pluginId)
-                                    )
-                                }
-                                HttpStatusCode.OK to EmptyContent
-                            }
+                post<ApiRoot.Agents.TogglePlugin>(
+                    "Toggle Plugin"
+                        .responds(
+                            ok<Unit>(), notFound()
+                        )
+                ) { params ->
+                    val (_, agentId, pluginId) = params
+                    logger.debug { "Toggle plugin with id $pluginId for agent with id $agentId" }
+                    val dp: Plugin? = plugins[pluginId]
+                    val (statusCode, response) = when {
+                        (dp == null) -> HttpStatusCode.NotFound to ErrorResponse("plugin with id $pluginId not found")
+                        else -> {
+                            HttpStatusCode.OK to EmptyContent
                         }
-                        logger.debug { response }
-                        call.respond(statusCode, response)
                     }
+                    logger.debug { response }
+                    call.respond(statusCode, response)
+                }
 
                     delete<ApiRoot.Agents.PluginBuild> { (_, agentId, pluginId, buildVersion) ->
                         logger.debug { "Starting to remove a build '$buildVersion' for agent '$agentId', plugin '$pluginId'..." }
@@ -409,16 +372,15 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                 val agentId = agent.info.id
                 val agentStatus = agent.info.agentStatus
                 async {
-                    val status = buildManager.buildStatus(agentId)
                     if (agentStatus == REGISTERED) {
                         agent[pluginId]?.run {
-                            val adminActionResult = processAction(action, buildManager::agentSessions)
+                            val adminActionResult = processAction(action)
                             adminActionResult.toStatusResponse()
                         }
-                    } else if (agentStatus == NOT_REGISTERED || status == OFFLINE) {
+                    } else if (agentStatus == NOT_REGISTERED) {
                         null
                     } else {
-                        "Agent $agentId is in the wrong state: Agent status: '$agentStatus', build status '$status'".run {
+                        "Agent $agentId is in the wrong state: Agent status: '$agentStatus'".run {
                             StatusMessageResponse(
                                 code = HttpStatusCode.Conflict.value,
                                 message = this
