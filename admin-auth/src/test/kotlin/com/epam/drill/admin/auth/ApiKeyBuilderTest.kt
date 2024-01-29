@@ -15,8 +15,11 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.exception.InvalidApiKeyFormatException
+import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.service.ApiKey
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.*
 
 class ApiKeyBuilderTest {
@@ -39,6 +42,30 @@ class ApiKeyBuilderTest {
 
         assertEquals(100, apiKey.identifier)
         assertEquals("secret", apiKey.secret)
+    }
+
+    @Test
+    fun `given api key with invalid format, parse must throw InvalidApiKeyFormatException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<InvalidApiKeyFormatException> { apiKeyBuilder.parse("test") }
+    }
+
+    @Test
+    fun `given api key without secret part, parse must throw InvalidApiKeyFormatException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<InvalidApiKeyFormatException> { apiKeyBuilder.parse("id_") }
+    }
+
+    @Test
+    fun `given api key without id part, parse must throw InvalidApiKeyFormatException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<InvalidApiKeyFormatException> { apiKeyBuilder.parse("_secret") }
+    }
+
+    @Test
+    fun `given api key with empty value, parse must throw InvalidApiKeyFormatException`() {
+        val apiKeyBuilder = ApiKeyBuilderImpl()
+        assertThrows<InvalidApiKeyFormatException> { apiKeyBuilder.parse("") }
     }
 
 }

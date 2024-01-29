@@ -81,6 +81,10 @@ fun StatusPages.Configuration.authStatusPages() {
         logger.trace(cause) { "404 Api key not found" }
         call.notFound(cause)
     }
+    exception<InvalidApiKeyFormatException> { cause ->
+        logger.trace(cause) { "404 Invalid Api key format" }
+        call.unauthorizedError(cause)
+    }
 }
 
 /**
