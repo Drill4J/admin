@@ -36,7 +36,7 @@ class ApiKeyConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("maximumCacheSize")?.getString()?.toLong() ?: 1000
 
     /**
-     * The duration in hours after which the stored data in the cache becomes invalid or expired.
+     * Duration in minutes after which the stored data in the cache becomes invalid or expired.
      * By default, 60 minutes.
      */
     val ttlCacheInMinutes: Long

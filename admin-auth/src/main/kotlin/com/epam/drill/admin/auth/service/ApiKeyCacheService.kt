@@ -26,7 +26,7 @@ interface ApiKeyCacheService {
      * If the key is not present in the cache, it invokes the [ifMissCallback] function to retrieve the value,
      * suspends during its execution, and then stores the result in the cache before returning it.
      *
-     * @param apiKey The key used to look up the value in the cache.
+     * @param apiKey The key is used to look up the value in the cache.
      * @param ifMissCallback A suspend function that is called to retrieve the value if it is not found in the cache.
      *                  Takes the key as a parameter and returns a [Principal] or null.
      * @return The [Principal] associated with the given key, either retrieved from the cache or obtained
