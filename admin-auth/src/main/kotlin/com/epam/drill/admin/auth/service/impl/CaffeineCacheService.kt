@@ -24,7 +24,7 @@ import io.ktor.auth.*
  *
  * @property cache An instance of Caffeine`s [Cache] that stores key-value pairs, where keys are of type [String] and values are [Principal] objects.
  */
-class CoffeineCacheService(
+class CaffeineCacheService(
     private val cache: Cache<String, Principal>
 ) : ApiKeyCacheService {
     override suspend fun getFromCacheOrPutIfAbsent(

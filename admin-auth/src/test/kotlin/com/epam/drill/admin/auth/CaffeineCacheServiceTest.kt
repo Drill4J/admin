@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
-import com.epam.drill.admin.auth.service.impl.CoffeineCacheService
+import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.github.benmanes.caffeine.cache.Cache
 import io.ktor.auth.*
 import kotlinx.coroutines.runBlocking
@@ -27,12 +27,12 @@ import kotlin.test.*
 
 
 /**
- * Tests for [CoffeineCacheService] logic
+ * Tests for [CaffeineCacheService] logic
  */
-class CoffeineCacheServiceTest {
+class CaffeineCacheServiceTest {
 
     private val caffeineMock = mock<Cache<String, Principal>>()
-    private var cacheService = CoffeineCacheService(caffeineMock)
+    private var cacheService = CaffeineCacheService(caffeineMock)
 
     @AfterEach
     fun reset() {

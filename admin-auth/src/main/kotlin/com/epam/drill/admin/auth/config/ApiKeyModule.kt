@@ -23,7 +23,7 @@ import com.epam.drill.admin.auth.service.ApiKeyService
 import com.epam.drill.admin.auth.service.ApiKeyCacheService
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
-import com.epam.drill.admin.auth.service.impl.CoffeineCacheService
+import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.epam.drill.admin.auth.service.impl.RandomHexSecretGenerator
 import com.epam.drill.admin.auth.service.transaction.TransactionalApiKeyService
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -57,7 +57,7 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
         )
     }
     bind<ApiKeyCacheService>() with singleton {
-        CoffeineCacheService(
+        CaffeineCacheService(
             Caffeine.newBuilder()
             .maximumSize(instance<ApiKeyConfig>().maximumCacheSize)
             .expireAfterWrite(Duration.ofMinutes(instance<ApiKeyConfig>().ttlCacheInMinutes))
