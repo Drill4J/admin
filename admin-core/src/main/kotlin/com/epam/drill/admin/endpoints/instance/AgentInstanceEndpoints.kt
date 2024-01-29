@@ -82,6 +82,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
                 agentManager.attach(agentConfig)
             }
             processPluginData(agentInfo, InitInfo())
+            call.addDrillInternalHeader()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -91,6 +92,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.decompressAndReceive<CoverageData>()
                 processPluginData(agentInfo, data.toCoverDataPart())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -100,6 +102,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 val data = call.decompressAndReceive<ClassMetadata>()
                 processPluginData(agentInfo, data.toInitDataPart())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -108,6 +111,7 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
         post<Agents.ClassMetadataComplete> { params ->
             handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
                 processPluginData(agentInfo, Initialized())
+                call.addDrillInternalHeader()
             }
         }
     }
@@ -142,6 +146,8 @@ class AgentInstanceEndpoints(override val di: DI) : DIAware {
         pd.processPluginData(agentInfo, TEST2CODE_PLUGIN, data)
     }
 }
+
+private fun ApplicationCall.addDrillInternalHeader() = this.response.header("drill-internal", "true")
 
 private fun ClassMetadata.toInitDataPart() = InitDataPart(
     astEntities = astEntities
