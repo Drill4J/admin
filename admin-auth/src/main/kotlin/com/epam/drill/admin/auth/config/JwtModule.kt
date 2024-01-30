@@ -35,6 +35,7 @@ import org.kodein.di.singleton
 
 const val CLAIM_USER_ID = "userId"
 const val CLAIM_ROLE = "role"
+const val JWT_COOKIE = "jwt"
 
 val jwtServicesDIModule = DI.Module("jwtServices") {
     bind<JwtConfig>() with singleton {
@@ -58,7 +59,7 @@ fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
         }
         authHeader { call ->
             val headerValue = call.request.headers[HttpHeaders.Authorization]
-                ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
+                ?: "Bearer ${call.request.cookies[JWT_COOKIE] ?: call.parameters["token"]}"
             parseAuthorizationHeader(headerValue)
         }
     }
