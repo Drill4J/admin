@@ -119,7 +119,7 @@ fun Route.signInRoute() {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
+        call.response.cookies.append(Cookie(JWT_COOKIE, token, httpOnly = true, path = "/"))
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }

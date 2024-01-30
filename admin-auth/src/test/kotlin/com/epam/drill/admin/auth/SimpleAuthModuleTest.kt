@@ -56,7 +56,8 @@ class SimpleAuthModuleTest {
                 addJwtToken(
                     username = "admin",
                     issuer = testIssuer,
-                    secret = testSecret
+                    secret = testSecret,
+                    configureHeader = { addHeader(HttpHeaders.Cookie, "jwt=$it;") }
                 )
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
