@@ -113,7 +113,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     createPluginGetRoute(destination)
                 }
             }
-            authenticate("jwt", "basic") {
+            authenticate("jwt", "api-key") {
                 withRole(Role.USER, Role.ADMIN) {
                     post<ApiRoot.Agents.DispatchPluginAction, String>(
                         "Dispatch Plugin Action"

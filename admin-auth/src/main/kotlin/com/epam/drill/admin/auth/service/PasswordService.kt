@@ -15,12 +15,10 @@
  */
 package com.epam.drill.admin.auth.service
 
-import com.epam.drill.admin.auth.exception.UserValidationException
-
 /**
  * A service for working with passwords.
  */
-interface PasswordService: PasswordGenerator, PasswordValidator {
+interface PasswordService {
     /**
      * Hashes the given password.
      * @param password the password to be hashed
@@ -35,27 +33,4 @@ interface PasswordService: PasswordGenerator, PasswordValidator {
      * @return true if the passwords match
      */
     fun matchPasswords(candidate: String, hashed: String?): Boolean
-}
-
-/**
- * A service for generating passwords.
- */
-interface PasswordGenerator {
-    /**
-     * Generates a password.
-     * @return the generated password
-     */
-    fun generatePassword(): String
-}
-
-/**
- * A service for validating passwords.
- */
-interface PasswordValidator {
-    /**
-     * Checks the given password for requirements.
-     * @param password the password to be validated
-     * @exception UserValidationException if the password does not meet the requirements
-     */
-    fun validatePasswordRequirements(password: String)
 }

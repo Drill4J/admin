@@ -15,60 +15,31 @@
  */
 package com.epam.drill.admin.auth.config
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.JWTVerifier
-import com.auth0.jwt.algorithms.Algorithm
-import com.auth0.jwt.interfaces.Payload
 import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.model.toPrincipal
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
-import com.epam.drill.admin.auth.repository.impl.EnvUserRepository
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagementService
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
-import io.ktor.http.*
-import io.ktor.http.auth.*
-import mu.KotlinLogging
 import org.kodein.di.*
 
-private val logger = KotlinLogging.logger {}
-
-const val CLAIM_USER_ID = "userId"
-const val CLAIM_ROLE = "role"
-
-enum class UserRepoType {
-    DB,
-    ENV
-}
-
-/**
- * The DI module including all services and configurations for simple authentication.
- */
 val simpleAuthDIModule = DI.Module("simpleAuth") {
-    configureJwtDI()
-    configureSimpleAuthDI()
-    bindAuthConfig()
-    userRepositoriesConfig()
-    userServicesConfig()
+    importOnce(jwtServicesDIModule)
+    importOnce(userServicesDIModule)
+    importOnce(simpleAuthConfigDIModule)
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for simple authentication.
- */
-fun DI.Builder.configureSimpleAuthDI() {
+val simpleAuthConfigDIModule = DI.Module("simpleAuthConfig") {
     bind<SimpleAuthConfig>() with singleton {
-        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simpleAuth"))
+        SimpleAuthConfig(instance<Application>().environment.config.config("drill.auth.simple"))
     }
 }
 
-fun DI.Builder.bindAuthConfig() {
+val authConfigDIModule = DI.Module("authConfig") {
     bind<AuthConfig>() with singleton {
         AuthConfig(
             config = instance<Application>().environment.config.config("drill.auth"),
@@ -79,130 +50,46 @@ fun DI.Builder.bindAuthConfig() {
     }
 }
 
-/**
- * A DI builder extension function registering all Kodein bindings for JWT based authentication.
- */
-fun DI.Builder.configureJwtDI() {
-    bind<JwtConfig>() with singleton {
-        JwtConfig(instance<Application>().environment.config.config("drill.auth.jwt"))
-    }
-    bind<JWTVerifier>() with singleton { buildJwkVerifier(instance()) }
-    bind<TokenService>() with singleton { JwtTokenService(instance()) }
-}
-
-
-private fun buildJwkVerifier(jwtConfig: JwtConfig) = JWT
-    .require(Algorithm.HMAC512(jwtConfig.secret))
-    .withIssuer(jwtConfig.issuer)
-    .build()
-
-
-/**
- * A Ktor Authentication plugin configuration for JWT based authentication.
- */
-fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
-    val jwtVerifier by di.instance<JWTVerifier>()
-
-    jwt("jwt") {
-        realm = "Access to the http(s) and the ws(s) services"
-        verifier(jwtVerifier)
-        validate {
-            it.payload.toPrincipal()
-        }
-        authHeader { call ->
-            val headerValue = call.request.headers[HttpHeaders.Authorization]
-                ?: "Bearer ${call.request.cookies["jwt"] ?: call.parameters["token"]}"
-            parseAuthorizationHeader(headerValue)
-        }
-    }
-}
-
-/**
- * A Ktor Authentication plugin configuration for Basic based authentication.
- */
-fun Authentication.Configuration.configureBasicAuthentication(di: DI) {
-    val authService by di.instance<UserAuthenticationService>()
-
-    basic("basic") {
-        realm = "Access to the http(s) services"
-        validate {
-            authService.signIn(LoginPayload(username = it.name, password = it.password)).toPrincipal()
-        }
-    }
-}
-
-/**
- * A DI builder extension function registering all Kodein bindings for user authentication and management services.
- */
-fun DI.Builder.userServicesConfig() {
+val userServicesDIModule = DI.Module("userServices") {
+    importOnce(userRepositoryDIModule)
+    importOnce(passwordHashServiceDIModule)
+    importOnce(passwordIssuingServicesDIModule)
     bind<UserAuthenticationService>() with singleton {
         UserAuthenticationServiceImpl(
             userRepository = instance(),
-            passwordService = instance()
-        ).let { service ->
-            when (instance<AuthConfig>().userRepoType) {
-                UserRepoType.DB -> TransactionalUserAuthenticationService(service)
-                else -> service
-            }
-        }
+            passwordService = instance(),
+            passwordValidator = instance()
+        ).let { TransactionalUserAuthenticationService(it) }
     }
     bind<UserManagementService>() with singleton {
         UserManagementServiceImpl(
             userRepository = instance(),
             passwordService = instance(),
+            passwordGenerator = instance(),
             externalRoleManagement = isExternalRoleManagement(instanceOrNull<OAuth2Config>())
-        ).let { service ->
-            when (instance<AuthConfig>().userRepoType) {
-                UserRepoType.DB -> TransactionalUserManagementService(service)
-                else -> service
-            }
-        }
+        ).let { TransactionalUserManagementService(it) }
     }
+}
+
+val userRepositoryDIModule = DI.Module("userRepository") {
+    bind<UserRepository>() with singleton { DatabaseUserRepository() }
+}
+
+val passwordHashServiceDIModule = DI.Module("passwordHashService") {
+    bind<PasswordService>() with singleton { PasswordServiceImpl() }
+}
+
+val passwordIssuingServicesDIModule = DI.Module("passwordIssuingServices") {
     bind<PasswordStrengthConfig>() with singleton {
         PasswordStrengthConfig(
-            instance<Application>().environment.config.config("drill.auth.password")
+            instance<Application>().environment.config.config("drill.auth.simple.passwordStrength")
         )
     }
     bind<PasswordGenerator>() with singleton { PasswordGeneratorImpl(config = instance()) }
     bind<PasswordValidator>() with singleton { PasswordValidatorImpl(config = instance()) }
-    bind<PasswordService>() with singleton { PasswordServiceImpl(instance(), instance()) }
 }
-
-/**
- * A DI builder extension function registering all Kodein bindings for user repositories.
- */
-fun DI.Builder.userRepositoriesConfig() {
-    bind<UserRepository>() with singleton {
-        val authConfig: AuthConfig = instance()
-        logger.info { "The user repository type is ${authConfig.userRepoType}" }
-        when (authConfig.userRepoType) {
-            UserRepoType.DB -> DatabaseUserRepository()
-            UserRepoType.ENV -> EnvUserRepository(
-                env = instance<Application>().environment.config,
-                passwordService = instance()
-            )
-        }
-    }
-}
-
 
 private fun isExternalRoleManagement(config: OAuth2Config?): Boolean {
     return (config?.userInfoUrl == null && config?.tokenMapping?.roles != null) ||
             (config?.userInfoUrl != null && config.userInfoMapping.roles != null)
-}
-
-private fun Payload.toPrincipal(): User {
-    return User(
-        id = getClaim(CLAIM_USER_ID).asInt(),
-        username = subject,
-        role = Role.valueOf(getClaim(CLAIM_ROLE).asString())
-    )
-}
-
-private fun UserInfoView.toPrincipal(): User {
-    return User(
-        id = id,
-        username = username,
-        role = role
-    )
 }

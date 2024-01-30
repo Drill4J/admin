@@ -20,7 +20,7 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.simpleAuthStatusPages
+import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
@@ -28,6 +28,7 @@ import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.userProfileRoutes
+import com.epam.drill.admin.auth.service.PasswordValidator
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -46,7 +47,6 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
-import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_GUEST
@@ -59,10 +59,10 @@ class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
-
+    @Mock
+    lateinit var passwordValidator: PasswordValidator
     @Mock
     lateinit var tokenService: TokenService
 
@@ -324,7 +324,7 @@ class UserAuthenticationTest {
             json()
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         install(Authentication) {
             basic {
@@ -336,11 +336,13 @@ class UserAuthenticationTest {
         di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<PasswordValidator>() with eagerSingleton { passwordValidator }
             bind<TokenService>() with eagerSingleton { tokenService }
             bind<UserAuthenticationService>() with eagerSingleton {
                 UserAuthenticationServiceImpl(
-                    instance(),
-                    instance()
+                    userRepository = instance(),
+                    passwordService = instance(),
+                    passwordValidator = instance()
                 )
             }
         }

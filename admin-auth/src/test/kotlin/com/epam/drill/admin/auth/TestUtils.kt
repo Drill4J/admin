@@ -20,10 +20,17 @@ import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
+import com.epam.drill.admin.auth.config.DatabaseConfig
+import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.principal.User
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.ktor.application.*
+import io.ktor.auth.*
+import io.ktor.auth.jwt.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
@@ -35,12 +42,19 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.kotlin.whenever
 import org.mockito.stubbing.Answer
 import org.mockito.stubbing.OngoingStubbing
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
 import java.net.URL
 import java.net.URLDecoder
+import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertNotNull
 
@@ -61,8 +75,7 @@ fun TestApplicationRequest.addJwtToken(
     audience: String? = null,
     algorithm: Algorithm = Algorithm.HMAC512(secret),
     configureJwt: JWTCreator.Builder.() -> Unit = {
-        withClaim(CLAIM_ROLE, role).
-        withClaim(CLAIM_USER_ID, userId)
+        withClaim(CLAIM_ROLE, role).withClaim(CLAIM_USER_ID, userId)
     },
     configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
 ) {
@@ -123,10 +136,93 @@ fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEng
         ?: respondBadRequest()
 })
 
-object CopyUserWithID: Answer<UserEntity> {
+object CopyUserWithID : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
 }
 
-object CopyUser: Answer<UserEntity> {
+object CopyUser : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy()
 }
+
+fun copyApiKeyWithId(id: Int) = Answer<ApiKeyEntity> { invocation ->
+    invocation?.getArgument<ApiKeyEntity>(0)?.copy(id = id)
+}
+
+fun Authentication.Configuration.jwtMock() {
+    jwt {
+        verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
+        validate {
+            User(
+                id = it.payload.getClaim(CLAIM_USER_ID).asInt(),
+                username = it.payload.subject,
+                role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
+            )
+        }
+    }
+}
+
+@Testcontainers
+open class DatabaseTests {
+    companion object {
+        @Container
+        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
+            DockerImageName.parse("postgres:14.1")
+        ).apply {
+            withDatabaseName("testdb")
+            withUsername("testuser")
+            withPassword("testpassword")
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun setup() {
+            postgresqlContainer.start()
+            val dataSource = HikariDataSource(HikariConfig().apply {
+                this.jdbcUrl = postgresqlContainer.jdbcUrl
+                this.username = postgresqlContainer.username
+                this.password = postgresqlContainer.password
+                this.driverClassName = postgresqlContainer.driverClassName
+                this.validate()
+            })
+            DatabaseConfig.init(dataSource)
+        }
+
+        @JvmStatic
+        @AfterAll
+        fun finish() {
+            postgresqlContainer.stop()
+        }
+    }
+}
+
+fun createTestApiKeyEntity(
+    id: Int? = null,
+    userId: Int = 101,
+    description: String = "for testing",
+    apiKeyHash: String = "hash$id",
+    expiresAt: LocalDateTime = LocalDateTime.now().plusYears(1),
+    createdAt: LocalDateTime = LocalDateTime.now(),
+    user: UserEntity? = createTestUserEntity(id = userId)
+) = ApiKeyEntity(
+    id = id,
+    userId = userId,
+    description = description,
+    apiKeyHash = apiKeyHash,
+    expiresAt = expiresAt,
+    createdAt = createdAt,
+    user = user
+)
+
+fun createTestUserEntity(
+    id: Int = 101,
+    username: String = "test$id",
+    role: Role = Role.USER,
+    passwordHash: String = "hash$id",
+    blocked: Boolean = false
+) = UserEntity(
+    id = id,
+    username = username,
+    role = role.name,
+    passwordHash = passwordHash,
+    blocked = blocked
+)

@@ -46,7 +46,6 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
-import org.kodein.di.DI
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import java.time.*
@@ -56,129 +55,47 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
-    when (environment.config.config("drill.auth").getAuthType()) {
-        AuthType.SIMPLE -> moduleWithSimpleAuth()
-        AuthType.OAUTH2 -> moduleWithOAuth2()
-        AuthType.SIMPLE_AND_OAUTH2 -> moduleWithSimpleAuthAndOAuth2()
-    }
-}
-
-@Suppress("unused")
-fun Application.moduleWithSimpleAuth() {
-    install(StatusPages) {
-        simpleAuthStatusPages()
-        defaultStatusPages()
-    }
     installPlugins()
     initDB()
-
     di {
+        import(jwtServicesDIModule)
+        import(apiKeyServicesDIModule)
+        if (simpleAuthEnabled) import(simpleAuthDIModule)
+        if (oauth2Enabled) import(oauthDIModule)
+        import(authConfigDIModule)
         import(drillAdminDIModule)
-        import(simpleAuthDIModule)
     }
 
+    install(StatusPages) {
+        authStatusPages()
+        if (oauth2Enabled) oauthStatusPages()
+        defaultStatusPages()
+    }
     install(Authentication) {
-        configureJwtAuthentication(closestDI())
-        configureBasicAuthentication(closestDI())
-    }
 
+        configureJwtAuthentication(closestDI())
+        configureApiKeyAuthentication(closestDI())
+        if (oauth2Enabled) configureOAuthAuthentication(closestDI())
+    }
     routing {
         drillAdminRoutes()
-        loginRoute()
+    }
+    routing {
+        if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
-            userAuthenticationRoutes()
+            if (simpleAuthEnabled) userAuthenticationRoutes()
             authenticate("jwt") {
                 userProfileRoutes()
+                userApiKeyRoutes()
             }
-            authenticate("jwt", "basic") {
+            authenticate("jwt", "api-key") {
                 withRole(ADMIN) {
                     userManagementRoutes()
+                    apiKeyManagementRoutes()
                 }
             }
         }
     }
-}
-
-@Suppress("unused")
-fun Application.moduleWithOAuth2() {
-    install(StatusPages) {
-        simpleAuthStatusPages()
-        defaultStatusPages()
-    }
-    installPlugins()
-    initDB()
-    di {
-        import(drillAdminDIModule)
-        import(oauthDIModule)
-    }
-    install(Authentication) {
-        configureJwtAuthentication(closestDI())
-        configureOAuthAuthentication(closestDI())
-        configureBasicStubAuthentication()
-    }
-    routing {
-        drillAdminRoutes()
-        configureOAuthRoutes()
-        route("/api") {
-            signOutRoute()
-            authenticate("jwt") {
-                userInfoRoute()
-            }
-            authenticate("jwt") {
-                withRole(ADMIN) {
-                    getUsersRoute()
-                    getUserRoute()
-                    editUserRoute()
-                    deleteUserRoute()
-                    blockUserRoute()
-                    unblockUserRoute()
-                }
-            }
-        }
-    }
-}
-
-@Suppress("unused")
-fun Application.moduleWithSimpleAuthAndOAuth2() {
-    install(StatusPages) {
-        simpleAuthStatusPages()
-        defaultStatusPages()
-    }
-    installPlugins()
-    initDB()
-    di {
-        import(drillAdminDIModule)
-        import(simpleWithOAuth2DIModule)
-    }
-    install(Authentication) {
-        configureJwtAuthentication(closestDI())
-        configureOAuthAuthentication(closestDI())
-        configureBasicAuthentication(closestDI())
-    }
-    routing {
-        drillAdminRoutes()
-        configureOAuthRoutes()
-        route("/api") {
-            userAuthenticationRoutes()
-            authenticate("jwt") {
-                userProfileRoutes()
-            }
-            authenticate("jwt") {
-                withRole(ADMIN) {
-                    userManagementRoutes()
-                }
-            }
-        }
-    }
-}
-
-val simpleWithOAuth2DIModule = DI.Module("simpleWithOAuth2") {
-    userRepositoriesConfig()
-    userServicesConfig()
-    configureJwtDI()
-    configureOAuthDI()
-    configureSimpleAuthDI()
-    bindAuthConfig()
 }
 
 
@@ -270,3 +187,11 @@ private fun Application.initDB() {
 }
 
 lateinit var hikariConfig: HikariConfig
+
+val Application.oauth2Enabled: Boolean
+    get() = environment.config.config("drill.auth.oauth2")
+        .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
+
+val Application.simpleAuthEnabled: Boolean
+    get() = environment.config.config("drill.auth.simple")
+        .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
