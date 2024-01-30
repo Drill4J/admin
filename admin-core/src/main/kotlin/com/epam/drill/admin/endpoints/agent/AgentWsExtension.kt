@@ -18,7 +18,6 @@ package com.epam.drill.admin.endpoints.agent
 import com.epam.drill.admin.agent.*
 import com.epam.drill.admin.common.serialization.*
 import com.epam.drill.admin.util.*
-import com.epam.drill.common.ws.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
@@ -26,17 +25,11 @@ import kotlinx.atomicfu.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
-import kotlinx.serialization.protobuf.*
 import kotlin.reflect.*
 import kotlin.time.*
 import kotlin.time.TimeSource.*
 
 
-fun Route.agentWebsocket(
-    path: String,
-    protocol: String? = null,
-    handler: suspend DefaultWebSocketServerSession.() -> Unit,
-) = webSocket(path, protocol, handler)
 
 class WsAwaitException(message: String) : RuntimeException(message)
 
@@ -136,6 +129,7 @@ class WsDeferred(
  * @param instanceId Agent instance ID
  *
  */
+//TODO remove
 open class AgentWsSession(
     private val session: WebSocketServerSession,
     val frameType: FrameType,
@@ -161,19 +155,8 @@ open class AgentWsSession(
         noinline callback: suspend (Any) -> Unit = {},
     ): WsDeferred = async(topicName, callback) {
         when (frameType) {
-            FrameType.BINARY -> Frame.Binary(
-                fin = true,
-                data = ProtoBuf.dump(
-                    Message(
-                        MessageType.MESSAGE,
-                        TopicUrl::class.topicUrl(),
-                        data = (message as? String)?.encodeToByteArray() ?: ProtoBuf.dump(serializer(), message)
-                    )
-                )
-            )
             FrameType.TEXT -> Frame.Text(
                 JsonMessage.serializer() stringify JsonMessage(
-                    type = MessageType.MESSAGE,
                     destination = TopicUrl::class.topicUrl(),
                     text = message as? String ?: (serializer<T>() stringify message)
                 )
@@ -200,10 +183,4 @@ open class AgentWsSession(
     }
 }
 
-inline fun <reified T : Any> KClass<T>.topicUrl() = (this
-    .serializer())
-    .descriptor
-    .annotations
-    .filterIsInstance<Topic>()
-    .first()
-    .url
+inline fun <reified T : Any> KClass<T>.topicUrl() = "mock/topic"

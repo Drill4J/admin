@@ -53,11 +53,10 @@ class BuildManager(override val di: DI) : DIAware {
     suspend fun addBuildInstance(
         key: AgentBuildKey,
         instanceId: String,
-        session: AgentWsSession,
     ) {
         val current = buildStorage[key] ?: persistentMapOf()
-        logger.info { "put new instance id '${instanceId}' with key $key instance status is ${BuildStatus.ONLINE}" }
-        buildStorage.put(key, current + (instanceId to InstanceState(session, BuildStatus.ONLINE)))
+        logger.info { "put new instance id '${instanceId}'" }
+        buildStorage.put(key, current + (instanceId to InstanceState()))
     }
 
     fun instanceIds(
@@ -84,64 +83,6 @@ class BuildManager(override val di: DI) : DIAware {
         }
     }
 
-    // TODO EPMDJ-10011 instances spamming ONLINE
-    suspend fun processInstance(
-        agentId: String,
-        instanceId: String,
-        block: suspend AgentWsSession.() -> Unit,
-    ): Unit = agentManager.getOrNull(agentId)?.run {
-        val buildId = toAgentBuildKey()
-        getInstanceState(buildId, instanceId)?.let { instanceState ->
-            updateInstanceStatus(buildId, instanceId, BuildStatus.BUSY).also { instance ->
-                if (instance.all { it.value.status == BuildStatus.BUSY }) {
-                    notifyBuild(buildId)
-                    logger.debug { "Build $buildId is ${BuildStatus.BUSY}." }
-                }
-                logger.trace { "Instance $instanceId of agent $id is ${BuildStatus.BUSY}." }
-            }
-            try {
-                block(instanceState.agentWsSession)
-            } finally {
-                updateInstanceStatus(buildId, instanceId, BuildStatus.ONLINE).also {
-                    notifyBuild(buildId)
-                    logger.debug { "Build $buildId is ${BuildStatus.ONLINE}." }
-                }
-            }
-        } ?: logger.warn { "Instance $instanceId is not found" }
-    } ?: logger.warn { "Agent $agentId not found" }
-
-    /**
-     * Update status of the build
-     * @param instanceId the build instance ID
-     * @param status the status which have to update
-     * @param agentBuildKey the pair of the agent ID and the build version
-     * @features Agent registration, Agent attaching
-     */
-    internal fun updateInstanceStatus(
-        agentBuildKey: AgentBuildKey,
-        instanceId: String,
-        status: BuildStatus,
-    ) = getInstanceState(agentBuildKey, instanceId)?.let { instanceState ->
-        buildStorage.updateValue(agentBuildKey) { instances ->
-            logger.trace { "Instance $instanceId changed status, new status is $status" }
-            instances[agentBuildKey]?.let {
-                instances.put(agentBuildKey, it.put(instanceId, instanceState.copy(status = status)))
-            } ?: instances
-        }
-    } ?: persistentMapOf()
-
-    private fun getInstanceState(
-        agentBuildKey: AgentBuildKey,
-        instanceId: String,
-    ) = buildStorage.targetMap[agentBuildKey]?.get(instanceId)
-
-    fun buildStatus(agentId: String): BuildStatus = instanceIds(agentId).let { instances ->
-        when {
-            instances.isEmpty() || instances.all { it.value.status == BuildStatus.OFFLINE } -> BuildStatus.OFFLINE
-            instances.any { it.value.status == BuildStatus.ONLINE } -> BuildStatus.ONLINE
-            else -> BuildStatus.BUSY
-        }
-    }
 
     internal fun buildData(agentId: String): AgentData = agentDataCache.getOrPut(agentId) {
         logger.debug { "put adminData with id=$agentId" }
@@ -151,9 +92,6 @@ class BuildManager(override val di: DI) : DIAware {
         )
     }
 
-    fun agentSessions(k: String) = instanceIds(k).values.mapNotNull { state ->
-        state.takeIf { it.status == BuildStatus.ONLINE }?.agentWsSession
-    }
 
     /**
      * Notify subscribers when a build is updated

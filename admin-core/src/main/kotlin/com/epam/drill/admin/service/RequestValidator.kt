@@ -15,13 +15,9 @@
  */
 package com.epam.drill.admin.service
 
-import com.epam.drill.admin.api.agent.*
-import com.epam.drill.admin.api.routes.*
 import com.epam.drill.admin.endpoints.*
 import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.serialization.*
@@ -29,49 +25,23 @@ import mu.*
 import org.kodein.di.*
 import org.kodein.di.ktor.closestDI
 
-const val agentIsBusyMessage =
-    "Sorry, this agent is busy at the moment. Please try again later"
-
 fun Routing.requestValidatorRoutes() {
     val logger = KotlinLogging.logger { }
     val agentManager by closestDI().instance<AgentManager>()
-    val buildManager by closestDI().instance<BuildManager>()
-
 
     intercept(ApplicationCallPipeline.Call) {
         if (context is RoutingApplicationCall) {
             val agentId = context.parameters["agentId"]
             if (agentId != null) {
                 val agentInfo = agentManager.getOrNull(agentId)
-                when (buildManager.buildStatus(agentId)) {
-                    BuildStatus.BUSY -> {
-                        val agentPath = locations.href(
-                            ApiRoot().let(ApiRoot::Agents).let { ApiRoot.Agents.Agent(it, agentId) }
-                        )
-                        with(context.request) {
-                            if (path() != agentPath && httpMethod != HttpMethod.Post) {
-                                logger.info { "Agent status is busy" }
-
-                                call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ValidationResponse(agentIsBusyMessage)
-                                )
-                                return@intercept finish()
-                            }
-                        }
-                    }
-
-                    else -> {
-                        if (agentInfo == null &&
-                            agentManager.allEntries().none { it.info.groupId == agentId }
-                        ) {
-                            call.respond(
-                                HttpStatusCode.BadRequest,
-                                ValidationResponse("Agent '$agentId' not found")
-                            )
-                            return@intercept finish()
-                        }
-                    }
+                if (agentInfo == null &&
+                    agentManager.allEntries().none { it.info.groupId == agentId }
+                ) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ValidationResponse("Agent '$agentId' not found")
+                    )
+                    return@intercept finish()
                 }
             }
         }

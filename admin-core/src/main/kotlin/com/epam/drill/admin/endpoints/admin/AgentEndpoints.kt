@@ -41,36 +41,8 @@ fun Routing.agentRoutes() {
     val agentManager by closestDI().instance<AgentManager>()
     val buildManager by closestDI().instance<BuildManager>()
     val configHandler by closestDI().instance<ConfigHandler>()
-
-
-            authenticate("jwt", "api-key") {
-                withRole(Role.USER, Role.ADMIN) {
-                    post<ApiRoot.Agents, AgentCreationDto>(
-                        "Create agent"
-                            .examples(
-                                example(
-                                    "Petclinic", AgentCreationDto(
-                                        id = "petclinic",
-                                        agentType = AgentType.JAVA,
-                                        name = "Petclinic"
-                                    )
-                                )
-                            )
-                            .responds(
-                                ok<AgentInfoDto>(),
-                                HttpCodeResponse(HttpStatusCode.Conflict, emptyList())
-                            )
-                    ) { _, payload ->
-                        logger.debug { "Creating agent with id ${payload.id}..." }
-                        agentManager.prepare(payload)?.run {
-                            logger.info { "Created agent ${payload.id}." }
-                            call.respond(HttpStatusCode.Created, toDto(agentManager))
-                        } ?: run {
-                            logger.warn { "Agent ${payload.id} already exists." }
-                            call.respond(HttpStatusCode.Conflict, ErrorResponse("Agent '${payload.id}' already exists."))
-                        }
-                    }
-
+    authenticate("jwt", "api-key") {
+        withRole(Role.USER, Role.ADMIN) {
             get<ApiRoot.Agents.Metadata>(
                 "Agents metadata"
                     .examples()
@@ -85,71 +57,6 @@ fun Routing.agentRoutes() {
                     }
                 }
                 call.respond(HttpStatusCode.OK, metadataAgents)
-            }
-
-            get<ApiRoot.Agents.Parameters>(
-                "Agent parameters"
-                    .examples()
-                    .responds(
-                        ok<String>(), badRequest()
-                    )
-            ) { params ->
-                val (_, agentId) = params
-                val map = configHandler.load(agentId) ?: emptyMap()
-                call.respond(HttpStatusCode.OK, map)
-            }
-
-            patch<ApiRoot.Agents.Parameters, Map<String, String>>(
-                "Update agent parameters"
-                    .examples(
-                        example(
-                            "Agent parameters", mapOf(
-                                "logLevel" to "DEBUG",
-                                "logFile" to "Directory"
-                            )
-                        )
-                    ).responds(
-                        ok<String>(), notFound()
-                    )
-            ) { location, updatedValues ->
-                val agentId = location.agentId
-                logger.debug { "Update parameters for agent with id $agentId params: $updatedValues" }
-                val (status, message) = configHandler.load(agentId)?.let { storageParameters ->
-                    val newStorageParameters = storageParameters.toMutableMap()
-                    updatedValues.forEach { (key, value) ->
-                        newStorageParameters[key]?.let {
-                            newStorageParameters[key] = it.copy(value = value)
-                        } ?: logger.warn { "Cannot find and update the parameter '$key'" }
-                    }
-                    configHandler.store(agentId, newStorageParameters)
-                    configHandler.updateAgent(agentId, updatedValues)
-                    logger.debug { "Agent with id '$agentId' was updated successfully" }
-                    HttpStatusCode.OK to EmptyContent
-                } ?: (HttpStatusCode.NotFound to ErrorResponse("agent '$agentId' not found"))
-                call.respond(status, message)
-            }
-
-            patch<ApiRoot.Agents.AgentInfo, AgentUpdateDto>(
-                "Update agent configuration"
-                    .examples(
-                        example("Petclinic", agentUpdateExample)
-                    )
-                    .responds(
-                        ok<Unit>(), badRequest()
-                    )
-            ) { location, au ->
-                val agentId = location.agentId
-                logger.debug { "Update configuration for agent with id $agentId" }
-
-                val (status, message) = if (buildManager.agentSessions(agentId).isNotEmpty()) {
-                    agentManager.updateAgent(agentId, au)
-                    logger.debug { "Agent with id '$agentId' was updated successfully" }
-                    HttpStatusCode.OK to EmptyContent
-                } else {
-                    logger.warn { "Agent with id'$agentId' was not found" }
-                    HttpStatusCode.BadRequest to ErrorResponse("agent '$agentId' not found")
-                }
-                call.respond(status, message)
             }
 
             post<ApiRoot.Agents.Agent, AgentRegistrationDto>(
@@ -171,35 +78,6 @@ fun Routing.agentRoutes() {
                 } else {
                     logger.warn { "Agent with id'$agentId' was not found" }
                     HttpStatusCode.BadRequest to ErrorResponse("Agent '$agentId' not found")
-                }
-                call.respond(status, message)
-            }
-
-
-            /**
-             * Also you should send action to plugin
-             * {
-             *     "type": "REMOVE_PLUGIN_DATA"
-             * }
-             */
-            delete<ApiRoot.Agents.Agent>(
-                "Remove all agent info"
-                    .responds(
-                        ok<Unit>(), notFound(), badRequest()
-                    )
-            ) { payload ->
-                val agentId = payload.agentId
-                val (status, message) = if (agentManager.removePreregisteredAgent(agentId)) {
-                    HttpStatusCode.OK to "Pre registered Agent '$agentId' has been completely removed."
-                } else {
-                    //TODO EPMDJ-10354 Think about ability to remove online agent
-                    if (buildManager.buildStatus(agentId) == BuildStatus.OFFLINE) {
-                        agentManager.removeOfflineAgent(agentId)
-                        HttpStatusCode.OK to "Offline Agent '$agentId' has been completely removed."
-                    } else {
-                        logger.debug { "Deleting online Agent '$agentId' isn't available." }
-                        HttpStatusCode.BadRequest to ErrorResponse("Deleting online Agent '$agentId' isn't availabl.e")
-                    }
                 }
                 call.respond(status, message)
             }

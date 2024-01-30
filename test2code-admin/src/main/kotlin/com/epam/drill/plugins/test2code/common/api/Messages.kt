@@ -13,30 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.plugin
+package com.epam.drill.plugins.test2code.common.api
 
 import kotlinx.serialization.*
-import kotlinx.serialization.json.*
-
-
-//todo EPMDJ-10291 remove additional action from admin
-@Serializable
-data class IsPossibleOffline(
-    val type: String = "IS_POSSIBLE_OFFLINE",
-    val payload: JsonObject,
-)
 
 @Serializable
-data class PluginMetadata(
-    val id: String,
-    var name: String = "",
-    var description: String = "",
-    var type: String = "",
-    var family: Family = Family.INSTRUMENTATION,
-    var config: String = "",
-    var checkSum: String = ""
-)
+sealed class CoverMessage
 
-enum class Family {
-    GENERIC, INSTRUMENTATION
-}
+@SerialName("INIT")
+@Serializable
+data class InitInfo(
+    val classesCount: Int = 0,
+    val message: String = "",
+    @Deprecated(message = "the parameter is unused")
+    val init: Boolean = true,
+) : CoverMessage()
+
+@SerialName("INIT_DATA_PART")
+@Serializable
+data class InitDataPart(val astEntities: List<AstEntity>) : CoverMessage()
+
+@SerialName("INITIALIZED")
+@Serializable
+data class Initialized(val msg: String = "") : CoverMessage()

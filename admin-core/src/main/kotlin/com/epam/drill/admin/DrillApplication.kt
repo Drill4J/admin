@@ -24,7 +24,6 @@ import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.adminRoutes
 import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
 import com.epam.drill.admin.endpoints.admin.agentRoutes
-import com.epam.drill.admin.endpoints.agent.agentWebSocketRoute
 import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
 import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
 import com.epam.drill.admin.group.groupRoutes
@@ -148,7 +147,6 @@ fun Routing.drillAdminRoutes() {
     agentRoutes()
     versionRoutes()
     requestValidatorRoutes()
-    agentWebSocketRoute()
     pluginDispatcherRoutes()
     adminRoutes()
     groupRoutes()
