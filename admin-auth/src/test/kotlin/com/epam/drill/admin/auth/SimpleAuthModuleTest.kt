@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.configureBasicAuthentication
 import com.epam.drill.admin.auth.config.configureJwtAuthentication
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
@@ -48,30 +47,6 @@ class SimpleAuthModuleTest {
     @BeforeTest
     fun setup() {
         MockitoAnnotations.openMocks(this)
-    }
-
-    @Test
-    fun `given user with basic auth, request basic-only must succeed`() {
-        wheneverBlocking(authService) { signIn(LoginPayload(username = "admin", password = "secret")) }
-            .thenReturn(UserInfoView(id = 123, username = "admin", role = Role.ADMIN, external = false))
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/basic-only") {
-                addBasicAuth("admin", "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
-        }
-    }
-
-    @Test
-    fun `given user without basic auth, request basic-only must fail with 401 status`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/basic-only") {
-                //not to add basic auth
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
-            }
-        }
     }
 
     @Test
@@ -147,11 +122,6 @@ class SimpleAuthModuleTest {
                     call.respond(HttpStatusCode.OK)
                 }
             }
-            authenticate("basic") {
-                get("/basic-only") {
-                    call.respond(HttpStatusCode.OK)
-                }
-            }
         }
     }
 
@@ -163,7 +133,6 @@ class SimpleAuthModuleTest {
 
         install(Authentication) {
             configureJwtAuthentication(closestDI())
-            configureBasicAuthentication(closestDI())
         }
     }
 }

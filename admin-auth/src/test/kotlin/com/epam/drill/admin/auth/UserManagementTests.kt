@@ -15,10 +15,6 @@
  */
 package com.epam.drill.admin.auth
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
-import com.epam.drill.admin.auth.config.CLAIM_ROLE
-import com.epam.drill.admin.auth.config.CLAIM_USER_ID
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -27,18 +23,16 @@ import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
-import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import io.ktor.application.*
 import io.ktor.auth.*
-import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.testing.*
-import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -65,9 +59,10 @@ class UserManagementTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
+    @Mock
+    lateinit var passwordGenerator: PasswordGenerator
 
     @BeforeTest
     fun setup() {
@@ -182,7 +177,7 @@ class UserManagementTest {
     fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
-        whenever(passwordService.generatePassword())
+        whenever(passwordGenerator.generatePassword())
             .thenReturn("newsecret")
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
@@ -282,16 +277,18 @@ class UserManagementTest {
             di {
                 bind<UserRepository>() with eagerSingleton { userRepository }
                 bind<PasswordService>() with eagerSingleton { passwordService }
+                bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
                 bind<UserManagementService>() with eagerSingleton {
                     UserManagementServiceImpl(
-                        instance(),
-                        instance(),
+                        userRepository = instance(),
+                        passwordService = instance(),
+                        passwordGenerator = instance(),
                         externalRoleManagement = true
                     )
                 }
             }
             install(StatusPages) {
-                simpleAuthStatusPages()
+                authStatusPages()
             }
             routing {
                 editUserRoute()
@@ -315,27 +312,20 @@ class UserManagementTest {
         di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
             bind<UserManagementService>() with eagerSingleton {
                 UserManagementServiceImpl(
-                    instance(),
-                    instance()
+                    userRepository = instance(),
+                    passwordService = instance(),
+                    passwordGenerator = instance(),
                 )
             }
         }
         install(StatusPages) {
-            simpleAuthStatusPages()
+            authStatusPages()
         }
         install(Authentication) {
-            jwt {
-                verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
-                validate {
-                    User(
-                        id = it.payload.getClaim(CLAIM_USER_ID).asInt(),
-                        username = it.payload.subject,
-                        role = Role.valueOf(it.payload.getClaim(CLAIM_ROLE).asString())
-                    )
-                }
-            }
+            jwtMock()
         }
         routing {
             route()

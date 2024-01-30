@@ -45,17 +45,16 @@ private val logger = KotlinLogging.logger {}
  * The DI module including all services and configurations for OAuth2 authentication.
  */
 val oauthDIModule = DI.Module("oauth") {
-    userRepositoriesConfig()
-    userServicesConfig()
-    configureJwtDI()
-    configureOAuthDI()
-    bindAuthConfig()
+    importOnce(jwtServicesDIModule)
+    importOnce(userServicesDIModule)
+    importOnce(oauthServicesDIModule)
 }
 
 /**
- * A DI Builder extension function registering all Kodein bindings for OAuth2 based authentication.
+ * A DI module for OAuth2 services.
  */
-fun DI.Builder.configureOAuthDI() {
+val oauthServicesDIModule = DI.Module("oauthServices") {
+    importOnce(userRepositoryDIModule)
     bind<HttpClient>("oauthHttpClient") with singleton { HttpClient(Apache) }
     bind<OAuth2Config>() with singleton {
         OAuth2Config(instance<Application>().environment.config.config("drill.auth.oauth2"))
@@ -95,15 +94,6 @@ fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
             )
         }
         client = httpClient
-    }
-}
-
-fun Authentication.Configuration.configureBasicStubAuthentication() {
-    basic("basic") {
-        realm = "Access to the http(s) services"
-        validate {
-            null //Basic authentication is not supported for the OAuth2 provider, but must be declared, due to the use of a basic authenticator on some routes
-        }
     }
 }
 

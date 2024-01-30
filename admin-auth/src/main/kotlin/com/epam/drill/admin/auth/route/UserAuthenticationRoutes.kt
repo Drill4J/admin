@@ -29,10 +29,8 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.locations.post
 import io.ktor.request.*
-import io.ktor.response.*
 import io.ktor.response.header
 import io.ktor.routing.*
-import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
@@ -62,7 +60,7 @@ object Login
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
-fun StatusPages.Configuration.simpleAuthStatusPages() {
+fun StatusPages.Configuration.authStatusPages() {
     exception<NotAuthenticatedException> { cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
@@ -78,6 +76,18 @@ fun StatusPages.Configuration.simpleAuthStatusPages() {
     exception<ForbiddenOperationException> { cause ->
         logger.trace(cause) { "422 Cannot modify own profile" }
         call.unprocessableEntity(cause)
+    }
+    exception<UserNotFoundException> { cause ->
+        logger.trace(cause) { "404 User not found" }
+        call.notFound(cause)
+    }
+    exception<ApiKeyNotFoundException> { cause ->
+        logger.trace(cause) { "404 Api key not found" }
+        call.notFound(cause)
+    }
+    exception<InvalidApiKeyFormatException> { cause ->
+        logger.trace(cause) { "404 Invalid Api key format" }
+        call.unauthorizedError(cause)
     }
 }
 
@@ -169,24 +179,3 @@ fun Route.signOutRoute() {
         call.ok("User successfully signed out.")
     }
 }
-
-@Deprecated("The /api/login route is outdated, please use /sign-in")
-fun Route.loginRoute() {
-    val authService by di().instance<UserAuthenticationService>()
-    val tokenService by di().instance<TokenService>()
-
-    post<Login> {
-        val loginPayload = call.receive<UserData>()
-        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
-        val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenView(token))
-    }
-}
-
-@Serializable
-@Deprecated("use LoginPayload")
-data class UserData(
-    val name: String,
-    val password: String,
-)

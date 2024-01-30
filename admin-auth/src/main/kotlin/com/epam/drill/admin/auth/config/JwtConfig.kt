@@ -17,6 +17,7 @@ package com.epam.drill.admin.auth.config
 
 import io.ktor.config.*
 import mu.KotlinLogging
+import java.util.*
 import javax.crypto.KeyGenerator
 import kotlin.time.*
 
@@ -49,10 +50,10 @@ class JwtConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
     /**
-     * A lifetime of a JWT. Optional, 30 minutes by default.
+     * A lifetime of a JWT. Optional, 60 minutes by default.
      */
     val lifetime: Duration
-        get() = config.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(30)
+        get() = config.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(60)
 
     /**
      * An JWT audience. Optional, empty by default.
@@ -66,4 +67,5 @@ private fun ApplicationConfigValue.getDuration(): Duration {
 }
 
 
-internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()
+internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded
+    .let { Base64.getEncoder().encodeToString(it) }

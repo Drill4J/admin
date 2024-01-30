@@ -18,6 +18,14 @@ package com.epam.drill.admin.auth.service
 import com.epam.drill.admin.auth.model.UserInfoView
 import io.ktor.auth.*
 
+/**
+ * A service for signing in through OAuth.
+ */
 interface OAuthService {
+    /**
+     * Signs in through OAuth.
+     * @param principal the OAuth access token
+     * @return the user information
+     */
     suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView
 }
