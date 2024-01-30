@@ -55,12 +55,12 @@ class OAuthMapperImpl(oauth2Config: OAuth2Config) : OAuthMapper {
     }
 
     private fun mapRole(roleNames: List<String>?): Role {
-        roleNames?.forEach {
-            when (it.lowercase()) {
-                roleMapping.user.lowercase() -> return Role.USER
-                roleMapping.admin.lowercase() -> return Role.ADMIN
-            }
-        }
+        val lowerRoleNames = roleNames?.map { it.lowercase() } ?: emptyList()
+        val userRoles = roleMapping.user.split(",").map { it.trim().lowercase() }
+        val adminRoles = roleMapping.admin.split(",").map { it.trim().lowercase() }
+
+        if (adminRoles.any { it in lowerRoleNames }) return Role.ADMIN
+        if (userRoles.any { it in lowerRoleNames }) return Role.USER
         return Role.UNDEFINED
     }
 }

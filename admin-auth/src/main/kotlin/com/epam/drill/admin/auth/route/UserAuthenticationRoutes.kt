@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.config.SimpleAuthConfig
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
@@ -48,6 +49,9 @@ object UserInfo
 
 @Location("/update-password")
 object UpdatePassword
+
+@Location("/sign-out")
+object SignOut
 
 @Deprecated("Use /sign-in")
 @Location("/api/login")
@@ -93,6 +97,7 @@ fun StatusPages.Configuration.authStatusPages() {
 fun Route.userAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
+    signOutRoute()
 }
 
 /**
@@ -162,5 +167,15 @@ fun Route.updatePasswordRoute() {
         val principal = call.principal<User>() ?: throw NotAuthenticatedException()
         authService.updatePassword(principal, changePasswordPayload)
         call.ok("Password successfully changed.")
+    }
+}
+
+/**
+ * A user sign out route configuration.
+ */
+fun Route.signOutRoute() {
+    post<SignOut> {
+        call.response.cookies.appendExpired(JWT_COOKIE, null, "/")
+        call.ok("User successfully signed out.")
     }
 }
