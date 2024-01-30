@@ -20,16 +20,20 @@ import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.service.ApiKeyBuilder
 import com.epam.drill.admin.auth.service.ApiKeyService
+import com.epam.drill.admin.auth.service.ApiKeyCacheService
 import com.epam.drill.admin.auth.service.impl.ApiKeyBuilderImpl
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
+import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.epam.drill.admin.auth.service.impl.RandomHexSecretGenerator
 import com.epam.drill.admin.auth.service.transaction.TransactionalApiKeyService
+import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.application.*
 import io.ktor.auth.*
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import java.time.Duration
 
 
 /**
@@ -52,6 +56,14 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
             )
         )
     }
+    bind<ApiKeyCacheService>() with singleton {
+        CaffeineCacheService(
+            Caffeine.newBuilder()
+            .maximumSize(instance<ApiKeyConfig>().maximumCacheSize)
+            .expireAfterWrite(Duration.ofMinutes(instance<ApiKeyConfig>().ttlCacheInMinutes))
+            .build()
+        )
+    }
 }
 
 /**
@@ -59,10 +71,13 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
  */
 fun Authentication.Configuration.configureApiKeyAuthentication(di: DI) {
     val apiKeyService by di.instance<ApiKeyService>()
+    val apiKeyCacheService by di.instance<ApiKeyCacheService>()
 
     apiKey("api-key") {
         validate { apiKey ->
-            apiKeyService.signInThroughApiKey(apiKey).toPrincipal()
+            apiKeyCacheService.getFromCacheOrPutIfAbsent(apiKey) {
+                apiKeyService.signInThroughApiKey(apiKey).toPrincipal()
+            }
         }
     }
 }
