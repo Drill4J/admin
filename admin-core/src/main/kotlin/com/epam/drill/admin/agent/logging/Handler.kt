@@ -20,6 +20,7 @@ import com.epam.drill.admin.store.*
 import com.epam.dsm.*
 import org.kodein.di.*
 
+// TODO remove file
 //todo remove after testing EPMDJ-7890
 class LoggingHandler(override val di: DI) : DIAware {
 

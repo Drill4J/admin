@@ -15,8 +15,12 @@
  */
 package com.epam.drill.admin.auth.model
 
+import com.epam.drill.admin.auth.config.*
+import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.auth.principal.User
 import kotlinx.serialization.*
+import kotlinx.datetime.LocalDateTime
 
 @Serializable
 data class DataResponse<T>(val data: T, val message: String? = null)
@@ -29,16 +33,28 @@ data class TokenView(val token: String)
 
 @Serializable
 data class UserInfoView(
+    val id: Int,
     val username: String,
-    val role: Role
+    val role: Role,
+    val external: Boolean
 )
+
+fun UserInfoView.toPrincipal(): User {
+    return User(
+        id = id,
+        username = username,
+        role = role
+    )
+}
 
 @Serializable
 data class UserView(
-    val id: Int?,
+    val id: Int,
     val username: String,
     val role: Role,
-    val blocked: Boolean
+    val blocked: Boolean,
+    val registrationDate: LocalDateTime?,
+    val external: Boolean
 )
 
 @Serializable
@@ -69,3 +85,12 @@ data class ChangePasswordPayload(
     val oldPassword: String,
     val newPassword: String
 )
+
+fun UserEntity.toUserInfoView(): UserInfoView {
+    return UserInfoView(
+        id = this.id ?: throw IllegalStateException("User id cannot be null"),
+        username = this.username,
+        role = Role.valueOf(this.role),
+        external = this.external
+    )
+}

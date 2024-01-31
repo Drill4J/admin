@@ -15,72 +15,63 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.table.UserTable
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
+import java.time.LocalDateTime
+import java.time.Month
 import kotlin.test.*
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 
-@Testcontainers
-class UserRepositoryImplTest {
+class DatabaseUserRepositoryTest: DatabaseTests() {
 
     private val repository = DatabaseUserRepository()
 
-    companion object {
-        @Container
-        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
-            DockerImageName.parse("postgres:14.1")
-        ).apply {
-            withDatabaseName("testdb")
-            withUsername("testuser")
-            withPassword("testpassword")
-        }
-
-        @JvmStatic
-        @BeforeAll
-        fun setup() {
-            postgresqlContainer.start()
-            val dataSource = HikariDataSource(HikariConfig().apply {
-                this.jdbcUrl = postgresqlContainer.jdbcUrl
-                this.username = postgresqlContainer.username
-                this.password = postgresqlContainer.password
-                this.driverClassName = postgresqlContainer.driverClassName
-                this.validate()
-            })
-            DatabaseConfig.init(dataSource)
-        }
-    }
-
     @Test
-    fun `given unique username, create must insert user and return id`() = withTransaction {
+    fun `given unique username, create must insert user and return user entity with id`() = withTransaction {
         val userEntity = UserEntity(
-            username = "uniquename", passwordHash = "hash", role = "USER"
+            username = "uniquename",
+            passwordHash = "hash",
+            role = "USER",
+            registrationDate = LocalDateTime.of(2023, Month.JANUARY, 1, 0, 0)
         )
-        val id = repository.create(userEntity)
+        val createdUserEntity = repository.create(userEntity)
 
-        assertEquals(1, UserTable.select { UserTable.id eq id }.count())
-        UserTable.select { UserTable.id eq id }.first().let {
+        assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
+        UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
             assertEquals(userEntity.username, it[UserTable.username])
             assertEquals(userEntity.passwordHash, it[UserTable.passwordHash])
             assertEquals(userEntity.role, it[UserTable.role])
             assertEquals(userEntity.blocked, it[UserTable.blocked])
+            assertEquals(userEntity.registrationDate, it[UserTable.registrationDate])
         }
     }
+
+    @Test
+    fun `given not specified registration date, create must insert user and return registration date issued by date time provider`() =
+        withTransaction {
+            val userEntity = UserEntity(
+                username = "somename",
+                passwordHash = "hash",
+                role = "USER"
+            )
+            val currentDateTimeStub = LocalDateTime.of(2023, Month.JANUARY, 1, 0, 0)
+            val repository = DatabaseUserRepository(currentDateTimeProvider = { currentDateTimeStub })
+
+            val createdUserEntity = repository.create(userEntity)
+
+            assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
+            UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
+                assertEquals(it[UserTable.registrationDate], currentDateTimeStub)
+            }
+        }
 
     @Test
     fun `given non-unique username, create must fail`() = withTransaction {
@@ -234,8 +225,11 @@ class UserRepositoryImplTest {
 private fun withTransaction(test: suspend () -> Unit) {
     runBlocking {
         newSuspendedTransaction {
-            test()
-            rollback()
+            try {
+                test()
+            } finally {
+                rollback()
+            }
         }
     }
 }
@@ -250,11 +244,13 @@ private fun insertUsers(
     return ids
 }
 
-private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) = UserTable.insertAndGetId {
-    it[username] = "username$index"
-    it[passwordHash] = "hash$index"
-    it[role] = Role.values()[index % Role.values().size].name
-    it[blocked] = false
-    overrideColumns(it)
-}.value
+private fun insertUser(index: Int = 1, overrideColumns: UserTable.(InsertStatement<*>) -> Unit = {}) =
+    UserTable.insertAndGetId {
+        it[username] = "username$index"
+        it[passwordHash] = "hash$index"
+        it[role] = Role.values()[index % Role.values().size].name
+        it[blocked] = false
+        it[registrationDate] = LocalDateTime.now()
+        overrideColumns(it)
+    }.value
 

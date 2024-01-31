@@ -30,78 +30,66 @@ import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
 import com.epam.drill.admin.plugin.*
 import com.epam.drill.admin.plugins.*
-import com.epam.drill.admin.service.*
 import com.epam.drill.admin.storage.*
-import com.epam.drill.admin.version.*
 import com.epam.drill.admin.websocket.*
 import io.ktor.application.*
 import io.ktor.locations.*
 import org.kodein.di.*
 
+val drillAdminDIModule = DI.Module("drillAdmin") {
+    import(storage)
+    import(wsHandler)
+    import(handlers)
+    import(pluginServices)
+}
 
-val pluginServices: DI.Builder.(Application) -> Unit
-    get() = { application ->
-        bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
-        bind<PluginCaches>() with singleton { PluginCaches(application, instance(), instance()) }
-        bind<PluginSessions>() with singleton { PluginSessions(instance()) }
-        bind<PluginSenders>() with singleton { PluginSenders(di) }
-    }
 
-val storage: DI.Builder.(Application) -> Unit
-    get() = { app ->
-        bind<AgentStorage>() with singleton { AgentStorage() }
-        bind<BuildStorage>() with singleton { BuildStorage() }
-        if (app.drillCacheType == "mapdb") {
-            bind<CacheService>() with eagerSingleton { MapDBCacheService() }
-        } else bind<CacheService>() with eagerSingleton { JvmCacheService() }
-        bind<GroupManager>() with eagerSingleton { GroupManager(di) }
-        bind<AgentManager>() with eagerSingleton { AgentManager(di) }
-        bind<BuildManager>() with eagerSingleton { BuildManager(di) }
-        bind<SessionStorage>() with eagerSingleton { SessionStorage() }
-        bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
-        bind<NotificationManager>() with eagerSingleton { NotificationManager(di) }
-        bind<LoggingHandler>() with eagerSingleton { LoggingHandler(di) }
-        bind<ConfigHandler>() with eagerSingleton { ConfigHandler(di) }
-    }
+val pluginServices = DI.Module("pluginServices") {
+    bind<Plugins>() with singleton { Plugins(mapOf("test2code" to test2CodePlugin())) }
+    bind<PluginCaches>() with singleton { PluginCaches(instance(), instance(), instance()) }
+    bind<PluginSessions>() with singleton { PluginSessions(instance()) }
+    bind<PluginSenders>() with singleton { PluginSenders(di) }
+}
 
-val wsHandler: DI.Builder.(Application) -> Unit
-    get() = { _ ->
-        bind<AgentEndpoints>() with eagerSingleton {
-            AgentEndpoints(
-                di
-            )
-        }
-        bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
-        bind<DrillServerWs>() with eagerSingleton {
-            DrillServerWs(
-                di
-            )
-        }
-        bind<TopicResolver>() with eagerSingleton {
-            TopicResolver(
-                di
-            )
-        }
-        bind<ServerWsTopics>() with eagerSingleton {
-            ServerWsTopics(
-                di
-            )
-        }
-        bind<WsTopic>() with singleton { WsTopic(di) }
-    }
+val storage = DI.Module("storage") {
+    bind<AgentStorage>() with singleton { AgentStorage() }
+    bind<BuildStorage>() with singleton { BuildStorage() }
 
-val handlers: DI.Builder.(Application) -> Unit
-    get() = { _ ->
-        bind<DrillAdminEndpoints>() with eagerSingleton {
-            DrillAdminEndpoints(
-                di
-            )
-        }
-        bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
-        bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(di) }
-        bind<VersionEndpoints>() with eagerSingleton { VersionEndpoints(di) }
-        bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
-        bind<AgentInstanceEndpoints>() with eagerSingleton { AgentInstanceEndpoints(di) }
-        bind<NotificationEndpoints>() with eagerSingleton { NotificationEndpoints(di) }
-        bind<RequestValidator>() with eagerSingleton { RequestValidator(di) }
+    bind<CacheService>() with eagerSingleton {
+        val app by di.instance<Application>()
+        if (app.drillCacheType == "mapdb")
+            MapDBCacheService()
+        else
+            JvmCacheService()
     }
+    bind<GroupManager>() with eagerSingleton { GroupManager(di) }
+    bind<AgentManager>() with eagerSingleton { AgentManager(di) }
+    bind<BuildManager>() with eagerSingleton { BuildManager(di) }
+    bind<SessionStorage>() with eagerSingleton { SessionStorage() }
+    bind<AgentDataCache>() with eagerSingleton { AgentDataCache() }
+    bind<NotificationManager>() with eagerSingleton { NotificationManager(di) }
+    bind<LoggingHandler>() with eagerSingleton { LoggingHandler(di) }
+    bind<ConfigHandler>() with eagerSingleton { ConfigHandler(di) }
+}
+
+val wsHandler = DI.Module("wsHandler") {
+    bind<DrillPluginWs>() with eagerSingleton { DrillPluginWs(di) }
+    bind<TopicResolver>() with eagerSingleton {
+        TopicResolver(
+            di
+        )
+    }
+    bind<ServerWsTopics>() with eagerSingleton {
+        ServerWsTopics(
+            di
+        )
+    }
+    bind<WsTopic>() with singleton { WsTopic(di) }
+}
+
+val handlers = DI.Module("handlers") {
+    bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
+    bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(di) }
+    bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
+    bind<AgentInstanceEndpoints>() with eagerSingleton { AgentInstanceEndpoints(di) }
+}

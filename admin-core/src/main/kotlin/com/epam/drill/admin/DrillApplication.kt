@@ -15,15 +15,22 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.auth.*
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.*
 import com.epam.drill.admin.di.*
-import com.epam.drill.admin.kodein.*
+import com.epam.drill.admin.endpoints.admin.adminRoutes
+import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
+import com.epam.drill.admin.endpoints.admin.agentRoutes
+import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
+import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
+import com.epam.drill.admin.group.groupRoutes
+import com.epam.drill.admin.notification.notificationRoutes
+import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.store.*
+import com.epam.drill.admin.version.versionRoutes
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -32,11 +39,14 @@ import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import mu.*
 import org.flywaydb.core.*
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.ktor.di
 import java.time.*
 
 
@@ -44,14 +54,51 @@ private val logger = KotlinLogging.logger {}
 
 @Suppress("unused")
 fun Application.module() {
-    install(StatusPages) {
-        exception<Throwable> { cause ->
-            logger.error(cause) { "Build application finished with exception" }
-            call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-            throw cause
-        }
-        authStatusPages()
+    installPlugins()
+    initDB()
+    di {
+        import(jwtServicesDIModule)
+        import(apiKeyServicesDIModule)
+        if (simpleAuthEnabled) import(simpleAuthDIModule)
+        if (oauth2Enabled) import(oauthDIModule)
+        import(authConfigDIModule)
+        import(drillAdminDIModule)
     }
+
+    install(StatusPages) {
+        authStatusPages()
+        if (oauth2Enabled) oauthStatusPages()
+        defaultStatusPages()
+    }
+    install(Authentication) {
+
+        configureJwtAuthentication(closestDI())
+        configureApiKeyAuthentication(closestDI())
+        if (oauth2Enabled) configureOAuthAuthentication(closestDI())
+    }
+    routing {
+        drillAdminRoutes()
+    }
+    routing {
+        if (oauth2Enabled) configureOAuthRoutes()
+        route("/api") {
+            if (simpleAuthEnabled) userAuthenticationRoutes()
+            authenticate("jwt") {
+                userProfileRoutes()
+                userApiKeyRoutes()
+            }
+            authenticate("jwt", "api-key") {
+                withRole(ADMIN) {
+                    userManagementRoutes()
+                    apiKeyManagementRoutes()
+                }
+            }
+        }
+    }
+}
+
+
+private fun Application.installPlugins() {
     install(CallLogging)
     install(Locations)
     install(WebSockets) {
@@ -84,31 +131,27 @@ fun Application.module() {
     }
 
     install(RoleBasedAuthorization)
+}
 
-    kodein {
-        withKModule { kodeinModule("securityConfig", securityDiConfig) }
-        withKModule { kodeinModule("usersConfig", usersDiConfig) }
-        withKModule { kodeinModule("storage", storage) }
-        withKModule { kodeinModule("wsHandler", wsHandler) }
-        withKModule { kodeinModule("handlers", handlers) }
-        withKModule { kodeinModule("pluginServices", pluginServices) }
-        initDB()
+private fun StatusPages.Configuration.defaultStatusPages() {
+    exception<Throwable> { cause ->
+        logger.error(cause) { "Failed to process the request ${this.context.request.path()}" }
+        call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
+        throw cause
     }
+}
 
-    routing {
-        loginRoute()
-        route("/api") {
-            userAuthenticationRoutes()
-            authenticate("jwt") {
-                userProfileRoutes()
-            }
-            authenticate("jwt", "basic") {
-                withRole(ADMIN) {
-                    userManagementRoutes()
-                }
-            }
-        }
-    }
+fun Routing.drillAdminRoutes() {
+    uiConfigRoute()
+    adminWebSocketRoute()
+    agentRoutes()
+    versionRoutes()
+    requestValidatorRoutes()
+    pluginDispatcherRoutes()
+    adminRoutes()
+    groupRoutes()
+    notificationRoutes()
+    pluginWebSocketRoute()
 }
 
 private fun Application.initDB() {
@@ -142,3 +185,11 @@ private fun Application.initDB() {
 }
 
 lateinit var hikariConfig: HikariConfig
+
+val Application.oauth2Enabled: Boolean
+    get() = environment.config.config("drill.auth.oauth2")
+        .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
+
+val Application.simpleAuthEnabled: Boolean
+    get() = environment.config.config("drill.auth.simple")
+        .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false

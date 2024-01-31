@@ -28,15 +28,9 @@ repositories {
     mavenCentral()
 }
 
-@Suppress("HasPlatformType")
-val jarDependencies by configurations.creating {
-    attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_API))
-}
-configurations.implementation.get().extendsFrom(jarDependencies)
-
 dependencies {
-    jarDependencies(project(":test2code-api"))
-    jarDependencies(project(":test2code-common"))
+    implementation(project(":test2code-api"))
+    implementation(project(":test2code-common"))
 
     compileOnly("org.jetbrains.kotlinx:atomicfu:$atomicfuVersion")
 
@@ -72,17 +66,6 @@ tasks {
     }
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
-    }
-    shadowJar {
-        isZip64 = true
-        configurations = listOf(jarDependencies)
-        archiveFileName.set("admin-part.jar")
-        destinationDirectory.set(file("$buildDir/shadowLibs"))
-        dependencies {
-            exclude("/META-INF/**", "/*.class", "/*.html")
-        }
-        relocate("org.jacoco", "${project.group}.shadow.org.jacoco")
-        relocate("org.objectweb", "${project.group}.shadow.org.objectweb")
     }
 }
 

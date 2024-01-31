@@ -18,13 +18,15 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.UserRepository
-import com.epam.drill.admin.auth.route.userManagementRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.service.impl.UserManagementServiceImpl
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.auth.service.PasswordGenerator
 import io.ktor.application.*
+import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -39,14 +41,16 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.di
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.verifyBlocking
 import org.mockito.kotlin.whenever
+import java.time.LocalDateTime
 import kotlin.test.*
 
 val USER_ADMIN
-    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN").copy()
+    get() = UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = "ADMIN")
 val USER_USER
-    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER").copy()
+    get() = UserEntity(id = 2, username = "user", passwordHash = "hash2", role = "USER")
 
 /**
  * Testing /users routers and UserManagementServiceImpl
@@ -57,6 +61,8 @@ class UserManagementTest {
     lateinit var userRepository: UserRepository
     @Mock
     lateinit var passwordService: PasswordService
+    @Mock
+    lateinit var passwordGenerator: PasswordGenerator
 
     @BeforeTest
     fun setup() {
@@ -69,7 +75,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findAll() }
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { getUsersRoute() }) {
             with(handleRequest(HttpMethod.Get, "/users") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -82,10 +88,15 @@ class UserManagementTest {
 
     @Test
     fun `given existing user identifier 'GET users {id}' must return the respective user`() {
-        wheneverBlocking(userRepository) { findById(1) }
-            .thenReturn(USER_ADMIN)
+        val testRegistrationDate = LocalDateTime.of(2023, 1, 10, 12, 0, 0)
+        wheneverBlocking(userRepository) { findById(1) }.thenReturn(
+            UserEntity(
+                id = 1, username = "admin", passwordHash = "hash", role = Role.ADMIN.name,
+                registrationDate = testRegistrationDate
+            )
+        )
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { getUserRoute() }) {
             with(handleRequest(HttpMethod.Get, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -99,9 +110,11 @@ class UserManagementTest {
     @Test
     fun `given user identifier and role 'PUT users {id}' must change user role in repository and return changed user`() {
         wheneverBlocking(userRepository) { findById(1) }
-            .thenReturn(USER_ADMIN)
+            .thenReturn(UserEntity(id = 1, username = "admin", passwordHash = "hash1", role = Role.ADMIN.name))
+        wheneverBlocking(userRepository) { update(any()) }
+            .thenAnswer(CopyUser)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { editUserRoute() }) {
             with(handleRequest(HttpMethod.Put, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
@@ -120,7 +133,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { deleteUserRoute() }) {
             with(handleRequest(HttpMethod.Delete, "/users/1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -135,7 +148,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { blockUserRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/block") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -150,7 +163,7 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { unblockUserRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/unblock") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -164,12 +177,12 @@ class UserManagementTest {
     fun `given user identifier 'PATCH users {id} reset-password' must generate and return a new password of that user`() {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
-        whenever(passwordService.generatePassword())
+        whenever(passwordGenerator.generatePassword())
             .thenReturn("newsecret")
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
 
-        withTestApplication(config) {
+        withTestApplication(withRoute { resetPasswordRoute() }) {
             with(handleRequest(HttpMethod.Patch, "/users/1/reset-password") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }) {
@@ -179,7 +192,119 @@ class UserManagementTest {
         }
     }
 
-    private val config: Application.() -> Unit = {
+    @Test
+    fun `given user identifier equal to current user, 'DELETE users {id}' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                deleteUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Delete, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given user identifier equal to current user, 'PATCH users {id} block' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                blockUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Patch, "/users/123/block") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given user identifier equal to current user, 'PUT users {id}' must fail`() {
+        withTestApplication(withRoute {
+            authenticate {
+                editUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Put, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = EditUserPayload(role = Role.USER)
+                setBody(Json.encodeToString(EditUserPayload.serializer(), form))
+                addJwtToken("foo", userId = 123)
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given external user, 'PATCH users {id} reset-password' must fail`() {
+        wheneverBlocking(userRepository) { findById(123) }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(withRoute {
+            resetPasswordRoute()
+        }) {
+            with(handleRequest(HttpMethod.Patch, "/users/123/reset-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `given external user with external role management, 'PUT users {id}' must fail`() {
+        wheneverBlocking(userRepository) { findById(123) }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(moduleFunction = {
+            install(Locations)
+            install(ContentNegotiation) {
+                json()
+            }
+            di {
+                bind<UserRepository>() with eagerSingleton { userRepository }
+                bind<PasswordService>() with eagerSingleton { passwordService }
+                bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
+                bind<UserManagementService>() with eagerSingleton {
+                    UserManagementServiceImpl(
+                        userRepository = instance(),
+                        passwordService = instance(),
+                        passwordGenerator = instance(),
+                        externalRoleManagement = true
+                    )
+                }
+            }
+            install(StatusPages) {
+                authStatusPages()
+            }
+            routing {
+                editUserRoute()
+            }
+        }) {
+            with(handleRequest(HttpMethod.Put, "/users/123") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                val form = EditUserPayload(role = Role.ADMIN)
+                setBody(Json.encodeToString(EditUserPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
         install(Locations)
         install(ContentNegotiation) {
             json()
@@ -187,15 +312,23 @@ class UserManagementTest {
         di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
             bind<UserManagementService>() with eagerSingleton {
                 UserManagementServiceImpl(
-                    instance(),
-                    instance()
+                    userRepository = instance(),
+                    passwordService = instance(),
+                    passwordGenerator = instance(),
                 )
             }
         }
+        install(StatusPages) {
+            authStatusPages()
+        }
+        install(Authentication) {
+            jwtMock()
+        }
         routing {
-            userManagementRoutes()
+            route()
         }
     }
 }
