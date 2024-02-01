@@ -24,7 +24,6 @@ import com.epam.drill.admin.config.*
 import com.epam.drill.admin.endpoints.*
 import com.epam.drill.admin.endpoints.admin.*
 import com.epam.drill.admin.endpoints.agent.*
-import com.epam.drill.admin.endpoints.instance.AgentInstanceEndpoints
 import com.epam.drill.admin.endpoints.plugin.*
 import com.epam.drill.admin.group.*
 import com.epam.drill.admin.notification.*
@@ -91,5 +90,4 @@ val handlers = DI.Module("handlers") {
     bind<LocationRouteService>() with eagerSingleton { LocationAttributeRouteService() }
     bind<PluginDispatcher>() with eagerSingleton { PluginDispatcher(di) }
     bind<GroupHandler>() with eagerSingleton { GroupHandler(di) }
-    bind<AgentInstanceEndpoints>() with eagerSingleton { AgentInstanceEndpoints(di) }
 }
