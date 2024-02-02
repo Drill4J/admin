@@ -75,7 +75,6 @@ fun Routing.agentInstanceRoutes() {
                     agentManager.attach(agentConfig)
                 }
                 processPluginData(pd, agentInfo, InitInfo())
-                call.addDrillInternalHeader()
                 call.respond(HttpStatusCode.OK)
             }
 
@@ -83,7 +82,7 @@ fun Routing.agentInstanceRoutes() {
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<CoverageData>()
                     processPluginData(pd, agentInfo, data.toCoverDataPart())
-                    call.addDrillInternalHeader()
+
                 }
             }
 
@@ -91,13 +90,11 @@ fun Routing.agentInstanceRoutes() {
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<ClassMetadata>()
                     processPluginData(pd, agentInfo, data.toInitDataPart())
-                    call.addDrillInternalHeader()
                 }
             }
             post<Agents.ClassMetadataComplete> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     processPluginData(pd, agentInfo, Initialized())
-                    call.addDrillInternalHeader()
                 }
             }
         }
@@ -113,6 +110,7 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.handleAgentRequest(
 ) {
     agentManager.getOrNull(agentId)
         ?.let { agentInfo ->
+            call.addDrillInternalHeader()
             when (agentInfo.build.version) {
                 buildVersion -> {
                     val response = handler(agentInfo)
