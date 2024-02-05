@@ -108,9 +108,9 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.handleAgentRequest(
     buildVersion: String,
     handler: suspend (AgentInfo) -> Any
 ) {
+    call.addDrillInternalHeader()
     agentManager.getOrNull(agentId)
         ?.let { agentInfo ->
-            call.addDrillInternalHeader()
             when (agentInfo.build.version) {
                 buildVersion -> {
                     val response = handler(agentInfo)
