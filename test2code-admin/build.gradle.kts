@@ -15,6 +15,7 @@ plugins {
 group = "com.epam.drill.plugins.test2code"
 version = rootProject.version
 
+val ktorVersion: String by parent!!.extra
 val kotlinxCoroutinesVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxCollectionsVersion: String by parent!!.extra
@@ -40,6 +41,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
     implementation(project(":plugin-api-admin"))
 
     api(project(":dsm"))
