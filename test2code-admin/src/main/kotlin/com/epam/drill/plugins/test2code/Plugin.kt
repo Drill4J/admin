@@ -17,6 +17,7 @@ package com.epam.drill.plugins.test2code
 
 
 import com.epam.drill.common.AgentInfo
+import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugin.api.AdminData
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.test2code.api.*
@@ -43,6 +44,11 @@ import java.io.Closeable
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.Executors
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.apache.Apache
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.KotlinxSerializer
+import io.ktor.client.request.*
 
 const val TEST2CODE_PLUGIN = "test2code"
 
@@ -95,6 +101,12 @@ class Plugin(
 
     private val _state = atomic<AgentState?>(null)
 
+    private var jsCoverageConverterAddress = appConfig.config("test2code")
+            .propertyOrNull("jsCoverageConverterAddress")
+            ?.getString()
+            ?.takeIf { it.isNotBlank() }
+            ?: "http://localhost:8092" // TODO think of default
+    
     /**
      * Initialize the plugin state
      * @features Agent registration
@@ -205,17 +217,21 @@ class Plugin(
          * @features Running tests
          */
         is AddSessionData -> action.payload.run {
-            sessionHolder.sessions[sessionId]?.let { session ->
-                ActionResult(
-                    code = StatusCodes.OK,
-                    data = "Successfully received session data",
-                    agentAction = mapOf<String, Any>(
-                        "session" to session.id,
-                        "data" to this.data,
-                        "skipSerialize" to true
-                    )
+
+            if (AgentType.valueOf(agentInfo.agentType) != AgentType.NODEJS) return okResult
+
+            try {
+                val agentId = agentInfo.id
+                val groupId = agentInfo.serviceGroup
+                val buildVersion =  agentInfo.buildVersion
+                sendPostRequest(
+                    "$jsCoverageConverterAddress/groups/$groupId/agents/$agentId/builds/$buildVersion/v8-coverage",
+                    action
                 )
-            } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
+                okResult
+            } catch (e: Throwable) {
+                ActionResult(StatusCodes.ERROR, "Request to convert JavaScript V8 coverage failed: $e")
+            }
         }
 
         is AddCoverage -> action.payload.run {
@@ -826,5 +842,20 @@ class Plugin(
             data = null
         )
         logger.debug { "Global session for agent $agentId was created." }
+    }
+}
+
+suspend fun sendPostRequest(url: String, data: Any) {
+    val client = HttpClient(Apache) {
+        install(JsonFeature) {
+            serializer = KotlinxSerializer(Json {
+                ignoreUnknownKeys = true
+            })
+        }
+    }
+
+    client.post<String>(url) {
+        header("Content-Type", "application/json")
+        body = data
     }
 }
