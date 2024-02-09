@@ -93,10 +93,12 @@ fun Application.module() {
                     apiKeyManagementRoutes()
                 }
             }
+            authenticate("api-key") {
+                tryApiKeyRoute()
+            }
         }
     }
 }
-
 
 private fun Application.installPlugins() {
     install(CallLogging)
