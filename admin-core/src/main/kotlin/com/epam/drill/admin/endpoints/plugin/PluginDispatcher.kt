@@ -49,6 +49,7 @@ import org.kodein.di.*
 import java.io.*
 import kotlin.reflect.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
+import org.kodein.di.ktor.closestDI
 import com.epam.drill.plugins.test2code.common.api.CoverMessage
 
 internal class PluginDispatcher(override val di: DI) : DIAware {
@@ -62,10 +63,16 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
     private val buildManager by instance<BuildManager>()
     private val cacheService by instance<CacheService>()
 
+    /**
+     * Receive data from agents
+     * @param agentInfo the information about the agent
+     * @param instanceId the agent instance ID
+     * @param pluginData the application data
+     */
     suspend fun processPluginData(
         agentInfo: AgentInfo,
         pluginId: String,
-        pluginData: CoverMessage
+        pluginData: CoverMessage,
     ) {
         plugins[pluginId]?.let {
             val agentEntry = agentManager.entryOrNull(agentInfo.id)!!
@@ -75,8 +82,8 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         } ?: logger.error { "Plugin $pluginId not loaded!" }
     }
 
-    init {
-        app.routing {
+    fun initRouting(routing: Routing) {
+        with(routing) {
             plugins.forEach { (pluginId, plugin) ->
                 val pluginRouters = pluginRoutes(pluginId)
                 logger.debug { "start register routes for '$pluginId' size ${pluginRouters.size} $pluginRouters..." }
@@ -84,7 +91,7 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
                     createPluginGetRoute(destination)
                 }
             }
-            authenticate("jwt", "basic") {
+            authenticate("jwt", "api-key") {
                 withRole(Role.USER, Role.ADMIN) {
                 post<ApiRoot.Agents.DispatchPluginAction, String>(
                     "Dispatch Plugin Action"
@@ -394,6 +401,11 @@ internal class PluginDispatcher(override val di: DI) : DIAware {
         }
         return HttpStatusCode.OK to statusesResponse
     }
+}
+
+fun Routing.pluginDispatcherRoutes() {
+    val pluginDispatcher by closestDI().instance<PluginDispatcher>()
+    pluginDispatcher.initRouting(this)
 }
 
 private fun Any.toStatusResponse(): WithStatusCode = when (this) {

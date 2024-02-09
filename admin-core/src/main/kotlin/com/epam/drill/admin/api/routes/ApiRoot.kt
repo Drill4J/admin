@@ -40,6 +40,10 @@ class ApiRoot(val prefix: String = "api") {
     data class Version(val parent: ApiRoot)
 
     @Group(SYSTEM)
+    @Location("/ui-config")
+    data class UIConfig(val parent: ApiRoot)
+
+    @Group(SYSTEM)
     @Location("/cache")
     data class Cache(val parent: ApiRoot) {
         @Group(SYSTEM)

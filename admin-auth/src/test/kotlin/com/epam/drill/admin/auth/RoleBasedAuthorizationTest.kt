@@ -121,9 +121,9 @@ class RoleBasedAuthorizationTest {
             basic {
                 validate {
                     when (it.name) {
-                        "user" -> User(it.name, USER)
-                        "admin" -> User(it.name, ADMIN)
-                        else -> User(it.name, Role.UNDEFINED)
+                        "user" -> User(1, it.name, USER)
+                        "admin" -> User(2, it.name, ADMIN)
+                        else -> User(3, it.name, Role.UNDEFINED)
                     }
                 }
             }

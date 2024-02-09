@@ -16,6 +16,8 @@
 package com.epam.drill.admin.endpoints.instance
 
 import com.epam.drill.admin.agent.AgentInfo
+import com.epam.drill.admin.auth.config.withRole
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
 import com.epam.drill.common.agent.configuration.AgentMetadata
@@ -24,11 +26,10 @@ import com.epam.drill.plugins.test2code.common.api.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.kodein.di.DI
-import org.kodein.di.DIAware
 import org.kodein.di.instance
 import com.epam.drill.plugins.test2code.common.transport.*
 import io.ktor.application.*
+import io.ktor.auth.authenticate
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -42,6 +43,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
+import org.kodein.di.ktor.closestDI
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
@@ -61,87 +63,79 @@ object Agents {
     data class ClassMetadataComplete(val agentId: String, val buildVersion: String)
 }
 
-class AgentInstanceEndpoints(override val di: DI) : DIAware {
-    private val app by instance<Application>()
-    private val agentManager by instance<AgentManager>()
-    private val pd by instance<PluginDispatcher>()
-
-    init {
-        app.routing {
-            registerAgentInstanceRoute()
-            sendCoverageRoute()
-            sendClassMetadataRoute()
-            completeSendingClassMetadataRoute()
-        }
-    }
-
-    private fun Route.registerAgentInstanceRoute() {
-        put<Agents> {
-            val agentConfig = call.decompressAndReceive<AgentMetadata>()
-            val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
-                agentManager.attach(agentConfig)
-            }
-            processPluginData(agentInfo, InitInfo())
-            call.respond(HttpStatusCode.OK)
-        }
-    }
-
-    private fun Route.sendCoverageRoute() {
-        post<Agents.Coverage> { params ->
-            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
-                val data = call.decompressAndReceive<CoverageData>()
-                processPluginData(agentInfo, data.toCoverDataPart())
-            }
-        }
-    }
-
-    private fun Route.sendClassMetadataRoute() {
-        post<Agents.ClassMetadata> { params ->
-            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
-                val data = call.decompressAndReceive<ClassMetadata>()
-                processPluginData(agentInfo, data.toInitDataPart())
-            }
-        }
-    }
-
-    private fun Route.completeSendingClassMetadataRoute() {
-        post<Agents.ClassMetadataComplete> { params ->
-            handleAgentRequest(params.agentId, params.buildVersion) { agentInfo ->
-                processPluginData(agentInfo, Initialized())
-            }
-        }
-    }
-
-    private suspend fun PipelineContext<Unit, ApplicationCall>.handleAgentRequest(
-        agentId: String,
-        buildVersion: String,
-        handler: suspend (AgentInfo) -> Any
-    ) {
-        agentManager.getOrNull(agentId)
-            ?.let { agentInfo ->
-                when (agentInfo.build.version) {
-                    buildVersion -> {
-                        val response = handler(agentInfo)
-                        call.respond(HttpStatusCode.OK, response)
-                    }
-
-                    else -> {
-                        logger.error { "The active build version of agent $agentId is ${agentInfo.build.version}, but the request has $buildVersion build version!" }
-                        call.respond(HttpStatusCode.Conflict)
-                    }
+fun Routing.agentInstanceRoutes() {
+    val app by closestDI().instance<Application>()
+    val agentManager by closestDI().instance<AgentManager>()
+    val pd by closestDI().instance<PluginDispatcher>()
+    authenticate("api-key") {
+        withRole(Role.USER, Role.ADMIN) {
+            put<Agents> {
+                val agentConfig = call.decompressAndReceive<AgentMetadata>()
+                val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
+                    agentManager.attach(agentConfig)
                 }
-            } ?: call.respond(HttpStatusCode.NotFound).also {
-            logger.error { "Agent $agentId is not attached!" }
-        }
-    }
+                processPluginData(pd, agentInfo, InitInfo())
+                call.respond(HttpStatusCode.OK)
+            }
 
-    private suspend fun <T : CoverMessage> processPluginData(
-        agentInfo: AgentInfo,
-        data: T
-    ) {
-        pd.processPluginData(agentInfo, TEST2CODE_PLUGIN, data)
+            post<Agents.Coverage> { params ->
+                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
+                    val data = call.decompressAndReceive<CoverageData>()
+                    processPluginData(pd, agentInfo, data.toCoverDataPart())
+
+                }
+            }
+
+            post<Agents.ClassMetadata> { params ->
+                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
+                    val data = call.decompressAndReceive<ClassMetadata>()
+                    processPluginData(pd, agentInfo, data.toInitDataPart())
+                }
+            }
+            post<Agents.ClassMetadataComplete> { params ->
+                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
+                    processPluginData(pd, agentInfo, Initialized())
+                }
+            }
+        }
     }
 }
+
+
+private suspend fun PipelineContext<Unit, ApplicationCall>.handleAgentRequest(
+    agentManager: AgentManager,
+    agentId: String,
+    buildVersion: String,
+    handler: suspend (AgentInfo) -> Any
+) {
+    call.addDrillInternalHeader()
+    agentManager.getOrNull(agentId)
+        ?.let { agentInfo ->
+            when (agentInfo.build.version) {
+                buildVersion -> {
+                    val response = handler(agentInfo)
+                    call.respond(HttpStatusCode.OK, response)
+                }
+
+                else -> {
+                    logger.error { "The active build version of agent $agentId is ${agentInfo.build.version}, but the request has $buildVersion build version!" }
+                    call.respond(HttpStatusCode.Conflict)
+                }
+            }
+        } ?: call.respond(HttpStatusCode.NotFound).also {
+        logger.error { "Agent $agentId is not attached!" }
+    }
+}
+
+private suspend fun <T : CoverMessage> processPluginData(
+    pd: PluginDispatcher,
+    agentInfo: AgentInfo,
+    data: T
+) {
+    pd.processPluginData(agentInfo, TEST2CODE_PLUGIN, data)
+}
+
+private fun ApplicationCall.addDrillInternalHeader() = this.response.header("drill-internal", "true")
 
 private fun ClassMetadata.toInitDataPart() = InitDataPart(
     astEntities = astEntities

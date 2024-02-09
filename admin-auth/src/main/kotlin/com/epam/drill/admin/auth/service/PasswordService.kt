@@ -15,15 +15,22 @@
  */
 package com.epam.drill.admin.auth.service
 
-interface PasswordService: PasswordGenerator, PasswordValidator {
+/**
+ * A service for working with passwords.
+ */
+interface PasswordService {
+    /**
+     * Hashes the given password.
+     * @param password the password to be hashed
+     * @return the hashed password
+     */
     fun hashPassword(password: String): String
-    fun matchPasswords(candidate: String, hashed: String): Boolean
-}
 
-interface PasswordGenerator {
-    fun generatePassword(): String
-}
-
-interface PasswordValidator {
-    fun validatePasswordRequirements(password: String)
+    /**
+     * Compares the given non hashed password with the hashed one.
+     * @param candidate the non hashed password
+     * @param hashed the hashed password to compare
+     * @return true if the passwords match
+     */
+    fun matchPasswords(candidate: String, hashed: String?): Boolean
 }

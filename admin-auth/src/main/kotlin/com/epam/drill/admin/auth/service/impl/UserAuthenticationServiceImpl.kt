@@ -23,11 +23,13 @@ import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.auth.service.PasswordValidator
 
 
 class UserAuthenticationServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val passwordValidator: PasswordValidator,
 ) : UserAuthenticationService {
     override suspend fun signIn(payload: LoginPayload): UserInfoView {
         val userEntity = userRepository.findByUsername(payload.username)?.takeIf { userEntity ->
@@ -35,29 +37,31 @@ class UserAuthenticationServiceImpl(
         } ?: throw NotAuthenticatedException("Username or password is incorrect")
         if (userEntity.blocked || Role.UNDEFINED.name == userEntity.role)
             throw NotAuthorizedException()
-        return userEntity.toView()
+        return userEntity.toUserInfoView()
     }
 
     override suspend fun signUp(payload: RegistrationPayload) {
         if (userRepository.findByUsername(payload.username) != null)
             throw UserValidationException("User '${payload.username}' already exists")
-        passwordService.validatePasswordRequirements(payload.password)
+        passwordValidator.validatePasswordRequirements(payload.password)
         val passwordHash = passwordService.hashPassword(payload.password)
         userRepository.create(payload.toUserEntity(passwordHash))
     }
 
     override suspend fun getUserInfo(principal: User): UserInfoView {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
-        return userEntity.toView()
+        return userEntity.toUserInfoView()
     }
 
     override suspend fun updatePassword(principal: User, payload: ChangePasswordPayload) {
         val userEntity = userRepository.findByUsername(principal.username) ?: throw UserNotFoundException()
+        if (userEntity.external)
+            throw ForbiddenOperationException("Cannot update password for external user")
         if (!passwordService.matchPasswords(payload.oldPassword, userEntity.passwordHash))
             throw UserValidationException("Old password is incorrect")
-        passwordService.validatePasswordRequirements(payload.newPassword)
-        userEntity.passwordHash = passwordService.hashPassword(payload.newPassword)
-        userRepository.update(userEntity)
+        passwordValidator.validatePasswordRequirements(payload.newPassword)
+        val newPasswordHash = passwordService.hashPassword(payload.newPassword)
+        userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
     }
 
 }
@@ -66,13 +70,6 @@ private fun RegistrationPayload.toUserEntity(passwordHash: String): UserEntity {
     return UserEntity(
         username = this.username,
         passwordHash = passwordHash,
-        role = Role.UNDEFINED.name,
-    )
-}
-
-private fun UserEntity.toView(): UserInfoView {
-    return UserInfoView(
-        username = this.username,
-        role = Role.valueOf(this.role)
+        role = Role.UNDEFINED.name
     )
 }

@@ -33,10 +33,18 @@ suspend fun ApplicationCall.validationError(cause: Exception) {
     respond(HttpStatusCode.BadRequest, MessageResponse(cause.message ?: "User data is invalid"))
 }
 
-suspend fun ApplicationCall.unauthorizedError(cause: Exception) {
-    respond(HttpStatusCode.Unauthorized, MessageResponse(cause.message ?: "User is not authenticated"))
+suspend fun ApplicationCall.unauthorizedError(cause: Exception? = null) {
+    respond(HttpStatusCode.Unauthorized, MessageResponse(cause?.message ?: "User is not authenticated"))
 }
 
-suspend fun ApplicationCall.accessDeniedError(cause: Exception) {
-    respond(HttpStatusCode.Forbidden, MessageResponse(cause.message ?: "Access denied"))
+suspend fun ApplicationCall.accessDeniedError(cause: Exception? = null) {
+    respond(HttpStatusCode.Forbidden, MessageResponse(cause?.message ?: "Access denied"))
+}
+
+suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null) {
+    respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: "Unprocessable entity"))
+}
+
+suspend fun ApplicationCall.notFound(cause: Exception) {
+    respond(HttpStatusCode.NotFound, MessageResponse(cause.message ?: "Entity not found"))
 }

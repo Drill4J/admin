@@ -15,6 +15,7 @@ plugins {
 group = "com.epam.drill.plugins.test2code"
 version = rootProject.version
 
+val ktorVersion: String by parent!!.extra
 val kotlinxCoroutinesVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxCollectionsVersion: String by parent!!.extra
@@ -28,15 +29,9 @@ repositories {
     mavenCentral()
 }
 
-@Suppress("HasPlatformType")
-val jarDependencies by configurations.creating {
-    attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_API))
-}
-configurations.implementation.get().extendsFrom(jarDependencies)
-
 dependencies {
-    jarDependencies(project(":test2code-api"))
-    jarDependencies(project(":test2code-common"))
+    implementation(project(":test2code-api"))
+    implementation(project(":test2code-common"))
 
     compileOnly("org.jetbrains.kotlinx:atomicfu:$atomicfuVersion")
 
@@ -46,6 +41,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$kotlinxCollectionsVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
     implementation(project(":plugin-api-admin"))
 
     api(project(":dsm"))
@@ -72,17 +71,6 @@ tasks {
     }
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "1.8"
-    }
-    shadowJar {
-        isZip64 = true
-        configurations = listOf(jarDependencies)
-        archiveFileName.set("admin-part.jar")
-        destinationDirectory.set(file("$buildDir/shadowLibs"))
-        dependencies {
-            exclude("/META-INF/**", "/*.class", "/*.html")
-        }
-        relocate("org.jacoco", "${project.group}.shadow.org.jacoco")
-        relocate("org.objectweb", "${project.group}.shadow.org.objectweb")
     }
 }
 
