@@ -20,7 +20,7 @@ import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
-import com.epam.drill.common.agent.configuration.AgentConfig
+import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.TEST2CODE_PLUGIN
 import com.epam.drill.plugins.test2code.common.api.*
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +70,7 @@ fun Routing.agentInstanceRoutes() {
     authenticate("api-key") {
         withRole(Role.USER, Role.ADMIN) {
             put<Agents> {
-                val agentConfig = call.decompressAndReceive<AgentConfig>()
+                val agentConfig = call.decompressAndReceive<AgentMetadata>()
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig)
                 }

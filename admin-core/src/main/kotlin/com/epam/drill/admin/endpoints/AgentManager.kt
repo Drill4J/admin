@@ -152,7 +152,7 @@ class AgentManager(override val di: DI) : DIAware {
     ): AgentInfo {
         logger.info { "Attaching agent: config=$config" }
         val id = config.id
-        configHandler.store(id, config.parameters)
+        configHandler.store(id)
         //todo implement merge of params in EPMDJ-8124
         val groupId = config.serviceGroupId
         logger.debug { "Group id '$groupId'" }
@@ -211,7 +211,7 @@ class AgentManager(override val di: DI) : DIAware {
                             description = info.description,
                             environment = info.environment,
                             systemSettings = SystemSettingsDto(
-                                packages = config.packagesPrefixes.packagesPrefixes
+                                packages = config.packagesPrefixes
                             ),
                             plugins = listOf("test2code")
                         )

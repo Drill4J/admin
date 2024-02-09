@@ -21,6 +21,5 @@ import kotlinx.serialization.*
 
 @Serializable
 data class StoredAgentConfig(
-    @Id val agentId: String,
-    val params: Map<String, AgentParameter>
+    @Id val agentId: String
 )
