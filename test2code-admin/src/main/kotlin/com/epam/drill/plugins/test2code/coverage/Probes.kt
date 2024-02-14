@@ -95,6 +95,8 @@ fun Probes.copy(): Probes {
 }
 
 val Probes.size
+    // see ProbesContainer.kt for explanation on .length() - 1
+    // in short: our Probes implementation uses last bit as indicator for end of probes
     get() = maxOf(0, this.length() - 1) //bitcode magic
 
 fun Probes.merge(set: Probes): Probes {
@@ -102,6 +104,17 @@ fun Probes.merge(set: Probes): Probes {
         (0 until length()).forEach {
             set(it, get(it) or set.get(it))
         }
+    }
+}
+
+
+// TODO remove "fun Probes.merge" and rename this function to "merge"
+fun List<Probes>.mergeOr(): Probes {
+    val size = this.get(0).size()
+    // using .fold and not .reduce - bc BitSet.or mutates an object it's called on
+    return fold(Probes(size)) { acc, bitSet ->
+        acc.or(bitSet);
+        acc
     }
 }
 

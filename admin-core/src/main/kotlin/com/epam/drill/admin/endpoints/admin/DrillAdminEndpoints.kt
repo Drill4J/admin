@@ -31,9 +31,11 @@ import de.nielsfalk.ktor.swagger.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.client.utils.*
+import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -68,5 +70,15 @@ fun Routing.adminRoutes() {
                 call.respond(HttpStatusCode.OK, toggleDto)
             }
         }
+    }
+
+}
+
+fun io.ktor.request.ApplicationRequest.ensureQueryParams(vararg params: String) {
+    val missingParams = params.filter { param -> queryParameters[param] == null }
+    if (missingParams.isNotEmpty()) {
+        throw MissingRequestParameterException(
+            "Please provide the following query params ${missingParams.joinToString { ", " }}"
+        )
     }
 }

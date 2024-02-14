@@ -59,6 +59,12 @@ class ApiRoot(val prefix: String = "api") {
     @Location("/analytic/toggle")
     data class ToggleAnalytic(val parent: ApiRoot)
 
+    @Location("/get-report")
+    data class GetReport(val parent: ApiRoot)
+
+    @Location("/get-report-html")
+    data class GetReportHTML(val parent: ApiRoot)
+
     @Group(AGENT)
     @Location("/agents")
     data class Agents(val parent: ApiRoot) {
@@ -85,6 +91,9 @@ class ApiRoot(val prefix: String = "api") {
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/dispatch-action")
         data class DispatchPluginAction(val parent: Agents, val agentId: String, val pluginId: String)
+
+        @Location("/{agentId}/builds/{buildVersion}/poke")
+        data class Poke(val parent: Agents, val agentId: String, val buildVersion: String)
 
         @Group(AGENT_PLUGIN)
         @Location("/{agentId}/plugins/{pluginId}/process-data")

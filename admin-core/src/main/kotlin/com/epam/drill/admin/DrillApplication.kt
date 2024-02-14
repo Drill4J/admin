@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin
 
+import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
@@ -25,6 +26,7 @@ import com.epam.drill.admin.endpoints.admin.adminRoutes
 import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
 import com.epam.drill.admin.endpoints.admin.agentRoutes
 import com.epam.drill.admin.endpoints.instance.agentInstanceRoutes
+import com.epam.drill.admin.endpoints.admin.ensureQueryParams
 import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
 import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
 import com.epam.drill.admin.group.groupRoutes
@@ -32,11 +34,14 @@ import com.epam.drill.admin.notification.notificationRoutes
 import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.versionRoutes
+import com.epam.drill.plugins.test2code.multibranch.service.generateHtmlTable
+import com.epam.drill.plugins.test2code.multibranch.service.getNewRisks
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
+import io.ktor.html.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -44,6 +49,8 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.html.*
 import mu.*
 import org.flywaydb.core.*
 import org.kodein.di.ktor.closestDI
@@ -100,6 +107,8 @@ fun Application.module() {
         }
     }
 }
+
+
 
 private fun Application.installPlugins() {
     install(CallLogging)
@@ -165,6 +174,10 @@ private fun Application.initDB() {
     val userName = drillDatabaseUserName
     val password = drillDatabasePassword
     val maxPoolSize = drillDatabaseMaxPoolSize
+
+    // TODO it might be beneficial to use separate JDBC driver instances for auth module and for test2code ops
+    //  why: auth module does not require batched operations, hence db interop code can be simplified
+    //  e.g. autoCommit might prevent batching, but is very handy for auth-related queries
     hikariConfig = HikariConfig().apply {
         this.driverClassName = "org.postgresql.Driver"
         this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
@@ -173,6 +186,16 @@ private fun Application.initDB() {
         this.maximumPoolSize = maxPoolSize
         this.isAutoCommit = true
         this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+
+        // cleaner way to set connection properties
+        // see https://jdbc.postgresql.org/documentation/use/#connection-parameters
+//        this.addDataSourceProperty("reWriteBatchedInserts", true)
+
+        // TODO investigate best-performing batched insertion
+        // 1. use prepared statement
+        // 2. set reWriteBatchedInserts to true
+        //      - it might _not_ work when isAutoCommit set to true (investigate)
+        // 3. set Statement.RETURN_GENERATED_KEYS to false
         this.validate()
     }
     adminStore.createProcedureIfTableExist()
@@ -185,7 +208,11 @@ private fun Application.initDB() {
         .load()
     flyway.migrate()
 
+    // auth db config
     DatabaseConfig.init(dataSource)
+
+    // test2code raw data db config
+    com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig.init(dataSource)
 }
 
 lateinit var hikariConfig: HikariConfig
