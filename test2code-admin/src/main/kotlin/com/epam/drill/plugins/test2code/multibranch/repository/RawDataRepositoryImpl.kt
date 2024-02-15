@@ -4,11 +4,11 @@ import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.*
+import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
+import com.epam.drill.plugins.test2code.common.transport.CoverageData
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 import com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig
-import com.sun.tracing.Probe
-import io.ktor.util.reflect.*
 
 private const val LONG_TEXT_LENGTH = 65535 // java class name max len
 private const val MEDIUM_TEXT_LENGTH = 2000
@@ -101,12 +101,12 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
         }
     }
 
-    override suspend fun saveInitDataPart(instId: String, initDataPart: InitDataPart) {
+    override suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata) {
         DatabaseConfig.transaction {
             initDataPart.astEntities.flatMap { astEntity ->
                 astEntity.methods.map { astMethod ->
                     AstEntityData(
-                        instanceId = instId,
+                        instanceId = instanceId,
                         className = "${astEntity.path}/${astEntity.name}",
                         name = astMethod.name,
                         params = astMethod.params.joinToString(","),
@@ -131,11 +131,11 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
         }
     }
 
-    override suspend fun saveCoverDataPart(instId: String, coverDataPart: CoverDataPart) {
+    override suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData) {
         val batchSize = 100
         java.sql.Types.BIT
         val sql = "INSERT INTO auth.exec_class_data (instance_id, class_name, test_id, probes) VALUES (?, ?, ?, CAST(? AS VARBIT))"
-        val dataToInsert = coverDataPart.data
+        val dataToInsert = coverDataPart.execClassData
         DatabaseConfig.getDataSource()?.connection.use { connection ->
             if (connection === null) return
 
@@ -151,7 +151,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
 
                 // Iterate through the data and add to the batch
                 for ((_, className, probes, _, testId) in dataToInsert) {
-                    preparedStatement.setString(1, instId)
+                    preparedStatement.setString(1, instanceId)
                     preparedStatement.setString(2, className)
                     preparedStatement.setString(3, testId)
                     // dropLast(1) to remove end of original array indicator - we don't need it in db

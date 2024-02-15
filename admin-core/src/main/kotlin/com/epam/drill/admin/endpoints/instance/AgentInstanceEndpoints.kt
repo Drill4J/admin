@@ -28,6 +28,7 @@ import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.kodein.di.instance
 import com.epam.drill.plugins.test2code.common.transport.*
+import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
 import io.ktor.application.*
 import io.ktor.auth.authenticate
 import io.ktor.features.*
@@ -53,14 +54,14 @@ private val logger = KotlinLogging.logger {}
 @Location("/api/agents")
 object Agents {
 
-    @Location("/{agentId}/builds/{buildVersion}/coverage")
-    data class Coverage(val agentId: String, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/coverage")
+    data class Coverage(val agentId: String, val buildVersion: String, val instanceId: String)
 
-    @Location("/{agentId}/builds/{buildVersion}/class-metadata")
-    data class ClassMetadata(val agentId: String, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata")
+    data class ClassMetadata(val agentId: String, val buildVersion: String, val instanceId: String)
 
-    @Location("/{agentId}/builds/{buildVersion}/class-metadata/complete")
-    data class ClassMetadataComplete(val agentId: String, val buildVersion: String)
+    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata/complete")
+    data class ClassMetadataComplete(val agentId: String, val buildVersion: String, val instanceId: String)
 }
 
 fun Routing.agentInstanceRoutes() {
@@ -74,6 +75,7 @@ fun Routing.agentInstanceRoutes() {
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig)
                 }
+                RawDataRepositoryImpl.saveAgentConfig(agentConfig)
                 processPluginData(pd, agentInfo, InitInfo())
                 call.respond(HttpStatusCode.OK)
             }
@@ -82,16 +84,18 @@ fun Routing.agentInstanceRoutes() {
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<CoverageData>()
                     processPluginData(pd, agentInfo, data.toCoverDataPart())
-
+                    RawDataRepositoryImpl.saveCoverDataPart(params.instanceId, data)
                 }
             }
 
             post<Agents.ClassMetadata> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<ClassMetadata>()
+                    RawDataRepositoryImpl.saveInitDataPart(params.instanceId, data)
                     processPluginData(pd, agentInfo, data.toInitDataPart())
                 }
             }
+
             post<Agents.ClassMetadataComplete> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     processPluginData(pd, agentInfo, Initialized())
