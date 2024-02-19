@@ -1,8 +1,11 @@
 package com.epam.drill.plugins.test2code.multibranch.service
 
-import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
 import com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig
-import kotlinx.serialization.json.*
+import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 
 suspend fun versionCoverage(agentId: String, buildVersion: String) {
     val agent = RawDataRepositoryImpl.getAgentConfigs(agentId, buildVersion)
