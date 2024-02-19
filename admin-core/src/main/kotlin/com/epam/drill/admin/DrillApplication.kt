@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin
 
-import com.epam.drill.admin.api.routes.ApiRoot
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
@@ -26,16 +25,12 @@ import com.epam.drill.admin.endpoints.admin.adminRoutes
 import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
 import com.epam.drill.admin.endpoints.admin.agentRoutes
 import com.epam.drill.admin.endpoints.instance.agentInstanceRoutes
-import com.epam.drill.admin.endpoints.admin.ensureQueryParams
 import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
 import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
 import com.epam.drill.admin.group.groupRoutes
 import com.epam.drill.admin.notification.notificationRoutes
-import com.epam.drill.admin.service.requestValidatorRoutes
 import com.epam.drill.admin.store.*
 import com.epam.drill.admin.version.versionRoutes
-import com.epam.drill.plugins.test2code.multibranch.service.generateHtmlTable
-import com.epam.drill.plugins.test2code.multibranch.service.getNewRisks
 import com.epam.dsm.*
 import com.zaxxer.hikari.*
 import io.ktor.application.*
@@ -49,7 +44,6 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
-import kotlinx.serialization.json.JsonElement
 import kotlinx.html.*
 import mu.*
 import org.flywaydb.core.*
@@ -159,7 +153,6 @@ fun Routing.drillAdminRoutes() {
     agentRoutes()
     agentInstanceRoutes()
     versionRoutes()
-    requestValidatorRoutes()
     pluginDispatcherRoutes()
     adminRoutes()
     groupRoutes()

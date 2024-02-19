@@ -18,59 +18,78 @@ package com.epam.drill.admin.endpoints.instance
 import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.config.drillConfig
 import com.epam.drill.admin.endpoints.AgentManager
 import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.TEST2CODE_PLUGIN
+import com.epam.drill.plugins.test2code.api.AddSessionData
+import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import mu.KotlinLogging
-import org.kodein.di.instance
 import com.epam.drill.plugins.test2code.common.transport.*
 import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
+import com.epam.drill.plugins.test2code.sendPostRequest
 import io.ktor.application.*
-import io.ktor.auth.authenticate
+import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
-import io.ktor.locations.put
 import io.ktor.locations.post
+import io.ktor.locations.put
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
+import mu.KotlinLogging
+import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 
 private val logger = KotlinLogging.logger {}
+object Paths {
+    @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/instances/{instanceId}")
+    data class Instance(val groupId: String, val agentId: String, val buildVersion: String, val instanceId: String)
 
-@Location("/api/agents")
-object Agents {
+    @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/instances/{instanceId}/coverage")
+    data class Coverage(val groupId: String, val agentId: String, val buildVersion: String, val instanceId: String)
 
-    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/coverage")
-    data class Coverage(val agentId: String, val buildVersion: String, val instanceId: String)
+    @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata")
+    data class ClassMetadata(val groupId: String, val agentId: String, val buildVersion: String, val instanceId: String)
 
-    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata")
-    data class ClassMetadata(val agentId: String, val buildVersion: String, val instanceId: String)
+    @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata/complete")
+    data class ClassMetadataComplete(val groupId: String, val agentId: String, val buildVersion: String, val instanceId: String)
 
-    @Location("/{agentId}/builds/{buildVersion}/instances/{instanceId}/class-metadata/complete")
-    data class ClassMetadataComplete(val agentId: String, val buildVersion: String, val instanceId: String)
+    @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/raw-javascript-coverage")
+    data class RawJavaScriptCoverage(val groupId: String, val agentId: String, val buildVersion: String)
+
+    @Location("/api/groups/{groupId}/tests-metadata")
+    data class TestMetadataRoute(val groupId: String)
 }
 
+
 fun Routing.agentInstanceRoutes() {
+
+    val jsCoverageConverterAddress = application.drillConfig.config("test2code")
+        .propertyOrNull("jsCoverageConverterAddress")
+        ?.getString()
+        ?.takeIf { it.isNotBlank() }
+        ?: "http://localhost:8092" // TODO think of default
+
     val app by closestDI().instance<Application>()
     val agentManager by closestDI().instance<AgentManager>()
     val pd by closestDI().instance<PluginDispatcher>()
     authenticate("api-key") {
         withRole(Role.USER, Role.ADMIN) {
-            put<Agents> {
+
+            put<Paths.Instance> {
                 val agentConfig = call.decompressAndReceive<AgentMetadata>()
                 val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
                     agentManager.attach(agentConfig)
@@ -80,7 +99,7 @@ fun Routing.agentInstanceRoutes() {
                 call.respond(HttpStatusCode.OK)
             }
 
-            post<Agents.Coverage> { params ->
+            post<Paths.Coverage> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<CoverageData>()
                     processPluginData(pd, agentInfo, data.toCoverDataPart())
@@ -88,7 +107,7 @@ fun Routing.agentInstanceRoutes() {
                 }
             }
 
-            post<Agents.ClassMetadata> { params ->
+            post<Paths.ClassMetadata> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     val data = call.decompressAndReceive<ClassMetadata>()
                     RawDataRepositoryImpl.saveInitDataPart(params.instanceId, data)
@@ -96,10 +115,33 @@ fun Routing.agentInstanceRoutes() {
                 }
             }
 
-            post<Agents.ClassMetadataComplete> { params ->
+            post<Paths.ClassMetadataComplete> { params ->
                 handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
                     processPluginData(pd, agentInfo, Initialized())
                 }
+            }
+
+            post<Paths.TestMetadataRoute> { params ->
+                // TODO use universal Router.handleResponse function to add header and respond ok
+                call.addDrillInternalHeader()
+
+                val data = call.decompressAndReceive<AddTestsPayload>()
+                RawDataRepositoryImpl.saveTestMetadata(data)
+
+                call.respond(HttpStatusCode.OK)
+            }
+
+            post<Paths.RawJavaScriptCoverage> { params ->
+                call.addDrillInternalHeader()
+                val (groupId, agentId, buildVersion) = params
+                val data = call.decompressAndReceive<AddSessionData>()
+
+                sendPostRequest(
+                    "$jsCoverageConverterAddress/groups/${groupId}/agents/${agentId}/builds/${buildVersion}/v8-coverage",
+                    data
+                )
+
+                call.respond(HttpStatusCode.OK)
             }
         }
     }

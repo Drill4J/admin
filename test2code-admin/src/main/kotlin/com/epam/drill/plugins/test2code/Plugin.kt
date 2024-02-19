@@ -102,12 +102,6 @@ class Plugin(
 
     private val _state = atomic<AgentState?>(null)
 
-    private var jsCoverageConverterAddress = appConfig.config("test2code")
-            .propertyOrNull("jsCoverageConverterAddress")
-            ?.getString()
-            ?.takeIf { it.isNotBlank() }
-            ?: "http://localhost:8092" // TODO think of default
-    
     /**
      * Initialize the plugin state
      * @features Agent registration
@@ -139,120 +133,6 @@ class Plugin(
         action: Action,
         data: Any?,
     ): ActionResult = when (action) {
-        is ToggleBaseline -> toggleBaseline()
-        is SwitchActiveScope -> {okResult }
-        is RenameScope -> { okResult}
-        is ToggleScope -> { okResult }
-        is DropScope -> { okResult}
-
-        is CreateFilter -> {
-            val newFilter = action.payload
-            logger.debug { "creating filter with $newFilter..." }
-            val isNotExistFilter = storeClient.findBy<StoredFilter> {
-                (StoredFilter::name eq newFilter.name) and (StoredFilter::agentId eq agentId)
-            }.get().isEmpty()
-            if (isNotExistFilter) {
-                calculateFilter(newFilter.toStoredFilter(agentId))
-            } else ActionResult(code = StatusCodes.CONFLICT, data = "Filter with this name already exists")
-        }
-
-        is DuplicateFilter -> {
-            val filterId = action.payload.id
-            val filter = storeClient.findById<StoredFilter>(filterId)
-            logger.debug { "duplicate name $filter..." }
-            filter?.let { storedFilter ->
-                val filterName = storedFilter.name
-                val maxIndex = storeClient.findBy<StoredFilter> {
-                    StoredFilter::name like "$filterName($ANY)"
-                }.getAndMap(StoredFilter::name).maxOfOrNull {
-                    it.substringAfterLast("(").substringBeforeLast(")").toInt()
-                } ?: 0
-                val duplicateName = "$filterName(${maxIndex + 1})"
-                logger.debug { "from $filterName is created new name: $duplicateName" }
-                ActionResult(code = StatusCodes.OK, data = duplicateName)
-            } ?: ActionResult(code = StatusCodes.BAD_REQUEST, data = "Filter with this id is not found")
-        }
-
-        is UpdateFilter -> {
-            val updateFilter = action.payload
-            val filterId = updateFilter.id
-            storeClient.findById<StoredFilter>(filterId)?.let {
-                logger.debug { "updating filter with id '$filterId': $updateFilter" }
-                calculateFilter(updateFilter.toStoredFilter(agentId))
-            } ?: ActionResult(StatusCodes.BAD_REQUEST, "Can not find the filter with id '$filterId'")
-        }
-
-        is ApplyFilter -> {
-            val filterId = action.payload.id
-            val filter = storeClient.findById<StoredFilter>(filterId)
-            logger.debug { "applying $filter..." }
-            filter?.let {
-                calculateFilter(it)
-            } ?: ActionResult(code = StatusCodes.BAD_REQUEST, data = "Filter with this id is not found")
-        }
-
-        is DeleteFilter -> {
-            val filterId = action.payload.id
-            logger.debug { "deleting filter with id '$filterId'" }
-            storeClient.deleteById<StoredFilter>(filterId)
-            sendFilterUpdates(filterId)
-            okResult
-        }
-
-        is RemoveBuild -> {
-            val version = action.payload.version
-            if (version != buildVersion && version != state.coverContext().parentBuild?.agentKey?.buildVersion) {
-                storeClient.removeBuildData(AgentKey(agentId, version), state.sessionHolderManager)
-                okResult
-            } else ActionResult(code = StatusCodes.BAD_REQUEST, data = "Can not remove a current or baseline build")
-        }
-
-        is RemovePluginData -> {
-            storeClient.removeAllPluginData(agentId)
-            okResult
-        }
-
-        is UpdateSettings -> updateSettings(action.payload)
-
-        /**
-         * @features Running tests
-         */
-        is AddSessionData -> action.payload.run {
-
-            if (AgentType.valueOf(agentInfo.agentType) != AgentType.NODEJS) return okResult
-
-            try {
-                val agentId = agentInfo.id
-                val groupId = agentInfo.serviceGroup
-                val buildVersion =  agentInfo.buildVersion
-                sendPostRequest(
-                    "$jsCoverageConverterAddress/groups/$groupId/agents/$agentId/builds/$buildVersion/v8-coverage",
-                    action
-                )
-                okResult
-            } catch (e: Throwable) {
-                ActionResult(StatusCodes.ERROR, "Request to convert JavaScript V8 coverage failed: $e")
-            }
-        }
-
-        is AddCoverage -> action.payload.run {
-            sessionHolder.addProbes(sessionId) {
-                this.data.map { probes ->
-                    ExecClassData(
-                        className = probes.name,
-                        testId = probes.testId,
-                        probes = probes.probes.toBitSet()
-                    )
-                }
-            }?.run {
-                okResult
-            } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
-        }
-
-        is ExportCoverage -> exportCoverage(action.payload.version)
-        is ImportCoverage -> (data as? InputStream)?.let {
-            importCoverage(it)
-        } ?: ActionResult(StatusCodes.BAD_REQUEST, "Error while parsing form-data parameters")
 
         /**
          * @features Running tests
@@ -270,25 +150,6 @@ class Plugin(
         }
 
         /**
-         * @features Session starting
-         */
-        is StartNewSession -> action.payload.run {
-            val newSessionId = sessionId.ifEmpty(::genUuid)
-            val isRealtimeSession = runtimeConfig.realtime && isRealtime
-            val labels = labels + Label("Session", newSessionId)
-            sessionHolder.createSession(
-                newSessionId,
-                testType,
-                isGlobal,
-                isRealtimeSession,
-                testName,
-                labels
-            )
-            //Leave okResult as stub (for autotest-agent)
-            okResult
-        }
-
-        /**
          * @features Session finishing
          */
         is StopSession -> action.payload.run {
@@ -301,31 +162,14 @@ class Plugin(
                 okResult
             } ?: ActionResult(StatusCodes.NOT_FOUND, "Active session '$sessionId' not found.")
         }
-        is CancelSession -> action.payload.run {
-            deprecatedResult
-        }
-
-        is StopAllSessions -> {
-            okResult
-        }
-
-        is CancelAllSessions -> {
-            okResult
-        }
 
         else -> "Action '$action' is not supported!".let { message ->
             logger.error { message }
-            ActionResult(StatusCodes.BAD_REQUEST, message)
+            ActionResult(code = StatusCodes.OK, data = "message")
         }
 
     }
 
-    private suspend fun Plugin.calculateFilter(filter: StoredFilter): ActionResult {
-        val filterId = calculateAndSendFilteredCoverageInBuild(filter)
-        storeClient.store(filter)
-        sendFilterUpdates(filterId, filter)
-        return ActionResult(code = StatusCodes.OK, data = filterId)
-    }
 
     /**
      * Process data from agents
