@@ -17,23 +17,17 @@ package com.epam.drill.plugins.test2code
 
 
 import com.epam.drill.common.AgentInfo
-import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugin.api.AdminData
 import com.epam.drill.plugin.api.end.*
 import com.epam.drill.plugins.test2code.api.*
 import com.epam.drill.plugins.test2code.api.routes.Routes
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.coverage.*
-import com.epam.drill.plugins.test2code.coverage.id
 import com.epam.drill.plugins.test2code.global_filter.*
 import com.epam.drill.plugins.test2code.group.*
-import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
 import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.StoreClient
-import com.epam.dsm.find.Expr.Companion.ANY
-import com.epam.dsm.find.get
-import com.epam.dsm.find.getAndMap
 import com.epam.dsm.util.logPoolStats
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -45,16 +39,9 @@ import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.Closeable
-import java.io.InputStream
 import java.util.*
 import java.util.concurrent.Executors
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.apache.Apache
-import io.ktor.client.features.json.JsonFeature
-import io.ktor.client.features.json.serializer.KotlinxSerializer
-import io.ktor.client.request.*
 
 const val TEST2CODE_PLUGIN = "test2code"
 
