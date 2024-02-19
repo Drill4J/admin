@@ -35,6 +35,11 @@ import com.epam.dsm.find.Expr.Companion.ANY
 import com.epam.dsm.find.get
 import com.epam.dsm.find.getAndMap
 import com.epam.dsm.util.logPoolStats
+import io.ktor.client.*
+import io.ktor.client.engine.apache.*
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.request.*
 import io.ktor.config.*
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
