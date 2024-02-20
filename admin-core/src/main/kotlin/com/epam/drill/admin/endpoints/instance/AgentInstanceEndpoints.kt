@@ -15,14 +15,10 @@
  */
 package com.epam.drill.admin.endpoints.instance
 
-import com.epam.drill.admin.agent.AgentInfo
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.config.drillConfig
-import com.epam.drill.admin.endpoints.AgentManager
-import com.epam.drill.admin.endpoints.plugin.PluginDispatcher
 import com.epam.drill.common.agent.configuration.AgentMetadata
-import com.epam.drill.plugins.test2code.TEST2CODE_PLUGIN
 import com.epam.drill.plugins.test2code.api.AddSessionData
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.*
@@ -40,20 +36,17 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
 import mu.KotlinLogging
-import org.kodein.di.instance
-import org.kodein.di.ktor.closestDI
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 
 private val logger = KotlinLogging.logger {}
+
 object Paths {
     @Location("/api/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/instances/{instanceId}")
     data class Instance(val groupId: String, val agentId: String, val buildVersion: String, val instanceId: String)
@@ -74,8 +67,12 @@ object Paths {
     data class TestMetadataRoute(val groupId: String)
 }
 
-
 fun Routing.agentInstanceRoutes() {
+
+    intercept(ApplicationCallPipeline.Call) {
+        call.response.header("drill-internal", "true")
+        proceed()
+    }
 
     val jsCoverageConverterAddress = application.drillConfig.config("test2code")
         .propertyOrNull("jsCoverageConverterAddress")
@@ -83,113 +80,58 @@ fun Routing.agentInstanceRoutes() {
         ?.takeIf { it.isNotBlank() }
         ?: "http://localhost:8092" // TODO think of default
 
-    val app by closestDI().instance<Application>()
-    val agentManager by closestDI().instance<AgentManager>()
-    val pd by closestDI().instance<PluginDispatcher>()
     authenticate("api-key") {
         withRole(Role.USER, Role.ADMIN) {
-
             put<Paths.Instance> {
-                val agentConfig = call.decompressAndReceive<AgentMetadata>()
-                val agentInfo: AgentInfo = withContext(Dispatchers.IO) {
-                    agentManager.attach(agentConfig)
+                handleRequest<AgentMetadata> { data ->
+                    RawDataRepositoryImpl.saveAgentConfig(data)
                 }
-                RawDataRepositoryImpl.saveAgentConfig(agentConfig)
-                processPluginData(pd, agentInfo, InitInfo())
-                call.respond(HttpStatusCode.OK)
             }
 
             post<Paths.Coverage> { params ->
-                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
-                    val data = call.decompressAndReceive<CoverageData>()
-                    processPluginData(pd, agentInfo, data.toCoverDataPart())
+                handleRequest<CoverageData> { data ->
                     RawDataRepositoryImpl.saveCoverDataPart(params.instanceId, data)
                 }
             }
 
             post<Paths.ClassMetadata> { params ->
-                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
-                    val data = call.decompressAndReceive<ClassMetadata>()
+                handleRequest<ClassMetadata> { data ->
                     RawDataRepositoryImpl.saveInitDataPart(params.instanceId, data)
-                    processPluginData(pd, agentInfo, data.toInitDataPart())
                 }
             }
 
             post<Paths.ClassMetadataComplete> { params ->
-                handleAgentRequest(agentManager, params.agentId, params.buildVersion) { agentInfo ->
-                    processPluginData(pd, agentInfo, Initialized())
-                }
+                call.respond(HttpStatusCode.OK, "Deprecated")
             }
 
             post<Paths.TestMetadataRoute> { params ->
-                // TODO use universal Router.handleResponse function to add header and respond ok
-                call.addDrillInternalHeader()
-
-                val data = call.decompressAndReceive<AddTestsPayload>()
-                RawDataRepositoryImpl.saveTestMetadata(data)
-
-                call.respond(HttpStatusCode.OK)
-            }
+                handleRequest<AddTestsPayload> { data ->
+                    RawDataRepositoryImpl.saveTestMetadata(data)
+                }
+           }
 
             post<Paths.RawJavaScriptCoverage> { params ->
-                call.addDrillInternalHeader()
-                val (groupId, agentId, buildVersion) = params
-                val data = call.decompressAndReceive<AddSessionData>()
-
-                sendPostRequest(
-                    "$jsCoverageConverterAddress/groups/${groupId}/agents/${agentId}/builds/${buildVersion}/v8-coverage",
-                    data
-                )
-
-                call.respond(HttpStatusCode.OK)
+                handleRequest<AddSessionData> { data ->
+                    val (groupId, agentId, buildVersion) = params
+                    sendPostRequest(
+                        "$jsCoverageConverterAddress/groups/${groupId}/agents/${agentId}/builds/${buildVersion}/v8-coverage",
+                        data
+                    )
+                    // send empty response (to avoid returning response from js-converter (js-agent))
+                    ""
+                }
             }
         }
     }
 }
 
-
-private suspend fun PipelineContext<Unit, ApplicationCall>.handleAgentRequest(
-    agentManager: AgentManager,
-    agentId: String,
-    buildVersion: String,
-    handler: suspend (AgentInfo) -> Any
+private suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.handleRequest(
+    handler: (data: T) -> Any
 ) {
-    call.addDrillInternalHeader()
-    agentManager.getOrNull(agentId)
-        ?.let { agentInfo ->
-            when (agentInfo.build.version) {
-                buildVersion -> {
-                    val response = handler(agentInfo)
-                    call.respond(HttpStatusCode.OK, response)
-                }
-
-                else -> {
-                    logger.error { "The active build version of agent $agentId is ${agentInfo.build.version}, but the request has $buildVersion build version!" }
-                    call.respond(HttpStatusCode.Conflict)
-                }
-            }
-        } ?: call.respond(HttpStatusCode.NotFound).also {
-        logger.error { "Agent $agentId is not attached!" }
-    }
+    val data = call.decompressAndReceive<T>()
+    val response = handler(data)
+    call.respond(HttpStatusCode.OK, response)
 }
-
-private suspend fun <T : CoverMessage> processPluginData(
-    pd: PluginDispatcher,
-    agentInfo: AgentInfo,
-    data: T
-) {
-    pd.processPluginData(agentInfo, TEST2CODE_PLUGIN, data)
-}
-
-private fun ApplicationCall.addDrillInternalHeader() = this.response.header("drill-internal", "true")
-
-private fun ClassMetadata.toInitDataPart() = InitDataPart(
-    astEntities = astEntities
-)
-
-private fun CoverageData.toCoverDataPart() = CoverDataPart(
-    data = execClassData
-)
 
 internal fun <T> deserializeProtobuf(data: ByteArray, serializer: KSerializer<T>): T {
     return ProtoBuf.decodeFromByteArray(serializer, data)
