@@ -13,17 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.plugins.test2code.multibranch.repository
+package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.common.agent.configuration.AgentMetadata
-import com.epam.drill.plugins.test2code.api.AddTestsPayload
-import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
-import com.epam.drill.plugins.test2code.common.transport.CoverageData
 
-interface RawDataRepositoryWriter {
-    suspend fun saveAgentConfig(agentConfig: AgentMetadata)
-    suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata)
-    suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData)
-    suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload)
-
+interface RawDataRepositoryReader {
+    suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata>
+    suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData>
+    suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData>
 }

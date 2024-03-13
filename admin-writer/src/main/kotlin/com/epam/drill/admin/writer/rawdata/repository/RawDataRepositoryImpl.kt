@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.plugins.test2code.multibranch.repository
+package com.epam.drill.admin.writer.rawdata.repository
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.Probes
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
-import com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 
@@ -30,7 +31,7 @@ private const val MEDIUM_TEXT_LENGTH = 2000
 private const val SHORT_TEXT_LENGTH = 255
 //object AgentConfigTable : IntIdTable("test2code.agent_config") {
 
-object AgentConfigTable : IntIdTable("auth.agent_config") {
+object AgentConfigTable : IntIdTable("raw_data.agent_config") {
     val agentId = varchar("agent_id",  SHORT_TEXT_LENGTH)
     val instanceId = varchar("instance_id",  SHORT_TEXT_LENGTH)
     val serviceGroupId = varchar("service_group_id",  SHORT_TEXT_LENGTH)
@@ -41,7 +42,7 @@ object AgentConfigTable : IntIdTable("auth.agent_config") {
 
 //object AstMethodTable : IntIdTable("test2code.ast_method") {
 
-object AstMethodTable : IntIdTable("auth.ast_method") {
+object AstMethodTable : IntIdTable("raw_data.ast_method") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
     val className = varchar("class_name",  LONG_TEXT_LENGTH)
     val name = varchar("name",  LONG_TEXT_LENGTH)
@@ -64,7 +65,7 @@ data class AstEntityData(
 )
 
 //object ExecClassDataTable : IntIdTable("test2code.exec_class_data") {
-object ExecClassDataTable : IntIdTable("auth.exec_class_data") {
+object ExecClassDataTable : IntIdTable("raw_data.exec_class_data") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
     val className = varchar("class_name",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
@@ -86,7 +87,7 @@ fun Table.myAwesomeColumn(name: String, nullable: Boolean = false): Column<ByteA
     registerColumn(name, MyAwesomeColumnType(nullable))
 
 
-object TestMetadataTable : IntIdTable("auth.test_metadata") {
+object TestMetadataTable : IntIdTable("raw_data.test_metadata") {
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
     val name = varchar("name",  MEDIUM_TEXT_LENGTH)
     val type = varchar("type",  SHORT_TEXT_LENGTH)
@@ -103,7 +104,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
 
     // RawDataRepositoryWriter
     override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
-        DatabaseConfig.transaction {
+        transaction {
             AgentConfigTable
                 .insert {
                     it[agentId] = agentConfig.id
@@ -117,7 +118,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     }
 
     override suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata) {
-        DatabaseConfig.transaction {
+        transaction {
             initDataPart.astEntities.flatMap { astEntity ->
                 astEntity.methods.map { astMethod ->
                     AstEntityData(
@@ -149,9 +150,9 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     override suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData) {
         val batchSize = 100
         java.sql.Types.BIT
-        val sql = "INSERT INTO auth.exec_class_data (instance_id, class_name, test_id, probes) VALUES (?, ?, ?, CAST(? AS VARBIT))"
+        val sql = "INSERT INTO raw_data.exec_class_data (instance_id, class_name, test_id, probes) VALUES (?, ?, ?, CAST(? AS VARBIT))"
         val dataToInsert = coverDataPart.execClassData
-        DatabaseConfig.getDataSource()?.connection.use { connection ->
+        RawDataWriterDatabaseConfig.getDataSource()?.connection.use { connection ->
             if (connection === null) return
 
             // TODO does it affect other connection consumers?
@@ -199,7 +200,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     }
 
     override suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload) {
-        DatabaseConfig.transaction {
+        transaction {
             // addTestsPayload.sessionId
             addTestsPayload.tests.map { test ->
                 TestMetadata(
@@ -248,7 +249,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
 
     // RawDataRepositoryReader
     override suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata> {
-        return DatabaseConfig.transaction {
+        return transaction {
             AgentConfigTable
                 .select { (AgentConfigTable.agentId eq agentId) and (AgentConfigTable.buildVersion eq buildVersion) }
                 .map { it.toAgentConfig() }
@@ -256,7 +257,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     }
 
     override suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData> {
-        return DatabaseConfig.transaction {
+        return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
             AstMethodTable
                 .select { AstMethodTable.instanceId inList instanceIds }
@@ -268,7 +269,7 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     }
 
     override suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData> {
-        return DatabaseConfig.transaction {
+        return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
             ExecClassDataTable
                 .select { ExecClassDataTable.instanceId inList instanceIds }
