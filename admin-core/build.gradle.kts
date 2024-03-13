@@ -65,6 +65,7 @@ dependencies {
     implementation("io.ktor:ktor-html-builder:$ktorVersion")
 
     implementation(project(":admin-auth"))
+    implementation(project(":admin-writer"))
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))
