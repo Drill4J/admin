@@ -29,11 +29,6 @@ import com.epam.drill.plugins.test2code.storage.*
 import com.epam.drill.plugins.test2code.util.*
 import com.epam.dsm.StoreClient
 import com.epam.dsm.util.logPoolStats
-import io.ktor.client.*
-import io.ktor.client.engine.apache.*
-import io.ktor.client.features.json.JsonFeature
-import io.ktor.client.features.json.serializer.*
-import io.ktor.client.request.*
 import io.ktor.config.*
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
@@ -683,20 +678,5 @@ class Plugin(
             data = null
         )
         logger.debug { "Global session for agent $agentId was created." }
-    }
-}
-
-suspend fun sendPostRequest(url: String, data: Any) {
-    val client = HttpClient(Apache) {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(Json {
-                ignoreUnknownKeys = true
-            })
-        }
-    }
-
-    client.post<String>(url) {
-        header("Content-Type", "application/json")
-        body = data
     }
 }
