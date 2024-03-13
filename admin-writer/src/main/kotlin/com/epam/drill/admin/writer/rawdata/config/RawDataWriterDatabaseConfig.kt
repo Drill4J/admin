@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.plugins.test2code.multibranch.rawdata.config
+package com.epam.drill.admin.writer.rawdata.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -22,24 +22,21 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import javax.sql.DataSource
 
-object DatabaseConfig {
-
+object RawDataWriterDatabaseConfig {
     private var database: Database? = null
     private var dispatcher: CoroutineDispatcher = Dispatchers.IO
     private var dataSource: DataSource? = null
 
-    fun getDataSource() = this.dataSource
+    fun getDataSource(): DataSource? = dataSource
 
     fun init(dataSource: DataSource) {
         this.dataSource = dataSource
-        database = Database.connect(dataSource)
+        this.database = Database.connect(dataSource)
         Flyway.configure()
             .dataSource(dataSource)
-            .schemas("auth")
-//            .schemas("test2code")
+            .schemas("raw_data")
             .baselineOnMigrate(true)
-            .locations("classpath:auth/db/migration")
-//            .locations("classpath:test2code/db/migration")
+            .locations("classpath:raw_data/db/migration")
             .load()
             .migrate()
     }

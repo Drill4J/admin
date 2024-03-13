@@ -64,7 +64,13 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("io.ktor:ktor-html-builder:$ktorVersion")
 
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
+    implementation("io.ktor:ktor-client-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+
     implementation(project(":admin-auth"))
+    implementation(project(":admin-writer"))
     implementation(project(":admin-analytics"))
     implementation(project(":common"))
     implementation(project(":plugin-api-admin"))

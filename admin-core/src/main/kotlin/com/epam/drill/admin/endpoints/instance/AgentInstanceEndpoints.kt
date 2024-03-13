@@ -23,8 +23,12 @@ import com.epam.drill.plugins.test2code.api.AddSessionData
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.common.transport.*
-import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
-import com.epam.drill.plugins.test2code.sendPostRequest
+import com.epam.drill.admin.writer.rawdata.repository.RawDataRepositoryImpl
+import io.ktor.client.*
+import io.ktor.client.engine.apache.*
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.request.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -165,5 +169,20 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
                 request.headers[HttpHeaders.ContentType] ?: "application/octet-stream"
             )
         )
+    }
+}
+
+internal suspend fun sendPostRequest(url: String, data: Any) {
+    val client = HttpClient(Apache) {
+        install(JsonFeature) {
+            serializer = KotlinxSerializer(Json {
+                ignoreUnknownKeys = true
+            })
+        }
+    }
+
+    client.post<String>(url) {
+        header("Content-Type", "application/json")
+        body = data
     }
 }

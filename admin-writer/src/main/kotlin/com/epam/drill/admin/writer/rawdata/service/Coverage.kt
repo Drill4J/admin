@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.plugins.test2code.multibranch.service
+package com.epam.drill.admin.writer.rawdata.service
 
-import com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig
-import com.epam.drill.plugins.test2code.multibranch.repository.RawDataRepositoryImpl
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.repository.RawDataRepositoryImpl
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -40,7 +40,7 @@ suspend fun getNewRisks(newInstanceId: String, oldInstanceId: String): List<Json
 suspend fun executeQuery(sqlQuery: String): List<JsonObject> {
     val result = mutableListOf<JsonObject>()
 
-    DatabaseConfig.getDataSource()?.connection.use { connection ->
+    RawDataWriterDatabaseConfig.getDataSource()?.connection.use { connection ->
         connection?.prepareStatement(sqlQuery)?.use { preparedStatement ->
             val resultSet = preparedStatement.executeQuery()
             val metaData = resultSet.metaData
@@ -104,7 +104,7 @@ fun methodCoverage() {
                 class_name,
                 BIT_OR(probes) AS or_result
             FROM
-                auth.exec_class_data
+                raw_data.exec_class_data
         --     WHERE class_name LIKE '%io/spring/api/ArticleApi%' -- filter by class
             GROUP BY
                 instance_id, class_name
@@ -119,7 +119,7 @@ fun methodCoverage() {
             am.*,
             ad.*
         FROM
-            auth.ast_method am
+            raw_data.ast_method am
         JOIN
             AggregatedData ad ON am.instance_id = ad.instance_id AND am.class_name = ad.class_name
         -- WHERE am.class_name LIKE '%io/spring/api/ArticleApi%'; -- filter by class
@@ -140,7 +140,7 @@ fun classCoverage() {
             LENGTH(BIT_OR(probes)::VARBIT) AS result_length,
             BIT_OR(probes) AS or_result
         FROM
-            auth.exec_class_data
+            raw_data.exec_class_data
         -- WHERE class_name like '%ArticleFavoriteCount%' -- filter by class
         GROUP BY
             instance_id, class_name
@@ -167,7 +167,7 @@ fun packageCoverage() {
                 BIT_COUNT(BIT_OR(probes)) AS set_bits_count,
                 LENGTH(BIT_OR(probes)::VARBIT) AS result_length
             FROM
-                auth.exec_class_data
+                raw_data.exec_class_data
             GROUP BY
                 instance_id, class_name, package_name
         ) AS subquery
@@ -194,7 +194,7 @@ fun totalCoverage() {
                 BIT_COUNT(BIT_OR(probes)) AS set_bits_count,
                 LENGTH(BIT_OR(probes)::VARBIT) AS result_length
             FROM
-                auth.exec_class_data
+                raw_data.exec_class_data
             GROUP BY
                 instance_id, class_name
         ) AS subquery
@@ -208,11 +208,11 @@ fun risksNewQuery(newInstanceId: String, oldInstanceId: String): String {
     // language=SQL
     return """
         SELECT *
-        FROM auth.ast_method AS q2
+        FROM raw_data.ast_method AS q2
         WHERE instance_id = '$newInstanceId'
         AND NOT EXISTS (
             SELECT 1
-            FROM auth.ast_method AS q1
+            FROM raw_data.ast_method AS q1
             WHERE q1.instance_id = '$oldInstanceId'
             AND q1.class_name = q2.class_name
             AND q1.name = q2.name
@@ -226,11 +226,11 @@ fun risksModified() {
     // language=SQL
     """
         SELECT *
-        FROM auth.ast_method AS q2
+        FROM raw_data.ast_method AS q2
         WHERE instance_id = 'a09bae5d-63b8-4507-bddf-125ec7d577e5'
         AND EXISTS (
             SELECT 1
-            FROM auth.ast_method AS q1
+            FROM raw_data.ast_method AS q1
             WHERE q1.instance_id = 'e5763ca2-d47f-47a3-b257-608db197feac'
             AND q1.class_name = q2.class_name
             AND q1.name = q2.name
@@ -250,7 +250,7 @@ fun risksCoverage() {
                     class_name,
                     BIT_OR(probes) AS or_result
                 FROM
-                    auth.exec_class_data
+                    raw_data.exec_class_data
                 WHERE instance_id='8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
                 GROUP BY
                     instance_id, class_name
@@ -268,11 +268,11 @@ fun risksCoverage() {
                 (
                      -- could be replaced with "optimized" version (see bellow)
                     SELECT *
-                    FROM auth.ast_method AS q2
+                    FROM raw_data.ast_method AS q2
                     WHERE instance_id = '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
                     AND NOT EXISTS (
                         SELECT 1
-                        FROM auth.ast_method AS q1
+                        FROM raw_data.ast_method AS q1
                         WHERE q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
                         AND q1.class_name = q2.class_name
                         AND q1.name = q2.name
@@ -281,11 +281,11 @@ fun risksCoverage() {
                     )
                 UNION ALL
                 SELECT *
-                FROM auth.ast_method AS q2
+                FROM raw_data.ast_method AS q2
                 WHERE instance_id =  '8ab0bf7a-4e8e-42ab-9013-e1ca60319d9e'
                 AND EXISTS (
                     SELECT 1
-                    FROM auth.ast_method AS q1
+                    FROM raw_data.ast_method AS q1
                     WHERE q1.instance_id =  '7f553ee8-0842-44c8-b488-7a80cff763e5'
                     AND q1.class_name = q2.class_name
                     AND q1.name = q2.name
@@ -311,9 +311,9 @@ fun associatedTests() {
             ARRAY_AGG(DISTINCT ed.test_id) AS test_ids,
             am.*
         FROM
-            auth.ast_method am
+            raw_data.ast_method am
         JOIN
-            auth.exec_class_data ed ON
+            raw_data.exec_class_data ed ON
                 am.class_name = ed.class_name
             AND am.instance_id = ed.instance_id
         WHERE
@@ -335,9 +335,9 @@ fun coveredMethods() {
         	am.class_name,
             am.name
         FROM
-            auth.ast_method am
+            raw_data.ast_method am
         JOIN
-            auth.exec_class_data ed ON
+            raw_data.exec_class_data ed ON
                 am.class_name = ed.class_name
             AND am.instance_id = ed.instance_id
         WHERE
@@ -361,21 +361,21 @@ fun recommendedTests() {
             ed.test_id,
             am.*
         FROM
-            auth.ast_method am
+            raw_data.ast_method am
         JOIN
-            auth.exec_class_data ed ON
+            raw_data.exec_class_data ed ON
                 am.class_name = ed.class_name
             AND am.instance_id = ed.instance_id
         LEFT JOIN
-            auth.test_metadata tm ON ed.test_id = tm.test_id
+            raw_data.test_metadata tm ON ed.test_id = tm.test_id
         WHERE
             am.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
             AND ed.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
             AND BIT_COUNT(SUBSTRING(ed.probes FROM am.probe_start_pos + 1 FOR am.probes_count)) > 0
             AND EXISTS (
                 SELECT 1
-                FROM auth.ast_method AS q2
-                LEFT JOIN auth.ast_method AS q1
+                FROM raw_data.ast_method AS q2
+                LEFT JOIN raw_data.ast_method AS q1
                     ON q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
                     AND q1.class_name = q2.class_name
                     AND q1.name = q2.name
@@ -390,7 +390,7 @@ fun recommendedTests() {
             )
             AND EXISTS (
                 SELECT 1
-                FROM auth.test_metadata tm
+                FROM raw_data.test_metadata tm
                 WHERE ed.test_id = tm.test_id
             )
         GROUP BY
@@ -405,7 +405,7 @@ fun recommendedTests() {
     WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     BuildMethods AS (
@@ -415,7 +415,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -423,7 +423,7 @@ fun recommendedTests() {
         SELECT
             ecd.class_name,
             BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.class_name
     )
@@ -448,7 +448,7 @@ fun recommendedTests() {
  WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
 		WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
     ),
     BuildMethods AS (
@@ -458,7 +458,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -473,7 +473,7 @@ fun recommendedTests() {
         SELECT
             ecd.class_name,
             BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.class_name
     )
@@ -490,13 +490,13 @@ fun recommendedTests() {
  WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
     ),
     BuildClassNames AS (
 		SELECT class_name
         -- !warning! one cannot simply do SUM(am.probes_count) to get class probe count - bc it'll aggregate dup entries from different instances
-		FROM auth.ast_method am
+		FROM raw_data.ast_method am
 		JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
 		WHERE probes_count > 0
 		GROUP BY class_name
@@ -505,7 +505,7 @@ fun recommendedTests() {
         SELECT
             ecd.class_name,
             BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.class_name
     )
@@ -522,7 +522,7 @@ fun recommendedTests() {
     WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
 	BuildMethods AS (
@@ -532,7 +532,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -560,7 +560,7 @@ fun recommendedTests() {
             class_name,
             BIT_COUNT(BIT_OR(probes)) AS set_bits_count
         FROM
-            auth.exec_class_data ecd
+            raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY
             class_name, package_name
@@ -581,7 +581,7 @@ fun recommendedTests() {
     WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
 		WHERE build_version = '0.2.0' AND agent_id = 'angular-realworld-frontend'
     ),
     BuildMethods AS (
@@ -591,7 +591,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -607,7 +607,7 @@ fun recommendedTests() {
             class_name,
             BIT_COUNT(BIT_OR(probes)) AS set_bits_count
         FROM
-            auth.exec_class_data ecd
+            raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY
             class_name
@@ -622,12 +622,12 @@ fun recommendedTests() {
     WITH
     ABuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
     ),
     BBuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     ABuildMethods AS (
@@ -637,7 +637,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -648,7 +648,7 @@ fun recommendedTests() {
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     )
@@ -666,12 +666,12 @@ fun recommendedTests() {
     WITH
     ABuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
     ),
     BBuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     ABuildMethods AS (
@@ -682,7 +682,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -694,7 +694,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     )
@@ -712,12 +712,12 @@ fun recommendedTests() {
     WITH
     ABuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
     ),
     BBuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     ABuildMethods AS (
@@ -728,7 +728,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN ABuildInstanceIds ON am.instance_id = ABuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -740,7 +740,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BBuildInstanceIds ON am.instance_id = BBuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     )
@@ -766,7 +766,7 @@ fun recommendedTests() {
     WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     BuildMethods AS (
@@ -777,7 +777,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -785,7 +785,7 @@ fun recommendedTests() {
         SELECT
             ecd.class_name,
             BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.class_name
     ),
@@ -793,7 +793,7 @@ fun recommendedTests() {
         WITH
         ParentBuildInstanceIds AS (
             SELECT DISTINCT instance_id
-            FROM auth.agent_config
+            FROM raw_data.agent_config
             WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
         ),
         ParentBuildMethods AS (
@@ -804,7 +804,7 @@ fun recommendedTests() {
                 am.probe_start_pos,
                 am.probes_count,
                 am.body_checksum
-            FROM auth.ast_method am
+            FROM raw_data.ast_method am
             JOIN ParentBuildInstanceIds ON am.instance_id = ParentBuildInstanceIds.instance_id
             WHERE am.probes_count > 0
         )
@@ -839,7 +839,7 @@ fun recommendedTests() {
 	WITH
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.2.0' AND agent_id = 'spring-realworld-backend'
     ),
     BuildMethods AS (
@@ -850,7 +850,7 @@ fun recommendedTests() {
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -859,7 +859,7 @@ fun recommendedTests() {
             ecd.class_name,
 			ecd.test_id,
 			BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
 		GROUP BY ecd.class_name, ecd.test_id
     ),
@@ -867,7 +867,7 @@ fun recommendedTests() {
         WITH
         ParentBuildInstanceIds AS (
             SELECT DISTINCT instance_id
-            FROM auth.agent_config
+            FROM raw_data.agent_config
             WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
         ),
         ParentBuildMethods AS (
@@ -878,7 +878,7 @@ fun recommendedTests() {
                 am.probe_start_pos,
                 am.probes_count,
                 am.body_checksum
-            FROM auth.ast_method am
+            FROM raw_data.ast_method am
             JOIN ParentBuildInstanceIds ON am.instance_id = ParentBuildInstanceIds.instance_id
             WHERE am.probes_count > 0
         )
@@ -920,7 +920,7 @@ fun recommendedTests() {
 				/ LENGTH(BIT_OR(CoverageByRisk.method_or_result)),
 				0) as set_bits_ratio
 		FROM CoverageByRisk
-		LEFT JOIN auth.test_metadata tm ON tm.test_id = CoverageByRisk.test_id
+		LEFT JOIN raw_data.test_metadata tm ON tm.test_id = CoverageByRisk.test_id
 		GROUP BY
 			CoverageByRisk.signature,
 			CoverageByRisk.test_id,
@@ -939,7 +939,7 @@ fun recommendedTests() {
     WITH
     BaselineInstanceIds AS (
         SELECT DISTINCT instance_id, build_version
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE build_version = '0.1.0' AND agent_id = 'spring-realworld-backend'
     ),
     BaselineMethods AS (
@@ -951,13 +951,13 @@ fun recommendedTests() {
             am.probes_count,
             am.body_checksum,
             BaselineInstanceIds.build_version
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN BaselineInstanceIds ON am.instance_id = BaselineInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
     ChildrenInstanceIds AS (
         SELECT DISTINCT instance_id, build_version
-        FROM auth.agent_config
+        FROM raw_data.agent_config
         WHERE
             agent_id = 'spring-realworld-backend'
                                          -- replace this with JOIN on table containing intermediate builds info
@@ -974,7 +974,7 @@ fun recommendedTests() {
             am.probes_count,
             am.body_checksum,
             ChildrenInstanceIds.build_version
-        FROM auth.ast_method am
+        FROM raw_data.ast_method am
         JOIN ChildrenInstanceIds ON am.instance_id = ChildrenInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -1032,7 +1032,7 @@ fun recommendedTests() {
             ecd.class_name,
             build_version,
             BIT_OR(ecd.probes) AS or_result
-        FROM auth.exec_class_data ecd
+        FROM raw_data.exec_class_data ecd
         JOIN ChildrenInstanceIds ON ecd.instance_id = ChildrenInstanceIds.instance_id
         GROUP BY build_version, ecd.class_name
     ),
@@ -1060,8 +1060,8 @@ fun recommendedTests() {
 
 -- all risks "cleaner" version (TODO check if it works correctly)
 SELECT q2.*
-FROM auth.ast_method AS q2
-LEFT JOIN auth.ast_method AS q1
+FROM raw_data.ast_method AS q2
+LEFT JOIN raw_data.ast_method AS q1
     ON q1.instance_id = '7f553ee8-0842-44c8-b488-7a80cff763e5'
     AND q1.class_name = q2.class_name
     AND q1.name = q2.name

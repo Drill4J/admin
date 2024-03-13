@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.config.DatabaseConfig
 import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.di.*
 import com.epam.drill.admin.endpoints.admin.adminRoutes
 import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
@@ -36,7 +37,6 @@ import com.zaxxer.hikari.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
-import io.ktor.html.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
@@ -44,7 +44,6 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
-import kotlinx.html.*
 import mu.*
 import org.flywaydb.core.*
 import org.kodein.di.ktor.closestDI
@@ -203,9 +202,8 @@ private fun Application.initDB() {
 
     // auth db config
     DatabaseConfig.init(dataSource)
-
-    // test2code raw data db config
-    com.epam.drill.plugins.test2code.multibranch.rawdata.config.DatabaseConfig.init(dataSource)
+    // raw data writer db config
+    RawDataWriterDatabaseConfig.init(dataSource)
 }
 
 lateinit var hikariConfig: HikariConfig
