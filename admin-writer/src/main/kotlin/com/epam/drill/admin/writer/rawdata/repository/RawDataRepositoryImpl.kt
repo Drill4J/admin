@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.BitSetColumnType
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
-import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
@@ -26,10 +25,12 @@ import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
+import java.util.*
 
 private const val LONG_TEXT_LENGTH = 65535 // java class name max len
 private const val MEDIUM_TEXT_LENGTH = 2000
 private const val SHORT_TEXT_LENGTH = 255
+private const val EXEC_DATA_BATCH_SIZE = 100
 //object AgentConfigTable : IntIdTable("test2code.agent_config") {
 
 object AgentConfigTable : IntIdTable("raw_data.agent_config") {
@@ -70,7 +71,7 @@ object ExecClassDataTable : IntIdTable("raw_data.exec_class_data") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
     val className = varchar("class_name",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val probes = myAwesomeColumn("probes")
+    val probes = registerColumn<BitSet>("probes", BitSetColumnType())
 }
 
 data class RawCoverageData(
@@ -79,14 +80,6 @@ data class RawCoverageData(
     val testId: String,
     val probes: Probes
 )
-
-class MyAwesomeColumnType(nullable: Boolean = false) : ColumnType(nullable) {
-    override fun sqlType(): String = "VARBIT"
-}
-
-fun Table.myAwesomeColumn(name: String, nullable: Boolean = false): Column<ByteArray> =
-    registerColumn(name, MyAwesomeColumnType(nullable))
-
 
 object TestMetadataTable : IntIdTable("raw_data.test_metadata") {
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
@@ -149,53 +142,14 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
     }
 
     override suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData) {
-        val batchSize = 100
-        java.sql.Types.BIT
-        val sql = "INSERT INTO raw_data.exec_class_data (instance_id, class_name, test_id, probes) VALUES (?, ?, ?, CAST(? AS VARBIT))"
-        val dataToInsert = coverDataPart.execClassData
-        RawDataWriterDatabaseConfig.getDataSource()?.connection.use { connection ->
-            if (connection === null) return
-
-            // TODO does it affect other connection consumers?
-            // Disable auto-commit for batch processing
-            connection.autoCommit = false
-
-            // Prepare the statement
-            val preparedStatement = connection.prepareStatement(sql)
-
-            try {
-                var currentBatchSize = 0
-
-                // Iterate through the data and add to the batch
-                for ((_, className, probes, _, testId) in dataToInsert) {
-                    preparedStatement.setString(1, instanceId)
-                    preparedStatement.setString(2, className)
-                    preparedStatement.setString(3, testId)
-                    // dropLast(1) to remove end of original array indicator - we don't need it in db
-                    preparedStatement.setString(4, probes.toBitString().dropLast(1))
-
-                    preparedStatement.addBatch()
-                    currentBatchSize++
-
-                    // Execute batch periodically
-                    if (currentBatchSize % batchSize == 0) {
-                        preparedStatement.executeBatch()
-                        currentBatchSize = 0
-                    }
+        coverDataPart.execClassData.chunked(EXEC_DATA_BATCH_SIZE).forEach { data ->
+            transaction {
+                ExecClassDataTable.batchInsert(data, shouldReturnGeneratedValues = false) {
+                    this[ExecClassDataTable.instanceId] = instanceId
+                    this[ExecClassDataTable.className] = it.className
+                    this[ExecClassDataTable.testId] = it.testId
+                    this[ExecClassDataTable.probes] = it.probes
                 }
-
-                // Execute the remaining batch
-                preparedStatement.executeBatch()
-
-                // Commit the transaction
-                connection.commit()
-            } catch (e: Exception) {
-                // Rollback the transaction in case of an exception
-                connection.rollback()
-                throw e
-            } finally {
-                // Close the resources
-                preparedStatement.close()
             }
         }
     }
@@ -313,5 +267,5 @@ private fun ResultRow.toRawCoverageData() = RawCoverageData(
     //      probably there is no need to read it back - might as well delete getSomething* methods
     // TODO make sure it works "as intended" and preserves all probes in order
     //      as they were inserted
-    probes = Probes.valueOf(this[ExecClassDataTable.probes]),
+    probes = this[ExecClassDataTable.probes]
 )
