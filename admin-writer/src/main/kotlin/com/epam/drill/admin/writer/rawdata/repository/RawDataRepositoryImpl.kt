@@ -15,45 +15,20 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.writer.rawdata.config.BitSetColumnType
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.table.AgentConfigTable
+import com.epam.drill.admin.writer.rawdata.table.AstMethodTable
+import com.epam.drill.admin.writer.rawdata.table.ExecClassDataTable
+import com.epam.drill.admin.writer.rawdata.table.TestMetadataTable
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.api.Probes
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
-import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
-import java.util.*
 
-private const val LONG_TEXT_LENGTH = 65535 // java class name max len
-private const val MEDIUM_TEXT_LENGTH = 2000
-private const val SHORT_TEXT_LENGTH = 255
 private const val EXEC_DATA_BATCH_SIZE = 100
-//object AgentConfigTable : IntIdTable("test2code.agent_config") {
-
-object AgentConfigTable : IntIdTable("raw_data.agent_config") {
-    val agentId = varchar("agent_id",  SHORT_TEXT_LENGTH)
-    val instanceId = varchar("instance_id",  SHORT_TEXT_LENGTH)
-    val serviceGroupId = varchar("service_group_id",  SHORT_TEXT_LENGTH)
-    val buildVersion = varchar("build_version",  SHORT_TEXT_LENGTH)
-    val agentType = varchar("agent_type",  SHORT_TEXT_LENGTH)
-    val agentVersion = varchar("agent_version",  SHORT_TEXT_LENGTH).nullable()
-}
-
-//object AstMethodTable : IntIdTable("test2code.ast_method") {
-
-object AstMethodTable : IntIdTable("raw_data.ast_method") {
-    val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
-    val className = varchar("class_name",  LONG_TEXT_LENGTH)
-    val name = varchar("name",  LONG_TEXT_LENGTH)
-    val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
-    val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
-    val bodyChecksum = varchar("body_checksum",  20) // crc64 stringified hash
-    val probesCount = integer("probes_count")
-    val probesStartPos = integer("probe_start_pos")
-}
 
 data class AstEntityData(
     val instanceId: String,
@@ -66,14 +41,6 @@ data class AstEntityData(
     val bodyChecksum: String,
 )
 
-//object ExecClassDataTable : IntIdTable("test2code.exec_class_data") {
-object ExecClassDataTable : IntIdTable("raw_data.exec_class_data") {
-    val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
-    val className = varchar("class_name",  LONG_TEXT_LENGTH)
-    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val probes = registerColumn<BitSet>("probes", BitSetColumnType())
-}
-
 data class RawCoverageData(
     val instanceId: String,
     val className: String,
@@ -81,11 +48,6 @@ data class RawCoverageData(
     val probes: Probes
 )
 
-object TestMetadataTable : IntIdTable("raw_data.test_metadata") {
-    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val name = varchar("name",  MEDIUM_TEXT_LENGTH)
-    val type = varchar("type",  SHORT_TEXT_LENGTH)
-}
 
 data class TestMetadata (
     val testId: String,
