@@ -17,6 +17,7 @@ package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
@@ -217,9 +218,6 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
             }
         }
     }
-
-    // TODO beware - this is not optimized at all
-    fun Probes.toBitString(): String = (0 until length()).map { if (get(it)) '1' else '0' }.joinToString("")
 
 //    override suspend fun saveCoverDataPart(instId: String, coverDataPart: CoverDataPart) {
 //        DatabaseConfig.transaction {
