@@ -95,71 +95,21 @@ object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader 
 
     override suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata> {
         return transaction {
-            AgentConfigTable
-                .select { (AgentConfigTable.agentId eq agentId) and (AgentConfigTable.buildVersion eq buildVersion) }
-                .map { it.toAgentConfig() }
+            AgentConfigRepository.findAllByAgentIdAndBuildVersion(agentId, buildVersion)
         }
     }
 
     override suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData> {
         return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            AstMethodTable
-                .select { AstMethodTable.instanceId inList instanceIds }
-                .distinctBy { row ->
-                    Pair(row[AstMethodTable.className], row[AstMethodTable.name])
-                }
-                .map { it.toAstEntityData() }
+            AstMethodRepository.findAllByInstanceIds(instanceIds)
         }
     }
 
     override suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData> {
         return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            ExecClassDataTable
-                .select { ExecClassDataTable.instanceId inList instanceIds }
-                .map { it.toRawCoverageData() }
+            ExecClassDataRepository.findAllByInstanceIds(instanceIds)
         }
     }
 }
-
-private fun ResultRow.toAgentConfig() = AgentMetadata(
-    id = this[AgentConfigTable.agentId],
-    serviceGroupId = this[AgentConfigTable.serviceGroupId],
-    instanceId = this[AgentConfigTable.instanceId],
-    agentType = try {
-        AgentType.values().find { it.notation.equals(this[AgentConfigTable.agentType], ignoreCase = true) }
-            ?: AgentType.DOTNET
-//            AgentType.valueOf(this[AgentConfigTable.agentType])
-    } catch (e: IllegalArgumentException) {
-        println("123 unknown agent type ${this[AgentConfigTable.agentType]}")
-        // Handle the case when the enum constant doesn't exist
-        // You might want to log the error or provide a default value
-        AgentType.DOTNET
-    },
-    buildVersion = this[AgentConfigTable.buildVersion],
-)
-
-private fun ResultRow.toAstEntityData() = AstEntityData(
-    instanceId = this[AstMethodTable.instanceId],
-    className = this[AstMethodTable.className],
-    name = this[AstMethodTable.name],
-    params = this[AstMethodTable.params],
-    returnType = this[AstMethodTable.returnType],
-    probesCount = this[AstMethodTable.probesCount],
-    probesStartPos = this[AstMethodTable.probesStartPos],
-    bodyChecksum = this[AstMethodTable.bodyChecksum]
-)
-
-// TODO classId and sessionId are omitted. Decide if they are required
-private fun ResultRow.toRawCoverageData() = RawCoverageData(
-    instanceId = this[ExecClassDataTable.instanceId],
-    className = this[ExecClassDataTable.className],
-    testId = this[ExecClassDataTable.testId],
-
-    // TODO this is broken 100% since we remove last bit when writing to DB
-    //      probably there is no need to read it back - might as well delete getSomething* methods
-    // TODO make sure it works "as intended" and preserves all probes in order
-    //      as they were inserted
-    probes = this[ExecClassDataTable.probes]
-)
