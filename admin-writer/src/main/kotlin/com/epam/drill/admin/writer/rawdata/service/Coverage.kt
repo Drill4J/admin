@@ -16,16 +16,15 @@
 package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.repository.RawDataRepositoryImpl
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
 suspend fun versionCoverage(agentId: String, buildVersion: String) {
-    val agent = RawDataRepositoryImpl.getAgentConfigs(agentId, buildVersion)
-    val ast = RawDataRepositoryImpl.getAstEntities(agentId, buildVersion)
-    val coverage = RawDataRepositoryImpl.getRawCoverageData(agentId, buildVersion)
+    val agent = RawDataService.getAgentConfigs(agentId, buildVersion)
+    val ast = RawDataService.getAstEntities(agentId, buildVersion)
+    val coverage = RawDataService.getRawCoverageData(agentId, buildVersion)
 
     coverage.groupBy { it.className }
     println("${agent.size} ${ast.size} ${coverage.size}")

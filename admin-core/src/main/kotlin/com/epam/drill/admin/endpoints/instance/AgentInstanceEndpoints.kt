@@ -21,9 +21,8 @@ import com.epam.drill.admin.config.drillConfig
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.api.AddSessionData
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
-import com.epam.drill.plugins.test2code.common.api.*
 import com.epam.drill.plugins.test2code.common.transport.*
-import com.epam.drill.admin.writer.rawdata.repository.RawDataRepositoryImpl
+import com.epam.drill.admin.writer.rawdata.service.RawDataService
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.features.json.JsonFeature
@@ -88,19 +87,19 @@ fun Routing.agentInstanceRoutes() {
         withRole(Role.USER, Role.ADMIN) {
             put<Paths.Instance> {
                 handleRequest<AgentMetadata> { data ->
-                    RawDataRepositoryImpl.saveAgentConfig(data)
+                    RawDataService.saveAgentConfig(data)
                 }
             }
 
             post<Paths.Coverage> { params ->
                 handleRequest<CoverageData> { data ->
-                    RawDataRepositoryImpl.saveCoverDataPart(params.instanceId, data)
+                    RawDataService.saveCoverDataPart(params.instanceId, data)
                 }
             }
 
             post<Paths.ClassMetadata> { params ->
                 handleRequest<ClassMetadata> { data ->
-                    RawDataRepositoryImpl.saveInitDataPart(params.instanceId, data)
+                    RawDataService.saveInitDataPart(params.instanceId, data)
                 }
             }
 
@@ -110,7 +109,7 @@ fun Routing.agentInstanceRoutes() {
 
             post<Paths.TestMetadataRoute> { params ->
                 handleRequest<AddTestsPayload> { data ->
-                    RawDataRepositoryImpl.saveTestMetadata(data)
+                    RawDataService.saveTestMetadata(data)
                 }
            }
 

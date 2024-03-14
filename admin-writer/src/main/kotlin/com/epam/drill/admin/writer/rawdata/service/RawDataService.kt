@@ -13,25 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
 import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
 import com.epam.drill.admin.writer.rawdata.entity.TestMetadata
-import com.epam.drill.admin.writer.rawdata.table.AgentConfigTable
-import com.epam.drill.admin.writer.rawdata.table.AstMethodTable
-import com.epam.drill.admin.writer.rawdata.table.ExecClassDataTable
+import com.epam.drill.admin.writer.rawdata.repository.AgentConfigRepository
+import com.epam.drill.admin.writer.rawdata.repository.AstMethodRepository
+import com.epam.drill.admin.writer.rawdata.repository.ExecClassDataRepository
+import com.epam.drill.admin.writer.rawdata.repository.TestMetadataRepository
 import com.epam.drill.common.agent.configuration.AgentMetadata
-import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
-import org.jetbrains.exposed.sql.*
 
-private const val EXEC_DATA_BATCH_SIZE = 100
-
-object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader {
+object RawDataService : RawDataWriter, RawDataReader {
+    private const val EXEC_DATA_BATCH_SIZE = 100
 
     override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
         transaction {
