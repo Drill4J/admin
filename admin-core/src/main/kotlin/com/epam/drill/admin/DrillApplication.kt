@@ -172,12 +172,14 @@ private fun Application.initDB() {
     //  e.g. autoCommit might prevent batching, but is very handy for auth-related queries
     hikariConfig = HikariConfig().apply {
         this.driverClassName = "org.postgresql.Driver"
-        this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
+        this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
         this.username = userName
         this.password = password
         this.maximumPoolSize = maxPoolSize
         this.isAutoCommit = true
         this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+        this.addDataSourceProperty("rewriteBatchedInserts", true)
+        this.addDataSourceProperty("rewriteBatchedStatements", true)
 
         // cleaner way to set connection properties
         // see https://jdbc.postgresql.org/documentation/use/#connection-parameters
