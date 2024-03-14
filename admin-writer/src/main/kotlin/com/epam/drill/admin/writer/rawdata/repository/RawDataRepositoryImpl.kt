@@ -22,7 +22,6 @@ import com.epam.drill.admin.writer.rawdata.entity.TestMetadata
 import com.epam.drill.admin.writer.rawdata.table.AgentConfigTable
 import com.epam.drill.admin.writer.rawdata.table.AstMethodTable
 import com.epam.drill.admin.writer.rawdata.table.ExecClassDataTable
-import com.epam.drill.admin.writer.rawdata.table.TestMetadataTable
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
@@ -34,110 +33,66 @@ private const val EXEC_DATA_BATCH_SIZE = 100
 
 object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader {
 
-    // RawDataRepositoryWriter
     override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
         transaction {
-            AgentConfigTable
-                .insert {
-                    it[agentId] = agentConfig.id
-                    it[instanceId] = agentConfig.instanceId
-                    it[buildVersion] = agentConfig.buildVersion
-                    it[serviceGroupId] = agentConfig.serviceGroupId
-                    it[agentType] = agentConfig.agentType.notation
-                    it[agentVersion] = agentConfig.agentVersion
-                }
+            AgentConfigRepository.create(agentConfig)
         }
     }
 
     override suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata) {
-        transaction {
-            initDataPart.astEntities.flatMap { astEntity ->
-                astEntity.methods.map { astMethod ->
-                    AstEntityData(
-                        instanceId = instanceId,
-                        className = "${astEntity.path}/${astEntity.name}",
-                        name = astMethod.name,
-                        params = astMethod.params.joinToString(","),
-                        returnType = astMethod.returnType,
-                        probesCount = astMethod.count,
-                        probesStartPos = astMethod.probesStartPos,
-                        bodyChecksum = astMethod.checksum
-                    )
-                }
-            }.let { dataToInsert ->
-                AstMethodTable.batchInsert(dataToInsert) {
-                    this[AstMethodTable.instanceId] = it.instanceId
-                    this[AstMethodTable.className] = it.className
-                    this[AstMethodTable.name] = it.name
-                    this[AstMethodTable.params] = it.params
-                    this[AstMethodTable.returnType] = it.returnType
-                    this[AstMethodTable.probesStartPos] = it.probesStartPos
-                    this[AstMethodTable.bodyChecksum] = it.bodyChecksum
-                    this[AstMethodTable.probesCount] = it.probesCount
-                }
+        initDataPart.astEntities.flatMap { astEntity ->
+            astEntity.methods.map { astMethod ->
+                AstEntityData(
+                    instanceId = instanceId,
+                    className = "${astEntity.path}/${astEntity.name}",
+                    name = astMethod.name,
+                    params = astMethod.params.joinToString(","),
+                    returnType = astMethod.returnType,
+                    probesCount = astMethod.count,
+                    probesStartPos = astMethod.probesStartPos,
+                    bodyChecksum = astMethod.checksum
+                )
+            }
+        }.let { dataToInsert ->
+            transaction {
+                AstMethodRepository.createMany(dataToInsert)
             }
         }
     }
 
     override suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData) {
-        coverDataPart.execClassData.chunked(EXEC_DATA_BATCH_SIZE).forEach { data ->
-            transaction {
-                ExecClassDataTable.batchInsert(data, shouldReturnGeneratedValues = false) {
-                    this[ExecClassDataTable.instanceId] = instanceId
-                    this[ExecClassDataTable.className] = it.className
-                    this[ExecClassDataTable.testId] = it.testId
-                    this[ExecClassDataTable.probes] = it.probes
+        coverDataPart.execClassData
+            .map { execClassData ->
+                RawCoverageData(
+                    instanceId = instanceId,
+                    className = execClassData.className,
+                    testId = execClassData.testId,
+                    probes = execClassData.probes
+                )
+            }
+            .chunked(EXEC_DATA_BATCH_SIZE)
+            .forEach { data ->
+                transaction {
+                    ExecClassDataRepository.createMany(data)
                 }
             }
-        }
     }
 
     override suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload) {
-        transaction {
-            // addTestsPayload.sessionId
-            addTestsPayload.tests.map { test ->
-                TestMetadata(
-                    testId = test.id,
-                    name = test.details.testName,
-                    type = "placeholder"
-                )
-            }.let { dataToInsert ->
-                TestMetadataTable.batchInsert(dataToInsert) {
-                    this[TestMetadataTable.testId] = it.testId
-                    this[TestMetadataTable.name] = it.name
-                    this[TestMetadataTable.type] = it.type
-                }
+        // addTestsPayload.sessionId
+        addTestsPayload.tests.map { test ->
+            TestMetadata(
+                testId = test.id,
+                name = test.details.testName,
+                type = "placeholder"
+            )
+        }.let { dataToInsert ->
+            transaction {
+                TestMetadataRepository.createMany(dataToInsert)
             }
         }
     }
 
-//    override suspend fun saveCoverDataPart(instId: String, coverDataPart: CoverDataPart) {
-//        DatabaseConfig.transaction {
-//            val firstElement = coverDataPart.data.firstOrNull()
-//
-//            if (firstElement != null) {
-//                ExecClassDataTable.insert {
-//                    it[instanceId] = instId
-//                    it[className] = firstElement.className
-//                    it[testId] = firstElement.testId
-//                    it[probes] = firstElement.probes.toByteArray()
-//                }
-//            }
-//        }
-//    }
-
-//    override suspend fun saveCoverDataPart(instId: String, coverDataPart: CoverDataPart) {
-//        DatabaseConfig.transaction {
-//            ExecClassDataTable.batchInsert(coverDataPart.data) {
-//                this[ExecClassDataTable.instanceId] = instId
-//                this[ExecClassDataTable.className] = it.className
-//                this[ExecClassDataTable.testId] = it.testId
-//                this[ExecClassDataTable.probes] = it.probes.toByteArray()
-//            }
-//        }
-//    }
-
-    // RawDataRepositoryReader
     override suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata> {
         return transaction {
             AgentConfigTable
@@ -173,10 +128,11 @@ private fun ResultRow.toAgentConfig() = AgentMetadata(
     serviceGroupId = this[AgentConfigTable.serviceGroupId],
     instanceId = this[AgentConfigTable.instanceId],
     agentType = try {
-              AgentType.values().find { it.notation.equals(this[AgentConfigTable.agentType], ignoreCase = true) } ?: AgentType.DOTNET
+        AgentType.values().find { it.notation.equals(this[AgentConfigTable.agentType], ignoreCase = true) }
+            ?: AgentType.DOTNET
 //            AgentType.valueOf(this[AgentConfigTable.agentType])
-        } catch (e: IllegalArgumentException) {
-            println("123 unknown agent type ${this[AgentConfigTable.agentType]}")
+    } catch (e: IllegalArgumentException) {
+        println("123 unknown agent type ${this[AgentConfigTable.agentType]}")
         // Handle the case when the enum constant doesn't exist
         // You might want to log the error or provide a default value
         AgentType.DOTNET

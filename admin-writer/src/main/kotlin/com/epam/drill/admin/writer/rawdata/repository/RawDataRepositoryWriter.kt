@@ -25,5 +25,4 @@ interface RawDataRepositoryWriter {
     suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata)
     suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData)
     suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload)
-
 }
