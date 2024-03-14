@@ -16,6 +16,9 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
+import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
+import com.epam.drill.admin.writer.rawdata.entity.TestMetadata
 import com.epam.drill.admin.writer.rawdata.table.AgentConfigTable
 import com.epam.drill.admin.writer.rawdata.table.AstMethodTable
 import com.epam.drill.admin.writer.rawdata.table.ExecClassDataTable
@@ -23,38 +26,11 @@ import com.epam.drill.admin.writer.rawdata.table.TestMetadataTable
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.common.agent.configuration.AgentType
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
-import com.epam.drill.plugins.test2code.common.api.Probes
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
 import org.jetbrains.exposed.sql.*
 
 private const val EXEC_DATA_BATCH_SIZE = 100
-
-data class AstEntityData(
-    val instanceId: String,
-    val className: String,
-    val name: String,
-    val params: String,
-    val returnType: String,
-    val probesCount: Int,
-    val probesStartPos: Int,
-    val bodyChecksum: String,
-)
-
-data class RawCoverageData(
-    val instanceId: String,
-    val className: String,
-    val testId: String,
-    val probes: Probes
-)
-
-
-data class TestMetadata (
-    val testId: String,
-    val name: String,
-    val type: String,
-    // TODO add field to store arbitrary data (key value? array?)
-)
 
 object RawDataRepositoryImpl : RawDataRepositoryWriter, RawDataRepositoryReader {
 

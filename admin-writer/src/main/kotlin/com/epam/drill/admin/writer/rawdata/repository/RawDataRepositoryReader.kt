@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository
 
+import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
+import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
 import com.epam.drill.common.agent.configuration.AgentMetadata
 
 interface RawDataRepositoryReader {
