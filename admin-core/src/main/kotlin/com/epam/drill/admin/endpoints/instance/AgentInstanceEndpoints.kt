@@ -40,14 +40,17 @@ fun Routing.agentInstanceRoutes() {
         ?.takeIf { it.isNotBlank() }
         ?: "http://localhost:8092" // TODO think of default
 
-    authenticate("api-key") {
-        withRole(Role.USER, Role.ADMIN) {
-            putAgentConfig()
-            postCoverage()
-            postCLassMetadata()
-            postClassMetadataComplete()
-            postTestMetadata()
-            postRawJavaScriptCoverage(jsCoverageConverterAddress)
+    route("/api") {
+        authenticate("api-key") {
+            withRole(Role.USER, Role.ADMIN) {
+                putAgentConfig()
+                postCoverage()
+                postCLassMetadata()
+                postClassMetadataComplete()
+                postTestMetadata()
+                postRawJavaScriptCoverage(jsCoverageConverterAddress)
+            }
         }
     }
+
 }

@@ -44,7 +44,7 @@ import java.util.zip.GZIPInputStream
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.json.Json
 
-@Location("/api/groups/{groupId}")
+@Location("/groups/{groupId}")
 data class Groups(val groupId: String) {
     @Location("/agents/{agentId}")
     data class Agents(val parent: Groups, val agentId: String) {

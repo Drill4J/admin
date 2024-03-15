@@ -16,55 +16,46 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.config.*
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig
-import com.epam.drill.admin.auth.principal.Role.ADMIN
+import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
-import com.epam.drill.admin.config.*
+import com.epam.drill.admin.config.DatabaseConfig
+import com.epam.drill.admin.config.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.di.*
-import com.epam.drill.admin.endpoints.admin.adminRoutes
-import com.epam.drill.admin.endpoints.admin.adminWebSocketRoute
-import com.epam.drill.admin.endpoints.admin.agentRoutes
-import com.epam.drill.admin.endpoints.instance.agentInstanceRoutes
-import com.epam.drill.admin.endpoints.plugin.pluginDispatcherRoutes
-import com.epam.drill.admin.endpoints.plugin.pluginWebSocketRoute
-import com.epam.drill.admin.group.groupRoutes
-import com.epam.drill.admin.notification.notificationRoutes
-import com.epam.drill.admin.store.*
-import com.epam.drill.admin.version.versionRoutes
-import com.epam.dsm.*
-import com.zaxxer.hikari.*
+import com.epam.drill.admin.writer.rawdata.route.*
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
 import io.ktor.locations.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import io.ktor.websocket.*
-import mu.*
-import org.flywaydb.core.*
+import io.ktor.serialization.*
+import kotlinx.serialization.protobuf.ProtoBuf
+import mu.KotlinLogging
+import org.kodein.di.bind
+import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
-import java.time.*
-
+import org.kodein.di.singleton
 
 private val logger = KotlinLogging.logger {}
 
-@Suppress("unused")
 fun Application.module() {
     installPlugins()
-    initDB()
     di {
+        bind<DatabaseConfig>() with singleton {
+            DatabaseConfig(instance<Application>().environment.config.config("drill.database"))
+        }
         import(jwtServicesDIModule)
         import(apiKeyServicesDIModule)
         if (simpleAuthEnabled) import(simpleAuthDIModule)
         if (oauth2Enabled) import(oauthDIModule)
         import(authConfigDIModule)
-        import(drillAdminDIModule)
     }
+    initDB()
 
     install(StatusPages) {
         authStatusPages()
@@ -72,24 +63,24 @@ fun Application.module() {
         defaultStatusPages()
     }
     install(Authentication) {
-
         configureJwtAuthentication(closestDI())
         configureApiKeyAuthentication(closestDI())
         if (oauth2Enabled) configureOAuthAuthentication(closestDI())
     }
     routing {
-        drillAdminRoutes()
-    }
-    routing {
         if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
+            //UI
+            uiConfigRoute()
+
+            //Auth
             if (simpleAuthEnabled) userAuthenticationRoutes()
             authenticate("jwt") {
                 userProfileRoutes()
                 userApiKeyRoutes()
             }
             authenticate("jwt", "api-key") {
-                withRole(ADMIN) {
+                withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
                 }
@@ -97,29 +88,34 @@ fun Application.module() {
             authenticate("api-key") {
                 tryApiKeyRoute()
             }
+
+            //Data
+            authenticate("api-key") {
+                withRole(Role.USER, Role.ADMIN) {
+                    intercept(ApplicationCallPipeline.Call) {
+                        call.response.header("drill-internal", "true")
+                        proceed()
+                    }
+                    putAgentConfig()
+                    postCoverage()
+                    postCLassMetadata()
+                    postClassMetadataComplete()
+                    postTestMetadata()
+                    postRawJavaScriptCoverage(jsCoverageConverterAddress)
+                }
+            }
         }
     }
 }
 
-
-
 private fun Application.installPlugins() {
     install(CallLogging)
     install(Locations)
-    install(WebSockets) {
-        pingPeriod = Duration.ofSeconds(15)
-        timeout = Duration.ofSeconds(150)
-        maxFrameSize = Long.MAX_VALUE
-        masking = false
-    }
 
     install(ContentNegotiation) {
-        converters()
+        json()
+        register(ContentType.Application.ProtoBuf, SerializationConverter(ProtoBuf))
     }
-
-    interceptorForApplicationJson()
-
-    enableSwaggerSupport()
 
     install(CORS) {
         anyHost()
@@ -142,35 +138,19 @@ private fun StatusPages.Configuration.defaultStatusPages() {
     exception<Throwable> { cause ->
         logger.error(cause) { "Failed to process the request ${this.context.request.path()}" }
         call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
-        throw cause
     }
 }
 
-fun Routing.drillAdminRoutes() {
-    uiConfigRoute()
-    adminWebSocketRoute()
-    agentRoutes()
-    agentInstanceRoutes()
-    versionRoutes()
-    pluginDispatcherRoutes()
-    adminRoutes()
-    groupRoutes()
-    notificationRoutes()
-    pluginWebSocketRoute()
-}
-
 private fun Application.initDB() {
-    val host = drillDatabaseHost
-    val port = drillDatabasePort
-    val dbName = drillDatabaseName
-    val userName = drillDatabaseUserName
-    val password = drillDatabasePassword
-    val maxPoolSize = drillDatabaseMaxPoolSize
+    val databaseConfig by closestDI().instance<DatabaseConfig>()
 
-    // TODO it might be beneficial to use separate JDBC driver instances for auth module and for test2code ops
-    //  why: auth module does not require batched operations, hence db interop code can be simplified
-    //  e.g. autoCommit might prevent batching, but is very handy for auth-related queries
-    hikariConfig = HikariConfig().apply {
+    val host = databaseConfig.host
+    val port = databaseConfig.port
+    val dbName = databaseConfig.databaseName
+    val userName = databaseConfig.username
+    val password = databaseConfig.password
+    val maxPoolSize = databaseConfig.maxPoolSize
+    val hikariConfig = HikariConfig().apply {
         this.driverClassName = "org.postgresql.Driver"
         this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
         this.username = userName
@@ -180,35 +160,14 @@ private fun Application.initDB() {
         this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
         this.addDataSourceProperty("rewriteBatchedInserts", true)
         this.addDataSourceProperty("rewriteBatchedStatements", true)
-
-        // cleaner way to set connection properties
-        // see https://jdbc.postgresql.org/documentation/use/#connection-parameters
-//        this.addDataSourceProperty("reWriteBatchedInserts", true)
-
-        // TODO investigate best-performing batched insertion
-        // 1. use prepared statement
-        // 2. set reWriteBatchedInserts to true
-        //      - it might _not_ work when isAutoCommit set to true (investigate)
-        // 3. set Statement.RETURN_GENERATED_KEYS to false
+        this.addDataSourceProperty("loggerLevel", "TRACE")
         this.validate()
     }
-    adminStore.createProcedureIfTableExist()
     val dataSource = HikariDataSource(hikariConfig)
 
-    val flyway = Flyway.configure()
-        .dataSource(dataSource)
-        .schemas(adminStore.hikariConfig.schema)
-        .baselineOnMigrate(true)
-        .load()
-    flyway.migrate()
-
-    // auth db config
     AuthDatabaseConfig.init(dataSource)
-    // raw data writer db config
     RawDataWriterDatabaseConfig.init(dataSource)
 }
-
-lateinit var hikariConfig: HikariConfig
 
 val Application.oauth2Enabled: Boolean
     get() = environment.config.config("drill.auth.oauth2")
@@ -217,3 +176,10 @@ val Application.oauth2Enabled: Boolean
 val Application.simpleAuthEnabled: Boolean
     get() = environment.config.config("drill.auth.simple")
         .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
+
+val Application.jsCoverageConverterAddress: String
+    get() = environment.config.config("drill.test2code")
+        .propertyOrNull("jsCoverageConverterAddress")
+        ?.getString()
+        ?.takeIf { it.isNotBlank() }
+        ?: "http://localhost:8092" // TODO think of default
