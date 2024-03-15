@@ -22,7 +22,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import javax.sql.DataSource
 
-object DatabaseConfig {
+object AuthDatabaseConfig {
 
     private var database: Database? = null
     private var dispatcher: CoroutineDispatcher = Dispatchers.IO

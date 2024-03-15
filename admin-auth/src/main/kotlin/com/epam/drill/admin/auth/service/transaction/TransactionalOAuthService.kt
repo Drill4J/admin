@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service.transaction
 
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
+import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
 import io.ktor.auth.*
 
 class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
