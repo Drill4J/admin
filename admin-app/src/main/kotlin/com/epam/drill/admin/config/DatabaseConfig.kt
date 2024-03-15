@@ -15,7 +15,15 @@
  */
 package com.epam.drill.admin.config
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import io.ktor.application.*
 import io.ktor.config.*
+import org.kodein.di.DI
+import org.kodein.di.bind
+import org.kodein.di.instance
+import org.kodein.di.singleton
+import javax.sql.DataSource
 
 class DatabaseConfig(private val config: ApplicationConfig) {
     val host: String
@@ -35,5 +43,36 @@ class DatabaseConfig(private val config: ApplicationConfig) {
 
     val maxPoolSize: Int
         get() = config.propertyOrNull("maximumPoolSize")?.getString()?.toInt() ?: 20
+}
 
+val dataSourceDIModule = DI.Module("dataSource") {
+    bind<DatabaseConfig>() with singleton {
+        DatabaseConfig(instance<Application>().environment.config.config("drill.database"))
+    }
+    bind<HikariConfig>() with singleton {
+        val databaseConfig = instance<DatabaseConfig>()
+
+        val host = databaseConfig.host
+        val port = databaseConfig.port
+        val dbName = databaseConfig.databaseName
+        val userName = databaseConfig.username
+        val password = databaseConfig.password
+        val maxPoolSize = databaseConfig.maxPoolSize
+
+        HikariConfig().apply {
+            this.driverClassName = "org.postgresql.Driver"
+            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
+            this.username = userName
+            this.password = password
+            this.maximumPoolSize = maxPoolSize
+            this.isAutoCommit = true
+            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            this.addDataSourceProperty("rewriteBatchedInserts", true)
+            this.addDataSourceProperty("rewriteBatchedStatements", true)
+            this.validate()
+        }
+    }
+    bind<DataSource>() with singleton {
+        HikariDataSource(instance())
+    }
 }

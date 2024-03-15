@@ -19,6 +19,7 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.DatabaseConfig
+import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.config.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.*
@@ -40,15 +41,14 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
 import org.kodein.di.singleton
+import javax.sql.DataSource
 
 private val logger = KotlinLogging.logger {}
 
 fun Application.module() {
     installPlugins()
     di {
-        bind<DatabaseConfig>() with singleton {
-            DatabaseConfig(instance<Application>().environment.config.config("drill.database"))
-        }
+        import(dataSourceDIModule)
         import(jwtServicesDIModule)
         import(apiKeyServicesDIModule)
         if (simpleAuthEnabled) import(simpleAuthDIModule)
@@ -142,28 +142,7 @@ private fun StatusPages.Configuration.defaultStatusPages() {
 }
 
 private fun Application.initDB() {
-    val databaseConfig by closestDI().instance<DatabaseConfig>()
-
-    val host = databaseConfig.host
-    val port = databaseConfig.port
-    val dbName = databaseConfig.databaseName
-    val userName = databaseConfig.username
-    val password = databaseConfig.password
-    val maxPoolSize = databaseConfig.maxPoolSize
-    val hikariConfig = HikariConfig().apply {
-        this.driverClassName = "org.postgresql.Driver"
-        this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
-        this.username = userName
-        this.password = password
-        this.maximumPoolSize = maxPoolSize
-        this.isAutoCommit = true
-        this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-        this.addDataSourceProperty("rewriteBatchedInserts", true)
-        this.addDataSourceProperty("rewriteBatchedStatements", true)
-        this.addDataSourceProperty("loggerLevel", "TRACE")
-        this.validate()
-    }
-    val dataSource = HikariDataSource(hikariConfig)
+    val dataSource by closestDI().instance<DataSource>()
 
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
