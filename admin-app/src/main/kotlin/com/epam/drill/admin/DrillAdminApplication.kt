@@ -18,13 +18,10 @@ package com.epam.drill.admin
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
-import com.epam.drill.admin.config.DatabaseConfig
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.config.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.*
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.features.*
@@ -36,17 +33,14 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import kotlinx.serialization.protobuf.ProtoBuf
 import mu.KotlinLogging
-import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
-import org.kodein.di.singleton
 import javax.sql.DataSource
 
 private val logger = KotlinLogging.logger {}
 
 fun Application.module() {
-    installPlugins()
     di {
         import(dataSourceDIModule)
         import(jwtServicesDIModule)
@@ -56,7 +50,7 @@ fun Application.module() {
         import(authConfigDIModule)
     }
     initDB()
-
+    installPlugins()
     install(StatusPages) {
         authStatusPages()
         if (oauth2Enabled) oauthStatusPages()
