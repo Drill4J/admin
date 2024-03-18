@@ -10,6 +10,7 @@ plugins {
     kotlin("plugin.serialization")
     id("com.github.hierynomus.license")
     id("com.github.johnrengelman.shadow")
+    id("com.google.cloud.tools.jib")
 }
 
 group = "com.epam.drill"
@@ -105,6 +106,36 @@ val debugPort = "5006"
 val secureApiPort = "8453"
 val gitUsername = System.getenv("GH_USERNAME") ?: ""
 val gitPassword = System.getenv("GH_TOKEN") ?: ""
+jib {
+    from {
+        image = "adoptopenjdk/openjdk11:latest"
+    }
+    to {
+        image = fullImageTag
+        tags = setOf("multibranch-1")
+        auth {
+            username=gitUsername
+            password=gitPassword
+        }
+    }
+    container {
+        ports = listOf(apiPort, debugPort , secureApiPort)
+        volumes = listOf("/config", "/config/ssl")
+        mainClass = jarMainClassName
+        jvmFlags = defaultJvmArgs
+    }
+    extraDirectories {
+        setPaths("/config/ssl")
+        permissions = mapOf("/config" to "775","/config/ssl" to "775")
+        paths {
+            path{
+                setFrom("build/resources/main/")
+                into = "/config"
+                includes.set(listOf("application.conf"))
+            }
+        }
+    }
+}
 
 @Suppress("UNUSED_VARIABLE")
 tasks {
@@ -122,6 +153,33 @@ tasks {
         manifest {
             attributes(Pair("Main-Class", "com.epam.drill.admin.DrillAdminApplication.kt"))
         }
+    }
+    val loginToDocker by registering(Exec::class) {
+        dependsOn(assemble)
+        workingDir(projectDir)
+        commandLine("docker", "login", registryName, "-u $gitUsername", "-p $gitPassword")
+    }
+    val createWindowsDockerImage by registering(Exec::class) {
+        dependsOn(loginToDocker)
+        workingDir(projectDir)
+        commandLine(
+            "docker", "build",
+            "--build-arg", "ADMIN_VERSION=$version",
+            "--build-arg", "API_PORT=$apiPort",
+            "--build-arg", "DEBUG_PORT=$debugPort",
+            "--build-arg", "SECURE_API_PORT=$secureApiPort",
+            "--build-arg", "JVM_ARGS=${defaultJvmArgs.joinToString(" ")}",
+            "--build-arg", "MAIN_CLASS_NAME=$jarMainClassName",
+            "-t", "$fullImageTag:$version-win",
+            "."
+        )
+    }
+    val pushWindowsDockerImage by registering(Exec::class) {
+        dependsOn(createWindowsDockerImage)
+        workingDir(projectDir)
+        commandLine(
+            "docker", "push", "$fullImageTag:$version-win"
+        )
     }
 }
 
