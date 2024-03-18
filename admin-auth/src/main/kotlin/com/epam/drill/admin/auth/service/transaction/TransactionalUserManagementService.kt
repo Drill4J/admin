@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.service.UserManagementService
-import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
+import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
 
 class TransactionalUserManagementService(
     private val delegate: UserManagementService

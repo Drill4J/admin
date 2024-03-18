@@ -13,15 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service.transaction
+package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
-import io.ktor.auth.*
+import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
 
-class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
-    override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView = transaction {
-        delegate.signInThroughOAuth(principal)
-    }
+interface ExecClassDataRepository {
+    fun createMany(data: List<RawCoverageData>)
+    fun findAllByInstanceIds(instanceIds: List<String>): List<RawCoverageData>
 }

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service.transaction
+package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
-import io.ktor.auth.*
+import com.epam.drill.admin.writer.rawdata.config.BitSetColumnType
+import org.jetbrains.exposed.dao.id.IntIdTable
+import java.util.*
 
-class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
-    override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView = transaction {
-        delegate.signInThroughOAuth(principal)
-    }
+object ExecClassDataTable : IntIdTable("raw_data.exec_class_data") {
+    val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
+    val className = varchar("class_name",  LONG_TEXT_LENGTH)
+    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
+    val probes = registerColumn<BitSet>("probes", BitSetColumnType())
 }

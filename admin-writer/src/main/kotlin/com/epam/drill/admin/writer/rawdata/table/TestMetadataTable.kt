@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service.transaction
+package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
-import io.ktor.auth.*
+import org.jetbrains.exposed.dao.id.IntIdTable
 
-class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
-    override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView = transaction {
-        delegate.signInThroughOAuth(principal)
-    }
+object TestMetadataTable : IntIdTable("raw_data.test_metadata") {
+    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
+    val name = varchar("name",  MEDIUM_TEXT_LENGTH)
+    val type = varchar("type",  SHORT_TEXT_LENGTH)
 }

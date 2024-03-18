@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service.transaction
 
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
 import com.epam.drill.admin.auth.service.ApiKeyService
-import com.epam.drill.admin.auth.config.DatabaseConfig.transaction
+import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
 
 class TransactionalApiKeyService(private val delegate: ApiKeyService
 ) : ApiKeyService by delegate {

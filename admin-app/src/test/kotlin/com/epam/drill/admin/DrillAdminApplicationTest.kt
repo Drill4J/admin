@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service.transaction
+package com.epam.drill.admin
 
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
-import io.ktor.auth.*
+import io.ktor.http.*
+import io.ktor.server.testing.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
-class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
-    override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView = transaction {
-        delegate.signInThroughOAuth(principal)
+class DrillAdminApplicationTest {
+    @Test
+    fun `ui-config route should respond with 200 OK`() {
+        withTestApplication({ module() }) {
+            handleRequest(HttpMethod.Get, "/api/ui-config").apply {
+                assertEquals(HttpStatusCode.OK, response.status())
+            }
+        }
     }
 }
