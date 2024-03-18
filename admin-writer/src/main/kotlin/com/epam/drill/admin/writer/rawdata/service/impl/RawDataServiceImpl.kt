@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.writer.rawdata.service.impl
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
@@ -23,6 +23,8 @@ import com.epam.drill.admin.writer.rawdata.repository.AgentConfigRepository
 import com.epam.drill.admin.writer.rawdata.repository.AstMethodRepository
 import com.epam.drill.admin.writer.rawdata.repository.ExecClassDataRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestMetadataRepository
+import com.epam.drill.admin.writer.rawdata.service.RawDataReader
+import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
