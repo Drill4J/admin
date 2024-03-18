@@ -21,6 +21,7 @@ import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.config.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.*
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.application.*
 import io.ktor.auth.*
@@ -48,6 +49,7 @@ fun Application.module() {
         if (simpleAuthEnabled) import(simpleAuthDIModule)
         if (oauth2Enabled) import(oauthDIModule)
         import(authConfigDIModule)
+        import(rawDataWriterDIModule)
     }
     initDB()
     installPlugins()

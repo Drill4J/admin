@@ -21,10 +21,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
-suspend fun versionCoverage(agentId: String, buildVersion: String) {
-    val agent = RawDataService.getAgentConfigs(agentId, buildVersion)
-    val ast = RawDataService.getAstEntities(agentId, buildVersion)
-    val coverage = RawDataService.getRawCoverageData(agentId, buildVersion)
+suspend fun versionCoverage(agentId: String, buildVersion: String, rawDataReader: RawDataReader) {
+    val agent = rawDataReader.getAgentConfigs(agentId, buildVersion)
+    val ast = rawDataReader.getAstEntities(agentId, buildVersion)
+    val coverage = rawDataReader.getRawCoverageData(agentId, buildVersion)
 
     coverage.groupBy { it.className }
     println("${agent.size} ${ast.size} ${coverage.size}")

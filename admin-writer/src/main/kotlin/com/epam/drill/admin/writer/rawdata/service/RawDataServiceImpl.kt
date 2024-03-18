@@ -28,8 +28,9 @@ import com.epam.drill.plugins.test2code.api.AddTestsPayload
 import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
 import com.epam.drill.plugins.test2code.common.transport.CoverageData
 
-object RawDataService : RawDataWriter, RawDataReader {
-    private const val EXEC_DATA_BATCH_SIZE = 100
+private const val EXEC_DATA_BATCH_SIZE = 100
+
+class RawDataServiceImpl : RawDataWriter, RawDataReader {
 
     override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
         transaction {

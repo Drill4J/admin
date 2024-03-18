@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
-import com.epam.drill.admin.writer.rawdata.service.RawDataService
+import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.features.json.JsonFeature
 import com.epam.drill.common.agent.configuration.AgentMetadata
 import com.epam.drill.plugins.test2code.api.AddSessionData
@@ -43,6 +43,8 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.json.Json
+import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 
 @Location("/groups/{groupId}")
 data class Groups(val groupId: String) {
@@ -68,25 +70,31 @@ data class Groups(val groupId: String) {
 }
 
 fun Route.putAgentConfig() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
     put<Groups.Agents.BuildVersions.Instances> {
         handleRequest<AgentMetadata> { data ->
-            RawDataService.saveAgentConfig(data)
+            rawDataWriter.saveAgentConfig(data)
         }
     }
 }
 
 fun Route.postCoverage() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
     post<Groups.Agents.BuildVersions.Instances.Coverage> { params ->
         handleRequest<CoverageData> { data ->
-            RawDataService.saveCoverDataPart(params.parent.instanceId, data)
+            rawDataWriter.saveCoverDataPart(params.parent.instanceId, data)
         }
     }
 }
 
 fun Route.postCLassMetadata() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
     post<Groups.Agents.BuildVersions.Instances.ClassMetadata> { params ->
         handleRequest<ClassMetadata> { data ->
-            RawDataService.saveInitDataPart(params.parent.instanceId, data)
+            rawDataWriter.saveInitDataPart(params.parent.instanceId, data)
         }
     }
 }
@@ -98,9 +106,11 @@ fun Route.postClassMetadataComplete() {
 }
 
 fun Route.postTestMetadata() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
     post<Groups.TestMetadataRoute> { params ->
         handleRequest<AddTestsPayload> { data ->
-            RawDataService.saveTestMetadata(data)
+            rawDataWriter.saveTestMetadata(data)
         }
     }
 }
