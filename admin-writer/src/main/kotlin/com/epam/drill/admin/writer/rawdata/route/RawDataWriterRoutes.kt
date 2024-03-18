@@ -100,7 +100,7 @@ fun Route.postCLassMetadata() {
 }
 
 fun Route.postClassMetadataComplete() {
-    post<Groups.Agents.BuildVersions.Instances.ClassMetadataComplete> { params ->
+    post<Groups.Agents.BuildVersions.Instances.ClassMetadataComplete> { _ ->
         call.respond(HttpStatusCode.OK, "Deprecated")
     }
 }
@@ -108,7 +108,7 @@ fun Route.postClassMetadataComplete() {
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<Groups.TestMetadataRoute> { params ->
+    post<Groups.TestMetadataRoute> { _ ->
         handleRequest<AddTestsPayload> { data ->
             rawDataWriter.saveTestMetadata(data)
         }
