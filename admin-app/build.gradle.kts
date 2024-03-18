@@ -7,10 +7,8 @@ plugins {
     application
     `maven-publish`
     kotlin("jvm")
-    kotlin("plugin.serialization")
     id("com.github.hierynomus.license")
     id("com.github.johnrengelman.shadow")
-    id("com.google.cloud.tools.jib")
 }
 
 group = "com.epam.drill"
@@ -118,6 +116,11 @@ tasks {
     val sourcesJar by registering(Jar::class) {
         from(sourceSets.main.get().allSource)
         archiveClassifier.set("sources")
+    }
+    shadowJar {
+        manifest {
+            attributes(Pair("Main-Class", "com.epam.drill.admin.DrillAdminApplication.kt"))
+        }
     }
 }
 
