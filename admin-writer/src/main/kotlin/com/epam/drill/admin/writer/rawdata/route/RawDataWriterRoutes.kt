@@ -89,7 +89,7 @@ fun Route.postCoverage() {
     }
 }
 
-fun Route.postCLassMetadata() {
+fun Route.postClassMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<Groups.Agents.BuildVersions.Instances.ClassMetadata> { params ->
