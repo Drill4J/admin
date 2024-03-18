@@ -32,11 +32,16 @@ import com.epam.drill.plugins.test2code.common.transport.CoverageData
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
-class RawDataServiceImpl : RawDataWriter, RawDataReader {
+class RawDataServiceImpl(
+    private val agentConfigRepository: AgentConfigRepository,
+    private val execClassDataRepository: ExecClassDataRepository,
+    private val testMetadataRepository: TestMetadataRepository,
+    private val astMethodRepository: AstMethodRepository
+) : RawDataWriter, RawDataReader {
 
     override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
         transaction {
-            AgentConfigRepository.create(agentConfig)
+            agentConfigRepository.create(agentConfig)
         }
     }
 
@@ -56,7 +61,7 @@ class RawDataServiceImpl : RawDataWriter, RawDataReader {
             }
         }.let { dataToInsert ->
             transaction {
-                AstMethodRepository.createMany(dataToInsert)
+                astMethodRepository.createMany(dataToInsert)
             }
         }
     }
@@ -74,7 +79,7 @@ class RawDataServiceImpl : RawDataWriter, RawDataReader {
             .chunked(EXEC_DATA_BATCH_SIZE)
             .forEach { data ->
                 transaction {
-                    ExecClassDataRepository.createMany(data)
+                    execClassDataRepository.createMany(data)
                 }
             }
     }
@@ -89,28 +94,28 @@ class RawDataServiceImpl : RawDataWriter, RawDataReader {
             )
         }.let { dataToInsert ->
             transaction {
-                TestMetadataRepository.createMany(dataToInsert)
+                testMetadataRepository.createMany(dataToInsert)
             }
         }
     }
 
     override suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata> {
         return transaction {
-            AgentConfigRepository.findAllByAgentIdAndBuildVersion(agentId, buildVersion)
+            agentConfigRepository.findAllByAgentIdAndBuildVersion(agentId, buildVersion)
         }
     }
 
     override suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData> {
         return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            AstMethodRepository.findAllByInstanceIds(instanceIds)
+            astMethodRepository.findAllByInstanceIds(instanceIds)
         }
     }
 
     override suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData> {
         return transaction {
             val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            ExecClassDataRepository.findAllByInstanceIds(instanceIds)
+            execClassDataRepository.findAllByInstanceIds(instanceIds)
         }
     }
 }
