@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin
 
-import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlin.test.Test

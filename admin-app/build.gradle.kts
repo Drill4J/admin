@@ -7,6 +7,7 @@ plugins {
     application
     `maven-publish`
     kotlin("jvm")
+    kotlin("plugin.serialization")
     id("com.github.hierynomus.license")
     id("com.github.johnrengelman.shadow")
 }
