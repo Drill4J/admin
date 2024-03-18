@@ -153,7 +153,7 @@ val Application.simpleAuthEnabled: Boolean
         .propertyOrNull("enabled")?.getString()?.toBoolean() ?: false
 
 val Application.jsCoverageConverterAddress: String
-    get() = environment.config.config("drill.test2code")
+    get() = environment.config.config("drill.rawData")
         .propertyOrNull("jsCoverageConverterAddress")
         ?.getString()
         ?.takeIf { it.isNotBlank() }
