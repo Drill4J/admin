@@ -12,11 +12,9 @@ plugins {
     kotlin("multiplatform").apply(false)
     kotlin("plugin.noarg").apply(false)
     kotlin("plugin.serialization").apply(false)
-    id("kotlinx-atomicfu").apply(false)
     id("org.ajoberstar.grgit")
     id("com.github.hierynomus.license").apply(false)
     id("com.github.johnrengelman.shadow").apply(false)
-    id("com.google.cloud.tools.jib").apply(false)
 }
 
 group = "com.epam.drill"
@@ -82,12 +80,6 @@ subprojects {
 
 @Suppress("UNUSED_VARIABLE")
 tasks {
-    val filterDistTasks: (Task) -> Boolean = { it.name.endsWith("DistTar", true) || it.name.endsWith("DistZip", true) }
-    val copyAdminCoreDist by registering(Copy::class) {
-        from(project(":admin-core").tasks.filter(filterDistTasks))
-        into(buildDir.resolve("distributions"))
-    }
-    assemble.get().dependsOn(copyAdminCoreDist)
     val sharedLibsDir = projectDir.resolve(sharedLibsLocalPath)
     val sharedLibsRef: String by extra
     val updateSharedLibs by registering {
