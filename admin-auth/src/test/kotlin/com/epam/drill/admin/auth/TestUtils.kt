@@ -20,7 +20,7 @@ import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.CLAIM_ROLE
 import com.epam.drill.admin.auth.config.CLAIM_USER_ID
-import com.epam.drill.admin.auth.config.DatabaseConfig
+import com.epam.drill.admin.auth.config.AuthDatabaseConfig
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.DataResponse
@@ -184,7 +184,7 @@ open class DatabaseTests {
                 this.driverClassName = postgresqlContainer.driverClassName
                 this.validate()
             })
-            DatabaseConfig.init(dataSource)
+            AuthDatabaseConfig.init(dataSource)
         }
 
         @JvmStatic

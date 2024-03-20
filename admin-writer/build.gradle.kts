@@ -1,7 +1,5 @@
 import java.net.URI
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import com.hierynomus.gradle.license.tasks.LicenseCheck
-import com.hierynomus.gradle.license.tasks.LicenseFormat
 
 plugins {
     kotlin("jvm")
@@ -9,7 +7,7 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "com.epam.drill.admin.auth"
+group = "com.epam.drill.admin.writer"
 version = rootProject.version
 
 val kotlinVersion: String by parent!!.extra
@@ -19,13 +17,11 @@ val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
-val jbcryptVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
-val caffeineVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -39,40 +35,45 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlin.time.ExperimentalTime")
         languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
         languageSettings.optIn("io.ktor.util.InternalAPI")
+        languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
+        languageSettings.optIn("kotlinx.serialization.InternalSerializationApi")
     }
 }
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.ktor:ktor-locations:$ktorVersion")
     implementation("io.ktor:ktor-auth:$ktorVersion")
-    implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-apache:$ktorVersion")
-    implementation("org.mindrot:jbcrypt:$jbcryptVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    implementation("com.github.ben-manes.caffeine:caffeine:$caffeineVersion")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
-    testImplementation(kotlin("test-junit5"))
-    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
+    compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
+
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
+    implementation("io.ktor:ktor-client-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+
+    implementation(project(":test2code-api"))
+    implementation(project(":test2code-common"))
+    implementation(project(":common"))
+
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
     testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
     testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
     testImplementation("org.testcontainers:postgresql:$testContainersVersion")
-    testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
 }
 
 tasks {

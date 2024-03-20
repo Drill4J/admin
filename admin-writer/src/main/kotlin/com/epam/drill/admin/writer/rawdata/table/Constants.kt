@@ -13,15 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.service.transaction
+package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.service.OAuthService
-import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
-import io.ktor.auth.*
-
-class TransactionalOAuthService(private val delegate: OAuthService): OAuthService by delegate {
-    override suspend fun signInThroughOAuth(principal: OAuthAccessTokenResponse.OAuth2): UserInfoView = transaction {
-        delegate.signInThroughOAuth(principal)
-    }
-}
+const val LONG_TEXT_LENGTH = 65535 // java class name max len
+const val MEDIUM_TEXT_LENGTH = 2000
+const val SHORT_TEXT_LENGTH = 255
