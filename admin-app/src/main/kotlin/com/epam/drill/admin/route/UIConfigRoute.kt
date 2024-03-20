@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.config
+package com.epam.drill.admin.route
 
 import com.epam.drill.admin.auth.config.AuthConfig
 import com.epam.drill.admin.auth.model.AuthConfigView

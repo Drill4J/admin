@@ -19,7 +19,8 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
-import com.epam.drill.admin.config.uiConfigRoute
+import com.epam.drill.admin.route.uiConfigRoute
+import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
@@ -64,6 +65,7 @@ fun Application.module() {
         if (oauth2Enabled) configureOAuthAuthentication(closestDI())
     }
     routing {
+        rootRoute()
         if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
             //UI
