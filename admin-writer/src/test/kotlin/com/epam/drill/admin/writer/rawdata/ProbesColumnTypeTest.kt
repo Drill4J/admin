@@ -15,9 +15,11 @@
  */
 package com.epam.drill.admin.writer.rawdata
 
-import com.epam.drill.admin.writer.rawdata.config.BitSetColumnType
+import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.plugins.test2code.common.api.Probes
+import com.epam.drill.plugins.test2code.common.api.toBitSet
+import com.epam.drill.plugins.test2code.common.api.toBooleanArray
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.runBlocking
@@ -37,7 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.util.*
 
-class BitSetColumnTypeTest : DatabaseTests() {
+class ProbesColumnTypeTest : DatabaseTests() {
 
     @BeforeEach
     fun initSchema() {
@@ -47,25 +49,36 @@ class BitSetColumnTypeTest : DatabaseTests() {
     }
 
     @Test
-    fun `test storing and retrieving BitSet`() = withTransaction {
-        val originalBitSet = BitSet().apply {
+    fun `test storing and retrieving Probes`() = withTransaction {
+        val originalProbes = Probes().apply {
             set(0)
             set(2)
             set(5)
         }
 
         BitSets.insert {
-            it[bits] = originalBitSet
+            it[bits] = originalProbes
         }
-        val retrievedBitSet = BitSets.selectAll().single()[BitSets.bits]
+        val retrievedProbes = BitSets.selectAll().single()[BitSets.bits]
 
-        assertEquals(originalBitSet, retrievedBitSet)
+        assertEquals(originalProbes, retrievedProbes)
+    }
+
+    @Test
+    fun `test storing and retrieving boolean array as Probes`() = withTransaction {
+        val originalBoolArray = booleanArrayOf(true, false, false, false)
+        BitSets.insert {
+            it[bits] = originalBoolArray.toBitSet()
+        }
+        val retrievedBoolArray = BitSets.selectAll().single()[BitSets.bits].toBooleanArray()
+
+        originalBoolArray.forEachIndexed { index, value -> assertEquals(value, retrievedBoolArray[index]) }
     }
 
 }
 
 object BitSets : IntIdTable() {
-    val bits = registerColumn<BitSet>("bits", BitSetColumnType())
+    val bits = registerColumn<BitSet>("bits", ProbesColumnType())
 }
 
 @Testcontainers
