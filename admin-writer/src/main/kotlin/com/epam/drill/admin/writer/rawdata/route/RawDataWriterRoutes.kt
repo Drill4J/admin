@@ -145,7 +145,8 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
         body = decompressGZip(body)
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> deserializeProtobuf(body, T::class.serializer())
-        ContentType.Application.Json.toString() -> Json.decodeFromString(T::class.serializer(), String(body))
+        // TODO fix serialization issue for TestsMetadata and remove ignoreUnknownKeys workaround
+        ContentType.Application.Json.toString() -> Json { ignoreUnknownKeys = true } .decodeFromString(T::class.serializer(), String(body))
         else -> throw UnsupportedMediaTypeException(
             ContentType.parse(
                 request.headers[HttpHeaders.ContentType] ?: "application/octet-stream"
