@@ -23,6 +23,7 @@ val kodeinVersion: String by parent!!.extra
 val microutilsLoggingVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
+val testContainersVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -57,6 +58,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
+    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+    testImplementation("org.testcontainers:postgresql:$testContainersVersion")
 }
 
 kotlin.sourceSets {
