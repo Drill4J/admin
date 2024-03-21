@@ -30,7 +30,6 @@ val includeSharedLib: Settings.(String) -> Unit = {
 }
 
 includeSharedLib("common")
-includeSharedLib("plugin-api-admin")
 includeSharedLib("test2code-api")
 includeSharedLib("test2code-common")
 include("admin-auth")
