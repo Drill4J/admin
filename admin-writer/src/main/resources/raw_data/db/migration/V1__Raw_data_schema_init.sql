@@ -1,5 +1,3 @@
--- AgentConfigTable
---CREATE TABLE IF NOT EXISTS test2code.agent_config (
 CREATE TABLE IF NOT EXISTS raw_data.agent_config (
     id SERIAL PRIMARY KEY,
     agent_id VARCHAR(255),
@@ -10,8 +8,6 @@ CREATE TABLE IF NOT EXISTS raw_data.agent_config (
     agent_version VARCHAR(255)
 );
 
--- AstMethodTable
---CREATE TABLE IF NOT EXISTS test2code.ast_method (
 CREATE TABLE IF NOT EXISTS raw_data.ast_method (
     id SERIAL PRIMARY KEY,
     instance_id VARCHAR(255),
@@ -24,8 +20,6 @@ CREATE TABLE IF NOT EXISTS raw_data.ast_method (
     probes_count INT
 );
 
--- ExecClassDataTable
---CREATE TABLE IF NOT EXISTS test2code.exec_class_data (
 CREATE TABLE IF NOT EXISTS raw_data.exec_class_data (
     id SERIAL PRIMARY KEY,
     instance_id VARCHAR(255),
@@ -34,8 +28,6 @@ CREATE TABLE IF NOT EXISTS raw_data.exec_class_data (
     probes VARBIT
 );
 
--- TestMetadataTable
---CREATE TABLE IF NOT EXISTS test2code.test_metadata (
 CREATE TABLE IF NOT EXISTS raw_data.test_metadata (
     id SERIAL PRIMARY KEY,
     test_id VARCHAR(255),
