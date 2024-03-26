@@ -17,7 +17,14 @@ package com.epam.drill.admin.auth.service
 
 import com.epam.drill.admin.auth.model.UserInfoView
 
+/**
+ * A service for issuing access tokens.
+ */
 interface TokenService {
+    /**
+     * Issues an access token.
+     * @param user the user information based on which a token should be issued
+     * @return the issued access token
+     */
     fun issueToken(user: UserInfoView): String
-    fun verifyToken(token: String)
 }

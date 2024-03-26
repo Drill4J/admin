@@ -21,7 +21,6 @@ import com.epam.drill.admin.auth.service.impl.PasswordServiceImpl
 import com.epam.drill.admin.auth.service.impl.PasswordValidatorImpl
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
-import org.mockito.kotlin.mock
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -59,7 +58,7 @@ class PasswordGeneratorTest {
 class PasswordHashingTest {
     @Test
     fun `given password and its hash matchPasswords must return true`() {
-        val passwordService = PasswordServiceImpl(mock(), mock())
+        val passwordService = PasswordServiceImpl()
         val password = "secret"
 
         val hashedPassword = passwordService.hashPassword(password)

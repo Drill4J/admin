@@ -15,15 +15,41 @@
  */
 package com.epam.drill.admin.auth.service
 
+import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
 
+/**
+ * A service for authentication and user profile management.
+ */
 interface UserAuthenticationService {
+    /**
+     * Authenticates a user.
+     * @param payload the username and password to be authenticated
+     * @return the user information
+     * @exception NotAuthenticatedException if the username or password is incorrect
+     */
     suspend fun signIn(payload: LoginPayload): UserInfoView
 
+    /**
+     * Registers a new user.
+     * @param payload the user information to be registered
+     * @exception UserValidationException if the user already exists
+     */
     suspend fun signUp(payload: RegistrationPayload)
 
+    /**
+     * Returns the user information by a current user principal object.
+     * @param principal the current user principal object
+     * @return the information of the current user
+     */
     suspend fun getUserInfo(principal: User): UserInfoView
 
+    /**
+     * Updates the user password.
+     * @param principal the current user principal object
+     * @param payload the old password and the new one to be updated
+     * @exception UserValidationException if the old password is incorrect
+     */
     suspend fun updatePassword(principal: User, payload: ChangePasswordPayload)
 }
