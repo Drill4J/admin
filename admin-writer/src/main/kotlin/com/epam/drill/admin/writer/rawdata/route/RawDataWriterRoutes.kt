@@ -90,12 +90,6 @@ fun Route.postClassMetadata() {
     }
 }
 
-fun Route.postClassMetadataComplete() {
-    post<Instances.ClassMetadataComplete> { _ ->
-        call.respond(HttpStatusCode.OK, "Deprecated")
-    }
-}
-
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 

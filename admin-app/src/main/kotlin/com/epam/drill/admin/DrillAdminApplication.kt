@@ -97,7 +97,6 @@ fun Application.module() {
                     putAgentConfig()
                     postCoverage()
                     postClassMetadata()
-                    postClassMetadataComplete()
                     postTestMetadata()
                     postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
