@@ -46,33 +46,24 @@ import kotlinx.serialization.json.Json
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Location("/groups/{groupId}")
-data class Groups(val groupId: String) {
-    @Location("/agents/{agentId}")
-    data class Agents(val parent: Groups, val agentId: String) {
-        @Location("/builds/{buildVersion}")
-        data class BuildVersions(val parent: Agents, val buildVersion: String) {
-            @Location("/instances/{instanceId}")
-            data class Instances(val parent: BuildVersions, val instanceId: String) {
-                @Location("/coverage")
-                data class Coverage(val parent: Instances)
-                @Location("/class-metadata")
-                data class ClassMetadata(val parent: Instances)
-                @Location("/class-metadata/complete")
-                data class ClassMetadataComplete(val parent: Instances)
-            }
-            @Location("/raw-javascript-coverage")
-            data class RawJavaScriptCoverage(val parent: BuildVersions)
-        }
-    }
-    @Location("/tests-metadata")
-    data class TestMetadataRoute(val parent: Groups)
+@Location("/instances/{instanceId}")
+data class Instances(val instanceId: String) {
+    @Location("/coverage")
+    data class Coverage(val parent: Instances)
+    @Location("/class-metadata")
+    data class ClassMetadata(val parent: Instances)
+    @Location("/class-metadata/complete")
+    data class ClassMetadataComplete(val parent: Instances)
 }
+@Location("/groups/{groupId}/agents/{agentId}/builds/{buildVersion}/raw-javascript-coverage")
+data class RawJavaScriptCoverage(val groupId: String, val agentId: String, val buildVersion: String)
+@Location("/tests-metadata")
+class TestMetadataRoute
 
 fun Route.putAgentConfig() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<Groups.Agents.BuildVersions.Instances> {
+    put<Instances> {
         handleRequest<AgentMetadata> { data ->
             rawDataWriter.saveAgentConfig(data)
         }
@@ -82,7 +73,7 @@ fun Route.putAgentConfig() {
 fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<Groups.Agents.BuildVersions.Instances.Coverage> { params ->
+    post<Instances.Coverage> { params ->
         handleRequest<CoverageData> { data ->
             rawDataWriter.saveCoverDataPart(params.parent.instanceId, data)
         }
@@ -92,7 +83,7 @@ fun Route.postCoverage() {
 fun Route.postClassMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<Groups.Agents.BuildVersions.Instances.ClassMetadata> { params ->
+    post<Instances.ClassMetadata> { params ->
         handleRequest<ClassMetadata> { data ->
             rawDataWriter.saveInitDataPart(params.parent.instanceId, data)
         }
@@ -100,7 +91,7 @@ fun Route.postClassMetadata() {
 }
 
 fun Route.postClassMetadataComplete() {
-    post<Groups.Agents.BuildVersions.Instances.ClassMetadataComplete> { _ ->
+    post<Instances.ClassMetadataComplete> { _ ->
         call.respond(HttpStatusCode.OK, "Deprecated")
     }
 }
@@ -108,7 +99,7 @@ fun Route.postClassMetadataComplete() {
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<Groups.TestMetadataRoute> { _ ->
+    post<TestMetadataRoute> { _ ->
         handleRequest<AddTestsPayload> { data ->
             rawDataWriter.saveTestMetadata(data)
         }
@@ -116,11 +107,11 @@ fun Route.postTestMetadata() {
 }
 
 fun Route.postRawJavaScriptCoverage(jsCoverageConverterAddress: String) {
-    post<Groups.Agents.BuildVersions.RawJavaScriptCoverage> { params ->
+    post<RawJavaScriptCoverage> { params ->
         handleRequest<AddSessionData> { data ->
-            val groupId = params.parent.parent.parent.groupId
-            val agentId = params.parent.parent.agentId
-            val buildVersion = params.parent.buildVersion
+            val groupId = params.groupId
+            val agentId = params.agentId
+            val buildVersion = params.buildVersion
             sendPostRequest(
                 "$jsCoverageConverterAddress/groups/${groupId}/agents/${agentId}/builds/${buildVersion}/v8-coverage",
                 data
