@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS raw_data.agent_config (
     id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     agent_id VARCHAR(255),
     instance_id VARCHAR(255),
     service_group_id VARCHAR(255),
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS raw_data.agent_config (
 
 CREATE TABLE IF NOT EXISTS raw_data.ast_method (
     id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     instance_id VARCHAR(255),
     class_name VARCHAR(65535),
     name VARCHAR(65535),
@@ -25,6 +27,7 @@ CREATE TABLE IF NOT EXISTS raw_data.ast_method (
 
 CREATE TABLE IF NOT EXISTS raw_data.exec_class_data (
     id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     instance_id VARCHAR(255),
     class_name VARCHAR(65535),
     test_id VARCHAR(255),
@@ -33,6 +36,7 @@ CREATE TABLE IF NOT EXISTS raw_data.exec_class_data (
 
 CREATE TABLE IF NOT EXISTS raw_data.test_metadata (
     id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     test_id VARCHAR(255),
     type VARCHAR(255),
     name VARCHAR(2000)
