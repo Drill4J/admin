@@ -20,8 +20,22 @@ ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 -- Metrics-related functions
 
-CREATE OR REPLACE FUNCTION get_instance_ids_by_branch(_agent_id VARCHAR, _group_id VARCHAR, current_hash VARCHAR, current_branch VARCHAR, base_branch VARCHAR, max_depth INT)
-RETURNS TABLE (agent_id VARCHAR, service_group_id VARCHAR, hash VARCHAR, parents VARCHAR, branch VARCHAR, entry_type VARCHAR, instance_id VARCHAR)
+CREATE OR REPLACE FUNCTION get_instance_ids_by_branch(
+	_agent_id VARCHAR,
+	_group_id VARCHAR,
+	current_hash VARCHAR,
+	current_branch VARCHAR,
+	base_branch VARCHAR,
+	base_hash VARCHAR DEFAULT '',
+	max_depth INT DEFAULT 100)
+RETURNS TABLE (
+	agent_id VARCHAR,
+	service_group_id VARCHAR,
+	hash VARCHAR,
+	parents VARCHAR,
+	branch VARCHAR,
+	entry_type VARCHAR,
+	instance_id VARCHAR)
 AS $$
 BEGIN
     RETURN QUERY
@@ -60,7 +74,12 @@ BEGIN
                 ELSE 0
             END AS diff_branch,
             CASE
-                WHEN cte.diff_branch = 1 OR t.vcs_metadata_branch != current_branch THEN true
+                WHEN
+					-- stop traversal if branch changed and we don't know base_hash
+					((cte.diff_branch = 1 OR t.vcs_metadata_branch != current_branch) AND base_hash = '')
+					-- stop traversal if we reached commit with base_hash
+					OR t.vcs_metadata_hash = base_hash
+					THEN true
                 ELSE false
             END AS stop
         FROM
@@ -80,16 +99,26 @@ BEGIN
 		CAST(
 			CASE
 				WHEN cte.hash = current_hash AND cte.branch = current_branch THEN 'current'
-				WHEN cte.branch = current_branch THEN 'intermediate'
-				WHEN cte.branch = base_branch THEN 'baseline'
-				ELSE 'error_unknown_instance_encountered'
+
+				WHEN
+                    -- single branch + base_hash - pick commit with hash = base_hash
+                    (current_branch = base_branch AND base_hash <> '' AND cte.hash = base_hash)
+                    OR
+                    -- different branches + base_hash - pick commit with hash = base_hash
+                    (current_branch <> base_branch AND base_hash <> '' AND cte.hash = base_hash)
+                    OR
+                    -- different branches + no base_hash - pick first commit of base_branch
+                    (current_branch <> base_branch AND base_hash = '' AND cte.branch = base_branch)
+                    THEN 'baseline'
+
+                ELSE 'intermediate'
 			END AS VARCHAR
 		) AS entry_type,
 		cte.instance_id
 	FROM cte;
 END;
-$$ LANGUAGE plpgsql;
 
+$$ LANGUAGE plpgsql;
 --------------------------------------------------------
 
 
@@ -347,7 +376,8 @@ CREATE OR REPLACE FUNCTION get_risks_by_branch_diff(
 	_agent_id VARCHAR,
     _current_vcs_ref VARCHAR,
     _current_branch VARCHAR,
-    _base_branch VARCHAR
+    _base_branch VARCHAR,
+    _base_vcs_ref VARCHAR DEFAULT ''
 ) RETURNS TABLE (
     _class_name VARCHAR,
     _name VARCHAR,
@@ -363,7 +393,7 @@ BEGIN
             hash as build_version,
             branch,
             entry_type
-        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, 100)
+        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
     ),
     BaselineInstanceIds AS (
         SELECT DISTINCT
@@ -507,7 +537,13 @@ $$ LANGUAGE plpgsql;
 
 --------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION get_risks_by_branch_diff_only_own_coverage(_group_id VARCHAR, _agent_id VARCHAR, _current_vcs_ref VARCHAR, _current_branch VARCHAR, _base_branch VARCHAR)
+CREATE OR REPLACE FUNCTION get_risks_by_branch_diff_only_own_coverage(
+    _group_id VARCHAR,
+    _agent_id VARCHAR,
+    _current_vcs_ref VARCHAR,
+    _current_branch VARCHAR,
+    _base_branch VARCHAR,
+    _base_vcs_ref VARCHAR DEFAULT '')
 RETURNS TABLE (class_name VARCHAR, name VARCHAR, coverage_percentage FLOAT)
 AS $$
 BEGIN
@@ -519,7 +555,7 @@ BEGIN
             hash as build_version,
             branch,
             entry_type
-        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, 100)
+        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
     ),
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
