@@ -1,23 +1,3 @@
--- VSC metadata
-ALTER TABLE raw_data.agent_config
-ADD COLUMN IF NOT EXISTS vcs_metadata_hash VARCHAR(255),
-ADD COLUMN IF NOT EXISTS vcs_metadata_parents VARCHAR(255),
-ADD COLUMN IF NOT EXISTS vcs_metadata_branch VARCHAR(255);
-
--- Timestamps
-
-ALTER TABLE raw_data.agent_config
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-ALTER TABLE raw_data.ast_method
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-ALTER TABLE raw_data.exec_class_data
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-ALTER TABLE raw_data.test_metadata
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
 -- Metrics-related functions
 
 CREATE OR REPLACE FUNCTION get_instance_ids_by_branch(
@@ -630,4 +610,3 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
-
