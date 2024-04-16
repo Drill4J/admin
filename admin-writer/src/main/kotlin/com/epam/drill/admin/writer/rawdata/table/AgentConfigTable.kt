@@ -24,4 +24,7 @@ object AgentConfigTable : IntIdTable("raw_data.agent_config") {
     val buildVersion = varchar("build_version",  SHORT_TEXT_LENGTH)
     val agentType = varchar("agent_type",  SHORT_TEXT_LENGTH)
     val agentVersion = varchar("agent_version",  SHORT_TEXT_LENGTH).nullable()
+    val vcsMetadataHash = varchar("vcs_metadata_hash",  SHORT_TEXT_LENGTH).nullable()
+    val vcsMetadataParents = varchar("vcs_metadata_parents",  SHORT_TEXT_LENGTH).nullable()
+    val vcsMetadataBranch = varchar("vcs_metadata_branch",  SHORT_TEXT_LENGTH).nullable()
 }

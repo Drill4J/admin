@@ -34,6 +34,9 @@ class AgentConfigRepositoryImpl: AgentConfigRepository {
             it[serviceGroupId] = agentConfig.serviceGroupId
             it[agentType] = agentConfig.agentType.notation
             it[agentVersion] = agentConfig.agentVersion
+            it[vcsMetadataHash] = agentConfig.vcsMetadataHash
+            it[vcsMetadataParents] = agentConfig.vcsMetadataParents
+            it[vcsMetadataBranch] = agentConfig.vcsMetadataBranch
         }.value
     }
 
