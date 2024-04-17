@@ -373,7 +373,7 @@ BEGIN
             hash as build_version,
             branch,
             entry_type
-        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
+        FROM raw_data.get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
     ),
     BaselineInstanceIds AS (
         SELECT DISTINCT
@@ -535,7 +535,7 @@ BEGIN
             hash as build_version,
             branch,
             entry_type
-        FROM get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
+        FROM raw_data.get_instance_ids_by_branch(_agent_id, _group_id, _current_vcs_ref, _current_branch, _base_branch, _base_vcs_ref)
     ),
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
