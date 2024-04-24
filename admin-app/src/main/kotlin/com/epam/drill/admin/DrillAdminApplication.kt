@@ -101,6 +101,7 @@ fun Application.module() {
                     postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
             }
+            metricRoutes()
         }
     }
 }

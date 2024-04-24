@@ -16,10 +16,20 @@
 package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.config.executeQuery
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import org.jetbrains.exposed.sql.ColumnType
+import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.statements.Statement
+import org.jetbrains.exposed.sql.statements.StatementType
+import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
+import org.jetbrains.exposed.sql.transactions.TransactionManager
+import java.sql.PreparedStatement
+import java.sql.ResultSet
 
 suspend fun versionCoverage(agentId: String, buildVersion: String, rawDataReader: RawDataReader) {
     val agent = rawDataReader.getAgentConfigs(agentId, buildVersion)
@@ -32,35 +42,9 @@ suspend fun versionCoverage(agentId: String, buildVersion: String, rawDataReader
 
 suspend fun getNewRisks(newInstanceId: String, oldInstanceId: String): List<JsonObject> {
     val sqlQuery = risksNewQuery(newInstanceId, oldInstanceId)
-    return executeQuery(sqlQuery)
-}
-
-// TODO suspend is redundant - but it shouldn't be?
-suspend fun executeQuery(sqlQuery: String): List<JsonObject> {
-    val result = mutableListOf<JsonObject>()
-
-    RawDataWriterDatabaseConfig.getDataSource()?.connection.use { connection ->
-        connection?.prepareStatement(sqlQuery)?.use { preparedStatement ->
-            val resultSet = preparedStatement.executeQuery()
-            val metaData = resultSet.metaData
-            val columnCount = metaData.columnCount
-
-            while (resultSet.next()) {
-                val rowObject = buildJsonObject {
-                    for (i in 1..columnCount) {
-                        val columnName = metaData.getColumnName(i)
-                        val columnValue = resultSet.getObject(i)
-                        val stringValue = columnValue?.toString()
-                        put(columnName, Json.encodeToJsonElement(stringValue))
-                    }
-                }
-
-                result.add(rowObject)
-            }
-        }
+    return transaction {
+        executeQuery(sqlQuery)
     }
-
-    return result
 }
 
 fun generateHtmlTable(results: List<JsonObject>): String {
