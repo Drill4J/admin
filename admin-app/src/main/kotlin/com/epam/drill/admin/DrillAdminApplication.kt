@@ -19,10 +19,12 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
+import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.config.metricsDIModule
+import com.epam.drill.admin.metrics.config.metricsDIModule
+import com.epam.drill.admin.metrics.route.*
 import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.application.*
@@ -103,6 +105,7 @@ fun Application.module() {
                     postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
             }
+
             metricRoutes()
         }
     }
@@ -146,6 +149,7 @@ private fun Application.initDB() {
 
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
+    MetricsDatabaseConfig.init(dataSource)
 }
 
 val Application.oauth2Enabled: Boolean

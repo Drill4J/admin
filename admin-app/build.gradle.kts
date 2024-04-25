@@ -53,6 +53,7 @@ dependencies {
 
     implementation(project(":admin-auth"))
     implementation(project(":admin-writer"))
+    implementation(project(":admin-metrics"))
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
