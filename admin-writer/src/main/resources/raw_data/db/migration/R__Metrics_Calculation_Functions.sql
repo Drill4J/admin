@@ -105,9 +105,10 @@ $$ LANGUAGE plpgsql;
 --------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION calculate_total_coverage_percent(
-    _group_id VARCHAR,
-    _agent_id VARCHAR,
-    _vcs_metadata_hash VARCHAR
+    _group_id VARCHAR DEFAULT NULL,
+    _agent_id VARCHAR DEFAULT NULL,
+    _vcs_metadata_hash VARCHAR DEFAULT NULL,
+    _instance_id VARCHAR DEFAULT NULL
 )
 RETURNS FLOAT AS $$
 BEGIN
@@ -116,9 +117,12 @@ RETURN (
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
         FROM raw_data.agent_config
-        WHERE service_group_id = _group_id
-            AND agent_id = _agent_id
-            AND vcs_metadata_hash = _vcs_metadata_hash
+        WHERE
+            (service_group_id = _group_id
+                AND agent_id = _agent_id
+                AND vcs_metadata_hash = _vcs_metadata_hash)
+            OR
+            instance_id = _instance_id
     ),
     BuildMethods AS (
         SELECT DISTINCT
@@ -162,9 +166,10 @@ $$ LANGUAGE plpgsql;
 --------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION get_coverage_by_classes(
-    IN _group_id varchar,
-    IN _agent_id varchar,
-    IN _vcs_metadata_hash varchar
+    _group_id VARCHAR DEFAULT NULL,
+    _agent_id VARCHAR DEFAULT NULL,
+    _vcs_metadata_hash VARCHAR DEFAULT NULL,
+    _instance_id VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
     _class_name varchar,
@@ -176,7 +181,12 @@ BEGIN
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
         FROM raw_data.agent_config
-        WHERE service_group_id = _group_id AND agent_id = _agent_id AND vcs_metadata_hash = _vcs_metadata_hash
+        WHERE
+            (service_group_id = _group_id
+                AND agent_id = _agent_id
+                AND vcs_metadata_hash = _vcs_metadata_hash)
+            OR
+            instance_id = _instance_id
     ),
     BuildClassNames AS (
         SELECT class_name
@@ -216,9 +226,10 @@ $$ LANGUAGE plpgsql;
 --------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION get_coverage_by_methods(
-	_group_id VARCHAR,
-    _agent_id VARCHAR,
-    _vcs_metadata_hash VARCHAR
+    _group_id VARCHAR DEFAULT NULL,
+    _agent_id VARCHAR DEFAULT NULL,
+    _vcs_metadata_hash VARCHAR DEFAULT NULL,
+    _instance_id VARCHAR DEFAULT NULL
 ) RETURNS TABLE (
     _class_name VARCHAR,
     _method_name VARCHAR,
@@ -232,7 +243,12 @@ BEGIN
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
         FROM raw_data.agent_config
-        WHERE service_group_id = _group_id AND agent_id = _agent_id AND vcs_metadata_hash = _vcs_metadata_hash
+        WHERE
+            (service_group_id = _group_id
+                AND agent_id = _agent_id
+                AND vcs_metadata_hash = _vcs_metadata_hash)
+            OR
+            instance_id = _instance_id
     ),
     BuildMethods AS (
         SELECT DISTINCT
@@ -281,7 +297,12 @@ $$ LANGUAGE plpgsql;
 
 --------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION get_coverage_by_packages(_group_id VARCHAR, _agent_id VARCHAR, _vcs_metadata_hash VARCHAR)
+CREATE OR REPLACE FUNCTION get_coverage_by_packages(
+    _group_id VARCHAR DEFAULT NULL,
+    _agent_id VARCHAR DEFAULT NULL,
+    _vcs_metadata_hash VARCHAR DEFAULT NULL,
+    _instance_id VARCHAR DEFAULT NULL
+)
 RETURNS TABLE(package_name VARCHAR, coverage_percentage FLOAT) AS $$
 BEGIN
     RETURN QUERY
@@ -289,7 +310,12 @@ BEGIN
     BuildInstanceIds AS (
         SELECT DISTINCT instance_id
         FROM raw_data.agent_config
-        WHERE service_group_id = _group_id AND agent_id = _agent_id and vcs_metadata_hash = _vcs_metadata_hash
+        WHERE
+            (service_group_id = _group_id
+                AND agent_id = _agent_id
+                AND vcs_metadata_hash = _vcs_metadata_hash)
+            OR
+            instance_id = _instance_id
     ),
     BuildMethods AS (
         SELECT DISTINCT
