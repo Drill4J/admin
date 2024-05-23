@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.service.impl
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
+import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 
 private const val EXEC_DATA_BATCH_SIZE = 100

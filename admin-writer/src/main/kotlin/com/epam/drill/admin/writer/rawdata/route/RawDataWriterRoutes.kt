@@ -16,6 +16,8 @@
 package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.writer.rawdata.entity.*
+import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 
 import io.ktor.application.*

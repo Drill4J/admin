@@ -14,16 +14,6 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.writer.rawdata.entity
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class InstancePayload(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val commitSha: String = "",
-    val buildVersion: String = "",
-)
 
 data class Instance(
     val id: String,

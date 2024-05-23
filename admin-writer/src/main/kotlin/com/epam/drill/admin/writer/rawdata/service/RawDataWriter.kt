@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.service
 
-import com.epam.drill.admin.writer.rawdata.entity.*
+import com.epam.drill.admin.writer.rawdata.route.payload.*
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
