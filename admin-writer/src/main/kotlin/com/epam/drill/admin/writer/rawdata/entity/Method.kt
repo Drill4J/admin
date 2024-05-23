@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
-data class Method(
+class Method(
     val buildId: String,
     val classname: String,
     val name: String,

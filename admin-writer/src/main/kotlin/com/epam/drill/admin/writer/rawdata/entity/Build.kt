@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
-data class Build(
+class Build(
     val id: String,
     val groupId: String,
     val appId: String,

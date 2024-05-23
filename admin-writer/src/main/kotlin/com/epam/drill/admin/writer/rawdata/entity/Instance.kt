@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
-data class Instance(
+class Instance(
     val id: String,
     val buildId: String
 )
