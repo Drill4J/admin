@@ -6,3 +6,4 @@ build/
 /lib-jvm-shared/
 /tests/distr
 /tests/work
+**/out/
