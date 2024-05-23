@@ -25,7 +25,7 @@ class InstanceRepositoryImpl: InstanceRepository {
     override fun create(instance: Instance) {
         InstanceTable.insert {
             it[id] = instance.id
-            it[buildId] = instance.id
+            it[buildId] = instance.buildId
         }
     }
 
