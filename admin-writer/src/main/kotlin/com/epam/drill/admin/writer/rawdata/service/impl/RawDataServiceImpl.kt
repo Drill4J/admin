@@ -73,14 +73,22 @@ class RawDataServiceImpl(
 
     override suspend fun saveMethods(methodsPayload: MethodsPayload) {
         methodsPayload.methods.map { method ->
+            val buildId = generateBuildId(
+                methodsPayload.groupId,
+                methodsPayload.appId,
+                methodsPayload.instanceId,
+                methodsPayload.commitSha,
+                methodsPayload.buildVersion
+            )
             Method(
-                buildId = generateBuildId(
-                    methodsPayload.groupId,
-                    methodsPayload.appId,
-                    methodsPayload.instanceId,
-                    methodsPayload.commitSha,
-                    methodsPayload.buildVersion
-                ),
+                id = mutableListOf(
+                        buildId,
+                        method.classname,
+                        method.name,
+                        method.params,
+                        method.returnType
+                    ).joinToString(":"),
+                buildId = buildId,
                 classname = method.classname,
                 name = method.name,
                 params = method.params,

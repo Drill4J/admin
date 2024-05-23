@@ -24,6 +24,7 @@ class MethodRepositoryImpl: MethodRepository {
     override fun createMany(data: List<Method>) {
         MethodTable.batchInsert(data, shouldReturnGeneratedValues = false) {
             this[MethodTable.id] = it.id
+            this[MethodTable.buildId] = it.buildId
             this[MethodTable.classname] = it.classname
             this[MethodTable.name] = it.name
             this[MethodTable.params] = it.params

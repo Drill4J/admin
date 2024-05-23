@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.entity
 
 class Method(
+    val id: String,
     val buildId: String,
     val classname: String,
     val name: String,
@@ -24,7 +25,4 @@ class Method(
     val probesCount: Int,
     val probesStartPos: Int,
     val bodyChecksum: String,
-) {
-    val id: String
-        get() = mutableListOf(buildId, classname, name, params, returnType).joinToString(":")
-}
+)
