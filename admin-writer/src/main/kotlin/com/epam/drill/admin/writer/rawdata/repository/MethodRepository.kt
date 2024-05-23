@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
+import com.epam.drill.admin.writer.rawdata.entity.Method
 
-interface AstMethodRepository {
-    fun createMany(data: List<AstEntityData>)
-    fun findAllByInstanceIds(instanceIds: List<String>): List<AstEntityData>
+interface MethodRepository {
+    fun createMany(data: List<Method>)
 }

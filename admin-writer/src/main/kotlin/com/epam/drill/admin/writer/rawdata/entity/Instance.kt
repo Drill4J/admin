@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.table
+package com.epam.drill.admin.writer.rawdata.entity
+import kotlinx.serialization.Serializable
 
-import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
-import org.jetbrains.exposed.dao.id.IntIdTable
-import java.util.*
+@Serializable
+data class InstancePayload(
+    val groupId: String,
+    val appId: String,
+    val instanceId: String,
+    val commitSha: String = "",
+    val buildVersion: String = "",
+)
 
-object ExecClassDataTable : IntIdTable("raw_data.exec_class_data") {
-    val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
-    val className = varchar("class_name",  LONG_TEXT_LENGTH)
-    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val probes = registerColumn<BitSet>("probes", ProbesColumnType())
-}
+data class Instance(
+    val id: String,
+    val buildId: String
+)

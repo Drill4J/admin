@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonObject
 class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getRisksByBranchDiff(
         groupId: String,
-        agentId: String,
+        appId: String,
         currentBranch: String,
         currentVcsRef: String,
         baseBranch: String,
@@ -35,7 +35,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                   FROM raw_data.get_risks_by_branch_diff(?, ?, ?, ?, ?, ?)
             """.trimIndent(),
             groupId,
-            agentId,
+            appId,
             currentVcsRef,
             currentBranch,
             baseBranch,
@@ -43,20 +43,20 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
-    override suspend fun getTotalCoverage(groupId: String, agentId: String, currentVcsRef: String): JsonObject = transaction {
+    override suspend fun getTotalCoverage(groupId: String, appId: String, currentVcsRef: String): JsonObject = transaction {
         executeQuery(
             """
                 SELECT raw_data.calculate_total_coverage_percent(?, ?, ?) as coverage
             """.trimIndent(),
             groupId,
-            agentId,
+            appId,
             currentVcsRef
         ).first()
     }
 
     override suspend fun getSummaryByBranchDiff(
         groupId: String,
-        agentId: String,
+        appId: String,
         currentBranch: String,
         currentVcsRef: String,
         baseBranch: String,
@@ -70,11 +70,11 @@ class MetricsRepositoryImpl : MetricsRepository {
             """.trimIndent(),
 
             groupId,
-            agentId,
+            appId,
             currentVcsRef,
 
             groupId,
-            agentId,
+            appId,
             currentVcsRef,
             currentBranch,
             baseBranch,

@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.writer.rawdata.entity.*
+import com.epam.drill.admin.writer.rawdata.entity.Coverage
 
-interface RawDataWriter {
-    suspend fun saveBuild(buildPayload: BuildPayload)
-    suspend fun saveInstance(instancePayload: InstancePayload)
-    suspend fun saveMethods(methodsPayload: MethodsPayload)
-    suspend fun saveCoverage(coveragePayload: CoveragePayload)
-    suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
+interface CoverageRepository {
+    fun createMany(data: List<Coverage>)
 }

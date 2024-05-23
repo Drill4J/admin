@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
+import com.epam.drill.admin.writer.rawdata.entity.Instance
 
-interface ExecClassDataRepository {
-    fun createMany(data: List<RawCoverageData>)
-    fun findAllByInstanceIds(instanceIds: List<String>): List<RawCoverageData>
+interface InstanceRepository {
+    fun create(instance: Instance)
 }

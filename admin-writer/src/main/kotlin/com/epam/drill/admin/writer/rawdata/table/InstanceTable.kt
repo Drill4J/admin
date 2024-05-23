@@ -13,14 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
-import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
-import com.epam.drill.common.agent.configuration.AgentMetadata
-
-interface RawDataReader {
-    suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata>
-    suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData>
-    suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData>
+object InstanceTable : StringIdTable("raw_data.instances", "id") {
+    val buildId = varchar("build_id",  MEDIUM_TEXT_LENGTH)
 }

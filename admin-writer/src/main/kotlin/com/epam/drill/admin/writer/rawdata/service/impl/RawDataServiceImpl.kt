@@ -16,76 +16,104 @@
 package com.epam.drill.admin.writer.rawdata.service.impl
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
-import com.epam.drill.admin.writer.rawdata.entity.AstEntityData
-import com.epam.drill.admin.writer.rawdata.entity.RawCoverageData
-import com.epam.drill.admin.writer.rawdata.entity.TestMetadata
-import com.epam.drill.admin.writer.rawdata.repository.AgentConfigRepository
-import com.epam.drill.admin.writer.rawdata.repository.AstMethodRepository
-import com.epam.drill.admin.writer.rawdata.repository.ExecClassDataRepository
-import com.epam.drill.admin.writer.rawdata.repository.TestMetadataRepository
-import com.epam.drill.admin.writer.rawdata.service.RawDataReader
+import com.epam.drill.admin.writer.rawdata.entity.*
+import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
-import com.epam.drill.common.agent.configuration.AgentMetadata
-import com.epam.drill.plugins.test2code.api.AddTestsPayload
-import com.epam.drill.plugins.test2code.common.transport.ClassMetadata
-import com.epam.drill.plugins.test2code.common.transport.CoverageData
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
 class RawDataServiceImpl(
-    private val agentConfigRepository: AgentConfigRepository,
-    private val execClassDataRepository: ExecClassDataRepository,
+    private val instanceRepository: InstanceRepository,
+    private val coverageRepository: CoverageRepository,
     private val testMetadataRepository: TestMetadataRepository,
-    private val astMethodRepository: AstMethodRepository
-) : RawDataWriter, RawDataReader {
+    private val methodRepository: MethodRepository,
+    private val buildRepository: BuildRepository
+) : RawDataWriter {
 
-    override suspend fun saveAgentConfig(agentConfig: AgentMetadata) {
+    override suspend fun saveBuild(buildPayload: BuildPayload) {
+        val build = Build(
+            id = generateBuildId(
+                buildPayload.groupId,
+                buildPayload.appId,
+                "",
+                buildPayload.commitSha,
+                buildPayload.buildVersion
+            ),
+            groupId = buildPayload.groupId,
+            appId = buildPayload.appId,
+            commitSha = buildPayload.commitSha,
+            buildVersion = buildPayload.buildVersion,
+            branch = buildPayload.branch,
+            commitDate = buildPayload.commitDate,
+            commitMessage = buildPayload.commitMessage,
+            commitAuthor = buildPayload.commitAuthor,
+            commitTags = buildPayload.commitTags,
+        )
         transaction {
-            agentConfigRepository.create(agentConfig)
+            buildRepository.create(build)
         }
     }
 
-    override suspend fun saveInitDataPart(instanceId: String, initDataPart: ClassMetadata) {
-        initDataPart.astEntities.flatMap { astEntity ->
-            astEntity.methods.map { astMethod ->
-                AstEntityData(
-                    instanceId = instanceId,
-                    className = "${astEntity.path}/${astEntity.name}",
-                    name = astMethod.name,
-                    params = astMethod.params.joinToString(","),
-                    returnType = astMethod.returnType,
-                    probesCount = astMethod.count,
-                    probesStartPos = astMethod.probesStartPos,
-                    bodyChecksum = astMethod.checksum
-                )
-            }
-        }.let { dataToInsert ->
+    override suspend fun saveInstance(instancePayload: InstancePayload) {
+        val instance = Instance(
+            id = instancePayload.instanceId,
+            buildId = generateBuildId(
+                instancePayload.groupId,
+                instancePayload.appId,
+                instancePayload.instanceId,
+                instancePayload.commitSha,
+                instancePayload.buildVersion
+            )
+        )
+        transaction {
+            instanceRepository.create(instance)
+        }
+    }
+
+    override suspend fun saveMethods(methodsPayload: MethodsPayload) {
+        methodsPayload.methods.map { method ->
+            Method(
+                buildId = generateBuildId(
+                    methodsPayload.groupId,
+                    methodsPayload.appId,
+                    methodsPayload.instanceId,
+                    methodsPayload.commitSha,
+                    methodsPayload.buildVersion
+                ),
+                classname = method.classname,
+                name = method.name,
+                params = method.params,
+                returnType = method.returnType,
+                probesCount = method.probesCount,
+                probesStartPos = method.probesStartPos,
+                bodyChecksum = method.bodyChecksum
+            )
+        }
+        .let { dataToInsert ->
             transaction {
-                astMethodRepository.createMany(dataToInsert)
+                methodRepository.createMany(dataToInsert)
             }
         }
     }
 
-    override suspend fun saveCoverDataPart(instanceId: String, coverDataPart: CoverageData) {
-        coverDataPart.execClassData
-            .map { execClassData ->
-                RawCoverageData(
-                    instanceId = instanceId,
-                    className = execClassData.className,
-                    testId = execClassData.testId,
-                    probes = execClassData.probes
+    override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
+        coveragePayload.coverage.map { coverage ->
+                Coverage(
+                    instanceId = coveragePayload.instanceId,
+                    classname = coverage.classname,
+                    testId = coverage.testId,
+                    probes = coverage.probes
                 )
             }
             .chunked(EXEC_DATA_BATCH_SIZE)
             .forEach { data ->
                 transaction {
-                    execClassDataRepository.createMany(data)
+                    coverageRepository.createMany(data)
                 }
             }
     }
 
     override suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload) {
-        // addTestsPayload.sessionId
         addTestsPayload.tests.map { test ->
             TestMetadata(
                 testId = test.id,
@@ -99,23 +127,22 @@ class RawDataServiceImpl(
         }
     }
 
-    override suspend fun getAgentConfigs(agentId: String, buildVersion: String): List<AgentMetadata> {
-        return transaction {
-            agentConfigRepository.findAllByAgentIdAndBuildVersion(agentId, buildVersion)
+    private fun generateBuildId(
+        groupId: String,
+        appId: String,
+        instanceId: String = "",
+        commitSha: String = "",
+        buildVersion: String = "",
+    ): String {
+        require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
+        require(appId.isNotBlank()) { "appId cannot be empty or blank" }
+        require(instanceId.isNotBlank() || commitSha.isNotBlank() || buildVersion.isNotBlank()) {
+            "provide at least one of the following: instanceId, commitSha or buildVersion"
         }
-    }
 
-    override suspend fun getAstEntities(agentId: String, buildVersion: String): List<AstEntityData> {
-        return transaction {
-            val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            astMethodRepository.findAllByInstanceIds(instanceIds)
-        }
-    }
-
-    override suspend fun getRawCoverageData(agentId: String, buildVersion: String): List<RawCoverageData> {
-        return transaction {
-            val instanceIds = getAgentConfigs(agentId, buildVersion).map { it.instanceId }
-            execClassDataRepository.findAllByInstanceIds(instanceIds)
-        }
+        val buildIdElements = mutableListOf(groupId, appId)
+        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { it.isNotBlank() }
+        buildIdElements.add(firstNotBlank)
+        return buildIdElements.joinToString(":")
     }
 }

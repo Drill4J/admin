@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.entity
+package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.plugins.test2code.common.api.Probes
-
-data class RawCoverageData(
-    val instanceId: String,
-    val className: String,
-    val testId: String,
-    val probes: Probes
-)
+object MethodTable : StringIdTable("raw_data.ast_method") {
+    val classname = varchar("classname",  LONG_TEXT_LENGTH)
+    val name = varchar("name",  LONG_TEXT_LENGTH)
+    val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
+    val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
+    val bodyChecksum = varchar("body_checksum",  20) // crc64 stringified hash
+    val probesCount = integer("probes_count")
+    val probesStartPos = integer("probe_start_pos")
+}

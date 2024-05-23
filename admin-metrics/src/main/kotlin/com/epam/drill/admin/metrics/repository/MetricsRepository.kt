@@ -21,7 +21,7 @@ interface MetricsRepository {
 
     suspend fun getRisksByBranchDiff(
         groupId: String,
-        agentId: String,
+        appId: String,
         currentBranch: String,
         currentVcsRef: String,
         baseBranch: String,
@@ -30,13 +30,13 @@ interface MetricsRepository {
 
     suspend fun getTotalCoverage(
         groupId: String,
-        agentId: String,
+        appId: String,
         currentVcsRef: String
     ): JsonObject
 
     suspend fun getSummaryByBranchDiff(
         groupId: String,
-        agentId: String,
+        appId: String,
         currentBranch: String,
         currentVcsRef: String,
         baseBranch: String,

@@ -15,15 +15,13 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
 import org.jetbrains.exposed.dao.id.IntIdTable
+import java.util.*
 
-object AstMethodTable : IntIdTable("raw_data.ast_method") {
+object CoverageTable : IntIdTable("raw_data.exec_class_data") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
-    val className = varchar("class_name",  LONG_TEXT_LENGTH)
-    val name = varchar("name",  LONG_TEXT_LENGTH)
-    val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
-    val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
-    val bodyChecksum = varchar("body_checksum",  20) // crc64 stringified hash
-    val probesCount = integer("probes_count")
-    val probesStartPos = integer("probe_start_pos")
+    val classname = varchar("classname",  LONG_TEXT_LENGTH)
+    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
+    val probes = registerColumn<BitSet>("probes", ProbesColumnType())
 }

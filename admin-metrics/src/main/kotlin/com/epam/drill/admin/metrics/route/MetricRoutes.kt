@@ -29,7 +29,7 @@ object Metrics {
     @Location("/risks")
     data class Risks(
         val groupId: String,
-        val agentId: String,
+        val appId: String,
         val currentBranch: String,
         val currentVcsRef: String,
         val baseBranch: String,
@@ -39,14 +39,14 @@ object Metrics {
     @Location("/coverage")
     data class Coverage(
         val groupId: String,
-        val agentId: String,
+        val appId: String,
         val currentVcsRef: String,
     )
 
     @Location("/summary")
     data class Summary(
         val groupId: String,
-        val agentId: String,
+        val appId: String,
         val currentBranch: String,
         val currentVcsRef: String,
         val baseBranch: String,
@@ -67,7 +67,7 @@ fun Route.getRisks() {
     get<Metrics.Risks> { params ->
         val risks = metricsRepository.getRisksByBranchDiff(
             params.groupId,
-            params.agentId,
+            params.appId,
             params.currentBranch,
             params.currentVcsRef,
             params.baseBranch,
@@ -83,7 +83,7 @@ fun Route.getCoverage() {
     get<Metrics.Coverage> { params ->
         val coverage = metricsRepository.getTotalCoverage(
             params.groupId,
-            params.agentId,
+            params.appId,
             params.currentVcsRef
         )
         this.call.respond(HttpStatusCode.OK, coverage)
@@ -96,7 +96,7 @@ fun Route.getSummary() {
     get<Metrics.Summary> { params ->
         val summary = metricsRepository.getSummaryByBranchDiff(
             params.groupId,
-            params.agentId,
+            params.appId,
             params.currentBranch,
             params.currentVcsRef,
             params.baseBranch,

@@ -13,11 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.repository.impl
 
-import com.epam.drill.common.agent.configuration.AgentMetadata
+import com.epam.drill.admin.writer.rawdata.entity.Instance
+import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
+import com.epam.drill.admin.writer.rawdata.table.InstanceTable
+import org.jetbrains.exposed.sql.insert
 
-interface AgentConfigRepository {
-    fun create(agentConfig: AgentMetadata): Int
-    fun findAllByAgentIdAndBuildVersion(agentId: String, buildVersion: String): List<AgentMetadata>
+class InstanceRepositoryImpl: InstanceRepository {
+
+    override fun create(instance: Instance) {
+        InstanceTable.insert {
+            it[id] = instance.id
+            it[buildId] = instance.id
+        }
+    }
+
 }
