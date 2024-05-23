@@ -15,48 +15,36 @@
  */
 package com.epam.drill.admin.writer.rawdata.config
 
-import com.epam.drill.plugins.test2code.common.api.Probes
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ColumnType
 import org.postgresql.util.PGobject
-import java.util.*
 
 class ProbesColumnType : ColumnType() {
     override fun sqlType(): String = "VARBIT"
 
     override fun valueFromDB(value: Any): Any =
         when (value) {
-            is String -> value.toProbes()
-            is PGobject -> (value.value ?: "").toProbes()
+            is String -> stringToBooleanArray(value)
+            is PGobject -> stringToBooleanArray(value.value ?: "")
             else -> value
         }
 
     override fun notNullValueToDB(value: Any): Any {
-        if (value is BitSet) {
+        if (value is BooleanArray) {
             return PGobject().apply {
                 this.type = "VARBIT"
-                this.value = value.toProbesString()
+                this.value = booleanArrayToString(value)
             }
         }
         return super.notNullValueToDB(value)
     }
 }
 
-internal fun String.toProbes(): Probes {
-    val bitSet = BitSet(this.length + 1)
-    for (i in this.indices) {
-        if (this[i] == '1') {
-            bitSet.set(i, true)
-        }
+internal fun stringToBooleanArray(str: String): BooleanArray {
+    return BooleanArray(str.length) { index ->
+        str[index] == '1'
     }
-    bitSet.set(this.length, true) // set true indicating original array end
-    return bitSet
 }
 
-internal fun Probes.toProbesString(): String {
-    val builder = StringBuilder(length())
-    // exclude last bit (always '1')
-    for (i in 0 until length() - 1) {
-        builder.append(if (get(i)) '1' else '0')
-    }
-    return builder.toString()
+internal fun booleanArrayToString(arr: BooleanArray): String {
+    return arr.joinToString("") { if (it) "1" else "0" }
 }

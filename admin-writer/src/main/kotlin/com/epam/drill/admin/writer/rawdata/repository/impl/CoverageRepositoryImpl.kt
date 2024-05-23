@@ -19,7 +19,6 @@ import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
 import org.jetbrains.exposed.sql.batchInsert
-import java.util.*
 
 class CoverageRepositoryImpl: CoverageRepository {
     override fun createMany(data: List<Coverage>) {
@@ -27,7 +26,7 @@ class CoverageRepositoryImpl: CoverageRepository {
             this[CoverageTable.instanceId] = it.instanceId
             this[CoverageTable.classname] = it.classname
             this[CoverageTable.testId] = it.testId
-            this[CoverageTable.probes] = BitSet() // TODO pass actual probes
+            this[CoverageTable.probes] = it.probes
         }
     }
 

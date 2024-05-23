@@ -17,11 +17,10 @@ package com.epam.drill.admin.writer.rawdata.table
 
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
 import org.jetbrains.exposed.dao.id.IntIdTable
-import java.util.*
 
 object CoverageTable : IntIdTable("raw_data.coverage") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val probes = registerColumn<BitSet>("probes", ProbesColumnType())
+    val probes = registerColumn<Array<Boolean>>("probes", ProbesColumnType())
 }
