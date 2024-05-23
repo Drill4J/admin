@@ -3,10 +3,10 @@
 ALTER TABLE raw_data.instances
 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-ALTER TABLE raw_data.ast_method
+ALTER TABLE raw_data.methods
 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-ALTER TABLE raw_data.exec_class_data
+ALTER TABLE raw_data.coverage
 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE raw_data.test_metadata

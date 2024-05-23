@@ -29,7 +29,7 @@ RETURN (
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -45,7 +45,7 @@ RETURN (
             classname,
             BIT_COUNT(BIT_OR(probes)) AS set_bits_count
         FROM
-            raw_data.exec_class_data ecd
+            raw_data.coverage ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY
             classname
@@ -89,7 +89,7 @@ BEGIN
     BuildClassNames AS (
         SELECT classname
 		  -- !warning! one cannot simply do SUM(am.probes_count) to get class probe count - bc it'll aggregate dup entries from different instances
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE probes_count > 0
 	  		--  AND am.classname LIKE CONCAT({{package_filter}, '%') -- filter by package name
@@ -99,7 +99,7 @@ BEGIN
         SELECT
             ecd.classname,
             BIT_OR(ecd.probes) AS merged_probes
-        FROM raw_data.exec_class_data ecd
+        FROM raw_data.coverage ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.classname
     ),
@@ -156,7 +156,7 @@ BEGIN
             am.return_type,
             am.probe_start_pos,
             am.probes_count
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -164,7 +164,7 @@ BEGIN
         SELECT
             ecd.classname,
             BIT_OR(ecd.probes) AS or_result
-        FROM raw_data.exec_class_data ecd
+        FROM raw_data.coverage ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.classname
     )
@@ -222,7 +222,7 @@ BEGIN
             am.name,
             am.probe_start_pos,
             am.probes_count
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -250,7 +250,7 @@ BEGIN
             classname,
             BIT_COUNT(BIT_OR(probes)) AS set_bits_count
         FROM
-            raw_data.exec_class_data ecd
+            raw_data.coverage ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY
             classname, package_name
@@ -307,7 +307,7 @@ BEGIN
             am.probes_count,
             am.body_checksum,
             BaselineInstanceIds.build_version
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BaselineInstanceIds ON am.instance_id = BaselineInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -330,7 +330,7 @@ BEGIN
             am.probes_count,
             am.body_checksum,
             ChildrenInstanceIds.build_version
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN ChildrenInstanceIds ON am.instance_id = ChildrenInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -404,7 +404,7 @@ BEGIN
             ecd.classname,
             build_version,
             BIT_OR(ecd.probes) AS or_result
-        FROM raw_data.exec_class_data ecd
+        FROM raw_data.coverage ecd
         JOIN ChildrenInstanceIds ON ecd.instance_id = ChildrenInstanceIds.instance_id
         GROUP BY build_version, ecd.classname
     ),
@@ -466,7 +466,7 @@ BEGIN
             am.probe_start_pos,
             am.probes_count,
             am.body_checksum
-        FROM raw_data.ast_method am
+        FROM raw_data.methods am
         JOIN BuildInstanceIds ON am.instance_id = BuildInstanceIds.instance_id
         WHERE am.probes_count > 0
     ),
@@ -474,7 +474,7 @@ BEGIN
         SELECT
             ecd.classname,
             BIT_OR(ecd.probes) AS or_result
-        FROM raw_data.exec_class_data ecd
+        FROM raw_data.coverage ecd
         JOIN BuildInstanceIds ON ecd.instance_id = BuildInstanceIds.instance_id
         GROUP BY ecd.classname
     ),
@@ -493,7 +493,7 @@ BEGIN
                 am.probe_start_pos,
                 am.probes_count,
                 am.body_checksum
-            FROM raw_data.ast_method am
+            FROM raw_data.methods am
             JOIN ParentBuildInstanceIds ON am.instance_id = ParentBuildInstanceIds.instance_id
             WHERE am.probes_count > 0
         )

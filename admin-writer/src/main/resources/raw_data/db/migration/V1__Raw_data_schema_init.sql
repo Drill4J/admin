@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS raw_data.methods (
 
 CREATE TABLE IF NOT EXISTS raw_data.coverage (
     id SERIAL PRIMARY KEY,
-    instance_id VARCHAR,  --> check in raw_data.instances, look up build_id, find ast_methods
+    instance_id VARCHAR,  --> check in raw_data.instances, look up build_id, find methods
     classname VARCHAR,
     test_id VARCHAR, -- tests.id
     probes VARBIT
