@@ -114,8 +114,8 @@ class RawDataServiceImpl(
             }
     }
 
-    override suspend fun saveTestMetadata(addTestsPayload: AddTestsPayload) {
-        addTestsPayload.tests.map { test ->
+    override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) {
+        testsPayload.tests.map { test ->
             TestMetadata(
                 testId = test.id,
                 name = test.details.testName,
