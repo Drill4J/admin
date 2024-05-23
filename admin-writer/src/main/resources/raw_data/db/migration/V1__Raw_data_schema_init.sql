@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS raw_data.instances (
     id VARCHAR PRIMARY KEY, -- uuid
-    build_id VARCHAR, -- builds.id
+    build_id VARCHAR -- builds.id
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.builds (
