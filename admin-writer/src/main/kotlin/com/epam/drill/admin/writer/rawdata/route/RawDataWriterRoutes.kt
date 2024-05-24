@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(InternalSerializationApi::class)
+
 package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.writer.rawdata.entity.*
@@ -132,6 +134,12 @@ internal suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationC
     call.respond(HttpStatusCode.OK, response)
 }
 
+@OptIn(ExperimentalSerializationApi::class)
+private val json = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
+
 internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
     var body = receive<ByteArray>()
     if (request.headers.contains(HttpHeaders.ContentEncoding, "gzip"))
@@ -139,7 +147,8 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> deserializeProtobuf(body, T::class.serializer())
         // TODO fix serialization issue for TestsMetadata and remove ignoreUnknownKeys workaround
-        ContentType.Application.Json.toString() -> Json { ignoreUnknownKeys = true } .decodeFromString(T::class.serializer(), String(body))
+        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
+
         else -> throw UnsupportedMediaTypeException(
             ContentType.parse(
                 request.headers[HttpHeaders.ContentType] ?: "application/octet-stream"
