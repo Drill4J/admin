@@ -1,7 +1,8 @@
-import java.net.URI
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 import com.hierynomus.gradle.license.tasks.LicenseCheck
 import com.hierynomus.gradle.license.tasks.LicenseFormat
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URI
 
 plugins {
     application
@@ -47,7 +48,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
-    implementation("ch.qos.logback:logback-classic:1.2.3")
+    implementation("ch.qos.logback:logback-classic:1.3.14")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
 
