@@ -8,7 +8,6 @@ pluginManagement {
     val jibVersion: String by extra
     plugins {
         kotlin("jvm") version kotlinVersion
-        kotlin("multiplatform") version kotlinVersion
         kotlin("plugin.noarg") version kotlinVersion
         kotlin("plugin.serialization") version kotlinVersion
         id("org.ajoberstar.grgit") version grgitVersion
@@ -23,15 +22,6 @@ pluginManagement {
     }
 }
 
-val sharedLibsLocalPath: String by extra
-val includeSharedLib: Settings.(String) -> Unit = {
-    include(it)
-    project(":$it").projectDir = file(sharedLibsLocalPath).resolve(it)
-}
-
-includeSharedLib("common")
-includeSharedLib("test2code-api")
-includeSharedLib("test2code-common")
 include("admin-auth")
 include("admin-writer")
 include("admin-metrics")
