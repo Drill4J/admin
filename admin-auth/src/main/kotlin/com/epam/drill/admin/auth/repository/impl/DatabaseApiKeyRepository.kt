@@ -21,6 +21,7 @@ import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
 import com.epam.drill.admin.auth.table.UserTable
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class DatabaseApiKeyRepository: ApiKeyRepository {

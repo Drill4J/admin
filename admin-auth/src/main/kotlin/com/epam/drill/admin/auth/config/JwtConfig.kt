@@ -19,7 +19,8 @@ import io.ktor.config.*
 import mu.KotlinLogging
 import java.util.*
 import javax.crypto.KeyGenerator
-import kotlin.time.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 private val logger = KotlinLogging.logger {}
 
@@ -53,7 +54,7 @@ class JwtConfig(private val config: ApplicationConfig) {
      * A lifetime of a JWT. Optional, 60 minutes by default.
      */
     val lifetime: Duration
-        get() = config.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(60)
+        get() = config.propertyOrNull("lifetime")?.getDuration() ?: 60.minutes
 
     /**
      * An JWT audience. Optional, empty by default.
