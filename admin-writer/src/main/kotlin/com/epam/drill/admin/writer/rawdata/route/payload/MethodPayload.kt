@@ -21,9 +21,9 @@ import kotlinx.serialization.Serializable
 class MethodsPayload(
     val groupId: String,
     val appId: String,
-    val commitSha: String = "",
-    val buildVersion: String = "",
-    val instanceId: String = "",
+    val commitSha: String?,
+    val buildVersion: String?,
+    val instanceId: String?,
     val methods: Array<SingleMethodPayload>
 )
 
