@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(InternalSerializationApi::class)
+@file:OptIn(InternalSerializationApi::class, InternalSerializationApi::class)
 
 package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
-
 import io.ktor.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*

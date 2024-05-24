@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.upsert
 
 class BuildRepositoryImpl: BuildRepository {
@@ -35,5 +36,7 @@ class BuildRepositoryImpl: BuildRepository {
             it[commitMessage] = build.commitMessage
         }
     }
-
+    override fun existsById(buildId: String): Boolean {
+        return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
+    }
 }

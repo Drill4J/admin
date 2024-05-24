@@ -56,17 +56,33 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveInstance(instancePayload: InstancePayload) {
+        val buildId = generateBuildId(
+            instancePayload.groupId,
+            instancePayload.appId,
+            instancePayload.instanceId,
+            instancePayload.commitSha,
+            instancePayload.buildVersion
+        )
         val instance = Instance(
             id = instancePayload.instanceId,
-            buildId = generateBuildId(
-                instancePayload.groupId,
-                instancePayload.appId,
-                instancePayload.instanceId,
-                instancePayload.commitSha,
-                instancePayload.buildVersion
-            )
+            buildId = buildId
         )
         transaction {
+            if (!buildRepository.existsById(buildId)) {
+                val build = Build(
+                    id = buildId,
+                    groupId = instancePayload.groupId,
+                    appId = instancePayload.appId,
+                    instanceId = instancePayload.instanceId,
+                    commitSha = instancePayload.commitSha,
+                    buildVersion = instancePayload.buildVersion,
+                    branch = null,
+                    commitDate = null,
+                    commitMessage = null,
+                    commitAuthor = null
+                )
+                buildRepository.create(build)
+            }
             instanceRepository.create(instance)
         }
     }
@@ -143,8 +159,8 @@ class RawDataServiceImpl(
         commitSha: String?,
         buildVersion: String?
     ): String {
-        require(!groupId.isNullOrBlank()) { "groupId cannot be empty or blank" }
-        require(!appId.isNullOrBlank()) { "appId cannot be empty or blank" }
+        require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
+        require(appId.isNotBlank()) { "appId cannot be empty or blank" }
         require(!instanceId.isNullOrBlank() || !commitSha.isNullOrBlank() || !buildVersion.isNullOrBlank()) {
             "provide at least one of the following: instanceId, commitSha or buildVersion"
         }
