@@ -6,3 +6,4 @@ build/
 /tests/distr
 /tests/work
 **/out/
+.kotlin/
