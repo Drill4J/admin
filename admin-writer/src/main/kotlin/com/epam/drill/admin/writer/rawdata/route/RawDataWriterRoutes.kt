@@ -95,7 +95,7 @@ fun Route.postCoverage() {
 fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<MethodsRoute> {
+    put<MethodsRoute> {
         handleRequest<MethodsPayload> { data ->
             rawDataWriter.saveMethods(data)
         }

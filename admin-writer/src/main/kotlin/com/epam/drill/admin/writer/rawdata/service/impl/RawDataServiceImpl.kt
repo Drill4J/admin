@@ -42,13 +42,13 @@ class RawDataServiceImpl(
             ),
             groupId = buildPayload.groupId,
             appId = buildPayload.appId,
+            instanceId = null,
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
             branch = buildPayload.branch,
             commitDate = buildPayload.commitDate,
             commitMessage = buildPayload.commitMessage,
-            commitAuthor = buildPayload.commitAuthor,
-            commitTags = buildPayload.commitTags,
+            commitAuthor = buildPayload.commitAuthor
         )
         transaction {
             buildRepository.create(build)
@@ -139,19 +139,19 @@ class RawDataServiceImpl(
     private fun generateBuildId(
         groupId: String,
         appId: String,
-        instanceId: String = "",
-        commitSha: String = "",
-        buildVersion: String = "",
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?
     ): String {
-        require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
-        require(appId.isNotBlank()) { "appId cannot be empty or blank" }
-        require(instanceId.isNotBlank() || commitSha.isNotBlank() || buildVersion.isNotBlank()) {
+        require(!groupId.isNullOrBlank()) { "groupId cannot be empty or blank" }
+        require(!appId.isNullOrBlank()) { "appId cannot be empty or blank" }
+        require(!instanceId.isNullOrBlank() || !commitSha.isNullOrBlank() || !buildVersion.isNullOrBlank()) {
             "provide at least one of the following: instanceId, commitSha or buildVersion"
         }
 
         val buildIdElements = mutableListOf(groupId, appId)
-        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { it.isNotBlank() }
-        buildIdElements.add(firstNotBlank)
+        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
+        buildIdElements.add(firstNotBlank as String) // TODO think of better way to convince typesystem its not null
         return buildIdElements.joinToString(":")
     }
 }

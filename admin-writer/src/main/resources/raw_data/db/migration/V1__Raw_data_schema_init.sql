@@ -18,8 +18,7 @@ CREATE TABLE IF NOT EXISTS raw_data.builds (
     branch VARCHAR,
     commit_date VARCHAR,
     commit_message VARCHAR,
-    commit_author VARCHAR,
-    commit_tags VARCHAR
+    commit_author VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.methods (

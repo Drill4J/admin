@@ -21,11 +21,10 @@ import kotlinx.serialization.Serializable
 class BuildPayload(
     val groupId: String,
     val appId: String,
-    val commitSha: String = "",
-    val buildVersion: String = "",
-    val branch: String = "",
-    val commitDate: String = "", // TODO use actual date/timestamp format
-    val commitMessage: String = "",
-    val commitAuthor: String = "",
-    val commitTags: String = "",
+    val commitSha: String?,
+    val buildVersion: String?,
+    val branch: String?,
+    val commitDate: String?, // TODO use actual date/timestamp format
+    val commitMessage: String?,
+    val commitAuthor: String?
 )

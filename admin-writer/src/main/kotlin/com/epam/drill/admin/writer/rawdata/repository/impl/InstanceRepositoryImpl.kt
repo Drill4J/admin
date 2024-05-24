@@ -18,12 +18,12 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Instance
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.upsert
 
 class InstanceRepositoryImpl: InstanceRepository {
 
     override fun create(instance: Instance) {
-        InstanceTable.insert {
+        InstanceTable.upsert() {
             it[id] = instance.id
             it[buildId] = instance.buildId
         }
