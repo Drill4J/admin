@@ -20,8 +20,11 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
 import com.epam.drill.admin.auth.table.UserTable
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 
 class DatabaseApiKeyRepository: ApiKeyRepository {
@@ -30,11 +33,11 @@ class DatabaseApiKeyRepository: ApiKeyRepository {
     }
 
     override suspend fun findAllByUserId(userId: Int): List<ApiKeyEntity> {
-        return ApiKeyTable.select { ApiKeyTable.userId eq userId }.map { it.toEntity() }
+        return ApiKeyTable.selectAll().where { ApiKeyTable.userId eq userId }.map { it.toEntity() }
     }
 
     override suspend fun findById(id: Int): ApiKeyEntity? {
-        return (ApiKeyTable innerJoin UserTable).select { ApiKeyTable.id eq id }.map { it.toEntity() }.firstOrNull()
+        return (ApiKeyTable innerJoin UserTable).selectAll().where { ApiKeyTable.id eq id }.map { it.toEntity() }.firstOrNull()
     }
 
     override suspend fun deleteById(id: Int) {

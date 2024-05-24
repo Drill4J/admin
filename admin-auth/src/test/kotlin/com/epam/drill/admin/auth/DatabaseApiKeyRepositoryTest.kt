@@ -23,7 +23,7 @@ import com.epam.drill.admin.auth.table.UserTable
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.junit.jupiter.api.Test
@@ -49,7 +49,7 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
 
         val createdApiKeyEntity = repository.create(apiKeyEntity)
 
-        assertEquals(1, ApiKeyTable.select { (ApiKeyTable.id eq createdApiKeyEntity.id) and (ApiKeyTable.userId eq testUserId) }.count())
+        assertEquals(1, ApiKeyTable.selectAll().where { (ApiKeyTable.id eq createdApiKeyEntity.id) and (ApiKeyTable.userId eq testUserId) }.count())
     }
 
     @Test
@@ -89,7 +89,7 @@ class DatabaseApiKeyRepositoryTest: DatabaseTests() {
 
         repository.deleteById(testApiKeyId)
 
-        assertEquals(0, ApiKeyTable.select { ApiKeyTable.id eq testApiKeyId }.count())
+        assertEquals(0, ApiKeyTable.selectAll().where { ApiKeyTable.id eq testApiKeyId }.count())
     }
 
 
