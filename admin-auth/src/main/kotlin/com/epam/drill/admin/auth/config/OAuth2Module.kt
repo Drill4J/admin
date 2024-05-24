@@ -21,15 +21,15 @@ import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.impl.OAuthMapperImpl
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
 import com.epam.drill.admin.auth.service.transaction.TransactionalOAuthService
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
 import io.ktor.content.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -76,7 +76,7 @@ val oauthServicesDIModule = DI.Module("oauthServices") {
 /**
  * A Ktor Authentication configuration for OAuth2 based authentication.
  */
-fun Authentication.Configuration.configureOAuthAuthentication(di: DI) {
+fun AuthenticationConfig.configureOAuthAuthentication(di: DI) {
     val oauth2Config by di.instance<OAuth2Config>()
     val httpClient by di.instance<HttpClient>("oauthHttpClient")
 
@@ -106,9 +106,6 @@ fun Routing.configureOAuthRoutes() {
     val oauthService by closestDI().instance<OAuthService>()
 
     route("oauth") {
-        install(StatusPages) {
-            oauthStatusPages()
-        }
         authenticate("oauth") {
             get("/login") {
                 // Redirects to "authorizeUrl" automatically
@@ -136,20 +133,20 @@ class OAuthUnauthorizedException(message: String? = null, cause: Throwable? = nu
 
 class OAuthAccessDeniedException(message: String? = null) : RuntimeException(message)
 
-fun StatusPages.Configuration.oauthStatusPages() {
-    exception<OAuthUnauthorizedException> { cause ->
+fun StatusPagesConfig.oauthStatusPages() {
+    exception<OAuthUnauthorizedException> { call, cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.respond(
             htmlContent("Unauthorized Error", HttpStatusCode.Unauthorized)
         )
     }
-    exception<OAuthAccessDeniedException> { cause ->
+    exception<OAuthAccessDeniedException> { call, cause ->
         logger.trace(cause) { "403 Access Denied" }
         call.respond(
             htmlContent("Access Denied Error", HttpStatusCode.Forbidden)
         )
     }
-    exception<Throwable> { cause ->
+    exception<Throwable> { call, cause ->
         logger.trace(cause) { "500 Failed authentication through OAuth2" }
         call.respond(
             htmlContent("Internal Server Error", HttpStatusCode.InternalServerError)

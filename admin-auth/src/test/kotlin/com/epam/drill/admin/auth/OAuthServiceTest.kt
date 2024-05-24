@@ -23,9 +23,9 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.OAuthMapper
 import com.epam.drill.admin.auth.service.impl.OAuthServiceImpl
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 import io.ktor.client.engine.mock.*
-import io.ktor.config.*
+import io.ktor.server.config.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.assertThrows

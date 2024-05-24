@@ -17,8 +17,8 @@ package com.epam.drill.admin.config
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.application.*
-import io.ktor.config.*
+import io.ktor.server.application.*
+import io.ktor.server.config.*
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance

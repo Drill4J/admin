@@ -23,9 +23,9 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.http.*
 import io.ktor.http.auth.*
 import org.kodein.di.DI
@@ -48,7 +48,7 @@ val jwtServicesDIModule = DI.Module("jwtServices") {
 /**
  * A Ktor Authentication plugin configuration for JWT based authentication.
  */
-fun Authentication.Configuration.configureJwtAuthentication(di: DI) {
+fun AuthenticationConfig.configureJwtAuthentication(di: DI) {
     val jwtVerifier by di.instance<JWTVerifier>()
 
     jwt("jwt") {

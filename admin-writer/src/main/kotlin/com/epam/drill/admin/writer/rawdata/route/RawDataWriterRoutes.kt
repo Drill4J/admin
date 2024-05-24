@@ -15,35 +15,24 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
-import com.epam.drill.admin.writer.rawdata.entity.*
-import com.epam.drill.admin.writer.rawdata.route.payload.*
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
-import io.ktor.client.features.json.JsonFeature
-import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.locations.put
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.util.pipeline.*
-import kotlinx.serialization.KSerializer
+import io.ktor.server.locations.*
+import io.ktor.server.locations.post
+import io.ktor.server.locations.put
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
-import kotlinx.serialization.serializer
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.GZIPInputStream
 
 @Location("/builds")
 object BuildsRoute
@@ -62,9 +51,8 @@ fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<BuildsRoute> {
-        handleRequest<BuildPayload> { data ->
-            rawDataWriter.saveBuild(data)
-        }
+        rawDataWriter.saveBuild(call.receive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -72,9 +60,8 @@ fun Route.putInstances() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<InstancesRoute> {
-        handleRequest<InstancePayload> { data ->
-            rawDataWriter.saveInstance(data)
-        }
+        rawDataWriter.saveInstance(call.receive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -82,9 +69,8 @@ fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<CoverageRoute> {
-        handleRequest<CoveragePayload> { data ->
-            rawDataWriter.saveCoverage(data)
-        }
+        rawDataWriter.saveCoverage(call.receive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -92,9 +78,8 @@ fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<MethodsRoute> {
-        handleRequest<MethodsPayload> { data ->
-            rawDataWriter.saveMethods(data)
-        }
+        rawDataWriter.saveMethods(call.receive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -102,9 +87,8 @@ fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<TestMetadataRoute> {
-        handleRequest<AddTestsPayload> { data ->
-            rawDataWriter.saveTestMetadata(data)
-        }
+        rawDataWriter.saveTestMetadata(call.receive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -124,61 +108,16 @@ fun Route.postTestMetadata() {
 //    }
 //}
 
-internal suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.handleRequest(
-    handler: (data: T) -> Any
-) {
-    val data = call.decompressAndReceive<T>()
-    val response = handler(data)
-    call.respond(HttpStatusCode.OK, response)
-}
-
-internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
-    var body = receive<ByteArray>()
-    if (request.headers.contains(HttpHeaders.ContentEncoding, "gzip"))
-        body = decompressGZip(body)
-    return when (request.headers[HttpHeaders.ContentType]) {
-        ContentType.Application.ProtoBuf.toString() -> deserializeProtobuf(body, T::class.serializer())
-        // TODO fix serialization issue for TestsMetadata and remove ignoreUnknownKeys workaround
-        ContentType.Application.Json.toString() -> Json { ignoreUnknownKeys = true } .decodeFromString(T::class.serializer(), String(body))
-        else -> throw UnsupportedMediaTypeException(
-            ContentType.parse(
-                request.headers[HttpHeaders.ContentType] ?: "application/octet-stream"
-            )
-        )
-    }
-}
-
-internal fun decompressGZip(data: ByteArray): ByteArray {
-    val inputStream = ByteArrayInputStream(data)
-    val outputStream = ByteArrayOutputStream()
-    val gzipInputStream = GZIPInputStream(inputStream)
-
-    val buffer = ByteArray(1024)
-    var bytesRead = gzipInputStream.read(buffer)
-    while (bytesRead > 0) {
-        outputStream.write(buffer, 0, bytesRead)
-        bytesRead = gzipInputStream.read(buffer)
-    }
-
-    gzipInputStream.close()
-    return outputStream.toByteArray()
-}
-
-internal fun <T> deserializeProtobuf(data: ByteArray, serializer: KSerializer<T>): T {
-    return ProtoBuf.decodeFromByteArray(serializer, data)
-}
-
 internal suspend fun sendPostRequest(url: String, data: Any) {
     val client = HttpClient(Apache) {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(Json {
-                ignoreUnknownKeys = true
-            })
+        expectSuccess = true
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
         }
     }
 
-    client.post<String>(url) {
-        header("Content-Type", "application/json")
+    client.post(url) {
+        contentType(ContentType.Application.Json)
         body = data
     }
 }

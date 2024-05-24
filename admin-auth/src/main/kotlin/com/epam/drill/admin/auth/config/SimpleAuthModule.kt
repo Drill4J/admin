@@ -23,8 +23,8 @@ import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.*
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserAuthenticationService
 import com.epam.drill.admin.auth.service.transaction.TransactionalUserManagementService
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import org.kodein.di.*
 
 val simpleAuthDIModule = DI.Module("simpleAuth") {

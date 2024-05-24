@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.service
 
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 
 /**
  *  A service that manages the storage and retrieval of apiKeys.

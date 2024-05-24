@@ -19,9 +19,9 @@ import com.epam.drill.admin.auth.config.AuthConfig
 import com.epam.drill.admin.auth.model.AuthConfigView
 import com.epam.drill.admin.auth.model.toView
 import com.epam.drill.admin.auth.route.ok
-import io.ktor.application.*
-import io.ktor.locations.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.locations.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI

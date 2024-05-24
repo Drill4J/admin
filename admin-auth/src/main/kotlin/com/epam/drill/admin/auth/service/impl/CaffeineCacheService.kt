@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.service.ApiKeyCacheService
 import com.github.benmanes.caffeine.cache.Cache
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 
 /**
  * Implementation of [ApiKeyCacheService], providing caching functionalities.
