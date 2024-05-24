@@ -27,5 +27,5 @@ class CoveragePayload(
 class SingleClassCoveragePayload(
     val classname: String,
     val testId: String,
-    val probes: Array<Boolean>
+    val probes: BooleanArray
 )

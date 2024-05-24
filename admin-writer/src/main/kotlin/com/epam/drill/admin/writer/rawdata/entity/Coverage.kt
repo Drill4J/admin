@@ -19,5 +19,5 @@ class Coverage(
     val instanceId: String,
     val classname: String,
     val testId: String,
-    val probes: Array<Boolean>
+    val probes: BooleanArray
 )

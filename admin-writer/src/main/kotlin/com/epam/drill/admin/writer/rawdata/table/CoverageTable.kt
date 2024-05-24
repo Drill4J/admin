@@ -22,5 +22,5 @@ object CoverageTable : IntIdTable("raw_data.coverage") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH) // use reference
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
-    val probes = registerColumn<Array<Boolean>>("probes", ProbesColumnType())
+    val probes = registerColumn<BooleanArray>("probes", ProbesColumnType())
 }

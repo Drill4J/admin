@@ -34,6 +34,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
+import kotlin.test.assertTrue
 
 class ProbesColumnTypeTest : DatabaseTests() {
 
@@ -46,20 +47,20 @@ class ProbesColumnTypeTest : DatabaseTests() {
 
     @Test
     fun `test storing and retrieving Probes`() = withTransaction {
-        val originalProbes = arrayOf(true, false, true, false, false, true)
+        val originalProbes = booleanArrayOf(true, false, true, false, false, true)
 
         BoolArrays.insert {
             it[boolArrays] = originalProbes
         }
         val retrievedProbes = BoolArrays.selectAll().single()[BoolArrays.boolArrays]
 
-        assertEquals(originalProbes, retrievedProbes)
+        assertTrue(originalProbes.contentEquals(retrievedProbes))
     }
 
 }
 
 object BoolArrays : IntIdTable() {
-    val boolArrays = registerColumn<Array<Boolean>>("bool_arrays", ProbesColumnType())
+    val boolArrays = registerColumn<BooleanArray>("bool_arrays", ProbesColumnType())
 }
 
 @Testcontainers
