@@ -129,6 +129,7 @@ private fun Application.installPlugins() {
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true
+            explicitNulls = false
         })
         protobuf()
     }

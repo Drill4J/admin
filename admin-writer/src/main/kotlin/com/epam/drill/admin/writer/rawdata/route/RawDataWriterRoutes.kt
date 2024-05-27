@@ -35,12 +35,16 @@ import org.kodein.di.ktor.closestDI
 
 @Location("/builds")
 object BuildsRoute
+
 @Location("/instances")
 object InstancesRoute
+
 @Location("/coverage")
 object CoverageRoute
+
 @Location("/methods")
 object MethodsRoute
+
 @Location("/tests-metadata")
 object TestMetadataRoute
 //@Location("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
@@ -111,7 +115,10 @@ internal suspend fun sendPostRequest(url: String, data: Any) {
     val client = HttpClient(Apache) {
         expectSuccess = true
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+            json(Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            })
         }
     }
 
