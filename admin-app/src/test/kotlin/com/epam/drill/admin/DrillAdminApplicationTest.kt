@@ -18,8 +18,8 @@ package com.epam.drill.admin
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.application.*
-import io.ktor.config.*
+import io.ktor.server.application.*
+import io.ktor.server.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import org.junit.jupiter.api.AfterAll

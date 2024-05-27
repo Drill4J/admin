@@ -24,7 +24,7 @@ import com.epam.drill.admin.auth.model.toUserInfoView
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.service.OAuthMapper
 import com.epam.drill.admin.auth.service.OAuthService
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -62,12 +62,12 @@ class OAuthServiceImpl(
         accessToken: String
     ): String = runCatching {
         httpClient
-            .get<HttpResponse>(userInfoUrl) {
+            .get(userInfoUrl) {
                 headers {
                     append(HttpHeaders.Authorization, "Bearer $accessToken")
                 }
             }
-            .receive<String>()
+            .body<String>()
     }.onFailure { cause ->
         throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
     }.getOrThrow()

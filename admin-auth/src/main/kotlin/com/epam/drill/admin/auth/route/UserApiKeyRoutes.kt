@@ -20,12 +20,12 @@ import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.ApiKeyService
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.request.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.locations.*
+import io.ktor.server.locations.post
+import io.ktor.server.request.*
+import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 

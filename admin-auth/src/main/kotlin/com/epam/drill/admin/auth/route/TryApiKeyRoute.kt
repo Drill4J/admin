@@ -15,10 +15,10 @@
  */
 package com.epam.drill.admin.auth.route
 
-import io.ktor.application.*
-import io.ktor.locations.*
-import io.ktor.locations.get
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.locations.*
+import io.ktor.server.locations.get
+import io.ktor.server.routing.*
 
 @Location("/try-api-key")
 object TryApiKey

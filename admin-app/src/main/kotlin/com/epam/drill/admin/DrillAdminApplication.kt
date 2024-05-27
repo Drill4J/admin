@@ -27,16 +27,22 @@ import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.locations.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.serialization.*
-import kotlinx.serialization.protobuf.ProtoBuf
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.serialization.kotlinx.protobuf.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.routing.*
+import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -46,6 +52,8 @@ import javax.sql.DataSource
 private val logger = KotlinLogging.logger {}
 
 fun Application.module() {
+    val oauth2Enabled = oauth2Enabled
+    val simpleAuthEnabled = simpleAuthEnabled
     di {
         import(dataSourceDIModule)
         import(jwtServicesDIModule)
@@ -63,10 +71,12 @@ fun Application.module() {
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
     }
+    val di = closestDI()
     install(Authentication) {
-        configureJwtAuthentication(closestDI())
-        configureApiKeyAuthentication(closestDI())
-        if (oauth2Enabled) configureOAuthAuthentication(closestDI())
+        configureJwtAuthentication(di)
+        configureApiKeyAuthentication(di)
+        if (oauth2Enabled) configureOAuthAuthentication(di)
+        roleBasedAuthentication()
     }
     routing {
         rootRoute()
@@ -117,30 +127,35 @@ private fun Application.installPlugins() {
     install(Locations)
 
     install(ContentNegotiation) {
-        json()
-        register(ContentType.Application.ProtoBuf, SerializationConverter(ProtoBuf))
+        json(Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+        })
+        protobuf()
+    }
+    install(Compression) {
+        gzip()
+        deflate()
     }
 
     install(CORS) {
         anyHost()
         allowCredentials = true
-        method(HttpMethod.Post)
-        method(HttpMethod.Get)
-        method(HttpMethod.Delete)
-        method(HttpMethod.Put)
-        method(HttpMethod.Patch)
-        header(HttpHeaders.Authorization)
-        header(HttpHeaders.ContentType)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Delete)
+        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Patch)
+        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.ContentType)
         exposeHeader(HttpHeaders.Authorization)
         exposeHeader(HttpHeaders.ContentType)
     }
-
-    install(RoleBasedAuthorization)
 }
 
-private fun StatusPages.Configuration.defaultStatusPages() {
-    exception<Throwable> { cause ->
-        logger.error(cause) { "Failed to process the request ${this.context.request.path()}" }
+private fun StatusPagesConfig.defaultStatusPages() {
+    exception<Throwable> { call, cause ->
+        logger.error(cause) { "Failed to process the request ${call.request.path()}" }
         call.respond(HttpStatusCode.InternalServerError, "Internal Server Error")
     }
 }

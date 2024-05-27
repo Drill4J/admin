@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.config
 
-import io.ktor.config.*
+import io.ktor.server.config.*
 import mu.KotlinLogging
 import java.util.*
 import javax.crypto.KeyGenerator

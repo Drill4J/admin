@@ -22,7 +22,7 @@ import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.impl.OAuthMapperImpl
-import io.ktor.config.*
+import io.ktor.server.config.*
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.*
 

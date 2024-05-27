@@ -17,11 +17,11 @@ package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.API_KEY_HEADER
 import com.epam.drill.admin.auth.config.apiKey
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -131,7 +131,7 @@ class ApiKeyAuthenticationProviderTest {
         }
     }
 
-    private fun Authentication.Configuration.configureSimpleApiKey(
+    private fun AuthenticationConfig.configureSimpleApiKey(
         testApiKey: String,
         username: String = "test-user",
         configName: String? = null

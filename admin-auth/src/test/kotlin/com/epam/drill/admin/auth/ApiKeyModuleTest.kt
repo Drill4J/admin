@@ -21,13 +21,15 @@ import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.service.*
 import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.serialization.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.testing.*
 import org.kodein.di.*
 import org.kodein.di.ktor.closestDI
@@ -231,8 +233,9 @@ class ApiKeyModuleTest {
             configureDI()
         }
 
+        val di = closestDI()
         install(Authentication) {
-            configureApiKeyAuthentication(closestDI())
+            configureApiKeyAuthentication(di)
         }
     }
 

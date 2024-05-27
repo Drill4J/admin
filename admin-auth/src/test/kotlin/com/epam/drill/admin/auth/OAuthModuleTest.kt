@@ -20,14 +20,14 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.model.UserInfoView
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.OAuthService
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -258,9 +258,10 @@ class OAuthModuleTest {
             configureDI()
         }
 
+        val di = closestDI()
         install(Authentication) {
-            configureJwtAuthentication(closestDI())
-            configureOAuthAuthentication(closestDI())
+            configureJwtAuthentication(di)
+            configureOAuthAuthentication(di)
         }
 
         routing {

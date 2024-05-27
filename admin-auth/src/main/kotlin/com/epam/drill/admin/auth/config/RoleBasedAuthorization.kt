@@ -16,61 +16,59 @@
 package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.routing.*
-import io.ktor.util.*
-import io.ktor.util.pipeline.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.routing.*
 
-/**
- * A Ktor plugin for role based authorization.
- */
-class RoleBasedAuthorization {
+class RoleBasedAuthConfiguration {
+    var requiredRoles: Set<Role> = emptySet()
+}
 
-    fun interceptPipeline(
-        pipeline: ApplicationCallPipeline,
-        roles: Set<Role>
-    ) {
-        pipeline.insertPhaseAfter(ApplicationCallPipeline.Features, Authentication.ChallengePhase)
-        pipeline.insertPhaseAfter(Authentication.ChallengePhase, AuthorizationPhase)
+class AuthorizedRouteSelector(private val description: String) : RouteSelector() {
+    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) = RouteSelectorEvaluation.Constant
 
-        pipeline.intercept(AuthorizationPhase) {
-            val principal = call.authentication.principal<User>() ?: throw NotAuthenticatedException()
-            if (!roles.contains(principal.role)) {
-                throw NotAuthorizedException()
+    override fun toString(): String = "(authorize ${description})"
+}
+
+class RoleBasedAuthPluginConfiguration {
+    var throwErrorOnUnauthorizedResponse = false
+}
+
+private lateinit var pluginGlobalConfig: RoleBasedAuthPluginConfiguration
+fun AuthenticationConfig.roleBasedAuthentication(config: RoleBasedAuthPluginConfiguration.() -> Unit = {}) {
+    pluginGlobalConfig = RoleBasedAuthPluginConfiguration().apply(config)
+}
+
+private fun Route.buildAuthorizedRoute(
+    requiredRoles: Set<Role>,
+    build: Route.() -> Unit
+): Route {
+    val authorizedRoute = createChild(AuthorizedRouteSelector(requiredRoles.joinToString(",")))
+    authorizedRoute.install(RoleBasedAuthPlugin) {
+        this.requiredRoles = requiredRoles
+    }
+    authorizedRoute.build()
+    return authorizedRoute
+}
+
+fun Route.withRole(vararg roles: Role, build: Route.() -> Unit) =
+    buildAuthorizedRoute(requiredRoles = roles.toSet(), build = build)
+
+val RoleBasedAuthPlugin =
+    createRouteScopedPlugin(name = "RoleBasedAuthorization", createConfiguration = ::RoleBasedAuthConfiguration) {
+        if (::pluginGlobalConfig.isInitialized.not()) {
+            error("RoleBasedAuthPlugin not initialized. Setup plugin by calling AuthenticationConfig#roleBased in authenticate block")
+        }
+        with(pluginConfig) {
+            on(AuthenticationChecked) { call ->
+                val principal = call.principal<User>() ?: return@on
+                if (!requiredRoles.contains(principal.role)) {
+                    throw NotAuthorizedException()
+                }
             }
         }
     }
 
-    companion object Feature : ApplicationFeature<ApplicationCallPipeline, Unit, RoleBasedAuthorization> {
-        override val key = AttributeKey<RoleBasedAuthorization>("RoleBasedAuthorization")
-        override fun install(
-            pipeline: ApplicationCallPipeline,
-            configure: Unit.() -> Unit
-        ): RoleBasedAuthorization {
-            return RoleBasedAuthorization()
-        }
-
-        val AuthorizationPhase = PipelinePhase("Authorization")
-    }
-
-}
-
-class AuthorizedRouteSelector : RouteSelector() {
-    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) = RouteSelectorEvaluation.Constant
-}
-
-fun Route.withRole(vararg role: Role, build: Route.() -> Unit) = authorizedRoute(role.toSet(), build = build)
-
-private fun Route.authorizedRoute(
-    roles: Set<Role>,
-    build: Route.() -> Unit
-): Route {
-    val authorizedRoute = createChild(AuthorizedRouteSelector())
-    application.feature(RoleBasedAuthorization).interceptPipeline(authorizedRoute, roles)
-    authorizedRoute.build()
-    return authorizedRoute
-}
+class UnauthorizedAccessException(val denyReasons: MutableList<String>) : Exception()

@@ -19,7 +19,7 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.github.benmanes.caffeine.cache.Cache
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.mockito.kotlin.*

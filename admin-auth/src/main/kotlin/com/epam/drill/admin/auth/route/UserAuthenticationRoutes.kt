@@ -22,15 +22,15 @@ import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.request.*
-import io.ktor.response.header
-import io.ktor.routing.*
+import io.ktor.server.locations.*
+import io.ktor.server.locations.post
+import io.ktor.server.request.*
+import io.ktor.server.response.header
+import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
@@ -60,32 +60,32 @@ object Login
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
-fun StatusPages.Configuration.authStatusPages() {
-    exception<NotAuthenticatedException> { cause ->
+fun StatusPagesConfig.authStatusPages() {
+    exception<NotAuthenticatedException> { call, cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
     }
-    exception<UserValidationException> { cause ->
+    exception<UserValidationException> { call, cause ->
         logger.trace(cause) { "400 User data is invalid" }
         call.validationError(cause)
     }
-    exception<NotAuthorizedException> { cause ->
+    exception<NotAuthorizedException> { call, cause ->
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
-    exception<ForbiddenOperationException> { cause ->
+    exception<ForbiddenOperationException> { call, cause ->
         logger.trace(cause) { "422 Cannot modify own profile" }
         call.unprocessableEntity(cause)
     }
-    exception<UserNotFoundException> { cause ->
+    exception<UserNotFoundException> { call, cause ->
         logger.trace(cause) { "404 User not found" }
         call.notFound(cause)
     }
-    exception<ApiKeyNotFoundException> { cause ->
+    exception<ApiKeyNotFoundException> { call, cause ->
         logger.trace(cause) { "404 Api key not found" }
         call.notFound(cause)
     }
-    exception<InvalidApiKeyFormatException> { cause ->
+    exception<InvalidApiKeyFormatException> { call, cause ->
         logger.trace(cause) { "404 Invalid Api key format" }
         call.unauthorizedError(cause)
     }

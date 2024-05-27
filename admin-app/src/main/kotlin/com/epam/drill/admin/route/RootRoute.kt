@@ -16,9 +16,9 @@
 package com.epam.drill.admin.route
 
 import com.epam.drill.admin.auth.route.ok
-import io.ktor.application.*
-import io.ktor.locations.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.locations.*
+import io.ktor.server.routing.*
 
 @Location("/")
 object Root
