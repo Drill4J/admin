@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS raw_data.instances (
     id VARCHAR PRIMARY KEY, -- uuid
-    build_id VARCHAR -- builds.id
+    build_id VARCHAR, -- builds.id
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.builds (
@@ -18,7 +19,8 @@ CREATE TABLE IF NOT EXISTS raw_data.builds (
     branch VARCHAR,
     commit_date VARCHAR,
     commit_message VARCHAR,
-    commit_author VARCHAR
+    commit_author VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.methods (
@@ -38,7 +40,8 @@ CREATE TABLE IF NOT EXISTS raw_data.coverage (
     instance_id VARCHAR,  --> check in raw_data.instances, look up build_id, find methods
     classname VARCHAR,
     test_id VARCHAR, -- tests.id
-    probes VARBIT
+    probes VARBIT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.tests (
@@ -46,5 +49,6 @@ CREATE TABLE IF NOT EXISTS raw_data.tests (
     test_definition_id VARCHAR, -- combined from metadata from test runner (filename, suit, test name, parameters)
     name VARCHAR,
     result VARCHAR,
-    test_agent_type VARCHAR
+    test_agent_type VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
