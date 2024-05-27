@@ -21,8 +21,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
@@ -76,7 +76,7 @@ private fun <T : Any> Transaction.execSp(stmt: String, vararg params: Any, trans
             return resultSet?.use { transform(it) }
         }
 
-        override fun prepareSQL(transaction: Transaction): String = stmt
-        override fun arguments(): Iterable<Iterable<Pair<ColumnType, Any?>>> = emptyList()
+        override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = stmt
+        override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
     })
 }

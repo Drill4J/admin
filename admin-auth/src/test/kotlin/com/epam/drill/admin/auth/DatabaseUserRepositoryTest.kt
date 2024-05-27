@@ -21,7 +21,7 @@ import com.epam.drill.admin.auth.repository.impl.DatabaseUserRepository
 import com.epam.drill.admin.auth.table.UserTable
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.junit.jupiter.api.Test
@@ -44,8 +44,8 @@ class DatabaseUserRepositoryTest: DatabaseTests() {
         )
         val createdUserEntity = repository.create(userEntity)
 
-        assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
-        UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
+        assertEquals(1, UserTable.selectAll().where { UserTable.id eq createdUserEntity.id }.count())
+        UserTable.selectAll().where { UserTable.id eq createdUserEntity.id }.first().let {
             assertEquals(userEntity.username, it[UserTable.username])
             assertEquals(userEntity.passwordHash, it[UserTable.passwordHash])
             assertEquals(userEntity.role, it[UserTable.role])
@@ -67,8 +67,8 @@ class DatabaseUserRepositoryTest: DatabaseTests() {
 
             val createdUserEntity = repository.create(userEntity)
 
-            assertEquals(1, UserTable.select { UserTable.id eq createdUserEntity.id }.count())
-            UserTable.select { UserTable.id eq createdUserEntity.id }.first().let {
+            assertEquals(1, UserTable.selectAll().where { UserTable.id eq createdUserEntity.id }.count())
+            UserTable.selectAll().where { UserTable.id eq createdUserEntity.id }.first().let {
                 assertEquals(it[UserTable.registrationDate], currentDateTimeStub)
             }
         }
@@ -119,8 +119,8 @@ class DatabaseUserRepositoryTest: DatabaseTests() {
             )
         )
 
-        assertEquals(1, UserTable.select { UserTable.username eq "bar" }.count())
-        UserTable.select { UserTable.username eq "bar" }.first().let {
+        assertEquals(1, UserTable.selectAll().where { UserTable.username eq "bar" }.count())
+        UserTable.selectAll().where { UserTable.username eq "bar" }.first().let {
             assertEquals("bar", it[UserTable.username])
             assertEquals("hash2", it[UserTable.passwordHash])
             assertEquals("ADMIN", it[UserTable.role])
@@ -211,7 +211,7 @@ class DatabaseUserRepositoryTest: DatabaseTests() {
 
         repository.deleteById(id)
 
-        assertEquals(0, UserTable.select { UserTable.id eq id }.count())
+        assertEquals(0, UserTable.selectAll().where { UserTable.id eq id }.count())
     }
 
     @Test

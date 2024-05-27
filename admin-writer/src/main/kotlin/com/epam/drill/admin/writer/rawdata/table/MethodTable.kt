@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
-object MethodTable : StringIdTable("raw_data.ast_method") {
+object MethodTable : StringIdTable("raw_data.methods") {
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
     val buildId = varchar("build_id", MEDIUM_TEXT_LENGTH)
     val name = varchar("name",  LONG_TEXT_LENGTH)

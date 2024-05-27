@@ -31,11 +31,11 @@ class DatabaseUserRepository(
     }
 
     override suspend fun findById(id: Int): UserEntity? {
-        return UserTable.select { UserTable.id eq id }.map { it.toEntity() }.firstOrNull()
+        return UserTable.selectAll().where { UserTable.id eq id }.map { it.toEntity() }.firstOrNull()
     }
 
     override suspend fun findByUsername(username: String): UserEntity? {
-        return UserTable.select { UserTable.username.lowerCase() eq username.lowercase() }.map { it.toEntity() }
+        return UserTable.selectAll().where { UserTable.username.lowerCase() eq username.lowercase() }.map { it.toEntity() }
             .firstOrNull()
     }
 

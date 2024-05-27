@@ -18,11 +18,12 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.upsert
 
 class BuildRepositoryImpl: BuildRepository {
     override fun create(build: Build) {
-        BuildTable.insert {
+        BuildTable.upsert() {
             it[id] = build.id
             it[groupId] = build.groupId
             it[appId] = build.appId
@@ -32,8 +33,10 @@ class BuildRepositoryImpl: BuildRepository {
             it[branch] = build.branch
             it[commitDate] = build.commitDate
             it[commitAuthor] = build.commitAuthor
-            it[commitTags] = build.commitTags
+            it[commitMessage] = build.commitMessage
         }
     }
-
+    override fun existsById(buildId: String): Boolean {
+        return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
+    }
 }

@@ -42,13 +42,13 @@ class RawDataServiceImpl(
             ),
             groupId = buildPayload.groupId,
             appId = buildPayload.appId,
+            instanceId = null,
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
             branch = buildPayload.branch,
             commitDate = buildPayload.commitDate,
             commitMessage = buildPayload.commitMessage,
-            commitAuthor = buildPayload.commitAuthor,
-            commitTags = buildPayload.commitTags,
+            commitAuthor = buildPayload.commitAuthor
         )
         transaction {
             buildRepository.create(build)
@@ -56,17 +56,33 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveInstance(instancePayload: InstancePayload) {
+        val buildId = generateBuildId(
+            instancePayload.groupId,
+            instancePayload.appId,
+            instancePayload.instanceId,
+            instancePayload.commitSha,
+            instancePayload.buildVersion
+        )
         val instance = Instance(
             id = instancePayload.instanceId,
-            buildId = generateBuildId(
-                instancePayload.groupId,
-                instancePayload.appId,
-                instancePayload.instanceId,
-                instancePayload.commitSha,
-                instancePayload.buildVersion
-            )
+            buildId = buildId
         )
         transaction {
+            if (!buildRepository.existsById(buildId)) {
+                val build = Build(
+                    id = buildId,
+                    groupId = instancePayload.groupId,
+                    appId = instancePayload.appId,
+                    instanceId = instancePayload.instanceId,
+                    commitSha = instancePayload.commitSha,
+                    buildVersion = instancePayload.buildVersion,
+                    branch = null,
+                    commitDate = null,
+                    commitMessage = null,
+                    commitAuthor = null
+                )
+                buildRepository.create(build)
+            }
             instanceRepository.create(instance)
         }
     }
@@ -139,19 +155,19 @@ class RawDataServiceImpl(
     private fun generateBuildId(
         groupId: String,
         appId: String,
-        instanceId: String = "",
-        commitSha: String = "",
-        buildVersion: String = "",
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?
     ): String {
         require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
         require(appId.isNotBlank()) { "appId cannot be empty or blank" }
-        require(instanceId.isNotBlank() || commitSha.isNotBlank() || buildVersion.isNotBlank()) {
+        require(!instanceId.isNullOrBlank() || !commitSha.isNullOrBlank() || !buildVersion.isNullOrBlank()) {
             "provide at least one of the following: instanceId, commitSha or buildVersion"
         }
 
         val buildIdElements = mutableListOf(groupId, appId)
-        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { it.isNotBlank() }
-        buildIdElements.add(firstNotBlank)
+        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
+        buildIdElements.add(firstNotBlank as String) // TODO think of better way to convince typesystem its not null
         return buildIdElements.joinToString(":")
     }
 }

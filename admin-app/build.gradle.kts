@@ -1,7 +1,8 @@
-import java.net.URI
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 import com.hierynomus.gradle.license.tasks.LicenseCheck
 import com.hierynomus.gradle.license.tasks.LicenseFormat
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.net.URI
 
 plugins {
     application

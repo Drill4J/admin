@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(InternalSerializationApi::class, InternalSerializationApi::class)
+
 package com.epam.drill.admin.writer.rawdata.route
 
+import com.epam.drill.admin.writer.rawdata.entity.*
+import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
-
 import io.ktor.server.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -31,6 +34,8 @@ import io.ktor.server.routing.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
@@ -77,7 +82,7 @@ fun Route.postCoverage() {
 fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<MethodsRoute> {
+    put<MethodsRoute> {
         rawDataWriter.saveMethods(call.receive())
         call.respond(HttpStatusCode.OK)
     }

@@ -18,11 +18,11 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Method
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
 import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.batchUpsert
 
 class MethodRepositoryImpl: MethodRepository {
     override fun createMany(data: List<Method>) {
-        MethodTable.batchInsert(data, shouldReturnGeneratedValues = false) {
+        MethodTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
             this[MethodTable.id] = it.id
             this[MethodTable.buildId] = it.buildId
             this[MethodTable.classname] = it.classname

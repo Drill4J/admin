@@ -19,7 +19,7 @@ import io.ktor.server.config.*
 import mu.KotlinLogging
 import java.util.*
 import javax.crypto.KeyGenerator
-import kotlin.time.*
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 private val logger = KotlinLogging.logger {}
