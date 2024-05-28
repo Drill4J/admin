@@ -171,7 +171,7 @@ fun Route.updatePasswordRoute() {
  */
 fun Route.signOutRoute() {
     post<SignOut> {
-        call.response.cookies.appendExpired(JWT_COOKIE, null, "/")
+        call.response.cookies.append(JWT_COOKIE, "/")
         call.ok("User successfully signed out.")
     }
 }
