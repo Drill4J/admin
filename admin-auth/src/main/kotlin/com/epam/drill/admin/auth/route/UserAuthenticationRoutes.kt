@@ -53,10 +53,6 @@ class UpdatePassword
 @Resource("/sign-out")
 class SignOut
 
-@Deprecated("Use /sign-in")
-@Resource("/api/login")
-class Login
-
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
