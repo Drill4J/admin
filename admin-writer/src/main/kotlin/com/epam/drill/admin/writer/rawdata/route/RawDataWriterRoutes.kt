@@ -16,22 +16,29 @@
 package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
-import io.ktor.server.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.server.locations.*
 import io.ktor.server.locations.post
 import io.ktor.server.locations.put
+import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.protobuf.ProtoBuf
+import kotlinx.serialization.serializer
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import java.io.InputStream
+import java.util.zip.GZIPInputStream
 
 @Location("/builds")
 object BuildsRoute
@@ -54,7 +61,7 @@ fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<BuildsRoute> {
-        rawDataWriter.saveBuild(call.receive())
+        rawDataWriter.saveBuild(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -63,7 +70,7 @@ fun Route.putInstances() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<InstancesRoute> {
-        rawDataWriter.saveInstance(call.receive())
+        rawDataWriter.saveInstance(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -72,7 +79,7 @@ fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<CoverageRoute> {
-        rawDataWriter.saveCoverage(call.receive())
+        rawDataWriter.saveCoverage(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -81,7 +88,7 @@ fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<MethodsRoute> {
-        rawDataWriter.saveMethods(call.receive())
+        rawDataWriter.saveMethods(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -90,7 +97,7 @@ fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     post<TestMetadataRoute> {
-        rawDataWriter.saveTestMetadata(call.receive())
+        rawDataWriter.saveTestMetadata(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -126,4 +133,34 @@ internal suspend fun sendPostRequest(url: String, data: Any) {
         contentType(ContentType.Application.Json)
         body = data
     }
+}
+
+internal val json = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
+
+/**
+ * Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
+ * https://github.com/ktorio/ktor/issues/3845
+ */
+internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
+    val body: ByteArray = when (request.headers[HttpHeaders.ContentEncoding]) {
+        "gzip" -> decompressGZip(receiveStream())
+        else -> receive<ByteArray>()
+    }
+    return when (request.headers[HttpHeaders.ContentType]) {
+        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
+        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
+        else -> throw UnsupportedMediaTypeException(
+            ContentType.parse(request.headers[HttpHeaders.ContentType] ?: "application/octet-stream")
+        )
+    }
+}
+
+internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
+    val decompressedBytes = withContext(Dispatchers.IO) {
+        GZIPInputStream(inputStream).readBytes()
+    }
+    return decompressedBytes
 }
