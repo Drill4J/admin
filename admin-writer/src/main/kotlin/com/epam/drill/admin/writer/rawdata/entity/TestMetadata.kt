@@ -16,8 +16,10 @@
 package com.epam.drill.admin.writer.rawdata.entity
 
 class TestMetadata (
-    val testId: String,
-    val name: String,
-    val type: String,
-    // TODO add field to store arbitrary data (key value? array?)
+    val testDefinitionId: String,
+    val type: String?,
+    val runner: String?,
+    val name: String?,
+    val path: String?,
+    val result: String?
 )

@@ -141,9 +141,12 @@ class RawDataServiceImpl(
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) {
         testsPayload.tests.map { test ->
             TestMetadata(
-                testId = test.id,
+                testDefinitionId = test.id,
+                type = "placeholder", // TODO replace once user-defined value is implemented on autotest agent
+                runner = test.details.engine,
                 name = test.details.testName,
-                type = "placeholder"
+                path = test.details.path,
+                result = test.result.toString()
             )
         }.let { dataToInsert ->
             transaction {

@@ -23,9 +23,12 @@ import org.jetbrains.exposed.sql.batchInsert
 class TestMetadataRepositoryImpl: TestMetadataRepository {
     override fun createMany(data: List<TestMetadata>) {
         TestMetadataTable.batchInsert(data, shouldReturnGeneratedValues = false) {
-            this[TestMetadataTable.testId] = it.testId
-            this[TestMetadataTable.name] = it.name
+            this[TestMetadataTable.testDefinitionId] = it.testDefinitionId
             this[TestMetadataTable.type] = it.type
+            this[TestMetadataTable.runner] = it.runner
+            this[TestMetadataTable.name] = it.name
+            this[TestMetadataTable.path] = it.path
+            this[TestMetadataTable.result] = it.result
         }
     }
 }

@@ -39,16 +39,18 @@ CREATE TABLE IF NOT EXISTS raw_data.coverage (
     id SERIAL PRIMARY KEY,
     instance_id VARCHAR,  --> check in raw_data.instances, look up build_id, find methods
     classname VARCHAR,
-    test_id VARCHAR, -- tests.id
+    test_id VARCHAR, -- TODO this is tests.test_definition_id. We want it replaced with test.id to trace unique launches
     probes VARBIT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS raw_data.tests (
-    id VARCHAR PRIMARY KEY, -- uuid
-    test_definition_id VARCHAR, -- combined from metadata from test runner (filename, suit, test name, parameters)
-    name VARCHAR,
-    result VARCHAR,
-    test_agent_type VARCHAR,
+    id SERIAL PRIMARY KEY,
+    test_definition_id VARCHAR, -- hash of the value combined from metadata from test runner (filename, suit, test name, parameters)
+    type VARCHAR NULL,
+    runner VARCHAR NULL,
+    name VARCHAR NULL,
+    path VARCHAR NULL,
+    result VARCHAR NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
