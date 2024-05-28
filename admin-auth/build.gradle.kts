@@ -37,7 +37,6 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlin.Experimental")
         languageSettings.optIn("kotlin.ExperimentalStdlibApi")
         languageSettings.optIn("kotlin.time.ExperimentalTime")
-        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
         languageSettings.optIn("io.ktor.util.InternalAPI")
     }
 }
@@ -53,9 +52,9 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-server-locations:$ktorVersion")
     implementation("io.ktor:ktor-server-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-apache:$ktorVersion")
     implementation("org.mindrot:jbcrypt:$jbcryptVersion")

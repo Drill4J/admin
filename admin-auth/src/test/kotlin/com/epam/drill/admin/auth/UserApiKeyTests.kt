@@ -28,12 +28,11 @@ import com.epam.drill.admin.auth.service.impl.ApiKeyServiceImpl
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.server.locations.*
 import io.ktor.server.routing.*
-import io.ktor.serialization.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.resources.*
 import io.ktor.server.testing.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
@@ -216,7 +215,7 @@ class UserApiKeyTests {
     }
 
     private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
-        install(Locations)
+        install(Resources)
         install(ContentNegotiation) {
             json()
         }

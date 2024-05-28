@@ -21,11 +21,11 @@ import io.ktor.client.engine.apache.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.resources.*
+import io.ktor.server.resources.put
+import io.ktor.server.resources.post
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
-import io.ktor.server.locations.put
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -40,22 +40,22 @@ import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
-@Location("/builds")
-object BuildsRoute
+@Resource("/builds")
+class BuildsRoute
 
-@Location("/instances")
-object InstancesRoute
+@Resource("/instances")
+class InstancesRoute
 
-@Location("/coverage")
-object CoverageRoute
+@Resource("/coverage")
+class CoverageRoute
 
-@Location("/methods")
-object MethodsRoute
+@Resource("/methods")
+class MethodsRoute
 
-@Location("/tests-metadata")
-object TestMetadataRoute
-//@Location("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
-//data class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
+@Resource("/tests-metadata")
+class TestMetadataRoute
+//@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
+//class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
 
 fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()

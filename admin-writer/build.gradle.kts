@@ -33,7 +33,6 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlin.Experimental")
         languageSettings.optIn("kotlin.ExperimentalStdlibApi")
         languageSettings.optIn("kotlin.time.ExperimentalTime")
-        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
         languageSettings.optIn("io.ktor.util.InternalAPI")
         languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
         languageSettings.optIn("kotlinx.serialization.InternalSerializationApi")
@@ -50,7 +49,6 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-server-locations:$ktorVersion")
     implementation("io.ktor:ktor-server-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
@@ -64,6 +62,7 @@ dependencies {
     implementation("io.ktor:ktor-client-json:$ktorVersion")
     implementation("io.ktor:ktor-client-serialization:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-server-resources:$ktorVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
