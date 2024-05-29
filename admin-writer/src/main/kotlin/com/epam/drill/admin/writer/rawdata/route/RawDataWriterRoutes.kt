@@ -152,9 +152,9 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
         ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
-        else -> throw UnsupportedMediaTypeException(
-            ContentType.parse(request.headers[HttpHeaders.ContentType] ?: "application/octet-stream")
-        )
+        else -> throw request.headers[HttpHeaders.ContentType]?.let {
+            UnsupportedMediaTypeException(ContentType.parse(it))
+        } ?: BadRequestException("Content-Type header is missing")
     }
 }
 
