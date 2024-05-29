@@ -229,3 +229,143 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR
+) RETURNS TABLE (
+    _risk_type TEXT,
+    _build_id VARCHAR,
+    _name VARCHAR,
+    _classname VARCHAR,
+    _body_checksum VARCHAR,
+    _signature TEXT,
+    _probes_count INT,
+    _build_ids_coverage_source VARCHAR ARRAY,
+    _merged_probes BIT,
+    _probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+        SELECT
+            build_id,
+            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.classname,
+            methods.name,
+            methods.probe_start_pos,
+            methods.probes_count,
+            methods.body_checksum
+        FROM raw_data.methods methods
+        WHERE methods.build_id = input_baseline_build_id
+            AND methods.probes_count > 0
+    ),
+    Methods AS (
+        SELECT
+            build_id,
+            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.classname,
+            methods.name,
+            methods.probe_start_pos,
+            methods.probes_count,
+            methods.body_checksum
+        FROM raw_data.methods methods
+        WHERE methods.build_id = input_build_id
+            AND methods.probes_count > 0
+    ),
+    Risks AS (
+        WITH
+        RisksModified AS (
+            SELECT
+                build_id,
+                name,
+                classname,
+                body_checksum,
+                signature,
+                probe_start_pos,
+                probes_count
+            FROM Methods AS q2
+            WHERE
+                EXISTS (
+                    SELECT 1
+                    FROM BaselineMethods AS q1
+                    WHERE q1.signature = q2.signature
+                    AND q1.body_checksum <> q2.body_checksum
+                )
+        ),
+        RisksNew AS (
+            SELECT
+                build_id,
+                name,
+                classname,
+                body_checksum,
+                signature,
+                probe_start_pos,
+                probes_count
+            FROM Methods AS q2
+            WHERE
+                NOT EXISTS (
+                    SELECT 1
+                    FROM BaselineMethods AS q1
+                    WHERE q1.signature = q2.signature
+                )
+        )
+        SELECT *, 'new' as risk_type FROM RisksNew
+        UNION
+        SELECT *, 'modified' as risk_type from RisksModified
+    ),
+    MatchingMethods AS (
+        SELECT
+			Risks.classname,
+			Risks.signature,
+			Risks.body_checksum,
+			Risks.risk_type,
+			methods.build_id,
+			methods.probe_start_pos,
+			methods.probes_count
+        FROM raw_data.methods methods
+        JOIN Risks ON
+            Risks.body_checksum = methods.body_checksum
+            AND Risks.signature = CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type)
+    		-- TODO -- AND Risks.group_id = methods.group_id AND Risks.app_id = methods.app_id
+		ORDER BY Risks.body_checksum
+	),
+    MatchingInstances AS (
+        SELECT
+            MatchingMethods.*,
+            instances.id as instance_id
+        FROM raw_data.instances instances
+        JOIN MatchingMethods ON
+            MatchingMethods.build_id = instances.build_id
+    ),
+	MatchingCoverage AS (
+		SELECT
+			-- group_id
+			-- app_id
+			MatchingInstances.signature,
+			MatchingInstances.body_checksum,
+			ARRAY_AGG(DISTINCT(MatchingInstances.build_id)) as build_ids_coverage_source,
+			BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes
+		FROM raw_data.coverage coverage
+		JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id
+		GROUP BY
+			MatchingInstances.signature,
+			MatchingInstances.body_checksum
+	)
+    SELECT
+        Risks.risk_type,
+        Risks.build_id,
+        Risks.name,
+        Risks.classname,
+        Risks.body_checksum,
+        Risks.signature,
+        Risks.probes_count,
+        MatchingCoverage.build_ids_coverage_source,
+        MatchingCoverage.merged_probes,
+		CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count AS probes_coverage_ratio
+    FROM Risks
+    LEFT JOIN MatchingCoverage ON Risks.body_checksum = MatchingCoverage.body_checksum
+        AND Risks.signature = MatchingCoverage.signature
+    ;
+END;
+$$ LANGUAGE plpgsql;
