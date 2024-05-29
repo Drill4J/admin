@@ -40,27 +40,32 @@ import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
-@Resource("/builds")
-class BuildsRoute
+@Resource("/data-ingest")
+class DataIngestRoutes {
 
-@Resource("/instances")
-class InstancesRoute
+    @Resource("builds")
+    class BuildsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 
-@Resource("/coverage")
-class CoverageRoute
+    @Resource("instances")
+    class InstancesRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 
-@Resource("/methods")
-class MethodsRoute
+    @Resource("coverage")
+    class CoverageRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 
-@Resource("/tests-metadata")
-class TestMetadataRoute
+    @Resource("methods")
+    class MethodsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("tests-metadata")
+    class TestMetadataRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
-//class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
+//class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
+
+}
 
 fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<BuildsRoute> {
+    put<DataIngestRoutes.BuildsRoute> {
         rawDataWriter.saveBuild(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
@@ -69,7 +74,7 @@ fun Route.putBuilds() {
 fun Route.putInstances() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<InstancesRoute> {
+    put<DataIngestRoutes.InstancesRoute> {
         rawDataWriter.saveInstance(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
@@ -78,7 +83,7 @@ fun Route.putInstances() {
 fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<CoverageRoute> {
+    post<DataIngestRoutes.CoverageRoute> {
         rawDataWriter.saveCoverage(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
@@ -87,7 +92,7 @@ fun Route.postCoverage() {
 fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<MethodsRoute> {
+    put<DataIngestRoutes.MethodsRoute> {
         rawDataWriter.saveMethods(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
@@ -96,7 +101,7 @@ fun Route.putMethods() {
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<TestMetadataRoute> {
+    post<DataIngestRoutes.TestMetadataRoute> {
         rawDataWriter.saveTestMetadata(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
