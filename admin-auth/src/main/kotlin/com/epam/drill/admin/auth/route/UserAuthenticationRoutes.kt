@@ -26,10 +26,10 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
+import io.ktor.resources.*
+import io.ktor.server.resources.post
+import io.ktor.server.resources.get
 import io.ktor.server.request.*
-import io.ktor.server.response.header
 import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.instance
@@ -38,24 +38,20 @@ import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
 
-@Location("/sign-in")
-object SignIn
+@Resource("/sign-in")
+class SignIn
 
-@Location("/sign-up")
-object SignUp
+@Resource("/sign-up")
+class SignUp
 
-@Location("/user-info")
-object UserInfo
+@Resource("/user-info")
+class UserInfo
 
-@Location("/update-password")
-object UpdatePassword
+@Resource("/update-password")
+class UpdatePassword
 
-@Location("/sign-out")
-object SignOut
-
-@Deprecated("Use /sign-in")
-@Location("/api/login")
-object Login
+@Resource("/sign-out")
+class SignOut
 
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
@@ -119,7 +115,9 @@ fun Route.signInRoute() {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
-        call.response.cookies.append(Cookie(JWT_COOKIE, token, httpOnly = true, path = "/"))
+        call.response.cookies.append(
+            Cookie(name = JWT_COOKIE, value = token, httpOnly = true, path = "/")
+        )
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }
@@ -175,7 +173,7 @@ fun Route.updatePasswordRoute() {
  */
 fun Route.signOutRoute() {
     post<SignOut> {
-        call.response.cookies.appendExpired(JWT_COOKIE, null, "/")
+        call.response.cookies.append(JWT_COOKIE, value = "", path = "/")
         call.ok("User successfully signed out.")
     }
 }

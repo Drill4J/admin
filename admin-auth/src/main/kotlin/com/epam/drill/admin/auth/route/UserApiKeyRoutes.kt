@@ -20,19 +20,21 @@ import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.service.ApiKeyService
+import io.ktor.resources.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
+import io.ktor.server.resources.post
+import io.ktor.server.resources.get
+import io.ktor.server.resources.delete
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Location("/user-keys")
-object UserApiKeys {
-    @Location("/{id}")
-    data class Id(val id: Int)
+@Resource("/user-keys")
+class UserApiKeys {
+    @Resource("/{id}")
+    class Id(val parent: UserApiKeys, val id: Int)
 }
 
 /**

@@ -117,8 +117,8 @@ fun Routing.configureOAuthRoutes() {
                 val jwt = tokenService.issueToken(userInfo)
                 call.response.cookies.append(
                     Cookie(
-                        JWT_COOKIE,
-                        jwt,
+                        name = JWT_COOKIE,
+                        value = jwt,
                         httpOnly = true,
                         path = "/"
                     )
