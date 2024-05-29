@@ -21,6 +21,7 @@ import io.ktor.client.engine.apache.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.http.HttpStatusCode.Companion.BadRequest
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.locations.*
@@ -152,9 +153,9 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
         ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
-        else -> throw UnsupportedMediaTypeException(
-            ContentType.parse(request.headers[HttpHeaders.ContentType] ?: "application/octet-stream")
-        )
+        else -> throw request.headers[HttpHeaders.ContentType]?.let {
+            UnsupportedMediaTypeException(ContentType.parse(it))
+        } ?: BadRequestException("Content-Type header is missing")
     }
 }
 
