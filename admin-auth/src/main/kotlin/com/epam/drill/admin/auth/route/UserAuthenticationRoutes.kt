@@ -115,7 +115,9 @@ fun Route.signInRoute() {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
-        call.response.cookies.append(Cookie(JWT_COOKIE, token, httpOnly = true, path = "/"))
+        call.response.cookies.append(
+            Cookie(name = JWT_COOKIE, value = token, httpOnly = true, path = "/")
+        )
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }
@@ -171,7 +173,7 @@ fun Route.updatePasswordRoute() {
  */
 fun Route.signOutRoute() {
     post<SignOut> {
-        call.response.cookies.append(JWT_COOKIE, "/")
+        call.response.cookies.append(JWT_COOKIE, value = "", path = "/")
         call.ok("User successfully signed out.")
     }
 }
