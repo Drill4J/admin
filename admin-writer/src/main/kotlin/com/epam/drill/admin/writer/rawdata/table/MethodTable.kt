@@ -21,7 +21,8 @@ object MethodTable : StringIdTable("raw_data.methods") {
     val name = varchar("name",  LONG_TEXT_LENGTH)
     val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
     val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
-    val bodyChecksum = varchar("body_checksum",  20) // crc64 stringified hash
+    val bodyChecksum = varchar("body_checksum",  SHORT_TEXT_LENGTH) // crc64 stringified hash
+    var signature = varchar("signature", MEDIUM_TEXT_LENGTH)
     val probesCount = integer("probes_count")
     val probesStartPos = integer("probe_start_pos")
 }

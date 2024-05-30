@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS raw_data.methods (
     params VARCHAR,
     return_type VARCHAR,
     body_checksum VARCHAR,
+    signature VARCHAR,
     probe_start_pos INT,
     probes_count INT
 );

@@ -16,7 +16,7 @@ RETURN (
     ),
     Methods AS (
         SELECT
-            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.signature,
             methods.classname,
             methods.name,
             methods.probe_start_pos,
@@ -173,7 +173,7 @@ BEGIN
     ),
     Methods AS (
         SELECT
-            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.signature,
             methods.classname,
             methods.name,
             methods.probe_start_pos,
@@ -227,7 +227,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- TODO add group_id and app_id columns to methods table? Tbd
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
 	input_build_id VARCHAR,
@@ -238,7 +238,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
     _name VARCHAR,
     _classname VARCHAR,
     _body_checksum VARCHAR,
-    _signature TEXT,
+    _signature VARCHAR,
     _probes_count INT,
     _build_ids_coverage_source VARCHAR ARRAY,
     _merged_probes BIT,
@@ -249,8 +249,8 @@ BEGIN
     WITH
     BaselineMethods AS (
         SELECT
-            build_id,
-            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.build_id,
+            methods.signature,
             methods.classname,
             methods.name,
             methods.probe_start_pos,
@@ -262,8 +262,8 @@ BEGIN
     ),
     Methods AS (
         SELECT
-            build_id,
-            CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type) AS signature,
+            methods.build_id,
+            methods.signature,
             methods.classname,
             methods.name,
             methods.probe_start_pos,
@@ -326,7 +326,7 @@ BEGIN
         FROM raw_data.methods methods
         JOIN Risks ON
             Risks.body_checksum = methods.body_checksum
-            AND Risks.signature = CONCAT(methods.classname, ', ', methods.name, ', ', methods.params, ', ', methods.return_type)
+            AND Risks.signature = methods.signature
     		-- TODO -- AND Risks.group_id = methods.group_id AND Risks.app_id = methods.app_id
 		ORDER BY Risks.body_checksum
 	),

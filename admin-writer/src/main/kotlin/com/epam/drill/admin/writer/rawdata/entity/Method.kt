@@ -25,4 +25,5 @@ class Method(
     val probesCount: Int,
     val probesStartPos: Int,
     val bodyChecksum: String,
+    val signature: String,
 )
