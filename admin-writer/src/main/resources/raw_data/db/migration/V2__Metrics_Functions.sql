@@ -242,7 +242,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
     _probes_count INT,
     _build_ids_coverage_source VARCHAR ARRAY,
     _merged_probes BIT,
-    _probes_coverage_ratio FLOAT
+    _probes_coverage_ratio FLOAT,
+    _associated_test_definition_ids VARCHAR ARRAY
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -345,7 +346,8 @@ BEGIN
 			MatchingInstances.signature,
 			MatchingInstances.body_checksum,
 			ARRAY_AGG(DISTINCT(MatchingInstances.build_id)) as build_ids_coverage_source,
-			BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes
+			BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
+			ARRAY_AGG(DISTINCT(coverage.test_id)) as associated_test_definition_ids
 		FROM raw_data.coverage coverage
 		JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id
 		GROUP BY
@@ -362,10 +364,69 @@ BEGIN
         Risks.probes_count,
         MatchingCoverage.build_ids_coverage_source,
         MatchingCoverage.merged_probes,
-		CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count AS probes_coverage_ratio
+		CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count AS probes_coverage_ratio,
+        MatchingCoverage.associated_test_definition_ids
     FROM Risks
     LEFT JOIN MatchingCoverage ON Risks.body_checksum = MatchingCoverage.body_checksum
         AND Risks.signature = MatchingCoverage.signature
     ;
+END;
+$$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+-- TODO calling this fn and get_build_risks_accumulated_coverage performs same work twice
+--      think of how we can avoid that
+
+-- TODO come up with a better way to avoid column naming conflicts than adding _ and __
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR
+) RETURNS TABLE (
+    __risk_type TEXT,
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __build_ids_coverage_source VARCHAR ARRAY,
+    __merged_probes BIT,
+    __probes_coverage_ratio FLOAT,
+    __associated_test_definition_ids VARCHAR,
+    __id INT,
+    __test_definition_id VARCHAR,
+    __test_type VARCHAR,
+    __test_runner VARCHAR,
+    __test_name VARCHAR,
+    __test_path VARCHAR,
+    __test_result VARCHAR,
+    __test_created_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Risks AS (
+    	SELECT
+    		_risk_type,
+    		_build_id,
+    		_name,
+    		_classname,
+    		_body_checksum,
+    		_signature,
+    		_probes_count,
+    		_build_ids_coverage_source,
+    		_merged_probes,
+    		_probes_coverage_ratio,
+    		UNNEST(_associated_test_definition_ids) as test_definition_id
+    	FROM
+    		raw_data.get_build_risks_accumulated_coverage(
+                input_build_id,
+                input_baseline_build_id
+    		)
+    )
+    SELECT *
+    FROM Risks
+    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.test_definition_id;
 END;
 $$ LANGUAGE plpgsql;
