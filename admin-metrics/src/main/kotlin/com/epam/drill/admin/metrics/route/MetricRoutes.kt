@@ -16,10 +16,10 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import io.ktor.server.application.*
 import io.ktor.http.*
 import io.ktor.resources.*
-import io.ktor.server.resources.get
+import io.ktor.server.application.*
+import io.ktor.server.resources.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.kodein.di.instance
@@ -27,6 +27,21 @@ import org.kodein.di.ktor.closestDI
 
 @Resource("/metrics")
 class Metrics {
+
+    @Resource("/build-diff-report")
+    class BuildDiffReport(
+        val groupId: String,
+        val appId: String,
+
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+    )
+
     @Resource("/risks")
     class Risks(
         val groupId: String,
@@ -59,8 +74,26 @@ fun Route.metricRoutes() {
     getRisks()
     getCoverage()
     getSummary()
+    getBuildDiffReport()
 }
 
+fun Route.getBuildDiffReport() {
+    val metricsRepository by closestDI().instance<MetricsRepository>()
+
+    get<Metrics.BuildDiffReport> { params ->
+        val report = metricsRepository.getBuildDiffReport(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion,
+        )
+        this.call.respond(HttpStatusCode.OK, report)
+    }
+}
 
 fun Route.getRisks() {
     val metricsRepository by closestDI().instance<MetricsRepository>()

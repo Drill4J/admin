@@ -19,6 +19,19 @@ import kotlinx.serialization.json.JsonObject
 
 interface MetricsRepository {
 
+    suspend fun getBuildDiffReport(
+        groupId: String,
+        appId: String,
+
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+    ): Any
+
     suspend fun getRisksByBranchDiff(
         groupId: String,
         appId: String,

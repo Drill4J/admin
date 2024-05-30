@@ -33,6 +33,7 @@ class RawDataServiceImpl(
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
         val build = Build(
+            // TODO generate build id with SQL function + TRIGGER on INSERT?
             id = generateBuildId(
                 buildPayload.groupId,
                 buildPayload.appId,

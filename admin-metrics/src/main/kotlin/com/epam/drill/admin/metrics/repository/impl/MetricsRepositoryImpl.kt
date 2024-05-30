@@ -16,11 +16,79 @@
 package com.epam.drill.admin.metrics.repository.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
-import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.config.executeQuery
+import com.epam.drill.admin.metrics.repository.MetricsRepository
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 class MetricsRepositoryImpl : MetricsRepository {
+    override suspend fun getBuildDiffReport(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?
+    ): JsonObject {
+        transaction {
+            val baselineBuildExists = executeQuery(
+                """
+                SELECT raw_data.check_build_exists(?, ?, ?, ?, ?)
+            """.trimIndent(),
+                groupId,
+                appId,
+                baselineInstanceId.toString(),
+                baselineCommitSha.toString(),
+                baselineBuildVersion.toString()
+            )
+
+            val buildExists = executeQuery(
+                """
+                SELECT raw_data.check_build_exists(?, ?, ?, ?, ?)
+            """.trimIndent(),
+                groupId,
+                appId,
+                instanceId.toString(),
+                commitSha.toString(),
+                buildVersion.toString()
+            )
+            println(baselineBuildExists.size.toString())
+            println(buildExists.size.toString())
+        }
+
+        val myMap = mapOf("foo" to "bar")
+        return JsonObject(myMap.map { (key, value) -> key to JsonPrimitive(value) }.toMap())
+    }
+//    override suspend fun getBuildDiffReport(
+//        groupId: String,
+//        appId: String,
+//        instanceId: String?,
+//        commitSha: String?,
+//        buildVersion: String?,
+//        baselineInstanceId: String?,
+//        baselineCommitSha: String?,
+//        baselineBuildVersion: String?
+//    ): List<JsonObject> = transaction {
+//
+
+//
+//        transaction {
+//            executeQuery(
+//                """
+//                SELECT *
+//                  FROM raw_data.get_risks_by_branch_diff(?, ?, ?, ?, ?, ?)
+//            """.trimIndent(),
+//                groupId,
+//                appId,
+//                currentVcsRef,
+//                currentBranch,
+//                baseBranch,
+//                baseVcsRef
+//            )
+//        }
+
     override suspend fun getRisksByBranchDiff(
         groupId: String,
         appId: String,
