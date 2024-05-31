@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
@@ -30,6 +31,8 @@ class Metrics {
 
     @Resource("/build-diff-report")
     class BuildDiffReport(
+        val parent: Metrics,
+
         val groupId: String,
         val appId: String,
 
@@ -44,7 +47,10 @@ class Metrics {
 
     @Resource("/risks")
     class Risks(
+        val parent: Metrics,
+
         val groupId: String,
+
         val appId: String,
         val currentBranch: String,
         val currentVcsRef: String,
@@ -54,6 +60,8 @@ class Metrics {
 
     @Resource("/coverage")
     class Coverage(
+        val parent: Metrics,
+
         val groupId: String,
         val appId: String,
         val currentVcsRef: String,
@@ -61,6 +69,8 @@ class Metrics {
 
     @Resource("/summary")
     class Summary(
+        val parent: Metrics,
+
         val groupId: String,
         val appId: String,
         val currentBranch: String,
@@ -91,7 +101,7 @@ fun Route.getBuildDiffReport() {
             params.baselineCommitSha,
             params.baselineBuildVersion,
         )
-        this.call.respond(HttpStatusCode.OK, report)
+        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
 }
 

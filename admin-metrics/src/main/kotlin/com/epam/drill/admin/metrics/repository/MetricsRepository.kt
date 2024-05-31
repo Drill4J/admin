@@ -24,13 +24,13 @@ interface MetricsRepository {
         appId: String,
 
         instanceId: String?,
-        commitSha: String?,
         buildVersion: String?,
+        commitSha: String?,
 
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-    ): Any
+    ): Map<String, Any>
 
     suspend fun getRisksByBranchDiff(
         groupId: String,

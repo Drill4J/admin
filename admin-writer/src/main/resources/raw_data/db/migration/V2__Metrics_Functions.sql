@@ -325,6 +325,8 @@ BEGIN
 			methods.probe_start_pos,
 			methods.probes_count
         FROM raw_data.methods methods
+        -- TODO - JOIN on raw_data.builds to get data on app_id, group_id
+		-- + add WHERE to exclude unrelated methods
         JOIN Risks ON
             Risks.body_checksum = methods.body_checksum
             AND Risks.signature = methods.signature

@@ -115,9 +115,12 @@ class RawDataServiceImpl(
                 probesCount = method.probesCount,
                 probesStartPos = method.probesStartPos,
                 bodyChecksum = method.bodyChecksum,
+
                 // TODO store checksum instead of actual string?
                 //  pros: fixed length -> storage & perf
                 //  cons: readability, api consumers might want to "know" about hashing algorithm
+                //  solution: optimize as needed
+                //      Case: test on N rows ( 1kk ? 10kk? ) and judge column size
                 signature = listOf(
                     method.classname,
                     method.name,
