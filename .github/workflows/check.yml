@@ -5,6 +5,7 @@ on:
     branches:
       - 'main'
       - 'release/*'
+      - 'merge/*'
       - 'adoption/*'
     paths:
       - '**/src/**'
@@ -14,6 +15,7 @@ on:
     branches:
       - 'main'
       - 'release/*'
+      - 'merge/*'
       - 'adoption/*'
     paths:
       - '**/src/**'
@@ -37,13 +39,7 @@ jobs:
       - if: matrix.config.preset == 'linuxX64'
         run: chmod +x ${{ github.workspace }}/gradlew
       - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'linuxX64'
         run: sudo apt-get install -y libtinfo5
-      - if: matrix.config.preset == 'linuxX64'
-        run: ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'mingwX64'
-        run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
