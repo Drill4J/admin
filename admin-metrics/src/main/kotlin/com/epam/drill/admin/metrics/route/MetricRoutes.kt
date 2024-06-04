@@ -43,6 +43,8 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+
+        val coverageThreshold: Double = 1.0,
     )
 
     @Resource("/risks")
@@ -100,6 +102,7 @@ fun Route.getBuildDiffReport() {
             params.baselineInstanceId,
             params.baselineCommitSha,
             params.baselineBuildVersion,
+            params.coverageThreshold
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }

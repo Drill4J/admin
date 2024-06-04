@@ -30,6 +30,8 @@ interface MetricsRepository {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+
+        coverageThreshold: Double
     ): Map<String, Any>
 
     suspend fun getRisksByBranchDiff(

@@ -242,6 +242,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
     _probes_count INT,
     _build_ids_coverage_source VARCHAR ARRAY,
     _merged_probes BIT,
+    _covered_probes INT,
     _probes_coverage_ratio FLOAT,
     _associated_test_definition_ids VARCHAR ARRAY
 ) AS $$
@@ -366,6 +367,7 @@ BEGIN
         Risks.probes_count,
         MatchingCoverage.build_ids_coverage_source,
         MatchingCoverage.merged_probes,
+		COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS INT), 0),
 		CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count AS probes_coverage_ratio,
         MatchingCoverage.associated_test_definition_ids
     FROM Risks
