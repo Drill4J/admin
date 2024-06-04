@@ -17,9 +17,9 @@ package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.model.MessageResponse
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.response.*
 
 suspend inline fun <reified T> ApplicationCall.ok(data: T, message: String? = null) {
     respond(HttpStatusCode.OK, DataResponse(data, message))

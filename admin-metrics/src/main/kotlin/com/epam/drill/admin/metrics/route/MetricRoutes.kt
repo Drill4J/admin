@@ -16,18 +16,19 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.resources.*
+import io.ktor.server.resources.get
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Location("/metrics")
-object Metrics {
-    @Location("/risks")
-    data class Risks(
+@Resource("/metrics")
+class Metrics {
+    @Resource("/risks")
+    class Risks(
         val groupId: String,
         val appId: String,
         val currentBranch: String,
@@ -36,15 +37,15 @@ object Metrics {
         val baseVcsRef: String,
     )
 
-    @Location("/coverage")
-    data class Coverage(
+    @Resource("/coverage")
+    class Coverage(
         val groupId: String,
         val appId: String,
         val currentVcsRef: String,
     )
 
-    @Location("/summary")
-    data class Summary(
+    @Resource("/summary")
+    class Summary(
         val groupId: String,
         val appId: String,
         val currentBranch: String,

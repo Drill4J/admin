@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth.service
 
 import com.epam.drill.admin.auth.model.UserInfoView
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 
 /**
  * A service for signing in through OAuth.

@@ -97,7 +97,9 @@ class RawDataServiceImpl(
                 methodsPayload.buildVersion
             )
             Method(
-                id = mutableListOf(
+                // TODO concat in sql?
+                //      id VARCHAR GENERATED ALWAYS AS (classname || ':' || name || etc ) STORED
+                id = listOf(
                         buildId,
                         method.classname,
                         method.name,
@@ -111,7 +113,16 @@ class RawDataServiceImpl(
                 returnType = method.returnType,
                 probesCount = method.probesCount,
                 probesStartPos = method.probesStartPos,
-                bodyChecksum = method.bodyChecksum
+                bodyChecksum = method.bodyChecksum,
+                // TODO store checksum instead of actual string?
+                //  pros: fixed length -> storage & perf
+                //  cons: readability, api consumers might want to "know" about hashing algorithm
+                signature = listOf(
+                    method.classname,
+                    method.name,
+                    method.params,
+                    method.returnType
+                ).joinToString(":")
             )
         }
         .let { dataToInsert ->
@@ -141,9 +152,12 @@ class RawDataServiceImpl(
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) {
         testsPayload.tests.map { test ->
             TestMetadata(
-                testId = test.id,
+                testDefinitionId = test.id,
+                type = "placeholder", // TODO replace once user-defined value is implemented on autotest agent
+                runner = test.details.engine,
                 name = test.details.testName,
-                type = "placeholder"
+                path = test.details.path,
+                result = test.result.toString()
             )
         }.let { dataToInsert ->
             transaction {

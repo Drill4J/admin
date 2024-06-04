@@ -25,13 +25,14 @@ import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.auth.service.PasswordGenerator
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.server.routing.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.resources.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -270,7 +271,7 @@ class UserManagementTest {
             )
 
         withTestApplication(moduleFunction = {
-            install(Locations)
+            install(Resources)
             install(ContentNegotiation) {
                 json()
             }
@@ -305,7 +306,7 @@ class UserManagementTest {
     }
 
     private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
-        install(Locations)
+        install(Resources)
         install(ContentNegotiation) {
             json()
         }

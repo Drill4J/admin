@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.principal
 
-import io.ktor.auth.*
+import io.ktor.server.auth.*
 
 data class User(
     val id: Int,

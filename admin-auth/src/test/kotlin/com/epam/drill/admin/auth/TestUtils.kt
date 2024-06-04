@@ -28,13 +28,13 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.auth.jwt.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
-import io.ktor.config.*
+import io.ktor.server.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +54,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URL
 import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertNotNull
@@ -116,9 +117,10 @@ suspend fun HttpRequestData.formData() = String(this.body.toByteArray())
 
 fun URL.queryParams() = query?.split("&")?.associate {
     val (key, value) = it.split("=")
-    key to value
+    key to urlDecode(value)
 } ?: emptyMap()
 
+fun urlDecode(encodedUrl: String): String = URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
 
 typealias ResponseHandler = suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
 
@@ -134,7 +136,9 @@ fun mockHttpClient(vararg requestHandlers: MockHttpRequest) = HttpClient(MockEng
             respondError(HttpStatusCode.BadRequest, exception.message ?: "${exception::class} error")
         }
         ?: respondBadRequest()
-})
+}) {
+    expectSuccess = true
+}
 
 object CopyUserWithID : Answer<UserEntity> {
     override fun answer(invocation: InvocationOnMock?) = invocation?.getArgument<UserEntity>(0)?.copy(id = 123)
@@ -148,7 +152,7 @@ fun copyApiKeyWithId(id: Int) = Answer<ApiKeyEntity> { invocation ->
     invocation?.getArgument<ApiKeyEntity>(0)?.copy(id = id)
 }
 
-fun Authentication.Configuration.jwtMock() {
+fun AuthenticationConfig.jwtMock() {
     jwt {
         verifier(JWT.require(Algorithm.HMAC512(TEST_JWT_SECRET)).build())
         validate {

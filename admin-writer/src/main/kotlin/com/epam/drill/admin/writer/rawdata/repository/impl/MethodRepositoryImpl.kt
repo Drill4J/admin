@@ -31,6 +31,7 @@ class MethodRepositoryImpl: MethodRepository {
             this[MethodTable.returnType] = it.returnType
             this[MethodTable.probesStartPos] = it.probesStartPos
             this[MethodTable.bodyChecksum] = it.bodyChecksum
+            this[MethodTable.signature] = it .signature
             this[MethodTable.probesCount] = it.probesCount
         }
     }

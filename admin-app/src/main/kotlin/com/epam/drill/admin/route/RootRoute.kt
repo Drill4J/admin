@@ -16,12 +16,13 @@
 package com.epam.drill.admin.route
 
 import com.epam.drill.admin.auth.route.ok
-import io.ktor.application.*
-import io.ktor.locations.*
-import io.ktor.routing.*
+import io.ktor.resources.*
+import io.ktor.server.resources.get
+import io.ktor.server.application.*
+import io.ktor.server.routing.*
 
-@Location("/")
-object Root
+@Resource("/")
+class Root
 
 fun Route.rootRoute() {
     get<Root> {

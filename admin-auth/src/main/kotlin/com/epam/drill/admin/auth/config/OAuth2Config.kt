@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth.config
 
 import com.epam.drill.admin.auth.principal.Role
-import io.ktor.config.*
+import io.ktor.server.config.*
 import java.lang.Boolean.parseBoolean
 
 /**

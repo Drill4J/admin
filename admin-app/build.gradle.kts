@@ -17,7 +17,6 @@ plugins {
 group = "com.epam.drill"
 version = rootProject.version
 
-val kotlinxCollectionsVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
@@ -40,12 +39,18 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
-    implementation("io.ktor:ktor-auth:$ktorVersion")
-    implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-locations:$ktorVersion")
-    implementation("io.ktor:ktor-serialization:$ktorVersion")
+    implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktorVersion")
+    implementation("io.ktor:ktor-server-cors:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+    implementation("io.ktor:ktor-server-compression:$ktorVersion")
+    implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("ch.qos.logback:logback-classic:1.3.14")
@@ -74,7 +79,6 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlinx.coroutines.ObsoleteCoroutinesApi")
         languageSettings.optIn("kotlinx.serialization.ExperimentalSerializationApi")
         languageSettings.optIn("kotlinx.serialization.InternalSerializationApi")
-        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
         languageSettings.optIn("io.ktor.util.InternalAPI")
     }
     main {

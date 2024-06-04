@@ -15,11 +15,11 @@
  */
 package com.epam.drill.admin.auth.config
 
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.HttpStatusCode
-import io.ktor.auth.*
-import io.ktor.request.header
-import io.ktor.response.respond
+import io.ktor.server.auth.*
+import io.ktor.server.request.header
+import io.ktor.server.response.respond
 
 const val API_KEY_HEADER = "X-Api-Key"
 
@@ -38,7 +38,7 @@ class ApiKeyAuthenticationProvider internal constructor(
     /**
      * Api key auth configuration.
      */
-    class Configuration internal constructor(name: String?) : AuthenticationProvider.Configuration(name) {
+    class Configuration internal constructor(name: String?) : Config(name) {
 
         internal lateinit var authenticationFunction: suspend ApplicationCall.(String) -> Principal?
 
@@ -71,26 +71,14 @@ class ApiKeyAuthenticationProvider internal constructor(
             challengeFunction = body
         }
     }
-}
 
-/**
- * Installs API Key authentication mechanism.
- * @param name the name of the provider
- * @param configure the configuration block
- */
-fun Authentication.Configuration.apiKey(
-    name: String? = null,
-    configure: ApiKeyAuthenticationProvider.Configuration.() -> Unit
-) {
-    val provider = ApiKeyAuthenticationProvider(ApiKeyAuthenticationProvider.Configuration(name).apply(configure))
-
-    provider.pipeline.intercept(AuthenticationPipeline.RequestAuthentication) { context ->
-        val apiKey = context.call.request.header(provider.headerName)
-        val principal = apiKey?.let { provider.authenticationFunction(context.call, it) }
+    override suspend fun onAuthenticate(context: AuthenticationContext) {
+        val apiKey = context.call.request.header(headerName)
+        val principal = apiKey?.let { authenticationFunction(context.call, it) }
 
         val challenge: (AuthenticationFailedCause) -> Unit = { cause ->
-            context.challenge(provider.authScheme, cause) { challenge ->
-                provider.challengeFunction(context.call)
+            context.challenge(authScheme, cause) { challenge, call ->
+                challengeFunction(call)
                 challenge.complete()
             }
         }
@@ -103,5 +91,17 @@ fun Authentication.Configuration.apiKey(
             context.principal(principal)
         }
     }
+}
+
+/**
+ * Installs API Key authentication mechanism.
+ * @param name the name of the provider
+ * @param configure the configuration block
+ */
+fun AuthenticationConfig.apiKey(
+    name: String? = null,
+    configure: ApiKeyAuthenticationProvider.Configuration.() -> Unit
+) {
+    val provider = ApiKeyAuthenticationProvider(ApiKeyAuthenticationProvider.Configuration(name).apply(configure))
     register(provider)
 }

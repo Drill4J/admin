@@ -13,100 +13,97 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:OptIn(InternalSerializationApi::class, InternalSerializationApi::class)
-
 package com.epam.drill.admin.writer.rawdata.route
 
-import com.epam.drill.admin.writer.rawdata.entity.*
-import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
-import io.ktor.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
-import io.ktor.client.features.json.JsonFeature
-import io.ktor.client.features.json.serializer.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.locations.put
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.util.pipeline.*
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
+import io.ktor.resources.*
+import io.ktor.server.resources.put
+import io.ktor.server.resources.post
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import io.ktor.server.plugins.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
-@Location("/builds")
-object BuildsRoute
-@Location("/instances")
-object InstancesRoute
-@Location("/coverage")
-object CoverageRoute
-@Location("/methods")
-object MethodsRoute
-@Location("/tests-metadata")
-object TestMetadataRoute
-//@Location("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
-//data class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
+@Resource("/data-ingest")
+class DataIngestRoutes {
+
+    @Resource("builds")
+    class BuildsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("instances")
+    class InstancesRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("coverage")
+    class CoverageRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("methods")
+    class MethodsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("tests-metadata")
+    class TestMetadataRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+//@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
+//class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
+
+}
 
 fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<BuildsRoute> {
-        handleRequest<BuildPayload> { data ->
-            rawDataWriter.saveBuild(data)
-        }
+    put<DataIngestRoutes.BuildsRoute> {
+        rawDataWriter.saveBuild(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
 fun Route.putInstances() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<InstancesRoute> {
-        handleRequest<InstancePayload> { data ->
-            rawDataWriter.saveInstance(data)
-        }
+    put<DataIngestRoutes.InstancesRoute> {
+        rawDataWriter.saveInstance(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
 fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<CoverageRoute> {
-        handleRequest<CoveragePayload> { data ->
-            rawDataWriter.saveCoverage(data)
-        }
+    post<DataIngestRoutes.CoverageRoute> {
+        rawDataWriter.saveCoverage(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
 fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<MethodsRoute> {
-        handleRequest<MethodsPayload> { data ->
-            rawDataWriter.saveMethods(data)
-        }
+    put<DataIngestRoutes.MethodsRoute> {
+        rawDataWriter.saveMethods(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<TestMetadataRoute> {
-        handleRequest<AddTestsPayload> { data ->
-            rawDataWriter.saveTestMetadata(data)
-        }
+    post<DataIngestRoutes.TestMetadataRoute> {
+        rawDataWriter.saveTestMetadata(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -126,68 +123,49 @@ fun Route.postTestMetadata() {
 //    }
 //}
 
-internal suspend inline fun <reified T : Any> PipelineContext<Unit, ApplicationCall>.handleRequest(
-    handler: (data: T) -> Any
-) {
-    val data = call.decompressAndReceive<T>()
-    val response = handler(data)
-    call.respond(HttpStatusCode.OK, response)
-}
-
-@OptIn(ExperimentalSerializationApi::class)
-private val json = Json {
-    ignoreUnknownKeys = true
-    explicitNulls = false
-}
-
-internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
-    var body = receive<ByteArray>()
-    if (request.headers.contains(HttpHeaders.ContentEncoding, "gzip"))
-        body = decompressGZip(body)
-    return when (request.headers[HttpHeaders.ContentType]) {
-        ContentType.Application.ProtoBuf.toString() -> deserializeProtobuf(body, T::class.serializer())
-        // TODO fix serialization issue for TestsMetadata and remove ignoreUnknownKeys workaround
-        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
-
-        else -> throw UnsupportedMediaTypeException(
-            ContentType.parse(
-                request.headers[HttpHeaders.ContentType] ?: "application/octet-stream"
-            )
-        )
-    }
-}
-
-internal fun decompressGZip(data: ByteArray): ByteArray {
-    val inputStream = ByteArrayInputStream(data)
-    val outputStream = ByteArrayOutputStream()
-    val gzipInputStream = GZIPInputStream(inputStream)
-
-    val buffer = ByteArray(1024)
-    var bytesRead = gzipInputStream.read(buffer)
-    while (bytesRead > 0) {
-        outputStream.write(buffer, 0, bytesRead)
-        bytesRead = gzipInputStream.read(buffer)
-    }
-
-    gzipInputStream.close()
-    return outputStream.toByteArray()
-}
-
-internal fun <T> deserializeProtobuf(data: ByteArray, serializer: KSerializer<T>): T {
-    return ProtoBuf.decodeFromByteArray(serializer, data)
-}
-
 internal suspend fun sendPostRequest(url: String, data: Any) {
     val client = HttpClient(Apache) {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(Json {
+        expectSuccess = true
+        install(ContentNegotiation) {
+            json(Json {
                 ignoreUnknownKeys = true
+                explicitNulls = false
             })
         }
     }
 
-    client.post<String>(url) {
-        header("Content-Type", "application/json")
+    client.post(url) {
+        contentType(ContentType.Application.Json)
         body = data
     }
+}
+
+internal val json = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
+
+/**
+ * Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
+ * https://github.com/ktorio/ktor/issues/3845
+ */
+internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
+    val body: ByteArray = when (request.headers[HttpHeaders.ContentEncoding]) {
+        "gzip" -> decompressGZip(receiveStream())
+        else -> receive<ByteArray>()
+    }
+    return when (request.headers[HttpHeaders.ContentType]) {
+        ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
+        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
+        else -> throw request.headers[HttpHeaders.ContentType]?.let {
+            UnsupportedMediaTypeException(ContentType.parse(it))
+        } ?: BadRequestException("Content-Type header is missing")
+    }
+}
+
+internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
+    val decompressedBytes = withContext(Dispatchers.IO) {
+        GZIPInputStream(inputStream).readBytes()
+    }
+    return decompressedBytes
 }

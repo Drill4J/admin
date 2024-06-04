@@ -22,15 +22,15 @@ import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.request.*
-import io.ktor.response.header
-import io.ktor.routing.*
+import io.ktor.resources.*
+import io.ktor.server.resources.post
+import io.ktor.server.resources.get
+import io.ktor.server.request.*
+import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
@@ -38,54 +38,50 @@ import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
 
-@Location("/sign-in")
-object SignIn
+@Resource("/sign-in")
+class SignIn
 
-@Location("/sign-up")
-object SignUp
+@Resource("/sign-up")
+class SignUp
 
-@Location("/user-info")
-object UserInfo
+@Resource("/user-info")
+class UserInfo
 
-@Location("/update-password")
-object UpdatePassword
+@Resource("/update-password")
+class UpdatePassword
 
-@Location("/sign-out")
-object SignOut
-
-@Deprecated("Use /sign-in")
-@Location("/api/login")
-object Login
+@Resource("/sign-out")
+class SignOut
 
 /**
  * The Ktor StatusPages plugin configuration for simple authentication status pages.
  */
-fun StatusPages.Configuration.authStatusPages() {
-    exception<NotAuthenticatedException> { cause ->
+fun StatusPagesConfig.authStatusPages() {
+    exception<NotAuthenticatedException> { call, cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
     }
-    exception<UserValidationException> { cause ->
+    exception<UserValidationException> { call, cause ->
         logger.trace(cause) { "400 User data is invalid" }
         call.validationError(cause)
     }
-    exception<NotAuthorizedException> { cause ->
+    exception<NotAuthorizedException> { call, cause ->
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
-    exception<ForbiddenOperationException> { cause ->
+    exception<ForbiddenOperationException> { call, cause ->
         logger.trace(cause) { "422 Cannot modify own profile" }
         call.unprocessableEntity(cause)
     }
-    exception<UserNotFoundException> { cause ->
+    exception<UserNotFoundException> { call, cause ->
         logger.trace(cause) { "404 User not found" }
         call.notFound(cause)
     }
-    exception<ApiKeyNotFoundException> { cause ->
+    exception<ApiKeyNotFoundException> { call, cause ->
         logger.trace(cause) { "404 Api key not found" }
         call.notFound(cause)
     }
-    exception<InvalidApiKeyFormatException> { cause ->
+    exception<InvalidApiKeyFormatException> { call, cause ->
         logger.trace(cause) { "404 Invalid Api key format" }
         call.unauthorizedError(cause)
     }
@@ -119,7 +115,9 @@ fun Route.signInRoute() {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
-        call.response.cookies.append(Cookie(JWT_COOKIE, token, httpOnly = true, path = "/"))
+        call.response.cookies.append(
+            Cookie(name = JWT_COOKIE, value = token, httpOnly = true, path = "/")
+        )
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }
@@ -175,7 +173,7 @@ fun Route.updatePasswordRoute() {
  */
 fun Route.signOutRoute() {
     post<SignOut> {
-        call.response.cookies.appendExpired(JWT_COOKIE, null, "/")
+        call.response.cookies.append(JWT_COOKIE, value = "", path = "/")
         call.ok("User successfully signed out.")
     }
 }

@@ -16,16 +16,18 @@
 package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.service.ApiKeyService
-import io.ktor.application.*
-import io.ktor.locations.*
-import io.ktor.routing.*
+import io.ktor.resources.*
+import io.ktor.server.application.*
+import io.ktor.server.resources.get
+import io.ktor.server.resources.delete
+import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
-@Location("/keys")
-object ApiKeys {
-    @Location("/{id}")
-    data class Id(val id: Int)
+@Resource("/keys")
+class ApiKeys {
+    @Resource("/{id}")
+    class Id(val parent: ApiKeys, val id: Int)
 }
 
 /**

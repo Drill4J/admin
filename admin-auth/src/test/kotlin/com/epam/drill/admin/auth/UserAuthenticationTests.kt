@@ -29,13 +29,14 @@ import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.userProfileRoutes
 import com.epam.drill.admin.auth.service.PasswordValidator
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.application.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.server.application.*
+import io.ktor.server.routing.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.resources.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -319,7 +320,7 @@ class UserAuthenticationTest {
     }
 
     private val config: Application.() -> Unit = {
-        install(Locations)
+        install(Resources)
         install(ContentNegotiation) {
             json()
         }

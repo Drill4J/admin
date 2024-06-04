@@ -27,8 +27,8 @@ import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.epam.drill.admin.auth.service.impl.RandomHexSecretGenerator
 import com.epam.drill.admin.auth.service.transaction.TransactionalApiKeyService
 import com.github.benmanes.caffeine.cache.Caffeine
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
@@ -69,7 +69,7 @@ val apiKeyServicesDIModule = DI.Module("apiKeyServices") {
 /**
  * A Ktor Authentication configuration for API key authentication.
  */
-fun Authentication.Configuration.configureApiKeyAuthentication(di: DI) {
+fun AuthenticationConfig.configureApiKeyAuthentication(di: DI) {
     val apiKeyService by di.instance<ApiKeyService>()
     val apiKeyCacheService by di.instance<ApiKeyCacheService>()
 

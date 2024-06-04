@@ -22,11 +22,11 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.LoginPayload
 import com.epam.drill.admin.auth.model.UserInfoView
-import io.ktor.application.*
-import io.ktor.auth.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import org.kodein.di.*
 import org.kodein.di.ktor.closestDI
@@ -131,8 +131,9 @@ class SimpleAuthModuleTest {
             configureDI()
         }
 
+        val di = closestDI()
         install(Authentication) {
-            configureJwtAuthentication(closestDI())
+            configureJwtAuthentication(di)
         }
     }
 }

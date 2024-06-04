@@ -18,8 +18,8 @@ package com.epam.drill.admin
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.application.*
-import io.ktor.config.*
+import io.ktor.client.request.*
+import io.ktor.server.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import org.junit.jupiter.api.AfterAll
@@ -34,39 +34,41 @@ import kotlin.test.assertEquals
 class DrillAdminApplicationTest: DatabaseTests() {
     @Test
     fun `ui-config route should respond with 200 OK`() {
-        withTestApplication({
-            dbSetup()
-            module()
-        }) {
-            handleRequest(HttpMethod.Get, "/api/ui-config").apply {
-                assertEquals(HttpStatusCode.OK, response.status())
+        testApplication {
+            environment {
+                config = dbSetup()
             }
+            application {
+                module()
+            }
+            val response = client.get("/api/ui-config")
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `root route should respond with 200 OK`() {
-        withTestApplication({
-            dbSetup()
-            module()
-        }) {
-            handleRequest(HttpMethod.Get, "/").apply {
-                assertEquals(HttpStatusCode.OK, response.status())
+        testApplication {
+            environment {
+                config = dbSetup()
             }
+            application {
+                module()
+            }
+            val response = client.get("/")
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
-    private fun Application.dbSetup() {
-        (this.environment.config as MapApplicationConfig).apply {
-            put("drill.database.host", postgresqlContainer.host)
-            put(
-                "drill.database.port",
-                postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT).toString()
-            )
-            put("drill.database.dbName", postgresqlContainer.databaseName)
-            put("drill.database.userName", postgresqlContainer.username)
-            put("drill.database.password", postgresqlContainer.password)
-        }
+    private fun dbSetup() = MapApplicationConfig().apply {
+        put("drill.database.host", postgresqlContainer.host)
+        put(
+            "drill.database.port",
+            postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT).toString()
+        )
+        put("drill.database.dbName", postgresqlContainer.databaseName)
+        put("drill.database.userName", postgresqlContainer.username)
+        put("drill.database.password", postgresqlContainer.password)
     }
 }
 
