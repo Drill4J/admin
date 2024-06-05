@@ -21,6 +21,7 @@ object AnySerializer : KSerializer<Any?> {
             null -> encoder.encodeNull()
             is String -> encoder.encodeString(value)
             is Int -> encoder.encodeInt(value)
+            is Long -> encoder.encodeLong(value)
             is Number -> encoder.encodeDouble(value.toDouble())
             is Boolean -> encoder.encodeBoolean(value)
             is Map<*, *> -> {
