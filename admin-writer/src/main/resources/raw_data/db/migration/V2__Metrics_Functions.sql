@@ -233,18 +233,17 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR
 ) RETURNS TABLE (
-    _risk_type TEXT,
-    _build_id VARCHAR,
-    _name VARCHAR,
-    _classname VARCHAR,
-    _body_checksum VARCHAR,
-    _signature VARCHAR,
-    _probes_count INT,
-    _build_ids_coverage_source VARCHAR ARRAY,
-    _merged_probes BIT,
-    _covered_probes INT,
-    _probes_coverage_ratio FLOAT,
-    _associated_test_definition_ids VARCHAR ARRAY
+    __risk_type TEXT,
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __build_ids_coverage_source VARCHAR ARRAY,
+    __merged_probes BIT,
+    __probes_coverage_ratio FLOAT,
+    __associated_test_definition_ids VARCHAR ARRAY
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -398,7 +397,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
     __merged_probes BIT,
     __probes_coverage_ratio FLOAT,
     __associated_test_definition_ids VARCHAR,
-    __id INT,
+    __test_id INT,
     __test_definition_id VARCHAR,
     __test_type VARCHAR,
     __test_runner VARCHAR,
@@ -412,26 +411,26 @@ BEGIN
     WITH
     Risks AS (
     	SELECT
-    		_risk_type,
-    		_build_id,
-    		_name,
-    		_classname,
-    		_body_checksum,
-    		_signature,
-    		_probes_count,
-    		_build_ids_coverage_source,
-    		_merged_probes,
-    		_probes_coverage_ratio,
-    		UNNEST(_associated_test_definition_ids) as test_definition_id
+    		rsk.__risk_type,
+    		rsk.__build_id,
+    		rsk.__classname,
+    		rsk.__name,
+    		rsk.__body_checksum,
+    		rsk.__signature,
+    		rsk.__probes_count,
+    		rsk.__build_ids_coverage_source,
+    		rsk.__merged_probes,
+    		rsk.__probes_coverage_ratio,
+    		UNNEST(rsk.__associated_test_definition_ids) as __test_definition_id
     	FROM
     		raw_data.get_build_risks_accumulated_coverage(
                 input_build_id,
                 input_baseline_build_id
-    		)
+    		) rsk
     )
     SELECT *
     FROM Risks
-    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.test_definition_id;
+    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id;
 END;
 $$ LANGUAGE plpgsql;
 
