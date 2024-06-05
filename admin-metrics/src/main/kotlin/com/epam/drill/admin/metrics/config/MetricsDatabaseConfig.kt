@@ -17,10 +17,6 @@ package com.epam.drill.admin.metrics.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.Transaction
@@ -43,28 +39,6 @@ object MetricsDatabaseConfig {
 
     suspend fun <T> transaction(block: suspend Transaction.() -> T): T =
         newSuspendedTransaction(dispatcher, database) { block() }
-}
-
-// TODO allow to pass nullable params (vararg params: Any?)
-fun Transaction.executeQuery(sqlQuery: String, vararg params: Any?): List<JsonObject> {
-    val result = mutableListOf<JsonObject>()
-    executePreparedStatement(sqlQuery, *params) { resultSet ->
-        val metaData = resultSet.metaData
-        val columnCount = metaData.columnCount
-
-        while (resultSet.next()) {
-            val rowObject = buildJsonObject {
-                for (i in 1..columnCount) {
-                    val columnName = metaData.getColumnName(i)
-                    val columnValue = resultSet.getObject(i)
-                    val stringValue = columnValue?.toString()
-                    put(columnName, Json.encodeToJsonElement(stringValue))
-                }
-            }
-            result.add(rowObject)
-        }
-    }
-    return result
 }
 
 // TODO allow to pass nullable params (vararg params: Any?)
