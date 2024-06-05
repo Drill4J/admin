@@ -16,13 +16,10 @@
 package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
+import com.epam.drill.admin.metrics.exception.BuildNotFound
+import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
-
-enum class BuildDiffResult {
-    BASELINE_BUILD_MISSING,
-    CURRENT_BUILD_MISSING
-}
 
 class MetricsServiceImpl(private val metricsRepository: MetricsRepository) : MetricsService {
 
@@ -39,14 +36,24 @@ class MetricsServiceImpl(private val metricsRepository: MetricsRepository) : Met
     ): Map<String, Any> {
         return transaction {
 
-            val baselineBuildId = generateBuildId(groupId, appId, baselineInstanceId, baselineCommitSha, baselineBuildVersion)
+            val baselineBuildId = generateBuildId(
+                groupId,
+                appId,
+                baselineInstanceId,
+                baselineCommitSha,
+                baselineBuildVersion,
+                """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+            )
+
             if (!metricsRepository.buildExists(baselineBuildId)) {
-                throw IllegalStateException(BuildDiffResult.BASELINE_BUILD_MISSING.toString()) // TODO descriptive message
+                throw BuildNotFound("Baseline build info not found for $baselineBuildId")
             }
 
             val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
             if (!metricsRepository.buildExists(buildId)) {
-                throw IllegalStateException(BuildDiffResult.CURRENT_BUILD_MISSING.toString()) // TODO descriptive message
+                throw BuildNotFound("Build info not found for $buildId")
             }
 
             val metrics = metricsRepository.getBuildDiffReport(buildId, baselineBuildId, coverageThreshold)
@@ -71,23 +78,27 @@ class MetricsServiceImpl(private val metricsRepository: MetricsRepository) : Met
         }
     }
 
-    // TODO remove duplicate (copied from RawDataRepositoryImpl)!
+    // TODO remove duplicate in RawDataRepositoryImpl
     private fun generateBuildId(
         groupId: String,
         appId: String,
         instanceId: String?,
         commitSha: String?,
-        buildVersion: String?
+        buildVersion: String?,
+        errorMsg: String = "Provide at least one of the following: instanceId, commitSha or buildVersion"
     ): String {
-        require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
-        require(appId.isNotBlank()) { "appId cannot be empty or blank" }
-        require(!instanceId.isNullOrBlank() || !commitSha.isNullOrBlank() || !buildVersion.isNullOrBlank()) {
-            "provide at least one of the following: instanceId, commitSha or buildVersion"
+        if (groupId.isBlank()) { throw InvalidParameters("groupId cannot be empty or blank") }
+
+        if (appId.isBlank()) { throw InvalidParameters("appId cannot be empty or blank") }
+
+        if (instanceId.isNullOrBlank() && commitSha.isNullOrBlank() && buildVersion.isNullOrBlank()) {
+            throw InvalidParameters(errorMsg)
         }
 
-        val buildIdElements = mutableListOf(groupId, appId)
-        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
-        buildIdElements.add(firstNotBlank as String) // TODO think of better way to convince typesystem its not null
-        return buildIdElements.joinToString(":")
+        return listOf(
+            groupId,
+            appId,
+            listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
+        ).joinToString(":")
     }
 }

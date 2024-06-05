@@ -22,6 +22,7 @@ import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.metrics.route.metricRoutes
+import com.epam.drill.admin.metrics.route.metricsStatusPages
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -69,6 +70,7 @@ fun Application.module() {
         authStatusPages()
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
+        metricsStatusPages()
     }
     val di = closestDI()
     install(Authentication) {
