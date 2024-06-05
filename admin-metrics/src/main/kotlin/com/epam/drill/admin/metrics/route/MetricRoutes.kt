@@ -41,7 +41,7 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
-        val coverageThreshold: Double = 1.0,
+        val coverageThreshold: Double = 1.0, // TODO Float should be enough
     )
 
 }
