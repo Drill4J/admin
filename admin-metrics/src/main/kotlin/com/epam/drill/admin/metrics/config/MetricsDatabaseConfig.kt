@@ -48,7 +48,7 @@ object MetricsDatabaseConfig {
 // TODO allow to pass nullable params (vararg params: Any?)
 fun Transaction.executeQuery(sqlQuery: String, vararg params: Any?): List<JsonObject> {
     val result = mutableListOf<JsonObject>()
-    execSp(sqlQuery, *params) { resultSet ->
+    executePreparedStatement(sqlQuery, *params) { resultSet ->
         val metaData = resultSet.metaData
         val columnCount = metaData.columnCount
 
@@ -70,7 +70,7 @@ fun Transaction.executeQuery(sqlQuery: String, vararg params: Any?): List<JsonOb
 // TODO allow to pass nullable params (vararg params: Any?)
 fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): List<Map<String, Any?>> {
     val result = mutableListOf<Map<String, Any?>>()
-    execSp(sqlQuery, *params) { resultSet ->
+    executePreparedStatement(sqlQuery, *params) { resultSet ->
         val metaData = resultSet.metaData
         val columnCount = metaData.columnCount
 
@@ -104,7 +104,7 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
 }
 
 // TODO execSp - function name unclear
-private fun <T : Any> Transaction.execSp(stmt: String, vararg params: Any?, transform: (ResultSet) -> T): T? {
+private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg params: Any?, transform: (ResultSet) -> T): T? {
     if (stmt.isEmpty()) return null
 
     return exec(object : Statement<T>(StatementType.SELECT, emptyList()) {
