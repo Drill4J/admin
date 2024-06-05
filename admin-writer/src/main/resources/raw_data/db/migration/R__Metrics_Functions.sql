@@ -317,6 +317,17 @@ BEGIN
         SELECT *, 'modified' as risk_type from RisksModified
     ),
     MatchingMethods AS (
+        WITH
+        SameGroupAndAppMethods AS (
+            -- TODO add test to ensure this works correctly and indeed filters out methods from other builds
+            SELECT methods.*
+            FROM raw_data.builds l
+            JOIN raw_data.builds r ON
+            		r.group_id = l.group_id
+            	AND r.app_id = l.app_id
+            JOIN raw_data.methods methods ON methods.build_id = r.id
+            WHERE l.id = input_build_id
+        )
         SELECT
 			Risks.classname,
 			Risks.signature,
@@ -325,13 +336,10 @@ BEGIN
 			methods.build_id,
 			methods.probe_start_pos,
 			methods.probes_count
-        FROM raw_data.methods methods
-        -- TODO - JOIN on raw_data.builds to get data on app_id, group_id
-		-- + add WHERE to exclude unrelated methods
+        FROM SameGroupAndAppMethods methods
         JOIN Risks ON
             Risks.body_checksum = methods.body_checksum
             AND Risks.signature = methods.signature
-    		-- TODO -- AND Risks.group_id = methods.group_id AND Risks.app_id = methods.app_id
 		ORDER BY Risks.body_checksum
 	),
     MatchingInstances AS (
