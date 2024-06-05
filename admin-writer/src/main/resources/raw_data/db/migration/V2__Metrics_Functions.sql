@@ -380,7 +380,6 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 -- TODO calling this fn and get_build_risks_accumulated_coverage performs same work twice
 --      think of how we can avoid that
-
 -- TODO come up with a better way to avoid column naming conflicts than adding _ and __
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
@@ -438,54 +437,17 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.generate_build_id(
-    in_group_id VARCHAR,
-    in_app_id VARCHAR,
-    in_instance_id VARCHAR DEFAULT NULL,
-    in_commit_sha VARCHAR DEFAULT NULL,
-    in_build_version VARCHAR DEFAULT NULL
-) RETURNS VARCHAR AS $$
-DECLARE
-    build_id_elements VARCHAR;
-BEGIN
-    IF (LENGTH(in_group_id) = 0) THEN
-        RAISE EXCEPTION 'groupId cannot be empty or blank';
-    END IF;
-    IF (LENGTH(in_app_id) = 0) THEN
-        RAISE EXCEPTION 'appId cannot be empty or blank';
-    END IF;
-    IF (in_instance_id IS NULL AND in_commit_sha IS NULL AND in_build_version IS NULL) THEN
-        RAISE EXCEPTION 'Provide at least one of the following: instance_id, commit_sha or build_version';
-    END IF;
-
-    build_id_elements := CONCAT(in_group_id, ':', in_app_id, ':', COALESCE(NULLIF(in_build_version, ''), NULLIF(in_commit_sha, ''), NULLIF(in_instance_id, '')));
-
-    RETURN build_id_elements;
-END;
-$$ LANGUAGE plpgsql;
-
------------------------------------------------------------------
-
------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.check_build_exists(
-    in_group_id VARCHAR,
-    in_app_id VARCHAR,
-    in_instance_id VARCHAR DEFAULT NULL,
-    in_commit_sha VARCHAR DEFAULT NULL,
-    in_build_version VARCHAR DEFAULT NULL
+    build_id VARCHAR
 ) RETURNS BOOLEAN AS $$
 DECLARE
-    build_id_to_check VARCHAR;
     build_exists BOOLEAN;
 BEGIN
-    build_id_to_check := raw_data.generate_build_id(in_group_id, in_app_id, in_instance_id, in_commit_sha, in_build_version);
-
     SELECT EXISTS(
         SELECT 1
 		FROM raw_data.builds builds
-        WHERE builds.id = build_id_to_check
+        WHERE builds.id = build_id
     ) INTO build_exists;
-
     RETURN build_exists;
 END;
 $$ LANGUAGE plpgsql;

@@ -15,8 +15,8 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
+import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
@@ -35,65 +35,26 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
-
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
-
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
-
         val coverageThreshold: Double = 1.0,
     )
 
-    @Resource("/risks")
-    class Risks(
-        val parent: Metrics,
-
-        val groupId: String,
-
-        val appId: String,
-        val currentBranch: String,
-        val currentVcsRef: String,
-        val baseBranch: String,
-        val baseVcsRef: String,
-    )
-
-    @Resource("/coverage")
-    class Coverage(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val currentVcsRef: String,
-    )
-
-    @Resource("/summary")
-    class Summary(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val currentBranch: String,
-        val currentVcsRef: String,
-        val baseBranch: String,
-        val baseVcsRef: String,
-    )
 }
 
 fun Route.metricRoutes() {
-    getRisks()
-    getCoverage()
-    getSummary()
     getBuildDiffReport()
 }
 
 fun Route.getBuildDiffReport() {
-    val metricsRepository by closestDI().instance<MetricsRepository>()
+    val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.BuildDiffReport> { params ->
-        val report = metricsRepository.getBuildDiffReport(
+        val report = metricsService.getBuildDiffReport(
             params.groupId,
             params.appId,
             params.instanceId,
@@ -105,50 +66,5 @@ fun Route.getBuildDiffReport() {
             params.coverageThreshold
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
-    }
-}
-
-fun Route.getRisks() {
-    val metricsRepository by closestDI().instance<MetricsRepository>()
-
-    get<Metrics.Risks> { params ->
-        val risks = metricsRepository.getRisksByBranchDiff(
-            params.groupId,
-            params.appId,
-            params.currentBranch,
-            params.currentVcsRef,
-            params.baseBranch,
-            params.baseVcsRef
-        )
-        this.call.respond(HttpStatusCode.OK, risks)
-    }
-}
-
-fun Route.getCoverage() {
-    val metricsRepository by closestDI().instance<MetricsRepository>()
-
-    get<Metrics.Coverage> { params ->
-        val coverage = metricsRepository.getTotalCoverage(
-            params.groupId,
-            params.appId,
-            params.currentVcsRef
-        )
-        this.call.respond(HttpStatusCode.OK, coverage)
-    }
-}
-
-fun Route.getSummary() {
-    val metricsRepository by closestDI().instance<MetricsRepository>()
-
-    get<Metrics.Summary> { params ->
-        val summary = metricsRepository.getSummaryByBranchDiff(
-            params.groupId,
-            params.appId,
-            params.currentBranch,
-            params.currentVcsRef,
-            params.baseBranch,
-            params.baseVcsRef
-        )
-        this.call.respond(HttpStatusCode.OK, summary)
     }
 }

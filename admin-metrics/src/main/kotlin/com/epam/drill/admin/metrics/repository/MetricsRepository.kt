@@ -15,46 +15,12 @@
  */
 package com.epam.drill.admin.metrics.repository
 
-import kotlinx.serialization.json.JsonObject
-
 interface MetricsRepository {
 
+    suspend fun buildExists(buildId: String): Boolean
     suspend fun getBuildDiffReport(
-        groupId: String,
-        appId: String,
-
-        instanceId: String?,
-        buildVersion: String?,
-        commitSha: String?,
-
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-
+        buildId: String,
+        baselineBuildId: String,
         coverageThreshold: Double
-    ): Map<String, Any>
-
-    suspend fun getRisksByBranchDiff(
-        groupId: String,
-        appId: String,
-        currentBranch: String,
-        currentVcsRef: String,
-        baseBranch: String,
-        baseVcsRef: String
-    ): List<JsonObject>
-
-    suspend fun getTotalCoverage(
-        groupId: String,
-        appId: String,
-        currentVcsRef: String
-    ): JsonObject
-
-    suspend fun getSummaryByBranchDiff(
-        groupId: String,
-        appId: String,
-        currentBranch: String,
-        currentVcsRef: String,
-        baseBranch: String,
-        baseVcsRef: String
-    ): JsonObject
+    ): Map<String, String>
 }
