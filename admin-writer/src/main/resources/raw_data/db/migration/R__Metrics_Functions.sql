@@ -227,7 +227,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
--- TODO add group_id and app_id columns to methods table? Tbd
+
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
 	input_build_id VARCHAR,
