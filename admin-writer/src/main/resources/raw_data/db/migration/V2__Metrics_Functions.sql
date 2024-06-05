@@ -366,6 +366,7 @@ BEGIN
         Risks.probes_count,
         MatchingCoverage.build_ids_coverage_source,
         MatchingCoverage.merged_probes,
+		COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS INT), 0),
 		CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count AS probes_coverage_ratio,
         MatchingCoverage.associated_test_definition_ids
     FROM Risks

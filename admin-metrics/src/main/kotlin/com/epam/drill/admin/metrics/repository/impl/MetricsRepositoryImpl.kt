@@ -68,7 +68,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         buildVersion: String?,
         baselineInstanceId: String?,
         baselineCommitSha: String?,
-        baselineBuildVersion: String?
+        baselineBuildVersion: String?,
+        coverageThreshold: Double
     ): Map<String, Any> {
         return transaction {
 
@@ -102,49 +103,32 @@ class MetricsRepositoryImpl : MetricsRepository {
             }
             val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
 
-            val risksAccumulatedCoverage = executeQueryReturnMap(
+            val metrics = executeQueryReturnMap(
                 """
-                SELECT * FROM raw_data.get_build_risks_accumulated_coverage(?,?)
+                    WITH 
+                    Risks AS (
+                        SELECT * 
+                        FROM  raw_data.get_build_risks_accumulated_coverage(?, ?)	
+                    ),
+                    RecommendedTests AS (
+                        SELECT *
+                        FROM raw_data.get_recommended_tests(?, ?)
+                    )	
+                    SELECT 
+                        (SELECT count(*) FROM Risks WHERE _risk_type = 'new') as changes_new_methods,
+                        (SELECT count(*) FROM Risks WHERE _risk_type = 'modified') as changes_modifed_methods,
+                        (SELECT count(*) FROM Risks) as total_changes,
+                        (SELECT count(*) FROM Risks WHERE _probes_coverage_ratio > 0) as tested_changes,
+                        (SELECT CAST(SUM(_covered_probes) AS FLOAT) / SUM(_probes_count) FROM Risks) as coverage,
+                        (SELECT count(*) FROM RecommendedTests WHERE __probes_coverage_ratio < ?) as recommended_tests
                 """.trimIndent(),
                 buildId,
-                baselineBuildId
-            )
-
-            val recommendedTests = executeQueryReturnMap(
-                """
-                SELECT * FROM raw_data.get_recommended_tests(?,?)
-                """.trimIndent(),
+                baselineBuildId,
                 buildId,
-                baselineBuildId
-            )
+                baselineBuildId,
+                coverageThreshold
+            ).first()
 
-            val totalCoveragePercent = executeQueryReturnMap(
-                """
-                SELECT raw_data.get_total_coverage_percent(?)
-                """.trimIndent(),
-                buildId
-            )
-
-            val coverageByPackages = executeQueryReturnMap(
-                """
-                SELECT * FROM raw_data.get_coverage_by_packages(?)
-                """.trimIndent(),
-                buildId
-            )
-
-            val coverageByMethods = executeQueryReturnMap(
-                """
-                SELECT * FROM raw_data.get_coverage_by_methods(?)
-                """.trimIndent(),
-                buildId
-            )
-
-            val coverageByClasses = executeQueryReturnMap(
-                """
-                SELECT * FROM raw_data.get_coverage_by_classes(?)
-                """.trimIndent(),
-                buildId
-            )
 
             mapOf(
                 "inputParameters" to mapOf(
@@ -161,14 +145,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     "build" to buildId,
                     "baselineBuild" to baselineBuildId,
                 ),
-                "metrics" to mapOf(
-                    "totalCoveragePercent" to totalCoveragePercent,
-                    "recommendedTests" to recommendedTests,
-                    "risksAccumulatedCoverage" to risksAccumulatedCoverage,
-                    "coverageByPackages" to coverageByPackages,
-                    "coverageByClasses" to coverageByClasses,
-                    "coverageByMethods" to coverageByMethods
-                )
+                "metrics" to metrics
             )
         }
     }
