@@ -378,9 +378,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
--- TODO calling this fn and get_build_risks_accumulated_coverage performs same work twice
---      think of how we can avoid that
--- TODO come up with a better way to avoid column naming conflicts than adding _ and __
+
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
 	input_build_id VARCHAR,
