@@ -242,6 +242,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
     __probes_count INT,
     __build_ids_coverage_source VARCHAR ARRAY,
     __merged_probes BIT,
+    __covered_probes INT,
     __probes_coverage_ratio FLOAT,
     __associated_test_definition_ids VARCHAR ARRAY
 ) AS $$

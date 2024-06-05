@@ -115,11 +115,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         FROM raw_data.get_recommended_tests(?, ?)
                     )	
                     SELECT 
-                        (SELECT count(*) FROM Risks WHERE _risk_type = 'new') as changes_new_methods,
-                        (SELECT count(*) FROM Risks WHERE _risk_type = 'modified') as changes_modifed_methods,
+                        (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
+                        (SELECT count(*) FROM Risks WHERE __risk_type = 'modified') as changes_modifed_methods,
                         (SELECT count(*) FROM Risks) as total_changes,
-                        (SELECT count(*) FROM Risks WHERE _probes_coverage_ratio > 0) as tested_changes,
-                        (SELECT CAST(SUM(_covered_probes) AS FLOAT) / SUM(_probes_count) FROM Risks) as coverage,
+                        (SELECT count(*) FROM Risks WHERE __probes_coverage_ratio > 0) as tested_changes,
+                        (SELECT CAST(SUM(__covered_probes) AS FLOAT) / SUM(__probes_count) FROM Risks) as coverage,
                         (SELECT count(*) FROM RecommendedTests WHERE __probes_coverage_ratio < ?) as recommended_tests
                 """.trimIndent(),
                 buildId,
