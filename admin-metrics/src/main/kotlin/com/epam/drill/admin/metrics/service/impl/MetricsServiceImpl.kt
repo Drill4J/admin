@@ -20,8 +20,16 @@ import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
+import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
-class MetricsServiceImpl(private val metricsRepository: MetricsRepository) : MetricsService {
+
+class MetricsServiceImpl(
+    private val metricsRepository: MetricsRepository,
+    private val uiBaseUrl: String,
+    private val buildComparisonReportPath: String
+) : MetricsService {
 
     override suspend fun getBuildDiffReport(
         groupId: String,
@@ -73,9 +81,30 @@ class MetricsServiceImpl(private val metricsRepository: MetricsRepository) : Met
                     "build" to buildId,
                     "baselineBuild" to baselineBuildId,
                 ),
-                "metrics" to metrics
+                "metrics" to metrics,
+                "links" to mapOf(
+                    "changes" to "",
+                    "recommended_tests" to "",
+                    "full_report" to getUriString(
+                        baseUrl = uiBaseUrl,
+                        path = buildComparisonReportPath,
+                        queryParams = mapOf(
+                            "build" to buildId,
+                            "baseline_build" to baselineBuildId
+                        )
+                    )
+                )
             )
         }
+    }
+
+    // TODO good candidate to be moved to common functions (probably)
+    private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {
+        val uri = URI(baseUrl).resolve(path)
+        val queryString = queryParams.entries.joinToString("&") {
+            "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
+        }
+        return URI("$uri?$queryString").toString()
     }
 
     // TODO remove duplicate in RawDataRepositoryImpl

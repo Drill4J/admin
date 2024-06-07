@@ -18,10 +18,33 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.metrics.repository.impl.MetricsRepositoryImpl
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.service.impl.MetricsServiceImpl
+import io.ktor.server.application.*
+import io.ktor.server.config.*
 import org.kodein.di.DI
 import org.kodein.di.bind
+import org.kodein.di.instance
 import org.kodein.di.singleton
 
 val metricsDIModule = DI.Module("metricsServices") {
-    bind<MetricsService>() with singleton { MetricsServiceImpl(MetricsRepositoryImpl()) }
+    bind<MetricsService>() with singleton {
+        val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
+        val metricsUiConfig = metricsConfig.config("ui")
+
+        val baseUrl = metricsUiConfig.propertyOrNull("baseUrl")
+            ?.getString()
+            ?.takeIf { it.isNotBlank() }
+            ?: "http://localhost:8095" // TODO should probably throw
+
+        val buildComparisonReportPath = metricsUiConfig.propertyOrNull("buildComparisonReportPath")
+            ?.getString()
+            ?.takeIf { it.isNotBlank() }
+            ?: "/dashboard/3" // TODO should probably throw
+
+        // TODO pass config class instead of individual variables
+        MetricsServiceImpl(
+            MetricsRepositoryImpl(),
+            baseUrl,
+            buildComparisonReportPath
+        )
+    }
 }
