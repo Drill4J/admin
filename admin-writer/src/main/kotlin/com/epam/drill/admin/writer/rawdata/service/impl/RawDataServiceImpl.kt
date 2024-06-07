@@ -97,6 +97,7 @@ class RawDataServiceImpl(
                 methodsPayload.commitSha,
                 methodsPayload.buildVersion
             )
+            // TODO add validation for fields (we had issues with body_checksum)
             Method(
                 // TODO concat in sql?
                 //      id VARCHAR GENERATED ALWAYS AS (classname || ':' || name || etc ) STORED
