@@ -326,7 +326,7 @@ BEGIN
             		r.group_id = l.group_id
             	AND r.app_id = l.app_id
             JOIN raw_data.methods methods ON methods.build_id = r.id
-            WHERE l.id = input_build_id
+            WHERE l.id = input_build_id AND methods.probes_count > 0
         )
         SELECT
 			Risks.classname,
@@ -352,16 +352,15 @@ BEGIN
     ),
 	MatchingCoverage AS (
 		SELECT
-			-- group_id
-			-- app_id
 			MatchingInstances.signature,
 			MatchingInstances.body_checksum,
 			ARRAY_AGG(DISTINCT(MatchingInstances.build_id)) as build_ids_coverage_source,
 			BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
 			ARRAY_AGG(DISTINCT(coverage.test_id)) as associated_test_definition_ids
 		FROM raw_data.coverage coverage
-		JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id
+		JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
 		GROUP BY
+			-- MatchingInstances.classname, -- TODO think about it
 			MatchingInstances.signature,
 			MatchingInstances.body_checksum
 	)
