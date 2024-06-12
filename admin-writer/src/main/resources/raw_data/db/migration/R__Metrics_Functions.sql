@@ -1,6 +1,23 @@
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DO
+$$
+DECLARE
+    deleteAllRawDataFunctions TEXT;
+BEGIN
+    FOR deleteAllRawDataFunctions IN
+        SELECT routine_name
+        FROM information_schema.routines
+        WHERE routine_schema = 'raw_data' AND routine_type = 'FUNCTION'
+    LOOP
+        EXECUTE 'DROP FUNCTION raw_data.' || function_name || ' CASCADE';
+    END LOOP;
+END;
+$$;
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_total_coverage_percent(
     _build_id VARCHAR
 )
