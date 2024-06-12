@@ -33,7 +33,6 @@ val metricsDIModule = DI.Module("metricsServices") {
         val baseUrl = metricsUiConfig.propertyOrNull("baseUrl")
             ?.getString()
             ?.takeIf { it.isNotBlank() }
-            ?: "http://localhost:8095" // TODO should probably throw
 
         val buildComparisonReportPath = metricsUiConfig.propertyOrNull("buildComparisonReportPath")
             ?.getString()

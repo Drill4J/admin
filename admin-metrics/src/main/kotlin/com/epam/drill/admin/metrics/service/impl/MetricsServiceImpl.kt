@@ -27,7 +27,7 @@ import java.nio.charset.StandardCharsets
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
-    private val uiBaseUrl: String,
+    private val uiBaseUrl: String?,
     private val buildComparisonReportPath: String
 ) : MetricsService {
 
@@ -83,16 +83,16 @@ class MetricsServiceImpl(
                 ),
                 "metrics" to metrics,
                 "links" to mapOf(
-                    "changes" to "",
-                    "recommended_tests" to "",
-                    "full_report" to getUriString(
+                    "changes" to null,
+                    "recommended_tests" to null,
+                    "full_report" to uiBaseUrl?.run { getUriString(
                         baseUrl = uiBaseUrl,
                         path = buildComparisonReportPath,
                         queryParams = mapOf(
                             "build" to buildId,
                             "baseline_build" to baselineBuildId
                         )
-                    )
+                    )}
                 )
             )
         }
