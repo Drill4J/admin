@@ -15,12 +15,13 @@
  */
 package com.epam.drill.admin.writer.rawdata.service
 
-import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.api.v1.DataIngestProto.*
+import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
     suspend fun saveInstance(instancePayload: InstancePayload)
-    suspend fun saveMethods(methodsPayload: MethodsPayload)
+    suspend fun saveMethods(methodsPayload: MethodPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
 }

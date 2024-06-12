@@ -5,6 +5,7 @@ plugins {
     kotlin("jvm")
     id("com.github.hierynomus.license")
     kotlin("plugin.serialization")
+    id("com.google.protobuf") version "0.9.4"
 }
 
 group = "com.epam.drill.admin.writer"
@@ -22,6 +23,7 @@ val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val protobufJavaVersion = "4.27.1"
 
 repositories {
     mavenLocal()
@@ -64,6 +66,8 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
 
+    implementation("com.google.protobuf:protobuf-java:$protobufJavaVersion")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
     testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
@@ -75,6 +79,9 @@ dependencies {
 }
 
 tasks {
+    compileKotlin {
+        dependsOn("generateProto")
+    }
     test {
         useJUnitPlatform()
     }
@@ -89,5 +96,11 @@ kotlin {
     compilerOptions {
         apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
         compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:$protobufJavaVersion"
     }
 }

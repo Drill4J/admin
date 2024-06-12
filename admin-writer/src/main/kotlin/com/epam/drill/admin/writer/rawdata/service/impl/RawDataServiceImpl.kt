@@ -15,10 +15,11 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.writer.rawdata.api.v1.DataIngestProto.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
-import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 
 private const val EXEC_DATA_BATCH_SIZE = 100
@@ -88,8 +89,8 @@ class RawDataServiceImpl(
         }
     }
 
-    override suspend fun saveMethods(methodsPayload: MethodsPayload) {
-        methodsPayload.methods.map { method ->
+    override suspend fun saveMethods(methodsPayload: MethodPayload) {
+        methodsPayload.methodsList.map { method ->
             val buildId = generateBuildId(
                 methodsPayload.groupId,
                 methodsPayload.appId,
@@ -138,12 +139,12 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
-        coveragePayload.coverage.map { coverage ->
+        coveragePayload.coverageList.map { coverage ->
                 Coverage(
                     instanceId = coveragePayload.instanceId,
                     classname = coverage.classname,
                     testId = coverage.testId,
-                    probes = coverage.probes
+                    probes = coverage.probesList.toBooleanArray()
                 )
             }
             .chunked(EXEC_DATA_BATCH_SIZE)
