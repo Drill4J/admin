@@ -1,7 +1,6 @@
 
 import com.hierynomus.gradle.license.tasks.LicenseCheck
 import com.hierynomus.gradle.license.tasks.LicenseFormat
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
 plugins {
@@ -152,9 +151,6 @@ tasks {
     test {
         useJUnitPlatform()
     }
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "1.8"
-    }
     val sourcesJar by registering(Jar::class) {
         from(sourceSets.main.get().allSource)
         archiveClassifier.set("sources")
@@ -217,5 +213,12 @@ license {
             include("**/*.kt", "**/*.java", "**/*.groovy")
             exclude("**/commonGenerated")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
 }
