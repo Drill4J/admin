@@ -367,20 +367,36 @@ BEGIN
         JOIN MatchingMethods ON
             MatchingMethods.build_id = instances.build_id
     ),
-	MatchingCoverage AS (
-		SELECT
-			MatchingInstances.signature,
-			MatchingInstances.body_checksum,
-			ARRAY_AGG(DISTINCT(MatchingInstances.build_id)) as build_ids_coverage_source,
-			BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
-			ARRAY_AGG(DISTINCT(coverage.test_id)) as associated_test_definition_ids
-		FROM raw_data.coverage coverage
-		JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
-		GROUP BY
-			-- MatchingInstances.classname, -- TODO think about it
-			MatchingInstances.signature,
-			MatchingInstances.body_checksum
-	)
+	MatchingCoverageByTest AS (
+        SELECT
+            MatchingInstances.signature,
+            MatchingInstances.body_checksum,
+            MatchingInstances.build_id as build_id_coverage_source,
+            BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
+            coverage.test_id as test_id
+        FROM raw_data.coverage coverage
+        JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+        GROUP BY
+            -- MatchingInstances.classname, -- TODO think about it
+            MatchingInstances.signature,
+            MatchingInstances.body_checksum,
+            MatchingInstances.build_id,
+            coverage.test_id
+    ),
+    MatchingCoverage AS (
+        SELECT
+            MatchingCoverageByTest.signature,
+            MatchingCoverageByTest.body_checksum,
+            ARRAY_AGG(MatchingCoverageByTest.build_id_coverage_source) as build_ids_coverage_source,
+            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.test_id)) as associated_test_definition_ids,
+            BIT_OR(MatchingCoverageByTest.merged_probes) as merged_probes
+        FROM
+            MatchingCoverageByTest
+        WHERE BIT_COUNT(MatchingCoverageByTest.merged_probes) > 0
+        GROUP BY
+            MatchingCoverageByTest.signature,
+            MatchingCoverageByTest.body_checksum
+    )
     SELECT
         Risks.risk_type,
         Risks.build_id,
@@ -408,17 +424,6 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR
 ) RETURNS TABLE (
-    __risk_type TEXT,
-    __build_id VARCHAR,
-    __name VARCHAR,
-    __classname VARCHAR,
-    __body_checksum VARCHAR,
-    __signature VARCHAR,
-    __probes_count INT,
-    __build_ids_coverage_source VARCHAR ARRAY,
-    __merged_probes BIT,
-    __probes_coverage_ratio FLOAT,
-    __associated_test_definition_ids VARCHAR,
     __test_id INT,
     __test_definition_id VARCHAR,
     __test_type VARCHAR,
@@ -432,25 +437,15 @@ BEGIN
     RETURN QUERY
     WITH
     Risks AS (
-    	SELECT
-    		rsk.__risk_type,
-    		rsk.__build_id,
-    		rsk.__classname,
-    		rsk.__name,
-    		rsk.__body_checksum,
-    		rsk.__signature,
-    		rsk.__probes_count,
-    		rsk.__build_ids_coverage_source,
-    		rsk.__merged_probes,
-    		rsk.__probes_coverage_ratio,
-    		UNNEST(rsk.__associated_test_definition_ids) as __test_definition_id
-    	FROM
-    		raw_data.get_build_risks_accumulated_coverage(
-                input_build_id,
-                input_baseline_build_id
-    		) rsk
+        SELECT
+            DISTINCT(UNNEST(rsk.__associated_test_definition_ids)) as __test_definition_id
+        FROM
+            raw_data.get_build_risks_accumulated_coverage(
+                 input_build_id,
+                 input_baseline_build_id
+            ) rsk
     )
-    SELECT *
+    SELECT tests.*
     FROM Risks
     LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id;
 END;
