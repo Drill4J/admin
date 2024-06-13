@@ -55,7 +55,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT count(*) FROM Risks) as total_changes,
                         (SELECT count(*) FROM Risks WHERE __probes_coverage_ratio > 0) as tested_changes,
                         (SELECT CAST(SUM(__covered_probes) AS FLOAT) / SUM(__probes_count) FROM Risks) as coverage,
-                        (SELECT count(*) FROM RecommendedTests WHERE __probes_coverage_ratio < ?) as recommended_tests
+                        (SELECT count(*) FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
             buildId,
             baselineBuildId,
