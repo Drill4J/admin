@@ -1,12 +1,12 @@
 -----------------------------------------------------------------
-
+-- Delete all functions in raw_data schema
 -----------------------------------------------------------------
 DO
 $$
 DECLARE
-    deleteAllRawDataFunctions TEXT;
+    function_name TEXT;
 BEGIN
-    FOR deleteAllRawDataFunctions IN
+    FOR function_name IN
         SELECT routine_name
         FROM information_schema.routines
         WHERE routine_schema = 'raw_data' AND routine_type = 'FUNCTION'
