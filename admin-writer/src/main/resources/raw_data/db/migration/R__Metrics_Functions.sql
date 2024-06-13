@@ -428,9 +428,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
     __test_type VARCHAR,
     __test_runner VARCHAR,
     __test_name VARCHAR,
-    __test_path VARCHAR,
-    __test_result VARCHAR,
-    __test_created_at TIMESTAMP
+    __test_path VARCHAR
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -445,15 +443,17 @@ BEGIN
             ) rsk
     )
     SELECT DISTINCT
-        tests.test_definition_id,
+        Risks.__test_definition_id,
         tests.type,
         tests.runner,
         tests.name,
-        tests.path,
-        tests.result,
-        tests.created_at
+        tests.path
     FROM Risks
-    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id;
+    -- TODO make it clear that some entries have no matching data in raw_data.tests
+    --      e.g. TEST_CONTEXT_NONE, or tests for which data is yet to be submitted
+    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id
+    -- TODO allow filtering by result (once mapping is implemented) WHERE tests.result = SUCCESS
+    ;
 END;
 $$ LANGUAGE plpgsql;
 
