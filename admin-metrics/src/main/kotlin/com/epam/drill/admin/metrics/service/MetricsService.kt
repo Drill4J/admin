@@ -26,5 +26,5 @@ interface MetricsService {
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double
-    ): Map<String, Any>
+    ): Map<String, Any?>
 }

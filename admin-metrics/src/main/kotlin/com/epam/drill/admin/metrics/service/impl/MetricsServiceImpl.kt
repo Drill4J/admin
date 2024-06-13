@@ -27,8 +27,10 @@ import java.nio.charset.StandardCharsets
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
+    // TODO implement config for all these urls / paths
     private val uiBaseUrl: String?,
-    private val buildComparisonReportPath: String
+    private val buildComparisonReportPath: String?,
+    private val buildReportPath: String?,
 ) : MetricsService {
 
     override suspend fun getBuildDiffReport(
@@ -41,7 +43,7 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double
-    ): Map<String, Any> {
+    ): Map<String, Any?> {
         return transaction {
 
             val baselineBuildId = generateBuildId(
@@ -82,18 +84,34 @@ class MetricsServiceImpl(
                     "baselineBuild" to baselineBuildId,
                 ),
                 "metrics" to metrics,
-                "links" to mapOf(
-                    "changes" to null,
-                    "recommended_tests" to null,
-                    "full_report" to uiBaseUrl?.run { getUriString(
-                        baseUrl = uiBaseUrl,
-                        path = buildComparisonReportPath,
-                        queryParams = mapOf(
-                            "build" to buildId,
-                            "baseline_build" to baselineBuildId
-                        )
-                    )}
-                )
+                "links" to uiBaseUrl?.run {
+                    mapOf(
+                        "changes" to null,
+                        "recommended_tests" to null,
+                        "build" to buildReportPath?.run {getUriString(
+                            baseUrl = uiBaseUrl,
+                            path = buildReportPath,
+                            queryParams = mapOf(
+                                "build" to buildId,
+                            )
+                        )},
+                        "baseline_build" to buildReportPath?.run {getUriString(
+                            baseUrl = uiBaseUrl,
+                            path = buildReportPath,
+                            queryParams = mapOf(
+                                "build" to baselineBuildId,
+                            )
+                        )},
+                        "full_report" to buildComparisonReportPath?.run { getUriString(
+                            baseUrl = uiBaseUrl,
+                            path = buildComparisonReportPath,
+                            queryParams = mapOf(
+                                "build" to buildId,
+                                "baseline_build" to baselineBuildId
+                            )
+                        )}
+                    )
+                }
             )
         }
     }

@@ -39,11 +39,19 @@ val metricsDIModule = DI.Module("metricsServices") {
             ?.takeIf { it.isNotBlank() }
             ?: "/dashboard/3" // TODO should probably throw
 
+        val buildReportPath = metricsUiConfig.propertyOrNull("buildComparisonReportPath")
+            ?.getString()
+            ?.takeIf { it.isNotBlank() }
+            ?: "/dashboard/2" // TODO should probably throw
+        // TODO I don't like the fact we have paths "knowledge" here, but the params definition elsewhere
+        //          - implement mapping fns?
+
         // TODO pass config class instead of individual variables
         MetricsServiceImpl(
             MetricsRepositoryImpl(),
             baseUrl,
-            buildComparisonReportPath
+            buildComparisonReportPath,
+            buildReportPath
         )
     }
 }
