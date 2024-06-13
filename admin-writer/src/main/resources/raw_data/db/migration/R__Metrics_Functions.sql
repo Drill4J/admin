@@ -424,7 +424,6 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR
 ) RETURNS TABLE (
-    __test_id INT,
     __test_definition_id VARCHAR,
     __test_type VARCHAR,
     __test_runner VARCHAR,
@@ -445,7 +444,14 @@ BEGIN
                  input_baseline_build_id
             ) rsk
     )
-    SELECT tests.*
+    SELECT DISTINCT
+        tests.test_definition_id,
+        tests.type,
+        tests.runner,
+        tests.name,
+        tests.path,
+        tests.result,
+        tests.created_at
     FROM Risks
     LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id;
 END;
