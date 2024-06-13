@@ -60,8 +60,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             buildId,
             baselineBuildId,
             buildId,
-            baselineBuildId,
-            coverageThreshold
+            baselineBuildId
+            //,coverageThreshold
         ).first() as Map<String, String>
     }
 
