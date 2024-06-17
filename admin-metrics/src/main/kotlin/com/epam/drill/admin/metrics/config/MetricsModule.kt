@@ -28,30 +28,10 @@ import org.kodein.di.singleton
 val metricsDIModule = DI.Module("metricsServices") {
     bind<MetricsService>() with singleton {
         val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
-        val metricsUiConfig = metricsConfig.config("ui")
-
-        val baseUrl = metricsUiConfig.propertyOrNull("baseUrl")
-            ?.getString()
-            ?.takeIf { it.isNotBlank() }
-
-        val buildComparisonReportPath = metricsUiConfig.propertyOrNull("buildComparisonReportPath")
-            ?.getString()
-            ?.takeIf { it.isNotBlank() }
-            ?: "/dashboard/3" // TODO should probably throw
-
-        val buildReportPath = metricsUiConfig.propertyOrNull("buildComparisonReportPath")
-            ?.getString()
-            ?.takeIf { it.isNotBlank() }
-            ?: "/dashboard/2" // TODO should probably throw
-        // TODO I don't like the fact we have paths "knowledge" here, but the params definition elsewhere
-        //          - implement mapping fns?
-
-        // TODO pass config class instead of individual variables
         MetricsServiceImpl(
             MetricsRepositoryImpl(),
-            baseUrl,
-            buildComparisonReportPath,
-            buildReportPath
+            MetricsServiceUiLinksConfig(metricsConfig.config("ui"))
         )
     }
 }
+

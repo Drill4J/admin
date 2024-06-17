@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
+import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
@@ -27,10 +28,7 @@ import java.nio.charset.StandardCharsets
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
-    // TODO implement config for all these urls / paths
-    private val uiBaseUrl: String?,
-    private val buildComparisonReportPath: String?,
-    private val buildReportPath: String?,
+    private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
 ) : MetricsService {
 
     override suspend fun getBuildDiffReport(
@@ -68,6 +66,9 @@ class MetricsServiceImpl(
 
             val metrics = metricsRepository.getBuildDiffReport(buildId, baselineBuildId, coverageThreshold)
 
+            val baseUrl = metricsServiceUiLinksConfig.baseUrl
+            val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
+            val buildComparisonReportPath = metricsServiceUiLinksConfig.buildComparisonReportPath
             mapOf(
                 "inputParameters" to mapOf(
                     "groupId" to groupId,
@@ -84,26 +85,26 @@ class MetricsServiceImpl(
                     "baselineBuild" to baselineBuildId,
                 ),
                 "metrics" to metrics,
-                "links" to uiBaseUrl?.run {
+                "links" to baseUrl?.run {
                     mapOf(
                         "changes" to null,
                         "recommended_tests" to null,
-                        "build" to buildReportPath?.run {getUriString(
-                            baseUrl = uiBaseUrl,
-                            path = buildReportPath,
+                        "build" to buildTestingReportPath?.run {getUriString(
+                            baseUrl = baseUrl,
+                            path = buildTestingReportPath,
                             queryParams = mapOf(
                                 "build" to buildId,
                             )
                         )},
-                        "baseline_build" to buildReportPath?.run {getUriString(
-                            baseUrl = uiBaseUrl,
-                            path = buildReportPath,
+                        "baseline_build" to buildTestingReportPath?.run {getUriString(
+                            baseUrl = baseUrl,
+                            path = buildTestingReportPath,
                             queryParams = mapOf(
                                 "build" to baselineBuildId,
                             )
                         )},
                         "full_report" to buildComparisonReportPath?.run { getUriString(
-                            baseUrl = uiBaseUrl,
+                            baseUrl = baseUrl,
                             path = buildComparisonReportPath,
                             queryParams = mapOf(
                                 "build" to buildId,
