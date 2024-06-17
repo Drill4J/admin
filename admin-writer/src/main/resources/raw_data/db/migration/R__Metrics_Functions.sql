@@ -253,6 +253,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
     __risk_type TEXT,
     __build_id VARCHAR,
     __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
     __classname VARCHAR,
     __body_checksum VARCHAR,
     __signature VARCHAR,
@@ -272,6 +274,8 @@ BEGIN
             methods.signature,
             methods.classname,
             methods.name,
+            methods.params,
+            methods.return_type,
             methods.probe_start_pos,
             methods.probes_count,
             methods.body_checksum
@@ -285,6 +289,8 @@ BEGIN
             methods.signature,
             methods.classname,
             methods.name,
+            methods.params,
+            methods.return_type,
             methods.probe_start_pos,
             methods.probes_count,
             methods.body_checksum
@@ -298,6 +304,8 @@ BEGIN
             SELECT
                 build_id,
                 name,
+                params,
+                return_type,
                 classname,
                 body_checksum,
                 signature,
@@ -316,6 +324,8 @@ BEGIN
             SELECT
                 build_id,
                 name,
+                params,
+                return_type,
                 classname,
                 body_checksum,
                 signature,
@@ -401,6 +411,8 @@ BEGIN
         Risks.risk_type,
         Risks.build_id,
         Risks.name,
+        Risks.params,
+        Risks.return_type,
         Risks.classname,
         Risks.body_checksum,
         Risks.signature,
