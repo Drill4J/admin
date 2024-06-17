@@ -486,3 +486,132 @@ BEGIN
     RETURN build_exists;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_accumulated_class_coverage(
+	input_build_id VARCHAR
+) RETURNS TABLE (
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __build_ids_coverage_source VARCHAR ARRAY,
+    __merged_probes BIT,
+    __covered_probes INT,
+    __probes_coverage_ratio FLOAT,
+    __associated_test_definition_ids VARCHAR ARRAY
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    InstanceIds AS (
+        SELECT id
+        FROM raw_data.instances
+        WHERE
+            build_id = input_build_id
+    ),
+    Methods AS (
+        SELECT
+            methods.build_id,
+            methods.classname,
+            methods.name,
+            methods.params,
+            methods.return_type,
+            methods.probe_start_pos,
+            methods.probes_count,
+            methods.body_checksum,
+            methods.signature
+        FROM raw_data.methods methods
+        WHERE methods.build_id = input_build_id
+            AND methods.probes_count > 0
+    ),
+    MatchingMethods AS (
+        WITH
+        SameGroupAndAppMethods AS (
+            -- TODO add test to ensure this works correctly and indeed filters out methods from other builds
+            SELECT methods.*
+            FROM raw_data.builds l
+            JOIN raw_data.builds r ON
+                    r.group_id = l.group_id
+                AND r.app_id = l.app_id
+            JOIN raw_data.methods methods ON methods.build_id = r.id
+            WHERE l.id = input_build_id AND methods.probes_count > 0
+        )
+        SELECT
+            Methods.signature,
+            Methods.body_checksum,
+            Methods.classname,
+            same_methods.build_id,
+            same_methods.probe_start_pos,
+            same_methods.probes_count
+        FROM SameGroupAndAppMethods same_methods
+        JOIN Methods ON
+            Methods.body_checksum = same_methods.body_checksum
+            AND Methods.signature = same_methods.signature
+        ORDER BY Methods.body_checksum
+    ),
+    MatchingInstances AS (
+        SELECT
+            MatchingMethods.*,
+            instances.id as instance_id
+        FROM raw_data.instances instances
+        JOIN MatchingMethods ON
+            MatchingMethods.build_id = instances.build_id
+    ),
+    MatchingCoverageByTest AS (
+        SELECT
+            MatchingInstances.signature,
+            MatchingInstances.body_checksum,
+            MatchingInstances.build_id as build_id_coverage_source,
+            BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
+            coverage.test_id as test_id
+        FROM raw_data.coverage coverage
+        JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+        GROUP BY
+            -- MatchingInstances.classname, -- TODO think about it
+            MatchingInstances.signature,
+            MatchingInstances.body_checksum,
+            MatchingInstances.build_id,
+            coverage.test_id
+    ),
+    MatchingCoverage AS (
+        SELECT
+            MatchingCoverageByTest.signature,
+            MatchingCoverageByTest.body_checksum,
+            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.build_id_coverage_source)) as build_ids_coverage_source,
+            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.test_id)) as associated_test_definition_ids,
+            BIT_OR(MatchingCoverageByTest.merged_probes) as merged_probes
+        FROM
+            MatchingCoverageByTest
+        WHERE BIT_COUNT(MatchingCoverageByTest.merged_probes) > 0
+        GROUP BY
+            MatchingCoverageByTest.signature,
+            MatchingCoverageByTest.body_checksum
+    )
+    SELECT
+        Methods.build_id,
+        Methods.name,
+        Methods.params,
+        Methods.return_type,
+        Methods.classname,
+        Methods.body_checksum,
+        Methods.signature,
+        Methods.probes_count,
+        MatchingCoverage.build_ids_coverage_source,
+        MatchingCoverage.merged_probes,
+        COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS INT), 0),
+        COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
+        MatchingCoverage.associated_test_definition_ids
+    FROM Methods
+    LEFT JOIN MatchingCoverage ON Methods.body_checksum = MatchingCoverage.body_checksum
+        AND Methods.signature = MatchingCoverage.signature
+;
+END;
+$$ LANGUAGE plpgsql;
