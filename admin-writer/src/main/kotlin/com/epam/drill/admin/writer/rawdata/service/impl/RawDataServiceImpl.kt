@@ -33,7 +33,6 @@ class RawDataServiceImpl(
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
         val build = Build(
-            // TODO generate build id with SQL function + TRIGGER on INSERT?
             id = generateBuildId(
                 buildPayload.groupId,
                 buildPayload.appId,
@@ -99,8 +98,6 @@ class RawDataServiceImpl(
             )
             // TODO add validation for fields (we had issues with body_checksum)
             Method(
-                // TODO concat in sql?
-                //      id VARCHAR GENERATED ALWAYS AS (classname || ':' || name || etc ) STORED
                 id = listOf(
                         buildId,
                         method.classname,
@@ -116,12 +113,6 @@ class RawDataServiceImpl(
                 probesCount = method.probesCount,
                 probesStartPos = method.probesStartPos,
                 bodyChecksum = method.bodyChecksum,
-
-                // TODO store checksum instead of actual string?
-                //  pros: fixed length -> storage & perf
-                //  cons: readability, api consumers might want to "know" about hashing algorithm
-                //  solution: optimize as needed
-                //      Case: test on N rows ( 1kk ? 10kk? ) and judge column size
                 signature = listOf(
                     method.classname,
                     method.name,

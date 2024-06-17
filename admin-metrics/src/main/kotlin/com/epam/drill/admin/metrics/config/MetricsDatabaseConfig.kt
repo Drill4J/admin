@@ -41,7 +41,6 @@ object MetricsDatabaseConfig {
         newSuspendedTransaction(dispatcher, database) { block() }
 }
 
-// TODO allow to pass nullable params (vararg params: Any?)
 fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): List<Map<String, Any?>> {
     val result = mutableListOf<Map<String, Any?>>()
     executePreparedStatement(sqlQuery, *params) { resultSet ->
@@ -77,7 +76,6 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
     return result
 }
 
-// TODO execSp - function name unclear
 private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg params: Any?, transform: (ResultSet) -> T): T? {
     if (stmt.isEmpty()) return null
 

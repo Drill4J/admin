@@ -26,8 +26,6 @@ import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-// TODO remove AnySerializer once report structure is defined with data classes
-//  OR at least replace with Jackson
 object AnySerializer : KSerializer<Any?> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Any")
 
