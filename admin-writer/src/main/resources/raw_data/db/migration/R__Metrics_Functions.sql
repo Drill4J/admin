@@ -387,7 +387,7 @@ BEGIN
         SELECT
             MatchingCoverageByTest.signature,
             MatchingCoverageByTest.body_checksum,
-            ARRAY_AGG(MatchingCoverageByTest.build_id_coverage_source) as build_ids_coverage_source,
+            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.build_id_coverage_source)) as build_ids_coverage_source,
             ARRAY_AGG(DISTINCT(MatchingCoverageByTest.test_id)) as associated_test_definition_ids,
             BIT_OR(MatchingCoverageByTest.merged_probes) as merged_probes
         FROM
