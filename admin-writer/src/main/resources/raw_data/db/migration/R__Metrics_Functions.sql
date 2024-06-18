@@ -615,3 +615,65 @@ BEGIN
 ;
 END;
 $$ LANGUAGE plpgsql;
+
+--
+--
+WITH
+Methods AS (
+	SELECT
+		'method' as __entry_type,
+		REVERSE(SUBSTRING(REVERSE(__classname) FROM POSITION('.' IN REVERSE(__classname)) + 1)) __package_name,
+		__classname,
+		__name,
+		__params,
+		__return_type,
+		__signature,
+		__probes_count,
+		__covered_probes
+	FROM raw_data.get_accumulated_class_coverage('com.example.project:example-app:1.2.5')
+),
+Classes AS (
+	SELECT
+		'class' as __entry_type,
+		__package_name,
+		'' as __classname,
+		__classname as __name,
+		'' as __params,
+		'' as __return_type,
+		'' as __signature,
+		SUM(__probes_count) as __probes_count,
+		SUM(__covered_probes) as __covered_probes
+	FROM Methods
+	GROUP BY __classname, __package_name
+),
+Package AS (
+	SELECT
+		'package' as __entry_type,
+		'' as __package_name,
+		'' as __classname,
+		__package_name as __name,
+		'' as __params,
+		'' as __return_type,
+		'' as __signature,
+		SUM(__probes_count) as __probes_count,
+		SUM(__covered_probes) as __covered_probes
+	FROM Classes
+	GROUP BY __package_name
+),
+UnionResult AS (
+	SELECT *
+	FROM Package
+	UNION ALL
+	SELECT *
+	FROM Classes
+	UNION ALL
+	SELECT *
+	FROM Methods
+)
+SELECT
+	*,
+	CAST(__covered_probes AS FLOAT) / __probes_count as __coverage_ratio
+FROM UnionResult
+
+
+
