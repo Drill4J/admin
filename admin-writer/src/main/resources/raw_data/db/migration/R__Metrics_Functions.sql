@@ -26,10 +26,7 @@ BEGIN
 RETURN (
     WITH
     InstanceIds AS (
-        SELECT id
-        FROM raw_data.instances
-        WHERE
-            build_id = _build_id
+        SELECT * FROM raw_data.get_instance_ids(_build_id)
     ),
     Methods AS (
         SELECT * FROM raw_data.get_methods(_build_id)
@@ -71,10 +68,7 @@ BEGIN
     RETURN QUERY
     WITH
     InstanceIds AS (
-        SELECT id
-        FROM raw_data.instances
-        WHERE
-            build_id = _build_id
+        SELECT * FROM raw_data.get_instance_ids(_build_id)
     ),
     Classnames AS (
         SELECT classname
@@ -115,10 +109,7 @@ BEGIN
     RETURN QUERY
     WITH
     InstanceIds AS (
-        SELECT id
-        FROM raw_data.instances
-        WHERE
-            build_id = _build_id
+        SELECT * FROM raw_data.get_instance_ids(_build_id)
     ),
     Methods AS (
         SELECT * FROM raw_data.get_methods(_build_id)
@@ -164,10 +155,7 @@ BEGIN
     RETURN QUERY
     WITH
     InstanceIds AS (
-        SELECT id
-        FROM raw_data.instances
-        WHERE
-            build_id = _build_id
+        SELECT * FROM raw_data.get_instance_ids(_build_id)
     ),
     Methods AS (
         SELECT * FROM raw_data.get_methods(_build_id)
@@ -463,10 +451,7 @@ BEGIN
     RETURN QUERY
     WITH
     InstanceIds AS (
-        SELECT id
-        FROM raw_data.instances
-        WHERE
-            build_id = input_build_id
+        SELECT * FROM raw_data.get_instance_ids(input_build_id)
     ),
     Methods AS (
         SELECT * FROM raw_data.get_methods(input_build_id)
@@ -586,5 +571,21 @@ BEGIN
     FROM raw_data.methods methods
     WHERE methods.build_id = input_build_id
         AND methods.probes_count > 0;
+END;
+$$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_instance_ids(input_build_id VARCHAR)
+RETURNS TABLE (
+    id VARCHAR
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT id
+    FROM raw_data.instances
+    WHERE build_id = input_build_id;
 END;
 $$ LANGUAGE plpgsql;
