@@ -32,15 +32,7 @@ RETURN (
             build_id = _build_id
     ),
     Methods AS (
-        SELECT
-            methods.signature,
-            methods.classname,
-            methods.name,
-            methods.probe_start_pos,
-            methods.probes_count
-        FROM raw_data.methods methods
-        WHERE methods.build_id = _build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(_build_id)
     ),
     Classes AS (
         SELECT
@@ -86,11 +78,9 @@ BEGIN
     ),
     Classnames AS (
         SELECT classname
-		  -- !warning! one cannot simply do SUM(methods.probes_count) to get class probe count - bc it'll aggregate dup entries from different instances
-        FROM raw_data.methods methods
-        WHERE methods.build_id = _build_id
-            AND methods.probes_count > 0
-	  		--  AND methods.classname LIKE CONCAT({{package_filter}, '%') -- filter by package name
+        -- !warning! one cannot simply do SUM(methods.probes_count) to get class probe count - bc it'll aggregate dup entries from different instances
+        FROM raw_data.get_methods(_build_id)
+        --  AND methods.classname LIKE CONCAT({{package_filter}, '%') -- filter by package name
         GROUP BY classname
     ),
     Coverage AS (
@@ -131,16 +121,7 @@ BEGIN
             build_id = _build_id
     ),
     Methods AS (
-        SELECT
-            methods.classname,
-            methods.name,
-            methods.params,
-            methods.return_type,
-            methods.probe_start_pos,
-            methods.probes_count
-        FROM raw_data.methods methods
-        WHERE methods.build_id = _build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(_build_id)
     ),
     Coverage AS (
         SELECT
@@ -189,15 +170,7 @@ BEGIN
             build_id = _build_id
     ),
     Methods AS (
-        SELECT
-            methods.signature,
-            methods.classname,
-            methods.name,
-            methods.probe_start_pos,
-            methods.probes_count
-        FROM raw_data.methods methods
-        WHERE methods.build_id = _build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(_build_id)
     ),
     Classes AS (
         SELECT
@@ -269,34 +242,10 @@ BEGIN
     RETURN QUERY
     WITH
     BaselineMethods AS (
-        SELECT
-            methods.build_id,
-            methods.signature,
-            methods.classname,
-            methods.name,
-            methods.params,
-            methods.return_type,
-            methods.probe_start_pos,
-            methods.probes_count,
-            methods.body_checksum
-        FROM raw_data.methods methods
-        WHERE methods.build_id = input_baseline_build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(input_baseline_build_id)
     ),
     Methods AS (
-        SELECT
-            methods.build_id,
-            methods.signature,
-            methods.classname,
-            methods.name,
-            methods.params,
-            methods.return_type,
-            methods.probe_start_pos,
-            methods.probes_count,
-            methods.body_checksum
-        FROM raw_data.methods methods
-        WHERE methods.build_id = input_build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(input_build_id)
     ),
     Risks AS (
         WITH
@@ -429,6 +378,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -518,19 +469,7 @@ BEGIN
             build_id = input_build_id
     ),
     Methods AS (
-        SELECT
-            methods.build_id,
-            methods.classname,
-            methods.name,
-            methods.params,
-            methods.return_type,
-            methods.probe_start_pos,
-            methods.probes_count,
-            methods.body_checksum,
-            methods.signature
-        FROM raw_data.methods methods
-        WHERE methods.build_id = input_build_id
-            AND methods.probes_count > 0
+        SELECT * FROM raw_data.get_methods(input_build_id)
     ),
     MatchingMethods AS (
         WITH
@@ -613,5 +552,39 @@ BEGIN
     LEFT JOIN MatchingCoverage ON Methods.body_checksum = MatchingCoverage.body_checksum
         AND Methods.signature = MatchingCoverage.signature
 ;
+END;
+$$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_methods(input_build_id VARCHAR)
+RETURNS TABLE (
+    build_id VARCHAR,
+    signature VARCHAR,
+    classname VARCHAR,
+    name VARCHAR,
+    params VARCHAR,
+    return_type VARCHAR,
+    probe_start_pos INT,
+    probes_count INT,
+    body_checksum VARCHAR
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        methods.build_id,
+        methods.signature,
+        methods.classname,
+        methods.name,
+        methods.params,
+        methods.return_type,
+        methods.probe_start_pos,
+        methods.probes_count,
+        methods.body_checksum
+    FROM raw_data.methods methods
+    WHERE methods.build_id = input_build_id
+        AND methods.probes_count > 0;
 END;
 $$ LANGUAGE plpgsql;
