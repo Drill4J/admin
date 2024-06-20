@@ -283,14 +283,7 @@ BEGIN
     MatchingMethods AS (
         WITH
         SameGroupAndAppMethods AS (
-            -- TODO add test to ensure this works correctly and indeed filters out methods from other builds
-            SELECT methods.*
-            FROM raw_data.builds l
-            JOIN raw_data.builds r ON
-            		r.group_id = l.group_id
-            	AND r.app_id = l.app_id
-            JOIN raw_data.methods methods ON methods.build_id = r.id
-            WHERE l.id = input_build_id AND methods.probes_count > 0
+            SELECT * FROM raw_data.get_same_group_and_app_methods(input_build_id)
         )
         SELECT
 			Risks.classname,
@@ -459,14 +452,7 @@ BEGIN
     MatchingMethods AS (
         WITH
         SameGroupAndAppMethods AS (
-            -- TODO add test to ensure this works correctly and indeed filters out methods from other builds
-            SELECT methods.*
-            FROM raw_data.builds l
-            JOIN raw_data.builds r ON
-                    r.group_id = l.group_id
-                AND r.app_id = l.app_id
-            JOIN raw_data.methods methods ON methods.build_id = r.id
-            WHERE l.id = input_build_id AND methods.probes_count > 0
+            SELECT * FROM raw_data.get_same_group_and_app_methods(input_build_id)
         )
         SELECT
             Methods.signature,
@@ -587,5 +573,34 @@ BEGIN
     SELECT id
     FROM raw_data.instances
     WHERE build_id = input_build_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-----------------------------------------------------------------
+-- NOTE: this function is guaranteed to return all methods for input_build_id
+-- TODO add test
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_same_group_and_app_methods(input_build_id VARCHAR)
+RETURNS TABLE (
+    id VARCHAR,
+    build_id VARCHAR,
+    classname VARCHAR,
+    name VARCHAR,
+    params VARCHAR,
+    return_type VARCHAR,
+    body_checksum VARCHAR,
+    signature VARCHAR,
+    probe_start_pos INT,
+    probes_count INT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT methods.*
+    FROM raw_data.builds original_build
+    JOIN raw_data.builds related_build ON related_build.group_id = original_build.group_id AND related_build.app_id = original_build.app_id
+    JOIN raw_data.methods methods ON methods.build_id = related_build.id
+    WHERE original_build.id = input_build_id AND methods.probes_count > 0;
 END;
 $$ LANGUAGE plpgsql;
