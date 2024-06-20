@@ -577,7 +577,7 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION get_instance_ids(input_build_id VARCHAR)
+CREATE OR REPLACE FUNCTION raw_data.get_instance_ids(input_build_id VARCHAR)
 RETURNS TABLE (
     id VARCHAR
 )
