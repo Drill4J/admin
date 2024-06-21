@@ -43,7 +43,7 @@ RETURN (
             classname,
             BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
         FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.id
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
         GROUP BY coverage.classname
     )
     SELECT
@@ -82,7 +82,7 @@ BEGIN
             coverage.classname,
             BIT_OR(coverage.probes) AS merged_probes
         FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.id
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
         GROUP BY coverage.classname
     )
     SELECT
@@ -119,7 +119,7 @@ BEGIN
             coverage.classname,
             BIT_OR(coverage.probes) AS merged_probes
         FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.id
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
         GROUP BY coverage.classname
     )
     SELECT
@@ -185,7 +185,7 @@ BEGIN
             BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
         FROM
             raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.id
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
         GROUP BY
             classname, package_name
     )
@@ -565,7 +565,7 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_instance_ids(input_build_id VARCHAR)
 RETURNS TABLE (
-    id VARCHAR
+    __id VARCHAR
 )
 AS $$
 BEGIN
