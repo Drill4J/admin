@@ -28,6 +28,7 @@ data class ApiKeyView(
     val createdAt: LocalDateTime,
     val username: String,
     val role: Role,
+    val userBlocked: Boolean
 )
 
 @Serializable
