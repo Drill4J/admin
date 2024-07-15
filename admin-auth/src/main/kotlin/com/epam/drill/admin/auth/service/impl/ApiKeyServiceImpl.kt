@@ -100,6 +100,7 @@ private fun ApiKeyEntity.toApiKeyView() = ApiKeyView(
     createdAt = createdAt.toKotlinLocalDateTime(),
     username = user?.username ?: throw IllegalStateException("User property cannot be null in ApiKeyEntity"),
     role = user.role.let { Role.valueOf(it) },
+    userBlocked = user.blocked
 )
 
 private fun ApiKeyEntity.toUserApiKeyView() = UserApiKeyView(
