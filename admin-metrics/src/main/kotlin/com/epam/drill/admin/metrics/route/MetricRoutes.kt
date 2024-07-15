@@ -53,7 +53,7 @@ class Metrics {
 
 }
 
-fun Route.metricRoutes() {
+fun Route.metricsRoutes() {
     getBuildDiffReport()
 }
 
