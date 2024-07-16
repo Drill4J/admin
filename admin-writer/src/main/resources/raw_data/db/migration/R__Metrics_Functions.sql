@@ -423,6 +423,32 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_total_percent(
+	_input_build_id VARCHAR
+)
+RETURNS FLOAT AS $$
+BEGIN
+RETURN (
+WITH
+	Probes AS (
+		SELECT
+			SUM(__probes_count) AS probes_count,
+			SUM(__covered_probes) AS covered_probes
+		FROM
+			raw_data.get_accumulated_coverage_by_methods(_input_build_id)
+	)
+	SELECT
+		COALESCE(CAST(Probes.covered_probes AS FLOAT) / CAST(Probes.probes_count AS FLOAT), 0) AS coverage_ratio
+	FROM
+		Probes
+);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_methods(
 	input_build_id VARCHAR
 ) RETURNS TABLE (
