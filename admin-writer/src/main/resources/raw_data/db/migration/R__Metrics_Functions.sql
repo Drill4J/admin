@@ -207,7 +207,7 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_build_risks_accumulated_coverage(
+CREATE OR REPLACE FUNCTION raw_data.get_accumulated_risks_coverage(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR
 ) RETURNS TABLE (
@@ -381,7 +381,7 @@ BEGIN
         SELECT
             DISTINCT(UNNEST(rsk.__associated_test_definition_ids)) as __test_definition_id
         FROM
-            raw_data.get_build_risks_accumulated_coverage(
+            raw_data.get_accumulated_risks_coverage(
                  input_build_id,
                  input_baseline_build_id
             ) rsk

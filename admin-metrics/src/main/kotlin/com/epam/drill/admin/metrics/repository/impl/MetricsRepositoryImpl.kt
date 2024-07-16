@@ -43,7 +43,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     WITH 
                     Risks AS (
                         SELECT * 
-                        FROM  raw_data.get_build_risks_accumulated_coverage(?, ?)	
+                        FROM  raw_data.get_accumulated_risks_coverage(?, ?)	
                     ),
                     RecommendedTests AS (
                         SELECT *
