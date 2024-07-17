@@ -364,6 +364,146 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR
+) RETURNS TABLE (
+    __risk_type TEXT,
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __merged_probes BIT,
+    __covered_probes INT,
+    __probes_coverage_ratio FLOAT,
+    __associated_test_definition_ids VARCHAR ARRAY
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+	BaselineMethods AS (
+		SELECT * FROM raw_data.get_methods(input_baseline_build_id)
+	),
+	Methods AS (
+		SELECT * FROM raw_data.get_methods(input_build_id)
+	),
+	Risks AS (
+		WITH
+		RisksModified AS (
+			SELECT
+				build_id,
+				name,
+				params,
+				return_type,
+				classname,
+				body_checksum,
+				signature,
+				probe_start_pos,
+				probes_count
+			FROM Methods AS q2
+			WHERE
+				EXISTS (
+					SELECT 1
+					FROM BaselineMethods AS q1
+					WHERE q1.signature = q2.signature
+					AND q1.body_checksum <> q2.body_checksum
+				)
+		),
+		RisksNew AS (
+			SELECT
+				build_id,
+				name,
+				params,
+				return_type,
+				classname,
+				body_checksum,
+				signature,
+				probe_start_pos,
+				probes_count
+			FROM Methods AS q2
+			WHERE
+				NOT EXISTS (
+					SELECT 1
+					FROM BaselineMethods AS q1
+					WHERE q1.signature = q2.signature
+				)
+		)
+		SELECT *, 'new' as risk_type FROM RisksNew
+		UNION
+		SELECT *, 'modified' as risk_type from RisksModified
+	),
+	Instances AS (
+		SELECT *
+		FROM
+			raw_data.get_instance_ids(input_build_id)
+	),
+	ClassesCoverage AS (
+		SELECT coverage.*
+		FROM raw_data.coverage coverage
+		JOIN Instances ON coverage.instance_id = Instances.__id
+	),
+	RisksCoverage AS (
+		WITH
+		MethodsCoverage AS (
+			SELECT
+				Risks.risk_type,
+				Risks.build_id,
+				Risks.name,
+				Risks.params,
+				Risks.return_type,
+				Risks.classname,
+				Risks.body_checksum,
+				Risks.signature,
+				Risks.probes_count,
+				SUBSTRING(coverage.probes FROM Risks.probe_start_pos + 1 FOR Risks.probes_count) as probes,
+				coverage.test_id
+			FROM Risks
+			LEFT JOIN raw_data.coverage coverage ON Risks.classname = coverage.classname
+		)
+		SELECT *
+		FROM
+			MethodsCoverage
+		WHERE
+			BIT_COUNT(MethodsCoverage.probes) > 0
+	)
+	SELECT
+		RisksCoverage.risk_type,
+		RisksCoverage.build_id,
+		RisksCoverage.name,
+		RisksCoverage.params,
+		RisksCoverage.return_type,
+		RisksCoverage.classname,
+		RisksCoverage.body_checksum,
+		RisksCoverage.signature,
+		RisksCoverage.probes_count,
+		BIT_OR(RisksCoverage.probes) AS merged_probes,
+		COALESCE(CAST(BIT_COUNT(BIT_OR(RisksCoverage.probes)) AS INT), 0) AS covered_probes,
+		COALESCE(CAST(BIT_COUNT(BIT_OR(RisksCoverage.probes)) AS FLOAT) / RisksCoverage.probes_count, 0.0) AS probes_coverage_ratio,
+		ARRAY_AGG(DISTINCT(RisksCoverage.test_id)) AS associated_test_id
+	FROM
+		RisksCoverage
+	GROUP BY
+		RisksCoverage.risk_type,
+		RisksCoverage.build_id,
+		RisksCoverage.name,
+		RisksCoverage.params,
+		RisksCoverage.return_type,
+		RisksCoverage.classname,
+		RisksCoverage.body_checksum,
+		RisksCoverage.signature,
+		RisksCoverage.probes_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR
