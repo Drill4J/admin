@@ -467,8 +467,6 @@ BEGIN
 		SELECT *
 		FROM
 			MethodsCoverage
-		WHERE
-			BIT_COUNT(MethodsCoverage.probes) > 0
 	)
 	SELECT
 		RisksCoverage.risk_type,
