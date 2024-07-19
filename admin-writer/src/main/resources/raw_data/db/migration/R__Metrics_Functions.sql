@@ -459,10 +459,10 @@ BEGIN
 				Risks.body_checksum,
 				Risks.signature,
 				Risks.probes_count,
-				SUBSTRING(coverage.probes FROM Risks.probe_start_pos + 1 FOR Risks.probes_count) as probes,
-				coverage.test_id
+				SUBSTRING(ClassesCoverage.probes FROM Risks.probe_start_pos + 1 FOR Risks.probes_count) as probes,
+				ClassesCoverage.test_id
 			FROM Risks
-			LEFT JOIN raw_data.coverage coverage ON Risks.classname = coverage.classname
+			LEFT JOIN ClassesCoverage ON Risks.classname = ClassesCoverage.classname
 		)
 		SELECT *
 		FROM
