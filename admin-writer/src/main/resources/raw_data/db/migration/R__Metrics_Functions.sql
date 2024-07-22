@@ -97,50 +97,87 @@ $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
-    _build_id VARCHAR
+	input_build_id VARCHAR
 ) RETURNS TABLE (
-    _classname VARCHAR,
-    _method_name VARCHAR,
-    _params VARCHAR,
-    _return_type VARCHAR,
-    _coverage_percentage FLOAT
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __merged_probes BIT,
+    __covered_probes INT,
+    __probes_coverage_ratio FLOAT,
+    __associated_test_definition_ids VARCHAR ARRAY
 ) AS $$
 BEGIN
     RETURN QUERY
-    WITH
-    InstanceIds AS (
-        SELECT * FROM raw_data.get_instance_ids(_build_id)
-    ),
-    Methods AS (
-        SELECT * FROM raw_data.get_methods(_build_id)
-    ),
-    Coverage AS (
-        SELECT
-            coverage.classname,
-            BIT_OR(coverage.probes) AS merged_probes
-        FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-        GROUP BY coverage.classname
-    )
-    SELECT
-        Methods.classname,
+WITH
+InstanceIds AS (
+	SELECT * FROM raw_data.get_instance_ids(input_build_id)
+),
+Methods AS (
+	SELECT * FROM raw_data.get_methods(input_build_id)
+),
+Coverage AS (
+	SELECT *
+	FROM raw_data.coverage coverage
+	JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+),
+MethodsCoverageByTest AS (
+	SELECT
         Methods.name,
         Methods.params,
         Methods.return_type,
-        CAST(COALESCE((
-            BIT_COUNT(SUBSTRING(Coverage.merged_probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) * 100.0
-            /
-            Methods.probes_count
-        ), 0.0) AS FLOAT) AS coverage_percent
-    FROM Methods
-    LEFT JOIN Coverage ON Methods.classname = Coverage.classname
-    -- [[WHERE UPPER(Methods.classname) LIKE UPPER(CONCAT({{classname}, '%'))]] -- filter by class name
-    ORDER BY
         Methods.classname,
-        Methods.probe_start_pos,
-        coverage_percent
-    DESC;
-
+		Methods.body_checksum,
+		Methods.signature,
+		Methods.probes_count,
+		Coverage.test_id,
+		BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS merged_probes
+	FROM Methods
+	LEFT JOIN Coverage ON Methods.classname = Coverage.classname
+	GROUP BY
+        Methods.name,
+        Methods.params,
+        Methods.return_type,
+        Methods.classname,
+		Methods.body_checksum,
+		Methods.signature,
+		Methods.probes_count,
+		Coverage.test_id
+),
+MethodsCoverage AS (
+	SELECT
+		MethodsCoverageByTest.signature,
+		MethodsCoverageByTest.body_checksum,
+	 	ARRAY_AGG(DISTINCT(MethodsCoverageByTest.test_id)) as associated_test_definition_ids,
+		BIT_OR(MethodsCoverageByTest.merged_probes) as merged_probes
+	FROM MethodsCoverageByTest
+	WHERE BIT_COUNT(MethodsCoverageByTest.merged_probes) > 0
+	GROUP BY
+		MethodsCoverageByTest.signature,
+		MethodsCoverageByTest.body_checksum
+)
+ SELECT
+	Methods.build_id,
+	Methods.name,
+	Methods.params,
+	Methods.return_type,
+	Methods.classname,
+	Methods.body_checksum,
+	Methods.signature,
+	Methods.probes_count,
+	MethodsCoverage.merged_probes,
+	COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS INT), 0),
+	COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
+	MethodsCoverage.associated_test_definition_ids
+FROM Methods
+LEFT JOIN MethodsCoverage ON Methods.body_checksum = MethodsCoverage.body_checksum
+	AND Methods.signature = MethodsCoverage.signature
+;
 END;
 $$ LANGUAGE plpgsql;
 
