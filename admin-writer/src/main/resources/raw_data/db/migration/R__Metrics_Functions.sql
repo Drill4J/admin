@@ -96,8 +96,144 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION raw_data.create_filtered_temp_tables(
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+    test_types VARCHAR[] DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
+) RETURNS VOID AS $$
+BEGIN
+    CREATE TEMP TABLE temp_instance_ids ON COMMIT DROP AS
+    SELECT * FROM raw_data.get_instance_ids(input_build_id) instances;
+
+    CREATE TEMP TABLE temp_methods ON COMMIT DROP AS
+    SELECT * FROM raw_data.get_methods(input_build_id)
+    WHERE (methods_class_name_pattern IS NULL OR classname LIKE methods_class_name_pattern)
+      AND (methods_method_name_pattern IS NULL OR name LIKE methods_method_name_pattern)
+	;
+
+    CREATE TEMP TABLE temp_coverage ON COMMIT DROP AS
+    SELECT *
+    FROM raw_data.coverage coverage
+    JOIN temp_instance_ids ON coverage.instance_id = temp_instance_ids.__id
+     WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+    	AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+      	AND (test_definition_ids IS NULL OR coverage.test_id = ANY(test_definition_ids));
+    --    AND (test_names IS NULL OR coverage.test_name IN test_names)
+    --    AND (test_runners IS NULL OR coverage.test_runner IN test_runners)
+    --    AND (test_types IS NULL OR coverage.test_type IN test_types)
+
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_filter()
+RETURNS TABLE (
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probes_count INT,
+    __merged_probes BIT,
+    __covered_probes INT,
+    __probes_coverage_ratio FLOAT,
+	__associated_test_definition_ids VARCHAR ARRAY,
+    __associated_test_definition_ids_text TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+WITH
+InstanceIds AS (
+    SELECT * FROM temp_instance_ids
+),
+Methods AS (
+    SELECT * FROM temp_methods
+),
+Coverage AS (
+    SELECT *
+    FROM temp_coverage coverage
+    JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+),
+MethodsCoverageByTest AS (
+    SELECT
+        Methods.name,
+        Methods.params,
+        Methods.return_type,
+        Methods.classname,
+        Methods.body_checksum,
+        Methods.signature,
+        Methods.probes_count,
+        Coverage.test_id,
+        BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS merged_probes
+    FROM Methods
+    LEFT JOIN Coverage ON Methods.classname = Coverage.classname
+    GROUP BY
+        Methods.name,
+        Methods.params,
+        Methods.return_type,
+        Methods.classname,
+        Methods.body_checksum,
+        Methods.signature,
+        Methods.probes_count,
+        Coverage.test_id
+),
+MethodsCoverage AS (
+    SELECT
+        MethodsCoverageByTest.signature,
+        MethodsCoverageByTest.body_checksum,
+        ARRAY_AGG(DISTINCT(MethodsCoverageByTest.test_id)) as associated_test_definition_ids,
+        BIT_OR(MethodsCoverageByTest.merged_probes) as merged_probes
+    FROM MethodsCoverageByTest
+    WHERE BIT_COUNT(MethodsCoverageByTest.merged_probes) > 0
+    GROUP BY
+        MethodsCoverageByTest.signature,
+        MethodsCoverageByTest.body_checksum
+)
+SELECT
+    Methods.build_id,
+    Methods.name,
+    Methods.params,
+    Methods.return_type,
+    Methods.classname,
+    Methods.body_checksum,
+    Methods.signature,
+    Methods.probes_count,
+    MethodsCoverage.merged_probes,
+    COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS INT), 0) AS covered_probes,
+    COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
+    MethodsCoverage.associated_test_definition_ids,
+	ARRAY_TO_STRING(MethodsCoverage.associated_test_definition_ids, ', ')
+FROM temp_methods Methods
+LEFT JOIN MethodsCoverage ON Methods.body_checksum = MethodsCoverage.body_checksum
+    AND Methods.signature = MethodsCoverage.signature;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
-	input_build_id VARCHAR
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+    test_types VARCHAR[] DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __build_id VARCHAR,
     __name VARCHAR,
@@ -110,74 +246,26 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
     __merged_probes BIT,
     __covered_probes INT,
     __probes_coverage_ratio FLOAT,
-    __associated_test_definition_ids VARCHAR ARRAY
+	__associated_test_definition_ids VARCHAR ARRAY,
+    __associated_test_definition_ids_text TEXT
 ) AS $$
 BEGIN
+    -- Create temporary tables with the filtered data
+    PERFORM raw_data.create_filtered_temp_tables(
+        input_build_id,
+		methods_class_name_pattern,
+	    methods_method_name_pattern,
+		test_definition_ids,
+	    test_names,
+	    test_runners,
+	    test_types,
+		coverage_created_at_start,
+	    coverage_created_at_end
+    );
+
+    -- Return the result from the analysis function
     RETURN QUERY
-WITH
-InstanceIds AS (
-	SELECT * FROM raw_data.get_instance_ids(input_build_id)
-),
-Methods AS (
-	SELECT * FROM raw_data.get_methods(input_build_id)
-),
-Coverage AS (
-	SELECT *
-	FROM raw_data.coverage coverage
-	JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-),
-MethodsCoverageByTest AS (
-	SELECT
-        Methods.name,
-        Methods.params,
-        Methods.return_type,
-        Methods.classname,
-		Methods.body_checksum,
-		Methods.signature,
-		Methods.probes_count,
-		Coverage.test_id,
-		BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS merged_probes
-	FROM Methods
-	LEFT JOIN Coverage ON Methods.classname = Coverage.classname
-	GROUP BY
-        Methods.name,
-        Methods.params,
-        Methods.return_type,
-        Methods.classname,
-		Methods.body_checksum,
-		Methods.signature,
-		Methods.probes_count,
-		Coverage.test_id
-),
-MethodsCoverage AS (
-	SELECT
-		MethodsCoverageByTest.signature,
-		MethodsCoverageByTest.body_checksum,
-	 	ARRAY_AGG(DISTINCT(MethodsCoverageByTest.test_id)) as associated_test_definition_ids,
-		BIT_OR(MethodsCoverageByTest.merged_probes) as merged_probes
-	FROM MethodsCoverageByTest
-	WHERE BIT_COUNT(MethodsCoverageByTest.merged_probes) > 0
-	GROUP BY
-		MethodsCoverageByTest.signature,
-		MethodsCoverageByTest.body_checksum
-)
- SELECT
-	Methods.build_id,
-	Methods.name,
-	Methods.params,
-	Methods.return_type,
-	Methods.classname,
-	Methods.body_checksum,
-	Methods.signature,
-	Methods.probes_count,
-	MethodsCoverage.merged_probes,
-	COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS INT), 0),
-	COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
-	MethodsCoverage.associated_test_definition_ids
-FROM Methods
-LEFT JOIN MethodsCoverage ON Methods.body_checksum = MethodsCoverage.body_checksum
-	AND Methods.signature = MethodsCoverage.signature
-;
+    SELECT * FROM raw_data.get_coverage_by_methods_filter();
 END;
 $$ LANGUAGE plpgsql;
 
@@ -766,12 +854,14 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_instance_ids(input_build_id VARCHAR)
 RETURNS TABLE (
-    __id VARCHAR
+    __id VARCHAR,
+    __build_id VARCHAR,
+    __created_at TIMESTAMP
 )
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT id
+    SELECT *
     FROM raw_data.instances
     WHERE build_id = input_build_id;
 END;
