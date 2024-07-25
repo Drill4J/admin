@@ -105,8 +105,8 @@ CREATE OR REPLACE FUNCTION raw_data.create_filtered_temp_tables(
 
 	test_definition_ids VARCHAR[] DEFAULT NULL,
     test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
     test_runners VARCHAR[] DEFAULT NULL,
-    test_types VARCHAR[] DEFAULT NULL,
 
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
     coverage_created_at_end TIMESTAMP DEFAULT NULL
@@ -122,16 +122,19 @@ BEGIN
 	;
 
     CREATE TEMP TABLE temp_coverage ON COMMIT DROP AS
+    WITH TestIds AS (
+        SELECT DISTINCT test_definition_id
+        FROM raw_data.tests
+        WHERE (test_names IS NULL OR raw_data.tests.name = ANY(test_names))
+            AND (test_runners IS NULL OR raw_data.tests.runner = ANY(test_runners))
+            AND (test_results IS NULL OR raw_data.tests.result = ANY(test_results))
+    )
     SELECT *
     FROM raw_data.coverage coverage
     JOIN temp_instance_ids ON coverage.instance_id = temp_instance_ids.__id
-     WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-    	AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
-      	AND (test_definition_ids IS NULL OR coverage.test_id = ANY(test_definition_ids));
-    --    AND (test_names IS NULL OR coverage.test_name IN test_names)
-    --    AND (test_runners IS NULL OR coverage.test_runner IN test_runners)
-    --    AND (test_types IS NULL OR coverage.test_type IN test_types)
-
+    JOIN TestIds ON coverage.test_id = TestIds.test_definition_id
+    WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+      AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end);
 
 END;
 $$ LANGUAGE plpgsql;
@@ -229,8 +232,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
 
 	test_definition_ids VARCHAR[] DEFAULT NULL,
     test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
     test_runners VARCHAR[] DEFAULT NULL,
-    test_types VARCHAR[] DEFAULT NULL,
 
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
     coverage_created_at_end TIMESTAMP DEFAULT NULL
@@ -257,8 +260,8 @@ BEGIN
 	    methods_method_name_pattern,
 		test_definition_ids,
 	    test_names,
+	    test_results,
 	    test_runners,
-	    test_types,
 		coverage_created_at_start,
 	    coverage_created_at_end
     );
