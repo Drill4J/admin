@@ -153,56 +153,59 @@ RETURNS TABLE (
     __covered_probes INT,
     __probes_coverage_ratio FLOAT,
 	__associated_test_definition_ids VARCHAR ARRAY,
-    __associated_test_definition_ids_text TEXT
+    __associated_test_names VARCHAR ARRAY,
+    __associated_test_runners VARCHAR ARRAY
+--    __associated_test_results VARCHAR ARRAY
 ) AS $$
 BEGIN
     RETURN QUERY
 WITH
-InstanceIds AS (
-    SELECT * FROM temp_instance_ids
-),
 Methods AS (
     SELECT * FROM temp_methods
 ),
 Coverage AS (
+    SELECT * FROM temp_coverage
+),
+CoverageByTests AS (
+    WITH MergedCoverage AS (
+        SELECT
+            Methods.signature,
+            Methods.body_checksum,
+            Coverage.test_id,
+            Tests.name as test_name,
+            Tests.runner as test_runner,
+--            Tests.result, -- TODO include result once test-id-launch mapping is implemented
+            BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
+        FROM Coverage
+                            -- matching coverage to test-definition-id is wrong
+                            -- that way, we can't individual test properties (e.g. result - passed/failed)
+                            -- TODO: fix after "coverage - to - test launch id" mapping is implemented in autotest & java agents
+        JOIN Methods ON Methods.classname = Coverage.classname
+        LEFT JOIN raw_data.tests Tests ON Tests.test_definition_id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
+        GROUP BY
+            Methods.signature,
+            Methods.body_checksum,
+            Coverage.test_id,
+            Tests.name,
+            Tests.runner
+    )
     SELECT *
-    FROM temp_coverage coverage
-    JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+    FROM MergedCoverage
+    WHERE BIT_COUNT(probes) > 0
 ),
-MethodsCoverageByTest AS (
+CoverageByMethods AS (
     SELECT
-        Methods.name,
-        Methods.params,
-        Methods.return_type,
-        Methods.classname,
-        Methods.body_checksum,
-        Methods.signature,
-        Methods.probes_count,
-        Coverage.test_id,
-        BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS merged_probes
-    FROM Methods
-    LEFT JOIN Coverage ON Methods.classname = Coverage.classname
+        CoverageByTests.signature,
+        CoverageByTests.body_checksum,
+        ARRAY_AGG(DISTINCT(CoverageByTests.test_id)) AS associated_test_definition_ids,
+        ARRAY_AGG(DISTINCT(CoverageByTests.test_name)) AS associated_test_names,
+        ARRAY_AGG(DISTINCT(CoverageByTests.test_runner)) AS associated_test_runners,
+--        ARRAY_AGG(DISTINCT(CoverageByTests.test_result)) AS associated_test_results
+        BIT_OR(CoverageByTests.probes) as merged_probes
+    FROM CoverageByTests
     GROUP BY
-        Methods.name,
-        Methods.params,
-        Methods.return_type,
-        Methods.classname,
-        Methods.body_checksum,
-        Methods.signature,
-        Methods.probes_count,
-        Coverage.test_id
-),
-MethodsCoverage AS (
-    SELECT
-        MethodsCoverageByTest.signature,
-        MethodsCoverageByTest.body_checksum,
-        ARRAY_AGG(DISTINCT(MethodsCoverageByTest.test_id)) as associated_test_definition_ids,
-        BIT_OR(MethodsCoverageByTest.merged_probes) as merged_probes
-    FROM MethodsCoverageByTest
-    WHERE BIT_COUNT(MethodsCoverageByTest.merged_probes) > 0
-    GROUP BY
-        MethodsCoverageByTest.signature,
-        MethodsCoverageByTest.body_checksum
+        CoverageByTests.signature,
+        CoverageByTests.body_checksum
 )
 SELECT
     Methods.build_id,
@@ -213,14 +216,15 @@ SELECT
     Methods.body_checksum,
     Methods.signature,
     Methods.probes_count,
-    MethodsCoverage.merged_probes,
-    COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS INT), 0) AS covered_probes,
-    COALESCE(CAST(BIT_COUNT(MethodsCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
-    MethodsCoverage.associated_test_definition_ids,
-	ARRAY_TO_STRING(MethodsCoverage.associated_test_definition_ids, ', ')
-FROM temp_methods Methods
-LEFT JOIN MethodsCoverage ON Methods.body_checksum = MethodsCoverage.body_checksum
-    AND Methods.signature = MethodsCoverage.signature;
+    CoverageByMethods.merged_probes,
+    COALESCE(CAST(BIT_COUNT(CoverageByMethods.merged_probes) AS INT), 0) AS covered_probes,
+    COALESCE(CAST(BIT_COUNT(CoverageByMethods.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
+    CoverageByMethods.associated_test_definition_ids,
+    CoverageByMethods.associated_test_names,
+    CoverageByMethods.associated_test_runners
+--    MethodsCoverage.associated_test_results
+FROM Methods
+LEFT JOIN CoverageByMethods ON Methods.signature = CoverageByMethods.signature AND Methods.body_checksum = CoverageByMethods.body_checksum;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -250,7 +254,9 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
     __covered_probes INT,
     __probes_coverage_ratio FLOAT,
 	__associated_test_definition_ids VARCHAR ARRAY,
-    __associated_test_definition_ids_text TEXT
+    __associated_test_names VARCHAR ARRAY,
+    __associated_test_runners VARCHAR ARRAY
+--    __associated_test_results VARCHAR ARRAY
 ) AS $$
 BEGIN
     -- Create temporary tables with the filtered data
