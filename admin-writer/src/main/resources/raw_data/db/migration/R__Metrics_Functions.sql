@@ -122,17 +122,21 @@ BEGIN
 	;
 
     CREATE TEMP TABLE temp_coverage ON COMMIT DROP AS
-    WITH TestIds AS (
-        SELECT DISTINCT test_definition_id
-        FROM raw_data.tests
-        WHERE (test_names IS NULL OR raw_data.tests.name = ANY(test_names))
-            AND (test_runners IS NULL OR raw_data.tests.runner = ANY(test_runners))
-            AND (test_results IS NULL OR raw_data.tests.result = ANY(test_results))
+    WITH TestLaunchIds AS (
+        SELECT DISTINCT launches.id as test_launch_id
+        FROM raw_data.test_definitions definitions
+        JOIN raw_data.test_launches launches ON launches.test_definition_id = definitions.id
+        WHERE
+            definitions.group_id = split_part(input_build_id, ':', 1)
+            AND launches.group_id = split_part(input_build_id, ':', 1)
+            AND (test_names IS NULL OR definitions.name = ANY(test_names))
+            AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
+            AND (test_results IS NULL OR launches.result = ANY(test_results))
     )
     SELECT *
     FROM raw_data.coverage coverage
     JOIN temp_instance_ids ON coverage.instance_id = temp_instance_ids.__id
-    JOIN TestIds ON coverage.test_id = TestIds.test_definition_id
+    JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.test_launch_id
     WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
       AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end);
 
@@ -172,8 +176,8 @@ CoverageByTests AS (
             Methods.signature,
             Methods.body_checksum,
             Coverage.test_id,
-            Tests.name as test_name,
-            Tests.runner as test_runner,
+            definitions.name as test_name,
+            definitions.runner as test_runner,
 --            Tests.result, -- TODO include result once test-id-launch mapping is implemented
             BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
         FROM Coverage
@@ -181,13 +185,14 @@ CoverageByTests AS (
                             -- that way, we can't individual test properties (e.g. result - passed/failed)
                             -- TODO: fix after "coverage - to - test launch id" mapping is implemented in autotest & java agents
         JOIN Methods ON Methods.classname = Coverage.classname
-        LEFT JOIN raw_data.tests Tests ON Tests.test_definition_id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
+        LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
+        LEFT JOIN raw_data.test_definitions definitions on definitions.id = launches.test_definition_id
         GROUP BY
             Methods.signature,
             Methods.body_checksum,
             Coverage.test_id,
-            Tests.name,
-            Tests.runner
+            definitions.name,
+            definitions.runner
     )
     SELECT *
     FROM MergedCoverage
@@ -665,9 +670,9 @@ BEGIN
         tests.name,
         tests.path
     FROM Risks
-    -- TODO make it clear that some entries have no matching data in raw_data.tests
+    -- TODO make it clear that some entries have no matching data in raw_data.test_definitions
     --      e.g. TEST_CONTEXT_NONE, or tests for which data is yet to be submitted
-    LEFT JOIN raw_data.tests tests ON tests.test_definition_id = Risks.__test_definition_id
+    LEFT JOIN raw_data.test_definitions test_definitions ON test_definitions.id = Risks.__test_definition_id
     -- TODO allow filtering by result (once mapping is implemented) WHERE tests.result = SUCCESS
     ;
 END;

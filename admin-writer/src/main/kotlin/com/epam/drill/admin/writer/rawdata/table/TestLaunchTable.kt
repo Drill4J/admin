@@ -15,13 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
-import org.jetbrains.exposed.dao.id.IntIdTable
-
-object TestMetadataTable : IntIdTable("raw_data.tests") {
+object TestLaunchTable : StringIdTable("raw_data.test_launches") {
+    val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
     val testDefinitionId = varchar("test_definition_id",  SHORT_TEXT_LENGTH)
-    val type = varchar("type",  SHORT_TEXT_LENGTH).nullable()
-    val runner = varchar("runner", SHORT_TEXT_LENGTH).nullable()
-    val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
-    val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
     val result = varchar("result",  SHORT_TEXT_LENGTH).nullable()
 }
