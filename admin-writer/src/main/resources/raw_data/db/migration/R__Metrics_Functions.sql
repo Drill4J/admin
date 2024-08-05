@@ -129,6 +129,7 @@ BEGIN
         WHERE
             definitions.group_id = split_part(input_build_id, ':', 1)
             AND launches.group_id = split_part(input_build_id, ':', 1)
+            AND (test_definition_ids IS NULL OR definitions.id = ANY(test_definition_ids))
             AND (test_names IS NULL OR definitions.name = ANY(test_names))
             AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
             AND (test_results IS NULL OR launches.result = ANY(test_results))
