@@ -96,8 +96,32 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_test_launch_ids(
+    input_group_id VARCHAR,
+	test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    __id VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT launches.id as test_launch_id
+    FROM raw_data.test_definitions definitions
+    JOIN raw_data.test_launches launches ON launches.test_definition_id = definitions.id
+    WHERE definitions.group_id = input_group_id
+        AND launches.group_id = input_group_id
+        AND (test_definition_ids IS NULL OR definitions.id = ANY(test_definition_ids))
+        AND (test_names IS NULL OR definitions.name = ANY(test_names))
+        AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
+        AND (test_results IS NULL OR launches.result = ANY(test_results))
+    ;
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION raw_data.create_filtered_temp_tables(
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
     input_build_id VARCHAR,
 
 	methods_class_name_pattern VARCHAR DEFAULT NULL,
@@ -110,41 +134,7 @@ CREATE OR REPLACE FUNCTION raw_data.create_filtered_temp_tables(
 
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
     coverage_created_at_end TIMESTAMP DEFAULT NULL
-) RETURNS VOID AS $$
-BEGIN
-    CREATE TEMP TABLE temp_instance_ids ON COMMIT DROP AS
-    SELECT * FROM raw_data.get_instance_ids(input_build_id) instances;
-
-    CREATE TEMP TABLE temp_methods ON COMMIT DROP AS
-    SELECT * FROM raw_data.get_methods(input_build_id)
-    WHERE (methods_class_name_pattern IS NULL OR classname LIKE methods_class_name_pattern)
-      AND (methods_method_name_pattern IS NULL OR name LIKE methods_method_name_pattern)
-	;
-
-    CREATE TEMP TABLE temp_coverage ON COMMIT DROP AS
-    WITH TestLaunchIds AS (
-        SELECT DISTINCT launches.id as test_launch_id
-        FROM raw_data.test_definitions definitions
-        JOIN raw_data.test_launches launches ON launches.test_definition_id = definitions.id
-        WHERE
-            definitions.group_id = split_part(input_build_id, ':', 1)
-            AND launches.group_id = split_part(input_build_id, ':', 1)
-            AND (test_definition_ids IS NULL OR definitions.id = ANY(test_definition_ids))
-            AND (test_names IS NULL OR definitions.name = ANY(test_names))
-            AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
-            AND (test_results IS NULL OR launches.result = ANY(test_results))
-    )
-    SELECT *
-    FROM raw_data.coverage coverage
-    JOIN temp_instance_ids ON coverage.instance_id = temp_instance_ids.__id
-    JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.test_launch_id
-    WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-      AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end);
-
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_filter()
+)
 RETURNS TABLE (
     __build_id VARCHAR,
     __name VARCHAR,
@@ -166,10 +156,34 @@ BEGIN
     RETURN QUERY
 WITH
 Methods AS (
-    SELECT * FROM temp_methods
+    SELECT *
+    FROM raw_data.get_methods(
+        input_build_id,
+        methods_class_name_pattern,
+        methods_method_name_pattern
+    )
 ),
 Coverage AS (
-    SELECT * FROM temp_coverage
+    WITH
+    InstanceIds AS (
+        SELECT * FROM raw_data.get_instance_ids(input_build_id)
+    ),
+    TestLaunchIds AS (
+        SELECT *
+        FROM raw_data.get_test_launch_ids(
+            split_part(input_build_id, ':', 1),
+            test_definition_ids,
+            test_names,
+            test_results,
+            test_runners
+        )
+    )
+    SELECT *
+    FROM raw_data.coverage coverage
+    JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+    JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+    WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+      AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
 ),
 CoverageByTests AS (
     WITH MergedCoverage AS (
@@ -231,56 +245,6 @@ SELECT
 --    MethodsCoverage.associated_test_results
 FROM Methods
 LEFT JOIN CoverageByMethods ON Methods.signature = CoverageByMethods.signature AND Methods.body_checksum = CoverageByMethods.body_checksum;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
-    input_build_id VARCHAR,
-
-	methods_class_name_pattern VARCHAR DEFAULT NULL,
-    methods_method_name_pattern VARCHAR DEFAULT NULL,
-
-	test_definition_ids VARCHAR[] DEFAULT NULL,
-    test_names VARCHAR[] DEFAULT NULL,
-    test_results VARCHAR[] DEFAULT NULL,
-    test_runners VARCHAR[] DEFAULT NULL,
-
-	coverage_created_at_start TIMESTAMP DEFAULT NULL,
-    coverage_created_at_end TIMESTAMP DEFAULT NULL
-) RETURNS TABLE (
-    __build_id VARCHAR,
-    __name VARCHAR,
-    __params VARCHAR,
-    __return_type VARCHAR,
-    __classname VARCHAR,
-    __body_checksum VARCHAR,
-    __signature VARCHAR,
-    __probes_count INT,
-    __merged_probes BIT,
-    __covered_probes INT,
-    __probes_coverage_ratio FLOAT,
-	__associated_test_definition_ids VARCHAR ARRAY,
-    __associated_test_names VARCHAR ARRAY,
-    __associated_test_runners VARCHAR ARRAY
---    __associated_test_results VARCHAR ARRAY
-) AS $$
-BEGIN
-    -- Create temporary tables with the filtered data
-    PERFORM raw_data.create_filtered_temp_tables(
-        input_build_id,
-		methods_class_name_pattern,
-	    methods_method_name_pattern,
-		test_definition_ids,
-	    test_names,
-	    test_results,
-	    test_runners,
-		coverage_created_at_start,
-	    coverage_created_at_end
-    );
-
-    -- Return the result from the analysis function
-    RETURN QUERY
-    SELECT * FROM raw_data.get_coverage_by_methods_filter();
 END;
 $$ LANGUAGE plpgsql;
 
@@ -728,7 +692,18 @@ $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_methods(
-	input_build_id VARCHAR
+	input_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+    coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __build_id VARCHAR,
     __name VARCHAR,
@@ -747,16 +722,15 @@ CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_methods(
 BEGIN
     RETURN QUERY
     WITH
-    InstanceIds AS (
-        SELECT * FROM raw_data.get_instance_ids(input_build_id)
-    ),
     Methods AS (
-        SELECT * FROM raw_data.get_methods(input_build_id)
+        SELECT *
+        FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
     ),
     MatchingMethods AS (
         WITH
         SameGroupAndAppMethods AS (
-            SELECT * FROM raw_data.get_same_group_and_app_methods(input_build_id)
+            SELECT *
+            FROM raw_data.get_same_group_and_app_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
         )
         SELECT
             Methods.signature,
@@ -780,6 +754,16 @@ BEGIN
             MatchingMethods.build_id = instances.build_id
     ),
     MatchingCoverageByTest AS (
+        WITH TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        )
         SELECT
             MatchingInstances.signature,
             MatchingInstances.body_checksum,
@@ -788,6 +772,9 @@ BEGIN
             coverage.test_id as test_id
         FROM raw_data.coverage coverage
         JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+        JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+              AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
         GROUP BY
             -- MatchingInstances.classname, -- TODO think about it
             MatchingInstances.signature,
@@ -833,34 +820,33 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_methods(input_build_id VARCHAR)
+CREATE OR REPLACE FUNCTION raw_data.get_methods(
+    input_build_id VARCHAR,
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL
+)
 RETURNS TABLE (
+    id VARCHAR,
     build_id VARCHAR,
-    signature VARCHAR,
     classname VARCHAR,
     name VARCHAR,
     params VARCHAR,
     return_type VARCHAR,
+    body_checksum VARCHAR,
+    signature VARCHAR,
     probe_start_pos INT,
-    probes_count INT,
-    body_checksum VARCHAR
+    probes_count INT
 )
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT
-        methods.build_id,
-        methods.signature,
-        methods.classname,
-        methods.name,
-        methods.params,
-        methods.return_type,
-        methods.probe_start_pos,
-        methods.probes_count,
-        methods.body_checksum
+    SELECT *
     FROM raw_data.methods methods
     WHERE methods.build_id = input_build_id
-        AND methods.probes_count > 0;
+        AND methods.probes_count > 0
+        AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+        AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+        ;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -887,7 +873,11 @@ $$ LANGUAGE plpgsql;
 -- NOTE: this function is guaranteed to return all methods for input_build_id
 -- TODO add test
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_same_group_and_app_methods(input_build_id VARCHAR)
+CREATE OR REPLACE FUNCTION raw_data.get_same_group_and_app_methods(
+    input_build_id VARCHAR,
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL
+)
 RETURNS TABLE (
     id VARCHAR,
     build_id VARCHAR,
@@ -907,6 +897,10 @@ BEGIN
     FROM raw_data.builds original_build
     JOIN raw_data.builds related_build ON related_build.group_id = original_build.group_id AND related_build.app_id = original_build.app_id
     JOIN raw_data.methods methods ON methods.build_id = related_build.id
-    WHERE original_build.id = input_build_id AND methods.probes_count > 0;
+    WHERE original_build.id = input_build_id
+        AND methods.probes_count > 0
+        AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+        AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+    ;
 END;
 $$ LANGUAGE plpgsql;
