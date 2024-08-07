@@ -24,6 +24,7 @@ class TestLaunch (
     val groupId: String,
     val id: String,
     val testDefinitionId: String,
+    val testTaskId: String,
     val result: String?
 )
 

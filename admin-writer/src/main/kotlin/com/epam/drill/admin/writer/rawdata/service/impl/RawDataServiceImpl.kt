@@ -152,6 +152,7 @@ class RawDataServiceImpl(
                     groupId = test.groupId,
                     id = test.id,
                     testDefinitionId = test.testDefinitionId,
+                    testTaskId = test.testTaskId,
                     result = test.result.toString()
                 ),
                 definition = TestDefinition(
