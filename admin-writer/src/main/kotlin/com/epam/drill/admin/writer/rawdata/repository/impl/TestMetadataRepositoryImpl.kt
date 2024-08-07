@@ -27,6 +27,7 @@ class TestMetadataRepositoryImpl: TestMetadataRepository {
             this[TestLaunchTable.id] = it.launch.id
             this[TestLaunchTable.groupId] = it.launch.groupId
             this[TestLaunchTable.testDefinitionId] = it.launch.testDefinitionId
+            this[TestLaunchTable.testTaskId] = it.launch.testTaskId
             this[TestLaunchTable.result] = it.launch.result
         }
         TestDefinitionTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
