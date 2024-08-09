@@ -196,9 +196,6 @@ CoverageByTests AS (
 --            Tests.result, -- TODO include result once test-id-launch mapping is implemented
             BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
         FROM Coverage
-                            -- matching coverage to test-definition-id is wrong
-                            -- that way, we can't individual test properties (e.g. result - passed/failed)
-                            -- TODO: fix after "coverage - to - test launch id" mapping is implemented in autotest & java agents
         JOIN Methods ON Methods.classname = Coverage.classname
         LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
         LEFT JOIN raw_data.test_definitions definitions on definitions.id = launches.test_definition_id
