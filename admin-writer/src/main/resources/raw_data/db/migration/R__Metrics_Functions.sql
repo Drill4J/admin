@@ -630,10 +630,10 @@ BEGIN
     )
     SELECT DISTINCT
         Risks.__test_definition_id,
-        tests.type,
-        tests.runner,
-        tests.name,
-        tests.path
+        test_definitions.type,
+        test_definitions.runner,
+        test_definitions.name,
+        test_definitions.path
     FROM Risks
     -- TODO make it clear that some entries have no matching data in raw_data.test_definitions
     --      e.g. TEST_CONTEXT_NONE, or tests for which data is yet to be submitted
