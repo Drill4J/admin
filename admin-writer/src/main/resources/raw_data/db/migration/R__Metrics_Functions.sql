@@ -181,7 +181,7 @@ Coverage AS (
     SELECT *
     FROM raw_data.coverage coverage
     JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-    JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+    LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
     WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
       AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
 ),
@@ -470,7 +470,18 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks(
 	input_build_id VARCHAR,
-    input_baseline_build_id VARCHAR
+    input_baseline_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __risk_type TEXT,
     __build_id VARCHAR,
@@ -490,10 +501,10 @@ BEGIN
     RETURN QUERY
 	WITH
 	BaselineMethods AS (
-		SELECT * FROM raw_data.get_methods(input_baseline_build_id)
+		SELECT * FROM raw_data.get_methods(input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
 	),
 	Methods AS (
-		SELECT * FROM raw_data.get_methods(input_build_id)
+		SELECT * FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
 	),
 	Risks AS (
 		WITH
@@ -546,9 +557,22 @@ BEGIN
 			raw_data.get_instance_ids(input_build_id)
 	),
 	ClassesCoverage AS (
+        WITH TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        )
 		SELECT coverage.*
 		FROM raw_data.coverage coverage
 		JOIN Instances ON coverage.instance_id = Instances.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
 	),
 	RisksCoverage AS (
 		WITH
@@ -772,7 +796,7 @@ BEGIN
             coverage.test_id as test_id
         FROM raw_data.coverage coverage
         JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
-        JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
         WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
               AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
         GROUP BY
@@ -904,3 +928,57 @@ BEGIN
     ;
 END;
 $$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_test_launches(input_build_id VARCHAR)
+RETURNS TABLE (
+    __id VARCHAR,
+    __group_id VARCHAR,
+    __test_definition_id VARCHAR,
+    __name VARCHAR,
+    __runner VARCHAR,
+    __path VARCHAR,
+    __test_task_id VARCHAR,
+    __result VARCHAR,
+    __created_at TIMESTAMP
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Build AS (
+        SELECT *
+        FROM raw_data.builds
+        WHERE id = input_build_id
+    ),
+    Instances AS (
+        SELECT *
+        FROM raw_data.get_instance_ids(input_build_id)
+    ),
+    Coverage AS (
+        SELECT DISTINCT test_id
+        FROM raw_data.coverage coverage
+        JOIN Instances ON Instances.__id = coverage.instance_id
+    ),
+    TestLaunches AS (
+        SELECT
+	        launch.id,
+	        launch.group_id,
+	        launch.test_definition_id,
+			definitions.name,
+			definitions.runner,
+			definitions.path,
+	        launch.test_task_id,
+	        launch.result,
+	        launch.created_at
+        FROM raw_data.test_launches launch
+        JOIN Coverage ON Coverage.test_id = launch.id
+		JOIN raw_data.test_definitions definitions on definitions.id = launch.test_definition_id
+    )
+    SELECT *
+    FROM TestLaunches;
+END;
+$$;
