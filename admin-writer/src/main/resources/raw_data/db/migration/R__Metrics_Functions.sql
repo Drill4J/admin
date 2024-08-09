@@ -979,3 +979,135 @@ BEGIN
     FROM TestLaunches;
 END;
 $$;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_test_tasks(
+	input_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+    coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
+) RETURNS TABLE (
+    __test_task_id VARCHAR,
+    __covered_probes NUMERIC,
+    __total_probes NUMERIC,
+    __coverage_ratio FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Methods AS (
+        SELECT *
+        FROM raw_data.get_methods(
+            input_build_id,
+            methods_class_name_pattern,
+            methods_method_name_pattern
+        )
+    ),
+    Coverage AS (
+        WITH
+        InstanceIds AS (
+            SELECT * FROM raw_data.get_instance_ids(input_build_id)
+        ),
+        TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        )
+        SELECT *
+        FROM raw_data.coverage coverage
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+        AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+    ),
+    CoverageByTestTaskId AS (
+        WITH
+            ProbesByTestTaskPerMethod AS (
+                SELECT
+                    COALESCE(launches.test_task_id, 'UNGROUPED') AS test_task_id,
+                    Methods.signature,
+                    BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
+                FROM Coverage
+                JOIN Methods ON Methods.classname = Coverage.classname
+                LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id
+                GROUP BY
+                    launches.test_task_id,
+                    Methods.signature
+            ),
+            CoveredProbesCount AS (
+                SELECT
+                    coverage.test_task_id,
+                    coverage.signature,
+                    BIT_COUNT(coverage.probes) as covered_probes
+                FROM ProbesByTestTaskPerMethod coverage
+                WHERE BIT_COUNT(probes) > 0
+            )
+            SELECT
+                test_task_id,
+                SUM(covered_probes) as covered_probes
+            FROM CoveredProbesCount counts
+            GROUP BY test_task_id
+    ),
+    TotalCoverage AS (
+        WITH
+        Classes AS (
+            SELECT
+                classname,
+                SUM(Methods.probes_count) AS probes_count
+            FROM Methods
+            GROUP BY classname
+        ),
+        ClassesCoverage AS (
+            SELECT
+                classname,
+                BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
+            FROM Coverage
+            GROUP BY coverage.classname
+        ),
+        Sums AS (
+            SELECT
+                SUM(ClassesCoverage.covered_probes_count) AS covered_probes,
+                SUM(Classes.probes_count) AS total_probes
+            FROM Classes
+            LEFT JOIN ClassesCoverage ON Classes.classname = ClassesCoverage.classname
+        )
+        SELECT
+            Sums.covered_probes,
+            Sums.total_probes,
+            COALESCE(CAST(Sums.covered_probes AS FLOAT) / CAST (Sums.total_probes AS FLOAT), 0) as coverage_ratio
+        FROM Sums
+    )
+    SELECT
+        coverage.test_task_id,
+        coverage.covered_probes,
+        TotalCoverage.total_probes,
+        coverage.covered_probes/TotalCoverage.total_probes AS coverage_ratio
+    FROM CoverageByTestTaskId coverage
+    CROSS JOIN TotalCoverage
+
+    UNION ALL
+
+    SELECT
+        'TOTAL' as test_task_id,
+        *
+    FROM TotalCoverage
+    ;
+END;
+$$;
