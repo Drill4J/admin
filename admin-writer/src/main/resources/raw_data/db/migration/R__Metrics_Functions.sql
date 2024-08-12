@@ -181,7 +181,7 @@ Coverage AS (
     SELECT *
     FROM raw_data.coverage coverage
     JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-    JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+    LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
     WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
       AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
 ),
@@ -196,9 +196,6 @@ CoverageByTests AS (
 --            Tests.result, -- TODO include result once test-id-launch mapping is implemented
             BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
         FROM Coverage
-                            -- matching coverage to test-definition-id is wrong
-                            -- that way, we can't individual test properties (e.g. result - passed/failed)
-                            -- TODO: fix after "coverage - to - test launch id" mapping is implemented in autotest & java agents
         JOIN Methods ON Methods.classname = Coverage.classname
         LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
         LEFT JOIN raw_data.test_definitions definitions on definitions.id = launches.test_definition_id
@@ -470,7 +467,18 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks(
 	input_build_id VARCHAR,
-    input_baseline_build_id VARCHAR
+    input_baseline_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __risk_type TEXT,
     __build_id VARCHAR,
@@ -490,10 +498,10 @@ BEGIN
     RETURN QUERY
 	WITH
 	BaselineMethods AS (
-		SELECT * FROM raw_data.get_methods(input_baseline_build_id)
+		SELECT * FROM raw_data.get_methods(input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
 	),
 	Methods AS (
-		SELECT * FROM raw_data.get_methods(input_build_id)
+		SELECT * FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
 	),
 	Risks AS (
 		WITH
@@ -546,9 +554,22 @@ BEGIN
 			raw_data.get_instance_ids(input_build_id)
 	),
 	ClassesCoverage AS (
+        WITH TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        )
 		SELECT coverage.*
 		FROM raw_data.coverage coverage
 		JOIN Instances ON coverage.instance_id = Instances.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
 	),
 	RisksCoverage AS (
 		WITH
@@ -772,7 +793,7 @@ BEGIN
             coverage.test_id as test_id
         FROM raw_data.coverage coverage
         JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
-        JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
         WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
               AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
         GROUP BY
@@ -904,3 +925,189 @@ BEGIN
     ;
 END;
 $$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_test_launches(input_build_id VARCHAR)
+RETURNS TABLE (
+    __id VARCHAR,
+    __group_id VARCHAR,
+    __test_definition_id VARCHAR,
+    __name VARCHAR,
+    __runner VARCHAR,
+    __path VARCHAR,
+    __test_task_id VARCHAR,
+    __result VARCHAR,
+    __created_at TIMESTAMP
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Build AS (
+        SELECT *
+        FROM raw_data.builds
+        WHERE id = input_build_id
+    ),
+    Instances AS (
+        SELECT *
+        FROM raw_data.get_instance_ids(input_build_id)
+    ),
+    Coverage AS (
+        SELECT DISTINCT test_id
+        FROM raw_data.coverage coverage
+        JOIN Instances ON Instances.__id = coverage.instance_id
+    ),
+    TestLaunches AS (
+        SELECT
+	        launch.id,
+	        launch.group_id,
+	        launch.test_definition_id,
+			definitions.name,
+			definitions.runner,
+			definitions.path,
+	        launch.test_task_id,
+	        launch.result,
+	        launch.created_at
+        FROM raw_data.test_launches launch
+        JOIN Coverage ON Coverage.test_id = launch.id
+		JOIN raw_data.test_definitions definitions on definitions.id = launch.test_definition_id
+    )
+    SELECT *
+    FROM TestLaunches;
+END;
+$$;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_test_tasks(
+	input_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+    coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
+) RETURNS TABLE (
+    __test_task_id VARCHAR,
+    __covered_probes NUMERIC,
+    __total_probes NUMERIC,
+    __coverage_ratio FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Methods AS (
+        SELECT *
+        FROM raw_data.get_methods(
+            input_build_id,
+            methods_class_name_pattern,
+            methods_method_name_pattern
+        )
+    ),
+    Coverage AS (
+        WITH
+        InstanceIds AS (
+            SELECT * FROM raw_data.get_instance_ids(input_build_id)
+        ),
+        TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        )
+        SELECT *
+        FROM raw_data.coverage coverage
+        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
+        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+        AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+    ),
+    CoverageByTestTaskId AS (
+        WITH
+            ProbesByTestTaskPerMethod AS (
+                SELECT
+                    COALESCE(launches.test_task_id, 'UNGROUPED') AS test_task_id,
+                    Methods.signature,
+                    BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
+                FROM Coverage
+                JOIN Methods ON Methods.classname = Coverage.classname
+                LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id
+                GROUP BY
+                    launches.test_task_id,
+                    Methods.signature
+            ),
+            CoveredProbesCount AS (
+                SELECT
+                    coverage.test_task_id,
+                    coverage.signature,
+                    BIT_COUNT(coverage.probes) as covered_probes
+                FROM ProbesByTestTaskPerMethod coverage
+                WHERE BIT_COUNT(probes) > 0
+            )
+            SELECT
+                test_task_id,
+                SUM(covered_probes) as covered_probes
+            FROM CoveredProbesCount counts
+            GROUP BY test_task_id
+    ),
+    TotalCoverage AS (
+        WITH
+        Classes AS (
+            SELECT
+                classname,
+                SUM(Methods.probes_count) AS probes_count
+            FROM Methods
+            GROUP BY classname
+        ),
+        ClassesCoverage AS (
+            SELECT
+                classname,
+                BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
+            FROM Coverage
+            GROUP BY coverage.classname
+        ),
+        Sums AS (
+            SELECT
+                SUM(ClassesCoverage.covered_probes_count) AS covered_probes,
+                SUM(Classes.probes_count) AS total_probes
+            FROM Classes
+            LEFT JOIN ClassesCoverage ON Classes.classname = ClassesCoverage.classname
+        )
+        SELECT
+            Sums.covered_probes,
+            Sums.total_probes,
+            COALESCE(CAST(Sums.covered_probes AS FLOAT) / CAST (Sums.total_probes AS FLOAT), 0) as coverage_ratio
+        FROM Sums
+    )
+    SELECT
+        coverage.test_task_id,
+        coverage.covered_probes,
+        TotalCoverage.total_probes,
+        coverage.covered_probes/TotalCoverage.total_probes AS coverage_ratio
+    FROM CoverageByTestTaskId coverage
+    CROSS JOIN TotalCoverage
+
+    UNION ALL
+
+    SELECT
+        'TOTAL' as test_task_id,
+        *
+    FROM TotalCoverage
+    ;
+END;
+$$;
