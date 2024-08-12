@@ -1109,3 +1109,168 @@ BEGIN
     ;
 END;
 $$;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_test_tasks(
+	input_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    test_definition_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL,
+
+    coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL
+) RETURNS TABLE (
+    __test_task_id VARCHAR,
+    __covered_probes BIGINT,
+    __total_probes BIGINT,
+    __coverage_ratio FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Methods AS (
+        SELECT *
+        FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+    ),
+    MatchingMethods AS (
+        WITH
+        SameGroupAndAppMethods AS (
+            SELECT *
+            FROM raw_data.get_same_group_and_app_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+        )
+        SELECT
+            Methods.signature,
+            Methods.body_checksum,
+            Methods.classname,
+            same_methods.build_id,
+            same_methods.probe_start_pos,
+            same_methods.probes_count
+        FROM SameGroupAndAppMethods same_methods
+        JOIN Methods ON
+            Methods.body_checksum = same_methods.body_checksum
+            AND Methods.signature = same_methods.signature
+        ORDER BY Methods.body_checksum
+    ),
+    MatchingInstances AS (
+        SELECT
+            MatchingMethods.*,
+            instances.id as instance_id
+        FROM raw_data.instances instances
+        JOIN MatchingMethods ON
+            MatchingMethods.build_id = instances.build_id
+    ),
+    MatchingCoverageByTest AS (
+        WITH TestLaunchIds AS (
+            SELECT *
+            FROM raw_data.get_test_launch_ids(
+                split_part(input_build_id, ':', 1),
+                test_definition_ids,
+                test_names,
+                test_results,
+                test_runners
+            )
+        ),
+        MergedCoverageByTestPerMethod AS (
+            SELECT
+                MatchingInstances.signature,
+                MatchingInstances.body_checksum,
+                MatchingInstances.build_id as build_id_coverage_source,
+                BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as probes,
+                coverage.test_id as test_id
+            FROM raw_data.coverage coverage
+            JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+            LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
+            WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+                  AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+            GROUP BY
+                MatchingInstances.signature,
+                MatchingInstances.body_checksum,
+                MatchingInstances.build_id,
+                coverage.test_id
+        )
+        SELECT *
+        FROM MergedCoverageByTestPerMethod
+        WHERE BIT_COUNT(MergedCoverageByTestPerMethod.probes) > 0
+    ),
+    CoverageByTestTaskId AS (
+        WITH
+        ProbesByTestTaskPerMethod AS (
+            SELECT
+                COALESCE(launches.test_task_id, 'UNGROUPED') AS test_task_id,
+                Methods.signature,
+                BIT_OR(coverage.probes) AS probes
+            FROM MatchingCoverageByTest coverage
+            JOIN Methods ON Methods.signature = coverage.signature
+            LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
+            GROUP BY
+                launches.test_task_id,
+                Methods.signature
+        ),
+        CoveredProbesCount AS (
+            SELECT
+                coverage.test_task_id,
+                coverage.signature,
+                BIT_COUNT(coverage.probes) as covered_probes
+            FROM ProbesByTestTaskPerMethod coverage
+            -- WHERE BIT_COUNT(probes) > 0 -- already filtered above at MatchingCoverageByTest CTE
+        )
+        SELECT
+            test_task_id,
+            SUM(covered_probes) as covered_probes
+        FROM CoveredProbesCount counts
+        GROUP BY test_task_id
+    ),
+    TotalCoverage AS (
+        WITH
+        MatchingCoverage AS (
+            SELECT
+                MatchingCoverageByTest.signature,
+                MatchingCoverageByTest.body_checksum,
+                BIT_OR(MatchingCoverageByTest.probes) as probes
+            FROM
+                MatchingCoverageByTest
+            WHERE BIT_COUNT(MatchingCoverageByTest.probes) > 0
+            GROUP BY
+                MatchingCoverageByTest.signature,
+                MatchingCoverageByTest.body_checksum
+        ),
+        Sums AS (
+            SELECT
+                SUM(Methods.probes_count) AS total_probes,
+                SUM(BIT_COUNT(MatchingCoverage.probes)) AS covered_probes
+            FROM Methods
+            LEFT JOIN MatchingCoverage ON Methods.body_checksum = MatchingCoverage.body_checksum
+                AND Methods.signature = MatchingCoverage.signature
+        )
+        SELECT
+            Sums.covered_probes::BIGINT,
+            Sums.total_probes::BIGINT,
+			COALESCE(CAST(Sums.covered_probes AS FLOAT) / NULLIF(CAST(Sums.total_probes AS FLOAT), 0), 0) AS coverage_ratio
+        FROM Sums
+    )
+    SELECT
+        coverage.test_task_id,
+        coverage.covered_probes::BIGINT,
+        TotalCoverage.total_probes::BIGINT,
+	    COALESCE(CAST(coverage.covered_probes AS FLOAT) / NULLIF(CAST(TotalCoverage.total_probes AS FLOAT), 0), 0) AS coverage_ratio
+    FROM CoverageByTestTaskId coverage
+    CROSS JOIN TotalCoverage
+
+    UNION ALL
+
+    SELECT
+        'TOTAL' as test_task_id,
+        *
+    FROM TotalCoverage
+    ;
+END;
+$$;
