@@ -996,8 +996,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_test_tasks(
     coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __test_task_id VARCHAR,
-    __covered_probes NUMERIC,
-    __total_probes NUMERIC,
+    __covered_probes BIGINT,
+    __total_probes BIGINT,
     __coverage_ratio FLOAT
 )
 LANGUAGE plpgsql
@@ -1087,16 +1087,16 @@ BEGIN
             LEFT JOIN ClassesCoverage ON Classes.classname = ClassesCoverage.classname
         )
         SELECT
-            Sums.covered_probes,
-            Sums.total_probes,
-            COALESCE(CAST(Sums.covered_probes AS FLOAT) / CAST (Sums.total_probes AS FLOAT), 0) as coverage_ratio
+            Sums.covered_probes::BIGINT,
+            Sums.total_probes::BIGINT,
+			COALESCE(CAST(Sums.covered_probes AS FLOAT) / NULLIF(CAST(Sums.total_probes AS FLOAT), 0), 0) AS coverage_ratio
         FROM Sums
     )
     SELECT
         coverage.test_task_id,
-        coverage.covered_probes,
-        TotalCoverage.total_probes,
-        coverage.covered_probes/TotalCoverage.total_probes AS coverage_ratio
+        coverage.covered_probes::BIGINT,
+        TotalCoverage.total_probes::BIGINT,
+	    COALESCE(CAST(coverage.covered_probes AS FLOAT) / NULLIF(CAST(TotalCoverage.total_probes AS FLOAT), 0), 0) AS coverage_ratio
     FROM CoverageByTestTaskId coverage
     CROSS JOIN TotalCoverage
 
