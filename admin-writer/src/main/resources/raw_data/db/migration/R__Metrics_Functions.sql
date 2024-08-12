@@ -418,7 +418,6 @@ BEGIN
         FROM raw_data.coverage coverage
         JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
         GROUP BY
-            -- MatchingInstances.classname, -- TODO think about it
             MatchingInstances.signature,
             MatchingInstances.body_checksum,
             MatchingInstances.build_id,
@@ -797,7 +796,6 @@ BEGIN
         WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
               AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
         GROUP BY
-            -- MatchingInstances.classname, -- TODO think about it
             MatchingInstances.signature,
             MatchingInstances.body_checksum,
             MatchingInstances.build_id,
