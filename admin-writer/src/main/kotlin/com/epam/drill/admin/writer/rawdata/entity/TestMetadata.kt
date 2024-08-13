@@ -15,6 +15,9 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import java.time.Instant
+import java.time.LocalDateTime
+
 class TestMetadata (
     val launch: TestLaunch,
     val definition: TestDefinition
@@ -24,7 +27,6 @@ class TestLaunch (
     val groupId: String,
     val id: String,
     val testDefinitionId: String,
-    val testTaskId: String,
     val result: String?
 )
 
@@ -35,4 +37,11 @@ class TestDefinition(
     val runner: String?,
     val name: String?,
     val path: String?,
+)
+
+class TestSession (
+    val id: String,
+    val groupId: String,
+    val testTaskId: String,
+    val startedAt: LocalDateTime,
 )

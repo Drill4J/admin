@@ -57,6 +57,10 @@ class DataIngestRoutes {
 
     @Resource("tests-metadata")
     class TestMetadataRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
+    @Resource("sessions")
+    class TestSessionRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
 
@@ -103,6 +107,15 @@ fun Route.postTestMetadata() {
 
     post<DataIngestRoutes.TestMetadataRoute> {
         rawDataWriter.saveTestMetadata(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
+    }
+}
+
+fun Route.putTestSession() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    put<DataIngestRoutes.TestSessionRoute> {
+        rawDataWriter.saveTestSession(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }

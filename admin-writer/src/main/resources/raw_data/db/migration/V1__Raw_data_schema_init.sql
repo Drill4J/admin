@@ -64,3 +64,12 @@ CREATE TABLE IF NOT EXISTS raw_data.test_definitions (
     path VARCHAR NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS raw_data.test_sessions (
+    id VARCHAR PRIMARY KEY,
+    group_id VARCHAR,
+    test_task_id VARCHAR,
+    started_at TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

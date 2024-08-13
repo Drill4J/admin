@@ -18,6 +18,5 @@ package com.epam.drill.admin.writer.rawdata.table
 object TestLaunchTable : StringIdTable("raw_data.test_launches") {
     val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
     val testDefinitionId = varchar("test_definition_id",  SHORT_TEXT_LENGTH)
-    val testTaskId = varchar("test_task_id",  SHORT_TEXT_LENGTH).nullable()
     val result = varchar("result",  SHORT_TEXT_LENGTH).nullable()
 }

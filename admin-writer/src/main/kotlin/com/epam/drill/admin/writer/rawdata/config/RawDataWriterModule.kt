@@ -30,11 +30,13 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
     bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
     bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
     bind<TestMetadataRepository>() with singleton { TestMetadataRepositoryImpl() }
+    bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
     bind<RawDataWriter>() with singleton { RawDataServiceImpl(
         instanceRepository = instance(),
         coverageRepository = instance(),
         testMetadataRepository = instance(),
         methodRepository = instance(),
-        buildRepository = instance()
+        buildRepository = instance(),
+        testSessionRepository = instance()
     ) }
 }
