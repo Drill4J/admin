@@ -310,7 +310,19 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_risks(
 	input_build_id VARCHAR,
-    input_baseline_build_id VARCHAR
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL
+
+-- TODO add filtering by tests & coverage
+--    test_definition_ids VARCHAR[] DEFAULT NULL,
+--    test_names VARCHAR[] DEFAULT NULL,
+--    test_results VARCHAR[] DEFAULT NULL,
+--    test_runners VARCHAR[] DEFAULT NULL,
+--
+--    coverage_created_at_start TIMESTAMP DEFAULT NULL,
+--    coverage_created_at_end TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE (
     __risk_type TEXT,
     __build_id VARCHAR,
@@ -330,75 +342,27 @@ CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_risks(
 BEGIN
     RETURN QUERY
     WITH
-    BaselineMethods AS (
-        SELECT * FROM raw_data.get_methods(input_baseline_build_id)
-    ),
-    Methods AS (
-        SELECT * FROM raw_data.get_methods(input_build_id)
-    ),
-    Risks AS (
-        WITH
-        RisksModified AS (
-            SELECT
-                build_id,
-                name,
-                params,
-                return_type,
-                classname,
-                body_checksum,
-                signature,
-                probe_start_pos,
-                probes_count
-            FROM Methods AS q2
-            WHERE
-                EXISTS (
-                    SELECT 1
-                    FROM BaselineMethods AS q1
-                    WHERE q1.signature = q2.signature
-                    AND q1.body_checksum <> q2.body_checksum
-                )
-        ),
-        RisksNew AS (
-            SELECT
-                build_id,
-                name,
-                params,
-                return_type,
-                classname,
-                body_checksum,
-                signature,
-                probe_start_pos,
-                probes_count
-            FROM Methods AS q2
-            WHERE
-                NOT EXISTS (
-                    SELECT 1
-                    FROM BaselineMethods AS q1
-                    WHERE q1.signature = q2.signature
-                )
-        )
-        SELECT *, 'new' as risk_type FROM RisksNew
-        UNION
-        SELECT *, 'modified' as risk_type from RisksModified
-    ),
+	Risks AS (
+		SELECT * FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
+	),
     MatchingMethods AS (
         WITH
         SameGroupAndAppMethods AS (
             SELECT * FROM raw_data.get_same_group_and_app_methods(input_build_id)
         )
         SELECT
-			Risks.classname,
-			Risks.signature,
-			Risks.body_checksum,
-			Risks.risk_type,
+			Risks.__classname AS classname,
+			Risks.__signature AS signature,
+			Risks.__body_checksum AS body_checksum,
+			Risks.__risk_type AS risk_type,
 			methods.build_id,
 			methods.probe_start_pos,
 			methods.probes_count
         FROM SameGroupAndAppMethods methods
         JOIN Risks ON
-            Risks.body_checksum = methods.body_checksum
-            AND Risks.signature = methods.signature
-		ORDER BY Risks.body_checksum
+            Risks.__body_checksum = methods.body_checksum
+            AND Risks.__signature = methods.signature
+		ORDER BY Risks.__body_checksum
 	),
     MatchingInstances AS (
         SELECT
@@ -438,23 +402,23 @@ BEGIN
             MatchingCoverageByTest.body_checksum
     )
     SELECT
-        Risks.risk_type,
-        Risks.build_id,
-        Risks.name,
-        Risks.params,
-        Risks.return_type,
-        Risks.classname,
-        Risks.body_checksum,
-        Risks.signature,
-        Risks.probes_count,
+        Risks.__risk_type,
+        Risks.__build_id,
+        Risks.__name,
+        Risks.__params,
+        Risks.__return_type,
+        Risks.__classname,
+        Risks.__body_checksum,
+        Risks.__signature,
+        Risks.__probes_count,
         MatchingCoverage.build_ids_coverage_source,
         MatchingCoverage.merged_probes,
 		COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS INT), 0),
-		COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.probes_count, 0.0) AS probes_coverage_ratio,
+		COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Risks.__probes_count, 0.0) AS probes_coverage_ratio,
         MatchingCoverage.associated_test_definition_ids
     FROM Risks
-    LEFT JOIN MatchingCoverage ON Risks.body_checksum = MatchingCoverage.body_checksum
-        AND Risks.signature = MatchingCoverage.signature
+    LEFT JOIN MatchingCoverage ON Risks.__body_checksum = MatchingCoverage.body_checksum
+        AND Risks.__signature = MatchingCoverage.signature
     ;
 END;
 $$ LANGUAGE plpgsql;
@@ -496,56 +460,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks(
 BEGIN
     RETURN QUERY
 	WITH
-	BaselineMethods AS (
-		SELECT * FROM raw_data.get_methods(input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
-	),
-	Methods AS (
-		SELECT * FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
-	),
 	Risks AS (
-		WITH
-		RisksModified AS (
-			SELECT
-				build_id,
-				name,
-				params,
-				return_type,
-				classname,
-				body_checksum,
-				signature,
-				probe_start_pos,
-				probes_count
-			FROM Methods AS q2
-			WHERE
-				EXISTS (
-					SELECT 1
-					FROM BaselineMethods AS q1
-					WHERE q1.signature = q2.signature
-					AND q1.body_checksum <> q2.body_checksum
-				)
-		),
-		RisksNew AS (
-			SELECT
-				build_id,
-				name,
-				params,
-				return_type,
-				classname,
-				body_checksum,
-				signature,
-				probe_start_pos,
-				probes_count
-			FROM Methods AS q2
-			WHERE
-				NOT EXISTS (
-					SELECT 1
-					FROM BaselineMethods AS q1
-					WHERE q1.signature = q2.signature
-				)
-		)
-		SELECT *, 'new' as risk_type FROM RisksNew
-		UNION
-		SELECT *, 'modified' as risk_type from RisksModified
+		SELECT * FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
 	),
 	Instances AS (
 		SELECT *
@@ -574,19 +490,19 @@ BEGIN
 		WITH
 		MethodsCoverage AS (
 			SELECT
-				Risks.risk_type,
-				Risks.build_id,
-				Risks.name,
-				Risks.params,
-				Risks.return_type,
-				Risks.classname,
-				Risks.body_checksum,
-				Risks.signature,
-				Risks.probes_count,
-				SUBSTRING(ClassesCoverage.probes FROM Risks.probe_start_pos + 1 FOR Risks.probes_count) as probes,
+				Risks.__risk_type AS risk_type,
+				Risks.__build_id AS build_id,
+				Risks.__name AS name,
+				Risks.__params AS params,
+				Risks.__return_type AS return_type,
+				Risks.__classname AS classname,
+				Risks.__body_checksum AS body_checksum,
+				Risks.__signature AS signature,
+				Risks.__probes_count AS probes_count,
+				SUBSTRING(ClassesCoverage.probes FROM Risks.__probe_start_pos + 1 FOR Risks.__probes_count) as probes,
 				ClassesCoverage.test_id
 			FROM Risks
-			LEFT JOIN ClassesCoverage ON Risks.classname = ClassesCoverage.classname
+			LEFT JOIN ClassesCoverage ON Risks.__classname = ClassesCoverage.classname
 		)
 		SELECT *
 		FROM
@@ -621,6 +537,88 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_risks(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL
+) RETURNS TABLE (
+    __risk_type TEXT,
+    __build_id VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __classname VARCHAR,
+    __body_checksum VARCHAR,
+    __signature VARCHAR,
+    __probe_start_pos INT,
+    __probes_count INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+        SELECT * FROM raw_data.get_methods(input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern)
+    ),
+    Methods AS (
+        SELECT * FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+    ),
+    RisksModified AS (
+        SELECT
+            build_id,
+            name,
+            params,
+            return_type,
+            classname,
+            body_checksum,
+            signature,
+            probe_start_pos,
+            probes_count
+        FROM Methods AS q2
+        WHERE
+            EXISTS (
+                SELECT 1
+                FROM BaselineMethods AS q1
+                WHERE q1.signature = q2.signature
+                AND q1.body_checksum <> q2.body_checksum
+            )
+    ),
+    RisksNew AS (
+        SELECT
+            build_id,
+            name,
+            params,
+            return_type,
+            classname,
+            body_checksum,
+            signature,
+            probe_start_pos,
+            probes_count
+        FROM Methods AS q2
+        WHERE
+            NOT EXISTS (
+                SELECT 1
+                FROM BaselineMethods AS q1
+                WHERE q1.signature = q2.signature
+            )
+    )
+    SELECT
+		'new' as risk_type,
+		*
+	FROM RisksNew
+    UNION
+    SELECT
+		 'modified' as risk_type,
+		*
+	FROM RisksModified
+;
+END;
+$$ LANGUAGE plpgsql;
 
 
 -----------------------------------------------------------------
