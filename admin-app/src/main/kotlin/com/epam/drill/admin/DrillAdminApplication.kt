@@ -115,7 +115,7 @@ fun Application.module() {
                     postCoverage()
                     putMethods()
                     postTestMetadata()
-                    putTestSession()
+                    putTestSessions()
 //                    postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
             }

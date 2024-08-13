@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
-import java.time.Instant
 import java.time.LocalDateTime
 
 class TestMetadata (

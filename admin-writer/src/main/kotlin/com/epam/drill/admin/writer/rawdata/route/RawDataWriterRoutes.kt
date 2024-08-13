@@ -111,7 +111,7 @@ fun Route.postTestMetadata() {
     }
 }
 
-fun Route.putTestSession() {
+fun Route.putTestSessions() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<DataIngestRoutes.TestSessionRoute> {
