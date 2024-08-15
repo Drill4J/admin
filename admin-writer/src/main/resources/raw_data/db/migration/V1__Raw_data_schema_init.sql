@@ -45,13 +45,22 @@ CREATE TABLE IF NOT EXISTS raw_data.coverage (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS raw_data.tests (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS raw_data.test_launches (
+    id VARCHAR PRIMARY KEY,
+    group_id VARCHAR,
     test_definition_id VARCHAR, -- hash of the value combined from metadata from test runner (filename, suit, test name, parameters)
+    test_task_id VARCHAR NULL,
+    result VARCHAR NULL,
+    -- Q: does the upsert update this field? A: No
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS raw_data.test_definitions (
+    id VARCHAR PRIMARY KEY,
+    group_id VARCHAR,
     type VARCHAR NULL,
     runner VARCHAR NULL,
     name VARCHAR NULL,
     path VARCHAR NULL,
-    result VARCHAR NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

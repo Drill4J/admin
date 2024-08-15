@@ -13,19 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
+package com.epam.drill.admin.metrics.exception
 
-interface MetricsRepository {
-
-    suspend fun buildExists(buildId: String): Boolean
-    suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double
-    ): Map<String, String>
-
-    suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
-}
+class BuildNotFound(message: String): RuntimeException(message)

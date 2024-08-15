@@ -26,11 +26,14 @@ class AddTestsPayload(
 
 @Serializable
 class TestInfo(
+    val groupId: String,
     val id: String,
+    val testDefinitionId: String,
     val result: TestResult,
     val startedAt: Long,
     val finishedAt: Long,
     val details: TestDetails,
+    val testTaskId: String,
 )
 
 @Serializable

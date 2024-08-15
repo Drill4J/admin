@@ -13,19 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
+package com.epam.drill.admin.writer.rawdata.table
 
-interface MetricsRepository {
-
-    suspend fun buildExists(buildId: String): Boolean
-    suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double
-    ): Map<String, String>
-
-    suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
+object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
+    val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
+    val type = varchar("type",  SHORT_TEXT_LENGTH).nullable()
+    val runner = varchar("runner", SHORT_TEXT_LENGTH).nullable()
+    val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
+    val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
 }

@@ -16,10 +16,23 @@
 package com.epam.drill.admin.writer.rawdata.entity
 
 class TestMetadata (
+    val launch: TestLaunch,
+    val definition: TestDefinition
+)
+
+class TestLaunch (
+    val groupId: String,
+    val id: String,
     val testDefinitionId: String,
+    val testTaskId: String,
+    val result: String?
+)
+
+class TestDefinition(
+    val groupId: String,
+    val id: String,
     val type: String?,
     val runner: String?,
     val name: String?,
     val path: String?,
-    val result: String?
 )

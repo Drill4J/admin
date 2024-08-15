@@ -15,12 +15,23 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import com.epam.drill.admin.metrics.repository.*
-import com.epam.drill.admin.metrics.repository.impl.*
+import com.epam.drill.admin.metrics.repository.impl.MetricsRepositoryImpl
+import com.epam.drill.admin.metrics.service.MetricsService
+import com.epam.drill.admin.metrics.service.impl.MetricsServiceImpl
+import io.ktor.server.application.*
+import io.ktor.server.config.*
 import org.kodein.di.DI
 import org.kodein.di.bind
+import org.kodein.di.instance
 import org.kodein.di.singleton
 
 val metricsDIModule = DI.Module("metricsServices") {
-    bind<MetricsRepository>() with singleton { MetricsRepositoryImpl() }
+    bind<MetricsService>() with singleton {
+        val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
+        MetricsServiceImpl(
+            MetricsRepositoryImpl(),
+            MetricsServiceUiLinksConfig(metricsConfig.config("ui"))
+        )
+    }
 }
+

@@ -96,9 +96,8 @@ class RawDataServiceImpl(
                 methodsPayload.commitSha,
                 methodsPayload.buildVersion
             )
+            // TODO add validation for fields (we had issues with body_checksum)
             Method(
-                // TODO concat in sql?
-                //      id VARCHAR GENERATED ALWAYS AS (classname || ':' || name || etc ) STORED
                 id = listOf(
                         buildId,
                         method.classname,
@@ -114,9 +113,6 @@ class RawDataServiceImpl(
                 probesCount = method.probesCount,
                 probesStartPos = method.probesStartPos,
                 bodyChecksum = method.bodyChecksum,
-                // TODO store checksum instead of actual string?
-                //  pros: fixed length -> storage & perf
-                //  cons: readability, api consumers might want to "know" about hashing algorithm
                 signature = listOf(
                     method.classname,
                     method.name,
@@ -152,12 +148,21 @@ class RawDataServiceImpl(
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) {
         testsPayload.tests.map { test ->
             TestMetadata(
-                testDefinitionId = test.id,
-                type = "placeholder", // TODO replace once user-defined value is implemented on autotest agent
-                runner = test.details.engine,
-                name = test.details.testName,
-                path = test.details.path,
-                result = test.result.toString()
+                launch = TestLaunch(
+                    groupId = test.groupId,
+                    id = test.id,
+                    testDefinitionId = test.testDefinitionId,
+                    testTaskId = test.testTaskId,
+                    result = test.result.toString()
+                ),
+                definition = TestDefinition(
+                    groupId = test.groupId,
+                    id = test.testDefinitionId,
+                    type = "placeholder", // TODO replace once it's implemented on autotest agent
+                    runner = test.details.engine,
+                    name = test.details.testName,
+                    path = test.details.path
+                ),
             )
         }.let { dataToInsert ->
             transaction {

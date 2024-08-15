@@ -16,69 +16,68 @@
 package com.epam.drill.admin.metrics.repository.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
+import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.config.executeQuery
-import kotlinx.serialization.json.JsonObject
 
 class MetricsRepositoryImpl : MetricsRepository {
-    override suspend fun getRisksByBranchDiff(
-        groupId: String,
-        appId: String,
-        currentBranch: String,
-        currentVcsRef: String,
-        baseBranch: String,
-        baseVcsRef: String
-    ): List<JsonObject> = transaction {
-        executeQuery(
+
+    override suspend fun buildExists(
+        buildId: String
+    ): Boolean = transaction {
+        val x = executeQueryReturnMap(
             """
-                SELECT * 
-                  FROM raw_data.get_risks_by_branch_diff(?, ?, ?, ?, ?, ?)
-            """.trimIndent(),
-            groupId,
-            appId,
-            currentVcsRef,
-            currentBranch,
-            baseBranch,
-            baseVcsRef
+                SELECT raw_data.check_build_exists(?)
+                """.trimIndent(),
+            buildId
         )
+        x[0]["check_build_exists"] == true
     }
 
-    override suspend fun getTotalCoverage(groupId: String, appId: String, currentVcsRef: String): JsonObject = transaction {
-        executeQuery(
+    override suspend fun getBuildDiffReport(
+        buildId: String,
+        baselineBuildId: String,
+        coverageThreshold: Double
+    ) = transaction {
+        executeQueryReturnMap(
             """
-                SELECT raw_data.calculate_total_coverage_percent(?, ?, ?) as coverage
-            """.trimIndent(),
-            groupId,
-            appId,
-            currentVcsRef
-        ).first()
+                    WITH 
+                    Risks AS (
+                        SELECT * 
+                        FROM  raw_data.get_accumulated_coverage_by_risks(?, ?)	
+                    ),
+                    RecommendedTests AS (
+                        SELECT *
+                        FROM raw_data.get_recommended_tests(?, ?)
+                    )	
+                    SELECT 
+                        (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
+                        (SELECT count(*) FROM Risks WHERE __risk_type = 'modified') as changes_modified_methods,
+                        (SELECT count(*) FROM Risks) as total_changes,
+                        (SELECT count(*) FROM Risks WHERE __probes_coverage_ratio > 0) as tested_changes,
+                        (SELECT CAST(SUM(__covered_probes) AS FLOAT) / SUM(__probes_count) FROM Risks) as coverage,
+                        (SELECT count(*) FROM RecommendedTests) as recommended_tests
+                """.trimIndent(),
+            buildId,
+            baselineBuildId,
+            buildId,
+            baselineBuildId
+            //,coverageThreshold
+        ).first() as Map<String, String>
+
+
     }
 
-    override suspend fun getSummaryByBranchDiff(
-        groupId: String,
-        appId: String,
-        currentBranch: String,
-        currentVcsRef: String,
-        baseBranch: String,
-        baseVcsRef: String
-    ): JsonObject = transaction {
-        executeQuery(
+    override suspend fun getRecommendedTests(
+        buildId: String,
+        baselineBuildId: String
+    ): List<Map<String, Any>> = transaction {
+        executeQueryReturnMap(
             """
-                SELECT raw_data.calculate_total_coverage_percent(?, ?, ?) as coverage,
-                       (SELECT count(*) 
-                          FROM raw_data.get_risks_by_branch_diff(?, ?, ?, ?, ?, ?)) as risks
+            SELECT *
+            FROM raw_data.get_recommended_tests(?, ?)
             """.trimIndent(),
-
-            groupId,
-            appId,
-            currentVcsRef,
-
-            groupId,
-            appId,
-            currentVcsRef,
-            currentBranch,
-            baseBranch,
-            baseVcsRef
-        ).first()
+            buildId,
+            baselineBuildId,
+        ) as List<Map<String, Any>>
     }
 }

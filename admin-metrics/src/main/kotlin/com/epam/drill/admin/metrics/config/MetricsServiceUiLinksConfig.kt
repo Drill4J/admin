@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
 
-interface MetricsRepository {
+package com.epam.drill.admin.metrics.config
 
-    suspend fun buildExists(buildId: String): Boolean
-    suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double
-    ): Map<String, String>
+import io.ktor.server.config.*
 
-    suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
+class MetricsServiceUiLinksConfig(
+    val baseUrl: String?,
+    val buildTestingReportPath: String?,
+    val buildComparisonReportPath: String?
+) {
+    constructor(config: ApplicationConfig) : this(
+        baseUrl = config.propertyOrNull("baseUrl")?.getString(),
+        buildTestingReportPath = config.propertyOrNull("buildTestingReportPath")?.getString(),
+        buildComparisonReportPath = config.propertyOrNull("buildComparisonReportPath")?.getString()
+    )
 }

@@ -17,18 +17,26 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.TestMetadata
 import com.epam.drill.admin.writer.rawdata.repository.TestMetadataRepository
-import com.epam.drill.admin.writer.rawdata.table.TestMetadataTable
-import org.jetbrains.exposed.sql.batchInsert
+import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
+import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
+import org.jetbrains.exposed.sql.batchUpsert
 
 class TestMetadataRepositoryImpl: TestMetadataRepository {
     override fun createMany(data: List<TestMetadata>) {
-        TestMetadataTable.batchInsert(data, shouldReturnGeneratedValues = false) {
-            this[TestMetadataTable.testDefinitionId] = it.testDefinitionId
-            this[TestMetadataTable.type] = it.type
-            this[TestMetadataTable.runner] = it.runner
-            this[TestMetadataTable.name] = it.name
-            this[TestMetadataTable.path] = it.path
-            this[TestMetadataTable.result] = it.result
+        TestLaunchTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
+            this[TestLaunchTable.id] = it.launch.id
+            this[TestLaunchTable.groupId] = it.launch.groupId
+            this[TestLaunchTable.testDefinitionId] = it.launch.testDefinitionId
+            this[TestLaunchTable.testTaskId] = it.launch.testTaskId
+            this[TestLaunchTable.result] = it.launch.result
+        }
+        TestDefinitionTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
+            this[TestDefinitionTable.id] = it.definition.id
+            this[TestDefinitionTable.groupId] = it.definition.groupId
+            this[TestDefinitionTable.type] = it.definition.type
+            this[TestDefinitionTable.runner] = it.definition.runner
+            this[TestDefinitionTable.name] = it.definition.name
+            this[TestDefinitionTable.path] = it.definition.path
         }
     }
 }

@@ -133,7 +133,7 @@ class OAuth2Config(private val config: ApplicationConfig) {
      * A title of the OAuth2 sign-in button. Optional, "Sign in with SSO" by default.
      */
     val signInButtonTitle: String
-        get() = config.propertyOrNull("buttonTitle")?.getString() ?: "Sign in with SSO"
+        get() = config.propertyOrNull("buttonTitle")?.getString() ?: "Sign in with Auth Provider"
 
     /**
      * A flag that indicates whether the automatic sign-in is enabled. Optional, true by default.

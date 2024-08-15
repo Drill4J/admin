@@ -21,26 +21,27 @@ import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.metrics.route.metricRoutes
+import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.route.metricsStatusPages
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.serialization.kotlinx.protobuf.*
-import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.*
 import io.ktor.server.resources.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.kodein.di.instance
@@ -69,6 +70,7 @@ fun Application.module() {
         authStatusPages()
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
+        metricsStatusPages()
     }
     val di = closestDI()
     install(Authentication) {
@@ -98,6 +100,7 @@ fun Application.module() {
             }
             authenticate("api-key") {
                 tryApiKeyRoute()
+                metricsRoutes()
             }
 
             //Data
@@ -115,8 +118,6 @@ fun Application.module() {
 //                    postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
             }
-
-            metricRoutes()
         }
     }
 }

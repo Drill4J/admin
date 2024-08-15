@@ -13,19 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
+package com.epam.drill.admin.metrics.service
 
-interface MetricsRepository {
-
-    suspend fun buildExists(buildId: String): Boolean
+interface MetricsService {
     suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
         coverageThreshold: Double
-    ): Map<String, String>
+    ): Map<String, Any?>
 
     suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?
+    ): Map<String, Any?>
 }
