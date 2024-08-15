@@ -117,6 +117,62 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getRecommendedTests(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?
+    ): Map<String, Any?> {
+        return transaction {
+
+            val baselineBuildId = generateBuildId(
+                groupId,
+                appId,
+                baselineInstanceId,
+                baselineCommitSha,
+                baselineBuildVersion,
+                """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+            )
+
+            if (!metricsRepository.buildExists(baselineBuildId)) {
+                throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+            }
+
+            val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
+            if (!metricsRepository.buildExists(buildId)) {
+                throw BuildNotFound("Build info not found for $buildId")
+            }
+
+            val recommendedTests = metricsRepository.getRecommendedTests(buildId, baselineBuildId)
+
+            // TODO add recommended tests UI link
+            // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
+            mapOf(
+                "inputParameters" to mapOf(
+                    "groupId" to groupId,
+                    "appId" to appId,
+                    "instanceId" to instanceId,
+                    "commitSha" to commitSha,
+                    "buildVersion" to buildVersion,
+                    "baselineInstanceId" to baselineInstanceId,
+                    "baselineCommitSha" to baselineCommitSha,
+                    "baselineBuildVersion" to baselineBuildVersion
+                ),
+                "inferredValues" to mapOf(
+                    "build" to buildId,
+                    "baselineBuild" to baselineBuildId,
+                ),
+                "recommendedTests" to recommendedTests,
+            )
+        }
+    }
+
     // TODO good candidate to be moved to common functions (probably)
     private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {
         val uri = URI(baseUrl).resolve(path)

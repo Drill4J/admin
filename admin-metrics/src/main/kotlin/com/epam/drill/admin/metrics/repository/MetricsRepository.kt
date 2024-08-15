@@ -23,4 +23,9 @@ interface MetricsRepository {
         baselineBuildId: String,
         coverageThreshold: Double
     ): Map<String, String>
+
+    suspend fun getRecommendedTests(
+        buildId: String,
+        baselineBuildId: String
+    ): List<Map<String, Any>>
 }

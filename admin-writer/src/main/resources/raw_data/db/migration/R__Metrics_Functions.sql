@@ -620,47 +620,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
------------------------------------------------------------------
-
------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
-	input_build_id VARCHAR,
-    input_baseline_build_id VARCHAR
-) RETURNS TABLE (
-    __test_definition_id VARCHAR,
-    __test_type VARCHAR,
-    __test_runner VARCHAR,
-    __test_name VARCHAR,
-    __test_path VARCHAR
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH
-    Risks AS (
-        SELECT
-            DISTINCT(UNNEST(rsk.__associated_test_definition_ids)) as __test_definition_id
-        FROM
-            raw_data.get_accumulated_coverage_by_risks(
-                 input_build_id,
-                 input_baseline_build_id
-            ) rsk
-    )
-    SELECT DISTINCT
-        Risks.__test_definition_id,
-        test_definitions.type,
-        test_definitions.runner,
-        test_definitions.name,
-        test_definitions.path
-    FROM Risks
-    -- TODO make it clear that some entries have no matching data in raw_data.test_definitions
-    --      e.g. TEST_CONTEXT_NONE, or tests for which data is yet to be submitted
-    LEFT JOIN raw_data.test_definitions test_definitions ON test_definitions.id = Risks.__test_definition_id
-    -- TODO allow filtering by result (once mapping is implemented) WHERE tests.result = SUCCESS
-    ;
-END;
-$$ LANGUAGE plpgsql;
-
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -1272,3 +1231,126 @@ BEGIN
     ;
 END;
 $$;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+    only_modified_risks BOOLEAN DEFAULT FALSE
+) RETURNS TABLE (
+    __id VARCHAR,
+    __group_id VARCHAR,
+    __type VARCHAR,
+    __runner VARCHAR,
+    __name VARCHAR,
+    __path VARCHAR,
+    __created_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Risks AS (
+        SELECT *
+        FROM raw_data.get_risks(input_build_id, input_baseline_build_id)
+        WHERE (only_modified_risks IS TRUE AND __risk_type = 'modified')
+           OR (only_modified_risks IS FALSE)
+    ),
+    RelatedBuilds AS (
+        WITH
+        OriginalBuild AS (
+            SELECT *
+            FROM raw_data.builds builds
+            WHERE builds.id = input_build_id
+        )
+        SELECT *
+        FROM raw_data.builds builds
+        WHERE builds.id <> (SELECT id FROM OriginalBuild)
+          AND builds.group_id = (SELECT group_id FROM OriginalBuild)
+          AND builds.app_id = (SELECT app_id  FROM OriginalBuild)
+    ),
+    RelatedMethods AS (
+        WITH
+        RelatedBuildMethods AS (
+            SELECT *
+            FROM raw_data.methods methods
+            WHERE
+                methods.build_id IN (SELECT DISTINCT id FROM RelatedBuilds)
+                AND probes_count > 0
+                AND signature IN (SELECT DISTINCT __signature FROM Risks)
+        )
+        SELECT
+            Risks.__signature,
+            related.classname,
+            related.build_id,
+            related.body_checksum,
+            related.probe_start_pos,
+            related.probes_count
+        FROM Risks
+        LEFT JOIN RelatedBuildMethods related ON Risks.__signature = related.signature
+    ),
+    RelatedCoverage AS (
+        WITH
+        Instances AS (
+            SELECT DISTINCT
+                instances.build_id,
+                instances.id AS instance_id,
+                classname
+            FROM RelatedMethods
+            LEFT JOIN raw_data.instances instances
+                ON instances.build_id = RelatedMethods.build_id
+        ),
+        Coverage AS (
+            SELECT DISTINCT
+                Instances.build_id,
+                coverage.instance_id,
+                coverage.classname,
+                def.id as test_definition_id,
+                def.name as test_name,
+                coverage.probes
+            FROM Instances
+            JOIN raw_data.coverage coverage
+                ON coverage.instance_id = Instances.instance_id
+                AND coverage.classname = Instances.classname
+            JOIN raw_data.test_launches launches ON coverage.test_id = launches.id
+            JOIN raw_data.test_definitions def ON launches.test_definition_id = def.id
+        )
+        SELECT
+            methods.*,
+            Coverage.test_definition_id,
+            Coverage.test_name,
+            Coverage.probes,
+            SUBSTRING(Coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS method_probes
+        FROM RelatedMethods methods
+        JOIN Coverage
+            ON methods.build_id = Coverage.build_id
+            AND methods.classname = Coverage.classname
+            AND BIT_COUNT(SUBSTRING(Coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
+    ),
+    RisksToTests AS (
+        SELECT
+            Risks.__risk_type AS risk_type,
+            Risks.__name AS risk_name,
+            Risks.__signature AS risk_signature,
+            Risks.__classname AS risk_classname,
+            Risks.__body_checksum AS risk_body_checksum,
+		    -- can prioritize by
+            RelatedCoverage.body_checksum, -- matching body - it's literally the same code which was already covered
+            RelatedCoverage.build_id AS related_build_id, -- more recent builds
+            RelatedCoverage.test_name,
+            RelatedCoverage.test_definition_id,
+            RelatedCoverage.probes, -- more coverage for class overall?
+            RelatedCoverage.method_probes -- more coverage (BIT_COUNT()) for _that specific method_
+        FROM Risks
+        LEFT JOIN RelatedCoverage ON Risks.__signature = RelatedCoverage.__signature
+    ),
+    TestDefinitionIds AS (
+        SELECT DISTINCT test_definition_id AS id
+        FROM RisksToTests
+    )
+    SELECT def.*
+    FROM raw_data.test_definitions def
+    JOIN TestDefinitionIds ON TestDefinitionIds.id = def.id;
+END;
+$$ LANGUAGE plpgsql;

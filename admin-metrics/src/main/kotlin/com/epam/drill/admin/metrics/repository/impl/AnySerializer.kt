@@ -25,6 +25,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import java.sql.Timestamp
 
 object AnySerializer : KSerializer<Any?> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Any")
@@ -37,6 +38,7 @@ object AnySerializer : KSerializer<Any?> {
             is Long -> encoder.encodeLong(value)
             is Number -> encoder.encodeDouble(value.toDouble())
             is Boolean -> encoder.encodeBoolean(value)
+            is Timestamp -> encoder.encodeString(value.toString())
             is Map<*, *> -> {
                 val mapSerializer = MapSerializer(String.serializer(), this)
                 encoder.encodeSerializableValue(mapSerializer, value as Map<String, Any?>)
