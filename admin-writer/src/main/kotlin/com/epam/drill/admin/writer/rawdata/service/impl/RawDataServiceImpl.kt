@@ -156,6 +156,7 @@ class RawDataServiceImpl(
                     groupId = test.groupId,
                     id = test.id,
                     testDefinitionId = test.testDefinitionId,
+                    testSessionId = testsPayload.sessionId,
                     result = test.result.toString()
                 ),
                 definition = TestDefinition(

@@ -26,6 +26,7 @@ class TestLaunch (
     val groupId: String,
     val id: String,
     val testDefinitionId: String,
+    val testSessionId: String,
     val result: String?
 )
 

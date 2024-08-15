@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS raw_data.test_launches (
     id VARCHAR PRIMARY KEY,
     group_id VARCHAR,
     test_definition_id VARCHAR, -- hash of the value combined from metadata from test runner (filename, suit, test name, parameters)
+    test_session_id VARCHAR,
     result VARCHAR NULL,
     -- Q: does the upsert update this field? A: No
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
