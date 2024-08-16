@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.auth
 
+import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.Role
@@ -27,13 +28,15 @@ import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
 import com.epam.drill.admin.auth.principal.User
 import com.epam.drill.admin.auth.route.userProfileRoutes
-import io.ktor.auth.*
-import io.ktor.features.*
+import com.epam.drill.admin.auth.service.PasswordValidator
+import io.ktor.server.auth.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.application.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.server.application.*
+import io.ktor.server.routing.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.resources.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -57,10 +60,10 @@ class UserAuthenticationTest {
 
     @Mock
     lateinit var userRepository: UserRepository
-
     @Mock
     lateinit var passwordService: PasswordService
-
+    @Mock
+    lateinit var passwordValidator: PasswordValidator
     @Mock
     lateinit var tokenService: TokenService
 
@@ -93,24 +96,22 @@ class UserAuthenticationTest {
 
     @Test
     fun `given unique username 'POST sign-up' must succeed and user must be created`() {
-        wheneverBlocking(userRepository) { findByUsername("foobar") }
-            .thenReturn(null)
-        whenever(passwordService.hashPassword("secret"))
-            .thenReturn("hash")
-        wheneverBlocking(userRepository) { create(any()) }
-            .thenReturn(1)
+        val testUsername = "foobar"
+        wheneverBlocking(userRepository) { findByUsername(testUsername) }.thenReturn(null)
+        whenever(passwordService.hashPassword("secret")).thenReturn("hash")
+        wheneverBlocking(userRepository) { create(any()) }.thenAnswer(CopyUserWithID)
 
         withTestApplication(config) {
             with(handleRequest(HttpMethod.Post, "/sign-up") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                val form = RegistrationPayload(username = "foobar", password = "secret")
+                val form = RegistrationPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 verifyBlocking(userRepository) {
                     create(
                         UserEntity(
-                            username = "foobar",
+                            username = testUsername,
                             passwordHash = "hash",
                             role = Role.UNDEFINED.name
                         )
@@ -288,8 +289,38 @@ class UserAuthenticationTest {
         }
     }
 
+    @Test
+    fun `given external user 'POST update-password' must fail with 422 status`() {
+        wheneverBlocking(userRepository) { findByUsername("external-user") }
+            .thenReturn(
+                //null password hash means the user is external
+                UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
+            )
+
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/update-password") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                addBasicAuth("external-user", "")
+                val form = ChangePasswordPayload(oldPassword = "", newPassword = "secret")
+                setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
+            }) {
+                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+            }
+        }
+    }
+
+    @Test
+    fun `'POST sign-out' must clear jwt cookie`() {
+        withTestApplication(config) {
+            with(handleRequest(HttpMethod.Post, "/sign-out")) {
+                assertEquals(HttpStatusCode.OK, response.status())
+                assertTrue(response.cookies[JWT_COOKIE]?.value.isNullOrEmpty())
+            }
+        }
+    }
+
     private val config: Application.() -> Unit = {
-        install(Locations)
+        install(Resources)
         install(ContentNegotiation) {
             json()
         }
@@ -299,18 +330,20 @@ class UserAuthenticationTest {
         install(Authentication) {
             basic {
                 validate {
-                    User(it.name, Role.UNDEFINED)
+                    User(123, it.name, Role.UNDEFINED)
                 }
             }
         }
         di {
             bind<UserRepository>() with eagerSingleton { userRepository }
             bind<PasswordService>() with eagerSingleton { passwordService }
+            bind<PasswordValidator>() with eagerSingleton { passwordValidator }
             bind<TokenService>() with eagerSingleton { tokenService }
             bind<UserAuthenticationService>() with eagerSingleton {
                 UserAuthenticationServiceImpl(
-                    instance(),
-                    instance()
+                    userRepository = instance(),
+                    passwordService = instance(),
+                    passwordValidator = instance()
                 )
             }
         }

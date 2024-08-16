@@ -100,10 +100,6 @@ Keep feature branches up to date:
 
 New releases should be published using manual run of "**Release**" GitHub workflow in corresponding component repository.
 
-Version of lib-jvm-shared used by component is freezing during "**Release**" GitHub workflow execution:
-- New tag in lib-jvm-shared repository is creating in format: **<component-name>-<version>**
-- Variable **libJvmSharedRef** is changing to newly created tag, changed **gradle.properties** file is committing to **release** branch
-
 Following files are included in release (per component):
 - admin: zip archive with application .jar files (admin-\<version\>.zip, admin-shadow-\<version\>.zip), docker image in GitHub container registry (https://github.com/drill4j/admin/pkgs/container/admin)
 - test2code-plugin: zip archive with admin-part.jar, agent-part.jar and plugin_config.json files (test2code-plugin-\<version\>.zip)
@@ -114,21 +110,11 @@ Following files are included in release (per component):
 To set up environment for local development please perform following steps:
 1. Install tools (git, gradle, java)
 2. Clone component repository, checkout corresponding branch
-3. Run script to set up lib-jvm-shared repository from Git: setup-shared-libs.bat/setup-shared-libs.sh
-
-### Moving lib-jvm-shared to custom directory
-
-There is a possibility to use **lib-jvm-shared** libraries from custom directory.
-To change **lib-jvm-shared** location please use `sharedLibsLocalPath` variable in **gradle.properties** file (both absolute and relative paths are supported).
 
 ## Making changes
 
 There is following workflow to make changes to component code:
 - Create **feature** branch and switch to it
-- Update **lib-jvm-shared** libraries to actual state using **updateSharedLibs** gradle task
-- If specific changes in lib-jvm-shared libraries required do following:
-  - create separate branch of **lib-jvm-shared** 
-  - update variable **libJvmSharedRef** in **gradle.properties** file to corresponding tag name 
 - Implement code changes
 - Ensure that component successfully assembled and tested using **assemble**+**check** or **build** gradle tasks
 - Commit and push changes

@@ -3,6 +3,7 @@ build/
 .idea/
 *.iml
 **/commonGenerated/
-/lib-jvm-shared/
 /tests/distr
 /tests/work
+**/out/
+.kotlin/

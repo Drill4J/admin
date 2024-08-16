@@ -15,69 +15,98 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.config.JWT_COOKIE
+import com.epam.drill.admin.auth.config.SimpleAuthConfig
 import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.auth.principal.User
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.response.header
-import io.ktor.routing.*
-import kotlinx.serialization.Serializable
+import io.ktor.resources.*
+import io.ktor.server.resources.post
+import io.ktor.server.resources.get
+import io.ktor.server.request.*
+import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.instance
+import org.kodein.di.instanceOrNull
 import org.kodein.di.ktor.closestDI as di
 
 private val logger = KotlinLogging.logger {}
 
-@Location("/sign-in")
-object SignIn
+@Resource("/sign-in")
+class SignIn
 
-@Location("/sign-up")
-object SignUp
+@Resource("/sign-up")
+class SignUp
 
-@Location("/user-info")
-object UserInfo
+@Resource("/user-info")
+class UserInfo
 
-@Location("/update-password")
-object UpdatePassword
+@Resource("/update-password")
+class UpdatePassword
 
-@Deprecated("Use /sign-in")
-@Location("/api/login")
-object Login
+@Resource("/sign-out")
+class SignOut
 
-fun StatusPages.Configuration.authStatusPages() {
-    exception<NotAuthenticatedException> { cause ->
+/**
+ * The Ktor StatusPages plugin configuration for simple authentication status pages.
+ */
+fun StatusPagesConfig.authStatusPages() {
+    exception<NotAuthenticatedException> { call, cause ->
         logger.trace(cause) { "401 User is not authenticated" }
         call.unauthorizedError(cause)
     }
-    exception<UserValidationException> { cause ->
+    exception<UserValidationException> { call, cause ->
         logger.trace(cause) { "400 User data is invalid" }
         call.validationError(cause)
     }
-    exception<NotAuthorizedException> { cause ->
+    exception<NotAuthorizedException> { call, cause ->
         logger.trace(cause) { "403 Access denied" }
         call.accessDeniedError(cause)
     }
+    exception<ForbiddenOperationException> { call, cause ->
+        logger.trace(cause) { "422 Cannot modify own profile" }
+        call.unprocessableEntity(cause)
+    }
+    exception<UserNotFoundException> { call, cause ->
+        logger.trace(cause) { "404 User not found" }
+        call.notFound(cause)
+    }
+    exception<ApiKeyNotFoundException> { call, cause ->
+        logger.trace(cause) { "404 Api key not found" }
+        call.notFound(cause)
+    }
+    exception<InvalidApiKeyFormatException> { call, cause ->
+        logger.trace(cause) { "404 Invalid Api key format" }
+        call.unauthorizedError(cause)
+    }
 }
 
+/**
+ * A user authentication and registration routes configuration.
+ */
 fun Route.userAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
+    signOutRoute()
 }
 
+/**
+ * A user profile routes configuration.
+ */
 fun Route.userProfileRoutes() {
     userInfoRoute()
     updatePasswordRoute()
 }
 
+/**
+ * A user authentication route configuration.
+ */
 fun Route.signInRoute() {
     val authService by di().instance<UserAuthenticationService>()
     val tokenService by di().instance<TokenService>()
@@ -86,24 +115,35 @@ fun Route.signInRoute() {
         val loginPayload = call.receive<LoginPayload>()
         val userView = authService.signIn(loginPayload)
         val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
+        call.response.cookies.append(
+            Cookie(name = JWT_COOKIE, value = token, httpOnly = true, path = "/")
+        )
         call.ok(TokenView(token), "User successfully authenticated.")
     }
 }
 
+/**
+ * A user registration route configuration.
+ */
 fun Route.signUpRoute() {
     val authService by di().instance<UserAuthenticationService>()
+    val simpleAuthConfig by di().instanceOrNull<SimpleAuthConfig>()
 
-    post<SignUp> {
-        val payload = call.receive<RegistrationPayload>()
-        authService.signUp(payload)
-        call.ok(
-            "User registration request accepted. " +
-                    "Please contact the administrator to confirm the registration."
-        )
+    if (simpleAuthConfig?.signUpEnabled != false) {
+        post<SignUp> {
+            val payload = call.receive<RegistrationPayload>()
+            authService.signUp(payload)
+            call.ok(
+                "User registration request accepted. " +
+                        "Please contact the administrator to confirm the registration."
+            )
+        }
     }
 }
 
+/**
+ * A user profile route configuration.
+ */
 fun Route.userInfoRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -114,6 +154,9 @@ fun Route.userInfoRoute() {
     }
 }
 
+/**
+ * An update password route configuration.
+ */
 fun Route.updatePasswordRoute() {
     val authService by di().instance<UserAuthenticationService>()
 
@@ -125,23 +168,12 @@ fun Route.updatePasswordRoute() {
     }
 }
 
-@Deprecated("The /api/login route is outdated, please use /sign-in")
-fun Route.loginRoute() {
-    val authService by di().instance<UserAuthenticationService>()
-    val tokenService by di().instance<TokenService>()
-
-    post<Login> {
-        val loginPayload = call.receive<UserData>()
-        val userView = authService.signIn(LoginPayload(username = loginPayload.name, password = loginPayload.password))
-        val token = tokenService.issueToken(userView)
-        call.response.header(HttpHeaders.Authorization, token)
-        call.respond(HttpStatusCode.OK, TokenView(token))
+/**
+ * A user sign out route configuration.
+ */
+fun Route.signOutRoute() {
+    post<SignOut> {
+        call.response.cookies.append(JWT_COOKIE, value = "", path = "/")
+        call.ok("User successfully signed out.")
     }
 }
-
-@Serializable
-@Deprecated("use LoginPayload")
-data class UserData(
-    val name: String,
-    val password: String,
-)

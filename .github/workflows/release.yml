@@ -23,14 +23,6 @@ jobs:
       - uses: gradle/wrapper-validation-action@v1
       - if: matrix.config.preset == 'linuxX64'
         run: chmod +x ${{ github.workspace }}/gradlew
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'linuxX64'
-        run: sudo apt-get install -y libtinfo5
-      - if: matrix.config.preset == 'linuxX64'
-        run: ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'mingwX64'
-        run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
@@ -89,14 +81,6 @@ jobs:
       - uses: gradle/wrapper-validation-action@v1
       - if: matrix.config.preset == 'linuxX64'
         run: chmod +x ${{ github.workspace }}/gradlew
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'linuxX64'
-        run: sudo apt-get install -y libtinfo5
-      - if: matrix.config.preset == 'linuxX64'
-        run: ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'mingwX64'
-        run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: |
@@ -137,17 +121,10 @@ jobs:
           distribution: zulu
       - uses: gradle/wrapper-validation-action@v1
       - run: chmod +x ${{ github.workspace }}/gradlew
-      - run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - run: ${{ github.workspace }}/setup-shared-libs.sh
       - run: 'git switch -c release/${{ needs.assets.outputs.tag }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/gradle-build-action@v2
-        env:
-          SHARED_LIBS_USER: ${{ secrets.GH_PACKAGE_USERNAME }}
-          SHARED_LIBS_PASSWORD: ${{ secrets.GH_PACKAGE_TOKEN }}
-        with:
-          arguments: tagSharedLibs
       - run: 'git commit -am "release: branch ${{ needs.assets.outputs.tag }}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

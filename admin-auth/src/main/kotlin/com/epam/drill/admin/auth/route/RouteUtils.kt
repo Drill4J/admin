@@ -17,9 +17,9 @@ package com.epam.drill.admin.auth.route
 
 import com.epam.drill.admin.auth.model.DataResponse
 import com.epam.drill.admin.auth.model.MessageResponse
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.response.*
 
 suspend inline fun <reified T> ApplicationCall.ok(data: T, message: String? = null) {
     respond(HttpStatusCode.OK, DataResponse(data, message))
@@ -33,10 +33,18 @@ suspend fun ApplicationCall.validationError(cause: Exception) {
     respond(HttpStatusCode.BadRequest, MessageResponse(cause.message ?: "User data is invalid"))
 }
 
-suspend fun ApplicationCall.unauthorizedError(cause: Exception) {
-    respond(HttpStatusCode.Unauthorized, MessageResponse(cause.message ?: "User is not authenticated"))
+suspend fun ApplicationCall.unauthorizedError(cause: Exception? = null) {
+    respond(HttpStatusCode.Unauthorized, MessageResponse(cause?.message ?: "User is not authenticated"))
 }
 
-suspend fun ApplicationCall.accessDeniedError(cause: Exception) {
-    respond(HttpStatusCode.Forbidden, MessageResponse(cause.message ?: "Access denied"))
+suspend fun ApplicationCall.accessDeniedError(cause: Exception? = null) {
+    respond(HttpStatusCode.Forbidden, MessageResponse(cause?.message ?: "Access denied"))
+}
+
+suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null) {
+    respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: "Unprocessable entity"))
+}
+
+suspend fun ApplicationCall.notFound(cause: Exception) {
+    respond(HttpStatusCode.NotFound, MessageResponse(cause.message ?: "Entity not found"))
 }

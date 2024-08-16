@@ -15,34 +15,41 @@
  */
 package com.epam.drill.admin.auth.route
 
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.service.UserManagementService
 import com.epam.drill.admin.auth.model.EditUserPayload
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.Route
-import io.ktor.routing.route
+import com.epam.drill.admin.auth.principal.User
+import io.ktor.resources.*
+import io.ktor.server.resources.get
+import io.ktor.server.resources.put
+import io.ktor.server.resources.delete
+import io.ktor.server.resources.patch
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.request.*
+import io.ktor.server.routing.*
+import io.ktor.util.pipeline.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 
-@Location("/users")
-object Users {
-    @Location("/{userId}")
-    data class Id(val userId: Int)
+@Resource("/users")
+class Users {
+    @Resource("/{userId}")
+    class Id(val parent: Users, val userId: Int)
 
-    @Location("/{userId}/block")
-    data class Block(val userId: Int)
+    @Resource("/{userId}/block")
+    class Block(val parent: Users, val userId: Int)
 
-    @Location("/{userId}/unblock")
-    data class Unblock(val userId: Int)
+    @Resource("/{userId}/unblock")
+    class Unblock(val parent: Users, val userId: Int)
 
-    @Location("/{userId}/reset-password")
-    data class ResetPassword(val userId: Int)
+    @Resource("/{userId}/reset-password")
+    class ResetPassword(val parent: Users, val userId: Int)
 }
 
+/**
+ * A set of routes for user management
+ */
 fun Route.userManagementRoutes() {
     getUsersRoute()
     getUserRoute()
@@ -53,6 +60,9 @@ fun Route.userManagementRoutes() {
     resetPasswordRoute()
 }
 
+/**
+ * A route for getting users
+ */
 fun Route.getUsersRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -62,6 +72,9 @@ fun Route.getUsersRoute() {
     }
 }
 
+/**
+ * A route for getting user by id
+ */
 fun Route.getUserRoute() {
     val service by di().instance<UserManagementService>()
 
@@ -71,49 +84,71 @@ fun Route.getUserRoute() {
     }
 }
 
+/**
+ * A route for editing user
+ */
 fun Route.editUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    put<Users.Id> { (userId) ->
+    put<Users.Id> {params ->
+        throwExceptionIfCurrentUserIs(params.userId, "You cannot change your own role")
         val editUserPayload = call.receive<EditUserPayload>()
-        val userView = service.updateUser(userId, editUserPayload)
+        val userView = service.updateUser(params.userId, editUserPayload)
         call.ok(userView, "User successfully edited.")
     }
 }
 
+/**
+ * A route for deleting user by id
+ */
 fun Route.deleteUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    delete<Users.Id> { (userId) ->
-        service.deleteUser(userId)
+    delete<Users.Id> { params ->
+        throwExceptionIfCurrentUserIs(params.userId, "You cannot delete your own user")
+        service.deleteUser(params.userId)
         call.ok("User successfully deleted.")
     }
 }
 
+/**
+ * A route for blocking user by id
+ */
 fun Route.blockUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch<Users.Block> { (userId) ->
-        service.blockUser(userId)
+    patch<Users.Block> { params ->
+        throwExceptionIfCurrentUserIs(params.userId, "You cannot block your own user")
+        service.blockUser(params.userId)
         call.ok("User successfully blocked.")
     }
 }
 
+/**
+ * A route for unblocking user by id
+ */
 fun Route.unblockUserRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch<Users.Unblock> { (userId) ->
-        service.unblockUser(userId)
+    patch<Users.Unblock> { params ->
+        service.unblockUser(params.userId)
         call.ok("User successfully unblocked.")
     }
 }
 
+/**
+ * A reset user password route
+ */
 fun Route.resetPasswordRoute() {
     val service by di().instance<UserManagementService>()
 
-    patch<Users.ResetPassword> { (userId) ->
-        val credentialsView = service.resetPassword(userId)
+    patch<Users.ResetPassword> { params ->
+        val credentialsView = service.resetPassword(params.userId)
         call.ok(credentialsView, "Password reset successfully.")
     }
 }
 
+private fun PipelineContext<Unit, ApplicationCall>.throwExceptionIfCurrentUserIs(userId: Int, message: String) {
+    if (call.principal<User>()?.id == userId)
+        throw ForbiddenOperationException(message)
+}

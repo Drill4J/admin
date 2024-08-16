@@ -17,6 +17,7 @@ val microutilsLoggingVersion: String by parent!!.extra
 val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
+val kotlinxDatetimeVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val jbcryptVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
@@ -24,6 +25,7 @@ val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val caffeineVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -35,7 +37,6 @@ kotlin.sourceSets {
         languageSettings.optIn("kotlin.Experimental")
         languageSettings.optIn("kotlin.ExperimentalStdlibApi")
         languageSettings.optIn("kotlin.time.ExperimentalTime")
-        languageSettings.optIn("io.ktor.locations.KtorExperimentalLocationsAPI")
         languageSettings.optIn("io.ktor.util.InternalAPI")
     }
 }
@@ -43,20 +44,28 @@ kotlin.sourceSets {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-serialization:$ktorVersion")
-    implementation("io.ktor:ktor-locations:$ktorVersion")
-    implementation("io.ktor:ktor-auth:$ktorVersion")
-    implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth:$ktorVersion")
+    implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
+    implementation("io.ktor:ktor-server-resources:$ktorVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
     implementation("org.mindrot:jbcrypt:$jbcryptVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
+    implementation("com.github.ben-manes.caffeine:caffeine:$caffeineVersion")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     testImplementation(kotlin("test-junit5"))
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
     testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
@@ -64,6 +73,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:$testContainersVersion")
     testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
 }
 
 tasks {

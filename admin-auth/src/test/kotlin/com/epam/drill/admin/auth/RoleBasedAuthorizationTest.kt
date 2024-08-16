@@ -15,19 +15,19 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.config.RoleBasedAuthorization
+import com.epam.drill.admin.auth.config.roleBasedAuthentication
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.Role.ADMIN
 import com.epam.drill.admin.auth.principal.Role.USER
 import com.epam.drill.admin.auth.principal.User
-import io.ktor.application.*
-import io.ktor.auth.*
-import io.ktor.features.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import kotlin.test.*
 
@@ -112,21 +112,21 @@ class RoleBasedAuthorizationTest {
 
     private val config: Application.() -> Unit = {
         install(StatusPages) {
-            exception<NotAuthorizedException> { _ ->
+            exception<NotAuthorizedException> { call, _ ->
                 call.respond(HttpStatusCode.Forbidden, "Access denied")
             }
         }
-        install(RoleBasedAuthorization)
         install(Authentication) {
             basic {
                 validate {
                     when (it.name) {
-                        "user" -> User(it.name, USER)
-                        "admin" -> User(it.name, ADMIN)
-                        else -> User(it.name, Role.UNDEFINED)
+                        "user" -> User(1, it.name, USER)
+                        "admin" -> User(2, it.name, ADMIN)
+                        else -> User(3, it.name, Role.UNDEFINED)
                     }
                 }
             }
+            roleBasedAuthentication()
         }
         routing {
             authenticate {

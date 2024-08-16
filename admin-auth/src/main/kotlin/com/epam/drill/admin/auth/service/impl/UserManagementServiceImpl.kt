@@ -16,6 +16,7 @@
 package com.epam.drill.admin.auth.service.impl
 
 import com.epam.drill.admin.auth.entity.UserEntity
+import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.exception.UserNotFoundException
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
@@ -24,24 +25,29 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.model.CredentialsView
 import com.epam.drill.admin.auth.model.EditUserPayload
 import com.epam.drill.admin.auth.model.UserView
+import com.epam.drill.admin.auth.service.PasswordGenerator
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class UserManagementServiceImpl(
     private val userRepository: UserRepository,
-    private val passwordService: PasswordService
+    private val passwordService: PasswordService,
+    private val passwordGenerator: PasswordGenerator,
+    private val externalRoleManagement: Boolean = false
 ) : UserManagementService {
     override suspend fun getUsers(): List<UserView> {
-        return userRepository.findAll().map { it.toView() }
+        return userRepository.findAll().map { it.toApiKeyView() }
     }
 
     override suspend fun getUser(userId: Int): UserView {
-        return findUser(userId).toView()
+        return findUser(userId).toApiKeyView()
     }
 
     override suspend fun updateUser(userId: Int, payload: EditUserPayload): UserView {
-        val userEntity = findUser(userId)
-        userEntity.role = payload.role.name
-        userRepository.update(userEntity)
-        return userEntity.toView()
+        val oldUserEntity = findUser(userId)
+        if (externalRoleManagement && oldUserEntity.external)
+            throw ForbiddenOperationException("Cannot update role for external user")
+        val updatedUserEntity = userRepository.update(payload.toEntity(oldUserEntity))
+        return updatedUserEntity.toApiKeyView()
     }
 
     override suspend fun deleteUser(userId: Int) {
@@ -50,21 +56,21 @@ class UserManagementServiceImpl(
 
     override suspend fun blockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = true
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = true))
     }
 
     override suspend fun unblockUser(userId: Int) {
         val userEntity = findUser(userId)
-        userEntity.blocked = false
-        userRepository.update(userEntity)
+        userRepository.update(userEntity.copy(blocked = false))
     }
 
     override suspend fun resetPassword(userId: Int): CredentialsView {
         val userEntity = findUser(userId)
-        val newPassword = passwordService.generatePassword()
-        userEntity.passwordHash = passwordService.hashPassword(newPassword)
-        userRepository.update(userEntity)
+        if (userEntity.external)
+            throw ForbiddenOperationException("Cannot reset password for external user")
+        val newPassword = passwordGenerator.generatePassword()
+        val newPasswordHash = passwordService.hashPassword(newPassword)
+        userRepository.update(userEntity.copy(passwordHash = newPasswordHash))
         return userEntity.toCredentialsView(newPassword)
     }
 
@@ -78,11 +84,17 @@ private fun UserEntity.toCredentialsView(newPassword: String): CredentialsView {
     )
 }
 
-private fun UserEntity.toView(): UserView {
+private fun UserEntity.toApiKeyView(): UserView {
     return UserView(
-        id = this.id,
+        id = this.id ?: throw IllegalStateException("User id cannot be null"),
         username = this.username,
         role = Role.valueOf(this.role),
-        blocked = this.blocked
+        blocked = this.blocked,
+        registrationDate = this.registrationDate?.toKotlinLocalDateTime(),
+        external = this.external
     )
 }
+
+private fun EditUserPayload.toEntity(oldUserEntity: UserEntity) = oldUserEntity.copy(
+    role = this.role.name
+)

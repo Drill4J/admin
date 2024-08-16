@@ -15,22 +15,20 @@
  */
 package com.epam.drill.admin.auth.config
 
-import io.ktor.application.*
-import io.ktor.config.*
+import io.ktor.server.config.*
 import mu.KotlinLogging
-import org.kodein.di.*
+import java.util.*
 import javax.crypto.KeyGenerator
-import kotlin.time.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 private val logger = KotlinLogging.logger {}
 
-class JwtConfig(override val di: DI) : DIAware {
-    private val app by instance<Application>()
-    private val jwt: ApplicationConfig
-        get() = app.environment.config
-            .config("drill")
-            .config("auth")
-            .config("jwt")
+/**
+ * A JWT configuration.
+ * @param config the Ktor configuration
+ */
+class JwtConfig(private val config: ApplicationConfig) {
 
     private val generatedSecret: String by lazy {
         logger.warn {
@@ -39,17 +37,30 @@ class JwtConfig(override val di: DI) : DIAware {
         }
         generateSecret()
     }
+
+    /**
+     * A secret for algorithm SHA512. Optional, a generated secret by default.
+     */
     val secret: String
-        get() = jwt.propertyOrNull("secret")?.getString() ?: generatedSecret
+        get() = config.propertyOrNull("secret")?.getString() ?: generatedSecret
 
+    /**
+     * A JWT issuer. Optional, "Drill4J App" by default.
+     */
     val issuer: String
-        get() = jwt.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
+        get() = config.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
+    /**
+     * A lifetime of a JWT. Optional, 60 minutes by default.
+     */
     val lifetime: Duration
-        get() = jwt.propertyOrNull("lifetime")?.getDuration() ?: Duration.minutes(30)
+        get() = config.propertyOrNull("lifetime")?.getDuration() ?: 60.minutes
 
+    /**
+     * An JWT audience. Optional, empty by default.
+     */
     val audience: String?
-        get() = jwt.propertyOrNull("audience")?.getString()
+        get() = config.propertyOrNull("audience")?.getString()
 }
 
 private fun ApplicationConfigValue.getDuration(): Duration {
@@ -57,4 +68,5 @@ private fun ApplicationConfigValue.getDuration(): Duration {
 }
 
 
-internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded.contentToString()
+internal fun generateSecret() = KeyGenerator.getInstance("HmacSHA512").generateKey().encoded
+    .let { Base64.getEncoder().encodeToString(it) }
