@@ -109,7 +109,7 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val registryName = "debug"
+val registryName = "ghcr.io"
 val fullImageTag = "$registryName/drill4j/admin-app"
 val apiPort = "8090"
 val debugPort = "5006"
