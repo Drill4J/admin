@@ -122,7 +122,7 @@ jib {
     }
     to {
         image = fullImageTag
-        tags = setOf("multibranch-1")
+        tags = setOf(version.toString())
         auth {
             username=gitUsername
             password=gitPassword
