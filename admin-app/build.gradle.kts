@@ -110,7 +110,7 @@ application {
 }
 
 val registryName = "ghcr.io"
-val fullImageTag = "$registryName/drill4j/admin-app"
+val fullImageTag = "$registryName/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
