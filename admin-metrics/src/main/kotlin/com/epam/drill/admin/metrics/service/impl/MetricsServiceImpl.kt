@@ -68,7 +68,6 @@ class MetricsServiceImpl(
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
-            val buildComparisonReportPath = metricsServiceUiLinksConfig.buildComparisonReportPath
             mapOf(
                 "inputParameters" to mapOf(
                     "groupId" to groupId,
@@ -103,9 +102,9 @@ class MetricsServiceImpl(
                                 "build" to baselineBuildId,
                             )
                         )},
-                        "full_report" to buildComparisonReportPath?.run { getUriString(
+                        "full_report" to buildTestingReportPath?.run { getUriString(
                             baseUrl = baseUrl,
-                            path = buildComparisonReportPath,
+                            path = buildTestingReportPath,
                             queryParams = mapOf(
                                 "build" to buildId,
                                 "baseline_build" to baselineBuildId
