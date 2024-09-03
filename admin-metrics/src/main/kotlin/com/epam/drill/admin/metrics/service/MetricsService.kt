@@ -27,4 +27,15 @@ interface MetricsService {
         baselineBuildVersion: String?,
         coverageThreshold: Double
     ): Map<String, Any?>
+
+    suspend fun getRecommendedTests(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?
+    ): Map<String, Any?>
 }

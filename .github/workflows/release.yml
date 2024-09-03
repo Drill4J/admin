@@ -23,14 +23,6 @@ jobs:
       - uses: gradle/wrapper-validation-action@v1
       - if: matrix.config.preset == 'linuxX64'
         run: chmod +x ${{ github.workspace }}/gradlew
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'linuxX64'
-        run: sudo apt-get install -y libtinfo5
-      - if: matrix.config.preset == 'linuxX64'
-        run: ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'mingwX64'
-        run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
@@ -89,29 +81,21 @@ jobs:
       - uses: gradle/wrapper-validation-action@v1
       - if: matrix.config.preset == 'linuxX64'
         run: chmod +x ${{ github.workspace }}/gradlew
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'linuxX64'
-        run: sudo apt-get install -y libtinfo5
-      - if: matrix.config.preset == 'linuxX64'
-        run: ${{ github.workspace }}/setup-shared-libs.sh
-      - if: matrix.config.preset == 'mingwX64'
-        run: ${{ github.workspace }}/setup-shared-libs.bat
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: |
             ${{ (matrix.config.preset == 'linuxX64') && 'assemble jib' || '' }}
             ${{ (matrix.config.preset == 'mingwX64') && 'assemble loginToDocker createWindowsDockerImage pushWindowsDockerImage' || '' }}
         env:
-          GH_USERNAME: ${{ secrets.GH_PACKAGE_USERNAME }}
-          GH_TOKEN: ${{ secrets.GH_PACKAGE_TOKEN }}
+          GH_USERNAME: ${{ secrets.GH_CONTAINER_REGISTRY_USERNAME }}
+          GH_TOKEN: ${{ secrets.GH_CONTAINER_REGISTRY_TOKEN }}
       - uses: actions/upload-release-asset@v1
         if: matrix.config.preset == 'linuxX64'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/build/distributions/admin-core-${{ needs.release.outputs.version }}.zip
+          asset_path: ${{ github.workspace }}/admin-app/build/distributions/admin-app-${{ needs.release.outputs.version }}.zip
           asset_name: admin-${{ needs.release.outputs.version }}.zip
           asset_content_type: application/zip
       - uses: actions/upload-release-asset@v1
@@ -120,7 +104,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/build/distributions/admin-core-shadow-${{ needs.release.outputs.version }}.zip
+          asset_path: ${{ github.workspace }}/admin-app/build/distributions/admin-app-shadow-${{ needs.release.outputs.version }}.zip
           asset_name: admin-shadow-${{ needs.release.outputs.version }}.zip
           asset_content_type: application/zip
   tagging:
@@ -137,17 +121,10 @@ jobs:
           distribution: zulu
       - uses: gradle/wrapper-validation-action@v1
       - run: chmod +x ${{ github.workspace }}/gradlew
-      - run: chmod +x ${{ github.workspace }}/setup-shared-libs.sh
-      - run: ${{ github.workspace }}/setup-shared-libs.sh
       - run: 'git switch -c release/${{ needs.assets.outputs.tag }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/gradle-build-action@v2
-        env:
-          SHARED_LIBS_USER: ${{ secrets.GH_PACKAGE_USERNAME }}
-          SHARED_LIBS_PASSWORD: ${{ secrets.GH_PACKAGE_TOKEN }}
-        with:
-          arguments: tagSharedLibs
       - run: 'git commit -am "release: branch ${{ needs.assets.outputs.tag }}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

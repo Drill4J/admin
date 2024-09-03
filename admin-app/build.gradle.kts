@@ -109,8 +109,8 @@ application {
     applicationDefaultJvmArgs = defaultJvmArgs + devJvmArgs
 }
 
-val registryName = "debug"
-val fullImageTag = "$registryName/drill4j/admin-app"
+val registryName = "ghcr.io"
+val fullImageTag = "$registryName/drill4j/admin"
 val apiPort = "8090"
 val debugPort = "5006"
 val secureApiPort = "8453"
@@ -122,7 +122,7 @@ jib {
     }
     to {
         image = fullImageTag
-        tags = setOf("multibranch-1")
+        tags = setOf(version.toString())
         auth {
             username=gitUsername
             password=gitPassword

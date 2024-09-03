@@ -63,6 +63,21 @@ class MetricsRepositoryImpl : MetricsRepository {
             baselineBuildId
             //,coverageThreshold
         ).first() as Map<String, String>
+
+
     }
 
+    override suspend fun getRecommendedTests(
+        buildId: String,
+        baselineBuildId: String
+    ): List<Map<String, Any>> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT *
+            FROM raw_data.get_recommended_tests(?, ?)
+            """.trimIndent(),
+            buildId,
+            baselineBuildId,
+        ) as List<Map<String, Any>>
+    }
 }

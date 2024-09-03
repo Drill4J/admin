@@ -51,10 +51,25 @@ class Metrics {
         val coverageThreshold: Double = 1.0, // TODO Float should be enough
     )
 
+    @Resource("/recommended-tests")
+    class RecommendedTests(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+    )
+
 }
 
 fun Route.metricsRoutes() {
     getBuildDiffReport()
+    getRecommendedTests()
 }
 
 fun Route.getBuildDiffReport() {
@@ -71,6 +86,24 @@ fun Route.getBuildDiffReport() {
             params.baselineCommitSha,
             params.baselineBuildVersion,
             params.coverageThreshold
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
+}
+
+fun Route.getRecommendedTests() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.RecommendedTests> { params ->
+        val report = metricsService.getRecommendedTests(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
