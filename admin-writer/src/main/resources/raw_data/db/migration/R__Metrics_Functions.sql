@@ -923,12 +923,13 @@ BEGIN
 			definitions.name,
 			definitions.runner,
 			definitions.path,
-	        launch.test_task_id,
+	        sessions.test_task_id,
 	        launch.result,
 	        launch.created_at
         FROM raw_data.test_launches launch
         JOIN Coverage ON Coverage.test_id = launch.id
 		JOIN raw_data.test_definitions definitions on definitions.id = launch.test_definition_id
+        JOIN raw_data.test_sessions sessions ON launch.test_session_id = sessions.id
     )
     SELECT *
     FROM TestLaunches;
