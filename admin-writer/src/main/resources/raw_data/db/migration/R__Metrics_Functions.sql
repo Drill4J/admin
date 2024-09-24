@@ -996,14 +996,15 @@ BEGIN
         WITH
             ProbesByTestTaskPerMethod AS (
                 SELECT
-                    COALESCE(launches.test_task_id, 'UNGROUPED') AS test_task_id,
+                    COALESCE(sessions.test_task_id, 'UNGROUPED') AS test_task_id,
                     Methods.signature,
                     BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
                 FROM Coverage
                 JOIN Methods ON Methods.classname = Coverage.classname
                 LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id
+                LEFT JOIN raw_data.test_sessions sessions ON launches.test_session_id = sessions.id
                 GROUP BY
-                    launches.test_task_id,
+                    sessions.test_task_id,
                     Methods.signature
             ),
             CoveredProbesCount AS (
@@ -1162,14 +1163,15 @@ BEGIN
         WITH
         ProbesByTestTaskPerMethod AS (
             SELECT
-                COALESCE(launches.test_task_id, 'UNGROUPED') AS test_task_id,
+                COALESCE(sessions.test_task_id, 'UNGROUPED') AS test_task_id,
                 Methods.signature,
                 BIT_OR(coverage.probes) AS probes
             FROM MatchingCoverageByTest coverage
             JOIN Methods ON Methods.signature = coverage.signature
             LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
+            LEFT JOIN raw_data.test_sessions sessions ON launches.test_session_id = sessions.id
             GROUP BY
-                launches.test_task_id,
+                sessions.test_task_id,
                 Methods.signature
         ),
         CoveredProbesCount AS (
