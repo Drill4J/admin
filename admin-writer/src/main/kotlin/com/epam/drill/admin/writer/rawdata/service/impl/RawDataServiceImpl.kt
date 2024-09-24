@@ -20,6 +20,9 @@ import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
@@ -28,7 +31,8 @@ class RawDataServiceImpl(
     private val coverageRepository: CoverageRepository,
     private val testMetadataRepository: TestMetadataRepository,
     private val methodRepository: MethodRepository,
-    private val buildRepository: BuildRepository
+    private val buildRepository: BuildRepository,
+    private val testSessionRepository: TestSessionRepository
 ) : RawDataWriter {
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
@@ -152,7 +156,7 @@ class RawDataServiceImpl(
                     groupId = test.groupId,
                     id = test.id,
                     testDefinitionId = test.testDefinitionId,
-                    testTaskId = test.testTaskId,
+                    testSessionId = testsPayload.sessionId,
                     result = test.result.toString()
                 ),
                 definition = TestDefinition(
@@ -168,6 +172,18 @@ class RawDataServiceImpl(
             transaction {
                 testMetadataRepository.createMany(dataToInsert)
             }
+        }
+    }
+
+    override suspend fun saveTestSession(sessionPayload: SessionPayload) {
+        val testSession = TestSession(
+            id = sessionPayload.id,
+            groupId = sessionPayload.groupId,
+            testTaskId = sessionPayload.testTaskId,
+            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime()
+        )
+        transaction {
+            testSessionRepository.create(testSession)
         }
     }
 

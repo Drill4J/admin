@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.route.payload
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 // TODO rework alongside with Java Autotest Agent
@@ -33,7 +34,6 @@ class TestInfo(
     val startedAt: Long,
     val finishedAt: Long,
     val details: TestDetails,
-    val testTaskId: String,
 )
 
 @Serializable
@@ -59,3 +59,11 @@ enum class TestResult {
     SKIPPED,
     UNKNOWN
 }
+
+@Serializable
+class SessionPayload(
+    val id: String,
+    val groupId: String,
+    val testTaskId: String,
+    val startedAt: Instant
+)

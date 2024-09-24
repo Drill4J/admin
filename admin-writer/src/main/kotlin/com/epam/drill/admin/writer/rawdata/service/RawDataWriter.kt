@@ -23,4 +23,5 @@ interface RawDataWriter {
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
+    suspend fun saveTestSession(sessionPayload: SessionPayload)
 }
