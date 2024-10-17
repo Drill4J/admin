@@ -145,7 +145,9 @@ RETURNS TABLE (
     __name VARCHAR,
     __params VARCHAR,
     __return_type VARCHAR,
+	__body_checksum VARCHAR,
     __probes_count INT,
+    __covered_probes INT,
     __missed_probes INT,
     __probes_coverage_ratio FLOAT
 ) AS $$
@@ -157,16 +159,15 @@ Methods AS (
     FROM raw_data.get_methods(
         input_build_id,
         -- TODO filter by class & method name
-        NULL,
-       	NULL
+        methods_class_name_pattern,
+       	methods_method_name_pattern
     )
 ),
 Coverage AS (
 	SELECT
-	c.classname,
-	c.test_id,
-	c.probes,
-	c.instance_id
+		c.classname,
+		c.instance_id,
+		BIT_OR(c.probes) as probes
 	FROM raw_data.coverage c
     -- TODO filter by env
 	WHERE c.instance_id IN (SELECT __id FROM raw_data.get_instance_ids(input_build_id))
@@ -197,6 +198,9 @@ Coverage AS (
                 c.test_id = 'TEST_CONTEXT_NONE'
             )
         )
+		GROUP BY
+			c.classname,
+			c.instance_id
 ),
 MethodsCoverage AS (
 	SELECT
@@ -224,17 +228,170 @@ SELECT
 	Methods.name,
 	Methods.params,
 	Methods.return_type,
+	Methods.body_checksum,
 	MergedCoverage.probes_count,
+	COALESCE(MergedCoverage.covered_probes, 0) AS covered_probes,
 	MergedCoverage.probes_count - COALESCE(MergedCoverage.covered_probes, 0) AS missed_probes,
-	COALESCE( CAST(MergedCoverage.covered_probes AS FLOAT) / MergedCoverage.probes_count, 0.0) AS probes_coverage_ratio
-FROM MergedCoverage
-JOIN Methods ON MergedCoverage.signature = Methods.signature
+	COALESCE(CAST(MergedCoverage.covered_probes AS FLOAT) / MergedCoverage.probes_count, 0) AS probes_coverage_ratio
+FROM Methods
+LEFT JOIN MergedCoverage ON MergedCoverage.signature = Methods.signature
+WHERE Methods.build_id = input_build_id
+	AND Methods.probes_count > 0
 ORDER BY
 	MergedCoverage.probes_count - COALESCE(MergedCoverage.covered_probes, 0) DESC
 ;
 END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000; -- indicate expensive query
-TODO -- ROWS 5000; -- can also adjust result set expectations
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000; -- indicate that function is expensive
+--TODO -- ROWS 5000; -- can also adjust result set expectations
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list(
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    -- TODO filter by coverage dates
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL,
+
+    test_task_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__body_checksum VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+WITH
+Methods AS (
+    SELECT *
+    FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+),
+MatchingMethods AS (
+    WITH
+    SameGroupAndAppMethods AS (
+        SELECT *
+        FROM raw_data.get_same_group_and_app_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+    )
+    SELECT
+        Methods.signature,
+        Methods.body_checksum,
+        Methods.classname,
+        Methods.probes_count,
+        Methods.probe_start_pos,
+		same_methods.build_id
+    FROM SameGroupAndAppMethods same_methods
+    JOIN Methods ON
+        Methods.body_checksum = same_methods.body_checksum
+        AND Methods.signature = same_methods.signature
+		AND Methods.probes_count = same_methods.probes_count
+    ORDER BY Methods.body_checksum
+),
+MatchingInstances AS (
+    SELECT
+        MatchingMethods.*,
+        instances.id as instance_id
+    FROM raw_data.instances instances
+    JOIN MatchingMethods ON
+        MatchingMethods.build_id = instances.build_id
+),
+Coverage AS (
+	SELECT
+		c.classname,
+		c.instance_id,
+		BIT_OR(c.probes) as probes
+	FROM raw_data.coverage c
+    -- TODO filter by env
+	WHERE c.instance_id IN (SELECT distinct(instance_id) FROM MatchingInstances)
+		AND (
+		    (c.test_id IN (
+                SELECT DISTINCT launches.id AS test_launch_id
+                FROM raw_data.test_definitions definitions
+                JOIN raw_data.test_launches launches
+                    ON launches.test_definition_id = definitions.id
+                JOIN raw_data.test_sessions sessions
+                    ON launches.test_session_id = sessions.id
+                WHERE
+                    definitions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO checking launches & sessions might be unnecessary if ids are guaranteed to be 100% unique
+                    AND launches.group_id = split_part(input_build_id, ':', 1)
+                    AND sessions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO add params to filter by test attributes
+                     AND (test_task_ids is NULL OR sessions.test_task_id = ANY (test_task_ids))
+                     AND (test_names IS NULL OR definitions.name = ANY(test_names))
+                     AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
+                     AND (test_results IS NULL OR launches.result = ANY(test_results))
+                ))
+			OR (test_task_ids IS NULL AND
+                test_names IS NULL AND
+                test_runners IS NULL AND
+                test_results IS NULL AND
+                c.test_id = 'TEST_CONTEXT_NONE'
+            )
+        )
+	GROUP BY
+		c.classname,
+		c.instance_id
+),
+MethodsCoverage AS (
+	SELECT
+		MatchingInstances.signature,
+		MatchingInstances.body_checksum,
+		MatchingInstances.probes_count,
+		ARRAY_AGG(MatchingInstances.build_id) AS source_build_ids,
+		BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) AS probes,
+		BIT_COUNT(BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count))) AS covered_probes
+	FROM Coverage
+	JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+	GROUP BY
+		MatchingInstances.signature,
+		MatchingInstances.body_checksum,
+		MatchingInstances.probes_count,
+		BIT_LENGTH(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count))
+),
+MethodsCoverage2 AS (
+	SELECT
+		Methods.classname,
+		Methods.name,
+		Methods.params,
+		Methods.return_type,
+		Methods.body_checksum,
+		Methods.probes_count,
+		-- pick highest number of covered probes. Variability happens in cases when the same signature & body_checksum yield different number of probes
+		MAX(COALESCE(CAST(MethodsCoverage.covered_probes AS INT), 0)) AS covered_probes
+	FROM Methods
+	LEFT JOIN MethodsCoverage ON Methods.signature = MethodsCoverage.signature AND Methods.body_checksum = MethodsCoverage.body_checksum
+	GROUP BY
+		Methods.classname,
+		Methods.name,
+		Methods.params,
+		Methods.return_type,
+		Methods.body_checksum,
+		Methods.probes_count
+)
+SELECT
+	*,
+	MethodsCoverage2.probes_count - COALESCE(MethodsCoverage2.covered_probes, 0) AS missed_probes,
+	COALESCE(CAST(MethodsCoverage2.covered_probes AS FLOAT) / MethodsCoverage2.probes_count, 0.0) AS probes_coverage_ratio
+FROM MethodsCoverage2
+ORDER BY MethodsCoverage2.probes_count - COALESCE(MethodsCoverage2.covered_probes, 0) DESC
+;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000; -- indicate that function is expensive
+--TODO -- ROWS 5000; -- can also adjust result set expectations
 
 -----------------------------------------------------------------
 
