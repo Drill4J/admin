@@ -1007,12 +1007,15 @@ BEGIN
                 test_runners
             )
         )
-        SELECT *
+        SELECT
+            Coverage.classname,
+            Coverage.test_id,
+            Coverage.probes
         FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
-        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-        AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+        WHERE coverage.instance_id IN (SELECT __id FROM InstanceIds)
+            AND coverage.test_id IN (SELECT __id FROM TestLaunchIds)
+            AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
     ),
     CoverageByTestTaskId AS (
         WITH
@@ -1053,11 +1056,19 @@ BEGIN
             GROUP BY classname
         ),
         ClassesCoverage AS (
+            WITH A AS (
+                SELECT
+                    classname,
+                    BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
+                FROM Coverage
+                GROUP BY coverage.classname, BIT_LENGTH(probes)
+            )
             SELECT
                 classname,
-                BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
-            FROM Coverage
-            GROUP BY coverage.classname
+                -- pick highest number of covered probes. Variability happens in cases when the same signature & body_checksum yield different number of probes
+                MAX(covered_probes_count) AS covered_probes_count
+            FROM A
+            GROUP BY classname
         ),
         Sums AS (
             SELECT
