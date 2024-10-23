@@ -119,38 +119,37 @@ BEGIN
         AND (test_results IS NULL OR launches.result = ANY(test_results))
     ;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods(
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list(
     input_build_id VARCHAR,
 
 	methods_class_name_pattern VARCHAR DEFAULT NULL,
     methods_method_name_pattern VARCHAR DEFAULT NULL,
 
-	test_definition_ids VARCHAR[] DEFAULT NULL,
+    -- TODO filter by coverage dates
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL,
+
+    test_task_ids VARCHAR[] DEFAULT NULL,
     test_names VARCHAR[] DEFAULT NULL,
     test_results VARCHAR[] DEFAULT NULL,
-    test_runners VARCHAR[] DEFAULT NULL,
-
-	coverage_created_at_start TIMESTAMP DEFAULT NULL,
-    coverage_created_at_end TIMESTAMP DEFAULT NULL
+    test_runners VARCHAR[] DEFAULT NULL
 )
 RETURNS TABLE (
-    __build_id VARCHAR,
+    __classname VARCHAR,
     __name VARCHAR,
     __params VARCHAR,
     __return_type VARCHAR,
-    __classname VARCHAR,
-    __body_checksum VARCHAR,
-    __signature VARCHAR,
+	__body_checksum VARCHAR,
     __probes_count INT,
-    __merged_probes BIT,
     __covered_probes INT,
-    __probes_coverage_ratio FLOAT,
-	__associated_test_definition_ids VARCHAR ARRAY,
-    __associated_test_names VARCHAR ARRAY,
-    __associated_test_runners VARCHAR ARRAY
---    __associated_test_results VARCHAR ARRAY
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -159,91 +158,240 @@ Methods AS (
     SELECT *
     FROM raw_data.get_methods(
         input_build_id,
+        -- TODO filter by class & method name
         methods_class_name_pattern,
-        methods_method_name_pattern
+       	methods_method_name_pattern
     )
 ),
 Coverage AS (
-    WITH
-    InstanceIds AS (
-        SELECT * FROM raw_data.get_instance_ids(input_build_id)
-    ),
-    TestLaunchIds AS (
-        SELECT *
-        FROM raw_data.get_test_launch_ids(
-            split_part(input_build_id, ':', 1),
-            test_definition_ids,
-            test_names,
-            test_results,
-            test_runners
+	SELECT
+		c.classname,
+		c.instance_id,
+		BIT_OR(c.probes) as probes
+	FROM raw_data.coverage c
+    -- TODO filter by env
+	WHERE c.instance_id IN (SELECT __id FROM raw_data.get_instance_ids(input_build_id))
+		AND (
+		    (c.test_id IN (
+                SELECT DISTINCT launches.id AS test_launch_id
+                FROM raw_data.test_definitions definitions
+                JOIN raw_data.test_launches launches
+                    ON launches.test_definition_id = definitions.id
+                JOIN raw_data.test_sessions sessions
+                    ON launches.test_session_id = sessions.id
+                WHERE
+                    definitions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO checking launches & sessions might be unnecessary if ids are guaranteed to be 100% unique
+                    AND launches.group_id = split_part(input_build_id, ':', 1)
+                    AND sessions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO add params to filter by test attributes
+                     AND (test_task_ids is NULL OR sessions.test_task_id = ANY (test_task_ids))
+                     AND (test_names IS NULL OR definitions.name = ANY(test_names))
+                     AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
+                     AND (test_results IS NULL OR launches.result = ANY(test_results))
+                ))
+            -- include coverage w/o test context only if there are no test filters applied
+            OR (test_task_ids IS NULL AND
+                test_names IS NULL AND
+                test_runners IS NULL AND
+                test_results IS NULL AND
+                c.test_id = 'TEST_CONTEXT_NONE'
+            )
         )
-    )
-    SELECT *
-    FROM raw_data.coverage coverage
-    JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-    LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
-    WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-      AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+		GROUP BY
+			c.classname,
+			c.instance_id
 ),
-CoverageByTests AS (
-    WITH MergedCoverage AS (
-        SELECT
-            Methods.signature,
-            Methods.body_checksum,
-            Coverage.test_id,
-            definitions.name as test_name,
-            definitions.runner as test_runner,
---            Tests.result, -- TODO include result once test-id-launch mapping is implemented
-            BIT_OR(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS probes
-        FROM Coverage
-        JOIN Methods ON Methods.classname = Coverage.classname
-        LEFT JOIN raw_data.test_launches launches ON launches.id = Coverage.test_id -- left join to avoid loosing test coverage w/o metadata available
-        LEFT JOIN raw_data.test_definitions definitions on definitions.id = launches.test_definition_id
-        GROUP BY
-            Methods.signature,
-            Methods.body_checksum,
-            Coverage.test_id,
-            definitions.name,
-            definitions.runner
-    )
-    SELECT *
-    FROM MergedCoverage
-    WHERE BIT_COUNT(probes) > 0
+MethodsCoverage AS (
+	SELECT
+		Methods.signature,
+		Methods.probes_count,
+		SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count) AS substring_probes,
+	 	BIT_LENGTH(SUBSTRING(Coverage.probes FROM Methods.probe_start_pos + 1 FOR Methods.probes_count)) AS substring_probes_length
+	FROM Methods
+	LEFT JOIN Coverage ON Methods.classname = Coverage.classname
 ),
-CoverageByMethods AS (
-    SELECT
-        CoverageByTests.signature,
-        CoverageByTests.body_checksum,
-        ARRAY_AGG(DISTINCT(CoverageByTests.test_id)) AS associated_test_definition_ids,
-        ARRAY_AGG(DISTINCT(CoverageByTests.test_name)) AS associated_test_names,
-        ARRAY_AGG(DISTINCT(CoverageByTests.test_runner)) AS associated_test_runners,
---        ARRAY_AGG(DISTINCT(CoverageByTests.test_result)) AS associated_test_results
-        BIT_OR(CoverageByTests.probes) as merged_probes
-    FROM CoverageByTests
-    GROUP BY
-        CoverageByTests.signature,
-        CoverageByTests.body_checksum
+MergedCoverage AS (
+	SELECT
+		MethodsCoverage.signature,
+		MethodsCoverage.substring_probes_length,
+		MethodsCoverage.probes_count,
+		CAST(BIT_COUNT(BIT_OR(MethodsCoverage.substring_probes)) AS INT) AS covered_probes
+	FROM MethodsCoverage
+	GROUP BY
+		MethodsCoverage.signature,
+		MethodsCoverage.substring_probes_length,
+		MethodsCoverage.probes_count
 )
 SELECT
-    Methods.build_id,
-    Methods.name,
-    Methods.params,
-    Methods.return_type,
-    Methods.classname,
-    Methods.body_checksum,
-    Methods.signature,
-    Methods.probes_count,
-    CoverageByMethods.merged_probes,
-    COALESCE(CAST(BIT_COUNT(CoverageByMethods.merged_probes) AS INT), 0) AS covered_probes,
-    COALESCE(CAST(BIT_COUNT(CoverageByMethods.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
-    CoverageByMethods.associated_test_definition_ids,
-    CoverageByMethods.associated_test_names,
-    CoverageByMethods.associated_test_runners
---    MethodsCoverage.associated_test_results
+	Methods.classname,
+	Methods.name,
+	Methods.params,
+	Methods.return_type,
+	Methods.body_checksum,
+	MergedCoverage.probes_count,
+	COALESCE(MergedCoverage.covered_probes, 0) AS covered_probes,
+	MergedCoverage.probes_count - COALESCE(MergedCoverage.covered_probes, 0) AS missed_probes,
+	COALESCE(CAST(MergedCoverage.covered_probes AS FLOAT) / MergedCoverage.probes_count, 0) AS probes_coverage_ratio
 FROM Methods
-LEFT JOIN CoverageByMethods ON Methods.signature = CoverageByMethods.signature AND Methods.body_checksum = CoverageByMethods.body_checksum;
+LEFT JOIN MergedCoverage ON MergedCoverage.signature = Methods.signature
+WHERE Methods.build_id = input_build_id
+	AND Methods.probes_count > 0
+ORDER BY
+	MergedCoverage.probes_count - COALESCE(MergedCoverage.covered_probes, 0) DESC
+;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000; -- indicate that function is expensive
+--TODO -- ROWS 5000; -- can also adjust result set expectations
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list(
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+    -- TODO filter by coverage dates
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+    coverage_created_at_end TIMESTAMP DEFAULT NULL,
+
+    test_task_ids VARCHAR[] DEFAULT NULL,
+    test_names VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    test_runners VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__body_checksum VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+WITH
+Methods AS (
+    SELECT *
+    FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+),
+MatchingMethods AS (
+    WITH
+    SameGroupAndAppMethods AS (
+        SELECT *
+        FROM raw_data.get_same_group_and_app_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
+    )
+    SELECT
+        Methods.signature,
+        Methods.body_checksum,
+        Methods.classname,
+        Methods.probes_count,
+        Methods.probe_start_pos,
+		same_methods.build_id
+    FROM SameGroupAndAppMethods same_methods
+    JOIN Methods ON
+        Methods.body_checksum = same_methods.body_checksum
+        AND Methods.signature = same_methods.signature
+		AND Methods.probes_count = same_methods.probes_count
+    ORDER BY Methods.body_checksum
+),
+MatchingInstances AS (
+    SELECT
+        MatchingMethods.*,
+        instances.id as instance_id
+    FROM raw_data.instances instances
+    JOIN MatchingMethods ON
+        MatchingMethods.build_id = instances.build_id
+),
+Coverage AS (
+	SELECT
+		c.classname,
+		c.instance_id,
+		BIT_OR(c.probes) as probes
+	FROM raw_data.coverage c
+    -- TODO filter by env
+	WHERE c.instance_id IN (SELECT distinct(instance_id) FROM MatchingInstances)
+		AND (
+		    (c.test_id IN (
+                SELECT DISTINCT launches.id AS test_launch_id
+                FROM raw_data.test_definitions definitions
+                JOIN raw_data.test_launches launches
+                    ON launches.test_definition_id = definitions.id
+                JOIN raw_data.test_sessions sessions
+                    ON launches.test_session_id = sessions.id
+                WHERE
+                    definitions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO checking launches & sessions might be unnecessary if ids are guaranteed to be 100% unique
+                    AND launches.group_id = split_part(input_build_id, ':', 1)
+                    AND sessions.group_id = split_part(input_build_id, ':', 1)
+                    -- TODO add params to filter by test attributes
+                     AND (test_task_ids is NULL OR sessions.test_task_id = ANY (test_task_ids))
+                     AND (test_names IS NULL OR definitions.name = ANY(test_names))
+                     AND (test_runners IS NULL OR definitions.runner = ANY(test_runners))
+                     AND (test_results IS NULL OR launches.result = ANY(test_results))
+                ))
+			OR (test_task_ids IS NULL AND
+                test_names IS NULL AND
+                test_runners IS NULL AND
+                test_results IS NULL AND
+                c.test_id = 'TEST_CONTEXT_NONE'
+            )
+        )
+	GROUP BY
+		c.classname,
+		c.instance_id
+),
+MethodsCoverage AS (
+	SELECT
+		MatchingInstances.signature,
+		MatchingInstances.body_checksum,
+		MatchingInstances.probes_count,
+		ARRAY_AGG(MatchingInstances.build_id) AS source_build_ids,
+		BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) AS probes,
+		BIT_COUNT(BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count))) AS covered_probes
+	FROM Coverage
+	JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
+	GROUP BY
+		MatchingInstances.signature,
+		MatchingInstances.body_checksum,
+		MatchingInstances.probes_count,
+		BIT_LENGTH(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count))
+),
+MethodsCoverage2 AS (
+	SELECT
+		Methods.classname,
+		Methods.name,
+		Methods.params,
+		Methods.return_type,
+		Methods.body_checksum,
+		Methods.probes_count,
+		-- pick highest number of covered probes. Variability happens in cases when the same signature & body_checksum yield different number of probes
+		MAX(COALESCE(CAST(MethodsCoverage.covered_probes AS INT), 0)) AS covered_probes
+	FROM Methods
+	LEFT JOIN MethodsCoverage ON Methods.signature = MethodsCoverage.signature AND Methods.body_checksum = MethodsCoverage.body_checksum
+	GROUP BY
+		Methods.classname,
+		Methods.name,
+		Methods.params,
+		Methods.return_type,
+		Methods.body_checksum,
+		Methods.probes_count
+)
+SELECT
+	*,
+	MethodsCoverage2.probes_count - COALESCE(MethodsCoverage2.covered_probes, 0) AS missed_probes,
+	COALESCE(CAST(MethodsCoverage2.covered_probes AS FLOAT) / MethodsCoverage2.probes_count, 0.0) AS probes_coverage_ratio
+FROM MethodsCoverage2
+ORDER BY MethodsCoverage2.probes_count - COALESCE(MethodsCoverage2.covered_probes, 0) DESC
+;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000; -- indicate that function is expensive
+--TODO -- ROWS 5000; -- can also adjust result set expectations
 
 -----------------------------------------------------------------
 
@@ -308,7 +456,7 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_risks(
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
 
@@ -399,7 +547,8 @@ BEGIN
         WHERE BIT_COUNT(MatchingCoverageByTest.merged_probes) > 0
         GROUP BY
             MatchingCoverageByTest.signature,
-            MatchingCoverageByTest.body_checksum
+            MatchingCoverageByTest.body_checksum,
+            BIT_LENGTH(MatchingCoverageByTest.merged_probes)
     )
     SELECT
         Risks.__risk_type,
@@ -533,7 +682,8 @@ BEGIN
 		RisksCoverage.classname,
 		RisksCoverage.body_checksum,
 		RisksCoverage.signature,
-		RisksCoverage.probes_count;
+		RisksCoverage.probes_count,
+		BIT_LENGTH(RisksCoverage.probes);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -642,7 +792,7 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_total_percent(
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_total_percent(
 	_input_build_id VARCHAR
 )
 RETURNS FLOAT AS $$
@@ -654,142 +804,13 @@ WITH
 			SUM(__probes_count) AS probes_count,
 			SUM(__covered_probes) AS covered_probes
 		FROM
-			raw_data.get_accumulated_coverage_by_methods(_input_build_id)
+			raw_data.get_aggregate_coverage_by_methods_list(_input_build_id)
 	)
 	SELECT
 		COALESCE(CAST(Probes.covered_probes AS FLOAT) / CAST(Probes.probes_count AS FLOAT), 0) AS coverage_ratio
 	FROM
 		Probes
 );
-END;
-$$ LANGUAGE plpgsql;
-
-
------------------------------------------------------------------
-
------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_accumulated_coverage_by_methods(
-	input_build_id VARCHAR,
-
-    methods_class_name_pattern VARCHAR DEFAULT NULL,
-    methods_method_name_pattern VARCHAR DEFAULT NULL,
-
-    test_definition_ids VARCHAR[] DEFAULT NULL,
-    test_names VARCHAR[] DEFAULT NULL,
-    test_results VARCHAR[] DEFAULT NULL,
-    test_runners VARCHAR[] DEFAULT NULL,
-
-    coverage_created_at_start TIMESTAMP DEFAULT NULL,
-    coverage_created_at_end TIMESTAMP DEFAULT NULL
-) RETURNS TABLE (
-    __build_id VARCHAR,
-    __name VARCHAR,
-    __params VARCHAR,
-    __return_type VARCHAR,
-    __classname VARCHAR,
-    __body_checksum VARCHAR,
-    __signature VARCHAR,
-    __probes_count INT,
-    __build_ids_coverage_source VARCHAR ARRAY,
-    __merged_probes BIT,
-    __covered_probes INT,
-    __probes_coverage_ratio FLOAT,
-    __associated_test_definition_ids VARCHAR ARRAY
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH
-    Methods AS (
-        SELECT *
-        FROM raw_data.get_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
-    ),
-    MatchingMethods AS (
-        WITH
-        SameGroupAndAppMethods AS (
-            SELECT *
-            FROM raw_data.get_same_group_and_app_methods(input_build_id, methods_class_name_pattern, methods_method_name_pattern)
-        )
-        SELECT
-            Methods.signature,
-            Methods.body_checksum,
-            Methods.classname,
-            same_methods.build_id,
-            same_methods.probe_start_pos,
-            same_methods.probes_count
-        FROM SameGroupAndAppMethods same_methods
-        JOIN Methods ON
-            Methods.body_checksum = same_methods.body_checksum
-            AND Methods.signature = same_methods.signature
-        ORDER BY Methods.body_checksum
-    ),
-    MatchingInstances AS (
-        SELECT
-            MatchingMethods.*,
-            instances.id as instance_id
-        FROM raw_data.instances instances
-        JOIN MatchingMethods ON
-            MatchingMethods.build_id = instances.build_id
-    ),
-    MatchingCoverageByTest AS (
-        WITH TestLaunchIds AS (
-            SELECT *
-            FROM raw_data.get_test_launch_ids(
-                split_part(input_build_id, ':', 1),
-                test_definition_ids,
-                test_names,
-                test_results,
-                test_runners
-            )
-        )
-        SELECT
-            MatchingInstances.signature,
-            MatchingInstances.body_checksum,
-            MatchingInstances.build_id as build_id_coverage_source,
-            BIT_OR(SUBSTRING(coverage.probes FROM MatchingInstances.probe_start_pos + 1 FOR MatchingInstances.probes_count)) as merged_probes,
-            coverage.test_id as test_id
-        FROM raw_data.coverage coverage
-        JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
-        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
-        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-              AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
-        GROUP BY
-            MatchingInstances.signature,
-            MatchingInstances.body_checksum,
-            MatchingInstances.build_id,
-            coverage.test_id
-    ),
-    MatchingCoverage AS (
-        SELECT
-            MatchingCoverageByTest.signature,
-            MatchingCoverageByTest.body_checksum,
-            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.build_id_coverage_source)) as build_ids_coverage_source,
-            ARRAY_AGG(DISTINCT(MatchingCoverageByTest.test_id)) as associated_test_definition_ids,
-            BIT_OR(MatchingCoverageByTest.merged_probes) as merged_probes
-        FROM
-            MatchingCoverageByTest
-        WHERE BIT_COUNT(MatchingCoverageByTest.merged_probes) > 0
-        GROUP BY
-            MatchingCoverageByTest.signature,
-            MatchingCoverageByTest.body_checksum
-    )
-    SELECT
-        Methods.build_id,
-        Methods.name,
-        Methods.params,
-        Methods.return_type,
-        Methods.classname,
-        Methods.body_checksum,
-        Methods.signature,
-        Methods.probes_count,
-        MatchingCoverage.build_ids_coverage_source,
-        MatchingCoverage.merged_probes,
-        COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS INT), 0),
-        COALESCE(CAST(BIT_COUNT(MatchingCoverage.merged_probes) AS FLOAT) / Methods.probes_count, 0.0) AS probes_coverage_ratio,
-        MatchingCoverage.associated_test_definition_ids
-    FROM Methods
-    LEFT JOIN MatchingCoverage ON Methods.body_checksum = MatchingCoverage.body_checksum
-        AND Methods.signature = MatchingCoverage.signature
-;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -824,7 +845,7 @@ BEGIN
         AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
         ;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
 
@@ -842,7 +863,7 @@ BEGIN
     FROM raw_data.instances
     WHERE build_id = input_build_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 
 -----------------------------------------------------------------
@@ -986,12 +1007,15 @@ BEGIN
                 test_runners
             )
         )
-        SELECT *
+        SELECT
+            Coverage.classname,
+            Coverage.test_id,
+            Coverage.probes
         FROM raw_data.coverage coverage
-        JOIN InstanceIds ON coverage.instance_id = InstanceIds.__id
-        LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
-        WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-        AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+        WHERE coverage.instance_id IN (SELECT __id FROM InstanceIds)
+            AND coverage.test_id IN (SELECT __id FROM TestLaunchIds)
+            AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
     ),
     CoverageByTestTaskId AS (
         WITH
@@ -1032,11 +1056,19 @@ BEGIN
             GROUP BY classname
         ),
         ClassesCoverage AS (
+            WITH A AS (
+                SELECT
+                    classname,
+                    BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
+                FROM Coverage
+                GROUP BY coverage.classname, BIT_LENGTH(probes)
+            )
             SELECT
                 classname,
-                BIT_COUNT(BIT_OR(probes)) AS covered_probes_count
-            FROM Coverage
-            GROUP BY coverage.classname
+                -- pick highest number of covered probes. Variability happens in cases when the same signature & body_checksum yield different number of probes
+                MAX(covered_probes_count) AS covered_probes_count
+            FROM A
+            GROUP BY classname
         ),
         Sums AS (
             SELECT
@@ -1147,9 +1179,9 @@ BEGIN
                 coverage.test_id as test_id
             FROM raw_data.coverage coverage
             JOIN MatchingInstances ON MatchingInstances.instance_id = coverage.instance_id AND MatchingInstances.classname = coverage.classname
-            LEFT JOIN TestLaunchIds ON coverage.test_id = TestLaunchIds.__id
-            WHERE (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
-                  AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
+            WHERE coverage.test_id IN (SELECT __id FROM TestLaunchIds)
+                AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+                AND (coverage_created_at_end IS NULL OR coverage.created_at <= coverage_created_at_end)
             GROUP BY
                 MatchingInstances.signature,
                 MatchingInstances.body_checksum,
