@@ -843,7 +843,14 @@ BEGIN
         AND methods.probes_count > 0
         AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
         AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
-        ;
+        AND NOT EXISTS (
+           SELECT 1
+           FROM raw_data.method_ignore_rules r
+           WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
+             OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
+             AND r.group_id = split_part(input_build_id, ':', 1)
+             AND r.app_id = split_part(input_build_id, ':', 2)
+        );
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
@@ -898,6 +905,14 @@ BEGIN
         AND methods.probes_count > 0
         AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
         AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+        AND NOT EXISTS (
+           SELECT 1
+           FROM raw_data.method_ignore_rules r
+           WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
+             OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
+             AND r.group_id = split_part(input_build_id, ':', 1)
+             AND r.app_id = split_part(input_build_id, ':', 2)
+        )
     ;
 END;
 $$ LANGUAGE plpgsql;
