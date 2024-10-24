@@ -33,6 +33,7 @@ class MethodRepositoryImpl: MethodRepository {
             this[MethodTable.bodyChecksum] = it.bodyChecksum
             this[MethodTable.signature] = it .signature
             this[MethodTable.probesCount] = it.probesCount
+            this[MethodTable.annotations] = it.annotations.toString()
         }
     }
 
