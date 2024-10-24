@@ -122,7 +122,8 @@ class RawDataServiceImpl(
                     method.name,
                     method.params,
                     method.returnType
-                ).joinToString(":")
+                ).joinToString(":"),
+                annotations = method.annotations
             )
         }
         .let { dataToInsert ->
@@ -166,7 +167,7 @@ class RawDataServiceImpl(
                     runner = test.details.engine,
                     name = test.details.testName,
                     path = test.details.path
-                ),
+                )
             )
         }.let { dataToInsert ->
             transaction {

@@ -26,4 +26,5 @@ class Method(
     val probesStartPos: Int,
     val bodyChecksum: String,
     val signature: String,
+    val annotations: Map<String, List<String>>
 )

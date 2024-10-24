@@ -832,7 +832,8 @@ RETURNS TABLE (
     body_checksum VARCHAR,
     signature VARCHAR,
     probe_start_pos INT,
-    probes_count INT
+    probes_count INT,
+    annotations VARCHAR
 )
 AS $$
 BEGIN
@@ -848,6 +849,7 @@ BEGIN
            FROM raw_data.method_ignore_rules r
            WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
              OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
+             OR (r.annotations_pattern IS NOT NULL AND methods.annotations = r.annotations_pattern)
              AND r.group_id = split_part(input_build_id, ':', 1)
              AND r.app_id = split_part(input_build_id, ':', 2)
         );
@@ -892,7 +894,8 @@ RETURNS TABLE (
     body_checksum VARCHAR,
     signature VARCHAR,
     probe_start_pos INT,
-    probes_count INT
+    probes_count INT,
+    annotations VARCHAR
 )
 AS $$
 BEGIN
@@ -910,6 +913,7 @@ BEGIN
            FROM raw_data.method_ignore_rules r
            WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
              OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
+             OR (r.annotations_pattern IS NOT NULL AND methods.annotations = r.annotations_pattern)
              AND r.group_id = split_part(input_build_id, ':', 1)
              AND r.app_id = split_part(input_build_id, ':', 2)
         )

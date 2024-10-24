@@ -25,4 +25,5 @@ object MethodTable : StringIdTable("raw_data.methods") {
     var signature = varchar("signature", MEDIUM_TEXT_LENGTH)
     val probesCount = integer("probes_count")
     val probesStartPos = integer("probe_start_pos")
+    val annotations = varchar("annotations", MEDIUM_TEXT_LENGTH)
 }
