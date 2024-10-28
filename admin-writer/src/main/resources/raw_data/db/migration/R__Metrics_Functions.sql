@@ -833,7 +833,8 @@ RETURNS TABLE (
     signature VARCHAR,
     probe_start_pos INT,
     probes_count INT,
-    annotations VARCHAR
+    annotations VARCHAR,
+    class_annotations VARCHAR
 )
 AS $$
 BEGIN
@@ -847,9 +848,10 @@ BEGIN
         AND NOT EXISTS (
            SELECT 1
            FROM raw_data.method_ignore_rules r
-           WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
-             OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
-             OR (r.annotations_pattern IS NOT NULL AND methods.annotations = r.annotations_pattern)
+           WHERE ((r.name_pattern IS NOT NULL AND methods.name ~ r.name_pattern)
+             OR (r.classname_pattern IS NOT NULL AND methods.classname ~ r.classname_pattern)
+             OR (r.annotations_pattern IS NOT NULL AND methods.annotations ~ r.annotations_pattern)
+             OR (r.class_annotations_pattern IS NOT NULL AND methods.class_annotations ~ r.class_annotations_pattern))
              AND r.group_id = split_part(input_build_id, ':', 1)
              AND r.app_id = split_part(input_build_id, ':', 2)
         );
@@ -895,7 +897,8 @@ RETURNS TABLE (
     signature VARCHAR,
     probe_start_pos INT,
     probes_count INT,
-    annotations VARCHAR
+    annotations VARCHAR,
+    class_annotations VARCHAR
 )
 AS $$
 BEGIN
@@ -911,9 +914,10 @@ BEGIN
         AND NOT EXISTS (
            SELECT 1
            FROM raw_data.method_ignore_rules r
-           WHERE (r.name_pattern IS NOT NULL AND methods.name = r.name_pattern)
-             OR (r.classname_pattern IS NOT NULL AND methods.classname = r.classname_pattern)
-             OR (r.annotations_pattern IS NOT NULL AND methods.annotations = r.annotations_pattern)
+           WHERE ((r.name_pattern IS NOT NULL AND methods.name ~ r.name_pattern)
+             OR (r.classname_pattern IS NOT NULL AND methods.classname ~ r.classname_pattern)
+             OR (r.annotations_pattern IS NOT NULL AND methods.annotations ~ r.annotations_pattern)
+             OR (r.class_annotations_pattern IS NOT NULL AND methods.class_annotations ~ r.class_annotations_pattern))
              AND r.group_id = split_part(input_build_id, ':', 1)
              AND r.app_id = split_part(input_build_id, ':', 2)
         )

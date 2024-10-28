@@ -123,7 +123,8 @@ class RawDataServiceImpl(
                     method.params,
                     method.returnType
                 ).joinToString(":"),
-                annotations = method.annotations
+                annotations = method.annotations,
+                classAnnotations = method.classAnnotations
             )
         }
         .let { dataToInsert ->

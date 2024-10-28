@@ -33,7 +33,12 @@ class MethodRepositoryImpl: MethodRepository {
             this[MethodTable.bodyChecksum] = it.bodyChecksum
             this[MethodTable.signature] = it .signature
             this[MethodTable.probesCount] = it.probesCount
-            this[MethodTable.annotations] = it.annotations.toString()
+            it.annotations?.let { annotations ->
+                this[MethodTable.annotations] = annotations.takeIf { it.isNotEmpty() }?.toString()
+            }
+            it.classAnnotations?.let { classAnnotations ->
+                this[MethodTable.classAnnotations] = classAnnotations.takeIf { it.isNotEmpty() }?.toString()
+            }
         }
     }
 
