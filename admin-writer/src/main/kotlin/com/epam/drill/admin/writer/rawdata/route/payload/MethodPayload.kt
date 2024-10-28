@@ -36,4 +36,6 @@ class SingleMethodPayload(
     val probesCount: Int,
     val probesStartPos: Int,
     val bodyChecksum: String,
+    val annotations: Map<String, List<String>>?,
+    val classAnnotations: Map<String, List<String>>?
 )
