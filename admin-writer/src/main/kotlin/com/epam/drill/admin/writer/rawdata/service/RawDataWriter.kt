@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.service
 
+import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 
 interface RawDataWriter {
@@ -24,4 +25,7 @@ interface RawDataWriter {
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
     suspend fun saveTestSession(sessionPayload: SessionPayload)
+    suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
+    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRule>
+    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
 }

@@ -61,6 +61,8 @@ class DataIngestRoutes {
     @Resource("sessions")
     class TestSessionRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 
+    @Resource("method-ignore-rules")
+    class MethodIgnoreRulesRoute(var parent: DataIngestRoutes = DataIngestRoutes())
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
 
@@ -116,6 +118,15 @@ fun Route.putTestSessions() {
 
     put<DataIngestRoutes.TestSessionRoute> {
         rawDataWriter.saveTestSession(call.decompressAndReceive())
+        call.respond(HttpStatusCode.OK)
+    }
+}
+
+fun Route.postMethodIgnoreRules() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    post<DataIngestRoutes.MethodIgnoreRulesRoute> {
+        rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
         call.respond(HttpStatusCode.OK)
     }
 }
