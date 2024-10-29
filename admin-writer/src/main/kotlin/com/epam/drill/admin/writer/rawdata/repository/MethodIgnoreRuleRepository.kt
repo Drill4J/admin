@@ -16,9 +16,10 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface MethodIgnoreRuleRepository {
     fun create(rule: MethodIgnoreRule)
-    fun getAll(): List<MethodIgnoreRule>
+    fun getAll(): List<MethodIgnoreRuleView>
     fun deleteById(ruleId: Int)
 }

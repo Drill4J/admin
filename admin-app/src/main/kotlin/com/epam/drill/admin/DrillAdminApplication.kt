@@ -71,6 +71,7 @@ fun Application.module() {
         if (oauth2Enabled) oauthStatusPages()
         defaultStatusPages()
         metricsStatusPages()
+        rawDataStatusPages()
     }
     val di = closestDI()
     install(Authentication) {
@@ -117,6 +118,8 @@ fun Application.module() {
                     postTestMetadata()
                     putTestSessions()
                     postMethodIgnoreRules()
+                    getMethodIgnoreRules()
+                    deleteMethodIgnoreRule()
 //                    postRawJavaScriptCoverage(jsCoverageConverterAddress)
                 }
             }

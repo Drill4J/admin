@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
+import com.epam.drill.admin.writer.rawdata.exception.InvalidMethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -24,21 +25,28 @@ import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.resources.put
 import io.ktor.server.resources.post
+import io.ktor.server.resources.get
+import io.ktor.server.resources.delete
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
+import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+
+private val logger = KotlinLogging.logger {}
 
 @Resource("/data-ingest")
 class DataIngestRoutes {
@@ -62,7 +70,10 @@ class DataIngestRoutes {
     class TestSessionRoute(val parent: DataIngestRoutes = DataIngestRoutes())
 
     @Resource("method-ignore-rules")
-    class MethodIgnoreRulesRoute(var parent: DataIngestRoutes = DataIngestRoutes())
+    class MethodIgnoreRulesRoute(var parent: DataIngestRoutes = DataIngestRoutes()) {
+        @Resource("/{id}")
+        class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
+    }
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
 
@@ -131,6 +142,24 @@ fun Route.postMethodIgnoreRules() {
     }
 }
 
+fun Route.getMethodIgnoreRules() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    get<DataIngestRoutes.MethodIgnoreRulesRoute> {
+        call.respond(HttpStatusCode.OK, rawDataWriter.getAllMethodIgnoreRules())
+    }
+}
+
+fun Route.deleteMethodIgnoreRule() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    delete<DataIngestRoutes.MethodIgnoreRulesRoute.Id> { params ->
+        val id = params.id
+        rawDataWriter.deleteMethodIgnoreRuleById(id)
+        call.respond(HttpStatusCode.OK)
+    }
+}
+
 //fun Route.postRawJavaScriptCoverage(jsCoverageConverterAddress: String) {
 //    post<RawJavaScriptCoverage> { params ->
 //        handleRequest<AddSessionData> { data ->
@@ -192,4 +221,21 @@ internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
         GZIPInputStream(inputStream).readBytes()
     }
     return decompressedBytes
+}
+
+fun StatusPagesConfig.rawDataStatusPages() {
+    exception<MissingFieldException> { call, exception ->
+        logger.trace(exception) { "400 MissingFieldException ${exception.message}" }
+        call.respond(
+            io.ktor.http.HttpStatusCode.BadRequest,
+            kotlin.collections.mapOf("errorMessage" to exception.message)
+        )
+    }
+    exception<InvalidMethodIgnoreRule> { call, exception ->
+        logger.trace(exception) { "400 InvalidMethodIgnoreRule ${exception.message}" }
+        call.respond(
+            io.ktor.http.HttpStatusCode.BadRequest,
+            kotlin.collections.mapOf("errorMessage" to exception.message)
+        )
+    }
 }

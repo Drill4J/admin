@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.table.MethodIgnoreRulesTable
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -35,9 +36,10 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
         }
     }
 
-    override fun getAll(): List<MethodIgnoreRule> {
+    override fun getAll(): List<MethodIgnoreRuleView> {
         return MethodIgnoreRulesTable.selectAll().map {
-            MethodIgnoreRule(
+            MethodIgnoreRuleView(
+                id = it[MethodIgnoreRulesTable.id].value,
                 groupId = it[MethodIgnoreRulesTable.groupId],
                 appId = it[MethodIgnoreRulesTable.appId],
                 namePattern = it[MethodIgnoreRulesTable.namePattern],

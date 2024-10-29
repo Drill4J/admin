@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -204,8 +205,10 @@ class RawDataServiceImpl(
         }
     }
 
-    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRule> {
-        return methodIgnoreRuleRepository.getAll()
+    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView> {
+        return transaction {
+            methodIgnoreRuleRepository.getAll()
+        }
     }
 
     override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {

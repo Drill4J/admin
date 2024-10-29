@@ -15,6 +15,9 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import com.epam.drill.admin.writer.rawdata.exception.InvalidMethodIgnoreRule
+import java.util.regex.PatternSyntaxException
+
 class MethodIgnoreRule(
     val groupId: String,
     val appId: String,
@@ -22,4 +25,40 @@ class MethodIgnoreRule(
     val classnamePattern: String? = null,
     val annotationsPattern: String? = null,
     val classAnnotationsPattern: String? = null
-)
+) {
+    init {
+        validate()
+    }
+
+    private fun validate() {
+        if (groupId.isEmpty()) {
+            throw InvalidMethodIgnoreRule("Field 'groupId' is required and must contain non-empty string")
+        }
+
+        if (appId.isEmpty()) {
+            throw InvalidMethodIgnoreRule("Field 'appId' is required and must contain non-empty string")
+        }
+
+        if (namePattern.isNullOrEmpty() && classnamePattern.isNullOrEmpty() &&
+            annotationsPattern.isNullOrEmpty() && classAnnotationsPattern.isNullOrEmpty()) {
+            throw InvalidMethodIgnoreRule("You must specify at least one of the following fields containing valid regex: " +
+                    "'namePattern', " +
+                    "'classnamePattern', " +
+                    "'annotationsPattern', " +
+                    "'classAnnotationsPattern'")
+        }
+
+        namePattern?.let { validateRegex(it, "namePattern") }
+        classnamePattern?.let { validateRegex(it, "classnamePattern") }
+        annotationsPattern?.let { validateRegex(it, "annotationsPattern") }
+        classAnnotationsPattern?.let { validateRegex(it, "classAnnotationsPattern") }
+    }
+
+    private fun validateRegex(pattern: String, patternName: String) {
+        try {
+            Regex(pattern)
+        } catch (e: PatternSyntaxException) {
+            throw InvalidMethodIgnoreRule("Field '$patternName' contains invalid regex: '$pattern'")
+        }
+    }
+}
