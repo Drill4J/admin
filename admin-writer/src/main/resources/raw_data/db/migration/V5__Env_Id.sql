@@ -1,0 +1,2 @@
+ALTER TABLE raw_data.instances
+ADD COLUMN IF NOT EXISTS env_id VARCHAR NULL;

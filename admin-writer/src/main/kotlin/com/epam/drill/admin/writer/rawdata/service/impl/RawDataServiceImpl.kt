@@ -71,7 +71,8 @@ class RawDataServiceImpl(
         )
         val instance = Instance(
             id = instancePayload.instanceId,
-            buildId = buildId
+            buildId = buildId,
+            envId = instancePayload.envId
         )
         transaction {
             if (!buildRepository.existsById(buildId)) {

@@ -17,4 +17,5 @@ package com.epam.drill.admin.writer.rawdata.table
 
 object InstanceTable : StringIdTable("raw_data.instances", "id") {
     val buildId = varchar("build_id",  MEDIUM_TEXT_LENGTH)
+    val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
 }
