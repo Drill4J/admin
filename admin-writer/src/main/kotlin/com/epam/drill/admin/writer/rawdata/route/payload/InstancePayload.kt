@@ -24,4 +24,5 @@ class InstancePayload(
     val instanceId: String,
     val commitSha: String?,
     val buildVersion: String?,
+    val envId: String?,
 )

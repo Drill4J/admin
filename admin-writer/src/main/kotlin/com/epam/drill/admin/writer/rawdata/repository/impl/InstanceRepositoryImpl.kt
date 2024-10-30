@@ -26,6 +26,7 @@ class InstanceRepositoryImpl: InstanceRepository {
         InstanceTable.upsert() {
             it[id] = instance.id
             it[buildId] = instance.buildId
+            it[envId] = instance.envId
         }
     }
 

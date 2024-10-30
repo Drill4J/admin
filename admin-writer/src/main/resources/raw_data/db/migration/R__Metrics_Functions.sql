@@ -865,7 +865,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_instance_ids(input_build_id VARCHAR)
 RETURNS TABLE (
     __id VARCHAR,
     __build_id VARCHAR,
-    __created_at TIMESTAMP
+    __created_at TIMESTAMP,
+    __env_id VARCHAR
 )
 AS $$
 BEGIN
