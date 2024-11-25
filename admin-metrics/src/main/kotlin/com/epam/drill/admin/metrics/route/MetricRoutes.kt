@@ -22,7 +22,6 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
@@ -65,11 +64,21 @@ class Metrics {
         val baselineBuildVersion: String? = null,
     )
 
+    @Resource("/tests-to-skip/{groupId}/{testTaskId}")
+    class TestsToSkip(
+        val parent: Metrics,
+
+        val groupId: String,
+        val testTaskId: String,
+        val filterCoverageDays: Int? = null,
+    )
+
 }
 
 fun Route.metricsRoutes() {
     getBuildDiffReport()
     getRecommendedTests()
+    getTestsToSkip()
 }
 
 fun Route.getBuildDiffReport() {
@@ -106,6 +115,19 @@ fun Route.getRecommendedTests() {
             params.baselineBuildVersion
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
+}
+
+fun Route.getTestsToSkip() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestsToSkip> { params ->
+        val testsToSkip = metricsService.getTestsToSkip(
+            params.groupId,
+            params.testTaskId,
+            params.filterCoverageDays
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(mapOf("tests" to testsToSkip)))
     }
 }
 

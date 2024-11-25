@@ -20,6 +20,7 @@ import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.route.response.TestResponse
 import com.epam.drill.admin.metrics.service.MetricsService
 import java.net.URI
 import java.net.URLEncoder
@@ -170,6 +171,14 @@ class MetricsServiceImpl(
                 "recommendedTests" to recommendedTests,
             )
         }
+    }
+
+    override suspend fun getTestsToSkip(
+        groupId: String,
+        testTaskId: String,
+        filterCoverageDays: Int?
+    ): List<TestResponse> {
+        return listOf() //TODO implement
     }
 
     // TODO good candidate to be moved to common functions (probably)
