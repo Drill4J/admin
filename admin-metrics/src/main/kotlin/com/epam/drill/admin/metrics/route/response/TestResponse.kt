@@ -15,6 +15,9 @@
  */
 package com.epam.drill.admin.metrics.route.response
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 class TestResponse(
     val engine: String,
     val path: String,

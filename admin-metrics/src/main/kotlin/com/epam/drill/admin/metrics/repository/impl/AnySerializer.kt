@@ -25,6 +25,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.serializer
 import java.sql.Timestamp
 
 object AnySerializer : KSerializer<Any?> {
@@ -47,7 +48,10 @@ object AnySerializer : KSerializer<Any?> {
                 val listSerializer = ListSerializer(this)
                 encoder.encodeSerializableValue(listSerializer, value)
             }
-            else -> throw SerializationException("Unsupported type")
+            else -> {
+                val serializer = value::class.serializer() as KSerializer<Any?>
+                encoder.encodeSerializableValue(serializer, value)
+            }
         }
     }
 
@@ -58,5 +62,5 @@ object AnySerializer : KSerializer<Any?> {
 
 @Serializable
 data class ApiResponse(
-    @Serializable(with = AnySerializer::class) val data: Map<String, Any?>?
+    @Serializable(with = AnySerializer::class) val data: Any?
 )

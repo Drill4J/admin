@@ -127,7 +127,7 @@ fun Route.getTestsToSkip() {
             params.testTaskId,
             params.filterCoverageDays
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(mapOf("tests" to testsToSkip)))
+        this.call.respond(HttpStatusCode.OK, ApiResponse(testsToSkip))
     }
 }
 
