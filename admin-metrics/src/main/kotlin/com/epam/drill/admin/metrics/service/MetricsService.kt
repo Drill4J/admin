@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.metrics.service
 
+import com.epam.drill.admin.metrics.route.response.TestResponse
+
 interface MetricsService {
     suspend fun getBuildDiffReport(
         groupId: String,
@@ -38,4 +40,10 @@ interface MetricsService {
         baselineCommitSha: String?,
         baselineBuildVersion: String?
     ): Map<String, Any?>
+
+    suspend fun getTestsToSkip(
+        groupId: String,
+        testTaskId: String,
+        filterCoverageDays: Int?
+    ): List<TestResponse>
 }
