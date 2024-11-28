@@ -15,9 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository.impl
 
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -25,7 +23,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.serializer
 import java.sql.Timestamp
 
 object AnySerializer : KSerializer<Any?> {
@@ -49,8 +46,11 @@ object AnySerializer : KSerializer<Any?> {
                 encoder.encodeSerializableValue(listSerializer, value)
             }
             else -> {
-                val serializer = value::class.serializer() as KSerializer<Any?>
-                encoder.encodeSerializableValue(serializer, value)
+                val serializer = value::class.serializerOrNull() as KSerializer<Any?>?
+                if (serializer != null)
+                    encoder.encodeSerializableValue(serializer, value)
+                else
+                    throw SerializationException("Unsupported type: ${value::class}")
             }
         }
     }
