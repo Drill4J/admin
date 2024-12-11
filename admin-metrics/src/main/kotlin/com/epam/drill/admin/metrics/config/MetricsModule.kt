@@ -28,9 +28,11 @@ import org.kodein.di.singleton
 val metricsDIModule = DI.Module("metricsServices") {
     bind<MetricsService>() with singleton {
         val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
+        val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
         MetricsServiceImpl(
             MetricsRepositoryImpl(),
-            MetricsServiceUiLinksConfig(metricsConfig.config("ui"))
+            MetricsServiceUiLinksConfig(metricsConfig.config("ui")),
+            TestRecommendationsConfig(drillConfig.config("testRecommendations"))
         )
     }
 }
