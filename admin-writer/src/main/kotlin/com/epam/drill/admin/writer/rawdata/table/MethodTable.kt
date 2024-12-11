@@ -22,9 +22,9 @@ object MethodTable : StringIdTable("raw_data.methods") {
     val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
     val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
     val bodyChecksum = varchar("body_checksum",  SHORT_TEXT_LENGTH) // crc64 stringified hash
-    var signature = varchar("signature", MEDIUM_TEXT_LENGTH)
+    var signature = varchar("signature", LONG_TEXT_LENGTH)
     val probesCount = integer("probes_count")
     val probesStartPos = integer("probe_start_pos")
-    val annotations = varchar("annotations", MEDIUM_TEXT_LENGTH).nullable()
-    val classAnnotations = varchar("class_annotations", MEDIUM_TEXT_LENGTH).nullable()
+    val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
+    val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
 }
