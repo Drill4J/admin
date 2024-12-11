@@ -64,13 +64,20 @@ class Metrics {
         val baselineBuildVersion: String? = null,
     )
 
-    @Resource("/tests-to-skip/{groupId}/{testTaskId}")
+    @Resource("/tests-to-skip")
     class TestsToSkip(
         val parent: Metrics,
 
         val groupId: String,
         val testTaskId: String,
-        val filterCoverageDays: Int? = null,
+        val targetAppId: String,
+        val targetInstanceId: String? = null,
+        val targetCommitSha: String? = null,
+        val targetBuildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val coveragePeriodDays: Int? = null,
     )
 
 }
@@ -123,9 +130,16 @@ fun Route.getTestsToSkip() {
 
     get<Metrics.TestsToSkip> { params ->
         val testsToSkip = metricsService.getTestsToSkip(
-            params.groupId,
-            params.testTaskId,
-            params.filterCoverageDays
+            groupId = params.groupId,
+            testTaskId = params.testTaskId,
+            targetAppId = params.targetAppId,
+            coveragePeriodDays = params.coveragePeriodDays,
+            targetInstanceId = params.targetInstanceId,
+            targetCommitSha = params.targetCommitSha,
+            targetBuildVersion = params.targetBuildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(testsToSkip))
     }

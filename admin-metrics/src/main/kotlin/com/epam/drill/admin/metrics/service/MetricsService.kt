@@ -44,6 +44,13 @@ interface MetricsService {
     suspend fun getTestsToSkip(
         groupId: String,
         testTaskId: String,
-        filterCoverageDays: Int?
+        targetAppId: String,
+        coveragePeriodDays: Int? = null,
+        targetInstanceId: String? = null,
+        targetCommitSha: String? = null,
+        targetBuildVersion: String? = null,
+        baselineInstanceId: String? = null,
+        baselineCommitSha: String? = null,
+        baselineBuildVersion: String? = null
     ): List<TestResponse>
 }
