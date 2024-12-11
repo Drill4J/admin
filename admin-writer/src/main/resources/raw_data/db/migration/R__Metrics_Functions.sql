@@ -1413,3 +1413,126 @@ BEGIN
     JOIN TestDefinitionIds ON TestDefinitionIds.id = def.id;
 END;
 $$ LANGUAGE plpgsql;
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v2(
+    input_group_id VARCHAR,
+	input_target_app_id VARCHAR,
+	input_target_build_id VARCHAR,
+	input_tests_to_skip BOOLEAN DEFAULT FALSE,
+	input_test_task_id VARCHAR DEFAULT NULL,
+	input_baseline_build_id VARCHAR DEFAULT NULL,
+	input_coverage_period_from TIMESTAMP DEFAULT NULL
+) RETURNS TABLE(
+    __test_definition_id VARCHAR,
+    __test_runner_id VARCHAR,
+    __test_path VARCHAR,
+    __test_name VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Risks AS (
+        SELECT
+			risks.__signature AS signature,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS risk_body_checksum
+        FROM raw_data.get_risks(input_target_build_id, input_baseline_build_id) risks
+    ),
+    TargetMethods AS (
+    	SELECT
+	    	methods.signature,
+			methods.body_checksum,
+			methods.probes_count
+	 	FROM raw_data.methods methods
+	 	WHERE methods.build_id = input_target_build_id
+  	),
+  	MethodCoverage AS (
+        SELECT
+            methods.signature as signature,
+            methods.body_checksum as body_checksum,
+            methods.probes_count as probes_count,
+            methods.build_id as build_id,
+            coverage.test_id as test_id,
+            coverage.instance_id as instance_id,
+            SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS method_probes,
+            coverage.created_at as created_at
+        FROM raw_data.coverage coverage
+        JOIN raw_data.instances instances ON instances.id = coverage.instance_id
+        JOIN raw_data.methods methods ON methods.classname = coverage.classname AND methods.build_id = instances.build_id
+        WHERE BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
+  	),
+	Coverage AS (
+		SELECT
+		    def.id AS test_definition_id,
+			launches.id AS test_id,
+			builds.id AS build_id,
+			(target.body_checksum != coverage.body_checksum) AS has_risk
+		FROM MethodCoverage coverage
+		JOIN raw_data.builds builds ON builds.id = coverage.build_id
+		JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
+		JOIN raw_data.test_definitions def ON launches.test_definition_id = def.id
+		JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+		JOIN TargetMethods target ON target.signature = coverage.signature
+		WHERE builds.group_id = input_group_id
+		 	AND builds.app_id = input_target_app_id
+		 	AND (input_test_task_id IS NULL OR sessions.test_task_id = input_test_task_id)
+			AND launches.result = 'PASSED'
+		 	AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		 	AND (input_coverage_period_from IS NULL OR sessions.created_at >= input_coverage_period_from)
+		 	AND (input_baseline_build_id IS NULL OR target.signature IN (
+				SELECT signature
+				FROM Risks
+		 	))
+  	),
+	TestsByRisks AS (
+		SELECT
+		    MIN(coverage.test_definition_id) AS test_definition_id,
+			coverage.test_id AS test_id,
+			BOOL_OR(has_risk) AS has_risks
+		FROM Coverage coverage
+		GROUP BY coverage.test_id
+	),
+	RecommendedTests AS (
+		SELECT
+			tests.test_definition_id AS test_definition_id
+		FROM TestsByRisks tests
+		GROUP BY tests.test_definition_id
+		HAVING BOOL_AND(has_risks) = true
+	),
+	Tests AS (
+		SELECT
+			def.id as test_definition_id,
+		   	def.name as test_name,
+		   	def.runner as test_runner,
+		   	def.path as test_path
+		FROM raw_data.test_definitions def
+		WHERE def.group_id = input_group_id
+			AND def.id IN (
+            	SELECT launches.test_definition_id
+				FROM raw_data.test_launches launches
+				JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+				WHERE (input_test_task_id IS NULL OR sessions.test_task_id = input_test_task_id)
+			  		AND (input_coverage_period_from IS NULL OR sessions.created_at >= input_coverage_period_from)
+		  		)
+			-- include only recommended tests
+			AND (input_tests_to_skip = TRUE OR def.id IN (
+		  		SELECT DISTINCT test_definition_id
+				FROM RecommendedTests
+		  	))
+            -- include only tests to skip
+		  	AND (input_tests_to_skip IS NULL OR input_tests_to_skip = FALSE OR def.id NOT IN (
+		  		SELECT DISTINCT test_definition_id
+				FROM RecommendedTests
+		  	))
+  	)
+	SELECT
+		test_definition_id,
+		test_runner,
+		test_path,
+		test_name
+	FROM Tests;
+END;
+$$ LANGUAGE plpgsql;
