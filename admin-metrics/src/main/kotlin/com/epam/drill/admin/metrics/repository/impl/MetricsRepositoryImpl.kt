@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.repository.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import java.time.LocalDateTime
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -79,5 +80,40 @@ class MetricsRepositoryImpl : MetricsRepository {
             buildId,
             baselineBuildId,
         ) as List<Map<String, Any>>
+    }
+
+    override suspend fun getRecommendedTests(
+        groupId: String,
+        targetAppId: String,
+        targetBuildId: String,
+        testsToSkip: Boolean,
+        testTaskId: String?,
+        baselineBuildId: String?,
+        coveragePeriodFrom: LocalDateTime
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap(
+            """            
+                SELECT 
+                    __test_runner_id AS test_engine,
+                    __test_path AS test_path,
+                    __test_name AS test_name
+                FROM raw_data.get_recommended_tests_v2(
+                    ?,	   -- group_id
+                    ?,     -- target_app_id
+                    ?, 	   -- target_build_id
+                    ?,     -- tests_to_skip
+                    ?,     -- test_task_id		
+                    ?,	   -- baseline_build_id
+                    ?   -- coverage_period_from
+                )
+            """.trimIndent(),
+            groupId,
+            targetAppId,
+            targetBuildId,
+            testsToSkip,
+            testTaskId,
+            baselineBuildId,
+            coveragePeriodFrom
+        )
     }
 }
