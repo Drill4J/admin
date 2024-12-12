@@ -1448,6 +1448,16 @@ BEGIN
 			methods.probes_count
 	 	FROM raw_data.methods methods
 	 	WHERE methods.build_id = input_target_build_id
+	 	    AND NOT EXISTS (
+                SELECT 1
+                FROM raw_data.method_ignore_rules r
+                WHERE ((r.name_pattern IS NOT NULL AND methods.name ~ r.name_pattern)
+                    OR (r.classname_pattern IS NOT NULL AND methods.classname ~ r.classname_pattern)
+                    OR (r.annotations_pattern IS NOT NULL AND methods.annotations ~ r.annotations_pattern)
+                    OR (r.class_annotations_pattern IS NOT NULL AND methods.class_annotations ~ r.class_annotations_pattern))
+                    AND r.group_id = input_group_id
+                    AND r.app_id = input_target_app_id
+            )
   	),
   	MethodCoverage AS (
         SELECT
