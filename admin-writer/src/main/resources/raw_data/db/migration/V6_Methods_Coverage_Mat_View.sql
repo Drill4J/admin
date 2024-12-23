@@ -6,8 +6,6 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage AS
         MIN(methods.body_checksum) AS body_checksum,
         MAX(methods.probes_count) AS probes_count,
         methods.build_id AS build_id,
-        --coverage.test_id AS test_id,
-        --coverage.instance_id AS instance_id,
         BIT_OR(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS probes,
         BIT_COUNT(BIT_OR(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count))) AS covered_probes,
         MIN(coverage.created_at) AS created_at,
