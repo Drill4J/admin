@@ -225,7 +225,6 @@ class MetricsServiceImpl(
         }
         metricsRepository.getRecommendedTests(
             groupId = groupId,
-            targetAppId = targetAppId,
             targetBuildId = targetBuildId,
             testsToSkip = true,
             testTaskId = testTaskId,

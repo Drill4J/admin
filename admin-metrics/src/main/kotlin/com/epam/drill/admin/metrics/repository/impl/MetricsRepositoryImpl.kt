@@ -84,7 +84,6 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getRecommendedTests(
         groupId: String,
-        targetAppId: String,
         targetBuildId: String,
         testsToSkip: Boolean,
         testTaskId: String?,
@@ -98,8 +97,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     __test_path AS test_path,
                     __test_name AS test_name
                 FROM raw_data.get_recommended_tests_v2(
-                    ?,	   -- group_id
-                    ?,     -- target_app_id
+                    ?,	   -- group_id                    
                     ?, 	   -- target_build_id
                     ?,     -- tests_to_skip
                     ?,     -- test_task_id		
@@ -108,7 +106,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent(),
             groupId,
-            targetAppId,
             targetBuildId,
             testsToSkip,
             testTaskId,

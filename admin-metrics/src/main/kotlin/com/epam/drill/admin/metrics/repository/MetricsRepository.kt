@@ -33,7 +33,6 @@ interface MetricsRepository {
 
     suspend fun getRecommendedTests(
         groupId: String,
-        targetAppId: String,
         targetBuildId: String,
         testsToSkip: Boolean = false,
         testTaskId: String? = null,
