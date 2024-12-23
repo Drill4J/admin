@@ -57,6 +57,7 @@ enum class TestResult {
     FAILED,
     ERROR,
     SKIPPED,
+    SMART_SKIPPED,
     UNKNOWN
 }
 
