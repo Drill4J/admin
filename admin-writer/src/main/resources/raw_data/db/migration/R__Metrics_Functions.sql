@@ -1462,7 +1462,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
 		        AND (r.name_pattern IS NOT NULL AND m.name::text ~ r.name_pattern::text
 		            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
 		            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
-		            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text)));
+		            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text));
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
