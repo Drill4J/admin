@@ -37,6 +37,7 @@ class TestDefinition(
     val runner: String?,
     val name: String?,
     val path: String?,
+    val tags: String?,
 )
 
 class TestSession (

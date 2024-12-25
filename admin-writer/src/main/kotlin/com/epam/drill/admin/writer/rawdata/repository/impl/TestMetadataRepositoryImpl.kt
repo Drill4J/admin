@@ -37,6 +37,7 @@ class TestMetadataRepositoryImpl: TestMetadataRepository {
             this[TestDefinitionTable.runner] = it.definition.runner
             this[TestDefinitionTable.name] = it.definition.name
             this[TestDefinitionTable.path] = it.definition.path
+            this[TestDefinitionTable.tags] = it.definition.tags
         }
     }
 }
