@@ -28,4 +28,5 @@ interface MetricsRepository {
         buildId: String,
         baselineBuildId: String
     ): List<Map<String, Any>>
+    suspend fun refreshMaterializedView(viewName: String)
 }
