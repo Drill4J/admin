@@ -39,9 +39,9 @@ class MetricsScheduler(
             setProperty("org.quartz.scheduler.instanceId", "AUTO")
             setProperty("org.quartz.threadPool.class", SimpleThreadPool::class.java.name)
             setProperty("org.quartz.threadPool.threadCount", config.threadPools.toString())
-
             setProperty("org.quartz.jobStore.class", JobStoreTX::class.java.name)
             setProperty("org.quartz.jobStore.driverDelegateClass", PostgreSQLDelegate::class.java.name)
+            setProperty("org.quartz.jobStore.isClustered", "true")
 
             setProperty("org.quartz.jobStore.tablePrefix", "quartz.")
             setProperty("org.quartz.jobStore.dataSource", "schedulerDS")
@@ -67,6 +67,7 @@ class MetricsScheduler(
                 SimpleScheduleBuilder.simpleSchedule()
                     .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
                     .repeatForever()
+                    .withMisfireHandlingInstructionIgnoreMisfires()
             )
             .build()
 
@@ -83,7 +84,7 @@ class MetricsScheduler(
 
     fun shutdown() {
         if (!scheduler.isShutdown) {
-            scheduler.shutdown(true)
+            scheduler.shutdown(false)
         }
     }
 }
