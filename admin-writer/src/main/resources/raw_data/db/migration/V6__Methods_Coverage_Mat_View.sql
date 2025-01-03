@@ -21,7 +21,6 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage AS
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
     LEFT JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
     WHERE BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
-	GROUP BY methods.signature, methods.build_id, instances.env_id, launches.test_definition_id, launches.result, sessions.test_task_id
-WITH NO DATA;
+	GROUP BY methods.signature, methods.build_id, instances.env_id, launches.test_definition_id, launches.result, sessions.test_task_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_coverage_pk ON raw_data.matview_methods_coverage (signature, build_id, env_id, test_definition_id, test_result, test_task_id);
