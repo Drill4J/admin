@@ -180,6 +180,9 @@ private fun Application.initScheduler() {
     val scheduler by closestDI().instance<MetricsScheduler>()
     scheduler.init(closestDI(), dataSource)
     scheduler.start()
+    environment.monitor.subscribe(ApplicationStopped) {
+        scheduler.shutdown()
+    }
 }
 
 val Application.oauth2Enabled: Boolean
