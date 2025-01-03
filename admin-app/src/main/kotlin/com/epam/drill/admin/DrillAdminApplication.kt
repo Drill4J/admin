@@ -20,6 +20,7 @@ import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
+import com.epam.drill.admin.metrics.config.MetricsScheduler
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.route.metricsStatusPages
@@ -65,6 +66,7 @@ fun Application.module() {
         import(metricsDIModule)
     }
     initDB()
+    initScheduler()
     installPlugins()
     install(StatusPages) {
         authStatusPages()
@@ -171,6 +173,16 @@ private fun Application.initDB() {
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
     MetricsDatabaseConfig.init(dataSource)
+}
+
+private fun Application.initScheduler() {
+    val dataSource by closestDI().instance<DataSource>()
+    val scheduler by closestDI().instance<MetricsScheduler>()
+    scheduler.init(closestDI(), dataSource)
+    scheduler.start()
+    environment.monitor.subscribe(ApplicationStopped) {
+        scheduler.shutdown()
+    }
 }
 
 val Application.oauth2Enabled: Boolean

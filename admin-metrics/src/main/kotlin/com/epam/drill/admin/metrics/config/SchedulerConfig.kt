@@ -13,20 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
+package com.epam.drill.admin.metrics.config
 
-interface MetricsRepository {
+import io.ktor.server.config.*
 
-    suspend fun buildExists(buildId: String): Boolean
-    suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double
-    ): Map<String, String>
-
-    suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
-    suspend fun refreshMaterializedView(viewName: String)
+class SchedulerConfig(private val config: ApplicationConfig) {
+    val refreshViewsIntervalInMinutes: Int = config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
+    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
 }

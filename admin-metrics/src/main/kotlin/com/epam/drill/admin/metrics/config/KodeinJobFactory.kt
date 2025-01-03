@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository
+package com.epam.drill.admin.metrics.config
 
-interface MetricsRepository {
+import org.kodein.di.DI
+import org.kodein.di.direct
+import org.kodein.type.erased
+import org.quartz.Job
+import org.quartz.Scheduler
+import org.quartz.spi.JobFactory
+import org.quartz.spi.TriggerFiredBundle
 
-    suspend fun buildExists(buildId: String): Boolean
-    suspend fun getBuildDiffReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double
-    ): Map<String, String>
-
-    suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>>
-    suspend fun refreshMaterializedView(viewName: String)
+class KodeinJobFactory(private val di: DI) : JobFactory {
+    override fun newJob(bundle: TriggerFiredBundle, scheduler: Scheduler): Job {
+        val jobClass = bundle.jobDetail.jobClass
+        return di.direct.InstanceOrNull(erased(jobClass))
+            ?: jobClass.getDeclaredConstructor().newInstance()
+    }
 }
