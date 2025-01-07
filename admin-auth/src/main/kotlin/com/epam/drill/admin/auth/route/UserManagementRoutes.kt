@@ -31,6 +31,7 @@ import io.ktor.server.routing.*
 import io.ktor.util.pipeline.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
+import com.epam.drill.admin.common.route.*
 
 @Resource("/users")
 class Users {

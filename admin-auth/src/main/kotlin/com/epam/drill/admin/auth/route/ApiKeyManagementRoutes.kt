@@ -23,6 +23,7 @@ import io.ktor.server.resources.delete
 import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import com.epam.drill.admin.common.route.*
 
 @Resource("/keys")
 class ApiKeys {

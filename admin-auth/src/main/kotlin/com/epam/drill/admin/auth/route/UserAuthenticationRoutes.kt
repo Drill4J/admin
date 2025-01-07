@@ -35,6 +35,7 @@ import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
 import org.kodein.di.ktor.closestDI as di
+import com.epam.drill.admin.common.route.*
 
 private val logger = KotlinLogging.logger {}
 

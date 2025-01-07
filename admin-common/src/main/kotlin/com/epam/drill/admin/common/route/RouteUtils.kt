@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.route
+package com.epam.drill.admin.common.route
 
-import com.epam.drill.admin.auth.model.DataResponse
-import com.epam.drill.admin.auth.model.MessageResponse
+import com.epam.drill.admin.common.model.DataResponse
+import com.epam.drill.admin.common.model.MessageResponse
 import io.ktor.server.application.*
 import io.ktor.http.*
 import io.ktor.server.response.*
