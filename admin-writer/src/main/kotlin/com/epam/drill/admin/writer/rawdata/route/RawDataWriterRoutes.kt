@@ -45,6 +45,7 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+import com.epam.drill.admin.common.route.ok
 
 private val logger = KotlinLogging.logger {}
 
@@ -84,7 +85,7 @@ fun Route.putBuilds() {
 
     put<DataIngestRoutes.BuildsRoute> {
         rawDataWriter.saveBuild(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Build saved")
     }
 }
 
@@ -93,7 +94,7 @@ fun Route.putInstances() {
 
     put<DataIngestRoutes.InstancesRoute> {
         rawDataWriter.saveInstance(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Instance saved")
     }
 }
 
@@ -102,7 +103,7 @@ fun Route.postCoverage() {
 
     post<DataIngestRoutes.CoverageRoute> {
         rawDataWriter.saveCoverage(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Coverage saved")
     }
 }
 
@@ -111,7 +112,7 @@ fun Route.putMethods() {
 
     put<DataIngestRoutes.MethodsRoute> {
         rawDataWriter.saveMethods(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Methods saved")
     }
 }
 
@@ -120,7 +121,7 @@ fun Route.postTestMetadata() {
 
     post<DataIngestRoutes.TestMetadataRoute> {
         rawDataWriter.saveTestMetadata(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Test metadata saved")
     }
 }
 
@@ -129,7 +130,7 @@ fun Route.putTestSessions() {
 
     put<DataIngestRoutes.TestSessionRoute> {
         rawDataWriter.saveTestSession(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Test sessions saved")
     }
 }
 
@@ -138,7 +139,7 @@ fun Route.postMethodIgnoreRules() {
 
     post<DataIngestRoutes.MethodIgnoreRulesRoute> {
         rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
-        call.respond(HttpStatusCode.OK)
+        call.ok("Method ignore rule saved")
     }
 }
 
@@ -146,7 +147,7 @@ fun Route.getMethodIgnoreRules() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     get<DataIngestRoutes.MethodIgnoreRulesRoute> {
-        call.respond(HttpStatusCode.OK, rawDataWriter.getAllMethodIgnoreRules())
+        call.ok(rawDataWriter.getAllMethodIgnoreRules())
     }
 }
 
@@ -156,7 +157,7 @@ fun Route.deleteMethodIgnoreRule() {
     delete<DataIngestRoutes.MethodIgnoreRulesRoute.Id> { params ->
         val id = params.id
         rawDataWriter.deleteMethodIgnoreRuleById(id)
-        call.respond(HttpStatusCode.OK)
+        call.ok("Method ignore rule deleted")
     }
 }
 
@@ -221,21 +222,4 @@ internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
         GZIPInputStream(inputStream).readBytes()
     }
     return decompressedBytes
-}
-
-fun StatusPagesConfig.rawDataStatusPages() {
-    exception<MissingFieldException> { call, exception ->
-        logger.trace(exception) { "400 MissingFieldException ${exception.message}" }
-        call.respond(
-            io.ktor.http.HttpStatusCode.BadRequest,
-            kotlin.collections.mapOf("errorMessage" to exception.message)
-        )
-    }
-    exception<InvalidMethodIgnoreRule> { call, exception ->
-        logger.trace(exception) { "400 InvalidMethodIgnoreRule ${exception.message}" }
-        call.respond(
-            io.ktor.http.HttpStatusCode.BadRequest,
-            kotlin.collections.mapOf("errorMessage" to exception.message)
-        )
-    }
 }

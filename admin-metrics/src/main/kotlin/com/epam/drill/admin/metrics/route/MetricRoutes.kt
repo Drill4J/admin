@@ -15,14 +15,11 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.metrics.exception.BuildNotFound
-import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -142,16 +139,5 @@ fun Route.getTestsToSkip() {
             baselineBuildVersion = params.baselineBuildVersion
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(testsToSkip))
-    }
-}
-
-fun StatusPagesConfig.metricsStatusPages() {
-    exception<InvalidParameters> { call, exception ->
-        logger.trace(exception) { "400 Invalid or missing query parameters" }
-        call.respond(HttpStatusCode.BadRequest, mapOf("errorMessage" to exception.message))
-    }
-    exception<BuildNotFound> { call, exception ->
-        logger.trace(exception) { "422 Build not found" }
-        call.respond(HttpStatusCode.UnprocessableEntity, mapOf("errorMessage" to exception.message))
     }
 }

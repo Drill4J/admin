@@ -19,10 +19,10 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
-import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.route.response.TestResponse
+import com.epam.drill.admin.metrics.route.response.TestToSkipView
 import com.epam.drill.admin.metrics.service.MetricsService
+import com.epam.drill.admin.common.service.generateBuildId
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -193,7 +193,7 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?
-    ): List<TestResponse> = transaction {
+    ): List<TestToSkipView> = transaction {
         val targetBuildId = generateBuildId(
             groupId,
             targetAppId,
@@ -231,7 +231,7 @@ class MetricsServiceImpl(
             baselineBuildId = baselineBuildId,
             coveragePeriodFrom = coveragePeriodFrom
         ).map {
-            TestResponse(
+            TestToSkipView(
                 engine = it["test_engine"] as String,
                 testName = it["test_name"] as String,
                 path = it["test_path"] as String
@@ -246,33 +246,5 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
-    }
-
-    // TODO remove duplicate in RawDataRepositoryImpl
-    private fun generateBuildId(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        errorMsg: String = "Provide at least one of the following: instanceId, commitSha or buildVersion"
-    ): String {
-        if (groupId.isBlank()) {
-            throw InvalidParameters("groupId cannot be empty or blank")
-        }
-
-        if (appId.isBlank()) {
-            throw InvalidParameters("appId cannot be empty or blank")
-        }
-
-        if (instanceId.isNullOrBlank() && commitSha.isNullOrBlank() && buildVersion.isNullOrBlank()) {
-            throw InvalidParameters(errorMsg)
-        }
-
-        return listOf(
-            groupId,
-            appId,
-            listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
-        ).joinToString(":")
     }
 }

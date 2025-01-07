@@ -13,15 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.route.response
+package com.epam.drill.admin.common.exception
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-class TestResponse(
-    val engine: String,
-    val path: String,
-    val testName: String,
-    val params: Map<String, String> = emptyMap(),
-    val metadata: Map<String, String> = emptyMap(),
-)
+class InvalidParameters(message: String): RuntimeException(message)

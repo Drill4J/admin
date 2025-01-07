@@ -64,7 +64,7 @@ fun StatusPagesConfig.authStatusPages() {
     }
     exception<UserValidationException> { call, cause ->
         logger.trace(cause) { "400 User data is invalid" }
-        call.validationError(cause)
+        call.validationError(cause, "User data is invalid")
     }
     exception<NotAuthorizedException> { call, cause ->
         logger.trace(cause) { "403 Access denied" }
