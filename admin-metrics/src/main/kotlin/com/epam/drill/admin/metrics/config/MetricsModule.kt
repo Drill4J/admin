@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.metrics.config
 
+import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
+import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.repository.impl.MetricsRepositoryImpl
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.service.impl.MetricsServiceImpl
@@ -26,14 +28,26 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 
 val metricsDIModule = DI.Module("metricsServices") {
+    bind<MetricsRepository>() with singleton {
+        MetricsRepositoryImpl()
+    }
     bind<MetricsService>() with singleton {
         val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
         val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
         MetricsServiceImpl(
-            MetricsRepositoryImpl(),
-            MetricsServiceUiLinksConfig(metricsConfig.config("ui")),
-            TestRecommendationsConfig(drillConfig.config("testRecommendations"))
+            metricsRepository = instance(),
+            metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(metricsConfig.config("ui")),
+            testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations"))
         )
+    }
+    bind<SchedulerConfig>() with singleton {
+        SchedulerConfig(instance<Application>().environment.config.config("drill.metrics.scheduler"))
+    }
+    bind<MetricsScheduler>() with singleton {
+        MetricsScheduler(config = instance())
+    }
+    bind<RefreshMaterializedViewJob>() with singleton {
+        RefreshMaterializedViewJob(metricsRepository = instance())
     }
 }
 

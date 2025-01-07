@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.repository.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
+import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import java.time.LocalDateTime
 
@@ -80,6 +81,14 @@ class MetricsRepositoryImpl : MetricsRepository {
             buildId,
             baselineBuildId,
         ) as List<Map<String, Any>>
+    }
+
+    override suspend fun refreshMaterializedView(viewName: String) = transaction {
+        executeUpdate(
+            """             
+            REFRESH MATERIALIZED VIEW CONCURRENTLY raw_data.$viewName;
+            """.trimIndent()
+        )
     }
 
     override suspend fun getRecommendedTests(
