@@ -1,3 +1,10 @@
+-----------------------------------------------------------------
+-- Delete all materialized views
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_methods_coverage;
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage AS
     SELECT
         MIN(builds.group_id) AS group_id,
