@@ -1421,13 +1421,13 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
     SELECT
         builds.group_id,
         builds.app_id,
-        methods.signature as signature,
-        methods.body_checksum as body_checksum,
-        methods.probes_count as probes_count,
-        methods.build_id as build_id,
+        methods.signature
+        methods.body_checksum
+        methods.probes_count
+        methods.build_id,
         SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS probes,
         BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS covered_probes,
-        coverage.created_at as created_at,
+        coverage.created_at,
         builds.branch,
         instances.env_id,
         launches.result as test_result,
