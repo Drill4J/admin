@@ -30,5 +30,5 @@
     <logger name="org.flywaydb.core" level="info"/>
     <logger name="com.zaxxer.hikari" level="info"/>
     <logger name="io.netty" level="info"/>
-    <logger name="org.quartz" level="info"/>
+    <logger name="org.quartz" level="warn"/>
 </configuration>
