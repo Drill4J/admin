@@ -2121,7 +2121,7 @@ BEGIN
 		    coverage.test_definition_id,
 			coverage.test_id,
 			coverage.build_id,
-			(target.body_checksum != coverage.body_checksum) AS has_risk
+			(target.body_checksum != coverage.body_checksum) AS is_modified
 		FROM raw_data.view_methods_coverage coverage
 		JOIN TargetMethods target ON target.signature = coverage.signature
 		WHERE coverage.group_id = input_group_id
@@ -2138,7 +2138,7 @@ BEGIN
 		SELECT
 		    MIN(coverage.test_definition_id) AS test_definition_id,
 			coverage.test_id AS test_id,
-			BOOL_OR(has_risk) AS has_risks
+			BOOL_OR(is_modified) AS is_modified
 		FROM Coverage coverage
 		GROUP BY coverage.test_id
 	),
@@ -2147,7 +2147,7 @@ BEGIN
 			tests.test_definition_id AS test_definition_id
 		FROM TestsByRisks tests
 		GROUP BY tests.test_definition_id
-		HAVING BOOL_AND(has_risks) = true
+		HAVING BOOL_AND(is_modified) = true
 	),
 	Tests AS (
 		SELECT
