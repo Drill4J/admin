@@ -17,8 +17,10 @@ package com.epam.drill.admin.metrics.config
 
 import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.job.VIEW_NAME
+import mu.KotlinLogging
 import org.kodein.di.DI
 import org.quartz.*
+import org.quartz.DateBuilder.MILLISECONDS_IN_MINUTE
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.jdbcjobstore.JobStoreTX
 import org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
@@ -31,7 +33,26 @@ import javax.sql.DataSource
 class MetricsScheduler(
     private val config: SchedulerConfig
 ) {
+    private val logger = KotlinLogging.logger {}
     private lateinit var scheduler: Scheduler
+
+    private val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+        .storeDurably()
+        .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
+        .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
+        .usingJobData(VIEW_NAME, "matview_methods_coverage")
+        .build()
+
+    private val refreshViewIntervalTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
+        .startNow()
+        .withSchedule(
+            SimpleScheduleBuilder.simpleSchedule()
+                .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
+                .repeatForever()
+                .withMisfireHandlingInstructionIgnoreMisfires()
+        )
+        .build()
 
     fun init(di: DI, dataSource: DataSource) {
         val quartzProperties = Properties().apply {
@@ -56,29 +77,24 @@ class MetricsScheduler(
     }
 
     fun start() {
-        val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-            .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-            .usingJobData(VIEW_NAME, "matview_methods_coverage")
-            .build()
-
-        val refreshViewIntervalTrigger = TriggerBuilder.newTrigger()
-            .startNow()
-            .withSchedule(
-                SimpleScheduleBuilder.simpleSchedule()
-                    .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
-                    .repeatForever()
-                    .withMisfireHandlingInstructionIgnoreMisfires()
-            )
-            .build()
-
         scheduler.start()
-
         scheduleJob(refreshMethodsCoverageViewJob, refreshViewIntervalTrigger)
     }
 
-    fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
-        if (!scheduler.checkExists(jobDetail.key)){
+    fun scheduleJob(jobDetail: JobDetail, trigger: SimpleTrigger) {
+        if (!scheduler.checkExists(jobDetail.key)) {
             scheduler.scheduleJob(jobDetail, trigger)
+            logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
+        } else {
+            scheduler.addJob(jobDetail, true)
+            val previousRepeatInterval = scheduler.getTrigger(trigger.key)
+                .takeIf { it is SimpleTrigger }
+                ?.let { it as SimpleTrigger }
+                ?.repeatInterval ?: -1L
+            if (trigger.repeatInterval != previousRepeatInterval) {
+                scheduler.rescheduleJob(trigger.key, trigger)
+                logger.info { "Rescheduled job '${jobDetail.key}', repeat interval was changed from ${previousRepeatInterval.inMinutes()} minutes to ${trigger.repeatInterval.inMinutes()} minutes." }
+            }
         }
     }
 
@@ -87,6 +103,8 @@ class MetricsScheduler(
             scheduler.shutdown(false)
         }
     }
+
+    private fun Long.inMinutes() = this / MILLISECONDS_IN_MINUTE
 }
 
 class QuartzDataSourceConnectionProvider(private val dataSource: DataSource) : ConnectionProvider {
