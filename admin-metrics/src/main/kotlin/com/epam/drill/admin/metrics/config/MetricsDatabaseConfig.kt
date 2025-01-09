@@ -76,6 +76,18 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
     return result
 }
 
+fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
+    exec(object : Statement<Unit>(StatementType.UPDATE, emptyList()) {
+        override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
+            params.forEachIndexed { idx, value -> set(idx + 1, value ?: "NULL") }
+            executeUpdate()
+        }
+
+        override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = sql
+        override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
+    })
+}
+
 private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg params: Any?, transform: (ResultSet) -> T): T? {
     if (stmt.isEmpty()) return null
 

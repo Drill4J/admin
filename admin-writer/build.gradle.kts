@@ -79,9 +79,6 @@ tasks {
     test {
         useJUnitPlatform()
     }
-    withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "1.8"
-    }
 }
 
 license {
