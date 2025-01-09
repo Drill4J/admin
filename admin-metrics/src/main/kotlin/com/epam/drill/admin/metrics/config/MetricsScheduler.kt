@@ -50,7 +50,7 @@ class MetricsScheduler(
             SimpleScheduleBuilder.simpleSchedule()
                 .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
                 .repeatForever()
-                .withMisfireHandlingInstructionIgnoreMisfires()
+                .withMisfireHandlingInstructionNextWithExistingCount()
         )
         .build()
 
@@ -77,8 +77,8 @@ class MetricsScheduler(
     }
 
     fun start() {
-        scheduler.start()
         scheduleJob(refreshMethodsCoverageViewJob, refreshViewIntervalTrigger)
+        scheduler.start()
     }
 
     fun scheduleJob(jobDetail: JobDetail, trigger: SimpleTrigger) {
