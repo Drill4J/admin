@@ -171,7 +171,8 @@ class RawDataServiceImpl(
                     type = "placeholder", // TODO replace once it's implemented on autotest agent
                     runner = test.details.engine,
                     name = test.details.testName,
-                    path = test.details.path
+                    path = test.details.path,
+                    tags = test.details.labels.map { x -> x.value }.joinToString(",")
                 )
             )
         }.let { dataToInsert ->

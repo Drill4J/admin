@@ -1305,7 +1305,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
     __runner VARCHAR,
     __name VARCHAR,
     __path VARCHAR,
-    __created_at TIMESTAMP
+    __created_at TIMESTAMP,
+    __tags VARCHAR
 ) AS $$
 BEGIN
     RETURN QUERY
