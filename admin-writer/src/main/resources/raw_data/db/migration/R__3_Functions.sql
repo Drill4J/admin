@@ -1414,3 +1414,670 @@ BEGIN
     JOIN TestDefinitionIds ON TestDefinitionIds.id = def.id;
 END;
 $$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list_v2(
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+
+    test_task_ids VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__signature VARCHAR,
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    TargetMethods AS (
+        SELECT
+            methods.signature,
+            methods.name,
+            methods.classname,
+            methods.params,
+            methods.return_type,
+            methods.body_checksum,
+            methods.probes_count
+        FROM raw_data.view_methods_with_rules methods
+        WHERE methods.build_id = input_build_id
+            AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+            AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+    ),
+    TargetMethodCoverage AS (
+        SELECT
+            target.signature,
+            MIN(target.classname) AS classname,
+            MIN(target.name) AS name,
+            MIN(target.params) AS params,
+            MIN(target.return_type) AS return_type,
+            MAX(target.probes_count) AS probes_count,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+        FROM TargetMethods target
+        LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
+            AND target.body_checksum = coverage.body_checksum
+            AND target.probes_count = coverage.probes_count
+            AND coverage.build_id = input_build_id
+            --filter by test tasks and test results
+            AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+            --filter by coverage created_at
+            AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            --filter by envs
+            AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+        GROUP BY target.signature
+    )
+    SELECT
+        coverage.signature,
+        coverage.classname::VARCHAR,
+        coverage.name::VARCHAR,
+        coverage.params::VARCHAR,
+        coverage.return_type::VARCHAR,
+        coverage.probes_count::INT as __probes_count,
+        COALESCE(coverage.covered_probes, 0)::INT as __covered_probes,
+        (coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+        COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM TargetMethodCoverage coverage
+    ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list_v2(
+	input_build_id VARCHAR,
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+	methods_method_name_pattern VARCHAR DEFAULT NULL,
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_branches VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    __signature VARCHAR,
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+    TargetMethods AS (
+    	SELECT
+	    	methods.signature,
+			methods.name,
+			methods.classname,
+			methods.params,
+			methods.return_type,
+			methods.body_checksum,
+			methods.probes_count
+	 	FROM raw_data.view_methods_with_rules methods
+	 	WHERE methods.build_id = input_build_id
+		    AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+			AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+  	),
+	TargetMethodCoverage AS (
+		SELECT
+		    target.signature,
+			MIN(target.classname) AS classname,
+			MIN(target.name) AS name,
+			MIN(target.params) AS params,
+			MIN(target.return_type) AS return_type,
+			MAX(target.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM TargetMethods target
+		LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
+			AND target.probes_count = coverage.probes_count
+			AND target.body_checksum = coverage.body_checksum
+			AND coverage.group_id = split_part(input_build_id, ':', 1)
+		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by branches
+			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY target.signature
+  	)
+	SELECT
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+	FROM TargetMethodCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks_v2(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_branches VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__risk_type VARCHAR,
+	__signature VARCHAR,
+	__classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+	Risks AS (
+        SELECT
+			risks.__signature AS signature,
+			risks.__classname AS classname,
+			risks.__name AS name,
+			risks.__params AS params,
+			risks.__return_type AS return_type,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS body_checksum,
+			risks.__probes_count AS probes_count
+        FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern) risks
+    ),
+    RisksCoverage AS (
+		SELECT
+		    risks.signature,
+			MIN(risks.risk_type) AS risk_type,
+			MIN(risks.classname) AS classname,
+			MIN(risks.name) AS name,
+			MIN(risks.params) AS params,
+			MIN(risks.return_type) AS return_type,
+			MAX(risks.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM Risks risks
+		LEFT JOIN raw_data.view_methods_coverage coverage ON risks.signature = coverage.signature
+			AND risks.probes_count = coverage.probes_count
+			AND risks.body_checksum = coverage.body_checksum
+			AND coverage.group_id = split_part(input_build_id, ':', 1)
+		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by branches
+			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY risks.signature
+  	)
+    SELECT
+        coverage.risk_type::VARCHAR,
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT AS covered_probes,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM RisksCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks_v2(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__risk_type VARCHAR,
+	__signature VARCHAR,
+	__classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+	Risks AS (
+        SELECT
+			risks.__signature AS signature,
+			risks.__classname AS classname,
+			risks.__name AS name,
+			risks.__params AS params,
+			risks.__return_type AS return_type,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS body_checksum,
+			risks.__probes_count AS probes_count
+        FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern) risks
+    ),
+    RisksCoverage AS (
+		SELECT
+		    risks.signature,
+			MIN(risks.risk_type) AS risk_type,
+			MIN(risks.classname) AS classname,
+			MIN(risks.name) AS name,
+			MIN(risks.params) AS params,
+			MIN(risks.return_type) AS return_type,
+			MAX(risks.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM Risks risks
+		LEFT JOIN raw_data.view_methods_coverage coverage ON risks.signature = coverage.signature
+			AND risks.probes_count = coverage.probes_count
+			AND risks.body_checksum = coverage.body_checksum
+			AND coverage.build_id = input_build_id
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY risks.signature
+  	)
+    SELECT
+        coverage.risk_type::VARCHAR,
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT AS covered_probes,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM RisksCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_methods_list_v2(
+    input_build_id VARCHAR,
+
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+
+    test_task_ids VARCHAR[] DEFAULT NULL,
+    test_results VARCHAR[] DEFAULT NULL,
+    coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__signature VARCHAR,
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    TargetMethods AS (
+        SELECT
+            methods.signature,
+            methods.name,
+            methods.classname,
+            methods.params,
+            methods.return_type,
+            methods.body_checksum,
+            methods.probes_count
+        FROM raw_data.view_methods_with_rules methods
+        WHERE methods.build_id = input_build_id
+            AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+            AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+    ),
+    TargetMethodCoverage AS (
+        SELECT
+            target.signature,
+            MIN(target.classname) AS classname,
+            MIN(target.name) AS name,
+            MIN(target.params) AS params,
+            MIN(target.return_type) AS return_type,
+            MAX(target.probes_count) AS probes_count,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+        FROM TargetMethods target
+        LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
+            AND target.body_checksum = coverage.body_checksum
+            AND target.probes_count = coverage.probes_count
+            AND coverage.build_id = input_build_id
+            --filter by test tasks and test results
+            AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+            --filter by coverage created_at
+            AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+            --filter by envs
+            AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+        GROUP BY target.signature
+    )
+    SELECT
+        coverage.signature,
+        coverage.classname::VARCHAR,
+        coverage.name::VARCHAR,
+        coverage.params::VARCHAR,
+        coverage.return_type::VARCHAR,
+        coverage.probes_count::INT as __probes_count,
+        COALESCE(coverage.covered_probes, 0)::INT as __covered_probes,
+        (coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+        COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM TargetMethodCoverage coverage
+    ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_methods_list_v2(
+	input_build_id VARCHAR,
+	methods_class_name_pattern VARCHAR DEFAULT NULL,
+	methods_method_name_pattern VARCHAR DEFAULT NULL,
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_branches VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    __signature VARCHAR,
+    __classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+    __probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+    TargetMethods AS (
+    	SELECT
+	    	methods.signature,
+			methods.name,
+			methods.classname,
+			methods.params,
+			methods.return_type,
+			methods.body_checksum,
+			methods.probes_count
+	 	FROM raw_data.view_methods_with_rules methods
+	 	WHERE methods.build_id = input_build_id
+			AND (methods_class_name_pattern IS NULL OR methods.classname LIKE methods_class_name_pattern)
+			AND (methods_method_name_pattern IS NULL OR methods.name LIKE methods_method_name_pattern)
+  	),
+	TargetMethodCoverage AS (
+		SELECT
+		    target.signature,
+			MIN(target.classname) AS classname,
+			MIN(target.name) AS name,
+			MIN(target.params) AS params,
+			MIN(target.return_type) AS return_type,
+			MAX(target.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM TargetMethods target
+		LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
+			AND target.probes_count = coverage.probes_count
+			AND target.body_checksum = coverage.body_checksum
+			AND coverage.group_id = split_part(input_build_id, ':', 1)
+		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by branches
+			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY target.signature
+  	)
+	SELECT
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+	FROM TargetMethodCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_risks_v2(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_branches VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__risk_type VARCHAR,
+	__signature VARCHAR,
+	__classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+	Risks AS (
+        SELECT
+			risks.__signature AS signature,
+			risks.__classname AS classname,
+			risks.__name AS name,
+			risks.__params AS params,
+			risks.__return_type AS return_type,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS body_checksum,
+			risks.__probes_count AS probes_count
+        FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern) risks
+    ),
+    RisksCoverage AS (
+		SELECT
+		    risks.signature,
+			MIN(risks.risk_type) AS risk_type,
+			MIN(risks.classname) AS classname,
+			MIN(risks.name) AS name,
+			MIN(risks.params) AS params,
+			MIN(risks.return_type) AS return_type,
+			MAX(risks.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM Risks risks
+		LEFT JOIN raw_data.matview_methods_coverage coverage ON risks.signature = coverage.signature
+			AND risks.probes_count = coverage.probes_count
+			AND risks.body_checksum = coverage.body_checksum
+			AND coverage.group_id = split_part(input_build_id, ':', 1)
+		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by branches
+			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY risks.signature
+  	)
+    SELECT
+        coverage.risk_type::VARCHAR,
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT AS covered_probes,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM RisksCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_risks_v2(
+	input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR,
+
+    methods_class_name_pattern VARCHAR DEFAULT NULL,
+    methods_method_name_pattern VARCHAR DEFAULT NULL,
+
+	coverage_created_at_start TIMESTAMP DEFAULT NULL,
+	test_task_ids VARCHAR[] DEFAULT NULL,
+	test_results VARCHAR[] DEFAULT NULL,
+	coverage_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+	__risk_type VARCHAR,
+	__signature VARCHAR,
+	__classname VARCHAR,
+    __name VARCHAR,
+    __params VARCHAR,
+    __return_type VARCHAR,
+	__probes_count INT,
+    __covered_probes INT,
+    __missed_probes INT,
+    __probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+	Risks AS (
+        SELECT
+			risks.__signature AS signature,
+			risks.__classname AS classname,
+			risks.__name AS name,
+			risks.__params AS params,
+			risks.__return_type AS return_type,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS body_checksum,
+			risks.__probes_count AS probes_count
+        FROM raw_data.get_risks(input_build_id, input_baseline_build_id, methods_class_name_pattern, methods_method_name_pattern) risks
+    ),
+    RisksCoverage AS (
+		SELECT
+		    risks.signature,
+			MIN(risks.risk_type) AS risk_type,
+			MIN(risks.classname) AS classname,
+			MIN(risks.name) AS name,
+			MIN(risks.params) AS params,
+			MIN(risks.return_type) AS return_type,
+			MAX(risks.probes_count) AS probes_count,
+			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
+		FROM Risks risks
+		LEFT JOIN raw_data.matview_methods_coverage coverage ON risks.signature = coverage.signature
+			AND risks.probes_count = coverage.probes_count
+			AND risks.body_checksum = coverage.body_checksum
+			AND coverage.build_id = input_build_id
+			--filter by coverage created_at
+			AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
+			--filter by test tasks and test results
+			AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
+            AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
+			--filter by envs
+			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+		GROUP BY risks.signature
+  	)
+    SELECT
+        coverage.risk_type::VARCHAR,
+		coverage.signature,
+		coverage.classname::VARCHAR,
+		coverage.name::VARCHAR,
+		coverage.params::VARCHAR,
+		coverage.return_type::VARCHAR,
+		coverage.probes_count::INT,
+		COALESCE(coverage.covered_probes, 0)::INT AS covered_probes,
+		(coverage.probes_count - COALESCE(coverage.covered_probes, 0))::INT AS missed_probes,
+		COALESCE(CAST(coverage.covered_probes AS FLOAT) / coverage.probes_count, 0.0) AS probes_coverage_ratio
+    FROM RisksCoverage coverage
+	ORDER BY missed_probes DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
