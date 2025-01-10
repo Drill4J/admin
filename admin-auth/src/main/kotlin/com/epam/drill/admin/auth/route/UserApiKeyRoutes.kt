@@ -30,6 +30,7 @@ import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import com.epam.drill.admin.common.route.*
 
 @Resource("/user-keys")
 class UserApiKeys {

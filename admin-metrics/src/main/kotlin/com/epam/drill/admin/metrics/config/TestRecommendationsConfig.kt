@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.route
+package com.epam.drill.admin.metrics.config
 
-import io.ktor.resources.*
-import io.ktor.server.application.*
-import io.ktor.server.resources.get
-import io.ktor.server.routing.*
-import com.epam.drill.admin.common.route.*
+import io.ktor.server.config.*
 
-@Resource("/try-api-key")
-class TryApiKey
+/**
+ * Configuration for test recommendations.
+ */
+class TestRecommendationsConfig(private val config: ApplicationConfig) {
 
-fun Route.tryApiKeyRoute() {
-    get<TryApiKey> {
-        call.ok("API key is valid")
-    }
+    /**
+     * Period of days from now by default to get the coverage data.
+     */
+    val coveragePeriodDays: Int
+        get() = config.propertyOrNull("coveragePeriodDays")?.getString()?.toIntOrNull() ?: 30
 }

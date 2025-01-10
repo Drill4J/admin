@@ -7,7 +7,7 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "com.epam.drill.admin.writer"
+group = "com.epam.drill.admin"
 version = rootProject.version
 
 val kotlinVersion: String by parent!!.extra
@@ -41,6 +41,7 @@ kotlin.sourceSets {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(project(":admin-common"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")

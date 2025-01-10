@@ -15,15 +15,11 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.metrics.exception.BuildNotFound
-import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.*
-import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -65,11 +61,28 @@ class Metrics {
         val baselineBuildVersion: String? = null,
     )
 
+    @Resource("/tests-to-skip")
+    class TestsToSkip(
+        val parent: Metrics,
+
+        val groupId: String,
+        val testTaskId: String,
+        val targetAppId: String,
+        val targetInstanceId: String? = null,
+        val targetCommitSha: String? = null,
+        val targetBuildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val coveragePeriodDays: Int? = null,
+    )
+
 }
 
 fun Route.metricsRoutes() {
     getBuildDiffReport()
     getRecommendedTests()
+    getTestsToSkip()
 }
 
 fun Route.getBuildDiffReport() {
@@ -109,13 +122,22 @@ fun Route.getRecommendedTests() {
     }
 }
 
-fun StatusPagesConfig.metricsStatusPages() {
-    exception<InvalidParameters> { call, exception ->
-        logger.trace(exception) { "400 Invalid or missing query parameters" }
-        call.respond(HttpStatusCode.BadRequest, mapOf("errorMessage" to exception.message))
-    }
-    exception<BuildNotFound> { call, exception ->
-        logger.trace(exception) { "422 Build not found" }
-        call.respond(HttpStatusCode.UnprocessableEntity, mapOf("errorMessage" to exception.message))
+fun Route.getTestsToSkip() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestsToSkip> { params ->
+        val testsToSkip = metricsService.getTestsToSkip(
+            groupId = params.groupId,
+            testTaskId = params.testTaskId,
+            targetAppId = params.targetAppId,
+            coveragePeriodDays = params.coveragePeriodDays,
+            targetInstanceId = params.targetInstanceId,
+            targetCommitSha = params.targetCommitSha,
+            targetBuildVersion = params.targetBuildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(testsToSkip))
     }
 }

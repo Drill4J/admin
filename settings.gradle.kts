@@ -22,6 +22,7 @@ pluginManagement {
     }
 }
 
+include("admin-common")
 include("admin-auth")
 include("admin-writer")
 include("admin-metrics")

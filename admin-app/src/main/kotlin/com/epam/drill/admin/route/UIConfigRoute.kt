@@ -18,7 +18,7 @@ package com.epam.drill.admin.route
 import com.epam.drill.admin.auth.config.AuthConfig
 import com.epam.drill.admin.auth.model.AuthConfigView
 import com.epam.drill.admin.auth.model.toView
-import com.epam.drill.admin.auth.route.ok
+import com.epam.drill.admin.common.route.ok
 import io.ktor.resources.*
 import io.ktor.server.resources.get
 import io.ktor.server.application.*

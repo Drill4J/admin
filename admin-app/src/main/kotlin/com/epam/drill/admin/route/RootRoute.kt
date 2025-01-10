@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.route
 
-import com.epam.drill.admin.auth.route.ok
+import com.epam.drill.admin.common.route.*
 import io.ktor.resources.*
 import io.ktor.server.resources.get
 import io.ktor.server.application.*

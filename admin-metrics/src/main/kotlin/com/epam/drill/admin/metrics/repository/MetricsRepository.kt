@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.metrics.repository
 
+import java.time.LocalDateTime
+
 interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
@@ -28,5 +30,15 @@ interface MetricsRepository {
         buildId: String,
         baselineBuildId: String
     ): List<Map<String, Any>>
+
     suspend fun refreshMaterializedView(viewName: String)
+
+    suspend fun getRecommendedTests(
+        groupId: String,
+        targetBuildId: String,
+        testsToSkip: Boolean = false,
+        testTaskId: String? = null,
+        baselineBuildId: String? = null,
+        coveragePeriodFrom: LocalDateTime
+    ): List<Map<String, Any?>>
 }

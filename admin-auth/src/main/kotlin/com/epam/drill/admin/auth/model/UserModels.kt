@@ -15,18 +15,11 @@
  */
 package com.epam.drill.admin.auth.model
 
-import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.principal.User
 import kotlinx.serialization.*
 import kotlinx.datetime.LocalDateTime
-
-@Serializable
-data class DataResponse<T>(val data: T, val message: String? = null)
-
-@Serializable
-data class MessageResponse(val message: String)
 
 @Serializable
 data class TokenView(val token: String)

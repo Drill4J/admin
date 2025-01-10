@@ -13,19 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.route
+package com.epam.drill.admin.common.model
 
-import io.ktor.resources.*
-import io.ktor.server.application.*
-import io.ktor.server.resources.get
-import io.ktor.server.routing.*
-import com.epam.drill.admin.common.route.*
+import kotlinx.serialization.Serializable
 
-@Resource("/try-api-key")
-class TryApiKey
-
-fun Route.tryApiKeyRoute() {
-    get<TryApiKey> {
-        call.ok("API key is valid")
-    }
-}
+@Serializable
+data class MessageResponse(val message: String)

@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
+import com.epam.drill.admin.common.service.generateBuildId
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -217,24 +218,5 @@ class RawDataServiceImpl(
         transaction {
             methodIgnoreRuleRepository.deleteById(ruleId)
         }
-    }
-
-    private fun generateBuildId(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?
-    ): String {
-        require(groupId.isNotBlank()) { "groupId cannot be empty or blank" }
-        require(appId.isNotBlank()) { "appId cannot be empty or blank" }
-        require(!instanceId.isNullOrBlank() || !commitSha.isNullOrBlank() || !buildVersion.isNullOrBlank()) {
-            "provide at least one of the following: instanceId, commitSha or buildVersion"
-        }
-
-        val buildIdElements = mutableListOf(groupId, appId)
-        val firstNotBlank = listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
-        buildIdElements.add(firstNotBlank as String) // TODO think of better way to convince typesystem its not null
-        return buildIdElements.joinToString(":")
     }
 }

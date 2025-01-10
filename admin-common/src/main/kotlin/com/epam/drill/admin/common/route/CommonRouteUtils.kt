@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.route
+package com.epam.drill.admin.common.route
 
-import com.epam.drill.admin.auth.model.DataResponse
-import com.epam.drill.admin.auth.model.MessageResponse
+import com.epam.drill.admin.common.model.DataResponse
+import com.epam.drill.admin.common.model.MessageResponse
 import io.ktor.server.application.*
 import io.ktor.http.*
 import io.ktor.server.response.*
@@ -29,8 +29,8 @@ suspend fun ApplicationCall.ok(message: String) {
     respond(HttpStatusCode.OK, MessageResponse(message))
 }
 
-suspend fun ApplicationCall.validationError(cause: Exception) {
-    respond(HttpStatusCode.BadRequest, MessageResponse(cause.message ?: "User data is invalid"))
+suspend fun ApplicationCall.validationError(cause: Exception, defaultMessage: String = "Validation error") {
+    respond(HttpStatusCode.BadRequest, MessageResponse(cause.message ?: defaultMessage))
 }
 
 suspend fun ApplicationCall.unauthorizedError(cause: Exception? = null) {
@@ -41,8 +41,8 @@ suspend fun ApplicationCall.accessDeniedError(cause: Exception? = null) {
     respond(HttpStatusCode.Forbidden, MessageResponse(cause?.message ?: "Access denied"))
 }
 
-suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null) {
-    respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: "Unprocessable entity"))
+suspend fun ApplicationCall.unprocessableEntity(cause: Exception? = null, defaultMessage: String = "Unprocessable entity") {
+    respond(HttpStatusCode.UnprocessableEntity, MessageResponse(cause?.message ?: defaultMessage))
 }
 
 suspend fun ApplicationCall.notFound(cause: Exception) {

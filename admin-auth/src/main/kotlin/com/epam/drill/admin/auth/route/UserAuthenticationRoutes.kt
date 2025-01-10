@@ -35,6 +35,7 @@ import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
 import org.kodein.di.ktor.closestDI as di
+import com.epam.drill.admin.common.route.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -63,7 +64,7 @@ fun StatusPagesConfig.authStatusPages() {
     }
     exception<UserValidationException> { call, cause ->
         logger.trace(cause) { "400 User data is invalid" }
-        call.validationError(cause)
+        call.validationError(cause, "User data is invalid")
     }
     exception<NotAuthorizedException> { call, cause ->
         logger.trace(cause) { "403 Access denied" }

@@ -17,18 +17,22 @@ package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
+import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
-import com.epam.drill.admin.metrics.exception.InvalidParameters
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.route.response.TestToSkipView
 import com.epam.drill.admin.metrics.service.MetricsService
+import com.epam.drill.admin.common.service.generateBuildId
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.LocalDateTime
 
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
+    private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
 
     override suspend fun getBuildDiffReport(
@@ -88,28 +92,34 @@ class MetricsServiceImpl(
                     mapOf(
                         "changes" to null,
                         "recommended_tests" to null,
-                        "build" to buildTestingReportPath?.run {getUriString(
-                            baseUrl = baseUrl,
-                            path = buildTestingReportPath,
-                            queryParams = mapOf(
-                                "build" to buildId,
+                        "build" to buildTestingReportPath?.run {
+                            getUriString(
+                                baseUrl = baseUrl,
+                                path = buildTestingReportPath,
+                                queryParams = mapOf(
+                                    "build" to buildId,
+                                )
                             )
-                        )},
-                        "baseline_build" to buildTestingReportPath?.run {getUriString(
-                            baseUrl = baseUrl,
-                            path = buildTestingReportPath,
-                            queryParams = mapOf(
-                                "build" to baselineBuildId,
+                        },
+                        "baseline_build" to buildTestingReportPath?.run {
+                            getUriString(
+                                baseUrl = baseUrl,
+                                path = buildTestingReportPath,
+                                queryParams = mapOf(
+                                    "build" to baselineBuildId,
+                                )
                             )
-                        )},
-                        "full_report" to buildTestingReportPath?.run { getUriString(
-                            baseUrl = baseUrl,
-                            path = buildTestingReportPath,
-                            queryParams = mapOf(
-                                "build" to buildId,
-                                "baseline_build" to baselineBuildId
+                        },
+                        "full_report" to buildTestingReportPath?.run {
+                            getUriString(
+                                baseUrl = baseUrl,
+                                path = buildTestingReportPath,
+                                queryParams = mapOf(
+                                    "build" to buildId,
+                                    "baseline_build" to baselineBuildId
+                                )
                             )
-                        )}
+                        }
                     )
                 }
             )
@@ -172,6 +182,63 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getTestsToSkip(
+        groupId: String,
+        testTaskId: String,
+        targetAppId: String,
+        coveragePeriodDays: Int?,
+        targetInstanceId: String?,
+        targetCommitSha: String?,
+        targetBuildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?
+    ): List<TestToSkipView> = transaction {
+        val targetBuildId = generateBuildId(
+            groupId,
+            targetAppId,
+            targetInstanceId,
+            targetCommitSha,
+            targetBuildVersion
+        ).also { buildId ->
+            if (!metricsRepository.buildExists(buildId)) {
+                throw BuildNotFound("Target build info not found for $buildId")
+            }
+        }
+
+        val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
+        val baselineBuildId = takeIf { hasBaselineBuild }?.let {
+            generateBuildId(
+                groupId,
+                targetAppId,
+                baselineInstanceId,
+                baselineCommitSha,
+                baselineBuildVersion
+            ).also { buildId ->
+                if (!metricsRepository.buildExists(buildId)) {
+                    throw BuildNotFound("Baseline build info not found for $buildId")
+                }
+            }
+        }
+        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays).let {
+            LocalDateTime.now().minusDays(it.toLong())
+        }
+        metricsRepository.getRecommendedTests(
+            groupId = groupId,
+            targetBuildId = targetBuildId,
+            testsToSkip = true,
+            testTaskId = testTaskId,
+            baselineBuildId = baselineBuildId,
+            coveragePeriodFrom = coveragePeriodFrom
+        ).map {
+            TestToSkipView(
+                engine = it["test_engine"] as String,
+                testName = it["test_name"] as String,
+                path = it["test_path"] as String
+            )
+        }
+    }
+
     // TODO good candidate to be moved to common functions (probably)
     private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {
         val uri = URI(baseUrl).resolve(path)
@@ -179,29 +246,5 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
-    }
-
-    // TODO remove duplicate in RawDataRepositoryImpl
-    private fun generateBuildId(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        errorMsg: String = "Provide at least one of the following: instanceId, commitSha or buildVersion"
-    ): String {
-        if (groupId.isBlank()) { throw InvalidParameters("groupId cannot be empty or blank") }
-
-        if (appId.isBlank()) { throw InvalidParameters("appId cannot be empty or blank") }
-
-        if (instanceId.isNullOrBlank() && commitSha.isNullOrBlank() && buildVersion.isNullOrBlank()) {
-            throw InvalidParameters(errorMsg)
-        }
-
-        return listOf(
-            groupId,
-            appId,
-            listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
-        ).joinToString(":")
     }
 }

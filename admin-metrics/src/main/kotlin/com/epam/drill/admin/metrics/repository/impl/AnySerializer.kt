@@ -15,9 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository.impl
 
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -47,7 +45,13 @@ object AnySerializer : KSerializer<Any?> {
                 val listSerializer = ListSerializer(this)
                 encoder.encodeSerializableValue(listSerializer, value)
             }
-            else -> throw SerializationException("Unsupported type")
+            else -> {
+                val serializer = value::class.serializerOrNull() as KSerializer<Any?>?
+                if (serializer != null)
+                    encoder.encodeSerializableValue(serializer, value)
+                else
+                    throw SerializationException("Unsupported type: ${value::class}")
+            }
         }
     }
 
@@ -58,5 +62,5 @@ object AnySerializer : KSerializer<Any?> {
 
 @Serializable
 data class ApiResponse(
-    @Serializable(with = AnySerializer::class) val data: Map<String, Any?>?
+    @Serializable(with = AnySerializer::class) val data: Any?
 )

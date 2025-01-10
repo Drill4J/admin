@@ -37,6 +37,7 @@ java {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(project(":admin-common"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("io.ktor:ktor-server-auth:$ktorVersion")

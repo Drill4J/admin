@@ -33,9 +33,11 @@ val metricsDIModule = DI.Module("metricsServices") {
     }
     bind<MetricsService>() with singleton {
         val metricsConfig: ApplicationConfig = instance<Application>().environment.config.config("drill.metrics")
+        val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
         MetricsServiceImpl(
             metricsRepository = instance(),
-            metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(metricsConfig.config("ui"))
+            metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(metricsConfig.config("ui")),
+            testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations"))
         )
     }
     bind<SchedulerConfig>() with singleton {
