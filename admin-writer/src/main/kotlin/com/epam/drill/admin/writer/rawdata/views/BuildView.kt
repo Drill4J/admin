@@ -13,13 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.views
 
-import com.epam.drill.admin.writer.rawdata.entity.Build
-import com.epam.drill.admin.writer.rawdata.views.BuildView
-
-interface BuildRepository {
-    fun create(build: Build)
-    fun existsById(buildId: String): Boolean
-    fun getByBranch(branch: String): List<BuildView>
-}
+import kotlinx.serialization.Serializable
+@Serializable
+class BuildView (
+    val id: String,
+    val groupId: String,
+    val appId: String,
+    val commitSha: String?,
+    val buildVersion: String?,
+    val branch: String?,
+    val instanceId: String?,
+    val commitDate: String?,
+    val commitMessage: String?,
+    val commitAuthor: String?
+)

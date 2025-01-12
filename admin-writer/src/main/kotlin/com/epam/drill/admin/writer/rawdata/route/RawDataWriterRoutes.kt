@@ -53,7 +53,7 @@ private val logger = KotlinLogging.logger {}
 class DataIngestRoutes {
 
     @Resource("builds")
-    class BuildsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+    class BuildsRoute(val parent: DataIngestRoutes = DataIngestRoutes(), val branch: String)
 
     @Resource("instances")
     class InstancesRoute(val parent: DataIngestRoutes = DataIngestRoutes())
@@ -86,6 +86,15 @@ fun Route.putBuilds() {
     put<DataIngestRoutes.BuildsRoute> {
         rawDataWriter.saveBuild(call.decompressAndReceive())
         call.ok("Build saved")
+    }
+}
+
+fun Route.getBuildsByBranch() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    get<DataIngestRoutes.BuildsRoute> { params ->
+        val builds = rawDataWriter.getBuildsByBranch(params.branch)
+        call.ok(builds)
     }
 }
 

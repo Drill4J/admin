@@ -16,10 +16,12 @@
 package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.views.BuildView
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
+    suspend fun getBuildsByBranch(branch: String): List<BuildView>
     suspend fun saveInstance(instancePayload: InstancePayload)
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)

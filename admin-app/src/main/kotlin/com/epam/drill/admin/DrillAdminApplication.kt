@@ -113,6 +113,7 @@ fun Application.module() {
                         proceed()
                     }
                     putBuilds()
+                    getBuildsByBranch()
                     putInstances()
                     postCoverage()
                     putMethods()

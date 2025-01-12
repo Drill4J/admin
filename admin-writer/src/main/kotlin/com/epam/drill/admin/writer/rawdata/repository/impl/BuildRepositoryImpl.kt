@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import com.epam.drill.admin.writer.rawdata.views.BuildView
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.upsert
 
@@ -38,5 +39,22 @@ class BuildRepositoryImpl: BuildRepository {
     }
     override fun existsById(buildId: String): Boolean {
         return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
+    }
+
+    override fun getByBranch(branch: String): List<BuildView> {
+        return BuildTable.selectAll().where { BuildTable.branch eq branch }.map {
+            BuildView(
+                id = it[BuildTable.id].value,
+                groupId = it[BuildTable.groupId],
+                appId = it[BuildTable.appId],
+                commitSha = it[BuildTable.commitSha],
+                buildVersion = it[BuildTable.buildVersion],
+                branch = it[BuildTable.branch],
+                instanceId = it[BuildTable.instanceId],
+                commitDate = it[BuildTable.commitDate],
+                commitMessage = it[BuildTable.commitMessage],
+                commitAuthor = it[BuildTable.commitAuthor],
+            )
+        }
     }
 }

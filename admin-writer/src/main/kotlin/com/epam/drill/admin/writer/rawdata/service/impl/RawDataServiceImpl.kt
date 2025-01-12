@@ -15,13 +15,14 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.views.BuildView
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import com.epam.drill.admin.common.service.generateBuildId
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -60,6 +61,10 @@ class RawDataServiceImpl(
         transaction {
             buildRepository.create(build)
         }
+    }
+
+    override suspend fun getBuildsByBranch(branch: String): List<BuildView> {
+        return transaction { buildRepository.getByBranch(branch) }
     }
 
     override suspend fun saveInstance(instancePayload: InstancePayload) {
