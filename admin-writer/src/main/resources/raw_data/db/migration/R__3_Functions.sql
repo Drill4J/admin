@@ -1471,7 +1471,7 @@ BEGIN
         FROM TargetMethods target
         LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
             AND target.body_checksum = coverage.body_checksum
-            AND target.probes_count = coverage.probes_count
+            AND target.probes_count = BIT_LENGTH(coverage.probes)
             AND coverage.build_id = input_build_id
             --filter by test tasks and test results
             AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
@@ -1549,7 +1549,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM TargetMethods target
 		LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
-			AND target.probes_count = coverage.probes_count
+			AND target.probes_count = BIT_LENGTH(coverage.probes)
 			AND target.body_checksum = coverage.body_checksum
 			AND coverage.group_id = split_part(input_build_id, ':', 1)
 		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
@@ -1635,7 +1635,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM Risks risks
 		LEFT JOIN raw_data.view_methods_coverage coverage ON risks.signature = coverage.signature
-			AND risks.probes_count = coverage.probes_count
+			AND risks.probes_count = BIT_LENGTH(coverage.probes)
 			AND risks.body_checksum = coverage.body_checksum
 			AND coverage.group_id = split_part(input_build_id, ':', 1)
 		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
@@ -1721,7 +1721,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM Risks risks
 		LEFT JOIN raw_data.view_methods_coverage coverage ON risks.signature = coverage.signature
-			AND risks.probes_count = coverage.probes_count
+			AND risks.probes_count = BIT_LENGTH(coverage.probes)
 			AND risks.body_checksum = coverage.body_checksum
 			AND coverage.build_id = input_build_id
 			--filter by coverage created_at
@@ -1804,7 +1804,7 @@ BEGIN
         FROM TargetMethods target
         LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
             AND target.body_checksum = coverage.body_checksum
-            AND target.probes_count = coverage.probes_count
+            AND target.probes_count = BIT_LENGTH(coverage.probes)
             AND coverage.build_id = input_build_id
             --filter by test tasks and test results
             AND (test_task_ids IS NULL OR coverage.test_task_id = ANY (test_task_ids))
@@ -1882,7 +1882,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM TargetMethods target
 		LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
-			AND target.probes_count = coverage.probes_count
+			AND target.probes_count = BIT_LENGTH(coverage.probes)
 			AND target.body_checksum = coverage.body_checksum
 			AND coverage.group_id = split_part(input_build_id, ':', 1)
 		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
@@ -1968,7 +1968,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM Risks risks
 		LEFT JOIN raw_data.matview_methods_coverage coverage ON risks.signature = coverage.signature
-			AND risks.probes_count = coverage.probes_count
+			AND risks.probes_count = BIT_LENGTH(coverage.probes)
 			AND risks.body_checksum = coverage.body_checksum
 			AND coverage.group_id = split_part(input_build_id, ':', 1)
 		 	AND coverage.app_id = split_part(input_build_id, ':', 2)
@@ -2054,7 +2054,7 @@ BEGIN
 			BIT_COUNT(BIT_OR(coverage.probes)) AS covered_probes
 		FROM Risks risks
 		LEFT JOIN raw_data.matview_methods_coverage coverage ON risks.signature = coverage.signature
-			AND risks.probes_count = coverage.probes_count
+			AND risks.probes_count = BIT_LENGTH(coverage.probes)
 			AND risks.body_checksum = coverage.body_checksum
 			AND coverage.build_id = input_build_id
 			--filter by coverage created_at
@@ -2120,7 +2120,7 @@ BEGIN
 	Coverage AS (
 		SELECT
 		    coverage.test_definition_id,
-			coverage.test_id,
+			coverage.test_launch_id,
 			coverage.build_id,
 			(target.body_checksum != coverage.body_checksum) AS is_modified
 		FROM raw_data.view_methods_coverage coverage
@@ -2138,10 +2138,9 @@ BEGIN
 	TestsByRisks AS (
 		SELECT
 		    MIN(coverage.test_definition_id) AS test_definition_id,
-			coverage.test_id AS test_id,
 			BOOL_OR(is_modified) AS is_modified
 		FROM Coverage coverage
-		GROUP BY coverage.test_id
+		GROUP BY coverage.test_launch_id
 	),
 	RecommendedTests AS (
 		SELECT
