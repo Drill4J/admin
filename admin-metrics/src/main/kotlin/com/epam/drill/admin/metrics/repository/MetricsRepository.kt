@@ -20,6 +20,9 @@ import java.time.LocalDateTime
 interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
+
+    suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>>
+
     suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String,
