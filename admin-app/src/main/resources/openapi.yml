@@ -997,22 +997,8 @@ components:
           type: string
         role:
           type: string
-    CredentialsView:
-      type: object
-      properties:
-        username:
-          type: string
-        password:
-          type: string
     GenerateApiKeyPayload:
       type: object
       properties:
         name:
-          type: string
-    ApiKeyCredentials:
-      type: object
-      properties:
-        id:
-          type: integer
-        key:
           type: string
