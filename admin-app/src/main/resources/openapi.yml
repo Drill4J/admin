@@ -26,7 +26,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/instances:
     put:
       summary: Save instance data
@@ -49,7 +49,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/coverage:
     post:
       summary: Save coverage data
@@ -72,7 +72,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/methods:
     put:
       summary: Save methods data
@@ -95,7 +95,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/tests-metadata:
     post:
       summary: Save test metadata
@@ -118,7 +118,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/sessions:
     put:
       summary: Save test sessions
@@ -141,7 +141,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/method-ignore-rules:
     post:
       summary: Save method ignore rule
@@ -164,7 +164,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
     get:
       summary: Get all method ignore rules
       tags:
@@ -179,7 +179,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/MethodIgnoreRulePayload'
+                  $ref: '#/components/schemas/DataResponse'
   /api/data-ingest/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
@@ -199,8 +199,37 @@ paths:
           content:
             application/json:
               schema:
-                type: string
-  #  Metrics Endpoints
+                $ref: '#/components/schemas/MessageResponse'
+  # Metrics Endpoints
+  /api/metrics/builds:
+    get:
+      summary: Get builds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report
@@ -255,7 +284,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/recommended-tests:
     get:
       summary: Get recommended tests
@@ -304,7 +333,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/tests-to-skip:
     get:
       summary: Get tests to skip
@@ -362,7 +391,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ListDataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:
@@ -381,7 +410,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenView'
+                $ref: '#/components/schemas/DataResponse'
   /api/sign-up:
     post:
       summary: Sign up
@@ -399,7 +428,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserView'
+                $ref: '#/components/schemas/MessageResponse'
   /api/sign-out:
     post:
       summary: Sign out
@@ -411,7 +440,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/user-info:
     get:
       summary: Get user info
@@ -425,7 +454,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserView'
+                $ref: '#/components/schemas/DataResponse'
   /api/update-password:
     post:
       summary: Update password
@@ -445,7 +474,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   # User Management Routes
   /api/users:
     get:
@@ -462,7 +491,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/UserView'
+                  $ref: '#/components/schemas/ListDataResponse'
   /api/users/{userId}:
     get:
       summary: Get user by ID
@@ -482,7 +511,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserView'
+                $ref: '#/components/schemas/DataResponse'
     put:
       summary: Edit user
       tags:
@@ -507,7 +536,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserView'
+                $ref: '#/components/schemas/DataResponse'
     delete:
       summary: Delete user
       tags:
@@ -526,7 +555,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/users/{userId}/block:
     patch:
       summary: Block user
@@ -546,7 +575,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/users/{userId}/unblock:
     patch:
       summary: Unblock user
@@ -566,7 +595,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
   /api/users/{userId}/reset-password:
     patch:
       summary: Reset user password
@@ -586,7 +615,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CredentialsView'
+                $ref: '#/components/schemas/MessageResponse'
   # User API Key Routes
   /api/user-keys:
     get:
@@ -603,7 +632,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ApiKeyView'
+                  $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate user API key
       tags:
@@ -622,7 +651,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiKeyCredentials'
+                $ref: '#/components/schemas/DataResponse'
   /api/user-keys/{id}:
     delete:
       summary: Delete user API key
@@ -642,7 +671,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/DataResponse'
   # API Key Management Routes
   /api/api-keys:
     get:
@@ -659,7 +688,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ApiKeyView'
+                  $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate API key
       tags:
@@ -678,7 +707,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiKeyCredentials'
+                $ref: '#/components/schemas/DataResponse'
   /api/api-keys/{id}:
     delete:
       summary: Delete API key
@@ -698,7 +727,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/MessageResponse'
 
 components:
   securitySchemes:
@@ -707,6 +736,25 @@ components:
       in: header
       name: X-API-KEY
   schemas:
+    # Common Schemas
+    DataResponse:
+      type: object
+      properties:
+        data:
+          type: object
+    ListDataResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
     # Data Ingest Schemas
     BuildPayload:
       type: object
@@ -940,15 +988,6 @@ components:
           type: string
         newPassword:
           type: string
-    UserView:
-      type: object
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        email:
-          type: string
     EditUserPayload:
       type: object
       properties:
@@ -965,15 +1004,6 @@ components:
           type: string
         password:
           type: string
-    ApiKeyView:
-      type: object
-      properties:
-        id:
-          type: integer
-        key:
-          type: string
-        userId:
-          type: integer
     GenerateApiKeyPayload:
       type: object
       properties:
@@ -985,9 +1015,4 @@ components:
         id:
           type: integer
         key:
-          type: string
-    TokenView:
-      type: object
-      properties:
-        token:
           type: string
