@@ -112,16 +112,7 @@ fun Application.module() {
                         call.response.header("drill-internal", "true")
                         proceed()
                     }
-                    putBuilds()
-                    putInstances()
-                    postCoverage()
-                    putMethods()
-                    postTestMetadata()
-                    putTestSessions()
-                    postMethodIgnoreRules()
-                    getMethodIgnoreRules()
-                    deleteMethodIgnoreRule()
-//                    postRawJavaScriptCoverage(jsCoverageConverterAddress)
+                    dataIngestRoutes()
                 }
             }
         }
