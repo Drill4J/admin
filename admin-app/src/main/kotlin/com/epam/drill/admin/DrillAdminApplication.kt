@@ -39,6 +39,7 @@ import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.plugins.swagger.*
 import io.ktor.server.request.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
@@ -83,6 +84,7 @@ fun Application.module() {
     }
     routing {
         rootRoute()
+        swaggerUI(path = "swagger", swaggerFile = "openapi.yml")
         if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
             //UI
