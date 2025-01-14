@@ -23,6 +23,7 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.route.response.TestToSkipView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.metrics.views.BuildView
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -34,6 +35,25 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
+
+    override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
+        return transaction {
+            metricsRepository.getBuilds(groupId, appId, branch).map {
+                BuildView(
+                    id = it["id"] as String,
+                    groupId = it["group_id"] as String,
+                    appId = it["app_id"] as String,
+                    commitSha = it["commit_sha"] as String?,
+                    buildVersion = it["build_version"] as String?,
+                    branch = it["branch"] as String?,
+                    instanceId = it["instance_id"] as String?,
+                    commitDate = it["commit_date"] as String?,
+                    commitMessage = it["commit_message"] as String?,
+                    commitAuthor = it["commit_author"] as String?
+                )
+            }
+        }
+    }
 
     override suspend fun getBuildDiffReport(
         groupId: String,

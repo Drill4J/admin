@@ -32,6 +32,15 @@ private val logger = KotlinLogging.logger {}
 @Resource("/metrics")
 class Metrics {
 
+    @Resource("/builds")
+    class Builds(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val branch: String? = null
+    )
+
     @Resource("/build-diff-report")
     class BuildDiffReport(
         val parent: Metrics,
@@ -80,9 +89,23 @@ class Metrics {
 }
 
 fun Route.metricsRoutes() {
+    getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
     getTestsToSkip()
+}
+
+fun Route.getBuilds() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Builds> { params ->
+        val report = metricsService.getBuilds(
+            params.groupId,
+            params.appId,
+            params.branch
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
 }
 
 fun Route.getBuildDiffReport() {

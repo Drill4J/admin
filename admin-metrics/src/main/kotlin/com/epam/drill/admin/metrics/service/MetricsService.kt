@@ -16,8 +16,15 @@
 package com.epam.drill.admin.metrics.service
 
 import com.epam.drill.admin.metrics.route.response.TestToSkipView
+import com.epam.drill.admin.metrics.views.BuildView
 
 interface MetricsService {
+    suspend fun getBuilds(
+        groupId: String,
+        appId: String,
+        branch: String?
+    ): List<BuildView>
+
     suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,
