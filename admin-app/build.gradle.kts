@@ -11,6 +11,7 @@ plugins {
     id("com.github.hierynomus.license")
     id("com.github.johnrengelman.shadow")
     id("com.google.cloud.tools.jib")
+    id("org.openapi.generator")
 }
 
 group = "com.epam.drill"
@@ -150,6 +151,9 @@ jib {
 
 @Suppress("UNUSED_VARIABLE")
 tasks {
+    check {
+        dependsOn(openApiValidate)
+    }
     test {
         useJUnitPlatform()
     }
@@ -189,6 +193,10 @@ tasks {
             "docker", "push", "$fullImageTag:$version-win"
         )
     }
+}
+
+openApiValidate {
+    inputSpec.set("$projectDir/src/main/resources/openapi.yml")
 }
 
 @Suppress("UNUSED_VARIABLE")

@@ -6,6 +6,7 @@ pluginManagement {
     val shadowPluginVersion: String by extra
     val grgitVersion: String by extra
     val jibVersion: String by extra
+    val openApiGeneratorVersion: String by extra
     plugins {
         kotlin("jvm") version kotlinVersion
         kotlin("plugin.noarg") version kotlinVersion
@@ -14,6 +15,7 @@ pluginManagement {
         id("com.github.hierynomus.license") version licenseVersion
         id("com.github.johnrengelman.shadow") version shadowPluginVersion
         id("com.google.cloud.tools.jib") version jibVersion
+        id("org.openapi.generator") version openApiGeneratorVersion
     }
     repositories {
         mavenLocal()
