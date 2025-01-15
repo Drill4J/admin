@@ -66,7 +66,7 @@ class TestSessionRoute()
 @Resource("method-ignore-rules")
 class MethodIgnoreRulesRoute() {
     @Resource("/{id}")
-    class Id(val id: Int)
+    class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
 }
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
