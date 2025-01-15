@@ -1,0 +1,1004 @@
+openapi: 3.0.0
+info:
+  title: Drill4J API
+  version: 1.0.0
+paths:
+  # Data Ingest Endpoints
+  /api/data-ingest/builds:
+    put:
+      summary: Save build data
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/BuildPayload'
+      responses:
+        '200':
+          description: Build saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/instances:
+    put:
+      summary: Save instance data
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstancePayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/InstancePayload'
+      responses:
+        '200':
+          description: Instance saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/coverage:
+    post:
+      summary: Save coverage data
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoveragePayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/CoveragePayload'
+      responses:
+        '200':
+          description: Coverage saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/methods:
+    put:
+      summary: Save methods data
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MethodsPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/MethodsPayload'
+      responses:
+        '200':
+          description: Methods saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/tests-metadata:
+    post:
+      summary: Save test metadata
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTestsPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/AddTestsPayload'
+      responses:
+        '200':
+          description: Test metadata saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/sessions:
+    put:
+      summary: Save test sessions
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/SessionPayload'
+      responses:
+        '200':
+          description: Test sessions saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/method-ignore-rules:
+    post:
+      summary: Save method ignore rule
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MethodIgnoreRulePayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/MethodIgnoreRulePayload'
+      responses:
+        '200':
+          description: Method ignore rule saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    get:
+      summary: Get all method ignore rules
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of method ignore rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataResponse'
+  /api/data-ingest/method-ignore-rules/{id}:
+    delete:
+      summary: Delete method ignore rule by ID
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Method ignore rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  # Metrics Endpoints
+  /api/metrics/builds:
+    get:
+      summary: Get builds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/build-diff-report:
+    get:
+      summary: Get build diff report
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: coverageThreshold
+          in: query
+          schema:
+            type: number
+            format: float
+            default: 1.0
+      responses:
+        '200':
+          description: Build diff report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/recommended-tests:
+    get:
+      summary: Get recommended tests
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recommended tests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/tests-to-skip:
+    get:
+      summary: Get tests to skip
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTaskId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: targetAppId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: targetInstanceId
+          in: query
+          schema:
+            type: string
+        - name: targetCommitSha
+          in: query
+          schema:
+            type: string
+        - name: targetBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: coveragePeriodDays
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tests to skip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  # User Authentication Routes
+  /api/sign-in:
+    post:
+      summary: Sign in
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginPayload'
+      responses:
+        '200':
+          description: User successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/sign-up:
+    post:
+      summary: Sign up
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpPayload'
+      responses:
+        '200':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/sign-out:
+    post:
+      summary: Sign out
+      tags:
+        - auth
+      responses:
+        '200':
+          description: User successfully signed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/user-info:
+    get:
+      summary: Get user info
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: User info retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/update-password:
+    post:
+      summary: Update password
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordPayload'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  # User Management Routes
+  /api/users:
+    get:
+      summary: Get users
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListDataResponse'
+  /api/users/{userId}:
+    get:
+      summary: Get user by ID
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Edit user
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditUserPayload'
+      responses:
+        '200':
+          description: User successfully edited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    delete:
+      summary: Delete user
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/users/{userId}/block:
+    patch:
+      summary: Block user
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User successfully blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/users/{userId}/unblock:
+    patch:
+      summary: Unblock user
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User successfully unblocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/users/{userId}/reset-password:
+    patch:
+      summary: Reset user password
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  # User API Key Routes
+  /api/user-keys:
+    get:
+      summary: Get user API keys
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of user API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListDataResponse'
+    post:
+      summary: Generate user API key
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateApiKeyPayload'
+      responses:
+        '200':
+          description: API Key successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/user-keys/{id}:
+    delete:
+      summary: Delete user API key
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: API Key successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  # API Key Management Routes
+  /api/api-keys:
+    get:
+      summary: Get API keys
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListDataResponse'
+    post:
+      summary: Generate API key
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateApiKeyPayload'
+      responses:
+        '200':
+          description: API Key successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/api-keys/{id}:
+    delete:
+      summary: Delete API key
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: API Key successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+  schemas:
+    # Common Schemas
+    DataResponse:
+      type: object
+      properties:
+        data:
+          type: object
+    ListDataResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # Data Ingest Schemas
+    BuildPayload:
+      type: object
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        commitSha:
+          type: string
+          nullable: true
+        buildVersion:
+          type: string
+          nullable: true
+        branch:
+          type: string
+          nullable: true
+        commitDate:
+          type: string
+          nullable: true
+        commitMessage:
+          type: string
+          nullable: true
+        commitAuthor:
+          type: string
+          nullable: true
+    InstancePayload:
+      type: object
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        instanceId:
+          type: string
+        commitSha:
+          type: string
+          nullable: true
+        buildVersion:
+          type: string
+          nullable: true
+        envId:
+          type: string
+          nullable: true
+    CoveragePayload:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        coverage:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleClassCoveragePayload'
+    SingleClassCoveragePayload:
+      type: object
+      properties:
+        classname:
+          type: string
+        testId:
+          type: string
+        probes:
+          type: array
+          items:
+            type: boolean
+    MethodsPayload:
+      type: object
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        commitSha:
+          type: string
+          nullable: true
+        buildVersion:
+          type: string
+          nullable: true
+        instanceId:
+          type: string
+          nullable: true
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleMethodPayload'
+    SingleMethodPayload:
+      type: object
+      properties:
+        classname:
+          type: string
+        name:
+          type: string
+        params:
+          type: string
+        returnType:
+          type: string
+        probesCount:
+          type: integer
+        probesStartPos:
+          type: integer
+        bodyChecksum:
+          type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+        classAnnotations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+    AddTestsPayload:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestInfo'
+    TestInfo:
+      type: object
+      properties:
+        groupId:
+          type: string
+        id:
+          type: string
+        testDefinitionId:
+          type: string
+        result:
+          $ref: '#/components/schemas/TestResult'
+        startedAt:
+          type: integer
+        finishedAt:
+          type: integer
+        details:
+          $ref: '#/components/schemas/TestDetails'
+    TestDetails:
+      type: object
+      properties:
+        engine:
+          type: string
+        path:
+          type: string
+        testName:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+    Label:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+    TestResult:
+      type: string
+      enum:
+        - PASSED
+        - FAILED
+        - ERROR
+        - SKIPPED
+        - SMART_SKIPPED
+        - UNKNOWN
+    SessionPayload:
+      type: object
+      properties:
+        id:
+          type: string
+        groupId:
+          type: string
+        testTaskId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+    MethodIgnoreRulePayload:
+      type: object
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        namePattern:
+          type: string
+          nullable: true
+        classnamePattern:
+          type: string
+          nullable: true
+        annotationsPattern:
+          type: string
+          nullable: true
+        classAnnotationsPattern:
+          type: string
+          nullable: true
+    # Auth Schemas
+    LoginPayload:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    SignUpPayload:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+    UpdatePasswordPayload:
+      type: object
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+    EditUserPayload:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+    GenerateApiKeyPayload:
+      type: object
+      properties:
+        name:
+          type: string

@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
-import com.epam.drill.admin.writer.rawdata.exception.InvalidMethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -30,13 +29,10 @@ import io.ktor.server.resources.delete
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
-import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
@@ -49,41 +45,51 @@ import com.epam.drill.admin.common.route.ok
 
 private val logger = KotlinLogging.logger {}
 
-@Resource("/data-ingest")
-class DataIngestRoutes {
+@Resource("builds")
+class BuildsRoute()
 
-    @Resource("builds")
-    class BuildsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+@Resource("instances")
+class InstancesRoute()
 
-    @Resource("instances")
-    class InstancesRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+@Resource("coverage")
+class CoverageRoute()
 
-    @Resource("coverage")
-    class CoverageRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+@Resource("methods")
+class MethodsRoute()
 
-    @Resource("methods")
-    class MethodsRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+@Resource("tests-metadata")
+class TestMetadataRoute()
 
-    @Resource("tests-metadata")
-    class TestMetadataRoute(val parent: DataIngestRoutes = DataIngestRoutes())
+@Resource("sessions")
+class TestSessionRoute()
 
-    @Resource("sessions")
-    class TestSessionRoute(val parent: DataIngestRoutes = DataIngestRoutes())
-
-    @Resource("method-ignore-rules")
-    class MethodIgnoreRulesRoute(var parent: DataIngestRoutes = DataIngestRoutes()) {
-        @Resource("/{id}")
-        class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
-    }
+@Resource("method-ignore-rules")
+class MethodIgnoreRulesRoute() {
+    @Resource("/{id}")
+    class Id(val id: Int)
+}
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
-//class RawJavaScriptCoverage(val parent: DataIngestRoutes = DataIngestRoutes(), val groupId: String, val appId: String, val buildVersion: String)
+//class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
 
+fun Route.dataIngestRoutes() {
+    route("/data-ingest") {
+        putBuilds()
+        putInstances()
+        postCoverage()
+        putMethods()
+        postTestMetadata()
+        putTestSessions()
+        postMethodIgnoreRules()
+        getMethodIgnoreRules()
+        deleteMethodIgnoreRule()
+//        postRawJavaScriptCoverage(jsCoverageConverterAddress)
+    }
 }
 
 fun Route.putBuilds() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<DataIngestRoutes.BuildsRoute> {
+    put<BuildsRoute> {
         rawDataWriter.saveBuild(call.decompressAndReceive())
         call.ok("Build saved")
     }
@@ -92,7 +98,7 @@ fun Route.putBuilds() {
 fun Route.putInstances() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<DataIngestRoutes.InstancesRoute> {
+    put<InstancesRoute> {
         rawDataWriter.saveInstance(call.decompressAndReceive())
         call.ok("Instance saved")
     }
@@ -101,7 +107,7 @@ fun Route.putInstances() {
 fun Route.postCoverage() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<DataIngestRoutes.CoverageRoute> {
+    post<CoverageRoute> {
         rawDataWriter.saveCoverage(call.decompressAndReceive())
         call.ok("Coverage saved")
     }
@@ -110,7 +116,7 @@ fun Route.postCoverage() {
 fun Route.putMethods() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<DataIngestRoutes.MethodsRoute> {
+    put<MethodsRoute> {
         rawDataWriter.saveMethods(call.decompressAndReceive())
         call.ok("Methods saved")
     }
@@ -119,7 +125,7 @@ fun Route.putMethods() {
 fun Route.postTestMetadata() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<DataIngestRoutes.TestMetadataRoute> {
+    post<TestMetadataRoute> {
         rawDataWriter.saveTestMetadata(call.decompressAndReceive())
         call.ok("Test metadata saved")
     }
@@ -128,7 +134,7 @@ fun Route.postTestMetadata() {
 fun Route.putTestSessions() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    put<DataIngestRoutes.TestSessionRoute> {
+    put<TestSessionRoute> {
         rawDataWriter.saveTestSession(call.decompressAndReceive())
         call.ok("Test sessions saved")
     }
@@ -137,7 +143,7 @@ fun Route.putTestSessions() {
 fun Route.postMethodIgnoreRules() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    post<DataIngestRoutes.MethodIgnoreRulesRoute> {
+    post<MethodIgnoreRulesRoute> {
         rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
         call.ok("Method ignore rule saved")
     }
@@ -146,7 +152,7 @@ fun Route.postMethodIgnoreRules() {
 fun Route.getMethodIgnoreRules() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    get<DataIngestRoutes.MethodIgnoreRulesRoute> {
+    get<MethodIgnoreRulesRoute> {
         call.ok(rawDataWriter.getAllMethodIgnoreRules())
     }
 }
@@ -154,7 +160,7 @@ fun Route.getMethodIgnoreRules() {
 fun Route.deleteMethodIgnoreRule() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
-    delete<DataIngestRoutes.MethodIgnoreRulesRoute.Id> { params ->
+    delete<MethodIgnoreRulesRoute.Id> { params ->
         val id = params.id
         rawDataWriter.deleteMethodIgnoreRuleById(id)
         call.ok("Method ignore rule deleted")
