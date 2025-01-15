@@ -16,8 +16,10 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.Build
+import java.time.LocalDate
 
 interface BuildRepository {
     fun create(build: Build)
     fun existsById(buildId: String): Boolean
+    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
 }
