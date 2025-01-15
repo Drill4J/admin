@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.config
+package com.epam.drill.admin.scheduler
 
+import com.epam.drill.admin.config.SchedulerConfig
+import com.epam.drill.admin.metrics.config.KodeinJobFactory
 import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.job.VIEW_NAME
 import mu.KotlinLogging
@@ -30,29 +32,11 @@ import org.quartz.utils.DBConnectionManager
 import java.util.*
 import javax.sql.DataSource
 
-class MetricsScheduler(
+class DrillScheduler(
     private val config: SchedulerConfig
 ) {
     private val logger = KotlinLogging.logger {}
     private lateinit var scheduler: Scheduler
-
-    private val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-        .storeDurably()
-        .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
-        .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-        .usingJobData(VIEW_NAME, "matview_methods_coverage")
-        .build()
-
-    private val refreshViewIntervalTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
-        .startNow()
-        .withSchedule(
-            SimpleScheduleBuilder.simpleSchedule()
-                .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
-                .repeatForever()
-                .withMisfireHandlingInstructionNextWithExistingCount()
-        )
-        .build()
 
     fun init(di: DI, dataSource: DataSource) {
         val quartzProperties = Properties().apply {
@@ -77,7 +61,6 @@ class MetricsScheduler(
     }
 
     fun start() {
-        scheduleJob(refreshMethodsCoverageViewJob, refreshViewIntervalTrigger)
         scheduler.start()
     }
 
@@ -93,7 +76,7 @@ class MetricsScheduler(
                 ?.repeatInterval ?: -1L
             if (trigger.repeatInterval != previousRepeatInterval) {
                 scheduler.rescheduleJob(trigger.key, trigger)
-                logger.info { "Rescheduled job '${jobDetail.key}', repeat interval was changed from ${previousRepeatInterval.inMinutes()} minutes to ${trigger.repeatInterval.inMinutes()} minutes." }
+                logger.info { "Rescheduled job '${jobDetail.key}', repeat interval was changed to ${trigger.repeatInterval.inMinutes()} minutes." }
             }
         }
     }

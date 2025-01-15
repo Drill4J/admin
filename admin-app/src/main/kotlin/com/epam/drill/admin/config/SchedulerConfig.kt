@@ -13,11 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.config
+package com.epam.drill.admin.config
 
+import com.epam.drill.admin.scheduler.DrillScheduler
+import io.ktor.server.application.*
 import io.ktor.server.config.*
+import org.kodein.di.DI
+import org.kodein.di.bind
+import org.kodein.di.instance
+import org.kodein.di.singleton
 
 class SchedulerConfig(private val config: ApplicationConfig) {
     val refreshViewsIntervalInMinutes: Int = config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
+}
+
+val schedulerDIModule = DI.Module("scheduler") {
+    bind<SchedulerConfig>() with singleton {
+        SchedulerConfig(instance<Application>().environment.config.config("drill.scheduler"))
+    }
+    bind<DrillScheduler>() with singleton {
+        DrillScheduler(instance())
+    }
 }
