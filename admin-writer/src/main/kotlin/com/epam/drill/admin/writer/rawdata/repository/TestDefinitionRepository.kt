@@ -16,7 +16,9 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.TestDefinition
+import java.time.LocalDate
 
 interface TestDefinitionRepository {
     fun createMany(testDefinitionList: List<TestDefinition>)
+    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
 }

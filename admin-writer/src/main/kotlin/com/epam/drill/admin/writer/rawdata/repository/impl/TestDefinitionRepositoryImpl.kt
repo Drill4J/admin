@@ -18,7 +18,12 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.TestDefinition
 import com.epam.drill.admin.writer.rawdata.repository.TestDefinitionRepository
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.deleteWhere
+import java.time.LocalDate
 
 class TestDefinitionRepositoryImpl: TestDefinitionRepository {
     override fun createMany(testDefinitionList: List<TestDefinition>) {
@@ -31,5 +36,9 @@ class TestDefinitionRepositoryImpl: TestDefinitionRepository {
             this[TestDefinitionTable.path] = it.path
             this[TestDefinitionTable.tags] = it.tags
         }
+    }
+
+    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        TestDefinitionTable.deleteWhere { (TestDefinitionTable.groupId eq groupId) and (TestDefinitionTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }
