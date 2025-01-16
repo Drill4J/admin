@@ -46,15 +46,4 @@ class BuildRepositoryImpl: BuildRepository {
     override fun existsById(buildId: String): Boolean {
         return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
     }
-
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        val buildsCreatedBefore = (BuildTable.groupId eq groupId) and (BuildTable.createdAt less createdBefore.atStartOfDay())
-        val selectBuildsCreatedBefore = select(BuildTable.id).where { buildsCreatedBefore }
-        CoverageTable.deleteWhere { instanceId inSubQuery
-                select(InstanceTable.id).where { InstanceTable.buildId inSubQuery selectBuildsCreatedBefore }
-        }
-        InstanceTable.deleteWhere { buildId inSubQuery selectBuildsCreatedBefore }
-        MethodTable.deleteWhere { buildId inSubQuery selectBuildsCreatedBefore }
-        BuildTable.deleteWhere { buildsCreatedBefore }
-    }
 }

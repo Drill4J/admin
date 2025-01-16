@@ -21,5 +21,4 @@ import java.time.LocalDate
 interface BuildRepository {
     fun create(build: Build)
     fun existsById(buildId: String): Boolean
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
 }

@@ -16,7 +16,9 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.Instance
+import java.time.LocalDate
 
 interface InstanceRepository {
     fun create(instance: Instance)
+    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
 }
