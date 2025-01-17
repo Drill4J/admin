@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.config
 
+import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
@@ -25,6 +26,8 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import org.quartz.JobBuilder
+import org.quartz.JobDetail
 
 val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
     bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
@@ -47,4 +50,19 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
         testSessionRepository = instance(),
         methodIgnoreRuleRepository = instance()
     ) }
+    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+
+    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
+        groupSettingsRepository = instance(),
+        instanceRepository = instance(),
+        coverageRepository = instance(),
+        testSessionRepository = instance(),
+        testLaunchRepository = instance(),
+    ) }
 }
+
+val dataRetentionPolicyJob: JobDetail = JobBuilder.newJob(DataRetentionPolicyJob::class.java)
+    .storeDurably()
+    .withDescription("Job for deleting raw data older than the retention period.")
+    .withIdentity("rawDataRetentionPolicyJob", "retentionPolicies")
+    .build()
