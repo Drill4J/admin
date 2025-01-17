@@ -17,8 +17,6 @@ package com.epam.drill.admin.scheduler
 
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.metrics.config.KodeinJobFactory
-import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
-import com.epam.drill.admin.metrics.job.VIEW_NAME
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.quartz.*
@@ -64,20 +62,22 @@ class DrillScheduler(
         scheduler.start()
     }
 
-    fun scheduleJob(jobDetail: JobDetail, trigger: SimpleTrigger) {
+    fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
         if (!scheduler.checkExists(jobDetail.key)) {
             scheduler.scheduleJob(jobDetail, trigger)
-            logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
         } else {
-            scheduler.addJob(jobDetail, true)
-            val previousRepeatInterval = scheduler.getTrigger(trigger.key)
-                .takeIf { it is SimpleTrigger }
-                ?.let { it as SimpleTrigger }
-                ?.repeatInterval ?: -1L
-            if (trigger.repeatInterval != previousRepeatInterval) {
-                scheduler.rescheduleJob(trigger.key, trigger)
-                logger.info { "Rescheduled job '${jobDetail.key}', repeat interval was changed to ${trigger.repeatInterval.inMinutes()} minutes." }
-            }
+            //Delete old triggers if they exist
+            scheduler.getTriggersOfJob(jobDetail.key)
+                .filter { it.key != trigger.key }
+                .forEach {
+                    scheduler.unscheduleJob(it.key)
+                    logger.debug { "Unscheduled job '${jobDetail.key}'." }
+                }
+            scheduler.scheduleJob(jobDetail, setOf(trigger), true)
+        }
+        when (trigger) {
+            is SimpleTrigger -> logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
+            is CronTrigger -> logger.info { "Scheduled job '${jobDetail.key}', cron expression: ${trigger.cronExpression}." }
         }
     }
 

@@ -30,6 +30,7 @@ import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.scheduler.DrillScheduler
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.dataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
@@ -52,8 +53,6 @@ import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
-import org.quartz.SimpleScheduleBuilder
-import org.quartz.TriggerBuilder
 import javax.sql.DataSource
 
 private val logger = KotlinLogging.logger {}
@@ -102,12 +101,17 @@ fun Application.module() {
                 userProfileRoutes()
                 userApiKeyRoutes()
             }
+
+            //Admin
             authenticate("jwt", "api-key") {
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
+                    settingsRoutes()
                 }
             }
+
+            //Metrics
             authenticate("api-key") {
                 tryApiKeyRoute()
                 metricsRoutes()
@@ -177,23 +181,14 @@ private fun Application.initScheduler() {
     val dataSource by closestDI().instance<DataSource>()
     val schedulerConfig by closestDI().instance<SchedulerConfig>()
     val scheduler by closestDI().instance<DrillScheduler>()
-    val trigger = TriggerBuilder.newTrigger()
-        .withIdentity("refreshMaterializedViewTrigger", "refreshMaterializedViews")
-        .startNow()
-        .withSchedule(
-            SimpleScheduleBuilder.simpleSchedule()
-                .withIntervalInMinutes(schedulerConfig.refreshViewsIntervalInMinutes)
-                .repeatForever()
-                .withMisfireHandlingInstructionNextWithExistingCount()
-        )
-        .build()
 
     scheduler.init(closestDI(), dataSource)
     environment.monitor.subscribe(ApplicationStopped) {
         scheduler.shutdown()
     }
-    scheduler.scheduleJob(refreshMethodsCoverageViewJob, trigger)
     scheduler.start()
+    scheduler.scheduleJob(refreshMethodsCoverageViewJob, schedulerConfig.refreshMatViewsTrigger)
+    scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
 
 val Application.oauth2Enabled: Boolean

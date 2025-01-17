@@ -22,10 +22,33 @@ import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import org.quartz.CronScheduleBuilder
+import org.quartz.SimpleScheduleBuilder
+import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
     val refreshViewsIntervalInMinutes: Int = config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
-    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
+    val dataRetentionJobCron: String = config.propertyOrNull("retentionJobCron")?.getString() ?: "0 0 1 * * ?"
+    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
+
+    val refreshMatViewsTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("refreshMaterializedViewTrigger", "refreshMaterializedViews")
+        .startNow()
+        .withSchedule(
+            SimpleScheduleBuilder.simpleSchedule()
+                .withIntervalInMinutes(refreshViewsIntervalInMinutes)
+                .repeatForever()
+                .withMisfireHandlingInstructionNextWithExistingCount()
+        )
+        .build()
+
+    val retentionPoliciesTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("retentionPolicyTrigger", "retentionPolicies")
+        .startNow()
+        .withSchedule(
+            CronScheduleBuilder.cronSchedule(dataRetentionJobCron)
+        )
+        .build()
 }
 
 val schedulerDIModule = DI.Module("scheduler") {
