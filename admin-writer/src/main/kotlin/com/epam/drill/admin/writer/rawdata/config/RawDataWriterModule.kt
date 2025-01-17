@@ -18,7 +18,9 @@ package com.epam.drill.admin.writer.rawdata.config
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
+import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
@@ -31,7 +33,10 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
     bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
     bind<TestDefinitionRepository>() with singleton { TestDefinitionRepositoryImpl() }
     bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
+    bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
     bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+    bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
+
     bind<RawDataWriter>() with singleton { RawDataServiceImpl(
         instanceRepository = instance(),
         coverageRepository = instance(),
