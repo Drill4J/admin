@@ -23,32 +23,37 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.quartz.CronScheduleBuilder
+import org.quartz.CronTrigger
 import org.quartz.SimpleScheduleBuilder
+import org.quartz.SimpleTrigger
 import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
-    val refreshViewsIntervalInMinutes: Int = config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
-    val dataRetentionJobCron: String = config.propertyOrNull("retentionJobCron")?.getString() ?: "0 0 1 * * ?"
+    val refreshViewsIntervalInMinutes: Int =
+        config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
+    val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
 
-    val refreshMatViewsTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("refreshMaterializedViewTrigger", "refreshMaterializedViews")
-        .startNow()
-        .withSchedule(
-            SimpleScheduleBuilder.simpleSchedule()
-                .withIntervalInMinutes(refreshViewsIntervalInMinutes)
-                .repeatForever()
-                .withMisfireHandlingInstructionNextWithExistingCount()
-        )
-        .build()
+    val refreshMatViewsTrigger: SimpleTrigger
+        get() = TriggerBuilder.newTrigger()
+            .withIdentity("refreshMaterializedViewTrigger", "refreshMaterializedViews")
+            .startNow()
+            .withSchedule(
+                SimpleScheduleBuilder.simpleSchedule()
+                    .withIntervalInMinutes(refreshViewsIntervalInMinutes)
+                    .repeatForever()
+                    .withMisfireHandlingInstructionNextWithExistingCount()
+            )
+            .build()
 
-    val retentionPoliciesTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("retentionPolicyTrigger", "retentionPolicies")
-        .startNow()
-        .withSchedule(
-            CronScheduleBuilder.cronSchedule(dataRetentionJobCron)
-        )
-        .build()
+    val retentionPoliciesTrigger: CronTrigger
+        get() = TriggerBuilder.newTrigger()
+            .withIdentity("retentionPolicyTrigger", "retentionPolicies")
+            .startNow()
+            .withSchedule(
+                CronScheduleBuilder.cronSchedule(dataRetentionJobCron)
+            )
+            .build()
 }
 
 val schedulerDIModule = DI.Module("scheduler") {
