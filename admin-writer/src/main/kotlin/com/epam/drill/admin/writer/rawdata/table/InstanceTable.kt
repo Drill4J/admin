@@ -18,6 +18,8 @@ package com.epam.drill.admin.writer.rawdata.table
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object InstanceTable : StringIdTable("raw_data.instances", "id") {
+    val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
+    val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
     val createdAt = datetime("created_at")

@@ -15,7 +15,11 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.javatime.datetime
+
 object MethodTable : StringIdTable("raw_data.methods") {
+    val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
+    val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
     val buildId = varchar("build_id", MEDIUM_TEXT_LENGTH)
     val name = varchar("name",  LONG_TEXT_LENGTH)
@@ -27,4 +31,5 @@ object MethodTable : StringIdTable("raw_data.methods") {
     val probesStartPos = integer("probe_start_pos")
     val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
     val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
+    val createdAt = datetime("created_at")
 }
