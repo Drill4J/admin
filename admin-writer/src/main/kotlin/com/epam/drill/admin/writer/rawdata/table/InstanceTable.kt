@@ -22,5 +22,5 @@ object InstanceTable : StringIdTable("raw_data.instances", "id") {
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at")
+    val createdAt = datetime("created_at").nullable()
 }

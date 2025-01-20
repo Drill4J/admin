@@ -31,5 +31,5 @@ object MethodTable : StringIdTable("raw_data.methods") {
     val probesStartPos = integer("probe_start_pos")
     val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
     val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at")
+    val createdAt = datetime("created_at").nullable()
 }

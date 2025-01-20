@@ -24,5 +24,5 @@ object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
     val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
     val tags = varchar("tags", MEDIUM_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at")
+    val createdAt = datetime("created_at").nullable()
 }

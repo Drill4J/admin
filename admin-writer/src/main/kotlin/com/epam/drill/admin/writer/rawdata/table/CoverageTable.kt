@@ -26,5 +26,5 @@ object CoverageTable : IntIdTable("raw_data.coverage") {
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
     val probes = registerColumn("probes", ProbesColumnType())
-    val createdAt = datetime("created_at")
+    val createdAt = datetime("created_at").nullable()
 }
