@@ -17,11 +17,8 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.Instance
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.CoverageTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -39,7 +36,6 @@ class InstanceRepositoryImpl: InstanceRepository {
     }
 
     override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        val selectBuildIdsByGroupId = BuildTable.select(BuildTable.id).where { BuildTable.groupId eq groupId }
-        InstanceTable.deleteWhere { (createdAt less createdBefore.atStartOfDay()) and (buildId inSubQuery selectBuildIdsByGroupId) }
+        InstanceTable.deleteWhere { (InstanceTable.groupId eq groupId) and (InstanceTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }
