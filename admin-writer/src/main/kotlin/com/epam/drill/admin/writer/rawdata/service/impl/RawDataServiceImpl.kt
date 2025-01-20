@@ -73,6 +73,8 @@ class RawDataServiceImpl(
         )
         val instance = Instance(
             id = instancePayload.instanceId,
+            groupId = instancePayload.groupId,
+            appId = instancePayload.appId,
             buildId = buildId,
             envId = instancePayload.envId
         )
@@ -114,6 +116,8 @@ class RawDataServiceImpl(
                     method.params,
                     method.returnType
                 ).joinToString(":"),
+                groupId = methodsPayload.groupId,
+                appId = methodsPayload.appId,
                 buildId = buildId,
                 classname = method.classname,
                 name = method.name,
@@ -142,6 +146,8 @@ class RawDataServiceImpl(
     override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
         coveragePayload.coverage.map { coverage ->
             Coverage(
+                groupId = coveragePayload.groupId,
+                appId = coveragePayload.appId,
                 instanceId = coveragePayload.instanceId,
                 classname = coverage.classname,
                 testId = coverage.testId,

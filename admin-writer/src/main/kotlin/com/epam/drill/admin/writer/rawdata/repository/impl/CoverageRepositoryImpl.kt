@@ -28,6 +28,8 @@ import java.time.LocalDate
 class CoverageRepositoryImpl: CoverageRepository {
     override fun createMany(data: List<Coverage>) {
         CoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
+            this[CoverageTable.groupId] = it.groupId
+            this[CoverageTable.appId] = it.appId
             this[CoverageTable.instanceId] = it.instanceId
             this[CoverageTable.classname] = it.classname
             this[CoverageTable.testId] = it.testId

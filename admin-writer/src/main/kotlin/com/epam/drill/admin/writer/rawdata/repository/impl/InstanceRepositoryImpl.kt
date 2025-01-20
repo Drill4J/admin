@@ -30,6 +30,8 @@ class InstanceRepositoryImpl: InstanceRepository {
     override fun create(instance: Instance) {
         InstanceTable.upsert() {
             it[id] = instance.id
+            it[groupId] = instance.groupId
+            it[appId] = instance.appId
             it[buildId] = instance.buildId
             it[envId] = instance.envId
         }
