@@ -27,5 +27,5 @@ object BuildTable : StringIdTable("raw_data.builds") {
     val commitDate = varchar("commit_date", SHORT_TEXT_LENGTH).nullable()
     val commitAuthor = varchar("commit_author", SHORT_TEXT_LENGTH).nullable()
     val commitMessage = varchar("commit_message", SHORT_TEXT_LENGTH).nullable()
-    val createdAt = datetime("started_at")
+    val createdAt = datetime("created_at")
 }
