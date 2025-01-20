@@ -847,6 +847,10 @@ components:
     CoveragePayload:
       type: object
       properties:
+        groupId:
+          type: string
+        appId:
+          type: string
         instanceId:
           type: string
         coverage:
