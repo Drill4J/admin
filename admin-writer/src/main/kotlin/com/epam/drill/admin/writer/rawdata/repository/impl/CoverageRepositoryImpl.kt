@@ -17,10 +17,8 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
-import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
@@ -30,6 +28,8 @@ import java.time.LocalDate
 class CoverageRepositoryImpl: CoverageRepository {
     override fun createMany(data: List<Coverage>) {
         CoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
+            this[CoverageTable.groupId] = it.groupId
+            this[CoverageTable.appId] = it.appId
             this[CoverageTable.instanceId] = it.instanceId
             this[CoverageTable.classname] = it.classname
             this[CoverageTable.testId] = it.testId
@@ -38,9 +38,6 @@ class CoverageRepositoryImpl: CoverageRepository {
     }
 
     override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        val selectInstanceIdsByGroupId = (InstanceTable innerJoin BuildTable)
-            .select(InstanceTable.id)
-            .where { BuildTable.groupId eq groupId }
-        CoverageTable.deleteWhere { (createdAt less createdBefore.atStartOfDay()) and (instanceId inSubQuery selectInstanceIdsByGroupId) }
+        CoverageTable.deleteWhere { (CoverageTable.groupId eq groupId) and (CoverageTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }

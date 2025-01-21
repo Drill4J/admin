@@ -30,21 +30,30 @@ class DataRetentionPolicyJob(
     private val instanceRepository: InstanceRepository,
     private val coverageRepository: CoverageRepository,
     private val testSessionRepository: TestSessionRepository,
-    private val testLaunchRepository: TestLaunchRepository
+    private val testLaunchRepository: TestLaunchRepository,
+    private val methodRepository: MethodRepository,
+    private val buildRepository: BuildRepository,
 ) : Job {
     private val logger = KotlinLogging.logger {}
 
-    override fun execute(context: JobExecutionContext) = transaction {
-        groupSettingsRepository.getAll().forEach {  settings ->
+    override fun execute(context: JobExecutionContext) {
+        val groupSettings = transaction {
+            groupSettingsRepository.getAll()
+        }
+        groupSettings.forEach { settings ->
             val groupId = settings.groupId
             val retentionPeriodDays = settings.retentionPeriodDays ?: return@forEach
             val createdBefore: LocalDate = LocalDate.now(ZoneId.systemDefault()).minusDays(retentionPeriodDays.toLong())
-            logger.debug { "Deleting all data of $groupId older than $createdBefore..." }
-            coverageRepository.deleteAllCreatedBefore(groupId, createdBefore)
-            instanceRepository.deleteAllCreatedBefore(groupId, createdBefore)
-            testLaunchRepository.deleteAllCreatedBefore(groupId, createdBefore)
-            testSessionRepository.deleteAllCreatedBefore(groupId, createdBefore)
-            logger.debug { "Data of $groupId older than $createdBefore deleted successfully." }
+            transaction {
+                logger.debug { "Deleting all data of $groupId older than $createdBefore..." }
+                coverageRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                instanceRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                testLaunchRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                testSessionRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                methodRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                buildRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                logger.debug { "Data of $groupId older than $createdBefore deleted successfully." }
+            }
         }
     }
 

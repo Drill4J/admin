@@ -44,8 +44,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         AND NOT EXISTS (
             SELECT 1
             FROM raw_data.method_ignore_rules r
-            WHERE r.group_id::text = split_part(m.build_id::text, ':'::text, 1)
-		        AND r.app_id::text = split_part(m.build_id::text, ':'::text, 2)
+            WHERE r.group_id = m.group_id
+		        AND r.app_id = m.app_id
 		        AND (r.name_pattern IS NOT NULL AND m.name::text ~ r.name_pattern::text
 		            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
 		            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text

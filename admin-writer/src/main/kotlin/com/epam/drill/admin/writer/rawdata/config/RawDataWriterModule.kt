@@ -58,6 +58,8 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
         coverageRepository = instance(),
         testSessionRepository = instance(),
         testLaunchRepository = instance(),
+        methodRepository = instance(),
+        buildRepository = instance(),
     ) }
 }
 
