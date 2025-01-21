@@ -1311,7 +1311,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
     __name VARCHAR,
     __path VARCHAR,
     __created_at TIMESTAMP,
-    __tags VARCHAR
+    __tags VARCHAR[],
+    __metadata JSON
 ) AS $$
 BEGIN
     RETURN QUERY

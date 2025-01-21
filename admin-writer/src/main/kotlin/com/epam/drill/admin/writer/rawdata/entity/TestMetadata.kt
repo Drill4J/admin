@@ -38,6 +38,7 @@ class TestDefinition(
     val name: String?,
     val path: String?,
     val tags: String?,
+    val metadata: Map<String, String>?
 )
 
 class TestSession (

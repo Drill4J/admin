@@ -15,13 +15,13 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import com.epam.drill.admin.common.service.generateBuildId
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -181,7 +181,8 @@ class RawDataServiceImpl(
                 runner = test.details.engine,
                 name = test.details.testName,
                 path = test.details.path,
-                tags = test.details.labels.map { x -> x.value }.joinToString(",")
+                tags = test.details.labels.map { x -> x.value }.joinToString(","),
+                metadata = test.details.metadata
             )
         }.let(testDefinitionRepository::createMany)
     }

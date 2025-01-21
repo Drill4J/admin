@@ -15,7 +15,11 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.json.json
 
 object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
@@ -24,5 +28,6 @@ object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
     val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
     val tags = varchar("tags", MEDIUM_TEXT_LENGTH).nullable()
+    val metadata = json("metadata", Json, MapSerializer(String.serializer(), String.serializer())).nullable()
     val createdAt = datetime("created_at").nullable()
 }
