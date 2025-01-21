@@ -834,7 +834,10 @@ RETURNS TABLE (
     probe_start_pos INT,
     probes_count INT,
     annotations VARCHAR,
-    class_annotations VARCHAR
+    class_annotations VARCHAR,
+    group_id VARCHAR,
+    app_id VARCHAR,
+    created_at TIMESTAMP
 )
 AS $$
 BEGIN
