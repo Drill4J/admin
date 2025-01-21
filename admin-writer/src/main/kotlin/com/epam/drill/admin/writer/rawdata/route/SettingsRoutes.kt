@@ -23,6 +23,7 @@ import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import io.ktor.server.resources.get
 import io.ktor.server.resources.put
+import io.ktor.server.resources.delete
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
@@ -35,6 +36,7 @@ class GroupSettingsRoute {
 fun Route.settingsRoutes() {
     getGroupSettings()
     putGroupSettings()
+    deleteGroupSettings()
 }
 
 fun Route.getGroupSettings() {
@@ -52,5 +54,14 @@ fun Route.putGroupSettings() {
     put<GroupSettingsRoute.GroupId> { params ->
         settingsService.saveGroupSettings(params.groupId, call.receive())
         call.ok("Group settings saved")
+    }
+}
+
+fun Route.deleteGroupSettings() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    delete<GroupSettingsRoute.GroupId> { params ->
+        settingsService.clearGroupSettings(params.groupId)
+        call.ok("Group settings have been reset to default values")
     }
 }

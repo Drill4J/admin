@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.service.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.GroupSettings
+import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.GroupSettingsRepository
 import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
 import com.epam.drill.admin.writer.rawdata.service.SettingsService

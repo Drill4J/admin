@@ -49,6 +49,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+    delete:
+      summary: Reset group settings to default values
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group settings cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
 
   # Data Ingest Endpoints
   /api/data-ingest/builds:
