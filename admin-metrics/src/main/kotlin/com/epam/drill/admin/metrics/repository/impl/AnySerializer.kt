@@ -60,7 +60,7 @@ object AnySerializer : KSerializer<Any?> {
             }
             is PGobject -> {
                 val json = value.value
-                if (json == null) {
+                if (json != null) {
                     val parsedValue = Json.decodeFromString<Map<String, String>>(json)
                     val mapSerializer = MapSerializer(String.serializer(), this)
                     encoder.encodeSerializableValue(mapSerializer, parsedValue)
