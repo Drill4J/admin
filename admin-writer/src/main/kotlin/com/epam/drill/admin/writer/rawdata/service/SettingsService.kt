@@ -16,10 +16,16 @@
 package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface SettingsService {
     suspend fun getGroupSettings(groupId: String): GroupSettingsView
     suspend fun saveGroupSettings(groupId: String, payload: GroupSettingsPayload)
     suspend fun clearGroupSettings(groupId: String)
+
+    suspend fun getMethodIgnoreRules(groupId: String, appId: String): List<MethodIgnoreRuleView>
+    suspend fun saveMethodIgnoreRule(groupId: String, appId: String, rulePayload: MethodIgnoreRulePayload)
+    suspend fun deleteMethodIgnoreRule(groupId: String, appId: String, ruleId: Int)
 }

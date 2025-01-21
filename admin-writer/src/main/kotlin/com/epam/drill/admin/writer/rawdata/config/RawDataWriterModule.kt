@@ -40,27 +40,35 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
     bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
     bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
 
-    bind<RawDataWriter>() with singleton { RawDataServiceImpl(
-        instanceRepository = instance(),
-        coverageRepository = instance(),
-        testDefinitionRepository = instance(),
-        testLaunchRepository = instance(),
-        methodRepository = instance(),
-        buildRepository = instance(),
-        testSessionRepository = instance(),
-        methodIgnoreRuleRepository = instance()
-    ) }
-    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+    bind<RawDataWriter>() with singleton {
+        RawDataServiceImpl(
+            instanceRepository = instance(),
+            coverageRepository = instance(),
+            testDefinitionRepository = instance(),
+            testLaunchRepository = instance(),
+            methodRepository = instance(),
+            buildRepository = instance(),
+            testSessionRepository = instance(),
+        )
+    }
+    bind<SettingsService>() with singleton {
+        SettingsServiceImpl(
+            groupSettingsRepository = instance(),
+            methodIgnoreRuleRepository = instance()
+        )
+    }
 
-    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
-        groupSettingsRepository = instance(),
-        instanceRepository = instance(),
-        coverageRepository = instance(),
-        testSessionRepository = instance(),
-        testLaunchRepository = instance(),
-        methodRepository = instance(),
-        buildRepository = instance(),
-    ) }
+    bind<DataRetentionPolicyJob>() with singleton {
+        DataRetentionPolicyJob(
+            groupSettingsRepository = instance(),
+            instanceRepository = instance(),
+            coverageRepository = instance(),
+            testSessionRepository = instance(),
+            testLaunchRepository = instance(),
+            methodRepository = instance(),
+            buildRepository = instance(),
+        )
+    }
 }
 
 val dataRetentionPolicyJob: JobDetail = JobBuilder.newJob(DataRetentionPolicyJob::class.java)

@@ -25,7 +25,4 @@ interface RawDataWriter {
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
     suspend fun saveTestSession(sessionPayload: SessionPayload)
-    suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
-    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
-    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
 }

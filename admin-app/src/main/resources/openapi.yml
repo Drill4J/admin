@@ -68,6 +68,91 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/method-ignore-rules/{groupId}/{appId}:
+    post:
+      summary: Save method ignore rule
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MethodIgnoreRulePayload'
+      responses:
+        '200':
+          description: Method ignore rule saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    get:
+      summary: Get all method ignore rules
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of method ignore rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/method-ignore-rules/{groupId}/{appId}/{id}:
+    delete:
+      summary: Delete method ignore rule by ID
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Method ignore rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
 
   # Data Ingest Endpoints
   /api/data-ingest/builds:
@@ -204,62 +289,6 @@ paths:
       responses:
         '200':
           description: Test sessions saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-  /api/data-ingest/method-ignore-rules:
-    post:
-      summary: Save method ignore rule
-      tags:
-        - data-ingest
-      security:
-        - apiKeyAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MethodIgnoreRulePayload'
-          application/protobuf:
-            schema:
-              $ref: '#/components/schemas/MethodIgnoreRulePayload'
-      responses:
-        '200':
-          description: Method ignore rule saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-    get:
-      summary: Get all method ignore rules
-      tags:
-        - data-ingest
-      security:
-        - apiKeyAuth: [ ]
-      responses:
-        '200':
-          description: List of method ignore rules
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListDataResponse'
-  /api/data-ingest/method-ignore-rules/{id}:
-    delete:
-      summary: Delete method ignore rule by ID
-      tags:
-        - data-ingest
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Method ignore rule deleted
           content:
             application/json:
               schema:
@@ -1016,10 +1045,6 @@ components:
     MethodIgnoreRulePayload:
       type: object
       properties:
-        groupId:
-          type: string
-        appId:
-          type: string
         namePattern:
           type: string
           nullable: true

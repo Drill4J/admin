@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.table.MethodIgnoreRulesTable
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
@@ -36,21 +37,25 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
         }
     }
 
-    override fun getAll(): List<MethodIgnoreRuleView> {
-        return MethodIgnoreRulesTable.selectAll().map {
-            MethodIgnoreRuleView(
-                id = it[MethodIgnoreRulesTable.id].value,
-                groupId = it[MethodIgnoreRulesTable.groupId],
-                appId = it[MethodIgnoreRulesTable.appId],
-                namePattern = it[MethodIgnoreRulesTable.namePattern],
-                classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
-                annotationsPattern = it[MethodIgnoreRulesTable.annotationsPattern],
-                classAnnotationsPattern = it[MethodIgnoreRulesTable.classAnnotationsPattern]
-            )
-        }
+    override fun getAllByGroupIdAndAppId(groupId: String, appId: String): List<MethodIgnoreRuleView> {
+        return MethodIgnoreRulesTable.selectAll()
+            .where { (MethodIgnoreRulesTable.groupId eq groupId) and (MethodIgnoreRulesTable.appId eq appId) }
+            .map {
+                MethodIgnoreRuleView(
+                    id = it[MethodIgnoreRulesTable.id].value,
+                    groupId = it[MethodIgnoreRulesTable.groupId],
+                    appId = it[MethodIgnoreRulesTable.appId],
+                    namePattern = it[MethodIgnoreRulesTable.namePattern],
+                    classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
+                    annotationsPattern = it[MethodIgnoreRulesTable.annotationsPattern],
+                    classAnnotationsPattern = it[MethodIgnoreRulesTable.classAnnotationsPattern]
+                )
+            }
     }
 
-    override fun deleteById(ruleId: Int) {
-        MethodIgnoreRulesTable.deleteWhere { MethodIgnoreRulesTable.id eq ruleId }
+    override fun deleteByGroupIdAndAppIdAndRuleId(groupId: String, appId: String, ruleId: Int) {
+        MethodIgnoreRulesTable.deleteWhere {
+            (MethodIgnoreRulesTable.groupId eq groupId) and (MethodIgnoreRulesTable.appId eq appId) and (MethodIgnoreRulesTable.id eq ruleId)
+        }
     }
 }

@@ -19,8 +19,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class MethodIgnoreRulePayload(
-    val groupId: String,
-    val appId: String,
     val namePattern: String? = null,
     val classnamePattern: String? = null,
     val annotationsPattern: String? = null,

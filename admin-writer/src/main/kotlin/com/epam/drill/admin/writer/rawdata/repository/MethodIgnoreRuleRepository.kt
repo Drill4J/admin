@@ -20,6 +20,6 @@ import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface MethodIgnoreRuleRepository {
     fun create(rule: MethodIgnoreRule)
-    fun getAll(): List<MethodIgnoreRuleView>
-    fun deleteById(ruleId: Int)
+    fun getAllByGroupIdAndAppId(groupId: String, appId: String): List<MethodIgnoreRuleView>
+    fun deleteByGroupIdAndAppIdAndRuleId(groupId: String, appId: String, ruleId: Int)
 }

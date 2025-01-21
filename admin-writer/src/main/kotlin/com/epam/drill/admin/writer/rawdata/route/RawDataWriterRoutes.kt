@@ -63,11 +63,6 @@ class TestMetadataRoute()
 @Resource("sessions")
 class TestSessionRoute()
 
-@Resource("method-ignore-rules")
-class MethodIgnoreRulesRoute() {
-    @Resource("/{id}")
-    class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
-}
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
 
@@ -79,9 +74,6 @@ fun Route.dataIngestRoutes() {
         putMethods()
         postTestMetadata()
         putTestSessions()
-        postMethodIgnoreRules()
-        getMethodIgnoreRules()
-        deleteMethodIgnoreRule()
 //        postRawJavaScriptCoverage(jsCoverageConverterAddress)
     }
 }
@@ -137,33 +129,6 @@ fun Route.putTestSessions() {
     put<TestSessionRoute> {
         rawDataWriter.saveTestSession(call.decompressAndReceive())
         call.ok("Test sessions saved")
-    }
-}
-
-fun Route.postMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
-
-    post<MethodIgnoreRulesRoute> {
-        rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
-        call.ok("Method ignore rule saved")
-    }
-}
-
-fun Route.getMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
-
-    get<MethodIgnoreRulesRoute> {
-        call.ok(rawDataWriter.getAllMethodIgnoreRules())
-    }
-}
-
-fun Route.deleteMethodIgnoreRule() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
-
-    delete<MethodIgnoreRulesRoute.Id> { params ->
-        val id = params.id
-        rawDataWriter.deleteMethodIgnoreRuleById(id)
-        call.ok("Method ignore rule deleted")
     }
 }
 

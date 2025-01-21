@@ -20,10 +20,11 @@ import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import io.ktor.resources.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
-import io.ktor.server.routing.*
 import io.ktor.server.resources.get
 import io.ktor.server.resources.put
+import io.ktor.server.resources.post
 import io.ktor.server.resources.delete
+import io.ktor.server.routing.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 
@@ -33,10 +34,22 @@ class GroupSettingsRoute {
     class GroupId(val parent: GroupSettingsRoute, val groupId: String)
 }
 
+@Resource("method-ignore-rules")
+class MethodIgnoreRulesRoute() {
+    @Resource("/{groupId}/{appId}")
+    class GroupIdAppId(val parent: MethodIgnoreRulesRoute, val groupId: String, val appId: String) {
+        @Resource("/{id}")
+        class Id(val parent: GroupIdAppId, val id: Int)
+    }
+}
+
 fun Route.settingsRoutes() {
     getGroupSettings()
     putGroupSettings()
     deleteGroupSettings()
+    getMethodIgnoreRules()
+    postMethodIgnoreRules()
+    deleteMethodIgnoreRule()
 }
 
 fun Route.getGroupSettings() {
@@ -63,5 +76,35 @@ fun Route.deleteGroupSettings() {
     delete<GroupSettingsRoute.GroupId> { params ->
         settingsService.clearGroupSettings(params.groupId)
         call.ok("Group settings have been reset to default values")
+    }
+}
+
+
+fun Route.postMethodIgnoreRules() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    post<MethodIgnoreRulesRoute.GroupIdAppId> { params ->
+        settingsService.saveMethodIgnoreRule(params.groupId, params.appId, call.decompressAndReceive())
+        call.ok("Method ignore rule saved")
+    }
+}
+
+fun Route.getMethodIgnoreRules() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    get<MethodIgnoreRulesRoute.GroupIdAppId> { params ->
+        call.ok(settingsService.getMethodIgnoreRules(params.groupId, params.appId))
+    }
+}
+
+fun Route.deleteMethodIgnoreRule() {
+    val settingsService by closestDI().instance<SettingsService>()
+
+    delete<MethodIgnoreRulesRoute.GroupIdAppId.Id> { params ->
+        val groupId = params.parent.groupId
+        val appId = params.parent.appId
+        val ruleId = params.id
+        settingsService.deleteMethodIgnoreRule(groupId, appId, ruleId)
+        call.ok("Method ignore rule deleted")
     }
 }

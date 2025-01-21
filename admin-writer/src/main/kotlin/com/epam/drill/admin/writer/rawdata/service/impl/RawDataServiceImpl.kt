@@ -35,8 +35,7 @@ class RawDataServiceImpl(
     private val testLaunchRepository: TestLaunchRepository,
     private val methodRepository: MethodRepository,
     private val buildRepository: BuildRepository,
-    private val testSessionRepository: TestSessionRepository,
-    private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository
+    private val testSessionRepository: TestSessionRepository
 ) : RawDataWriter {
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
@@ -195,32 +194,6 @@ class RawDataServiceImpl(
         )
         transaction {
             testSessionRepository.create(testSession)
-        }
-    }
-
-    override suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload) {
-        val rule = MethodIgnoreRule(
-            groupId = rulePayload.groupId,
-            appId = rulePayload.appId,
-            namePattern = rulePayload.namePattern,
-            classnamePattern = rulePayload.classnamePattern,
-            annotationsPattern = rulePayload.annotationsPattern,
-            classAnnotationsPattern = rulePayload.classAnnotationsPattern
-        )
-        transaction {
-            methodIgnoreRuleRepository.create(rule)
-        }
-    }
-
-    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView> {
-        return transaction {
-            methodIgnoreRuleRepository.getAll()
-        }
-    }
-
-    override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {
-        transaction {
-            methodIgnoreRuleRepository.deleteById(ruleId)
         }
     }
 }
