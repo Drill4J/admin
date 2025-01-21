@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.config
+package com.epam.drill.admin.writer.rawdata.entity
 
-import io.ktor.server.config.*
-
-class SchedulerConfig(private val config: ApplicationConfig) {
-    val refreshViewsIntervalInMinutes: Int = config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
-    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
-}
+class GroupSettings(
+    val groupId: String,
+    val retentionPeriodDays: Int?
+)

@@ -18,16 +18,26 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Instance
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.upsert
+import java.time.LocalDate
 
 class InstanceRepositoryImpl: InstanceRepository {
 
     override fun create(instance: Instance) {
         InstanceTable.upsert() {
             it[id] = instance.id
+            it[groupId] = instance.groupId
+            it[appId] = instance.appId
             it[buildId] = instance.buildId
             it[envId] = instance.envId
         }
     }
 
+    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        InstanceTable.deleteWhere { (InstanceTable.groupId eq groupId) and (InstanceTable.createdAt less createdBefore.atStartOfDay()) }
+    }
 }

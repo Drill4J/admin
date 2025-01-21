@@ -3,6 +3,53 @@ info:
   title: Drill4J API
   version: 1.0.0
 paths:
+  #Settings Endpoints
+  /api/group-settings/{groupId}:
+    get:
+      summary: Get group settings
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+    put:
+      summary: Save group settings
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupSettingsPayload'
+      responses:
+        '200':
+          description: Group settings saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
   # Data Ingest Endpoints
   /api/data-ingest/builds:
     put:
@@ -800,6 +847,10 @@ components:
     CoveragePayload:
       type: object
       properties:
+        groupId:
+          type: string
+        appId:
+          type: string
         instanceId:
           type: string
         coverage:
@@ -1000,3 +1051,10 @@ components:
       properties:
         name:
           type: string
+    # Settings Schemas
+    GroupSettingsPayload:
+      type: object
+      properties:
+        retentionPeriodDays:
+          type: integer
+          nullable: true

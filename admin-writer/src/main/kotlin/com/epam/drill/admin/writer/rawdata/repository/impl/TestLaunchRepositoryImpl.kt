@@ -15,29 +15,28 @@
  */
 package com.epam.drill.admin.writer.rawdata.repository.impl
 
-import com.epam.drill.admin.writer.rawdata.entity.Coverage
-import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
-import com.epam.drill.admin.writer.rawdata.table.CoverageTable
+import com.epam.drill.admin.writer.rawdata.entity.TestLaunch
+import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
+import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
-class CoverageRepositoryImpl: CoverageRepository {
-    override fun createMany(data: List<Coverage>) {
-        CoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
-            this[CoverageTable.groupId] = it.groupId
-            this[CoverageTable.appId] = it.appId
-            this[CoverageTable.instanceId] = it.instanceId
-            this[CoverageTable.classname] = it.classname
-            this[CoverageTable.testId] = it.testId
-            this[CoverageTable.probes] = it.probes
+class TestLaunchRepositoryImpl: TestLaunchRepository {
+    override fun createMany(testLaunchList: List<TestLaunch>) {
+        TestLaunchTable.batchUpsert(testLaunchList, shouldReturnGeneratedValues = false) {
+            this[TestLaunchTable.id] = it.id
+            this[TestLaunchTable.groupId] = it.groupId
+            this[TestLaunchTable.testDefinitionId] = it.testDefinitionId
+            this[TestLaunchTable.testSessionId] = it.testSessionId
+            this[TestLaunchTable.result] = it.result
         }
     }
 
     override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        CoverageTable.deleteWhere { (CoverageTable.groupId eq groupId) and (CoverageTable.createdAt less createdBefore.atStartOfDay()) }
+        TestLaunchTable.deleteWhere { (TestLaunchTable.groupId eq groupId) and (TestLaunchTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }

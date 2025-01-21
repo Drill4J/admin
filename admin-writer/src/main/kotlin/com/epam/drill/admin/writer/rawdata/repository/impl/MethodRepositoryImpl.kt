@@ -18,12 +18,19 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Method
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
 import com.epam.drill.admin.writer.rawdata.table.MethodTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.deleteWhere
+import java.time.LocalDate
 
 class MethodRepositoryImpl: MethodRepository {
     override fun createMany(data: List<Method>) {
         MethodTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
             this[MethodTable.id] = it.id
+            this[MethodTable.groupId] = it.groupId
+            this[MethodTable.appId] = it.appId
             this[MethodTable.buildId] = it.buildId
             this[MethodTable.classname] = it.classname
             this[MethodTable.name] = it.name
@@ -42,4 +49,7 @@ class MethodRepositoryImpl: MethodRepository {
         }
     }
 
+    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        MethodTable.deleteWhere { (MethodTable.groupId eq groupId) and (MethodTable.createdAt less createdBefore.atStartOfDay()) }
+    }
 }

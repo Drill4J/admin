@@ -15,30 +15,56 @@
  */
 package com.epam.drill.admin.writer.rawdata.config
 
+import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
+import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import org.quartz.JobBuilder
+import org.quartz.JobDetail
 
 val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
     bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
     bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
     bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
     bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
-    bind<TestMetadataRepository>() with singleton { TestMetadataRepositoryImpl() }
+    bind<TestDefinitionRepository>() with singleton { TestDefinitionRepositoryImpl() }
     bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
+    bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
     bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+    bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
+
     bind<RawDataWriter>() with singleton { RawDataServiceImpl(
         instanceRepository = instance(),
         coverageRepository = instance(),
-        testMetadataRepository = instance(),
+        testDefinitionRepository = instance(),
+        testLaunchRepository = instance(),
         methodRepository = instance(),
         buildRepository = instance(),
         testSessionRepository = instance(),
         methodIgnoreRuleRepository = instance()
     ) }
+    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+
+    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
+        groupSettingsRepository = instance(),
+        instanceRepository = instance(),
+        coverageRepository = instance(),
+        testSessionRepository = instance(),
+        testLaunchRepository = instance(),
+        methodRepository = instance(),
+        buildRepository = instance(),
+    ) }
 }
+
+val dataRetentionPolicyJob: JobDetail = JobBuilder.newJob(DataRetentionPolicyJob::class.java)
+    .storeDurably()
+    .withDescription("Job for deleting raw data older than the retention period.")
+    .withIdentity("rawDataRetentionPolicyJob", "retentionPolicies")
+    .build()

@@ -18,8 +18,15 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.upsert
+import com.epam.drill.admin.writer.rawdata.table.BuildTable.select
+import com.epam.drill.admin.writer.rawdata.table.CoverageTable
+import com.epam.drill.admin.writer.rawdata.table.InstanceTable
+import com.epam.drill.admin.writer.rawdata.table.MethodTable
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import java.time.LocalDate
 
 class BuildRepositoryImpl: BuildRepository {
     override fun create(build: Build) {
@@ -38,5 +45,9 @@ class BuildRepositoryImpl: BuildRepository {
     }
     override fun existsById(buildId: String): Boolean {
         return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
+    }
+
+    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        BuildTable.deleteWhere { (BuildTable.groupId eq groupId) and (BuildTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }

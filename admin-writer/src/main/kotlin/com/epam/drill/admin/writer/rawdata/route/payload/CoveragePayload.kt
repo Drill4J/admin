@@ -19,6 +19,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class CoveragePayload(
+    val groupId: String,
+    val appId: String,
     val instanceId: String,
     val coverage: Array<SingleClassCoveragePayload>,
 )

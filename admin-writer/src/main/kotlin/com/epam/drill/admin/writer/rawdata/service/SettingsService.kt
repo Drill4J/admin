@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.table
+package com.epam.drill.admin.writer.rawdata.service
 
-import org.jetbrains.exposed.sql.javatime.datetime
+import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
+import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
 
-object InstanceTable : StringIdTable("raw_data.instances", "id") {
-    val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
-    val appId = varchar("app_id", SHORT_TEXT_LENGTH)
-    val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
-    val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at").nullable()
+interface SettingsService {
+    fun getGroupSettings(groupId: String): GroupSettingsView
+    fun saveGroupSettings(groupId: String, payload: GroupSettingsPayload)
+    fun clearGroupSettings(groupId: String)
 }

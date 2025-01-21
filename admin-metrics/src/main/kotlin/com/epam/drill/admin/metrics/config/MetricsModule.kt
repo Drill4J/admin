@@ -40,12 +40,6 @@ val metricsDIModule = DI.Module("metricsServices") {
             testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations"))
         )
     }
-    bind<SchedulerConfig>() with singleton {
-        SchedulerConfig(instance<Application>().environment.config.config("drill.metrics.scheduler"))
-    }
-    bind<MetricsScheduler>() with singleton {
-        MetricsScheduler(config = instance())
-    }
     bind<RefreshMaterializedViewJob>() with singleton {
         RefreshMaterializedViewJob(metricsRepository = instance())
     }

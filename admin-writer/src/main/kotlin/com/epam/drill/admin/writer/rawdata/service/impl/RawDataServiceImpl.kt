@@ -31,7 +31,8 @@ private const val EXEC_DATA_BATCH_SIZE = 100
 class RawDataServiceImpl(
     private val instanceRepository: InstanceRepository,
     private val coverageRepository: CoverageRepository,
-    private val testMetadataRepository: TestMetadataRepository,
+    private val testDefinitionRepository: TestDefinitionRepository,
+    private val testLaunchRepository: TestLaunchRepository,
     private val methodRepository: MethodRepository,
     private val buildRepository: BuildRepository,
     private val testSessionRepository: TestSessionRepository,
@@ -72,6 +73,8 @@ class RawDataServiceImpl(
         )
         val instance = Instance(
             id = instancePayload.instanceId,
+            groupId = instancePayload.groupId,
+            appId = instancePayload.appId,
             buildId = buildId,
             envId = instancePayload.envId
         )
@@ -107,12 +110,14 @@ class RawDataServiceImpl(
             // TODO add validation for fields (we had issues with body_checksum)
             Method(
                 id = listOf(
-                        buildId,
-                        method.classname,
-                        method.name,
-                        method.params,
-                        method.returnType
-                    ).joinToString(":"),
+                    buildId,
+                    method.classname,
+                    method.name,
+                    method.params,
+                    method.returnType
+                ).joinToString(":"),
+                groupId = methodsPayload.groupId,
+                appId = methodsPayload.appId,
                 buildId = buildId,
                 classname = method.classname,
                 name = method.name,
@@ -131,22 +136,24 @@ class RawDataServiceImpl(
                 classAnnotations = method.classAnnotations
             )
         }
-        .let { dataToInsert ->
-            transaction {
-                methodRepository.createMany(dataToInsert)
+            .let { dataToInsert ->
+                transaction {
+                    methodRepository.createMany(dataToInsert)
+                }
             }
-        }
     }
 
     override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
         coveragePayload.coverage.map { coverage ->
-                Coverage(
-                    instanceId = coveragePayload.instanceId,
-                    classname = coverage.classname,
-                    testId = coverage.testId,
-                    probes = coverage.probes
-                )
-            }
+            Coverage(
+                groupId = coveragePayload.groupId,
+                appId = coveragePayload.appId,
+                instanceId = coveragePayload.instanceId,
+                classname = coverage.classname,
+                testId = coverage.testId,
+                probes = coverage.probes
+            )
+        }
             .chunked(EXEC_DATA_BATCH_SIZE)
             .forEach { data ->
                 transaction {
@@ -155,31 +162,28 @@ class RawDataServiceImpl(
             }
     }
 
-    override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) {
+    override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
-            TestMetadata(
-                launch = TestLaunch(
-                    groupId = test.groupId,
-                    id = test.id,
-                    testDefinitionId = test.testDefinitionId,
-                    testSessionId = testsPayload.sessionId,
-                    result = test.result.toString()
-                ),
-                definition = TestDefinition(
-                    groupId = test.groupId,
-                    id = test.testDefinitionId,
-                    type = "placeholder", // TODO replace once it's implemented on autotest agent
-                    runner = test.details.engine,
-                    name = test.details.testName,
-                    path = test.details.path,
-                    tags = test.details.labels.map { x -> x.value }.joinToString(",")
-                )
+            TestLaunch(
+                groupId = test.groupId,
+                id = test.id,
+                testDefinitionId = test.testDefinitionId,
+                testSessionId = testsPayload.sessionId,
+                result = test.result.toString()
             )
-        }.let { dataToInsert ->
-            transaction {
-                testMetadataRepository.createMany(dataToInsert)
-            }
-        }
+        }.let(testLaunchRepository::createMany)
+
+        testsPayload.tests.map { test ->
+            TestDefinition(
+                groupId = test.groupId,
+                id = test.testDefinitionId,
+                type = "placeholder", // TODO replace once it's implemented on autotest agent
+                runner = test.details.engine,
+                name = test.details.testName,
+                path = test.details.path,
+                tags = test.details.labels.map { x -> x.value }.joinToString(",")
+            )
+        }.let(testDefinitionRepository::createMany)
     }
 
     override suspend fun saveTestSession(sessionPayload: SessionPayload) {

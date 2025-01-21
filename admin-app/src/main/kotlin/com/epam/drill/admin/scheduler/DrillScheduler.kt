@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.config
+package com.epam.drill.admin.scheduler
 
-import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
-import com.epam.drill.admin.metrics.job.VIEW_NAME
+import com.epam.drill.admin.config.SchedulerConfig
+import com.epam.drill.admin.metrics.config.KodeinJobFactory
 import mu.KotlinLogging
 import org.kodein.di.DI
 import org.quartz.*
@@ -30,29 +30,11 @@ import org.quartz.utils.DBConnectionManager
 import java.util.*
 import javax.sql.DataSource
 
-class MetricsScheduler(
+class DrillScheduler(
     private val config: SchedulerConfig
 ) {
     private val logger = KotlinLogging.logger {}
     private lateinit var scheduler: Scheduler
-
-    private val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-        .storeDurably()
-        .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
-        .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-        .usingJobData(VIEW_NAME, "matview_methods_coverage")
-        .build()
-
-    private val refreshViewIntervalTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
-        .startNow()
-        .withSchedule(
-            SimpleScheduleBuilder.simpleSchedule()
-                .withIntervalInMinutes(config.refreshViewsIntervalInMinutes)
-                .repeatForever()
-                .withMisfireHandlingInstructionNextWithExistingCount()
-        )
-        .build()
 
     fun init(di: DI, dataSource: DataSource) {
         val quartzProperties = Properties().apply {
@@ -77,24 +59,25 @@ class MetricsScheduler(
     }
 
     fun start() {
-        scheduleJob(refreshMethodsCoverageViewJob, refreshViewIntervalTrigger)
         scheduler.start()
     }
 
-    fun scheduleJob(jobDetail: JobDetail, trigger: SimpleTrigger) {
+    fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
         if (!scheduler.checkExists(jobDetail.key)) {
             scheduler.scheduleJob(jobDetail, trigger)
-            logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
         } else {
-            scheduler.addJob(jobDetail, true)
-            val previousRepeatInterval = scheduler.getTrigger(trigger.key)
-                .takeIf { it is SimpleTrigger }
-                ?.let { it as SimpleTrigger }
-                ?.repeatInterval ?: -1L
-            if (trigger.repeatInterval != previousRepeatInterval) {
-                scheduler.rescheduleJob(trigger.key, trigger)
-                logger.info { "Rescheduled job '${jobDetail.key}', repeat interval was changed from ${previousRepeatInterval.inMinutes()} minutes to ${trigger.repeatInterval.inMinutes()} minutes." }
-            }
+            //Delete old triggers if they exist
+            scheduler.getTriggersOfJob(jobDetail.key)
+                .filter { it.key != trigger.key }
+                .forEach {
+                    scheduler.unscheduleJob(it.key)
+                    logger.debug { "Unscheduled job '${jobDetail.key}'." }
+                }
+            scheduler.scheduleJob(jobDetail, setOf(trigger), true)
+        }
+        when (trigger) {
+            is SimpleTrigger -> logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
+            is CronTrigger -> logger.info { "Scheduled job '${jobDetail.key}', cron expression: ${trigger.cronExpression}." }
         }
     }
 

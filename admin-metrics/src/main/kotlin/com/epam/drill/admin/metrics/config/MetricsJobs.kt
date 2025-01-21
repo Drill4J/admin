@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.table
+package com.epam.drill.admin.metrics.config
 
-import org.jetbrains.exposed.sql.javatime.datetime
+import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
+import com.epam.drill.admin.metrics.job.VIEW_NAME
+import org.quartz.JobBuilder
 
-object InstanceTable : StringIdTable("raw_data.instances", "id") {
-    val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
-    val appId = varchar("app_id", SHORT_TEXT_LENGTH)
-    val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
-    val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at").nullable()
-}
+val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+    .storeDurably()
+    .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
+    .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
+    .usingJobData(VIEW_NAME, "matview_methods_coverage")
+    .build()

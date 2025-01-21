@@ -18,7 +18,12 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.TestSession
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.upsert
+import java.time.LocalDate
 
 class TestSessionRepositoryImpl : TestSessionRepository {
     override fun create(session: TestSession) {
@@ -28,5 +33,9 @@ class TestSessionRepositoryImpl : TestSessionRepository {
             it[testTaskId] = session.testTaskId
             it[startedAt] = session.startedAt
         }
+    }
+
+    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        TestSessionTable.deleteWhere { (TestSessionTable.groupId eq groupId) and (TestSessionTable.createdAt less createdBefore.atStartOfDay()) }
     }
 }

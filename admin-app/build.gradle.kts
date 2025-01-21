@@ -24,6 +24,7 @@ val microutilsLoggingVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
+val quartzVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -58,6 +59,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.3.14")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
+    implementation("org.quartz-scheduler:quartz:$quartzVersion")
 
     implementation(project(":admin-auth"))
     implementation(project(":admin-writer"))
