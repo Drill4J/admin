@@ -869,7 +869,9 @@ RETURNS TABLE (
     __id VARCHAR,
     __build_id VARCHAR,
     __created_at TIMESTAMP,
-    __env_id VARCHAR
+    __env_id VARCHAR,
+    __group_id VARCHAR,
+    __app_id VARCHAR
 )
 AS $$
 BEGIN
