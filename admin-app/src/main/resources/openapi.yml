@@ -397,7 +397,7 @@ paths:
           required: true
           schema:
             type: string
-        - name: targetAppId
+        - name: appId
           in: query
           required: true
           schema:

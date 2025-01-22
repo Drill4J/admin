@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class TestToSkipView(
-    val engine: String,
+    val testRunner: String,
     val path: String,
     val testName: String,
     val params: Map<String, String> = emptyMap(),

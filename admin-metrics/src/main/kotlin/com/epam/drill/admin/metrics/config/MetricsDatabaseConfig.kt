@@ -51,24 +51,14 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
             val rowObject = mutableMapOf<String, Any?>()
 
             for (i in 1..columnCount) {
-                val columnName = metaData.getColumnName(i)
-                val columnType = metaData.getColumnType(i)
+                val name = metaData.getColumnName(i)
+                val columnValue = resultSet.getObject(i)
 
-                val columnValue = when (columnType) {
-                    java.sql.Types.INTEGER -> resultSet.getInt(i)
-                    java.sql.Types.BIGINT -> resultSet.getLong(i)
-                    java.sql.Types.FLOAT -> resultSet.getFloat(i)
-                    java.sql.Types.DOUBLE -> resultSet.getDouble(i)
-                    java.sql.Types.DECIMAL, java.sql.Types.NUMERIC -> resultSet.getBigDecimal(i)
-                    java.sql.Types.BOOLEAN -> resultSet.getBoolean(i)
-                    java.sql.Types.VARCHAR, java.sql.Types.CHAR, java.sql.Types.LONGVARCHAR -> resultSet.getString(i)
-                    java.sql.Types.DATE -> resultSet.getDate(i)
-                    java.sql.Types.TIMESTAMP -> resultSet.getTimestamp(i)
-                    java.sql.Types.TIME -> resultSet.getTime(i)
-                    java.sql.Types.BINARY, java.sql.Types.VARBINARY, java.sql.Types.LONGVARBINARY -> resultSet.getBytes(i)
-                    else -> resultSet.getObject(i) // Fallback to generic Object type
+                when (columnValue) {
+                    is java.sql.Timestamp -> columnValue.toLocalDateTime()
                 }
-                rowObject[columnName] = if (resultSet.wasNull()) null else columnValue
+
+                rowObject[name] = if (resultSet.wasNull()) null else columnValue
             }
             result.add(rowObject)
         }

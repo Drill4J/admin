@@ -62,21 +62,8 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
-        val instanceId: String? = null,
-        val commitSha: String? = null,
-        val buildVersion: String? = null,
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-    )
-
-    @Resource("/tests-to-skip")
-    class TestsToSkip(
-        val parent: Metrics,
-
-        val groupId: String,
-        val testTaskId: String,
-        val targetAppId: String,
+        val testsToSkip: Boolean = true,
+        val testTaskId: String? = null,
         val targetInstanceId: String? = null,
         val targetCommitSha: String? = null,
         val targetBuildVersion: String? = null,
@@ -85,14 +72,12 @@ class Metrics {
         val baselineBuildVersion: String? = null,
         val coveragePeriodDays: Int? = null,
     )
-
 }
 
 fun Route.metricsRoutes() {
     getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
-    getTestsToSkip()
 }
 
 fun Route.getBuilds() {
@@ -132,27 +117,10 @@ fun Route.getRecommendedTests() {
 
     get<Metrics.RecommendedTests> { params ->
         val report = metricsService.getRecommendedTests(
-            params.groupId,
-            params.appId,
-            params.instanceId,
-            params.commitSha,
-            params.buildVersion,
-            params.baselineInstanceId,
-            params.baselineCommitSha,
-            params.baselineBuildVersion
-        )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
-    }
-}
-
-fun Route.getTestsToSkip() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.TestsToSkip> { params ->
-        val testsToSkip = metricsService.getTestsToSkip(
             groupId = params.groupId,
+            appId = params.appId,
+            testsToSkip = params.testsToSkip,
             testTaskId = params.testTaskId,
-            targetAppId = params.targetAppId,
             coveragePeriodDays = params.coveragePeriodDays,
             targetInstanceId = params.targetInstanceId,
             targetCommitSha = params.targetCommitSha,
@@ -161,6 +129,6 @@ fun Route.getTestsToSkip() {
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(testsToSkip))
+        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
 }

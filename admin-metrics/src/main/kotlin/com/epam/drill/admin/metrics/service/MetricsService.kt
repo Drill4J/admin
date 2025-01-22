@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics.service
 
-import com.epam.drill.admin.metrics.route.response.TestToSkipView
 import com.epam.drill.admin.metrics.views.BuildView
 
 interface MetricsService {
@@ -40,18 +39,8 @@ interface MetricsService {
     suspend fun getRecommendedTests(
         groupId: String,
         appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?
-    ): Map<String, Any?>
-
-    suspend fun getTestsToSkip(
-        groupId: String,
-        testTaskId: String,
-        targetAppId: String,
+        testsToSkip: Boolean = false,
+        testTaskId: String? = null,
         coveragePeriodDays: Int? = null,
         targetInstanceId: String? = null,
         targetCommitSha: String? = null,
@@ -59,5 +48,6 @@ interface MetricsService {
         baselineInstanceId: String? = null,
         baselineCommitSha: String? = null,
         baselineBuildVersion: String? = null
-    ): List<TestToSkipView>
+    ): Map<String, Any?>
+
 }
