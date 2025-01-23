@@ -62,7 +62,7 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
-        val testsToSkip: Boolean = true,
+        val testsToSkip: Boolean = false,
         val testTaskId: String? = null,
         val targetInstanceId: String? = null,
         val targetCommitSha: String? = null,
