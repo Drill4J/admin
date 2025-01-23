@@ -181,7 +181,7 @@ class RawDataServiceImpl(
                 runner = test.details.engine,
                 name = test.details.testName,
                 path = test.details.path,
-                tags = test.details.labels.map { x -> x.value }.joinToString(","),
+                tags = test.details.labels.map { label -> label.value },
                 metadata = test.details.metadata
             )
         }.let(testDefinitionRepository::createMany)

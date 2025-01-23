@@ -27,7 +27,7 @@ object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val runner = varchar("runner", SHORT_TEXT_LENGTH).nullable()
     val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
     val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
-    val tags = varchar("tags", MEDIUM_TEXT_LENGTH).nullable()
+    val tags = array<String>("tags", MEDIUM_TEXT_LENGTH).nullable()
     val metadata = json("metadata", Json, MapSerializer(String.serializer(), String.serializer())).nullable()
     val createdAt = datetime("created_at").nullable()
 }

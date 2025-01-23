@@ -37,7 +37,7 @@ class TestDefinition(
     val runner: String?,
     val name: String?,
     val path: String?,
-    val tags: String?,
+    val tags: List<String>?,
     val metadata: Map<String, String>?
 )
 
