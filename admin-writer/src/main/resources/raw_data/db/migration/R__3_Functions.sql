@@ -1310,7 +1310,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list_v2(
 
     test_task_ids VARCHAR[] DEFAULT NULL,
     test_results VARCHAR[] DEFAULT NULL,
-    coverage_env_ids VARCHAR[] DEFAULT NULL
+    coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__signature VARCHAR,
@@ -1361,6 +1362,12 @@ BEGIN
             AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
             --filter by envs
             AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
         GROUP BY target.signature
     )
     SELECT
@@ -1389,7 +1396,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list_v2(
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
     __signature VARCHAR,
@@ -1443,6 +1451,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+			--filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY target.signature
   	)
 	SELECT
@@ -1474,7 +1488,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks_v2(
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -1529,6 +1544,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -1560,7 +1581,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks_v2(
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+	test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -1612,6 +1634,12 @@ BEGIN
             AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+			--filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -1695,7 +1723,7 @@ BEGIN
             AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
             --filter by envs
             AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
-            --filter by test_tags
+            --filter by test tags
             AND (test_tags IS NULL OR coverage.test_definition_id IN (
                 SELECT id
                 FROM raw_data.test_definitions def
@@ -1784,7 +1812,7 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
-            --filter by test_tags
+            --filter by test tags
             AND (test_tags IS NULL OR coverage.test_definition_id IN (
                 SELECT id
                 FROM raw_data.test_definitions def
@@ -1877,7 +1905,7 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
-            --filter by test_tags
+            --filter by test tags
             AND (test_tags IS NULL OR coverage.test_definition_id IN (
                 SELECT id
                 FROM raw_data.test_definitions def
@@ -1967,7 +1995,7 @@ BEGIN
             AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
-            --filter by test_tags
+            --filter by test tags
             AND (test_tags IS NULL OR coverage.test_definition_id IN (
                 SELECT id
                 FROM raw_data.test_definitions def
