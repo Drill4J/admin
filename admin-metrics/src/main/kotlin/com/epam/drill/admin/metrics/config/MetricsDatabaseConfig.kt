@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
@@ -83,7 +84,16 @@ private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg 
 
     return exec(object : Statement<T>(StatementType.SELECT, emptyList()) {
         override fun PreparedStatementApi.executeInternal(transaction: Transaction): T? {
-            params.forEachIndexed { idx, value -> set(idx + 1, value ?: "NULL") }
+            params.forEachIndexed { idx, value ->
+                if (value != null) {
+                    set(idx + 1, value)
+                } else {
+                    // WORKAROUND: TextColumnType is employed to trick expose to write null values
+                    // Possible issues with: BinaryColumnType, BlobColumnType
+                    // see setNull implementation for more details
+                    setNull(idx + 1, TextColumnType())
+                }
+            }
             executeQuery()
             return resultSet?.use { transform(it) }
         }
