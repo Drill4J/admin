@@ -348,58 +348,13 @@ paths:
           required: true
           schema:
             type: string
-        - name: instanceId
+        - name: testsToSkip
           in: query
           schema:
-            type: string
-        - name: commitSha
-          in: query
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Recommended tests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
-  /api/metrics/tests-to-skip:
-    get:
-      summary: Get tests to skip
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          schema:
-            type: string
+            type: boolean
+            default: false
         - name: testTaskId
           in: query
-          required: true
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
           schema:
             type: string
         - name: targetInstanceId
@@ -432,11 +387,11 @@ paths:
             type: integer
       responses:
         '200':
-          description: Tests to skip
+          description: Recommended tests
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/DataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:
