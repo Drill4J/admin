@@ -60,7 +60,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuildDiffReport(
-        buildId: String,
+        targetBuildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
     ) = transaction {
@@ -73,7 +73,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ),
                     RecommendedTests AS (
                         SELECT *
-                        FROM raw_data.get_recommended_tests(?, ?)
+                        FROM raw_data.get_recommended_tests_v2(?, ?)
                     )	
                     SELECT 
                         (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
@@ -83,28 +83,14 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT CAST(SUM(__covered_probes) AS FLOAT) / SUM(__probes_count) FROM Risks) as coverage,
                         (SELECT count(*) FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
-            buildId,
+            targetBuildId,
             baselineBuildId,
-            buildId,
+            targetBuildId,
             baselineBuildId
             //,coverageThreshold
         ).first() as Map<String, String>
 
 
-    }
-
-    override suspend fun getRecommendedTests(
-        buildId: String,
-        baselineBuildId: String
-    ): List<Map<String, Any>> = transaction {
-        executeQueryReturnMap(
-            """
-            SELECT *
-            FROM raw_data.get_recommended_tests(?, ?)
-            """.trimIndent(),
-            buildId,
-            baselineBuildId,
-        ) as List<Map<String, Any>>
     }
 
     override suspend fun refreshMaterializedView(viewName: String) = transaction {
@@ -118,17 +104,23 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getRecommendedTests(
         groupId: String,
         targetBuildId: String,
+        baselineBuildId: String?,
         testsToSkip: Boolean,
         testTaskId: String?,
-        baselineBuildId: String?,
         coveragePeriodFrom: LocalDateTime
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """            
                 SELECT 
-                    __test_runner_id AS test_engine,
+                    __group_id AS group_id,
+                    __test_definition_id AS test_definition_id,
+                    __test_runner AS test_runner,
                     __test_path AS test_path,
-                    __test_name AS test_name
+                    __test_name AS test_name,
+                    __test_type AS test_type,
+                    __tags AS tags,
+                    __metadata AS metadata,
+                    __created_at AS created_at
                 FROM raw_data.get_recommended_tests_v2(
                     ?,	   -- group_id                    
                     ?, 	   -- target_build_id

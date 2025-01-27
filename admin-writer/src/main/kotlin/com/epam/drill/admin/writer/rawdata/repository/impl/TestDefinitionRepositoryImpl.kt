@@ -34,6 +34,7 @@ class TestDefinitionRepositoryImpl: TestDefinitionRepository {
             this[TestDefinitionTable.runner] = it.runner
             this[TestDefinitionTable.name] = it.name
             this[TestDefinitionTable.path] = it.path
+            this[TestDefinitionTable.metadata] = it.metadata
             this[TestDefinitionTable.tags] = it.tags
         }
     }
