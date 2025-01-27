@@ -934,7 +934,10 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_test_launches(input_build_id VARCHAR)
+CREATE OR REPLACE FUNCTION raw_data.get_test_launches(
+    input_build_id VARCHAR,
+    input_group_id VARCHAR
+)
 RETURNS TABLE (
     __id VARCHAR,
     __group_id VARCHAR,
@@ -980,6 +983,9 @@ BEGIN
         JOIN Coverage ON Coverage.test_id = launch.id
 		JOIN raw_data.test_definitions definitions on definitions.id = launch.test_definition_id
         JOIN raw_data.test_sessions sessions ON launch.test_session_id = sessions.id
+        WHERE launch.group_id = input_group_id
+            AND definitions.group_id = input_group_id
+            AND sessions.group_id = input_group_id
     )
     SELECT *
     FROM TestLaunches;
