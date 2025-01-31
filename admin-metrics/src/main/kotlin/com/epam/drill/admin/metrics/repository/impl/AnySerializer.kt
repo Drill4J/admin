@@ -44,29 +44,9 @@ object AnySerializer : KSerializer<Any?> {
                 val mapSerializer = MapSerializer(String.serializer(), this)
                 encoder.encodeSerializableValue(mapSerializer, value as Map<String, Any?>)
             }
-            is PgArray -> {
-                val array = value.array
-                if (array != null) {
-                    val list = (array as Array<*>).map { it as String }
-                    val listSerializer = ListSerializer(String.serializer())
-                    encoder.encodeSerializableValue(listSerializer, list)
-                } else {
-                    encoder.encodeNull()
-                }
-            }
             is List<*> -> {
                 val listSerializer = ListSerializer(this)
                 encoder.encodeSerializableValue(listSerializer, value)
-            }
-            is PGobject -> {
-                val json = value.value
-                if (json != null) {
-                    val parsedValue = Json.decodeFromString<Map<String, String>>(json)
-                    val mapSerializer = MapSerializer(String.serializer(), this)
-                    encoder.encodeSerializableValue(mapSerializer, parsedValue)
-                } else {
-                    encoder.encodeNull()
-                }
             }
             else -> {
                 val serializer = value::class.serializerOrNull() as KSerializer<Any?>?
