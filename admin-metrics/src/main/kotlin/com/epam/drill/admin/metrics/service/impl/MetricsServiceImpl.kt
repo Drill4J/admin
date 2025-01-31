@@ -20,7 +20,7 @@ import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.route.response.TestToSkipView
+import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.metrics.views.BuildView
@@ -203,7 +203,17 @@ class MetricsServiceImpl(
             testsToSkip = testsToSkip,
             testTaskId = testTaskId,
             coveragePeriodFrom = coveragePeriodFrom
-        )
+        ).map { data ->
+            RecommendedTestsView(
+                testDefinitionId = data["test_definition_id"] as String,
+                testRunner = data["test_runner"] as String,
+                testPath = data["test_path"] as String,
+                testName = data["test_name"] as String,
+                testType = data["test_type"] as String,
+                tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
+                metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap()
+            )
+        }
 
         // TODO add recommended tests UI link
         // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
@@ -222,7 +232,7 @@ class MetricsServiceImpl(
                 "build" to targetBuildId,
                 "baselineBuild" to baselineBuildId,
             ),
-            "data" to recommendedTests,
+            "recommendedTests" to recommendedTests,
         )
     }
 
