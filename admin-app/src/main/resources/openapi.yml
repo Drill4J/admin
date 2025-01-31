@@ -877,6 +877,8 @@ components:
     AddTestsPayload:
       type: object
       properties:
+        groupId:
+          type: string
         sessionId:
           type: string
         tests:
@@ -886,9 +888,7 @@ components:
     TestInfo:
       type: object
       properties:
-        groupId:
-          type: string
-        id:
+        testLaunchId:
           type: string
         testDefinitionId:
           type: string
@@ -903,7 +903,7 @@ components:
     TestDetails:
       type: object
       properties:
-        engine:
+        runner:
           type: string
         path:
           type: string
@@ -917,10 +917,10 @@ components:
           type: object
           additionalProperties:
             type: string
-        labels:
+        tags:
           type: array
           items:
-            $ref: '#/components/schemas/Label'
+            type: string
     Label:
       type: object
       properties:

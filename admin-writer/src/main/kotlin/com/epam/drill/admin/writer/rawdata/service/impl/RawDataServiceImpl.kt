@@ -165,8 +165,8 @@ class RawDataServiceImpl(
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
             TestLaunch(
-                groupId = test.groupId,
-                id = test.id,
+                groupId = testsPayload.groupId,
+                id = test.testLaunchId,
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
                 result = test.result.toString()
@@ -175,13 +175,13 @@ class RawDataServiceImpl(
 
         testsPayload.tests.map { test ->
             TestDefinition(
-                groupId = test.groupId,
+                groupId = testsPayload.groupId,
                 id = test.testDefinitionId,
                 type = "placeholder", // TODO replace once it's implemented on autotest agent
-                runner = test.details.engine,
+                runner = test.details.runner,
                 name = test.details.testName,
                 path = test.details.path,
-                tags = test.details.labels.map { label -> label.value },
+                tags = test.details.tags,
                 metadata = test.details.metadata
             )
         }.let(testDefinitionRepository::createMany)
