@@ -33,6 +33,8 @@ class TestLaunchRepositoryImpl: TestLaunchRepository {
             this[TestLaunchTable.testDefinitionId] = it.testDefinitionId
             this[TestLaunchTable.testSessionId] = it.testSessionId
             this[TestLaunchTable.result] = it.result
+            this[TestLaunchTable.startedAt] = it.startedAt
+            this[TestLaunchTable.finishedAt] = it.finishedAt
         }
     }
 

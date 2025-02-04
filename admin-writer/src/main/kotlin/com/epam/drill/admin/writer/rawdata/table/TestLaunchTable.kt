@@ -22,5 +22,7 @@ object TestLaunchTable : StringIdTable("raw_data.test_launches") {
     val testDefinitionId = varchar("test_definition_id",  SHORT_TEXT_LENGTH)
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH)
     val result = varchar("result",  SHORT_TEXT_LENGTH).nullable()
+    val startedAt = datetime("started_at").nullable()
+    val finishedAt = datetime("finished_at").nullable()
     val createdAt = datetime("created_at").nullable()
 }

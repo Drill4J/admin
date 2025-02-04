@@ -22,9 +22,10 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
@@ -169,7 +170,9 @@ class RawDataServiceImpl(
                 id = test.testLaunchId,
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
-                result = test.result.toString()
+                result = test.result.toString(),
+                startedAt = test.startedAt.toLocalDateTime(),
+                finishedAt = test.finishedAt.toLocalDateTime(),
             )
         }.let(testLaunchRepository::createMany)
 
@@ -192,7 +195,7 @@ class RawDataServiceImpl(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
             testTaskId = sessionPayload.testTaskId,
-            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime()
+            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
         )
         transaction {
             testSessionRepository.create(testSession)
@@ -223,5 +226,10 @@ class RawDataServiceImpl(
         transaction {
             methodIgnoreRuleRepository.deleteById(ruleId)
         }
+    }
+
+    private fun Long.toLocalDateTime(): LocalDateTime {
+        val instant = Instant.ofEpochMilli(this)
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
     }
 }
