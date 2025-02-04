@@ -41,7 +41,7 @@ class TestDetails @JvmOverloads constructor(
     val runner: String = "",
     val path: String = "",
     val testName: String = "",
-    val params: Map<String, String> = emptyMap(),
+    val testParams: List<String> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
     val tags: List<String> = emptyList(),
 )
