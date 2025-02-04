@@ -934,7 +934,10 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_test_launches(input_build_id VARCHAR)
+CREATE OR REPLACE FUNCTION raw_data.get_test_launches(
+    input_build_id VARCHAR,
+    input_group_id VARCHAR
+)
 RETURNS TABLE (
     __id VARCHAR,
     __group_id VARCHAR,
@@ -980,6 +983,9 @@ BEGIN
         JOIN Coverage ON Coverage.test_id = launch.id
 		JOIN raw_data.test_definitions definitions on definitions.id = launch.test_definition_id
         JOIN raw_data.test_sessions sessions ON launch.test_session_id = sessions.id
+        WHERE launch.group_id = input_group_id
+            AND definitions.group_id = input_group_id
+            AND sessions.group_id = input_group_id
     )
     SELECT *
     FROM TestLaunches;
@@ -1299,130 +1305,6 @@ $$;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests(
-    input_build_id VARCHAR,
-    input_baseline_build_id VARCHAR,
-    only_modified_risks BOOLEAN DEFAULT FALSE
-) RETURNS TABLE (
-    __id VARCHAR,
-    __group_id VARCHAR,
-    __type VARCHAR,
-    __runner VARCHAR,
-    __name VARCHAR,
-    __path VARCHAR,
-    __created_at TIMESTAMP,
-    __tags VARCHAR
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH
-    Risks AS (
-        SELECT *
-        FROM raw_data.get_risks(input_build_id, input_baseline_build_id)
-        WHERE (only_modified_risks IS TRUE AND __risk_type = 'modified')
-           OR (only_modified_risks IS FALSE)
-    ),
-    RelatedBuilds AS (
-        WITH
-        OriginalBuild AS (
-            SELECT *
-            FROM raw_data.builds builds
-            WHERE builds.id = input_build_id
-        )
-        SELECT *
-        FROM raw_data.builds builds
-        WHERE builds.id <> (SELECT id FROM OriginalBuild)
-          AND builds.group_id = (SELECT group_id FROM OriginalBuild)
-          AND builds.app_id = (SELECT app_id  FROM OriginalBuild)
-    ),
-    RelatedMethods AS (
-        WITH
-        RelatedBuildMethods AS (
-            SELECT *
-            FROM raw_data.methods methods
-            WHERE
-                methods.build_id IN (SELECT DISTINCT id FROM RelatedBuilds)
-                AND probes_count > 0
-                AND signature IN (SELECT DISTINCT __signature FROM Risks)
-        )
-        SELECT
-            Risks.__signature,
-            related.classname,
-            related.build_id,
-            related.body_checksum,
-            related.probe_start_pos,
-            related.probes_count
-        FROM Risks
-        LEFT JOIN RelatedBuildMethods related ON Risks.__signature = related.signature
-    ),
-    RelatedCoverage AS (
-        WITH
-        Instances AS (
-            SELECT DISTINCT
-                instances.build_id,
-                instances.id AS instance_id,
-                classname
-            FROM RelatedMethods
-            LEFT JOIN raw_data.instances instances
-                ON instances.build_id = RelatedMethods.build_id
-        ),
-        Coverage AS (
-            SELECT DISTINCT
-                Instances.build_id,
-                coverage.instance_id,
-                coverage.classname,
-                def.id as test_definition_id,
-                def.name as test_name,
-                coverage.probes
-            FROM Instances
-            JOIN raw_data.coverage coverage
-                ON coverage.instance_id = Instances.instance_id
-                AND coverage.classname = Instances.classname
-            JOIN raw_data.test_launches launches ON coverage.test_id = launches.id
-            JOIN raw_data.test_definitions def ON launches.test_definition_id = def.id
-        )
-        SELECT
-            methods.*,
-            Coverage.test_definition_id,
-            Coverage.test_name,
-            Coverage.probes,
-            SUBSTRING(Coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS method_probes
-        FROM RelatedMethods methods
-        JOIN Coverage
-            ON methods.build_id = Coverage.build_id
-            AND methods.classname = Coverage.classname
-            AND BIT_COUNT(SUBSTRING(Coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
-    ),
-    RisksToTests AS (
-        SELECT
-            Risks.__risk_type AS risk_type,
-            Risks.__name AS risk_name,
-            Risks.__signature AS risk_signature,
-            Risks.__classname AS risk_classname,
-            Risks.__body_checksum AS risk_body_checksum,
-		    -- can prioritize by
-            RelatedCoverage.body_checksum, -- matching body - it's literally the same code which was already covered
-            RelatedCoverage.build_id AS related_build_id, -- more recent builds
-            RelatedCoverage.test_name,
-            RelatedCoverage.test_definition_id,
-            RelatedCoverage.probes, -- more coverage for class overall?
-            RelatedCoverage.method_probes -- more coverage (BIT_COUNT()) for _that specific method_
-        FROM Risks
-        LEFT JOIN RelatedCoverage ON Risks.__signature = RelatedCoverage.__signature
-    ),
-    TestDefinitionIds AS (
-        SELECT DISTINCT test_definition_id AS id
-        FROM RisksToTests
-    )
-    SELECT def.*
-    FROM raw_data.test_definitions def
-    JOIN TestDefinitionIds ON TestDefinitionIds.id = def.id;
-END;
-$$ LANGUAGE plpgsql;
-
------------------------------------------------------------------
-
------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list_v2(
     input_build_id VARCHAR,
@@ -1434,7 +1316,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list_v2(
 
     test_task_ids VARCHAR[] DEFAULT NULL,
     test_results VARCHAR[] DEFAULT NULL,
-    coverage_env_ids VARCHAR[] DEFAULT NULL
+    coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__signature VARCHAR,
@@ -1485,6 +1368,12 @@ BEGIN
             AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
             --filter by envs
             AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
         GROUP BY target.signature
     )
     SELECT
@@ -1513,7 +1402,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list_v2(
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
     __signature VARCHAR,
@@ -1567,6 +1457,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+			--filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY target.signature
   	)
 	SELECT
@@ -1598,7 +1494,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks_v2(
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -1653,6 +1550,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -1684,7 +1587,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks_v2(
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+	test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -1736,6 +1640,12 @@ BEGIN
             AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+			--filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -1767,7 +1677,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_methods_list_v2
 
     test_task_ids VARCHAR[] DEFAULT NULL,
     test_results VARCHAR[] DEFAULT NULL,
-    coverage_env_ids VARCHAR[] DEFAULT NULL
+    coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__signature VARCHAR,
@@ -1818,6 +1729,12 @@ BEGIN
             AND (coverage_created_at_start IS NULL OR coverage.created_at >= coverage_created_at_start)
             --filter by envs
             AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
         GROUP BY target.signature
     )
     SELECT
@@ -1846,7 +1763,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_metho
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
     __signature VARCHAR,
@@ -1900,6 +1818,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY target.signature
   	)
 	SELECT
@@ -1931,7 +1855,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_risks
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
 	coverage_branches VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -1986,6 +1911,12 @@ BEGIN
 			AND (coverage_branches IS NULL OR coverage.branch = ANY(coverage_branches))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -2017,7 +1948,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_risks_v2(
 	coverage_created_at_start TIMESTAMP DEFAULT NULL,
 	test_task_ids VARCHAR[] DEFAULT NULL,
 	test_results VARCHAR[] DEFAULT NULL,
-	coverage_env_ids VARCHAR[] DEFAULT NULL
+	coverage_env_ids VARCHAR[] DEFAULT NULL,
+    test_tags VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
 	__risk_type VARCHAR,
@@ -2069,6 +2001,12 @@ BEGIN
             AND (test_results IS NULL OR coverage.test_result = ANY(test_results))
 			--filter by envs
 			AND (coverage_env_ids IS NULL OR coverage.env_id = ANY(coverage_env_ids))
+            --filter by test tags
+            AND (test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (test_tags = ANY(def.tags))
+            ))
 		GROUP BY risks.signature
   	)
     SELECT
@@ -2099,9 +2037,14 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v2(
 	input_coverage_period_from TIMESTAMP DEFAULT NULL
 ) RETURNS TABLE(
     __test_definition_id VARCHAR,
-    __test_runner_id VARCHAR,
+    __test_runner VARCHAR,
     __test_path VARCHAR,
-    __test_name VARCHAR
+    __test_name VARCHAR,
+    __test_type VARCHAR,
+    __group_id VARCHAR,
+    __created_at TIMESTAMP,
+    __tags VARCHAR[],
+    __metadata JSON
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -2159,7 +2102,12 @@ BEGIN
 			def.id as test_definition_id,
 		   	def.name as test_name,
 		   	def.runner as test_runner,
-		   	def.path as test_path
+		   	def.path as test_path,
+		   	def.type as test_type,
+		   	def.group_id,
+		   	def.created_at,
+		   	def.tags,
+		   	def.metadata
 		FROM raw_data.test_definitions def
 		WHERE def.group_id = input_group_id
 			AND def.id IN (
@@ -2184,7 +2132,12 @@ BEGIN
 		test_definition_id,
 		test_runner,
 		test_path,
-		test_name
+		test_name,
+        test_type,
+        group_id,
+        created_at,
+        tags,
+        metadata
 	FROM Tests;
 END;
 $$ LANGUAGE plpgsql;

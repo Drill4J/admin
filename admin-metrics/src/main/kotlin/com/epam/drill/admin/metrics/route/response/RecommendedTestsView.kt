@@ -15,13 +15,16 @@
  */
 package com.epam.drill.admin.metrics.route.response
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 
 @Serializable
-class TestToSkipView(
-    val engine: String,
-    val path: String,
+class RecommendedTestsView(
+    val testDefinitionId: String,
+    val testRunner: String,
+    val testPath: String,
     val testName: String,
-    val params: Map<String, String> = emptyMap(),
-    val metadata: Map<String, String> = emptyMap(),
+    val testType: String,
+    val tags: List<String>,
+    val metadata: Map<String, String>,
 )

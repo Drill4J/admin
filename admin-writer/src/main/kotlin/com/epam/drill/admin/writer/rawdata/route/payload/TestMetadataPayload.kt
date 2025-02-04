@@ -21,14 +21,14 @@ import kotlinx.serialization.Serializable
 // TODO rework alongside with Java Autotest Agent
 @Serializable
 class AddTestsPayload(
+    val groupId: String,
     val sessionId: String,
-    val tests: List<TestInfo> = emptyList(),
+    val tests: List<TestLaunchInfo> = emptyList(),
 )
 
 @Serializable
-class TestInfo(
-    val groupId: String,
-    val id: String,
+class TestLaunchInfo(
+    val testLaunchId: String,
     val testDefinitionId: String,
     val result: TestResult,
     val startedAt: Long,
@@ -37,19 +37,13 @@ class TestInfo(
 )
 
 @Serializable
-class Label(
-    val name: String,
-    val value: String,
-)
-
-@Serializable
 class TestDetails @JvmOverloads constructor(
-    val engine: String = "",
+    val runner: String = "",
     val path: String = "",
     val testName: String = "",
-    val params: Map<String, String> = emptyMap(),
+    val testParams: List<String> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
-    val labels: Set<Label> = emptySet(),
+    val tags: List<String> = emptyList(),
 )
 
 enum class TestResult {

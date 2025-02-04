@@ -348,58 +348,13 @@ paths:
           required: true
           schema:
             type: string
-        - name: instanceId
+        - name: testsToSkip
           in: query
           schema:
-            type: string
-        - name: commitSha
-          in: query
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Recommended tests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
-  /api/metrics/tests-to-skip:
-    get:
-      summary: Get tests to skip
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          schema:
-            type: string
+            type: boolean
+            default: false
         - name: testTaskId
           in: query
-          required: true
-          schema:
-            type: string
-        - name: targetAppId
-          in: query
-          required: true
           schema:
             type: string
         - name: targetInstanceId
@@ -432,11 +387,11 @@ paths:
             type: integer
       responses:
         '200':
-          description: Tests to skip
+          description: Recommended tests
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/DataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:
@@ -922,6 +877,8 @@ components:
     AddTestsPayload:
       type: object
       properties:
+        groupId:
+          type: string
         sessionId:
           type: string
         tests:
@@ -931,9 +888,7 @@ components:
     TestInfo:
       type: object
       properties:
-        groupId:
-          type: string
-        id:
+        testLaunchId:
           type: string
         testDefinitionId:
           type: string
@@ -948,31 +903,24 @@ components:
     TestDetails:
       type: object
       properties:
-        engine:
+        runner:
           type: string
         path:
           type: string
         testName:
           type: string
-        params:
-          type: object
-          additionalProperties:
+        testParams:
+          type: array
+          items:
             type: string
         metadata:
           type: object
           additionalProperties:
             type: string
-        labels:
+        tags:
           type: array
           items:
-            $ref: '#/components/schemas/Label'
-    Label:
-      type: object
-      properties:
-        name:
-          type: string
-        value:
-          type: string
+            type: string
     TestResult:
       type: string
       enum:

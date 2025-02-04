@@ -15,13 +15,13 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import com.epam.drill.admin.common.service.generateBuildId
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -165,8 +165,8 @@ class RawDataServiceImpl(
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
             TestLaunch(
-                groupId = test.groupId,
-                id = test.id,
+                groupId = testsPayload.groupId,
+                id = test.testLaunchId,
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
                 result = test.result.toString()
@@ -175,13 +175,14 @@ class RawDataServiceImpl(
 
         testsPayload.tests.map { test ->
             TestDefinition(
-                groupId = test.groupId,
+                groupId = testsPayload.groupId,
                 id = test.testDefinitionId,
                 type = "placeholder", // TODO replace once it's implemented on autotest agent
-                runner = test.details.engine,
+                runner = test.details.runner,
                 name = test.details.testName,
                 path = test.details.path,
-                tags = test.details.labels.map { x -> x.value }.joinToString(",")
+                tags = test.details.tags,
+                metadata = test.details.metadata
             )
         }.let(testDefinitionRepository::createMany)
     }

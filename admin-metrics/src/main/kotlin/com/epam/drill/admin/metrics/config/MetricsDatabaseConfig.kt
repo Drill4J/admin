@@ -17,13 +17,20 @@ package com.epam.drill.admin.metrics.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.postgresql.jdbc.PgArray
+import org.postgresql.util.PGobject
 import java.sql.ResultSet
 import javax.sql.DataSource
 
@@ -51,24 +58,28 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
             val rowObject = mutableMapOf<String, Any?>()
 
             for (i in 1..columnCount) {
-                val columnName = metaData.getColumnName(i)
-                val columnType = metaData.getColumnType(i)
+                val name = metaData.getColumnName(i)
+                val value = when (val dbValue = resultSet.getObject(i)) {
+                    is PgArray -> {
+                        val array = dbValue.array
+                        array?.let { it as Array<*> }?.toList() ?: emptyList<String>()
+                    }
 
-                val columnValue = when (columnType) {
-                    java.sql.Types.INTEGER -> resultSet.getInt(i)
-                    java.sql.Types.BIGINT -> resultSet.getLong(i)
-                    java.sql.Types.FLOAT -> resultSet.getFloat(i)
-                    java.sql.Types.DOUBLE -> resultSet.getDouble(i)
-                    java.sql.Types.DECIMAL, java.sql.Types.NUMERIC -> resultSet.getBigDecimal(i)
-                    java.sql.Types.BOOLEAN -> resultSet.getBoolean(i)
-                    java.sql.Types.VARCHAR, java.sql.Types.CHAR, java.sql.Types.LONGVARCHAR -> resultSet.getString(i)
-                    java.sql.Types.DATE -> resultSet.getDate(i)
-                    java.sql.Types.TIMESTAMP -> resultSet.getTimestamp(i)
-                    java.sql.Types.TIME -> resultSet.getTime(i)
-                    java.sql.Types.BINARY, java.sql.Types.VARBINARY, java.sql.Types.LONGVARBINARY -> resultSet.getBytes(i)
-                    else -> resultSet.getObject(i) // Fallback to generic Object type
+                    is PGobject -> {
+                        val json = dbValue.value
+                        if (json != null) {
+                            val jsonObject = Json.parseToJsonElement(json).jsonObject
+                            jsonObject.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+                        } else {
+                            emptyMap()
+                        }
+                    }
+
+                    is java.sql.Timestamp -> dbValue.toLocalDateTime()
+                    else -> dbValue
                 }
-                rowObject[columnName] = if (resultSet.wasNull()) null else columnValue
+
+                rowObject[name] = if (resultSet.wasNull()) null else value
             }
             result.add(rowObject)
         }
@@ -88,12 +99,25 @@ fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
     })
 }
 
-private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg params: Any?, transform: (ResultSet) -> T): T? {
+private fun <T : Any> Transaction.executePreparedStatement(
+    stmt: String,
+    vararg params: Any?,
+    transform: (ResultSet) -> T
+): T? {
     if (stmt.isEmpty()) return null
 
     return exec(object : Statement<T>(StatementType.SELECT, emptyList()) {
         override fun PreparedStatementApi.executeInternal(transaction: Transaction): T? {
-            params.forEachIndexed { idx, value -> set(idx + 1, value ?: "NULL") }
+            params.forEachIndexed { idx, value ->
+                if (value != null) {
+                    set(idx + 1, value)
+                } else {
+                    // WORKAROUND: TextColumnType is employed to trick expose to write null values
+                    // Possible issues with: BinaryColumnType, BlobColumnType
+                    // see setNull implementation for more details
+                    setNull(idx + 1, TextColumnType())
+                }
+            }
             executeQuery()
             return resultSet?.use { transform(it) }
         }
@@ -101,4 +125,12 @@ private fun <T : Any> Transaction.executePreparedStatement(stmt: String, vararg 
         override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = stmt
         override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
     })
+}
+
+private fun JsonElement.jsonPrimitiveOrElement(): Any {
+    return when (this) {
+        is JsonPrimitive -> this.contentOrNull ?: this.booleanOrNull ?: this.longOrNull ?: this.doubleOrNull ?: ""
+        is JsonObject -> this.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+        is JsonArray -> this.map { it.jsonPrimitiveOrElement() }
+    }
 }

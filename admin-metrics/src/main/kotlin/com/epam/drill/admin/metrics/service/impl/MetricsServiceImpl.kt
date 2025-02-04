@@ -20,7 +20,7 @@ import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.route.response.TestToSkipView
+import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.metrics.views.BuildView
@@ -149,16 +149,20 @@ class MetricsServiceImpl(
     override suspend fun getRecommendedTests(
         groupId: String,
         appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
+        testsToSkip: Boolean,
+        testTaskId: String?,
+        coveragePeriodDays: Int?,
+        targetInstanceId: String?,
+        targetCommitSha: String?,
+        targetBuildVersion: String?,
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?
-    ): Map<String, Any?> {
-        return transaction {
+    ): Map<String, Any?> = transaction {
+        val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
-            val baselineBuildId = generateBuildId(
+        val baselineBuildId = takeIf { hasBaselineBuild }?.let {
+            generateBuildId(
                 groupId,
                 appId,
                 baselineInstanceId,
@@ -167,96 +171,69 @@ class MetricsServiceImpl(
                 """
                 Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
                 """.trimIndent()
-            )
-
-            if (!metricsRepository.buildExists(baselineBuildId)) {
-                throw BuildNotFound("Baseline build info not found for $baselineBuildId")
-            }
-
-            val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Build info not found for $buildId")
-            }
-
-            val recommendedTests = metricsRepository.getRecommendedTests(buildId, baselineBuildId)
-
-            // TODO add recommended tests UI link
-            // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
-            mapOf(
-                "inputParameters" to mapOf(
-                    "groupId" to groupId,
-                    "appId" to appId,
-                    "instanceId" to instanceId,
-                    "commitSha" to commitSha,
-                    "buildVersion" to buildVersion,
-                    "baselineInstanceId" to baselineInstanceId,
-                    "baselineCommitSha" to baselineCommitSha,
-                    "baselineBuildVersion" to baselineBuildVersion
-                ),
-                "inferredValues" to mapOf(
-                    "build" to buildId,
-                    "baselineBuild" to baselineBuildId,
-                ),
-                "recommendedTests" to recommendedTests,
-            )
-        }
-    }
-
-    override suspend fun getTestsToSkip(
-        groupId: String,
-        testTaskId: String,
-        targetAppId: String,
-        coveragePeriodDays: Int?,
-        targetInstanceId: String?,
-        targetCommitSha: String?,
-        targetBuildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?
-    ): List<TestToSkipView> = transaction {
-        val targetBuildId = generateBuildId(
-            groupId,
-            targetAppId,
-            targetInstanceId,
-            targetCommitSha,
-            targetBuildVersion
-        ).also { buildId ->
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Target build info not found for $buildId")
-            }
-        }
-
-        val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
-        val baselineBuildId = takeIf { hasBaselineBuild }?.let {
-            generateBuildId(
-                groupId,
-                targetAppId,
-                baselineInstanceId,
-                baselineCommitSha,
-                baselineBuildVersion
             ).also { buildId ->
                 if (!metricsRepository.buildExists(buildId)) {
                     throw BuildNotFound("Baseline build info not found for $buildId")
                 }
             }
         }
+
+        val targetBuildId = generateBuildId(
+            groupId,
+            appId,
+            targetInstanceId,
+            targetCommitSha,
+            targetBuildVersion,
+            """
+            Provide at least one the following: targetInstanceId, targetCommitSha, targetBuildVersion
+            """.trimIndent()
+        )
+        if (!metricsRepository.buildExists(targetBuildId)) {
+            throw BuildNotFound("Target build info not found for $targetBuildId")
+        }
+
         val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays).let {
             LocalDateTime.now().minusDays(it.toLong())
         }
-        metricsRepository.getRecommendedTests(
+
+        val recommendedTests = metricsRepository.getRecommendedTests(
             groupId = groupId,
             targetBuildId = targetBuildId,
-            testsToSkip = true,
-            testTaskId = testTaskId,
             baselineBuildId = baselineBuildId,
+            testsToSkip = testsToSkip,
+            testTaskId = testTaskId,
             coveragePeriodFrom = coveragePeriodFrom
-        ).map {
-            TestToSkipView(
-                engine = it["test_engine"] as String,
-                testName = it["test_name"] as String,
-                path = it["test_path"] as String
+        ).map { data ->
+            RecommendedTestsView(
+                testDefinitionId = data["test_definition_id"] as String,
+                testRunner = data["test_runner"] as String,
+                testPath = data["test_path"] as String,
+                testName = data["test_name"] as String,
+                testType = data["test_type"] as String,
+                tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
+                metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap()
             )
         }
+
+        // TODO add recommended tests UI link
+        // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
+        mapOf(
+            "inputParameters" to mapOf(
+                "groupId" to groupId,
+                "appId" to appId,
+                "targetInstanceId" to targetInstanceId,
+                "targetCommitSha" to targetCommitSha,
+                "targetBuildVersion" to targetBuildVersion,
+                "baselineInstanceId" to baselineInstanceId,
+                "baselineCommitSha" to baselineCommitSha,
+                "baselineBuildVersion" to baselineBuildVersion,
+            ),
+            "inferredValues" to mapOf(
+                "build" to targetBuildId,
+                "baselineBuild" to baselineBuildId,
+            ),
+            "recommendedTests" to recommendedTests,
+        )
     }
 
     // TODO good candidate to be moved to common functions (probably)
