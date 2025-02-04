@@ -171,8 +171,8 @@ class RawDataServiceImpl(
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
                 result = test.result.toString(),
-                startedAt = test.startedAt?.toLocalDateTime(),
-                finishedAt = test.finishedAt?.toLocalDateTime(),
+                startedAt = test.startedAt?.toLocalDateTime(TimeZone.currentSystemDefault())?.toJavaLocalDateTime(),
+                finishedAt = test.finishedAt?.toLocalDateTime(TimeZone.currentSystemDefault())?.toJavaLocalDateTime(),
             )
         }.let(testLaunchRepository::createMany)
 
@@ -226,10 +226,5 @@ class RawDataServiceImpl(
         transaction {
             methodIgnoreRuleRepository.deleteById(ruleId)
         }
-    }
-
-    private fun Long.toLocalDateTime(): LocalDateTime {
-        val instant = Instant.ofEpochMilli(this)
-        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
     }
 }
