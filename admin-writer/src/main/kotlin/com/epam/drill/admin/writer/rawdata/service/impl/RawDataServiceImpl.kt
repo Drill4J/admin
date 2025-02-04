@@ -171,8 +171,8 @@ class RawDataServiceImpl(
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
                 result = test.result.toString(),
-                startedAt = test.startedAt.toLocalDateTime(),
-                finishedAt = test.finishedAt.toLocalDateTime(),
+                startedAt = test.startedAt?.toLocalDateTime(),
+                finishedAt = test.finishedAt?.toLocalDateTime(),
             )
         }.let(testLaunchRepository::createMany)
 
