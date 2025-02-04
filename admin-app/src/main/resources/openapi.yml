@@ -909,9 +909,9 @@ components:
           type: string
         testName:
           type: string
-        params:
-          type: object
-          additionalProperties:
+        testParams:
+          type: array
+          items:
             type: string
         metadata:
           type: object
@@ -921,13 +921,6 @@ components:
           type: array
           items:
             type: string
-    Label:
-      type: object
-      properties:
-        name:
-          type: string
-        value:
-          type: string
     TestResult:
       type: string
       enum:
