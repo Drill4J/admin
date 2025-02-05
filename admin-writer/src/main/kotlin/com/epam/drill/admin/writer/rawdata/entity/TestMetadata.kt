@@ -27,7 +27,8 @@ class TestLaunch (
     val id: String,
     val testDefinitionId: String,
     val testSessionId: String,
-    val result: String?
+    val result: String?,
+    val duration: Int? = null,
 )
 
 class TestDefinition(

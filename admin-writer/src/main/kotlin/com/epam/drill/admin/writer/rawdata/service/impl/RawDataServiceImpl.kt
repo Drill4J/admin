@@ -22,9 +22,7 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
@@ -169,7 +167,8 @@ class RawDataServiceImpl(
                 id = test.testLaunchId,
                 testDefinitionId = test.testDefinitionId,
                 testSessionId = testsPayload.sessionId,
-                result = test.result.toString()
+                result = test.result.toString(),
+                duration = test.duration
             )
         }.let(testLaunchRepository::createMany)
 
