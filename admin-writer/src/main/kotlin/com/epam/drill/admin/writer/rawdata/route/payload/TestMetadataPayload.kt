@@ -31,7 +31,7 @@ class TestLaunchInfo(
     val testLaunchId: String,
     val testDefinitionId: String,
     val result: TestResult,
-    val duration: Long? = null,
+    val duration: Int? = null,
     val details: TestDetails,
 )
 
