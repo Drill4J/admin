@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object MethodTable : StringIdTable("raw_data.methods") {
@@ -31,5 +32,5 @@ object MethodTable : StringIdTable("raw_data.methods") {
     val probesStartPos = integer("probe_start_pos")
     val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
     val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at").nullable()
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }
