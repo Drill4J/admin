@@ -1,4 +1,0 @@
-ALTER TABLE raw_data.test_launches
-ADD COLUMN IF NOT EXISTS started_at TIMESTAMP DEFAULT NULL;
-ALTER TABLE raw_data.test_launches
-ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP DEFAULT NULL;

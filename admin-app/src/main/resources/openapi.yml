@@ -894,12 +894,8 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/TestResult'
-        startedAt:
-          type: string
-          format: date-time
-        finishedAt:
-          type: string
-          format: date-time
+        duration:
+          type: integer
         details:
           $ref: '#/components/schemas/TestDetails'
     TestDetails:
