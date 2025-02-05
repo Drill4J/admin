@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object TestLaunchTable : StringIdTable("raw_data.test_launches") {
@@ -24,5 +25,5 @@ object TestLaunchTable : StringIdTable("raw_data.test_launches") {
     val result = varchar("result",  SHORT_TEXT_LENGTH).nullable()
     val startedAt = datetime("started_at").nullable()
     val finishedAt = datetime("finished_at").nullable()
-    val createdAt = datetime("created_at").nullable()
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }
