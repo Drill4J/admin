@@ -191,7 +191,7 @@ class RawDataServiceImpl(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
             testTaskId = sessionPayload.testTaskId,
-            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
+            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime()
         )
         transaction {
             testSessionRepository.create(testSession)
