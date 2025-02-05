@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object BuildTable : StringIdTable("raw_data.builds") {
@@ -27,5 +28,5 @@ object BuildTable : StringIdTable("raw_data.builds") {
     val commitDate = varchar("commit_date", SHORT_TEXT_LENGTH).nullable()
     val commitAuthor = varchar("commit_author", SHORT_TEXT_LENGTH).nullable()
     val commitMessage = varchar("commit_message", SHORT_TEXT_LENGTH).nullable()
-    val createdAt = datetime("created_at").nullable()
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }
