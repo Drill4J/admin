@@ -20,9 +20,6 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
-      - uses: gradle/wrapper-validation-action@v1
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/gradlew
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
@@ -78,9 +75,6 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
-      - uses: gradle/wrapper-validation-action@v1
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/gradlew
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: |
@@ -119,8 +113,6 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
-      - uses: gradle/wrapper-validation-action@v1
-      - run: chmod +x ${{ github.workspace }}/gradlew
       - run: 'git switch -c release/${{ needs.assets.outputs.tag }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
