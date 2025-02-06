@@ -35,9 +35,6 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
-      - uses: gradle/wrapper-validation-action@v1
-      - if: matrix.config.preset == 'linuxX64'
-        run: chmod +x ${{ github.workspace }}/gradlew
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
