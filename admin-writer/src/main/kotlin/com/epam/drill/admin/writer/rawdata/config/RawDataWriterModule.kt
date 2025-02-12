@@ -29,7 +29,23 @@ import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
-val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
+val rawDataDIModule = DI.Module("rawDataServices") {
+    import(rawDataServicesDIModule)
+
+    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+
+    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
+        groupSettingsRepository = instance(),
+        instanceRepository = instance(),
+        coverageRepository = instance(),
+        testSessionRepository = instance(),
+        testLaunchRepository = instance(),
+        methodRepository = instance(),
+        buildRepository = instance(),
+    ) }
+}
+
+val rawDataServicesDIModule = DI.Module("rawDataWriterServices") {
     bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
     bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
     bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
@@ -49,17 +65,6 @@ val rawDataWriterDIModule = DI.Module("rawDataWriterServices") {
         buildRepository = instance(),
         testSessionRepository = instance(),
         methodIgnoreRuleRepository = instance()
-    ) }
-    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
-
-    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
-        groupSettingsRepository = instance(),
-        instanceRepository = instance(),
-        coverageRepository = instance(),
-        testSessionRepository = instance(),
-        testLaunchRepository = instance(),
-        methodRepository = instance(),
-        buildRepository = instance(),
     ) }
 }
 

@@ -22,6 +22,7 @@ val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val logbackVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -50,6 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktorVersion")
     implementation("io.ktor:ktor-server-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
@@ -76,6 +78,10 @@ dependencies {
     testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
     testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
+    testImplementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
+    testImplementation("ch.qos.logback:logback-classic:$logbackVersion")
 }
 
 tasks {

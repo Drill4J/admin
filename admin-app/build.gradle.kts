@@ -25,6 +25,7 @@ val zaxxerHikaricpVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
+val logbackVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -56,7 +57,7 @@ dependencies {
     implementation("io.ktor:ktor-server-swagger:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
-    implementation("ch.qos.logback:logback-classic:1.3.14")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
     implementation("org.quartz-scheduler:quartz:$quartzVersion")

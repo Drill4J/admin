@@ -17,19 +17,10 @@ package com.epam.drill.admin.writer.rawdata.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Transaction
-import org.jetbrains.exposed.sql.statements.Statement
-import org.jetbrains.exposed.sql.statements.StatementType
-import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import java.sql.ResultSet
 import javax.sql.DataSource
 
 object RawDataWriterDatabaseConfig {
