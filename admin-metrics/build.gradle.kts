@@ -19,7 +19,6 @@ val kotlinxDatetimeVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
-val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
@@ -63,13 +62,12 @@ dependencies {
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
-    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
-    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
-    testImplementation("org.testcontainers:postgresql:$testContainersVersion")
-    testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
-    testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-resources:$ktorVersion")
+    testImplementation("com.jayway.jsonpath:json-path:2.9.0")
+    testImplementation(project(":admin-test"))
+    testImplementation(project(":admin-writer"))
 }
 
 tasks {

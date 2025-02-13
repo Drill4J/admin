@@ -21,8 +21,7 @@ import io.ktor.server.resources.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.kodein.di.DI
 import org.kodein.di.ktor.di
@@ -37,6 +36,14 @@ fun withRollback(test: suspend () -> Unit) {
             } finally {
                 rollback()
             }
+        }
+    }
+}
+
+fun withTransaction(test: suspend () -> Unit) {
+    runBlocking {
+        newSuspendedTransaction {
+            test()
         }
     }
 }
@@ -60,10 +67,19 @@ fun drillApplication(
 }
 
 fun assertJsonEquals(json1: String, json2: String) {
-    val json = Json { ignoreUnknownKeys = true }
+    val json = Json {
+        ignoreUnknownKeys = true
+    }
 
-    val obj1: JsonElement = json.parseToJsonElement(json1)
-    val obj2: JsonElement = json.parseToJsonElement(json2)
+    fun removeNulls(jsonElement: JsonElement): JsonElement {
+        return when (jsonElement) {
+            is JsonObject -> JsonObject(jsonElement.filterValues { it !is JsonNull }.mapValues { removeNulls(it.value) })
+            is JsonArray -> JsonArray(jsonElement.map { removeNulls(it) })
+            else -> jsonElement
+        }
+    }
 
+    val obj1: JsonElement = removeNulls(json.parseToJsonElement(json1))
+    val obj2: JsonElement = removeNulls(json.parseToJsonElement(json2))
     assertEquals(obj1, obj2)
 }
