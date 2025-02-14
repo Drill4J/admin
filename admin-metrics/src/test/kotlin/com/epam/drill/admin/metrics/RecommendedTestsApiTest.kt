@@ -153,6 +153,38 @@ class RecommendedTestsApiTest : DatabaseTests({
         }
     }
 
+    @Test
+    fun `given test that checks methods have no changes compared to baseline, recommended test service should suggest skipping it`() {
+        runBlocking {
+            val client = runDrillApplication().apply {
+                //build1
+                deployInstance(build1, arrayOf(method1, method2, method3))
+                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1), method3 to probesOf(0)))
+                //build2
+                val modifiedMethod2 = method2.changeChecksum()
+                deployInstance(build2, arrayOf(method1, modifiedMethod2, method3))
+                //build3
+                deployInstance(build3, arrayOf(method1, modifiedMethod2, method3.changeChecksum()))
+            }
+
+            client.get("/metrics/recommended-tests") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("testsToSkip", true)
+                parameter("targetBuildVersion", build3.buildVersion)
+                parameter("baselineBuildVersion", build2.buildVersion)
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // even though test1 checked method2 in build1 and method2 was changed in build2 and build3,
+                // test1 should be recommended to be skipped in build3 because compared to build2, build3 has no changes in method2
+                assertEquals(1, recommendedTests.size)
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+            }
+        }
+    }
+
     @AfterEach
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()

@@ -66,7 +66,7 @@ val method3 = SingleMethodPayload(
     params = "()",
     returnType = "void",
     probesCount = 1,
-    probesStartPos = 7,
+    probesStartPos = 5,
     bodyChecksum = "300",
 )
 val test1 = TestDetails(
