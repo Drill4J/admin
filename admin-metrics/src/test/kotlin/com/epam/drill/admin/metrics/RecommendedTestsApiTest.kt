@@ -45,7 +45,7 @@ class RecommendedTestsApiTest : DatabaseTests({
         runBlocking {
             val client = runDrillApplication().apply {
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(0, 0), method2 to probesOf(1, 0, 0)))
+                launchTest(session1, test1, build1, arrayOf(method1 to probesOf(0, 0), method2 to probesOf(1, 0, 0)))
                 deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
             }
 
@@ -71,7 +71,7 @@ class RecommendedTestsApiTest : DatabaseTests({
             val client = runDrillApplication().apply {
                 //build1
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(0, 0, 0)))
+                launchTest(session1, test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(0, 0, 0)))
                 //build2
                 deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
             }
@@ -99,7 +99,7 @@ class RecommendedTestsApiTest : DatabaseTests({
             val client = runDrillApplication().apply {
                 //build1
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(1, 0, 0)))
+                launchTest(session1, test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(1, 0, 0)))
                 //build2
                 deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
             }
@@ -126,11 +126,11 @@ class RecommendedTestsApiTest : DatabaseTests({
             val client = runDrillApplication().apply {
                 //build1
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
+                launchTest(session1, test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
                 //build2
                 val modifiedMethod1 = method1.changeChecksum()
                 deployInstance(build2, arrayOf(modifiedMethod1, method2))
-                launchTest(test1, build2, arrayOf(modifiedMethod1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
+                launchTest(session2, test1, build2, arrayOf(modifiedMethod1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
                 //build3
                 deployInstance(build3, arrayOf(modifiedMethod1, method2))
             }
@@ -159,7 +159,7 @@ class RecommendedTestsApiTest : DatabaseTests({
             val client = runDrillApplication().apply {
                 //build1
                 deployInstance(build1, arrayOf(method1, method2, method3))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1), method3 to probesOf(0)))
+                launchTest(session1, test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1), method3 to probesOf(0)))
                 //build2
                 val modifiedMethod2 = method2.changeChecksum()
                 deployInstance(build2, arrayOf(method1, modifiedMethod2, method3))
@@ -181,6 +181,35 @@ class RecommendedTestsApiTest : DatabaseTests({
                 // test1 should be recommended to be skipped in build3 because compared to build2, build3 has no changes in method2
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+            }
+        }
+    }
+
+    @Test
+    fun `given tests from different test tasks, recommended test service should suggest tests from only specified test task`() {
+        runBlocking {
+            val client = runDrillApplication().apply {
+                //build1
+                deployInstance(build1, arrayOf(method1, method2))
+                launchTest(session1.testTaskId("check1"), test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)))
+                launchTest(session2.testTaskId("check2"), test2, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)))
+                //build2
+                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
+            }
+
+            client.get("/metrics/recommended-tests") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("targetBuildVersion", build2.buildVersion)
+                parameter("testTaskId", "check2")
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // test1 and test2 should be recommended to run in build2,
+                // but only test2 is from the specified test task
+                assertEquals(1, recommendedTests.size)
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test2.definitionId })
             }
         }
     }

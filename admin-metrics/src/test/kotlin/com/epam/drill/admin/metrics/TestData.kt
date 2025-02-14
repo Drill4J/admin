@@ -16,8 +16,10 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
+import kotlinx.datetime.Clock
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
@@ -79,6 +81,18 @@ val test2 = TestDetails(
     path = testPath,
     testName = "test2"
 )
+val session1 = SessionPayload(
+    groupId = testGroup,
+    id = "session-1",
+    testTaskId = testTask,
+    startedAt = Clock.System.now()
+)
+val session2 = SessionPayload(
+    groupId = testGroup,
+    id = "session-2",
+    testTaskId = testTask,
+    startedAt = Clock.System.now()
+)
 
 fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
     classname = classname,
@@ -91,3 +105,10 @@ fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
 )
 
 fun probesOf(vararg probes: Int): IntArray = probes
+
+fun SessionPayload.testTaskId(testTask: String) = SessionPayload(
+    groupId = this.groupId,
+    id = this.id,
+    testTaskId = testTask,
+    startedAt = this.startedAt
+)

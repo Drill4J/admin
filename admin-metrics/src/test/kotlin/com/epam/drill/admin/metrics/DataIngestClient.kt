@@ -20,7 +20,6 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.datetime.Clock
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 
@@ -42,24 +41,17 @@ suspend fun HttpClient.deployInstance(
 }
 
 suspend fun HttpClient.launchTest(
+    session: SessionPayload,
     test: TestDetails,
     instance: InstancePayload,
     coverage: Array<Pair<SingleMethodPayload, IntArray>>
 ) {
-    val sessionId = "session-${counter.incrementAndGet()}"
     val testLaunchId = "test-launch-${counter.incrementAndGet()}"
-    putTestSession(
-        SessionPayload(
-            groupId = instance.groupId,
-            id = sessionId,
-            testTaskId = testTask,
-            startedAt = Clock.System.now()
-        )
-    )
+    putTestSession(session)
     postTestMetadata(
         AddTestsPayload(
             groupId = instance.groupId,
-            sessionId = sessionId,
+            sessionId = session.id,
             tests = listOf(
                 TestLaunchInfo(
                     testLaunchId = testLaunchId,
