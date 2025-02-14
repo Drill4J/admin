@@ -18,6 +18,9 @@ package com.epam.drill.admin.writer.rawdata
 import com.epam.drill.admin.writer.rawdata.route.putInstances
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -34,7 +37,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class InstancesApiTest : DatabaseTests() {
+class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
     private val testExistingGroup = "test-old-group"
     private val testExistingApp = "test-old-app"
     private val testExistingBuildVersion = "0.0.1"
@@ -57,21 +60,20 @@ class InstancesApiTest : DatabaseTests() {
     }
 
     @Test
-    fun `given non-existent build, put instances service should save new instance and new build in database and return OK`() = withRollback {
-        val testGroup = "test-group"
-        val testApp = "test-app"
-        val testInstance = "test-instance"
-        val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
+    fun `given non-existent build, put instances service should save new instance and new build in database and return OK`() =
+        withRollback {
+            val testGroup = "test-group"
+            val testApp = "test-app"
+            val testInstance = "test-instance"
+            val timeBeforeTest = LocalDateTime.now()
+            val app = drillApplication(rawDataServicesDIModule) {
                 putInstances()
             }
-        }
 
-        app.client.put("/instances") {
-            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            setBody(
-                """
+            app.client.put("/instances") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(
+                    """
                 {
                     "groupId": "$testGroup",
                     "appId": "$testApp",
@@ -81,53 +83,52 @@ class InstancesApiTest : DatabaseTests() {
                     "envId": "test-env"                    
                 }
                 """.trimIndent()
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertJsonEquals(
-                """
+                )
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertJsonEquals(
+                    """
                 {
                     "message": "Instance saved"
                 }
             """.trimIndent(), bodyAsText()
-            )
-        }
+                )
+            }
 
-        val savedInstances = InstanceTable.selectAll()
-            .filter { it[InstanceTable.groupId] == testGroup }
-            .filter { it[InstanceTable.appId] == testApp }
-            .filter { it[InstanceTable.id].value == testInstance }
-        assertEquals(1, savedInstances.size)
-        savedInstances.forEach {
-            assertNotNull(it[InstanceTable.envId])
-            assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
-        }
-        val savedBuilds = BuildTable.selectAll()
-            .filter { it[BuildTable.groupId] == testGroup }
-            .filter { it[BuildTable.appId] == testApp }
-            .filter { it[BuildTable.instanceId] == testInstance }
-        assertEquals(1, savedBuilds.size)
-        savedBuilds.forEach {
-            assertNotNull(it[BuildTable.commitSha])
-            assertNotNull(it[BuildTable.buildVersion])
-            assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
-        }
-    }
-
-    @Test
-    fun `given existing build, put instances service should refer to existing build, save new instance in database and return OK`() = withRollback {
-        val testInstance = "test-instance"
-        val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                putInstances()
+            val savedInstances = InstanceTable.selectAll()
+                .filter { it[InstanceTable.groupId] == testGroup }
+                .filter { it[InstanceTable.appId] == testApp }
+                .filter { it[InstanceTable.id].value == testInstance }
+            assertEquals(1, savedInstances.size)
+            savedInstances.forEach {
+                assertNotNull(it[InstanceTable.envId])
+                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+            }
+            val savedBuilds = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testGroup }
+                .filter { it[BuildTable.appId] == testApp }
+                .filter { it[BuildTable.instanceId] == testInstance }
+            assertEquals(1, savedBuilds.size)
+            savedBuilds.forEach {
+                assertNotNull(it[BuildTable.commitSha])
+                assertNotNull(it[BuildTable.buildVersion])
+                assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
             }
         }
 
-        app.client.put("/instances") {
-            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            setBody(
-                """
+    @Test
+    fun `given existing build, put instances service should refer to existing build, save new instance in database and return OK`() =
+        withRollback {
+            val testInstance = "test-instance"
+            val timeBeforeTest = LocalDateTime.now()
+            val app = drillApplication(rawDataServicesDIModule) {
+                putInstances()
+            }
+
+            app.client.put("/instances") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(
+                    """
                 {
                     "groupId": "$testExistingGroup",
                     "appId": "$testExistingApp",
@@ -136,31 +137,31 @@ class InstancesApiTest : DatabaseTests() {
                     "envId": "test-env"
                 }
                 """.trimIndent()
-            )
-        }.apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertJsonEquals(
-                """
+                )
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertJsonEquals(
+                    """
                 {
                     "message": "Instance saved"
                 }
             """.trimIndent(), bodyAsText()
-            )
-        }
+                )
+            }
 
-        val savedInstances = InstanceTable.selectAll()
-            .filter { it[InstanceTable.groupId] == testExistingGroup }
-            .filter { it[InstanceTable.appId] == testExistingApp }
-            .filter { it[InstanceTable.id].value == testInstance }
-        assertEquals(1, savedInstances.size)
-        savedInstances.forEach {
-            assertNotNull(it[InstanceTable.envId])
-            assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+            val savedInstances = InstanceTable.selectAll()
+                .filter { it[InstanceTable.groupId] == testExistingGroup }
+                .filter { it[InstanceTable.appId] == testExistingApp }
+                .filter { it[InstanceTable.id].value == testInstance }
+            assertEquals(1, savedInstances.size)
+            savedInstances.forEach {
+                assertNotNull(it[InstanceTable.envId])
+                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+            }
+            val savedBuilds = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testExistingGroup }
+                .filter { it[BuildTable.appId] == testExistingApp }
+                .filter { it[BuildTable.buildVersion] == testExistingBuildVersion }
+            assertEquals(1, savedBuilds.size)
         }
-        val savedBuilds = BuildTable.selectAll()
-            .filter { it[BuildTable.groupId] == testExistingGroup }
-            .filter { it[BuildTable.appId] == testExistingApp }
-            .filter { it[BuildTable.buildVersion] == testExistingBuildVersion }
-        assertEquals(1, savedBuilds.size)
-    }
 }

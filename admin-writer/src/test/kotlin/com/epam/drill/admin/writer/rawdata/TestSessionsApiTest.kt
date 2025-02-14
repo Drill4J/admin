@@ -17,6 +17,9 @@ package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.route.putTestSessions
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -27,17 +30,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 
-class TestSessionsApiTest : DatabaseTests() {
+class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
     fun `given new test session, put test sessions service should save test session in database and return OK`() = withRollback {
         val testGroup = "test-group"
         val testSession = "test-session-1"
         val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                putTestSessions()
-            }
+        val app = drillApplication(rawDataServicesDIModule) {
+            putTestSessions()
         }
 
         app.client.put("/sessions") {

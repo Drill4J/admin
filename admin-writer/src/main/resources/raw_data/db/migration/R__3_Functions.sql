@@ -2115,8 +2115,7 @@ BEGIN
 				FROM raw_data.test_launches launches
 				JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
 				WHERE (input_test_task_id IS NULL OR sessions.test_task_id = input_test_task_id)
-			  		AND (input_coverage_period_from IS NULL OR sessions.created_at >= input_coverage_period_from)
-		  		)
+		  	)
 			-- include only recommended tests
 			AND (input_tests_to_skip = TRUE OR def.id IN (
 		  		SELECT DISTINCT test_definition_id

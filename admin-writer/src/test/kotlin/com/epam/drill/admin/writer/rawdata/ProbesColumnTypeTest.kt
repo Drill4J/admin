@@ -16,6 +16,8 @@
 package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils.create
 import org.jetbrains.exposed.sql.insert
@@ -24,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertTrue
 
-class ProbesColumnTypeTest : DatabaseTests() {
+class ProbesColumnTypeTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @BeforeEach
     fun initSchema() {

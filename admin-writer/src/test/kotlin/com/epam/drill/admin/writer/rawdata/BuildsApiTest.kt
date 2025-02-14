@@ -17,6 +17,9 @@ package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.route.putBuilds
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -27,7 +30,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class BuildsApiTest : DatabaseTests() {
+class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
     fun `given new build, put builds service should save new build in database and return OK`() = withRollback {
@@ -35,10 +38,8 @@ class BuildsApiTest : DatabaseTests() {
         val testApp = "test-app"
         val testBuildVersion = "1.0.0"
         val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                putBuilds()
-            }
+        val app = drillApplication(rawDataServicesDIModule) {
+            putBuilds()
         }
 
         app.client.put("/builds") {

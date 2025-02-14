@@ -22,7 +22,7 @@ class InstancePayload(
     val groupId: String,
     val appId: String,
     val instanceId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val envId: String?,
+    val commitSha: String? = null,
+    val buildVersion: String? = null,
+    val envId: String? = null,
 )
