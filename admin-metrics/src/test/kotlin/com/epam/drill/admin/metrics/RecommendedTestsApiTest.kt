@@ -45,9 +45,8 @@ class RecommendedTestsApiTest : DatabaseTests({
         runBlocking {
             val client = runDrillApplication().apply {
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
-                launchTest(test2, build1, arrayOf(method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)))
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum(), method3))
+                launchTest(test1, build1, arrayOf(method1 to probesOf(0, 0), method2 to probesOf(1, 0, 0)))
+                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
             }
 
             client.get("/metrics/recommended-tests") {
@@ -57,8 +56,11 @@ class RecommendedTestsApiTest : DatabaseTests({
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // test1 checked method2 in build1, but method2 was modified in build2,
+                // that's why test1 should be recommended to run in build2
                 assertEquals(1, recommendedTests.size)
-                assertTrue(recommendedTests.any { it["testDefinitionId"] == test2.definitionId })
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
             }
         }
     }
@@ -67,10 +69,11 @@ class RecommendedTestsApiTest : DatabaseTests({
     fun `given test that covers unmodified methods, recommended test service should suggest skipping it`() {
         runBlocking {
             val client = runDrillApplication().apply {
+                //build1
                 deployInstance(build1, arrayOf(method1, method2))
-                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
-                launchTest(test2, build1, arrayOf(method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)))
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum(), method3))
+                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(0, 0, 0)))
+                //build2
+                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
             }
 
             client.get("/metrics/recommended-tests") {
@@ -81,6 +84,69 @@ class RecommendedTestsApiTest : DatabaseTests({
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // test1 already checked method1 in build1 and method1 was not modified in build2,
+                // that's why test1 should be recommended to skip in build2
+                assertEquals(1, recommendedTests.size)
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+            }
+        }
+    }
+
+    @Test
+    fun `given test that covers modified and unmodified methods, recommended test service should suggest running it`() {
+        runBlocking {
+            val client = runDrillApplication().apply {
+                //build1
+                deployInstance(build1, arrayOf(method1, method2))
+                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 0), method2 to probesOf(1, 0, 0)))
+                //build2
+                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
+            }
+
+            client.get("/metrics/recommended-tests") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("targetBuildVersion", build2.buildVersion)
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // test1 checked method1 and method2 in build1, but method2 was modified in build2,
+                // that's why test1 should be recommended to run in build2
+                assertEquals(1, recommendedTests.size)
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+            }
+        }
+    }
+
+    @Test
+    fun `given test that covers unmodified methods of one build and modified methods of another one, recommended test service should suggest skipping it`() {
+        runBlocking {
+            val client = runDrillApplication().apply {
+                //build1
+                deployInstance(build1, arrayOf(method1, method2))
+                launchTest(test1, build1, arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
+                //build2
+                val modifiedMethod1 = method1.changeChecksum()
+                deployInstance(build2, arrayOf(modifiedMethod1, method2))
+                launchTest(test1, build2, arrayOf(modifiedMethod1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)))
+                //build3
+                deployInstance(build3, arrayOf(modifiedMethod1, method2))
+            }
+
+            client.get("/metrics/recommended-tests") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("testsToSkip", true)
+                parameter("targetBuildVersion", build3.buildVersion)
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
+
+                // test1 already checked method1 in build2 and method1 was not modified in build3,
+                // that's why test1 should be recommended to skip in build3,
+                // despite test1 also checked method1 in build1 and method1 was modified in build2
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
             }

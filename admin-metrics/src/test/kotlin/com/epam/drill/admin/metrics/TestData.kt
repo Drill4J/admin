@@ -36,6 +36,12 @@ val build2 = InstancePayload(
     instanceId = "instance-2",
     buildVersion = "2.0.0"
 )
+val build3 = InstancePayload(
+    groupId = testGroup,
+    appId = testApp,
+    instanceId = "instance-3",
+    buildVersion = "3.0.0"
+)
 val method1 = SingleMethodPayload(
     classname = testClass,
     name = "method1",
@@ -81,7 +87,7 @@ fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
     returnType = returnType,
     probesCount = probesCount,
     probesStartPos = probesStartPos,
-    bodyChecksum = bodyChecksum + "1"
+    bodyChecksum = bodyChecksum + "0",
 )
 
 fun probesOf(vararg probes: Int): IntArray = probes
