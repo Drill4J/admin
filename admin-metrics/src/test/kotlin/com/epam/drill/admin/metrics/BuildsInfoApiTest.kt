@@ -50,7 +50,7 @@ class BuildsInfoApiTest : DatabaseTests({
 
 
     @Test
-    fun `given groupId and appId, get metrics builds should return builds`(): Unit = runBlocking {
+    fun `given groupId and appId, get builds service should return builds only for specified group and app`(): Unit = runBlocking {
         val testGroup = "group-1"
         val testApp = "app-1"
         val app = drillApplication(rawDataServicesDIModule, metricsDIModule) {
@@ -78,7 +78,7 @@ class BuildsInfoApiTest : DatabaseTests({
 
 
     @Test
-    fun `given groupId, appId, and branch, get metrics builds should return builds`(): Unit = runBlocking {
+    fun `given groupId, appId, and branch, get metrics builds should return builds only for specified group, app and branch`(): Unit = runBlocking {
         val testGroup = "group-1"
         val testApp = "app-1"
         val testBranch = "main"
