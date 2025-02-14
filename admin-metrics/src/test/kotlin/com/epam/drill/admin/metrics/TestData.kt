@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
@@ -106,9 +107,9 @@ fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
 
 fun probesOf(vararg probes: Int): IntArray = probes
 
-fun SessionPayload.testTaskId(testTask: String) = SessionPayload(
+fun SessionPayload.testTaskId(testTaskId: String) = SessionPayload(
     groupId = this.groupId,
     id = this.id,
-    testTaskId = testTask,
+    testTaskId = testTaskId,
     startedAt = this.startedAt
 )
