@@ -60,6 +60,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuildDiffReport(
+        groupId: String,
         targetBuildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
@@ -73,7 +74,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ),
                     RecommendedTests AS (
                         SELECT *
-                        FROM raw_data.get_recommended_tests_v2(?, ?)
+                        FROM raw_data.get_recommended_tests_v2(?, ?, false, null, ?)
                     )	
                     SELECT 
                         (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
@@ -85,12 +86,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(),
             targetBuildId,
             baselineBuildId,
+            groupId,
             targetBuildId,
             baselineBuildId
-            //,coverageThreshold
         ).first() as Map<String, String>
-
-
     }
 
     override suspend fun refreshMaterializedView(viewName: String) = transaction {

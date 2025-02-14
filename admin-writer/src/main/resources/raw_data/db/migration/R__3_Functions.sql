@@ -909,7 +909,18 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT methods.*
+    SELECT methods.id,
+           methods.build_id,
+           methods.classname,
+           methods.name,
+           methods.params,
+           methods.return_type,
+           methods.body_checksum,
+           methods.signature,
+           methods.probe_start_pos,
+           methods.probes_count,
+           methods.annotations,
+           methods.class_annotations
     FROM raw_data.builds original_build
     JOIN raw_data.builds related_build ON related_build.group_id = original_build.group_id AND related_build.app_id = original_build.app_id
     JOIN raw_data.methods methods ON methods.build_id = related_build.id
@@ -2115,7 +2126,8 @@ BEGIN
 				FROM raw_data.test_launches launches
 				JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
 				WHERE (input_test_task_id IS NULL OR sessions.test_task_id = input_test_task_id)
-		  	)
+			  		AND (input_coverage_period_from IS NULL OR sessions.created_at >= input_coverage_period_from)
+		  		)
 			-- include only recommended tests
 			AND (input_tests_to_skip = TRUE OR def.id IN (
 		  		SELECT DISTINCT test_definition_id

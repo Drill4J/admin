@@ -24,6 +24,7 @@ interface MetricsRepository {
     suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>>
 
     suspend fun getBuildDiffReport(
+        groupId: String,
         buildId: String,
         baselineBuildId: String,
         coverageThreshold: Double

@@ -53,11 +53,7 @@ class BuildsInfoApiTest : DatabaseTests({
     fun `given groupId and appId, get builds service should return builds only for specified group and app`(): Unit = runBlocking {
         val testGroup = "group-1"
         val testApp = "app-1"
-        val app = drillApplication(rawDataServicesDIModule, metricsDIModule) {
-            dataIngestRoutes()
-            metricsRoutes()
-        }
-        val client = app.drillClient().apply {
+        val client = runDrillApplication().apply {
             initTestData()
         }
 
