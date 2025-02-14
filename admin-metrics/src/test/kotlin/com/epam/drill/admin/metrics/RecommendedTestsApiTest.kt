@@ -229,11 +229,5 @@ class RecommendedTestsApiTest : DatabaseTests({
         TestSessionTable.deleteAll()
         TestDefinitionTable.deleteAll()
     }
-
-    private fun runDrillApplication() =
-        drillApplication(rawDataServicesDIModule, metricsDIModule) {
-            dataIngestRoutes()
-            metricsRoutes()
-        }.drillClient()
 }
 

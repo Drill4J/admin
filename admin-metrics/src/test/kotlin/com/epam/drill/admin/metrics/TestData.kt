@@ -82,6 +82,11 @@ val test2 = TestDetails(
     path = testPath,
     testName = "test2"
 )
+val test3 = TestDetails(
+    runner = "junit",
+    path = testPath,
+    testName = "test3"
+)
 val session1 = SessionPayload(
     groupId = testGroup,
     id = "session-1",
@@ -91,6 +96,12 @@ val session1 = SessionPayload(
 val session2 = SessionPayload(
     groupId = testGroup,
     id = "session-2",
+    testTaskId = testTask,
+    startedAt = Clock.System.now()
+)
+val session3 = SessionPayload(
+    groupId = testGroup,
+    id = "session-3",
     testTaskId = testTask,
     startedAt = Clock.System.now()
 )
