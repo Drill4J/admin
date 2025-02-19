@@ -2034,7 +2034,10 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v2(
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
 	input_test_task_id VARCHAR DEFAULT NULL,
 	input_baseline_build_id VARCHAR DEFAULT NULL,
-	input_coverage_period_from TIMESTAMP DEFAULT NULL
+	input_coverage_period_from TIMESTAMP DEFAULT NULL,
+	input_coverage_branches VARCHAR[] DEFAULT NULL,
+	input_coverage_env_ids VARCHAR[] DEFAULT NULL,
+    input_test_tags VARCHAR[] DEFAULT NULL
 ) RETURNS TABLE(
     __test_definition_id VARCHAR,
     __test_runner VARCHAR,
@@ -2076,12 +2079,25 @@ BEGIN
 		WHERE coverage.group_id = input_group_id
 		 	AND coverage.app_id = split_part(input_target_build_id, ':', 2)
 		 	AND coverage.test_result = 'PASSED'
-		 	AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
-		 	AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
-		 	AND (input_baseline_build_id IS NULL OR target.signature IN (
+		 	--filter by test task id
+			AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+		 	--filter by coverage period from
+			AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		 	--filter by baseline
+			AND (input_baseline_build_id IS NULL OR target.signature IN (
 				SELECT signature
 				FROM Risks
 		 	))
+			--filter by branches
+			AND (input_coverage_branches IS NULL OR coverage.branch = ANY(input_coverage_branches))
+			--filter by envs
+			AND (input_coverage_env_ids IS NULL OR coverage.env_id = ANY(input_coverage_env_ids))
+            --filter by test tags
+            AND (input_test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE input_test_tags && def.tags
+            ))
   	),
 	TestsByRisks AS (
 		SELECT
@@ -2127,6 +2143,8 @@ BEGIN
 		  		SELECT DISTINCT test_definition_id
 				FROM RecommendedTests
 		  	))
+			--filter by test tags
+            AND (input_test_tags IS NULL OR input_test_tags && def.tags)
   	)
 	SELECT
 		test_definition_id,
