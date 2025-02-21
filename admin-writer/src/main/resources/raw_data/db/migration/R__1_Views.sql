@@ -1,13 +1,13 @@
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP VIEW raw_data.view_methods_coverage;
 CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
     SELECT
         builds.group_id,
         builds.app_id,
         methods.signature,
         methods.body_checksum,
+        BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS probes_count,
         methods.build_id,
         SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS probes,
         BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS covered_probes,
@@ -29,7 +29,6 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP VIEW raw_data.view_methods_with_rules;
 CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
     SELECT signature,
         name,
@@ -38,9 +37,9 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         return_type,
         body_checksum,
         probes_count,
+        build_id,
         group_id,
-        app_id,
-        build_id
+        app_id
     FROM raw_data.methods m
     WHERE probes_count > 0
         AND NOT EXISTS (
@@ -52,3 +51,31 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
 		            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
 		            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
 		            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text));
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_build_coverage AS
+    WITH
+    CoverageGroupedByMethod AS (
+        SELECT
+          group_id,
+          app_id,
+          build_id,
+          env_id,
+          signature,
+          BIT_COUNT(BIT_OR(probes)) AS covered_probes
+        FROM raw_data.view_methods_coverage
+        GROUP BY group_id, app_id, build_id, env_id, signature
+    ),
+    CoverageGroupedByEnv AS (
+        SELECT
+          group_id,
+          app_id,
+          build_id,
+          env_id,
+          SUM(covered_probes) AS covered_probes
+        FROM CoverageGroupedByMethod
+        GROUP BY group_id, app_id, build_id, env_id
+    )
+    SELECT * FROM CoverageGroupedByEnv;
