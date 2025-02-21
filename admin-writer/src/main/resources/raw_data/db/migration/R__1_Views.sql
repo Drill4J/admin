@@ -14,7 +14,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
         coverage.created_at,
         builds.branch,
         instances.env_id,
-        launches.result as test_result,
+        launches.result AS test_result,
         sessions.test_task_id,
         launches.test_definition_id,
         launches.id as test_launch_id
@@ -24,7 +24,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
     JOIN raw_data.builds builds ON builds.id = methods.build_id
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
     LEFT JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
-    WHERE BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0;
+    WHERE BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
+      AND BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) = methods.probes_count;
 
 -----------------------------------------------------------------
 
