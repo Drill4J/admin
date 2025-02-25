@@ -2490,8 +2490,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_by_test(
+    input_group_id VARCHAR,
     input_app_id VARCHAR,
-	input_group_id VARCHAR,
 	input_build_id VARCHAR,
 	input_test_session_id VARCHAR DEFAULT NULL,
 	input_test_launch_id VARCHAR DEFAULT NULL,
