@@ -17,7 +17,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage AS
         launches.result AS test_result,
         sessions.test_task_id,
         launches.test_definition_id,
-        launches.id as test_launch_id
+        launches.id as test_launch_id,
+        launches.test_session_id
     FROM raw_data.coverage coverage
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id
     JOIN raw_data.methods methods ON methods.classname = coverage.classname AND methods.build_id = instances.build_id
