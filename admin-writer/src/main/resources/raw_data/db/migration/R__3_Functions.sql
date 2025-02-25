@@ -2305,9 +2305,11 @@ BEGIN
         LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
             AND target.body_checksum = coverage.body_checksum
             AND target.probes_count = BIT_LENGTH(coverage.probes)
-            AND coverage.group_id = input_group_id
+			--filter by group
+			AND coverage.group_id = input_group_id
+			--filter by app
             AND coverage.app_id = input_app_id
-            --filter by only isolated coverage
+			--filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
             --filter by coverage period from
             AND (input_period_from IS NULL OR coverage.created_at >= input_period_from)
@@ -2343,17 +2345,17 @@ BEGIN
         coverage.build_id::VARCHAR,
         COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
         coverage.total_probes::INT,
-        coverage.isolated_covered_probes::INT,
-        (coverage.total_probes - coverage.isolated_covered_probes)::INT AS isolated_missed_probes,
-        COALESCE(CAST(coverage.isolated_covered_probes AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
-        coverage.aggregated_covered_probes::INT,
-        (coverage.total_probes - coverage.aggregated_covered_probes)::INT AS aggregated_missed_probes,
-        COALESCE(CAST(coverage.aggregated_covered_probes AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
-		coverage.total_changes::INT,
-		coverage.isolated_tested_changes::INT,
-		coverage.isolated_partially_tested_changes::INT,
-		coverage.aggregated_tested_changes::INT,
-		coverage.aggregated_partially_tested_changes::INT
+        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
+        coverage.total_changes::INT,
+		COALESCE(coverage.isolated_tested_changes, 0)::INT AS isolated_tested_changes,
+		COALESCE(coverage.isolated_partially_tested_changes, 0)::INT AS isolated_partially_tested_changes,
+		COALESCE(coverage.aggregated_tested_changes, 0)::INT AS aggregated_tested_changes,
+		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
     FROM CoverageGroupedByBuilds coverage
     JOIN raw_data.builds builds ON builds.id = coverage.build_id
     ORDER BY builds.created_at ASC;
@@ -2379,19 +2381,19 @@ CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage_by_test(
     methods_method_name_pattern VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
-    __build_id VARCHAR,
-	__signature VARCHAR,
-    __classname VARCHAR,
-    __name VARCHAR,
-    __params VARCHAR,
-    __return_type VARCHAR,
-    __probes_count INT,
-    __isolated_covered_probes INT,
-    __isolated_missed_probes INT,
-    __isolated_probes_coverage_ratio FLOAT,
-   	__aggregated_covered_probes INT,
-    __aggregated_missed_probes INT,
-    __aggregated_probes_coverage_ratio FLOAT
+    build_id VARCHAR,
+	signature VARCHAR,
+    classname VARCHAR,
+    name VARCHAR,
+    params VARCHAR,
+    return_type VARCHAR,
+    probes_count INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+   	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -2484,7 +2486,7 @@ BEGIN
         COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.probes_count, 0.0) AS aggregated_probes_coverage_ratio
     FROM TargetMethodCoverage coverage;
 END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
 
@@ -2504,19 +2506,19 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_by_test(
     methods_class_name_pattern VARCHAR DEFAULT NULL,
     methods_method_name_pattern VARCHAR DEFAULT NULL
 ) RETURNS TABLE(
-    __build_id VARCHAR,
-    __total_probes INT,
-    __isolated_covered_probes INT,
-    __isolated_missed_probes INT,
-    __isolated_probes_coverage_ratio FLOAT,
-	__aggregated_covered_probes INT,
-    __aggregated_missed_probes INT,
-    __aggregated_probes_coverage_ratio FLOAT,
-    __total_changes INT,
-    __isolated_tested_changes INT,
-    __isolated_partially_tested_changes INT,
-    __aggregated_tested_changes INT,
-    __aggregated_partially_tested_changes INT
+    build_id VARCHAR,
+    total_probes INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT,
+    total_changes INT,
+    isolated_tested_changes INT,
+    isolated_partially_tested_changes INT,
+    aggregated_tested_changes INT,
+    aggregated_partially_tested_changes INT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -2631,4 +2633,4 @@ BEGIN
 		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
     FROM CoverageGroupedByBuilds coverage;
 END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
