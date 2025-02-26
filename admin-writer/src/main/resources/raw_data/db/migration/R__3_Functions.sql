@@ -2163,6 +2163,141 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_recommended_tests_v2(
+    input_group_id VARCHAR,
+	input_target_build_id VARCHAR,
+	input_tests_to_skip BOOLEAN DEFAULT FALSE,
+	input_test_task_id VARCHAR DEFAULT NULL,
+	input_baseline_build_id VARCHAR DEFAULT NULL,
+	input_coverage_period_from TIMESTAMP DEFAULT NULL,
+	input_coverage_branches VARCHAR[] DEFAULT NULL,
+	input_coverage_env_ids VARCHAR[] DEFAULT NULL,
+    input_test_tags VARCHAR[] DEFAULT NULL
+) RETURNS TABLE(
+    __test_definition_id VARCHAR,
+    __test_runner VARCHAR,
+    __test_path VARCHAR,
+    __test_name VARCHAR,
+    __test_type VARCHAR,
+    __group_id VARCHAR,
+    __created_at TIMESTAMP,
+    __tags VARCHAR[],
+    __metadata JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    Risks AS (
+        SELECT
+			risks.__signature AS signature,
+		    risks.__risk_type AS risk_type,
+            risks.__name AS risk_name,
+            risks.__body_checksum AS risk_body_checksum
+        FROM raw_data.get_risks(input_target_build_id, input_baseline_build_id) risks
+    ),
+    TargetMethods AS (
+    	SELECT
+	    	methods.signature,
+			methods.body_checksum,
+			methods.probes_count
+	 	FROM raw_data.view_methods_with_rules methods
+	 	WHERE methods.build_id = input_target_build_id
+  	),
+	Coverage AS (
+		SELECT
+		    coverage.test_definition_id,
+			coverage.test_launch_id,
+			coverage.build_id,
+			(target.body_checksum != coverage.body_checksum) AS is_modified
+		FROM raw_data.matview_methods_coverage coverage
+		JOIN TargetMethods target ON target.signature = coverage.signature
+		WHERE coverage.group_id = input_group_id
+		 	AND coverage.app_id = split_part(input_target_build_id, ':', 2)
+		 	AND coverage.test_result = 'PASSED'
+		 	--filter by test task id
+			AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+		 	--filter by coverage period from
+			AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		 	--filter by baseline
+			AND (input_baseline_build_id IS NULL OR target.signature IN (
+				SELECT signature
+				FROM Risks
+		 	))
+			--filter by branches
+			AND (input_coverage_branches IS NULL OR coverage.branch = ANY(input_coverage_branches))
+			--filter by envs
+			AND (input_coverage_env_ids IS NULL OR coverage.env_id = ANY(input_coverage_env_ids))
+            --filter by test tags
+            AND (input_test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE input_test_tags && def.tags
+            ))
+  	),
+	TestsByRisks AS (
+		SELECT
+		    MIN(coverage.test_definition_id) AS test_definition_id,
+			BOOL_OR(is_modified) AS is_modified
+		FROM Coverage coverage
+		GROUP BY coverage.test_launch_id
+	),
+	RecommendedTests AS (
+		SELECT
+			tests.test_definition_id AS test_definition_id
+		FROM TestsByRisks tests
+		GROUP BY tests.test_definition_id
+		HAVING BOOL_AND(is_modified) = true
+	),
+	Tests AS (
+		SELECT
+			def.id as test_definition_id,
+		   	def.name as test_name,
+		   	def.runner as test_runner,
+		   	def.path as test_path,
+		   	def.type as test_type,
+		   	def.group_id,
+		   	def.created_at,
+		   	def.tags,
+		   	def.metadata
+		FROM raw_data.test_definitions def
+		WHERE def.group_id = input_group_id
+			AND def.id IN (
+            	SELECT launches.test_definition_id
+				FROM raw_data.test_launches launches
+				JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+				WHERE (input_test_task_id IS NULL OR sessions.test_task_id = input_test_task_id)
+			  		AND (input_coverage_period_from IS NULL OR sessions.created_at >= input_coverage_period_from)
+		  		)
+			-- include only recommended tests
+			AND (input_tests_to_skip = TRUE OR def.id IN (
+		  		SELECT DISTINCT test_definition_id
+				FROM RecommendedTests
+		  	))
+            -- include only tests to skip
+		  	AND (input_tests_to_skip IS NULL OR input_tests_to_skip = FALSE OR def.id NOT IN (
+		  		SELECT DISTINCT test_definition_id
+				FROM RecommendedTests
+		  	))
+			--filter by test tags
+            AND (input_test_tags IS NULL OR input_test_tags && def.tags)
+  	)
+	SELECT
+		test_definition_id,
+		test_runner,
+		test_path,
+		test_name,
+        test_type,
+        group_id,
+        created_at,
+        tags,
+        metadata
+	FROM Tests;
+END;
+$$ LANGUAGE plpgsql;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.format_duration(milliseconds bigint)
 RETURNS text AS $$
 DECLARE
