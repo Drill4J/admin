@@ -18,10 +18,12 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage AS
         MIN(created_at) AS created_at,
         MIN(branch) AS branch,
         env_id,
-		test_definition_id,
-        test_result,
-        test_task_id
+        MIN(test_result) AS test_result,
+        MIN(test_task_id) AS test_task_id,
+        MIN(test_definition_id) AS test_definition_id,
+        test_launch_id,
+        MIN(test_session_id) AS test_session_id
     FROM raw_data.view_methods_coverage
-	GROUP BY signature, body_checksum, probes_count, build_id, env_id, test_definition_id, test_result, test_task_id;
+	GROUP BY signature, body_checksum, probes_count, build_id, env_id, test_launch_id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_coverage_pk ON raw_data.matview_methods_coverage (signature, body_checksum, probes_count, build_id, env_id, test_definition_id, test_result, test_task_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_coverage_pk ON raw_data.matview_methods_coverage (signature, body_checksum, probes_count, build_id, env_id, test_launch_id);

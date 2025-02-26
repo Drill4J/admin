@@ -2365,20 +2365,23 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage_by_test(
+CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage(
     input_app_id VARCHAR,
     input_group_id VARCHAR,
     input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_aggregated_coverage BOOLEAN DEFAULT FALSE,
     input_test_session_id VARCHAR DEFAULT NULL,
     input_test_launch_id VARCHAR DEFAULT NULL,
     input_test_definition_id VARCHAR DEFAULT NULL,
     input_test_task_id VARCHAR DEFAULT NULL,
-    input_baseline_build_id VARCHAR DEFAULT NULL,
     input_test_tags VARCHAR DEFAULT NULL,
-    input_aggregated_coverage BOOLEAN DEFAULT FALSE,
-    methods_package_name_pattern VARCHAR DEFAULT NULL,
-    methods_class_name_pattern VARCHAR DEFAULT NULL,
-    methods_method_name_pattern VARCHAR DEFAULT NULL
+    input_env_id VARCHAR DEFAULT NULL,
+    input_branch VARCHAR DEFAULT NULL,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL
 )
 RETURNS TABLE (
     build_id VARCHAR,
@@ -2419,11 +2422,11 @@ BEGIN
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
-            AND (methods_package_name_pattern IS NULL OR target.classname LIKE methods_package_name_pattern)
+            AND (input_package_name_pattern IS NULL OR target.classname LIKE input_package_name_pattern)
             --filter by class pattern
-            AND (methods_class_name_pattern IS NULL OR target.classname LIKE methods_class_name_pattern)
+            AND (input_class_name_pattern IS NULL OR target.classname LIKE input_class_name_pattern)
             --filter by method pattern
-            AND (methods_method_name_pattern IS NULL OR target.name LIKE methods_method_name_pattern)
+            AND (input_method_name_pattern IS NULL OR target.name LIKE input_method_name_pattern)
             --filter by baseline
             AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.signature <> target.signature)
     ),
@@ -2468,6 +2471,12 @@ BEGIN
                 FROM raw_data.test_definitions def
                 WHERE (input_test_tags = ANY(def.tags))
             ))
+            --filter by branch
+			AND (input_branch IS NULL OR coverage.branch = input_branch)
+			--filter by env
+			AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+			--filter by coverage period form
+			AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
         GROUP BY target.build_id, target.signature
     )
     SELECT
@@ -2486,25 +2495,162 @@ BEGIN
         COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.probes_count, 0.0) AS aggregated_probes_coverage_ratio
     FROM TargetMethodCoverage coverage;
 END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
-
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_by_test(
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_methods_coverage(
     input_group_id VARCHAR,
     input_app_id VARCHAR,
-	input_build_id VARCHAR,
-	input_test_session_id VARCHAR DEFAULT NULL,
-	input_test_launch_id VARCHAR DEFAULT NULL,
-	input_test_definition_id VARCHAR DEFAULT NULL,
-	input_test_task_id VARCHAR DEFAULT NULL,
-	input_baseline_build_id VARCHAR DEFAULT NULL,
-	input_test_tags VARCHAR DEFAULT NULL,
-	input_aggregated_coverage BOOLEAN DEFAULT FALSE,
-    methods_package_name_pattern VARCHAR DEFAULT NULL,
-    methods_class_name_pattern VARCHAR DEFAULT NULL,
-    methods_method_name_pattern VARCHAR DEFAULT NULL
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_aggregated_coverage BOOLEAN DEFAULT FALSE,
+    input_test_session_id VARCHAR DEFAULT NULL,
+    input_test_launch_id VARCHAR DEFAULT NULL,
+    input_test_definition_id VARCHAR DEFAULT NULL,
+    input_test_task_id VARCHAR DEFAULT NULL,
+    input_test_tags VARCHAR DEFAULT NULL,
+    input_env_id VARCHAR DEFAULT NULL,
+    input_branch VARCHAR DEFAULT NULL,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+    build_id VARCHAR,
+	signature VARCHAR,
+    classname VARCHAR,
+    name VARCHAR,
+    params VARCHAR,
+    return_type VARCHAR,
+    probes_count INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+   	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+    		SELECT
+    			baseline.signature,
+                baseline.body_checksum
+    		FROM raw_data.view_methods_with_rules baseline
+    		WHERE baseline.build_id = input_baseline_build_id
+    ),
+    TargetMethods AS (
+        SELECT
+			target.build_id,
+            target.signature,
+            target.name,
+            target.classname,
+            target.params,
+            target.return_type,
+            target.body_checksum,
+            target.probes_count
+        FROM raw_data.view_methods_with_rules target
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
+        WHERE target.build_id = input_build_id
+            --filter by package pattern
+            AND (input_package_name_pattern IS NULL OR target.classname LIKE input_package_name_pattern)
+            --filter by class pattern
+            AND (input_class_name_pattern IS NULL OR target.classname LIKE input_class_name_pattern)
+            --filter by method pattern
+            AND (input_method_name_pattern IS NULL OR target.name LIKE input_method_name_pattern)
+            --filter by baseline
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.signature <> target.signature)
+    ),
+    TargetMethodCoverage AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            MIN(target.classname) AS classname,
+            MIN(target.name) AS name,
+            MIN(target.params) AS params,
+            MIN(target.return_type) AS return_type,
+            MAX(target.probes_count) AS probes_count,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = target.build_id
+                    AND (input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
+                    AND (input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
+                THEN coverage.probes
+                ELSE null
+            END)) AS isolated_covered_probes
+        FROM TargetMethods target
+        LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
+            AND target.body_checksum = coverage.body_checksum
+            AND target.probes_count = BIT_LENGTH(coverage.probes)
+            --filter by group
+            AND coverage.group_id = input_group_id
+            --filter by app
+            AND coverage.app_id = input_app_id
+            --filter by only isolated coverage
+            AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by only isolated coverage with test session
+            AND (input_aggregated_coverage IS TRUE OR input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
+            --filter by only isolated coverage with test launch
+            AND (input_aggregated_coverage IS TRUE OR input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
+            --filter by test task
+            AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+            --filter by test definition
+            AND (input_test_definition_id IS NULL OR coverage.test_definition_id = input_test_definition_id)
+            --filter by test tags
+            AND (input_test_tags IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (input_test_tags = ANY(def.tags))
+            ))
+            --filter by branch
+			AND (input_branch IS NULL OR coverage.branch = input_branch)
+			--filter by env
+			AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+			--filter by coverage period form
+			AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+        GROUP BY target.build_id, target.signature
+    )
+    SELECT
+        coverage.build_id::VARCHAR,
+    	coverage.signature::VARCHAR,
+        coverage.classname::VARCHAR,
+        coverage.name::VARCHAR,
+        coverage.params::VARCHAR,
+        coverage.return_type::VARCHAR,
+        coverage.probes_count::INT,
+        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
+        (coverage.probes_count - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.probes_count, 0.0) AS isolated_probes_coverage_ratio,
+        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
+        (coverage.probes_count - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.probes_count, 0.0) AS aggregated_probes_coverage_ratio
+    FROM TargetMethodCoverage coverage;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_build_coverage(
+    input_group_id VARCHAR,
+    input_app_id VARCHAR,
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_aggregated_coverage BOOLEAN DEFAULT FALSE,
+    input_test_session_id VARCHAR DEFAULT NULL,
+    input_test_launch_id VARCHAR DEFAULT NULL,
+    input_test_definition_id VARCHAR DEFAULT NULL,
+    input_test_task_id VARCHAR DEFAULT NULL,
+    input_test_tag VARCHAR DEFAULT NULL,
+    input_env_id VARCHAR DEFAULT NULL,
+    input_branch VARCHAR DEFAULT NULL,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL
 ) RETURNS TABLE(
     build_id VARCHAR,
     total_probes INT,
@@ -2524,12 +2670,12 @@ BEGIN
     RETURN QUERY
     WITH
 	BaselineMethods AS (
-		SELECT
-			baseline.signature,
+        SELECT
+            baseline.signature,
             baseline.body_checksum
-		FROM raw_data.view_methods_with_rules baseline
-		WHERE baseline.build_id = input_baseline_build_id
-	),
+        FROM raw_data.view_methods_with_rules baseline
+        WHERE baseline.build_id = input_baseline_build_id
+    ),
     TargetMethods AS (
         SELECT
             target.build_id,
@@ -2544,13 +2690,13 @@ BEGIN
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
-            AND (methods_package_name_pattern IS NULL OR target.classname LIKE methods_package_name_pattern)
+            AND (input_package_name_pattern IS NULL OR target.classname LIKE input_package_name_pattern)
             --filter by class pattern
-            AND (methods_class_name_pattern IS NULL OR target.classname LIKE methods_class_name_pattern)
+            AND (input_class_name_pattern IS NULL OR target.classname LIKE input_class_name_pattern)
             --filter by method pattern
-            AND (methods_method_name_pattern IS NULL OR target.name LIKE methods_method_name_pattern)
+            AND (input_method_name_pattern IS NULL OR target.name LIKE input_method_name_pattern)
             --filter by baseline
-            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.signature <> target.signature)
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
     ),
     TargetMethodCoverage AS (
         SELECT
@@ -2562,37 +2708,43 @@ BEGIN
             MIN(target.return_type) AS return_type,
             MAX(target.probes_count) AS probes_count,
             BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
-			BIT_COUNT(BIT_OR(CASE
-				WHEN coverage.build_id = target.build_id
-					AND (input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
-					AND (input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
-				THEN coverage.probes
-				ELSE null
-			END)) AS isolated_covered_probes
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = target.build_id
+                    AND (input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
+                    AND (input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
+                THEN coverage.probes
+                ELSE null
+            END)) AS isolated_covered_probes
         FROM TargetMethods target
         LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
             AND target.body_checksum = coverage.body_checksum
             AND target.probes_count = BIT_LENGTH(coverage.probes)
-			--filter by group
-			AND coverage.group_id = input_group_id
-			--filter by app
+            --filter by group
+            AND coverage.group_id = input_group_id
+            --filter by app
             AND coverage.app_id = input_app_id
-			--filter by only isolated coverage
+            --filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
-			--filter by only isolated coverage with test session
+            --filter by only isolated coverage with test session
             AND (input_aggregated_coverage IS TRUE OR input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
             --filter by only isolated coverage with test launch
             AND (input_aggregated_coverage IS TRUE OR input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
             --filter by test task
-			AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
-			--filter by test definition
-			AND (input_test_definition_id IS NULL OR coverage.test_definition_id = input_test_definition_id)
-			--filter by test tags
-            AND (input_test_tags IS NULL OR coverage.test_definition_id IN (
+            AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+            --filter by test definition
+            AND (input_test_definition_id IS NULL OR coverage.test_definition_id = input_test_definition_id)
+            --filter by test tags
+            AND (input_test_tag IS NULL OR coverage.test_definition_id IN (
                 SELECT id
                 FROM raw_data.test_definitions def
-                WHERE (input_test_tags = ANY(def.tags))
+                WHERE (input_test_tag = ANY(def.tags))
             ))
+            --filter by branch
+            AND (input_branch IS NULL OR coverage.branch = input_branch)
+            --filter by env
+            AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+            --filter by coverage period form
+            AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
         GROUP BY target.build_id, target.signature
     ),
     CoverageGroupedByBuilds AS (
@@ -2633,4 +2785,161 @@ BEGIN
 		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
     FROM CoverageGroupedByBuilds coverage;
 END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage(
+    input_group_id VARCHAR,
+    input_app_id VARCHAR,
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_aggregated_coverage BOOLEAN DEFAULT FALSE,
+    input_test_session_id VARCHAR DEFAULT NULL,
+    input_test_launch_id VARCHAR DEFAULT NULL,
+    input_test_definition_id VARCHAR DEFAULT NULL,
+    input_test_task_id VARCHAR DEFAULT NULL,
+    input_test_tag VARCHAR DEFAULT NULL,
+    input_env_id VARCHAR DEFAULT NULL,
+    input_branch VARCHAR DEFAULT NULL,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL
+) RETURNS TABLE(
+    build_id VARCHAR,
+    total_probes INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT,
+    total_changes INT,
+    isolated_tested_changes INT,
+    isolated_partially_tested_changes INT,
+    aggregated_tested_changes INT,
+    aggregated_partially_tested_changes INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+	BaselineMethods AS (
+        SELECT
+            baseline.signature,
+            baseline.body_checksum
+        FROM raw_data.view_methods_with_rules baseline
+        WHERE baseline.build_id = input_baseline_build_id
+    ),
+    TargetMethods AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            target.name,
+            target.classname,
+            target.params,
+            target.return_type,
+            target.body_checksum,
+            target.probes_count
+        FROM raw_data.view_methods_with_rules target
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
+        WHERE target.build_id = input_build_id
+            --filter by package pattern
+            AND (input_package_name_pattern IS NULL OR target.classname LIKE input_package_name_pattern)
+            --filter by class pattern
+            AND (input_class_name_pattern IS NULL OR target.classname LIKE input_class_name_pattern)
+            --filter by method pattern
+            AND (input_method_name_pattern IS NULL OR target.name LIKE input_method_name_pattern)
+            --filter by baseline
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
+    ),
+    TargetMethodCoverage AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            MIN(target.classname) AS classname,
+            MIN(target.name) AS name,
+            MIN(target.params) AS params,
+            MIN(target.return_type) AS return_type,
+            MAX(target.probes_count) AS probes_count,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = target.build_id
+                    AND (input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
+                    AND (input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
+                THEN coverage.probes
+                ELSE null
+            END)) AS isolated_covered_probes
+        FROM TargetMethods target
+        LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
+            AND target.body_checksum = coverage.body_checksum
+            AND target.probes_count = BIT_LENGTH(coverage.probes)
+            --filter by group
+            AND coverage.group_id = input_group_id
+            --filter by app
+            AND coverage.app_id = input_app_id
+            --filter by only isolated coverage
+            AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by only isolated coverage with test session
+            AND (input_aggregated_coverage IS TRUE OR input_test_session_id IS NULL OR coverage.test_session_id = input_test_session_id)
+            --filter by only isolated coverage with test launch
+            AND (input_aggregated_coverage IS TRUE OR input_test_launch_id IS NULL OR coverage.test_launch_id = input_test_launch_id)
+            --filter by test task
+            AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+            --filter by test definition
+            AND (input_test_definition_id IS NULL OR coverage.test_definition_id = input_test_definition_id)
+            --filter by test tags
+            AND (input_test_tag IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (input_test_tag = ANY(def.tags))
+            ))
+            --filter by branch
+            AND (input_branch IS NULL OR coverage.branch = input_branch)
+            --filter by env
+            AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+            --filter by coverage period form
+            AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+        GROUP BY target.build_id, target.signature
+    ),
+    CoverageGroupedByBuilds AS (
+        SELECT
+            coverage.build_id,
+			COUNT(*) AS total_changes,
+            SUM(coverage.probes_count) AS total_probes,
+            SUM(coverage.aggregated_covered_probes) AS aggregated_covered_probes,
+            SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
+			SUM(
+				CASE WHEN coverage.isolated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
+			) AS isolated_tested_changes,
+			SUM(
+				CASE WHEN coverage.isolated_covered_probes > 0 AND coverage.isolated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
+			) AS isolated_partially_tested_changes,
+			SUM(
+				CASE WHEN coverage.aggregated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
+			) AS aggregated_tested_changes,
+			SUM(
+				CASE WHEN coverage.aggregated_covered_probes > 0 AND coverage.aggregated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
+			) AS aggregated_partially_tested_changes
+        FROM TargetMethodCoverage coverage
+        GROUP BY coverage.build_id
+    )
+    SELECT
+        coverage.build_id::VARCHAR,
+        coverage.total_probes::INT,
+        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
+        coverage.total_changes::INT,
+		COALESCE(coverage.isolated_tested_changes, 0)::INT AS isolated_tested_changes,
+		COALESCE(coverage.isolated_partially_tested_changes, 0)::INT AS isolated_partially_tested_changes,
+		COALESCE(coverage.aggregated_tested_changes, 0)::INT AS aggregated_tested_changes,
+		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
+    FROM CoverageGroupedByBuilds coverage;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
+
