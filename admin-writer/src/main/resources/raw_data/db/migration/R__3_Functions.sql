@@ -2227,142 +2227,6 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_build(
-    input_group_id VARCHAR,
-    input_app_id VARCHAR,
-	input_baseline_build_id VARCHAR DEFAULT NULL,
-	input_period_from TIMESTAMP DEFAULT NULL,
-	input_coverage_branches VARCHAR[] DEFAULT NULL,
-	input_coverage_env_ids VARCHAR[] DEFAULT NULL,
-	input_builds_limit INT DEFAULT 10,
-	input_aggregated_coverage BOOLEAN DEFAULT FALSE
-) RETURNS TABLE(
-    __build_id VARCHAR,
-	__build_version VARCHAR,
-    __total_probes INT,
-    __isolated_covered_probes INT,
-    __isolated_missed_probes INT,
-    __isolated_probes_coverage_ratio FLOAT,
-	__aggregated_covered_probes INT,
-    __aggregated_missed_probes INT,
-    __aggregated_probes_coverage_ratio FLOAT,
-    __total_changes INT,
-    __isolated_tested_changes INT,
-    __isolated_partially_tested_changes INT,
-    __aggregated_tested_changes INT,
-    __aggregated_partially_tested_changes INT
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH
-	Builds AS (
-		SELECT builds.id
-		FROM raw_data.builds builds
-		WHERE builds.group_id = input_group_id
-          AND builds.app_id = input_app_id
-		  --filter by branches
-		  AND (input_coverage_branches IS NULL OR builds.branch = ANY(input_coverage_branches))
-		  --filter by build period from
-		  AND (input_period_from IS NULL OR builds.created_at >= input_period_from)
-		ORDER BY builds.created_at DESC
-		LIMIT input_builds_limit
-	),
-	BaselineMethods AS (
-		SELECT
-			baseline.signature,
-            baseline.body_checksum
-		FROM raw_data.view_methods_with_rules baseline
-		WHERE baseline.build_id = input_baseline_build_id
-	),
-    TargetMethods AS (
-        SELECT
-            target.build_id,
-            target.signature,
-            target.name,
-            target.classname,
-            target.params,
-            target.return_type,
-            target.body_checksum,
-            target.probes_count
-        FROM raw_data.view_methods_with_rules target
-		LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
-        WHERE target.build_id IN (SELECT id FROM Builds)
-		  --filter by baseline
-		  AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.signature <> target.signature)
-    ),
-    TargetMethodCoverage AS (
-        SELECT
-            target.build_id,
-            target.signature,
-            MIN(target.classname) AS classname,
-            MIN(target.name) AS name,
-            MIN(target.params) AS params,
-            MIN(target.return_type) AS return_type,
-            MAX(target.probes_count) AS probes_count,
-            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
-            BIT_COUNT(BIT_OR(CASE WHEN coverage.build_id = target.build_id THEN coverage.probes ELSE null END)) AS isolated_covered_probes
-        FROM TargetMethods target
-        LEFT JOIN raw_data.view_methods_coverage coverage ON target.signature = coverage.signature
-            AND target.body_checksum = coverage.body_checksum
-            AND target.probes_count = BIT_LENGTH(coverage.probes)
-			--filter by group
-			AND coverage.group_id = input_group_id
-			--filter by app
-            AND coverage.app_id = input_app_id
-			--filter by only isolated coverage
-            AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
-            --filter by coverage period from
-            AND (input_period_from IS NULL OR coverage.created_at >= input_period_from)
-            --filter by branches
-            AND (input_coverage_branches IS NULL OR coverage.branch = ANY(input_coverage_branches))
-            --filter by envs
-            AND (input_coverage_env_ids IS NULL OR coverage.env_id = ANY(input_coverage_env_ids))
-        GROUP BY target.build_id, target.signature
-    ),
-    CoverageGroupedByBuilds AS (
-        SELECT
-            coverage.build_id,
-			COUNT(*) AS total_changes,
-            SUM(coverage.probes_count) AS total_probes,
-            SUM(coverage.aggregated_covered_probes) AS aggregated_covered_probes,
-            SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
-			SUM(
-				CASE WHEN coverage.isolated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
-			) AS isolated_tested_changes,
-			SUM(
-				CASE WHEN coverage.isolated_covered_probes > 0 AND coverage.isolated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
-			) AS isolated_partially_tested_changes,
-			SUM(
-				CASE WHEN coverage.aggregated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
-			) AS aggregated_tested_changes,
-			SUM(
-				CASE WHEN coverage.aggregated_covered_probes > 0 AND coverage.aggregated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
-			) AS aggregated_partially_tested_changes
-        FROM TargetMethodCoverage coverage
-        GROUP BY coverage.build_id
-    )
-    SELECT
-        coverage.build_id::VARCHAR,
-        COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
-        coverage.total_probes::INT,
-        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
-        (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
-        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
-        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
-        (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
-        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
-        coverage.total_changes::INT,
-		COALESCE(coverage.isolated_tested_changes, 0)::INT AS isolated_tested_changes,
-		COALESCE(coverage.isolated_partially_tested_changes, 0)::INT AS isolated_partially_tested_changes,
-		COALESCE(coverage.aggregated_tested_changes, 0)::INT AS aggregated_tested_changes,
-		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
-    FROM CoverageGroupedByBuilds coverage
-    JOIN raw_data.builds builds ON builds.id = coverage.build_id
-    ORDER BY builds.created_at ASC;
-END;
-$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
-
------------------------------------------------------------------
 
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage(
@@ -2943,3 +2807,147 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage_by_builds(
+    input_group_id VARCHAR,
+    input_app_id VARCHAR,
+	input_baseline_build_id VARCHAR DEFAULT NULL,
+	input_aggregated_coverage BOOLEAN DEFAULT FALSE,
+	input_test_tag VARCHAR DEFAULT NULL,
+	input_env_id VARCHAR DEFAULT NULL,
+	input_branch VARCHAR DEFAULT NULL,
+	input_coverage_period_from TIMESTAMP DEFAULT NULL,
+	input_builds_limit INT DEFAULT 10
+) RETURNS TABLE(
+    build_id VARCHAR,
+	build_version VARCHAR,
+    total_probes INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT,
+    total_changes INT,
+    isolated_tested_changes INT,
+    isolated_partially_tested_changes INT,
+    aggregated_tested_changes INT,
+    aggregated_partially_tested_changes INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+	Builds AS (
+		SELECT builds.id
+		FROM raw_data.builds builds
+		WHERE builds.group_id = input_group_id
+          AND builds.app_id = input_app_id
+		  --filter by branch
+		  AND (input_branch IS NULL OR builds.branch = input_branch)
+		  --filter by builds period from
+		  AND (input_coverage_period_from IS NULL OR builds.created_at >= input_coverage_period_from)
+		ORDER BY builds.created_at DESC
+		LIMIT input_builds_limit
+	),
+	BaselineMethods AS (
+		SELECT
+			baseline.signature,
+            baseline.body_checksum
+		FROM raw_data.view_methods_with_rules baseline
+		WHERE baseline.build_id = input_baseline_build_id
+	),
+    TargetMethods AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            target.name,
+            target.classname,
+            target.params,
+            target.return_type,
+            target.body_checksum,
+            target.probes_count
+        FROM raw_data.view_methods_with_rules target
+		LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
+        WHERE target.build_id IN (SELECT id FROM Builds)
+		  --filter by baseline
+		  AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
+    ),
+    TargetMethodCoverage AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            MIN(target.classname) AS classname,
+            MIN(target.name) AS name,
+            MIN(target.params) AS params,
+            MIN(target.return_type) AS return_type,
+            MAX(target.probes_count) AS probes_count,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE WHEN coverage.build_id = target.build_id THEN coverage.probes ELSE null END)) AS isolated_covered_probes
+        FROM TargetMethods target
+        LEFT JOIN raw_data.matview_methods_coverage coverage ON target.signature = coverage.signature
+            AND target.body_checksum = coverage.body_checksum
+            AND target.probes_count = BIT_LENGTH(coverage.probes)
+			--filter by group
+			AND coverage.group_id = input_group_id
+			--filter by app
+            AND coverage.app_id = input_app_id
+			--filter by only isolated coverage
+            AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by test tags
+            AND (input_test_tag IS NULL OR coverage.test_definition_id IN (
+                SELECT id
+                FROM raw_data.test_definitions def
+                WHERE (input_test_tag = ANY(def.tags))
+            ))
+            --filter by branch
+            AND (input_branch IS NULL OR coverage.branch = input_branch)
+            --filter by env
+            AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+            --filter by coverage period form
+            AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+        GROUP BY target.build_id, target.signature
+    ),
+    CoverageGroupedByBuilds AS (
+        SELECT
+            coverage.build_id,
+			COUNT(*) AS total_changes,
+            SUM(coverage.probes_count) AS total_probes,
+            SUM(coverage.aggregated_covered_probes) AS aggregated_covered_probes,
+            SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
+			SUM(
+				CASE WHEN coverage.isolated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
+			) AS isolated_tested_changes,
+			SUM(
+				CASE WHEN coverage.isolated_covered_probes > 0 AND coverage.isolated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
+			) AS isolated_partially_tested_changes,
+			SUM(
+				CASE WHEN coverage.aggregated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
+			) AS aggregated_tested_changes,
+			SUM(
+				CASE WHEN coverage.aggregated_covered_probes > 0 AND coverage.aggregated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
+			) AS aggregated_partially_tested_changes
+        FROM TargetMethodCoverage coverage
+        GROUP BY coverage.build_id
+    )
+    SELECT
+        coverage.build_id::VARCHAR,
+        COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
+        coverage.total_probes::INT,
+        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
+        coverage.total_changes::INT,
+		COALESCE(coverage.isolated_tested_changes, 0)::INT AS isolated_tested_changes,
+		COALESCE(coverage.isolated_partially_tested_changes, 0)::INT AS isolated_partially_tested_changes,
+		COALESCE(coverage.aggregated_tested_changes, 0)::INT AS aggregated_tested_changes,
+		COALESCE(coverage.aggregated_partially_tested_changes, 0)::INT AS aggregated_partially_tested_changes
+    FROM CoverageGroupedByBuilds coverage
+    JOIN raw_data.builds builds ON builds.id = coverage.build_id
+    ORDER BY builds.created_at ASC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
