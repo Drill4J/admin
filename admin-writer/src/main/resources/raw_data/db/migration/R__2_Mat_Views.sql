@@ -27,3 +27,9 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage AS
 	GROUP BY signature, body_checksum, probes_count, build_id, env_id, test_launch_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_coverage_pk ON raw_data.matview_methods_coverage (signature, body_checksum, probes_count, build_id, env_id, test_launch_id);
+CREATE INDEX ON raw_data.matview_methods_coverage(group_id, app_id);
+CREATE INDEX ON raw_data.matview_methods_coverage(build_id);
+CREATE INDEX ON raw_data.matview_methods_coverage(test_task_id);
+CREATE INDEX ON raw_data.matview_methods_coverage(test_result);
+CREATE INDEX ON raw_data.matview_methods_coverage(test_launch_id);
+CREATE INDEX ON raw_data.matview_methods_coverage(test_session_id);
