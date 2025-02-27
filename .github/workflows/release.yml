@@ -20,6 +20,8 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: check
@@ -75,6 +77,8 @@ jobs:
         with:
           java-version: 17
           distribution: zulu
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
       - uses: gradle/gradle-build-action@v2
         with:
           arguments: |
