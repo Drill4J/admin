@@ -17,11 +17,37 @@ package com.epam.drill.admin.metrics.config
 
 import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.job.VIEW_NAME
-import org.quartz.JobBuilder
+import org.quartz.*
 
 val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
     .storeDurably()
     .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
     .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-    .usingJobData(VIEW_NAME, "matview_methods_coverage")
+    .usingJobData(VIEW_NAME, "matview_methods_coverage_v2")
     .build()
+
+val refreshTestSessionsViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+    .storeDurably()
+    .withDescription("Job for updating the materialized view 'matview_test_sessions'.")
+    .withIdentity("refreshTestSessionsViewJob", "refreshMaterializedViews")
+    .usingJobData(VIEW_NAME, "matview_test_sessions")
+    .build()
+
+val refreshRecommendedTestsViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+    .storeDurably()
+    .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
+    .withIdentity("refreshRecommendedTestsViewJob", "refreshMaterializedViews")
+    .usingJobData(VIEW_NAME, "matview_recommended_tests")
+    .build()
+
+val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
+    get() = TriggerBuilder.newTrigger()
+        .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
+
+val refreshTestSessionsViewTrigger: TriggerBuilder<Trigger>
+    get() = TriggerBuilder.newTrigger()
+        .withIdentity("refreshTestSessionsViewTrigger", "refreshMaterializedViews")
+
+val refreshRecommendedTestsViewTrigger: TriggerBuilder<Trigger>
+    get() = TriggerBuilder.newTrigger()
+        .withIdentity("refreshRecommendedTestsViewTrigger", "refreshMaterializedViews")
