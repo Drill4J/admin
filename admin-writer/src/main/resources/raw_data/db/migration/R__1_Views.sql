@@ -72,7 +72,7 @@ CREATE OR REPLACE VIEW raw_data.view_test_sessions AS
             WHERE tl.test_session_id = ts.id
             LIMIT 1
           ) AS build_id,
-        raw_data.format_duration_rounded(sum(tl.duration)) AS duration,
+        sum(tl.duration) AS duration,
         SUM(CASE WHEN tl.result = 'FAILED' THEN 1 ELSE 0 END) AS failed,
         SUM(CASE WHEN tl.result = 'PASSED' THEN 1 ELSE 0 END) AS passed,
         SUM(CASE WHEN tl.result = 'SKIPPED' THEN 1 ELSE 0 END) AS skipped,

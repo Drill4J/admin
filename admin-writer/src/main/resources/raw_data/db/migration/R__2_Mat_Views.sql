@@ -22,7 +22,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage_v2 AS
         BIT_OR(probes) AS probes,
         BIT_COUNT(BIT_OR(probes)) AS covered_probes,
         MAX(created_at) AS created_at
-    FROM raw_data.view_methods_coverage
+    FROM raw_data.view_methods_coverage_v2
 	GROUP BY signature, body_checksum, probes_count, build_id, env_id, test_tags;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_coverage_v2_pk ON raw_data.matview_methods_coverage_v2 (signature, body_checksum, probes_count, build_id, env_id, test_tags);
@@ -66,6 +66,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_recommended_tests AS
         test_launch_id,
         MIN(test_task_id) AS test_task_id,
         MIN(test_definition_id) AS test_definition_id,
+        MIN(test_tags) AS test_tags,
         signature,
         body_checksum,
         MAX(created_at) AS created_at

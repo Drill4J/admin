@@ -3220,6 +3220,7 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v3(
     input_target_build_id VARCHAR,
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
 	input_test_task_id VARCHAR DEFAULT NULL,
+	input_test_tag VARCHAR DEFAULT NULL,
 	input_baseline_build_id VARCHAR DEFAULT NULL,
 	input_coverage_period_from TIMESTAMP DEFAULT NULL,
 	input_branch VARCHAR DEFAULT NULL,
@@ -3259,7 +3260,6 @@ BEGIN
 		SELECT
 		    coverage.test_definition_id,
 			coverage.test_launch_id,
-			coverage.build_id,
             (target.body_checksum <> coverage.body_checksum) AS has_changed_methods
 		FROM raw_data.view_methods_tests_coverage coverage
 		JOIN TargetMethods target ON target.signature = coverage.signature
@@ -3274,14 +3274,23 @@ BEGIN
 		  AND (input_branch IS NULL OR coverage.branch = input_branch)
 		  --filter by env
 		  AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+		  --filter by test tag
+		  AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
   	),
-	TestsToSkip AS (
+	TestsWithCoverage AS (
 		SELECT
-		    coverage.test_definition_id,
-			coverage.test_launch_id
+			coverage.test_definition_id,
+			coverage.test_launch_id,
+			BOOL_OR(has_changed_methods) AS has_changed_methods
 		FROM Coverage coverage
 		GROUP BY coverage.test_definition_id, coverage.test_launch_id
-		HAVING BOOL_AND(has_changed_methods) = FALSE
+	),
+	TestsToRun AS (
+		SELECT
+			tests.test_definition_id
+		FROM TestsWithCoverage tests
+		GROUP BY tests.test_definition_id
+		HAVING BOOL_AND(has_changed_methods) = TRUE
 	)
 	SELECT
 		tests.id,
@@ -3292,13 +3301,18 @@ BEGIN
         tests.metadata
 	FROM raw_data.test_definitions tests
 	WHERE tests.group_id = split_part(input_target_build_id, ':', 1)
-	  AND (input_tests_to_skip IS FALSE OR EXISTS (SELECT 1 FROM TestsToSkip skips WHERE skips.test_definition_id = tests.id))
-	  AND (input_tests_to_skip IS TRUE OR NOT EXISTS (SELECT 1 FROM TestsToSkip skips WHERE skips.test_definition_id = tests.id))
-	  AND (input_test_task_id IS NULL OR input_tests_to_skip IS TRUE OR tests.id NOT IN (
-	    SELECT tl.test_definition_id
+	  AND (input_tests_to_skip IS TRUE OR EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_tests_to_skip IS FALSE OR NOT EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_test_task_id IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT DISTINCT tl.test_definition_id
 	    FROM raw_data.test_launches tl
 	    JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
         WHERE ts.test_task_id = input_test_task_id
+	  ))
+	  AND (input_test_tag IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT td.id
+	    FROM raw_data.test_definitions td
+        WHERE input_test_tag = ANY(td.tags)
 	  ));
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
@@ -3306,10 +3320,12 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+--vacuum analyse raw_data.matview_recommended_tests;
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_recommended_tests_v3(
     input_target_build_id VARCHAR,
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
 	input_test_task_id VARCHAR DEFAULT NULL,
+	input_test_tag VARCHAR DEFAULT NULL,
 	input_baseline_build_id VARCHAR DEFAULT NULL,
 	input_coverage_period_from TIMESTAMP DEFAULT NULL,
 	input_branch VARCHAR DEFAULT NULL,
@@ -3349,13 +3365,11 @@ BEGIN
 		SELECT
 		    coverage.test_definition_id,
 			coverage.test_launch_id,
-			coverage.build_id,
             (target.body_checksum <> coverage.body_checksum) AS has_changed_methods
-		FROM raw_data.matview_methods_tests_coverage coverage
+		FROM raw_data.matview_recommended_tests coverage
 		JOIN TargetMethods target ON target.signature = coverage.signature
 		WHERE coverage.group_id = split_part(input_target_build_id, ':', 1)
 		  AND coverage.app_id = split_part(input_target_build_id, ':', 2)
-		  AND coverage.test_result = 'PASSED'
 		  --filter by test task id
 		  AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
 		  --filter by coverage period from
@@ -3364,14 +3378,23 @@ BEGIN
 		  AND (input_branch IS NULL OR coverage.branch = input_branch)
 		  --filter by env
 		  AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+		  --filter by test tag
+		  AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
   	),
-	TestsToSkip AS (
+	TestsWithCoverage AS (
 		SELECT
-		    coverage.test_definition_id,
-			coverage.test_launch_id
+			coverage.test_definition_id,
+			coverage.test_launch_id,
+			BOOL_OR(has_changed_methods) AS has_changed_methods
 		FROM Coverage coverage
 		GROUP BY coverage.test_definition_id, coverage.test_launch_id
-		HAVING BOOL_AND(has_changed_methods) = FALSE
+	),
+	TestsToRun AS (
+		SELECT
+			tests.test_definition_id
+		FROM TestsWithCoverage tests
+		GROUP BY tests.test_definition_id
+		HAVING BOOL_AND(has_changed_methods) = TRUE
 	)
 	SELECT
 		tests.id,
@@ -3382,13 +3405,18 @@ BEGIN
         tests.metadata
 	FROM raw_data.test_definitions tests
 	WHERE tests.group_id = split_part(input_target_build_id, ':', 1)
-	  AND (input_tests_to_skip IS FALSE OR EXISTS (SELECT 1 FROM TestsToSkip skips WHERE skips.test_definition_id = tests.id))
-	  AND (input_tests_to_skip IS TRUE OR NOT EXISTS (SELECT 1 FROM TestsToSkip skips WHERE skips.test_definition_id = tests.id))
-	  AND (input_test_task_id IS NULL OR input_tests_to_skip IS TRUE OR tests.id NOT IN (
-	    SELECT tl.test_definition_id
+	  AND (input_tests_to_skip IS TRUE OR EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_tests_to_skip IS FALSE OR NOT EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_test_task_id IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT DISTINCT tl.test_definition_id
 	    FROM raw_data.test_launches tl
 	    JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
         WHERE ts.test_task_id = input_test_task_id
+	  ))
+	  AND (input_test_tag IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT td.id
+	    FROM raw_data.test_definitions td
+        WHERE input_test_tag = ANY(td.tags)
 	  ));
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
