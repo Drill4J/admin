@@ -46,7 +46,8 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage_v2 AS
         probes_count,
         BIT_OR(probes) AS probes,
         BIT_COUNT(BIT_OR(probes)) AS covered_probes,
-        MAX(created_at) AS created_at
+        MAX(created_at) AS created_at,
+        MIN(build_created_at) AS build_created_at
     FROM raw_data.view_methods_coverage_v2
 	GROUP BY signature, body_checksum, probes_count, build_id, env_id, test_tags;
 

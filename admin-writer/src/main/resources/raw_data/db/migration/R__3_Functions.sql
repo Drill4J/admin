@@ -2842,7 +2842,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage_by_builds(
 	input_env_id VARCHAR DEFAULT NULL,
 	input_branch VARCHAR DEFAULT NULL,
 	input_coverage_period_from TIMESTAMP DEFAULT NULL,
-	input_builds_limit INT DEFAULT 10
+	input_builds_limit INT DEFAULT 10,
+	input_chronological BOOLEAN DEFAULT TRUE
 ) RETURNS TABLE(
     build_id VARCHAR,
 	build_version VARCHAR,
@@ -2886,8 +2887,10 @@ BEGIN
             target.build_id,
             target.signature,
             target.body_checksum,
-            target.probes_count
+            target.probes_count,
+			builds.created_at AS build_created_at
         FROM raw_data.view_methods_with_rules target
+		JOIN raw_data.builds builds ON builds.id = target.build_id
 		LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id IN (SELECT id FROM Builds)
 		  --filter by baseline
@@ -2910,6 +2913,8 @@ BEGIN
             AND coverage.app_id = input_app_id
 			--filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+			--filter by chronological order
+            AND (input_chronological IS FALSE OR coverage.build_created_at <= target.build_created_at)
             --filter by test tags
             AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
             --filter by branch

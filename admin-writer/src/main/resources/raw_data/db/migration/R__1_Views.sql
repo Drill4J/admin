@@ -67,7 +67,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
         BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS probes_count,
         SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS probes,
         BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS covered_probes,
-        coverage.created_at
+        coverage.created_at,
+        builds.created_at AS build_created_at
     FROM raw_data.coverage coverage
 	JOIN raw_data.methods methods ON methods.classname = coverage.classname
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id
