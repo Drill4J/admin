@@ -29,22 +29,16 @@ import org.quartz.SimpleTrigger
 import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
-    val refreshViewsIntervalInMinutes: Int =
+    private val refreshViewsIntervalInMinutes: Int =
         config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
-    val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
-    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
+    private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
+    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
 
-    val refreshMatViewsTrigger: SimpleTrigger
-        get() = TriggerBuilder.newTrigger()
-            .withIdentity("refreshMaterializedViewTrigger", "refreshMaterializedViews")
-            .startNow()
-            .withSchedule(
-                SimpleScheduleBuilder.simpleSchedule()
+    val refreshMatViewsSchedule: SimpleScheduleBuilder
+        get() = SimpleScheduleBuilder.simpleSchedule()
                     .withIntervalInMinutes(refreshViewsIntervalInMinutes)
                     .repeatForever()
                     .withMisfireHandlingInstructionNextWithExistingCount()
-            )
-            .build()
 
     val retentionPoliciesTrigger: CronTrigger
         get() = TriggerBuilder.newTrigger()
