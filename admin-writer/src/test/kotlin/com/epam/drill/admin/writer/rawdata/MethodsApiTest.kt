@@ -17,6 +17,9 @@ package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.route.putMethods
 import com.epam.drill.admin.writer.rawdata.table.MethodTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -26,7 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class MethodsApiTest : DatabaseTests() {
+class MethodsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
     fun `given new methods, put methods service should save new methods in database and return OK`() = withRollback {
@@ -38,10 +41,8 @@ class MethodsApiTest : DatabaseTests() {
         val testMethod1 = "testMethod1"
         val testMethod2 = "testMethod2"
         val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                putMethods()
-            }
+        val app = drillApplication(rawDataServicesDIModule) {
+            putMethods()
         }
 
         app.client.put("/methods") {

@@ -71,17 +71,10 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
-    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
-    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
-    testImplementation("org.testcontainers:postgresql:$testContainersVersion")
-    testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
-    testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
-    testImplementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     testImplementation("ch.qos.logback:logback-classic:$logbackVersion")
+    testImplementation(project(":admin-test"))
 }
 
 tasks {

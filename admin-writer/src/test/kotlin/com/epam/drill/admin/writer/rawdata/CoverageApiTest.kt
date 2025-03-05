@@ -17,6 +17,9 @@ package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.route.postCoverage
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -26,7 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class CoverageApiTest : DatabaseTests() {
+class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
     fun `given coverage data, post coverage service should save coverage in database and return OK`() = withRollback {
@@ -36,10 +39,8 @@ class CoverageApiTest : DatabaseTests() {
         val testClassname = "com.example.TestClass"
         val testTestId = "test-id"
         val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                postCoverage()
-            }
+        val app = drillApplication(rawDataServicesDIModule) {
+            postCoverage()
         }
 
         app.client.post("/coverage") {

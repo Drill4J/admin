@@ -909,7 +909,18 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT methods.*
+    SELECT methods.id,
+           methods.build_id,
+           methods.classname,
+           methods.name,
+           methods.params,
+           methods.return_type,
+           methods.body_checksum,
+           methods.signature,
+           methods.probe_start_pos,
+           methods.probes_count,
+           methods.annotations,
+           methods.class_annotations
     FROM raw_data.builds original_build
     JOIN raw_data.builds related_build ON related_build.group_id = original_build.group_id AND related_build.app_id = original_build.app_id
     JOIN raw_data.methods methods ON methods.build_id = related_build.id

@@ -21,9 +21,9 @@ import kotlinx.serialization.Serializable
 class MethodsPayload(
     val groupId: String,
     val appId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val instanceId: String?,
+    val commitSha: String? = null,
+    val buildVersion: String? = null,
+    val instanceId: String? = null,
     val methods: Array<SingleMethodPayload>
 )
 
@@ -36,6 +36,6 @@ class SingleMethodPayload(
     val probesCount: Int,
     val probesStartPos: Int,
     val bodyChecksum: String,
-    val annotations: Map<String, List<String>>?,
-    val classAnnotations: Map<String, List<String>>?
+    val annotations: Map<String, List<String>>? = null,
+    val classAnnotations: Map<String, List<String>>? = null
 )

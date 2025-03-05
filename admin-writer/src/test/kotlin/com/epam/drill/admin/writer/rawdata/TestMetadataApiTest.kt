@@ -18,6 +18,9 @@ package com.epam.drill.admin.writer.rawdata
 import com.epam.drill.admin.writer.rawdata.route.postTestMetadata
 import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
+import com.epam.drill.admin.test.*
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -28,7 +31,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 
-class TestMetadataApiTest : DatabaseTests() {
+class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
     fun `given test definition and test launches, post test metadata service should return OK and save new test metadata in database`() = withRollback {
@@ -41,10 +44,8 @@ class TestMetadataApiTest : DatabaseTests() {
         val testName = "test-1"
         val testPath = "com.example.TestClass"
         val timeBeforeTest = LocalDateTime.now()
-        val app = dataIngestApplication {
-            routing {
-                postTestMetadata()
-            }
+        val app = drillApplication(rawDataServicesDIModule) {
+            postTestMetadata()
         }
 
         app.client.post("/tests-metadata") {

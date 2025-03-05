@@ -13,34 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata
+package com.epam.drill.admin.test
 
-import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.serialization.kotlinx.protobuf.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.resources.*
-import io.ktor.server.testing.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
-import org.kodein.di.ktor.di
+import org.junit.jupiter.api.BeforeEach
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
-import kotlin.test.assertEquals
+import javax.sql.DataSource
 
 @Testcontainers
-open class DatabaseTests {
+open class DatabaseTests(private val initialization: (DataSource) -> Unit) {
 
     companion object {
+        private lateinit var dataSource: DataSource
+
         @Container
         private val postgresqlContainer = PostgreSQLContainer<Nothing>(
             DockerImageName.parse("postgres:14.1")
@@ -54,14 +45,13 @@ open class DatabaseTests {
         @BeforeAll
         fun setup() {
             postgresqlContainer.start()
-            val dataSource = HikariDataSource(HikariConfig().apply {
+            dataSource = HikariDataSource(HikariConfig().apply {
                 this.jdbcUrl = postgresqlContainer.jdbcUrl
                 this.username = postgresqlContainer.username
                 this.password = postgresqlContainer.password
                 this.driverClassName = postgresqlContainer.driverClassName
                 this.validate()
             })
-            RawDataWriterDatabaseConfig.init(dataSource)
         }
 
         @JvmStatic
@@ -70,40 +60,9 @@ open class DatabaseTests {
             postgresqlContainer.stop()
         }
     }
-}
 
-fun withRollback(test: suspend () -> Unit) {
-    runBlocking {
-        newSuspendedTransaction {
-            try {
-                test()
-            } finally {
-                rollback()
-            }
-        }
+    @BeforeEach
+    fun initDatabase() {
+        initialization(dataSource)
     }
-}
-
-
-fun dataIngestApplication(routing: TestApplicationBuilder.() -> Unit) = TestApplication {
-    install(Resources)
-    install(ContentNegotiation) {
-        json()
-        protobuf()
-    }
-    application {
-        di {
-            import(rawDataServicesDIModule)
-        }
-    }
-    routing()
-}
-
-fun assertJsonEquals(json1: String, json2: String) {
-    val json = Json { ignoreUnknownKeys = true }
-
-    val obj1: JsonElement = json.parseToJsonElement(json1)
-    val obj2: JsonElement = json.parseToJsonElement(json2)
-
-    assertEquals(obj1, obj2)
 }
