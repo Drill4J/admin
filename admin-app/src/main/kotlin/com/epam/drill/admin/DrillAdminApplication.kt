@@ -31,7 +31,7 @@ import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.scheduler.DrillScheduler
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.dataRetentionPolicyJob
-import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
+import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -68,7 +68,7 @@ fun Application.module() {
         if (simpleAuthEnabled) import(simpleAuthDIModule)
         if (oauth2Enabled) import(oauthDIModule)
         import(authConfigDIModule)
-        import(rawDataWriterDIModule)
+        import(rawDataDIModule)
         import(metricsDIModule)
     }
     initDB()
