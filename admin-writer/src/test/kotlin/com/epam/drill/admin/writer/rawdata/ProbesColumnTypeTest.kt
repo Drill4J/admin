@@ -16,37 +16,27 @@
 package com.epam.drill.admin.writer.rawdata
 
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
+import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils.create
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import kotlin.test.assertTrue
 
-class ProbesColumnTypeTest : DatabaseTests() {
+class ProbesColumnTypeTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @BeforeEach
     fun initSchema() {
-        withTransaction {
+        withRollback {
             create(BoolArrays)
         }
     }
 
     @Test
-    fun `test storing and retrieving Probes`() = withTransaction {
+    fun `test storing and retrieving Probes`() = withRollback {
         val originalProbes = booleanArrayOf(true, false, true, false, false, true)
 
         BoolArrays.insert {
@@ -61,51 +51,4 @@ class ProbesColumnTypeTest : DatabaseTests() {
 
 object BoolArrays : IntIdTable() {
     val boolArrays = registerColumn<BooleanArray>("bool_arrays", ProbesColumnType())
-}
-
-@Testcontainers
-open class DatabaseTests {
-
-    companion object {
-        @Container
-        private val postgresqlContainer = PostgreSQLContainer<Nothing>(
-            DockerImageName.parse("postgres:14.1")
-        ).apply {
-            withDatabaseName("testdb")
-            withUsername("testuser")
-            withPassword("testpassword")
-        }
-
-        @JvmStatic
-        @BeforeAll
-        fun setup() {
-            postgresqlContainer.start()
-            val dataSource = HikariDataSource(HikariConfig().apply {
-                this.jdbcUrl = postgresqlContainer.jdbcUrl
-                this.username = postgresqlContainer.username
-                this.password = postgresqlContainer.password
-                this.driverClassName = postgresqlContainer.driverClassName
-                this.validate()
-            })
-            RawDataWriterDatabaseConfig.init(dataSource)
-        }
-
-        @JvmStatic
-        @AfterAll
-        fun finish() {
-            postgresqlContainer.stop()
-        }
-    }
-}
-
-private fun withTransaction(test: suspend () -> Unit) {
-    runBlocking {
-        newSuspendedTransaction {
-            try {
-                test()
-            } finally {
-                rollback()
-            }
-        }
-    }
 }

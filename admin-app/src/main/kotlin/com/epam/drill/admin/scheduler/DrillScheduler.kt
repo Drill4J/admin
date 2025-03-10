@@ -63,9 +63,7 @@ class DrillScheduler(
     }
 
     fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
-        if (!scheduler.checkExists(jobDetail.key)) {
-            scheduler.scheduleJob(jobDetail, trigger)
-        } else {
+        if (scheduler.checkExists(jobDetail.key)) {
             //Delete old triggers if they exist
             scheduler.getTriggersOfJob(jobDetail.key)
                 .filter { it.key != trigger.key }
@@ -73,8 +71,8 @@ class DrillScheduler(
                     scheduler.unscheduleJob(it.key)
                     logger.debug { "Unscheduled job '${jobDetail.key}'." }
                 }
-            scheduler.scheduleJob(jobDetail, setOf(trigger), true)
         }
+        scheduler.scheduleJob(jobDetail, setOf(trigger), true)
         when (trigger) {
             is SimpleTrigger -> logger.info { "Scheduled job '${jobDetail.key}', repeat interval: ${trigger.repeatInterval.inMinutes()} minutes." }
             is CronTrigger -> logger.info { "Scheduled job '${jobDetail.key}', cron expression: ${trigger.cronExpression}." }

@@ -60,6 +60,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuildDiffReport(
+        groupId: String,
         targetBuildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
@@ -69,11 +70,19 @@ class MetricsRepositoryImpl : MetricsRepository {
                     WITH 
                     Risks AS (
                         SELECT * 
-                        FROM  raw_data.get_aggregate_coverage_by_risks(?, ?)	
+                        FROM  raw_data.get_aggregate_coverage_by_risks_v2(
+                            input_build_id => ?, 
+                            input_baseline_build_id => ?
+                        )	
                     ),
                     RecommendedTests AS (
                         SELECT *
-                        FROM raw_data.get_recommended_tests_v2(?, ?)
+                        FROM raw_data.get_recommended_tests_v2(
+                            input_group_id => ?, 
+                            input_target_build_id => ?, 
+                            input_tests_to_skip => false,                             
+                            input_baseline_build_id => ?
+                        )
                     )	
                     SELECT 
                         (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
@@ -85,12 +94,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(),
             targetBuildId,
             baselineBuildId,
+            groupId,
             targetBuildId,
             baselineBuildId
-            //,coverageThreshold
         ).first() as Map<String, String>
-
-
     }
 
     override suspend fun refreshMaterializedView(viewName: String) = transaction {
@@ -122,12 +129,12 @@ class MetricsRepositoryImpl : MetricsRepository {
                     __metadata AS metadata,
                     __created_at AS created_at
                 FROM raw_data.get_recommended_tests_v2(
-                    ?,	   -- group_id                    
-                    ?, 	   -- target_build_id
-                    ?,     -- tests_to_skip
-                    ?,     -- test_task_id		
-                    ?,	   -- baseline_build_id
-                    ?   -- coverage_period_from
+                    input_group_id => ?,                    
+                    input_target_build_id => ?,
+                    input_tests_to_skip => ?,
+                    input_test_task_id => ?,		
+                    input_baseline_build_id => ?,
+                    input_coverage_period_from => ?
                 )
             """.trimIndent(),
             groupId,

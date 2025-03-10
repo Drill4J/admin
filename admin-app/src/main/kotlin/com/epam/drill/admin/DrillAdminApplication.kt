@@ -19,19 +19,17 @@ import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.schedulerDIModule
-import com.epam.drill.admin.metrics.config.refreshMethodsCoverageViewJob
+import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.scheduler.DrillScheduler
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.dataRetentionPolicyJob
-import com.epam.drill.admin.writer.rawdata.config.rawDataWriterDIModule
+import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -68,7 +66,7 @@ fun Application.module() {
         if (simpleAuthEnabled) import(simpleAuthDIModule)
         if (oauth2Enabled) import(oauthDIModule)
         import(authConfigDIModule)
-        import(rawDataWriterDIModule)
+        import(rawDataDIModule)
         import(metricsDIModule)
     }
     initDB()
@@ -187,7 +185,9 @@ private fun Application.initScheduler() {
         scheduler.shutdown()
     }
     scheduler.start()
-    scheduler.scheduleJob(refreshMethodsCoverageViewJob, schedulerConfig.refreshMatViewsTrigger)
+    scheduler.scheduleJob(refreshMethodsCoverageViewJob, refreshMethodsCoverageViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
+    scheduler.scheduleJob(refreshTestSessionsViewJob, refreshTestSessionsViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
+    scheduler.scheduleJob(refreshRecommendedTestsViewJob, refreshRecommendedTestsViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
     scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
 
