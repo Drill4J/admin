@@ -25,6 +25,7 @@ interface MetricsRepository {
 
     suspend fun getBuildDiffReport(
         groupId: String,
+        appId: String,
         buildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
@@ -33,7 +34,6 @@ interface MetricsRepository {
     suspend fun refreshMaterializedView(viewName: String)
 
     suspend fun getRecommendedTests(
-        groupId: String,
         targetBuildId: String,
         baselineBuildId: String? = null,
         testsToSkip: Boolean = false,

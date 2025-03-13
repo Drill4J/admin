@@ -61,6 +61,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuildDiffReport(
         groupId: String,
+        appId: String,
         targetBuildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
@@ -70,31 +71,33 @@ class MetricsRepositoryImpl : MetricsRepository {
                     WITH 
                     Risks AS (
                         SELECT * 
-                        FROM  raw_data.get_aggregate_coverage_by_risks_v2(
+                        FROM raw_data.get_methods_coverage(
+                            input_group_id => ?,
+                            input_app_id => ?,
                             input_build_id => ?, 
-                            input_baseline_build_id => ?
+                            input_baseline_build_id => ?,
+                            input_aggregated_coverage => true                            
                         )	
                     ),
                     RecommendedTests AS (
                         SELECT *
-                        FROM raw_data.get_recommended_tests_v2(
-                            input_group_id => ?, 
+                        FROM raw_data.get_recommended_tests_v3(
                             input_target_build_id => ?, 
-                            input_tests_to_skip => false,                             
                             input_baseline_build_id => ?
                         )
                     )	
                     SELECT 
-                        (SELECT count(*) FROM Risks WHERE __risk_type = 'new') as changes_new_methods,
-                        (SELECT count(*) FROM Risks WHERE __risk_type = 'modified') as changes_modified_methods,
+                        (SELECT count(*) FROM Risks WHERE change_type = 'new') as changes_new_methods,
+                        (SELECT count(*) FROM Risks WHERE change_type = 'modified') as changes_modified_methods,
                         (SELECT count(*) FROM Risks) as total_changes,
-                        (SELECT count(*) FROM Risks WHERE __probes_coverage_ratio > 0) as tested_changes,
-                        (SELECT CAST(SUM(__covered_probes) AS FLOAT) / SUM(__probes_count) FROM Risks) as coverage,
+                        (SELECT count(*) FROM Risks WHERE aggregated_probes_coverage_ratio > 0) as tested_changes,
+                        (SELECT CAST(SUM(aggregated_covered_probes) AS FLOAT) / SUM(probes_count) FROM Risks) as coverage,
                         (SELECT count(*) FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
+            groupId,
+            appId,
             targetBuildId,
             baselineBuildId,
-            groupId,
             targetBuildId,
             baselineBuildId
         ).first() as Map<String, String>
@@ -109,7 +112,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getRecommendedTests(
-        groupId: String,
         targetBuildId: String,
         baselineBuildId: String?,
         testsToSkip: Boolean,
@@ -119,17 +121,13 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(
             """            
                 SELECT 
-                    __group_id AS group_id,
-                    __test_definition_id AS test_definition_id,
-                    __test_runner AS test_runner,
-                    __test_path AS test_path,
-                    __test_name AS test_name,
-                    __test_type AS test_type,
-                    __tags AS tags,
-                    __metadata AS metadata,
-                    __created_at AS created_at
-                FROM raw_data.get_recommended_tests_v2(
-                    input_group_id => ?,                    
+                    test_definition_id,
+                    runner,
+                    path,
+                    name,                    
+                    tags,
+                    metadata
+                FROM raw_data.get_recommended_tests_v3(                    
                     input_target_build_id => ?,
                     input_tests_to_skip => ?,
                     input_test_task_id => ?,		
@@ -137,7 +135,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_coverage_period_from => ?
                 )
             """.trimIndent(),
-            groupId,
             targetBuildId,
             testsToSkip,
             testTaskId,

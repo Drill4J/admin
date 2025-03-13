@@ -88,7 +88,7 @@ class MetricsServiceImpl(
                 throw BuildNotFound("Build info not found for $buildId")
             }
 
-            val metrics = metricsRepository.getBuildDiffReport(groupId, buildId, baselineBuildId, coverageThreshold)
+            val metrics = metricsRepository.getBuildDiffReport(groupId, appId, buildId, baselineBuildId, coverageThreshold)
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
@@ -197,7 +197,6 @@ class MetricsServiceImpl(
         }
 
         val recommendedTests = metricsRepository.getRecommendedTests(
-            groupId = groupId,
             targetBuildId = targetBuildId,
             baselineBuildId = baselineBuildId,
             testsToSkip = testsToSkip,
@@ -206,10 +205,9 @@ class MetricsServiceImpl(
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
-                testRunner = data["test_runner"] as String,
-                testPath = data["test_path"] as String,
-                testName = data["test_name"] as String,
-                testType = data["test_type"] as String,
+                testRunner = data["runner"] as String,
+                testPath = data["path"] as String,
+                testName = data["name"] as String,
                 tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
                 metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap()
             )
