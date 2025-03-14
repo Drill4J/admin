@@ -95,15 +95,6 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
                 )
             }
 
-            val savedInstances = InstanceTable.selectAll()
-                .filter { it[InstanceTable.groupId] == testGroup }
-                .filter { it[InstanceTable.appId] == testApp }
-                .filter { it[InstanceTable.id].value == testInstance }
-            assertEquals(1, savedInstances.size)
-            savedInstances.forEach {
-                assertNotNull(it[InstanceTable.envId])
-                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
-            }
             val savedBuilds = BuildTable.selectAll()
                 .filter { it[BuildTable.groupId] == testGroup }
                 .filter { it[BuildTable.appId] == testApp }
@@ -113,6 +104,15 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
                 assertNotNull(it[BuildTable.commitSha])
                 assertNotNull(it[BuildTable.buildVersion])
                 assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+            }
+            val savedInstances = InstanceTable.selectAll()
+                .filter { it[InstanceTable.groupId] == testGroup }
+                .filter { it[InstanceTable.appId] == testApp }
+                .filter { it[InstanceTable.id].value == testInstance }
+            assertEquals(1, savedInstances.size)
+            savedInstances.forEach {
+                assertNotNull(it[InstanceTable.envId])
+                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
             }
         }
 

@@ -940,6 +940,21 @@ components:
         startedAt:
           type: string
           format: date-time
+        builds:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleSessionBuildPayload'
+    SingleSessionBuildPayload:
+      type: object
+      properties:
+        appId:
+          type: string
+        instanceId:
+          type: string
+        commitSha:
+          type: string
+        buildVersion:
+          type: string
     MethodIgnoreRulePayload:
       type: object
       properties:

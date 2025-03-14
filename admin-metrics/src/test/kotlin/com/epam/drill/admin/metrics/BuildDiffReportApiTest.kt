@@ -143,7 +143,7 @@ class BuildDiffReportApiTest : DatabaseTests({
                 val metrics = json.read<Map<String, Any>>("$.data.metrics")
 
                 // test2 covers method2 by 1 of 3 probes,
-                // test3 covers method2 by 1 of 3 probes but other probes compared to test2,
+                // test3 covers method2 by 1 of 3 probes but different probes compared to test2,
                 // coverage in method1 is not considered because method1 was not changed,
                 // coverage collected by test2 in method3 is not considered because method3 was changed,
                 // so total coverage is 2 of 4 probes
