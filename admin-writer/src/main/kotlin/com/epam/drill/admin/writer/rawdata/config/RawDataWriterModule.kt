@@ -52,6 +52,7 @@ val rawDataServicesDIModule = DI.Module("rawDataWriterServices") {
     bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
     bind<TestDefinitionRepository>() with singleton { TestDefinitionRepositoryImpl() }
     bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
+    bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
     bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
     bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
     bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
@@ -64,6 +65,7 @@ val rawDataServicesDIModule = DI.Module("rawDataWriterServices") {
         methodRepository = instance(),
         buildRepository = instance(),
         testSessionRepository = instance(),
+        testSessionBuildRepository = instance(),
         methodIgnoreRuleRepository = instance()
     ) }
 }

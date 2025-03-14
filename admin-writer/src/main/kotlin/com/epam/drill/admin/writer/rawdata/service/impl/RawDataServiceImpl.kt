@@ -34,6 +34,7 @@ class RawDataServiceImpl(
     private val methodRepository: MethodRepository,
     private val buildRepository: BuildRepository,
     private val testSessionRepository: TestSessionRepository,
+    private val testSessionBuildRepository: TestSessionBuildRepository,
     private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository
 ) : RawDataWriter {
 
@@ -195,6 +196,17 @@ class RawDataServiceImpl(
         )
         transaction {
             testSessionRepository.create(testSession)
+            testSessionBuildRepository.deleteAllByTestSessionId(sessionPayload.id)
+            sessionPayload.builds.forEach { buildInfo ->
+                val buildId = generateBuildId(
+                    sessionPayload.groupId,
+                    buildInfo.appId,
+                    buildInfo.instanceId,
+                    buildInfo.commitSha,
+                    buildInfo.buildVersion
+                )
+                testSessionBuildRepository.create(sessionPayload.id, buildId, sessionPayload.groupId)
+            }
         }
     }
 

@@ -55,9 +55,18 @@ enum class TestResult {
 }
 
 @Serializable
+class BuildInfo(
+    val appId: String,
+    val instanceId: String? = null,
+    val commitSha: String? = null,
+    val buildVersion: String? = null,
+)
+
+@Serializable
 class SessionPayload(
     val id: String,
     val groupId: String,
     val testTaskId: String,
-    val startedAt: Instant
+    val startedAt: Instant,
+    val builds: List<BuildInfo> = emptyList(),
 )
