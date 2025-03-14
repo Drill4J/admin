@@ -24,7 +24,6 @@ class RecommendedTestsView(
     val testRunner: String,
     val testPath: String,
     val testName: String,
-    val testType: String,
     val tags: List<String>,
     val metadata: Map<String, String>,
 )
