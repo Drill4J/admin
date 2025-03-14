@@ -2385,7 +2385,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
     input_class_name_pattern VARCHAR DEFAULT NULL,
-    input_method_name_pattern VARCHAR DEFAULT NULL
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+    input_chronological BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE (
     build_id VARCHAR,
@@ -2419,8 +2420,10 @@ BEGIN
             target.signature,
             target.body_checksum,
             target.probes_count,
-            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type
+            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type,
+            builds.created_at AS build_created_at
         FROM raw_data.view_methods_with_rules target
+        JOIN raw_data.builds builds ON builds.id = target.build_id
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
@@ -2450,6 +2453,8 @@ BEGIN
             AND coverage.app_id = input_app_id
             --filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by chronological order
+            AND (input_chronological IS FALSE OR coverage.build_created_at <= target.build_created_at)
             --filter by test tags
             AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
             --filter by branch
@@ -2494,7 +2499,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_methods_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
     input_class_name_pattern VARCHAR DEFAULT NULL,
-    input_method_name_pattern VARCHAR DEFAULT NULL
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+    input_chronological BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE (
     build_id VARCHAR,
@@ -2528,8 +2534,10 @@ BEGIN
             target.signature,
             target.body_checksum,
             target.probes_count,
-            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type
+            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type,
+            builds.created_at AS build_created_at
         FROM raw_data.view_methods_with_rules target
+        JOIN raw_data.builds builds ON builds.id = target.build_id
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
@@ -2559,6 +2567,8 @@ BEGIN
             AND coverage.app_id = input_app_id
             --filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by chronological order
+            AND (input_chronological IS FALSE OR coverage.build_created_at <= target.build_created_at)
             --filter by test tags
             AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
             --filter by branch
@@ -2604,7 +2614,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_build_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
     input_class_name_pattern VARCHAR DEFAULT NULL,
-    input_method_name_pattern VARCHAR DEFAULT NULL
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+    input_chronological BOOLEAN DEFAULT TRUE
 ) RETURNS TABLE(
     build_id VARCHAR,
     total_probes INT,
@@ -2635,8 +2646,10 @@ BEGIN
             target.build_id,
             target.signature,
             target.body_checksum,
-            target.probes_count
+            target.probes_count,
+            builds.created_at AS build_created_at
         FROM raw_data.view_methods_with_rules target
+        JOIN raw_data.builds builds ON builds.id = target.build_id
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
@@ -2665,6 +2678,8 @@ BEGIN
             AND coverage.app_id = input_app_id
             --filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by chronological order
+            AND (input_chronological IS FALSE OR coverage.build_created_at <= target.build_created_at)
             --filter by test tags
             AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
             --filter by branch
@@ -2730,7 +2745,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
     input_class_name_pattern VARCHAR DEFAULT NULL,
-    input_method_name_pattern VARCHAR DEFAULT NULL
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+    input_chronological BOOLEAN DEFAULT TRUE
 ) RETURNS TABLE(
     build_id VARCHAR,
     total_probes INT,
@@ -2761,8 +2777,10 @@ BEGIN
             target.build_id,
             target.signature,
             target.body_checksum,
-            target.probes_count
+            target.probes_count,
+            builds.created_at AS build_created_at
         FROM raw_data.view_methods_with_rules target
+        JOIN raw_data.builds builds ON builds.id = target.build_id
         LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
         WHERE target.build_id = input_build_id
             --filter by package pattern
@@ -2791,6 +2809,8 @@ BEGIN
             AND coverage.app_id = input_app_id
             --filter by only isolated coverage
             AND (input_aggregated_coverage IS TRUE OR coverage.build_id = target.build_id)
+            --filter by chronological order
+            AND (input_chronological IS FALSE OR coverage.build_created_at <= target.build_created_at)
             --filter by test tags
             AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
             --filter by branch
