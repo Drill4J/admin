@@ -10,6 +10,7 @@ plugins {
     id("org.ajoberstar.grgit")
     id("com.github.hierynomus.license").apply(false)
     id("com.github.johnrengelman.shadow").apply(false)
+    id("com.epam.drill.integration.cicd") version "0.1.7"
 }
 
 group = "com.epam.drill.admin"
@@ -67,4 +68,25 @@ subprojects {
     configurations.all {
         dependencyConstraints += constraints
     }
+//    apply(plugin = "com.epam.drill.integration.cicd")
+//    drill {
+//        apiUrl = "http://localhost:8090/api"
+//        apiKey = "1_a84fa0d95719ab89730508ee63a5b215ece95e18872004cb5521134b84070029"
+//        groupId = "drill"
+//        appId = "drill-backend"
+//        packagePrefixes = arrayOf("com/epam/drill")
+//
+//        enableTestRecommendations {}
+//
+//        enableTestAgent {
+//            enabled = true
+//            version = "0.23.5"
+////            zipPath = "C:\\projects\\epam\\drill4j\\autotest-agent\\build\\distributions\\mingwX64-0.23.5-alpha.2.zip"
+//        }
+//        enableAppAgent {
+//            enabled = true
+//            version = "0.9.7"
+////            zipPath = "C:\\projects\\epam\\drill4j\\java-agent\\build\\distributions\\java-agent\\mingwX64-0.9.6.zip"
+//        }
+//    }
 }

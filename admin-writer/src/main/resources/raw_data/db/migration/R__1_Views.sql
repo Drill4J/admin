@@ -81,7 +81,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
       AND BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) = methods.probes_count;
 
 -----------------------------------------------------------------
-
+-- Deprecated, use raw_data.view_test_sessions_v2
 -----------------------------------------------------------------
 CREATE OR REPLACE VIEW raw_data.view_test_sessions AS
     SELECT
@@ -147,3 +147,164 @@ CREATE OR REPLACE VIEW raw_data.view_methods_tests_coverage AS
       AND methods.probes_count > 0
       AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
       AND BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) = methods.probes_count;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_session_builds AS
+SELECT
+  test_session_id,
+  build_id,
+  SUM(build_tests) AS build_tests
+FROM (
+	SELECT
+	  test_session_id,
+	  build_id,
+	  0 AS build_tests
+	FROM raw_data.test_session_builds
+	UNION
+	SELECT
+		tl.test_session_id,
+	  	tl.build_id,
+	  	COUNT(*) AS build_tests
+ 	FROM (
+		SELECT
+		  tl.id,
+		  tl.test_session_id,
+		  i.build_id
+		FROM
+		  raw_data.coverage c
+		JOIN raw_data.test_launches tl ON tl.id = c.test_id
+		JOIN raw_data.instances i ON i.id = c.instance_id
+		GROUP BY tl.id, tl.test_session_id, i.build_id
+	) tl
+	GROUP BY tl.test_session_id, tl.build_id
+) tsb
+GROUP BY test_session_id, build_id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_launches AS
+SELECT
+    tl.id AS test_launch_id,
+    tl.test_session_id,
+    tl.duration,
+    tl.result,
+    td.id AS test_definition_id,
+    td.name AS test_name,
+    td.path,
+    td.runner,
+    array_to_string(td.tags, ',') AS tags,
+    (CASE WHEN tl.result = 'PASSED' THEN 1 ELSE 0 END) AS passed,
+    (CASE WHEN tl.result = 'FAILED' THEN 1 ELSE 0 END) AS failed,
+    (CASE WHEN tl.result = 'SKIPPED' THEN 1 ELSE 0 END) AS skipped,
+    (CASE WHEN tl.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END) AS smart_skipped,
+    (CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END) AS success
+FROM raw_data.test_launches tl
+LEFT JOIN raw_data.test_definitions td ON td.id = tl.test_definition_id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_definitions AS
+SELECT
+  td.id AS test_definition_id,
+  td.group_id,
+  td.name AS test_name,
+  td.path,
+  td.runner,
+  array_to_string(td.tags, ',') AS tags,
+  COUNT(*) AS launches,
+  AVG(tl.duration) AS avg_duration,
+  SUM(tl.passed) AS passed,
+  SUM(tl.failed) AS failed,
+  SUM(tl.skipped) AS skipped,
+  SUM(tl.smart_skipped) AS smart_skipped,
+  SUM(tl.success) AS success,
+  CAST(SUM(CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) AS successful
+FROM raw_data.test_definitions td
+LEFT JOIN raw_data.view_test_launches tl ON tl.test_definition_id = td.id
+GROUP BY td.id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_tasks AS
+SELECT
+    ts.group_id,
+    ts.test_task_id,
+    tsb.build_id,
+    COUNT(*) AS sessions,
+    SUM(ts.tests) AS tests,
+    SUM(ts.duration) AS duration,
+    MIN(ts.started_at) AS started_at,
+    (CASE
+        WHEN SUM(CASE WHEN ts.result = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
+        WHEN SUM(CASE WHEN ts.result = 'PASSED' THEN 1 ELSE 0 END) > 0 THEN 'PASSED'
+        WHEN SUM(CASE WHEN ts.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END) > 0 THEN 'SMART_SKIPPED'
+        WHEN SUM(CASE WHEN ts.result = 'SKIPPED' THEN 1 ELSE 0 END) > 0 THEN 'SKIPPED'
+    ELSE 'UNKNOWN' END) AS result,
+    SUM(ts.passed) AS passed,
+    SUM(ts.failed) AS failed,
+    SUM(ts.skipped) AS skipped,
+    SUM(ts.smart_skipped) AS smart_skipped,
+    SUM(ts.success) AS success,
+    (CASE WHEN COUNT(*) > 0 THEN
+        CAST(SUM(CASE WHEN ts.result <> 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)
+    ELSE 1 END) AS successful
+FROM raw_data.view_test_sessions ts
+JOIN raw_data.view_test_session_builds tsb ON tsb.test_session_id = ts.test_session_id
+GROUP BY ts.group_id, ts.test_task_id, tsb.build_id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_paths AS
+SELECT
+  tl.test_session_id,
+  td.path,
+  COUNT(*) AS tests,
+  SUM(tl.duration) AS duration,
+  (
+    CASE WHEN SUM(CASE WHEN tl.result = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
+         WHEN SUM(CASE WHEN tl.result = 'PASSED' THEN 1 ELSE 0 END) > 0 THEN 'PASSED'
+         WHEN SUM(CASE WHEN tl.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END) > 0 THEN 'SMART_SKIPPED'
+         WHEN SUM(CASE WHEN tl.result = 'SKIPPED' THEN 1 ELSE 0 END) > 0 THEN 'SKIPPED'
+    ELSE 'UNKNOWN' END
+  ) AS result,
+  SUM(CASE WHEN tl.result = 'PASSED' THEN 1 ELSE 0 END) AS passed,
+  SUM(CASE WHEN tl.result = 'FAILED' THEN 1 ELSE 0 END) AS failed,
+  SUM(CASE WHEN tl.result = 'SKIPPED' THEN 1 ELSE 0 END) AS skipped,
+  SUM(CASE WHEN tl.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END) AS smart_skipped,
+  SUM(CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END) AS success,
+  (CASE WHEN COUNT(*) > 0 THEN
+    CAST(SUM(CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)
+  ELSE 1 END) AS successful
+FROM raw_data.test_launches tl
+JOIN raw_data.test_definitions td ON td.id = tl.test_definition_id
+GROUP BY tl.test_session_id, td.path;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_sessions_v2 AS
+    SELECT
+        ts.id AS test_session_id,
+        ts.group_id,
+        ts.test_task_id,
+        ts.started_at,
+        COUNT(*) AS tests,
+        (CASE WHEN SUM(CASE WHEN tl.result = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED' ELSE 'PASSED' END) AS result,
+        SUM(tl.duration) AS duration,
+        SUM(tl.failed) AS failed,
+        SUM(tl.passed) AS passed,
+        SUM(tl.skipped) AS skipped,
+        SUM(tl.smart_skipped) AS smart_skipped,
+        SUM(tl.success) AS success,
+        (CASE WHEN COUNT(*) > 0 THEN
+			CAST(SUM(tl.success) AS FLOAT) / COUNT(*)
+		 ELSE 1 END) AS successful
+    FROM raw_data.test_sessions ts
+    LEFT JOIN raw_data.view_test_launches tl ON ts.id = tl.test_session_id
+    GROUP BY ts.id;
