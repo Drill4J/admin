@@ -3230,7 +3230,7 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Deprecated, use get_recommended_tests_v4(input_materialized => FALSE) instead
 -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v3(
     input_target_build_id VARCHAR,
@@ -3330,5 +3330,259 @@ BEGIN
 	    FROM raw_data.test_definitions td
         WHERE input_test_tag = ANY(td.tags)
 	  ));
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Deprecated, use get_recommended_tests_v4(input_materialized => TRUE) instead
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_materialized_recommended_tests_v3(
+    input_target_build_id VARCHAR,
+	input_tests_to_skip BOOLEAN DEFAULT FALSE,
+	input_test_task_id VARCHAR DEFAULT NULL,
+	input_test_tag VARCHAR DEFAULT NULL,
+	input_baseline_build_id VARCHAR DEFAULT NULL,
+	input_coverage_period_from TIMESTAMP DEFAULT NULL,
+	input_branch VARCHAR DEFAULT NULL,
+	input_env_id VARCHAR DEFAULT NULL
+) RETURNS TABLE(
+    test_definition_id VARCHAR,
+    path VARCHAR,
+    name VARCHAR,
+    runner VARCHAR,
+    tags VARCHAR[],
+    metadata JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+    	SELECT
+    	    baseline.signature,
+             baseline.body_checksum
+    	FROM raw_data.view_methods_with_rules baseline
+        WHERE baseline.build_id = input_baseline_build_id
+    ),
+    TargetMethods AS (
+    	SELECT
+			target.build_id,
+            target.signature,
+            target.body_checksum,
+            target.probes_count,
+            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type
+	 	FROM raw_data.view_methods_with_rules target
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
+	 	WHERE target.build_id = input_target_build_id
+            --filter by baseline
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
+  	),
+	Coverage AS (
+		SELECT
+		    coverage.test_definition_id,
+			coverage.test_launch_id,
+            (target.body_checksum <> coverage.body_checksum) AS has_changed_methods
+		FROM raw_data.matview_recommended_tests coverage
+		JOIN TargetMethods target ON target.signature = coverage.signature
+		WHERE coverage.group_id = split_part(input_target_build_id, ':', 1)
+		  AND coverage.app_id = split_part(input_target_build_id, ':', 2)
+		  --filter by test task id
+		  AND (input_test_task_id IS NULL OR coverage.test_task_id = input_test_task_id)
+		  --filter by coverage period from
+		  AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		  --filter by branch
+		  AND (input_branch IS NULL OR coverage.branch = input_branch)
+		  --filter by env
+		  AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
+		  --filter by test tag
+		  AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
+  	),
+	TestsWithCoverage AS (
+		SELECT
+			coverage.test_definition_id,
+			coverage.test_launch_id,
+			BOOL_OR(has_changed_methods) AS has_changed_methods
+		FROM Coverage coverage
+		GROUP BY coverage.test_definition_id, coverage.test_launch_id
+	),
+	TestsToRun AS (
+		SELECT
+			tests.test_definition_id
+		FROM TestsWithCoverage tests
+		GROUP BY tests.test_definition_id
+		HAVING BOOL_AND(has_changed_methods) = TRUE
+	)
+	SELECT
+		tests.id,
+		tests.path,
+		tests.name,
+        tests.runner,
+        tests.tags,
+        tests.metadata
+	FROM raw_data.test_definitions tests
+	WHERE tests.group_id = split_part(input_target_build_id, ':', 1)
+	  AND (input_tests_to_skip IS TRUE OR EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_tests_to_skip IS FALSE OR NOT EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	  AND (input_test_task_id IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT DISTINCT tl.test_definition_id
+	    FROM raw_data.test_launches tl
+	    JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
+        WHERE ts.test_task_id = input_test_task_id
+	  ))
+	  AND (input_test_tag IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+	    SELECT td.id
+	    FROM raw_data.test_definitions td
+        WHERE input_test_tag = ANY(td.tags)
+	  ));
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v4(
+    input_target_build_id VARCHAR,
+	input_tests_to_skip BOOLEAN DEFAULT FALSE,
+	input_test_task_id VARCHAR DEFAULT NULL,
+	input_test_tag VARCHAR DEFAULT NULL,
+	input_baseline_build_id VARCHAR DEFAULT NULL,
+	input_coverage_period_from TIMESTAMP DEFAULT NULL,
+	input_branch VARCHAR DEFAULT NULL,
+	input_env_id VARCHAR DEFAULT NULL,
+	input_chronological BOOLEAN DEFAULT TRUE,
+	input_materialized BOOLEAN DEFAULT TRUE
+) RETURNS TABLE(
+    test_definition_id VARCHAR,
+    path VARCHAR,
+    name VARCHAR,
+    runner VARCHAR,
+    tags VARCHAR[],
+    metadata JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+        SELECT
+            baseline.signature,
+             baseline.body_checksum
+        FROM raw_data.view_methods_with_rules baseline
+        WHERE baseline.build_id = input_baseline_build_id
+    ),
+    TargetMethods AS (
+        SELECT
+            target.build_id,
+            target.signature,
+            target.body_checksum,
+            target.probes_count,
+            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type,
+            builds.created_at AS build_created_at
+        FROM raw_data.view_methods_with_rules target
+        JOIN raw_data.builds builds ON builds.id = target.build_id
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
+        WHERE target.build_id = input_target_build_id
+            --filter by baseline
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
+    ),
+    TestedBuildsComparison AS (
+        SELECT
+            tested.test_definition_id,
+            tested.test_launch_id,
+            BOOL_OR(target.body_checksum <> tested.body_checksum) AS has_changed_methods
+        FROM raw_data.view_tested_methods tested
+        JOIN TargetMethods target ON target.signature = tested.signature
+        WHERE tested.group_id = split_part(input_target_build_id, ':', 1)
+          AND tested.app_id = split_part(input_target_build_id, ':', 2)
+          --filter by chronological order
+          AND (input_chronological IS FALSE OR tested.build_created_at <= target.build_created_at)
+          --filter by test task id
+          AND (input_test_task_id IS NULL OR tested.test_task_id = input_test_task_id)
+          --filter by coverage period from
+          AND (input_coverage_period_from IS NULL OR tested.session_started_at >= input_coverage_period_from)
+          --filter by branch
+          AND (input_branch IS NULL OR tested.branch = input_branch)
+          --filter by env
+          AND (input_env_id IS NULL OR tested.env_id = input_env_id)
+          --filter by test tag
+          AND (input_test_tag IS NULL OR input_test_tag = ANY(tested.test_tags))
+        GROUP BY tested.test_definition_id, tested.test_launch_id
+    ),
+    TestsToRun AS (
+        SELECT
+            tests.test_definition_id
+        FROM TestedBuildsComparison tests
+        GROUP BY tests.test_definition_id
+        HAVING BOOL_AND(tests.has_changed_methods) = TRUE
+    ),
+    TestedBuildsComparisonMaterialized AS (
+        SELECT
+            tl.test_definition_id,
+            tests.test_launch_id,
+            tests.has_changed_methods
+        FROM raw_data.matview_tested_builds_comparison tests
+        JOIN raw_data.builds tb ON tb.id = tests.tested_build_id
+        JOIN raw_data.test_launches tl ON tl.id = tests.test_launch_id
+        JOIN raw_data.test_definitions td ON td.id = tl.test_definition_id
+        JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
+        WHERE tests.target_build_id = input_target_build_id
+          --filter by test task id
+          AND (input_test_task_id IS NULL OR ts.test_task_id = input_test_task_id)
+          --filter by coverage period from
+          AND (input_coverage_period_from IS NULL OR ts.started_at >= input_coverage_period_from)
+          --filter by branch
+          AND (input_branch IS NULL OR tb.branch = input_branch)
+          --filter by env
+          AND (input_env_id IS NULL OR tests.env_id = input_env_id)
+          --filter by test tag
+          AND (input_test_tag IS NULL OR input_test_tag = ANY(td.tags))
+    ),
+    TestsToRunMaterialized AS (
+        SELECT
+            tests.test_definition_id
+        FROM TestedBuildsComparisonMaterialized tests
+        GROUP BY tests.test_definition_id
+        HAVING BOOL_AND(tests.has_changed_methods) = TRUE
+    )
+    SELECT
+        tests.id,
+        tests.path,
+        tests.name,
+        tests.runner,
+        tests.tags,
+        tests.metadata
+    FROM raw_data.test_definitions tests
+    WHERE tests.group_id = split_part(input_target_build_id, ':', 1)
+      AND (
+	  	  --filter by materialized view
+		  ((input_materialized IS TRUE AND input_baseline_build_id IS NULL AND input_chronological IS TRUE)
+	        AND (
+	            --filter by tests to run
+	            (input_tests_to_skip IS FALSE AND EXISTS (SELECT 1 FROM TestsToRunMaterialized runs WHERE runs.test_definition_id = tests.id))
+	            --filter by tests to skip
+	            OR (input_tests_to_skip IS TRUE AND NOT EXISTS (SELECT 1 FROM TestsToRunMaterialized runs WHERE runs.test_definition_id = tests.id))
+	        )
+	      )
+	      --filter by non materialized view
+	      OR ((input_materialized IS FALSE OR input_baseline_build_id IS NOT NULL OR input_chronological IS FALSE)
+	        AND (
+	            --filter by tests to run
+	            (input_tests_to_skip IS FALSE AND EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	            --filter by tests to skip
+	            OR (input_tests_to_skip IS TRUE AND NOT EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
+	        )
+	      )
+	  )
+      --filter by test task id in case of tests to skip
+      AND (input_test_task_id IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+        SELECT DISTINCT tl.test_definition_id
+        FROM raw_data.test_launches tl
+        JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
+        WHERE ts.test_task_id = input_test_task_id
+      ))
+      --filter by test tag in case of tests to skip
+      AND (input_test_tag IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
+        SELECT td.id
+        FROM raw_data.test_definitions td
+        WHERE input_test_tag = ANY(td.tags)
+      ));
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

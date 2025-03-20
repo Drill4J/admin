@@ -51,6 +51,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
 		            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
 		            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
 		            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text));
+
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -308,3 +309,71 @@ CREATE OR REPLACE VIEW raw_data.view_test_sessions_v2 AS
     FROM raw_data.test_sessions ts
     LEFT JOIN raw_data.view_test_launches tl ON ts.id = tl.test_session_id
     GROUP BY ts.id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_tested_methods AS
+    SELECT
+        builds.group_id,
+        builds.app_id,
+		methods.build_id,
+		methods.signature,
+        methods.body_checksum,
+		launches.id AS test_launch_id,
+		launches.test_definition_id,
+		launches.test_session_id,
+		builds.branch,
+		instances.env_id,
+		sessions.test_task_id,
+		definitions.tags AS test_tags,
+		sessions.started_at AS session_started_at,
+		builds.created_at AS build_created_at
+    FROM raw_data.coverage coverage
+	JOIN raw_data.methods methods ON methods.classname = coverage.classname
+    JOIN raw_data.instances instances ON instances.id = coverage.instance_id
+    JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
+    JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
+	JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+	JOIN raw_data.test_definitions definitions ON definitions.id = launches.test_definition_id
+    WHERE TRUE
+	  AND methods.probes_count > 0
+	  AND launches.result = 'PASSED'
+	  AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
+      AND BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) = methods.probes_count;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_tested_builds_comparison AS
+WITH
+	TargetMethods AS (
+    	SELECT
+			target.build_id,
+            target.signature,
+            target.body_checksum,
+            builds.created_at AS build_created_at
+	 	FROM raw_data.view_methods_with_rules target
+	 	JOIN raw_data.builds builds ON builds.id = target.build_id
+  	),
+	TestedMethods AS (
+		SELECT
+		    tested.test_launch_id,
+            (target.body_checksum <> tested.body_checksum) AS has_changed_methods,
+			target.build_id AS target_build_id,
+			tested.build_id AS tested_build_id,
+			tested.env_id
+		FROM raw_data.view_tested_methods tested
+		JOIN TargetMethods target ON target.signature = tested.signature
+		WHERE TRUE
+		  --filter by chronological order
+          AND tested.build_created_at <= target.build_created_at
+  	)
+SELECT
+	test_launch_id,
+	BOOL_OR(has_changed_methods) AS has_changed_methods,
+	target_build_id,
+	tested_build_id,
+	env_id
+FROM TestedMethods
+GROUP BY test_launch_id, target_build_id, tested_build_id, env_id;
