@@ -81,9 +81,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ),
                     RecommendedTests AS (
                         SELECT *
-                        FROM raw_data.get_recommended_tests_v3(
+                        FROM raw_data.get_recommended_tests_v4(
                             input_target_build_id => ?, 
-                            input_baseline_build_id => ?
+                            input_baseline_build_id => ?,
+                            input_materialized => false
                         )
                     )	
                     SELECT 
@@ -127,12 +128,13 @@ class MetricsRepositoryImpl : MetricsRepository {
                     name,                    
                     tags,
                     metadata
-                FROM raw_data.get_recommended_tests_v3(                    
+                FROM raw_data.get_recommended_tests_v4(                    
                     input_target_build_id => ?,
                     input_tests_to_skip => ?,
                     input_test_task_id => ?,		
                     input_baseline_build_id => ?,
-                    input_coverage_period_from => ?
+                    input_coverage_period_from => ?,
+                    input_materialized => false
                 )
             """.trimIndent(),
             targetBuildId,
