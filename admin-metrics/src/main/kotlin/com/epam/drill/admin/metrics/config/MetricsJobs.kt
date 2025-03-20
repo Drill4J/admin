@@ -29,3 +29,14 @@ val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob
 val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
     get() = TriggerBuilder.newTrigger()
         .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
+
+val refreshTestedBuildsComparisonViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+    .storeDurably()
+    .withDescription("Job for updating the materialized view 'matview_tested_builds_comparison'.")
+    .withIdentity("refreshTestedBuildsComparisonViewJob", "refreshMaterializedViews")
+    .usingJobData(VIEW_NAME, "matview_tested_builds_comparison")
+    .build()
+
+val refreshTestedBuildsComparisonViewTrigger: TriggerBuilder<Trigger>
+    get() = TriggerBuilder.newTrigger()
+        .withIdentity("refreshTestedBuildsComparisonViewTrigger", "refreshMaterializedViews")
