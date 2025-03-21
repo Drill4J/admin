@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.table.TestSessionBuildTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -33,9 +34,53 @@ import kotlin.test.assertNotNull
 class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
     @Test
-    fun `given new test session, put test sessions service should save test session in database and return OK`() = withRollback {
+    fun `given new test session, put test sessions service should save test session in database and return OK`() =
+        withRollback {
+            val testGroup = "test-group"
+            val testSession = "test-session-1"
+            val timeBeforeTest = LocalDateTime.now()
+            val app = drillApplication(rawDataServicesDIModule) {
+                putTestSessions()
+            }
+
+            app.client.put("/sessions") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(
+                    """
+                {
+                    "id": "$testSession",
+                    "groupId": "$testGroup",                    
+                    "testTaskId": "test-task-1",
+                    "startedAt": "2025-01-01T00:00:00+01:00"
+                }
+                """.trimIndent()
+                )
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertJsonEquals(
+                    """
+                {
+                    "message": "Test sessions saved"
+                }
+            """.trimIndent(), bodyAsText()
+                )
+            }
+
+            val savedTestSessions = TestSessionTable.selectAll()
+                .filter { it[TestSessionTable.groupId] == testGroup }
+                .filter { it[TestSessionTable.id].value == testSession }
+            assertEquals(1, savedTestSessions.size)
+            savedTestSessions.forEach {
+                assertNotNull(it[TestSessionTable.testTaskId])
+                assertNotNull(it[TestSessionTable.startedAt])
+                assertTrue(it[TestSessionTable.createdAt] >= timeBeforeTest)
+            }
+        }
+
+    @Test
+    fun `given new test session with builds, put test sessions service should save session builds in database and return OK`() = withRollback {
         val testGroup = "test-group"
-        val testSession = "test-session-1"
+        val testSession = "test-session-2"
         val timeBeforeTest = LocalDateTime.now()
         val app = drillApplication(rawDataServicesDIModule) {
             putTestSessions()
@@ -47,9 +92,19 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 """
                 {
                     "id": "$testSession",
-                    "groupId": "$testGroup",                    
-                    "testTaskId": "test-task-1",
-                    "startedAt": "2025-01-01T00:00:00+01:00"
+                    "groupId": "$testGroup",
+                    "testTaskId": "test-task-2",
+                    "startedAt": "2025-01-01T00:00:00+01:00",
+                    "builds": [
+                        {
+                            "appId": "test-app-1",
+                            "buildVersion": "1.0.0"
+                        },
+                        {
+                            "appId": "test-app-2",
+                            "buildVersion": "1.1.0"
+                        }
+                    ]
                 }
                 """.trimIndent()
             )
@@ -60,18 +115,17 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 {
                     "message": "Test sessions saved"
                 }
-            """.trimIndent(), bodyAsText()
+                """.trimIndent(), bodyAsText()
             )
         }
 
-        val savedTestSessions = TestSessionTable.selectAll()
-            .filter { it[TestSessionTable.groupId] == testGroup }
-            .filter { it[TestSessionTable.id].value == testSession }
-        assertEquals(1, savedTestSessions.size)
-        savedTestSessions.forEach {
-            assertNotNull(it[TestSessionTable.testTaskId])
-            assertNotNull(it[TestSessionTable.startedAt])
-            assertTrue(it[TestSessionTable.createdAt] >= timeBeforeTest)
+        val savedSessionBuilds = TestSessionBuildTable.selectAll()
+            .filter { it[TestSessionBuildTable.testSessionId] == testSession }
+        assertEquals(2, savedSessionBuilds.size)
+        savedSessionBuilds.forEach {
+            assertNotNull(it[TestSessionBuildTable.buildId])
+            assertNotNull(it[TestSessionBuildTable.groupId])
+            assertTrue(it[TestSessionBuildTable.createdAt] >= timeBeforeTest)
         }
     }
 }

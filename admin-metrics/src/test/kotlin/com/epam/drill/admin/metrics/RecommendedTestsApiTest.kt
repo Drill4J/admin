@@ -104,7 +104,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     }
 
     @Test
-    fun `given test that covers only unmodified methods at least one build, recommended test service should suggest skipping it`() {
+    fun `given test that covers only unmodified methods of at least one build, recommended test service should suggest skipping it`() {
         runBlocking {
             val client = runDrillApplication().apply {
                 //build1 has 2 methods, test1 covers method1

@@ -10,6 +10,7 @@ plugins {
     id("org.ajoberstar.grgit")
     id("com.github.hierynomus.license").apply(false)
     id("com.github.johnrengelman.shadow").apply(false)
+    id("com.epam.drill.integration.cicd") version "0.1.7"
 }
 
 group = "com.epam.drill.admin"
