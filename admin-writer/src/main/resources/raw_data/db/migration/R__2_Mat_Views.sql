@@ -41,3 +41,24 @@ SELECT
 FROM raw_data.view_tested_builds_comparison;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_tested_builds_comparison_pk ON raw_data.matview_tested_builds_comparison (test_launch_id, target_build_id, tested_build_id, env_id);
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_coverage;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds_coverage AS
+SELECT
+	build_id,
+    env_id,
+    branch,
+    test_tags,
+    total_probes,
+    aggregated_probes,
+    isolated_probes,
+	total_changes,
+	aggregated_tested_changes,
+	isolated_tested_changes
+FROM raw_data.view_builds_coverage;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_coverage_pk ON raw_data.matview_builds_coverage (build_id, env_id, branch, test_tags);
