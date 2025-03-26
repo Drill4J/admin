@@ -3810,7 +3810,10 @@ BEGIN
     RETURN QUERY
     WITH
 	Builds AS (
-		SELECT builds.id
+		SELECT
+			builds.id AS build_id,
+			COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
+			builds.created_at AS build_created_at
 		FROM raw_data.builds builds
 		WHERE builds.group_id = input_group_id
           AND builds.app_id = input_app_id
@@ -3834,11 +3837,11 @@ BEGIN
             target.signature,
             target.body_checksum,
             target.probes_count,
-			builds.created_at AS build_created_at
+			builds.build_created_at
         FROM raw_data.view_methods_with_rules target
-		JOIN raw_data.builds builds ON builds.id = target.build_id
+		JOIN Builds builds ON builds.build_id = target.build_id
 		LEFT JOIN BaselineMethods baseline ON baseline.signature = target.signature
-        WHERE target.build_id IN (SELECT id FROM Builds)
+        WHERE TRUE
 		  --filter by baseline
 		  AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> target.body_checksum)
     ),
@@ -3874,22 +3877,16 @@ BEGIN
     CoverageGroupedByBuilds AS (
         SELECT
             coverage.build_id,
-			COUNT(*) AS total_changes,
             SUM(coverage.probes_count) AS total_probes,
             SUM(coverage.aggregated_covered_probes) AS aggregated_covered_probes,
             SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
+            COUNT(*) AS total_changes,
 			SUM(
-				CASE WHEN coverage.isolated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
+				CASE WHEN coverage.isolated_covered_probes > 0 THEN 1 ELSE 0 END
 			) AS isolated_tested_changes,
 			SUM(
-				CASE WHEN coverage.isolated_covered_probes > 0 AND coverage.isolated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
-			) AS isolated_partially_tested_changes,
-			SUM(
-				CASE WHEN coverage.aggregated_covered_probes = coverage.probes_count THEN 1 ELSE 0 END
-			) AS aggregated_tested_changes,
-			SUM(
-				CASE WHEN coverage.aggregated_covered_probes > 0 AND coverage.aggregated_covered_probes < coverage.probes_count THEN 1 ELSE 0 END
-			) AS aggregated_partially_tested_changes
+				CASE WHEN coverage.aggregated_covered_probes > 0 THEN 1 ELSE 0 END
+			) AS aggregated_tested_changes
         FROM TargetMethodCoverage coverage
         GROUP BY coverage.build_id
     ),
@@ -3897,17 +3894,24 @@ BEGIN
         SELECT
             coverage.build_id,
             MAX(coverage.total_probes) AS total_probes,
-            MAX(coverage.total_changes) AS total_changes,
             BIT_COUNT(BIT_OR(coverage.aggregated_probes)) AS aggregated_covered_probes,
             BIT_COUNT(BIT_OR(coverage.isolated_probes)) AS isolated_covered_probes,
+            MAX(coverage.total_changes) AS total_changes,
             BIT_COUNT(BIT_OR(coverage.aggregated_tested_changes)) AS aggregated_tested_changes,
             BIT_COUNT(BIT_OR(coverage.isolated_tested_changes)) AS isolated_tested_changes
         FROM raw_data.matview_builds_coverage coverage
+        WHERE TRUE
+          --filter by test tags
+          AND (input_test_tag IS NULL OR input_test_tag = ANY(coverage.test_tags))
+          --filter by branch
+          AND (input_branch IS NULL OR coverage.branch = input_branch)
+          --filter by env
+          AND (input_env_id IS NULL OR coverage.env_id = input_env_id)
         GROUP BY coverage.build_id
     )
     SELECT
         coverage.build_id::VARCHAR,
-        COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
+        builds.build_version,
         coverage.total_probes::INT,
         COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
         (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
@@ -3918,8 +3922,12 @@ BEGIN
         coverage.total_changes::INT,
 		COALESCE(coverage.isolated_tested_changes, 0)::INT AS isolated_tested_changes,
 		COALESCE(coverage.aggregated_tested_changes, 0)::INT AS aggregated_tested_changes
-    FROM CoverageGroupedByBuilds coverage
-    JOIN raw_data.builds builds ON builds.id = coverage.build_id
-    ORDER BY builds.created_at ASC;
+    FROM (
+        SELECT * FROM CoverageGroupedByBuildsMaterialized WHERE use_materialized
+        UNION ALL
+        SELECT * FROM CoverageGroupedByBuilds WHERE NOT use_materialized
+    ) coverage
+    JOIN Builds builds ON builds.build_id = coverage.build_id
+    ORDER BY builds.build_created_at ASC;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
