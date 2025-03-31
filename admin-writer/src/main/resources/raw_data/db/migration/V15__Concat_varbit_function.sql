@@ -16,7 +16,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE AGGREGATE concat_varbit(varbit, integer)
 (
-    sfunc = concut_varbits,
+    sfunc = concat_varbits,
     stype = varbit,
     initcond = ''
 );
