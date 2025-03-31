@@ -110,7 +110,7 @@ fun Application.module() {
             }
 
             //Metrics
-            authenticate("api-key") {
+            authenticate("jwt", "api-key") {
                 tryApiKeyRoute()
                 metricsRoutes()
             }

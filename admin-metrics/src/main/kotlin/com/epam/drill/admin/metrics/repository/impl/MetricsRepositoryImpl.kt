@@ -59,6 +59,40 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
+    override suspend fun getCoverageTreemap(
+        groupId: String,
+        appId: String,
+        buildId: String
+    ):  List<Map<String,Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+                WITH MethodsCoverage AS
+                (
+                	SELECT *
+                	FROM raw_data.get_materialized_methods_coverage(
+                		?,
+                		?,
+                		?,
+                		NULL,
+                		TRUE
+                	)
+                )
+                SELECT
+                	classname || '/' || name AS name,
+                	params,
+                	return_type,
+                	SUM(probes_count) AS probes_count,
+                	SUM(aggregated_covered_probes) AS covered_probes
+                FROM MethodsCoverage
+                GROUP BY name, classname, params, return_type
+                ORDER BY classname DESC
+            """.trimIndent(),
+            groupId,
+            appId,
+            buildId
+        )
+    }
+
     override suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,
