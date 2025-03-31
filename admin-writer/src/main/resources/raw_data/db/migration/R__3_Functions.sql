@@ -3735,11 +3735,19 @@ BEGIN
         SELECT
             coverage.build_id,
             MAX(coverage.total_probes) AS total_probes,
-            BIT_COUNT(BIT_OR(coverage.aggregated_probes)) AS aggregated_covered_probes,
-            BIT_COUNT(BIT_OR(coverage.isolated_probes)) AS isolated_covered_probes,
-            MAX(coverage.total_changes) AS total_changes,
-			BIT_COUNT(BIT_OR(coverage.aggregated_tested_changes)) AS aggregated_tested_changes,
-            BIT_COUNT(BIT_OR(coverage.isolated_tested_changes)) AS isolated_tested_changes
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.probes
+                ELSE NULL
+            END)) AS isolated_covered_probes,
+            MAX(coverage.total_methods) AS total_changes,
+			BIT_COUNT(BIT_OR(coverage.tested_methods)) AS aggregated_tested_changes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.tested_methods
+                ELSE NULL
+            END)) AS isolated_tested_changes
         FROM raw_data.matview_builds_coverage coverage
         WHERE coverage.build_id = input_build_id
           --filter by test tags
@@ -3894,11 +3902,19 @@ BEGIN
         SELECT
             coverage.build_id,
             MAX(coverage.total_probes) AS total_probes,
-            BIT_COUNT(BIT_OR(coverage.aggregated_probes)) AS aggregated_covered_probes,
-            BIT_COUNT(BIT_OR(coverage.isolated_probes)) AS isolated_covered_probes,
-            MAX(coverage.total_changes) AS total_changes,
-            BIT_COUNT(BIT_OR(coverage.aggregated_tested_changes)) AS aggregated_tested_changes,
-            BIT_COUNT(BIT_OR(coverage.isolated_tested_changes)) AS isolated_tested_changes
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.probes
+                ELSE NULL
+            END)) AS isolated_covered_probes,
+            MAX(coverage.total_methods) AS total_changes,
+            BIT_COUNT(BIT_OR(coverage.tested_methods)) AS aggregated_tested_changes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.tested_methods
+                ELSE NULL
+            END)) AS isolated_tested_changes
         FROM raw_data.matview_builds_coverage coverage
         WHERE TRUE
           --filter by test tags
