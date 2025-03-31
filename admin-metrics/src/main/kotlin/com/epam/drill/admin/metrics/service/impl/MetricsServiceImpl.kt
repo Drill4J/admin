@@ -55,6 +55,126 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getCoverageTreemap(
+        groupId: String,
+        appId: String,
+        buildId: String
+    ): List<Any> {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        val data = metricsRepository.getCoverageTreemap(groupId, appId, buildId)
+
+        return buildTree(data)
+    }
+
+    fun buildTree(data: List<Map<String, Any?>>): List<Map<String, Any?>> {
+        val nodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
+        val rootNodes = mutableSetOf<String>()
+
+        // Step 1: Build tree structure
+        for (item in data) {
+            val pathParts = (item["name"] as String).split("/")
+            var currentPath = ""
+
+            for ((index, part) in pathParts.withIndex()) {
+                var nodePart = part
+                if (index == pathParts.lastIndex) {
+                    nodePart += "(${item["params"]}) -> ${item["return_type"]}"
+                }
+
+                currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
+
+                if (!nodeMap.containsKey(currentPath)) {
+                    nodeMap[currentPath] = mutableMapOf(
+                        "name" to nodePart,
+                        "full_name" to currentPath,
+                        "probes_count" to 0,
+                        "covered_probes" to 0,
+                        "children" to mutableSetOf<String>(),
+                        "parent" to if (index == 0) null else pathParts.subList(0, index).joinToString("/"),
+                        "params" to if (index == pathParts.lastIndex) item["params"] else null,
+                        "return_type" to if (index == pathParts.lastIndex) item["return_type"] else null
+                    )
+                }
+
+                if (index > 0) {
+                    val parentPath = pathParts.subList(0, index).joinToString("/")
+                    (nodeMap[parentPath]?.get("children") as MutableSet<String>).add(currentPath)
+                }
+            }
+
+            val leafNode = nodeMap[currentPath]!!
+            leafNode["probes_count"] = item["probes_count"]!!
+            leafNode["covered_probes"] = item["covered_probes"]!!
+        }
+
+        // Validation function to check tree structure
+        fun validateTreeStructure() {
+            var isValid = true
+            for (item in data) {
+                val pathParts = (item["name"] as String).split("/")
+                var currentPath = ""
+
+                for ((index, part) in pathParts.withIndex()) {
+                    var nodePart = part
+                    if (index == pathParts.lastIndex) {
+                        nodePart += "(${item["params"]}) -> ${item["return_type"]}"
+                    }
+                    currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
+                    if (!nodeMap.containsKey(currentPath)) {
+                        println("Missing node in tree: $currentPath")
+                        isValid = false
+                    }
+                }
+            }
+            if (isValid) {
+                println("Tree structure validation passed.")
+            } else {
+                println("Tree structure validation failed.")
+            }
+        }
+
+        validateTreeStructure()
+
+        // Step 2: Compute aggregates recursively
+        fun computeAggregates(nodePath: String) {
+            val node = nodeMap[nodePath]!!
+            val children = node["children"] as MutableSet<String>
+            for (childPath in children) {
+                computeAggregates(childPath)
+                val child = nodeMap[childPath]!!
+                node["probes_count"] = (node["probes_count"] as Number).toLong() + (child["probes_count"] as Number).toLong()
+                node["covered_probes"] = (node["covered_probes"] as Number).toLong() + (child["covered_probes"] as Number).toLong()
+            }
+        }
+
+        for ((path, node) in nodeMap) {
+            if (node["parent"] == null) rootNodes.add(path)
+        }
+        for (root in rootNodes) {
+            computeAggregates(root)
+        }
+
+        // Step 3: Flatten tree into an array
+        val result = mutableListOf<Map<String, Any?>>()
+        for (node in nodeMap.values) {
+            result.add(
+                mapOf(
+                    "name" to node["name"],
+                    "full_name" to node["full_name"],
+                    "parent" to node["parent"],
+                    "probes_count" to node["probes_count"],
+                    "covered_probes" to node["covered_probes"],
+                    "params" to node["params"],
+                    "return_type" to node["return_type"]
+                )
+            )
+        }
+        return result
+    }
+
     override suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,

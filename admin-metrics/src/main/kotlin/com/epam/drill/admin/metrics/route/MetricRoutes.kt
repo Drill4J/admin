@@ -40,7 +40,14 @@ class Metrics {
         val appId: String,
         val branch: String? = null
     )
+    @Resource("/coverage-treemap")
+    class CoverageTreemap(
+        val parent: Metrics,
 
+        val groupId: String,
+        val appId: String,
+        val buildId: String
+    )
     @Resource("/build-diff-report")
     class BuildDiffReport(
         val parent: Metrics,
@@ -78,6 +85,7 @@ fun Route.metricsRoutes() {
     getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
+    getCoverageTreemap()
 }
 
 fun Route.getBuilds() {
@@ -90,6 +98,19 @@ fun Route.getBuilds() {
             params.branch
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
+}
+
+fun Route.getCoverageTreemap() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.CoverageTreemap> { params ->
+        val treemap = metricsService.getCoverageTreemap(
+            params.groupId,
+            params.appId,
+            params.buildId
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
 }
 
