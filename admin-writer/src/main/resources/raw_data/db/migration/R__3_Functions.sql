@@ -1,23 +1,8 @@
 -----------------------------------------------------------------
--- Delete all functions in raw_data schema
+-- Deprecated
 -----------------------------------------------------------------
-DO
-$$
-DECLARE
-    function_name TEXT;
-BEGIN
-    FOR function_name IN
-        SELECT routine_name
-        FROM information_schema.routines
-        WHERE routine_schema = 'raw_data' AND routine_type = 'FUNCTION'
-    LOOP
-        EXECUTE 'DROP FUNCTION raw_data.' || function_name || ' CASCADE';
-    END LOOP;
-END;
-$$;
------------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_total_percent CASCADE;
 
------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_total_percent(
     _build_id VARCHAR
 )
@@ -55,8 +40,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_classes CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_classes(
     _build_id VARCHAR
 )
@@ -94,8 +81,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_test_launch_ids CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_test_launch_ids(
     input_group_id VARCHAR,
 	test_definition_ids VARCHAR[] DEFAULT NULL,
@@ -123,8 +112,10 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_methods_list CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list(
     input_build_id VARCHAR,
 
@@ -245,8 +236,10 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000; -- indicate that function is
 --TODO -- ROWS 5000; -- can also adjust result set expectations
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_by_methods_list CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list(
     input_build_id VARCHAR,
 
@@ -394,8 +387,10 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000; -- indicate that function is
 --TODO -- ROWS 5000; -- can also adjust result set expectations
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_packages CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_packages(
     _build_id VARCHAR
 )
@@ -454,8 +449,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_by_risks CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -575,8 +572,10 @@ $$ LANGUAGE plpgsql;
 
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_risks CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -691,6 +690,8 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_risks CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_risks(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -773,6 +774,8 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.check_build_exists CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.check_build_exists(
     build_id VARCHAR
 ) RETURNS BOOLEAN AS $$
@@ -790,8 +793,10 @@ $$ LANGUAGE plpgsql;
 
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_total_percent CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_total_percent(
 	_input_build_id VARCHAR
 )
@@ -817,6 +822,8 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_methods CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_methods(
     input_build_id VARCHAR,
     methods_class_name_pattern VARCHAR DEFAULT NULL,
@@ -864,6 +871,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_instance_ids CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_instance_ids(input_build_id VARCHAR)
 RETURNS TABLE (
     __id VARCHAR,
@@ -886,7 +895,10 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 -- NOTE: this function is guaranteed to return all methods for input_build_id
 -- TODO add test
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_same_group_and_app_methods CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_same_group_and_app_methods(
     input_build_id VARCHAR,
     methods_class_name_pattern VARCHAR DEFAULT NULL,
@@ -943,8 +955,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_test_launches CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_test_launches(
     input_build_id VARCHAR,
     input_group_id VARCHAR
@@ -1004,8 +1018,10 @@ END;
 $$;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_test_tasks CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_test_tasks(
 	input_build_id VARCHAR,
 
@@ -1148,8 +1164,10 @@ END;
 $$;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_by_test_tasks CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_test_tasks(
 	input_build_id VARCHAR,
 
@@ -1314,8 +1332,9 @@ END;
 $$;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_methods_list_v2 CASCADE;
 
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_methods_list_v2(
     input_build_id VARCHAR,
@@ -1403,8 +1422,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_by_methods_list_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_methods_list_v2(
 	input_build_id VARCHAR,
 	methods_class_name_pattern VARCHAR DEFAULT NULL,
@@ -1492,8 +1513,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_aggregate_coverage_by_risks_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_aggregate_coverage_by_risks_v2(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -1586,8 +1609,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_coverage_by_risks_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_coverage_by_risks_v2(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -1676,8 +1701,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_coverage_by_methods_list_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_methods_list_v2(
     input_build_id VARCHAR,
 
@@ -1764,8 +1791,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_aggregate_coverage_by_methods_list_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_methods_list_v2(
 	input_build_id VARCHAR,
 	methods_class_name_pattern VARCHAR DEFAULT NULL,
@@ -1853,8 +1882,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_aggregate_coverage_by_risks_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_aggregate_coverage_by_risks_v2(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -1947,8 +1978,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 7000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_coverage_by_risks_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_coverage_by_risks_v2(
 	input_build_id VARCHAR,
     input_baseline_build_id VARCHAR,
@@ -2037,8 +2070,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE COST 5000;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_recommended_tests_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v2(
     input_group_id VARCHAR,
 	input_target_build_id VARCHAR,
@@ -2172,8 +2207,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_recommended_tests_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_recommended_tests_v2(
     input_group_id VARCHAR,
 	input_target_build_id VARCHAR,
@@ -2309,6 +2346,8 @@ $$ LANGUAGE plpgsql;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_methods_coverage CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_methods_coverage(
     input_app_id VARCHAR,
     input_group_id VARCHAR,
@@ -2418,6 +2457,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_methods_coverage CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_methods_coverage(
     input_group_id VARCHAR,
     input_app_id VARCHAR,
@@ -2526,8 +2567,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_build_coverage CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_build_coverage(
     input_group_id VARCHAR,
     input_app_id VARCHAR,
@@ -2652,8 +2695,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_build_coverage CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage(
     input_group_id VARCHAR,
     input_app_id VARCHAR,
@@ -2778,8 +2823,10 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Deprecated
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_build_coverage_by_builds CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_build_coverage_by_builds(
     input_group_id VARCHAR,
     input_app_id VARCHAR,
@@ -2918,6 +2965,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_methods_tests_coverage CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_methods_tests_coverage(
     input_build_id VARCHAR,
     input_baseline_build_id VARCHAR DEFAULT NULL,
@@ -3035,6 +3084,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_methods_tests_coverage_by_builds CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_build_tests_coverage(
     input_build_id VARCHAR,
     input_baseline_build_id VARCHAR DEFAULT NULL,
@@ -3168,6 +3219,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 -- Deprecated, use get_recommended_tests_v4(input_materialized => FALSE) instead
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_recommended_tests_v3 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v3(
     input_target_build_id VARCHAR,
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
@@ -3272,6 +3325,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 -- Deprecated, use get_recommended_tests_v4(input_materialized => TRUE) instead
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_materialized_recommended_tests_v3 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_materialized_recommended_tests_v3(
     input_target_build_id VARCHAR,
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
@@ -3375,6 +3430,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_recommended_tests_v4 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v4(
     input_target_build_id VARCHAR,
 	input_tests_to_skip BOOLEAN DEFAULT FALSE,
@@ -3526,6 +3583,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_build_coverage_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_v2(
     input_build_id VARCHAR,
     input_baseline_build_id VARCHAR DEFAULT NULL,
@@ -3717,6 +3776,8 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_build_coverage_trends_v2 CASCADE;
+
 CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_trends_v2(
     input_group_id VARCHAR,
     input_app_id VARCHAR,

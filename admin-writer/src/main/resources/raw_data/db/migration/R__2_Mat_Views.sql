@@ -100,8 +100,8 @@ WITH
 		coverage.coverage_build_id,
 		coverage.env_id,
 		coverage.test_tags,
-		CONCAT_VARBIT(coverage.probes, coverage.probes_start::INT) AS probes,
-		CONCAT_VARBIT(CASE
+		raw_data.CONCAT_VARBIT(coverage.probes::VARBIT, coverage.probes_start::INT) AS probes,
+		raw_data.CONCAT_VARBIT(CASE
 			WHEN BIT_COUNT(coverage.probes) > 0
 			THEN REPEAT('1', 1)::VARBIT
 			ELSE REPEAT('0', 1)::VARBIT

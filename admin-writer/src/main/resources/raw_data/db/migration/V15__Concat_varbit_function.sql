@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION concat_varbits(accum varbit, next_val varbit, start_pos integer)
+CREATE OR REPLACE FUNCTION raw_data.concat_varbits(accum varbit, next_val varbit, start_pos integer)
 RETURNS varbit AS $$
 BEGIN
     IF accum IS NULL THEN
@@ -14,7 +14,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE AGGREGATE concat_varbit(varbit, integer)
+CREATE AGGREGATE raw_data.concat_varbit(varbit, integer)
 (
     sfunc = concat_varbits,
     stype = varbit,
