@@ -2963,7 +2963,18 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Function to get coverage aggregated by methods of a given build with filters by test sessions and test launches
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_aggregated_coverage BOOLEAN DEFAULT FALSE: Flag to indicate if aggregated coverage should be used
+-- @param input_test_session_id VARCHAR DEFAULT NULL: The ID of the test session (optional)
+-- @param input_test_launch_id VARCHAR DEFAULT NULL: The ID of the test launch (optional)
+-- @param input_env_id VARCHAR DEFAULT NULL: The ID of the environment (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: The start of the coverage period (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @returns TABLE: A table containing methods tests coverage
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_methods_tests_coverage CASCADE;
 
@@ -3082,9 +3093,20 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Function to get coverage aggregated by a given build with filters by test sessions and test launches
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_aggregated_coverage BOOLEAN DEFAULT FALSE: Flag to indicate if aggregated coverage should be used
+-- @param input_test_session_id VARCHAR DEFAULT NULL: The ID of the test session (optional)
+-- @param input_test_launch_id VARCHAR DEFAULT NULL: The ID of the test launch (optional)
+-- @param input_env_id VARCHAR DEFAULT NULL: The ID of the environment (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: The start of the coverage period (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @returns TABLE: A table containing build tests coverage
 -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS raw_data.get_methods_tests_coverage_by_builds CASCADE;
+DROP FUNCTION IF EXISTS raw_data.get_build_tests_coverage CASCADE;
 
 CREATE OR REPLACE FUNCTION raw_data.get_build_tests_coverage(
     input_build_id VARCHAR,
@@ -3428,7 +3450,18 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Function to get recommended tests for a given build
+-- @param input_target_build_id VARCHAR: The ID of the build to be tested
+-- @param input_tests_to_skip BOOLEAN DEFAULT FALSE: A flag indicating that the function will return tests that should be skipped
+-- @param input_test_task_id VARCHAR DEFAULT NULL: The ID of the test task that will be launched for testing (optional)
+-- @param input_test_tag VARCHAR DEFAULT NULL: Coverage collected from tests marked with this test tag (optional)
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
+-- @param input_env_id VARCHAR DEFAULT NULL: Coverage collected from instances marked with this Environment ID (optional)
+-- @param input_branch VARCHAR DEFAULT NULL: Coverage collected from builds of this branch (optional)
+-- @param input_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
+-- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
+-- @returns TABLE: A table containing recommended tests
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_recommended_tests_v4 CASCADE;
 
@@ -3581,7 +3614,20 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Function to get coverage details aggregated by a given build
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_aggregated_coverage BOOLEAN DEFAULT FALSE: Flag to indicate if coverage collected from other builds should be used
+-- @param input_test_tag VARCHAR DEFAULT NULL: Coverage collected from tests marked with this test tag (optional)
+-- @param input_env_id VARCHAR DEFAULT NULL: Coverage collected from instances marked with this Environment ID (optional)
+-- @param input_branch VARCHAR DEFAULT NULL: Coverage collected from builds of this branch (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @param input_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
+-- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
+-- @returns TABLE: A table containing build coverage details
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_build_coverage_v2 CASCADE;
 
@@ -3774,7 +3820,20 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
-
+-- Function to get information about trends in build coverage of a specific branch
+-- @param input_group_id VARCHAR: The ID of the group
+-- @param input_app_id VARCHAR: The ID of the application
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_aggregated_coverage BOOLEAN DEFAULT FALSE: Flag to indicate if aggregated coverage should be used
+-- @param input_test_tag VARCHAR DEFAULT NULL: Coverage collected from tests marked with this test tag (optional)
+-- @param input_env_id VARCHAR DEFAULT NULL: Coverage collected from instances marked with this Environment ID (optional)
+-- @param input_branch VARCHAR DEFAULT NULL: Only builds from this branch are taken into account in trends
+--                                           as well as coverage collected from builds of this branch (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
+-- @param input_builds_limit INT DEFAULT 10: Limit on the number of builds to return
+-- @param input_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
+-- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
+-- @returns TABLE: A table containing build coverage trends
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_build_coverage_trends_v2 CASCADE;
 
