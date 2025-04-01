@@ -32,10 +32,16 @@ class RefreshMaterializedViewJob(
 
     override fun execute(context: JobExecutionContext) {
         val view = context.jobDetail.jobDataMap[VIEW_NAME] as String
-        logger.debug { "Refreshing materialized view '$view'..." }
-        runBlocking {
-            metricsRepository.refreshMaterializedView(view)
+        view.split(",", ";", ignoreCase = true).map(String::trim).forEach {
+            refreshMaterializedView(it)
         }
-        logger.debug { "Materialized view '$view' refreshed." }
+    }
+
+    private fun refreshMaterializedView(viewName: String) {
+        logger.debug { "Refreshing materialized view '$viewName'..." }
+        runBlocking {
+            metricsRepository.refreshMaterializedView(viewName)
+        }
+        logger.debug { "Materialized view '$viewName' refreshed." }
     }
 }
