@@ -3760,11 +3760,11 @@ BEGIN
             SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
 			COUNT(*) AS total_changes,
 			SUM(
-				CASE WHEN coverage.aggregated_covered_probes > 0 THEN 1 ELSE 0 END
-			) AS aggregated_tested_changes,
+                CASE WHEN coverage.isolated_covered_probes > 0 THEN 1 ELSE 0 END
+            ) AS isolated_tested_changes,
 			SUM(
-				CASE WHEN coverage.isolated_covered_probes > 0 THEN 1 ELSE 0 END
-			) AS isolated_tested_changes
+				CASE WHEN coverage.aggregated_covered_probes > 0 THEN 1 ELSE 0 END
+			) AS aggregated_tested_changes
         FROM (
             SELECT * FROM TargetMethodCoverageMaterialized WHERE use_materialized_methods
             UNION ALL
@@ -3783,12 +3783,12 @@ BEGIN
                 ELSE NULL
             END)) AS isolated_covered_probes,
             MAX(coverage.total_methods) AS total_changes,
-			BIT_COUNT(BIT_OR(coverage.tested_methods)) AS aggregated_tested_changes,
-            BIT_COUNT(BIT_OR(CASE
+			BIT_COUNT(BIT_OR(CASE
                 WHEN coverage.build_id = coverage.coverage_build_id
                 THEN coverage.tested_methods
                 ELSE NULL
-            END)) AS isolated_tested_changes
+            END)) AS isolated_tested_changes,
+			BIT_COUNT(BIT_OR(coverage.tested_methods)) AS aggregated_tested_changes
         FROM raw_data.matview_builds_coverage coverage
         WHERE coverage.build_id = input_build_id
           --filter by test tags
