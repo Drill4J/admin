@@ -23,6 +23,7 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.BuildView
 import java.net.URI
 import java.net.URLEncoder
@@ -56,15 +57,28 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getCoverageTreemap(
-        groupId: String,
-        appId: String,
-        buildId: String
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        val data = metricsRepository.getCoverageTreemap(groupId, appId, buildId)
+        val (groupId, appId) = getAppAndGroupIdFromBuildId(buildId)
+        val data = metricsRepository.getMaterializedMethodsCoverage(
+            groupId,
+            appId,
+            buildId,
+            testTag,
+            envId,
+            branch,
+            packageNamePattern,
+            classNamePattern,
+        )
 
         return buildTree(data)
     }
