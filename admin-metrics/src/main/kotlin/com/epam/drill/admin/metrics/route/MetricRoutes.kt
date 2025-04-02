@@ -44,9 +44,12 @@ class Metrics {
     class CoverageTreemap(
         val parent: Metrics,
 
-        val groupId: String,
-        val appId: String,
-        val buildId: String
+        val buildId: String,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
+        val packageNamePattern: String? = null,
+        val classNamePattern: String? = null,
     )
     @Resource("/build-diff-report")
     class BuildDiffReport(
@@ -106,9 +109,12 @@ fun Route.getCoverageTreemap() {
 
     get<Metrics.CoverageTreemap> { params ->
         val treemap = metricsService.getCoverageTreemap(
-            params.groupId,
-            params.appId,
-            params.buildId
+            params.buildId,
+            params.testTag,
+            params.envId,
+            params.branch,
+            params.packageNamePattern,
+            params.classNamePattern,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }

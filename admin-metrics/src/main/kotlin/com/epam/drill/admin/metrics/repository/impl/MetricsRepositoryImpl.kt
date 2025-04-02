@@ -59,10 +59,15 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getCoverageTreemap(
+    override suspend fun getMaterializedMethodsCoverage(
         groupId: String,
         appId: String,
-        buildId: String
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?
     ):  List<Map<String,Any?>> = transaction {
         executeQueryReturnMap(
             """
@@ -70,11 +75,19 @@ class MetricsRepositoryImpl : MetricsRepository {
                 (
                 	SELECT *
                 	FROM raw_data.get_materialized_methods_coverage(
-                		?,
-                		?,
-                		?,
-                		NULL,
-                		TRUE
+                        input_group_id => ?,
+                        input_app_id => ?,
+                        input_build_id => ?,
+                        input_baseline_build_id => NULL,
+                        input_aggregated_coverage => TRUE,
+                        input_test_tag => ?,
+                        input_env_id => ?,
+                        input_branch => ?,
+                        input_coverage_period_from => NULL,
+                        input_package_name_pattern => ?,
+                        input_class_name_pattern => ?,
+                        input_method_name_pattern => NULL,
+                        input_chronological => TRUE
                 	)
                 )
                 SELECT
@@ -89,7 +102,12 @@ class MetricsRepositoryImpl : MetricsRepository {
             """.trimIndent(),
             groupId,
             appId,
-            buildId
+            buildId,
+            testTag,
+            envId,
+            branch,
+            "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
+            "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
         )
     }
 
