@@ -19,24 +19,41 @@ import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.job.VIEW_NAME
 import org.quartz.*
 
-val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-    .storeDurably()
-    .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
-    .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-    .usingJobData(VIEW_NAME, "matview_methods_coverage_v2, matview_builds_coverage")
-    .build()
-
+val refreshMethodsCoverageViewJob = createJob(
+    "refreshMethodsCoverageViewJob",
+    "matview_methods_coverage_v2", "matview_builds_coverage"
+)
 val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
-    get() = TriggerBuilder.newTrigger()
-        .withIdentity("refreshMethodsCoverageViewTrigger", "refreshMaterializedViews")
+    get() = createTrigger("refreshMethodsCoverageViewTrigger")
 
-val refreshTestedBuildsComparisonViewJob = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-    .storeDurably()
-    .withDescription("Job for updating the materialized view 'matview_tested_builds_comparison'.")
-    .withIdentity("refreshTestedBuildsComparisonViewJob", "refreshMaterializedViews")
-    .usingJobData(VIEW_NAME, "matview_tested_builds_comparison")
-    .build()
-
+val refreshTestedBuildsComparisonViewJob = createJob(
+    "refreshTestedBuildsComparisonViewJob",
+    "matview_tested_builds_comparison"
+)
 val refreshTestedBuildsComparisonViewTrigger: TriggerBuilder<Trigger>
-    get() = TriggerBuilder.newTrigger()
-        .withIdentity("refreshTestedBuildsComparisonViewTrigger", "refreshMaterializedViews")
+    get() = createTrigger("refreshTestedBuildsComparisonViewTrigger")
+
+val refreshMethodsWithRulesViewJob = createJob(
+    "refreshMethodsWithRulesViewJob",
+    "matview_methods_with_rules"
+)
+val refreshMethodsWithRulesViewTrigger: TriggerBuilder<Trigger>
+    get() = createTrigger("refreshMethodsWithRulesViewTrigger")
+
+val refreshBuildsViewJob = createJob(
+    "refreshBuildsViewJob",
+    "matview_builds"
+)
+val refreshBuildsViewTrigger: TriggerBuilder<Trigger>
+    get() = createTrigger("refreshBuildsViewTrigger")
+
+private fun createJob(jobName: String, vararg viewNames: String): JobDetail =
+    JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
+        .storeDurably()
+        .withDescription("Job for updating the materialized view '${viewNames.joinToString()}'.")
+        .withIdentity(jobName, "refreshMaterializedViews")
+        .usingJobData(VIEW_NAME, viewNames.joinToString())
+        .build()
+
+private fun createTrigger(triggerName: String): TriggerBuilder<Trigger> = TriggerBuilder.newTrigger()
+    .withIdentity(triggerName, "refreshMaterializedViews")

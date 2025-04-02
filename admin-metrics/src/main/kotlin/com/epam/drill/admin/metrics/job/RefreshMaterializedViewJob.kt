@@ -32,7 +32,7 @@ class RefreshMaterializedViewJob(
 
     override fun execute(context: JobExecutionContext) {
         val view = context.jobDetail.jobDataMap[VIEW_NAME] as String
-        view.split(",", ";", ignoreCase = true).map(String::trim).forEach {
+        view.split(",", ";").map(String::trim).forEach {
             refreshMaterializedView(it)
         }
     }

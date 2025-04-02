@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_methods_coverage_v2;
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_methods_coverage_v2 CASCADE;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_coverage_v2 AS
     SELECT
@@ -29,7 +29,7 @@ CREATE INDEX ON raw_data.matview_methods_coverage_v2(signature, body_checksum, p
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_tested_builds_comparison;
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_tested_builds_comparison CASCADE;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_tested_builds_comparison AS
 SELECT
@@ -45,7 +45,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_tested_builds_comparison_pk ON raw
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_coverage;
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_coverage CASCADE;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds_coverage AS
 WITH
@@ -137,3 +137,50 @@ WITH
   JOIN raw_data.builds coverage_builds ON coverage_builds.id = coverage.coverage_build_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_coverage_pk ON raw_data.matview_builds_coverage (build_id, coverage_build_id, env_id, branch, test_tags);
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_methods_with_rules CASCADE;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_methods_with_rules AS
+SELECT
+    signature,
+    name,
+    classname,
+    params,
+    return_type,
+    body_checksum,
+    probes_count,
+    build_id,
+    group_id,
+    app_id
+FROM raw_data.view_methods_with_rules;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_with_rules_pk ON raw_data.matview_methods_with_rules (build_id, signature);
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds CASCADE;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds AS
+SELECT
+    build_id,
+  	group_id,
+  	app_id,
+  	version_id,
+  	envs,
+  	build_version,
+  	commit_sha,
+  	branch,
+  	commit_date,
+  	commit_author,
+  	commit_message,
+  	created_at,
+  	total_classes,
+  	total_methods,
+  	total_probes
+FROM raw_data.view_builds;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_pk ON raw_data.matview_builds (build_id);

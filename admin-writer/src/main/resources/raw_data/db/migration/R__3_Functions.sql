@@ -4137,3 +4137,118 @@ BEGIN
     JOIN raw_data.methods methods ON methods.build_id = coverage.build_id AND methods.signature = coverage.signature;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Function to get builds changes compared to a baseline build
+-- @param input_baseline_build_id VARCHAR: The ID of the baseline build
+-- @param input_build_id VARCHAR DEFAULT NULL: The ID of the build to compare with the baseline (optional)
+-- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
+-- @returns TABLE: A table containing the builds with changes compared to the baseline
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_builds_compared_to_baseline CASCADE;
+
+CREATE OR REPLACE FUNCTION raw_data.get_builds_compared_to_baseline(
+    input_baseline_build_id VARCHAR,
+	input_build_id VARCHAR DEFAULT NULL,
+    input_materialized BOOLEAN DEFAULT TRUE
+)
+RETURNS TABLE (
+    build_id VARCHAR,
+	equal BIGINT,
+    modified BIGINT,
+	added BIGINT,
+	deleted BIGINT,
+    identity_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+		SELECT
+			m.signature,
+			m.body_checksum
+		FROM raw_data.view_methods_with_rules m
+		WHERE m.build_id = input_baseline_build_id
+    ),
+	MaterializedBaselineMethods AS (
+		SELECT
+			m.signature,
+			m.body_checksum
+		FROM raw_data.matview_methods_with_rules m
+		WHERE m.build_id = input_baseline_build_id
+    ),
+	TargetMethods AS (
+		SELECT
+		    m.build_id,
+			m.signature,
+			m.body_checksum
+		FROM raw_data.view_methods_with_rules m
+		WHERE m.group_id = split_part(input_baseline_build_id, ':', 1)
+          AND m.app_id = split_part(input_baseline_build_id, ':', 2)
+		  AND m.build_id <> input_baseline_build_id
+		  -- filter by build
+		  AND (input_build_id IS NULL OR m.build_id = input_build_id)
+    ),
+	MaterializedTargetMethods AS (
+		SELECT
+		    m.build_id,
+			m.signature,
+			m.body_checksum
+		FROM raw_data.matview_methods_with_rules m
+		WHERE m.group_id = split_part(input_baseline_build_id, ':', 1)
+          AND m.app_id = split_part(input_baseline_build_id, ':', 2)
+		  AND m.build_id <> input_baseline_build_id
+		  -- filter by build
+		  AND (input_build_id IS NULL OR m.build_id = input_build_id)
+    ),
+    ChangedMethods AS (
+        SELECT
+			m.build_id,
+            m.signature,
+            m.body_checksum,
+			baseline.body_checksum AS baseline_body_checksum
+		FROM TargetMethods m
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = m.signature
+    ),
+	MaterializedChangedMethods AS (
+        SELECT
+			m.build_id,
+            m.signature,
+            m.body_checksum,
+			baseline.body_checksum AS baseline_body_checksum
+		FROM MaterializedTargetMethods m
+        LEFT JOIN MaterializedBaselineMethods baseline ON baseline.signature = m.signature
+    ),
+	ChangedBuilds AS (
+		SELECT
+		  	m.build_id,
+			SUM(
+				CASE WHEN m.body_checksum = m.baseline_body_checksum THEN 1 ELSE 0 END
+			) AS equal,
+			SUM(
+				CASE WHEN m.body_checksum <> m.baseline_body_checksum THEN 1 ELSE 0 END
+			) AS modified,
+			SUM(
+				CASE WHEN m.baseline_body_checksum IS NULL THEN 1 ELSE 0 END
+			) AS added,
+			((SELECT COUNT(*) from BaselineMethods) - SUM(
+				CASE WHEN m.baseline_body_checksum IS NOT NULL THEN 1 ELSE 0 END
+			)) AS deleted
+		FROM (
+			SELECT * FROM MaterializedChangedMethods WHERE input_materialized
+			UNION ALL
+			SELECT * FROM ChangedMethods WHERE NOT input_materialized
+		) m
+		GROUP BY m.build_id
+	)
+	SELECT
+    	builds.build_id,
+     	builds.equal,
+	 	builds.modified,
+	 	builds.added,
+	 	builds.deleted,
+	  	(1 - (builds.modified + builds.added + builds.deleted)::FLOAT / (SELECT COUNT(*) FROM BaselineMethods)::FLOAT) AS identity_ratio
+	FROM ChangedBuilds builds
+	ORDER BY identity_ratio DESC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

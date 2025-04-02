@@ -71,7 +71,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
         coverage.created_at,
         builds.created_at AS build_created_at
     FROM raw_data.coverage coverage
-	JOIN raw_data.methods methods ON methods.classname = coverage.classname
+	JOIN raw_data.view_methods_with_rules methods ON methods.classname = coverage.classname
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id
     JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
@@ -377,3 +377,27 @@ SELECT
 	env_id
 FROM TestedMethods
 GROUP BY test_launch_id, target_build_id, tested_build_id, env_id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_builds AS
+SELECT
+  b.id AS build_id,
+  b.group_id,
+  b.app_id,
+  split_part(b.id, ':', 3) AS version_id,
+  (SELECT STRING_AGG(DISTINCT env_id, ', ') from raw_data.instances where env_id != '' and build_id = b.id) AS envs,
+  b.build_version,
+  b.commit_sha,
+  b.branch,
+  b.commit_date,
+  b.commit_author,
+  b.commit_message,
+  b.created_at AS created_at,
+  COUNT(DISTINCT m.classname) AS total_classes,
+  COUNT(*) AS total_methods,
+  SUM(m.probes_count) AS total_probes
+FROM raw_data.builds b
+JOIN raw_data.view_methods_with_rules m ON b.id = m.build_id
+GROUP BY b.id;
