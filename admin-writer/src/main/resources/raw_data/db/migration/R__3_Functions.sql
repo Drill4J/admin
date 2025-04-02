@@ -3945,12 +3945,12 @@ BEGIN
             SUM(coverage.aggregated_covered_probes) AS aggregated_covered_probes,
             SUM(coverage.isolated_covered_probes) AS isolated_covered_probes,
             COUNT(*) AS total_changes,
+            SUM(
+                CASE WHEN coverage.aggregated_covered_probes > 0 THEN 1 ELSE 0 END
+            ) AS aggregated_tested_changes,
 			SUM(
 				CASE WHEN coverage.isolated_covered_probes > 0 THEN 1 ELSE 0 END
-			) AS isolated_tested_changes,
-			SUM(
-				CASE WHEN coverage.aggregated_covered_probes > 0 THEN 1 ELSE 0 END
-			) AS aggregated_tested_changes
+			) AS isolated_tested_changes
         FROM TargetMethodCoverage coverage
         GROUP BY coverage.build_id
     ),
