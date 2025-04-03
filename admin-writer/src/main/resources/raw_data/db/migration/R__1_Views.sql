@@ -39,7 +39,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         probes_count,
         build_id,
         group_id,
-        app_id
+        app_id,
+        probe_start_pos
     FROM raw_data.methods m
     WHERE probes_count > 0
         AND NOT EXISTS (

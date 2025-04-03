@@ -154,7 +154,8 @@ SELECT
     probes_count,
     build_id,
     group_id,
-    app_id
+    app_id,
+    probe_start_pos
 FROM raw_data.view_methods_with_rules;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_with_rules_pk ON raw_data.matview_methods_with_rules (build_id, signature);
