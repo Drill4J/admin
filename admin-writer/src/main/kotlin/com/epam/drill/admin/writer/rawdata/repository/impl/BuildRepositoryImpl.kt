@@ -38,7 +38,7 @@ class BuildRepositoryImpl: BuildRepository {
             it[buildVersion] = build.buildVersion
             it[instanceId] = build.instanceId
             it[branch] = build.branch
-            it[commitDate] = build.commitDate
+            it[committedAt] = build.commitDate
             it[commitAuthor] = build.commitAuthor
             it[commitMessage] = build.commitMessage
         }

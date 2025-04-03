@@ -51,9 +51,9 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
                     "appId": "$testApp",
                     "buildVersion": "$testBuildVersion",
                     "branch": "main",
-                    "commitSha": "123456",
+                    "commitSha": "d3516472fd72cd0f9ccb7a1dc4b5e7b80a014fd2",
                     "commitMessage": "Initial commit",
-                    "commitDate": "2021-01-01T00:00:00",
+                    "commitDate": "Thu Feb 27 10:06:24 2025 +0100",
                     "commitAuthor": "John Doe"
                 }
                 """.trimIndent()
@@ -79,7 +79,7 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
             assertNotNull(it[BuildTable.commitSha])
             assertNotNull(it[BuildTable.commitAuthor])
             assertNotNull(it[BuildTable.commitMessage])
-            assertNotNull(it[BuildTable.commitDate])
+            assertNotNull(it[BuildTable.committedAt])
             assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
         }
     }
