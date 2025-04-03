@@ -23,7 +23,7 @@ val refreshMethodsCoverageViewJob = JobBuilder.newJob(RefreshMaterializedViewJob
     .storeDurably()
     .withDescription("Job for updating the materialized view 'matview_methods_coverage'.")
     .withIdentity("refreshMethodsCoverageViewJob", "refreshMaterializedViews")
-    .usingJobData(VIEW_NAME, "matview_methods_coverage_v2")
+    .usingJobData(VIEW_NAME, "matview_methods_coverage_v2, matview_builds_coverage")
     .build()
 
 val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
