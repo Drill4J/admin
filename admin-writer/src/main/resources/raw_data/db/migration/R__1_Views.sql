@@ -392,13 +392,14 @@ SELECT
   b.build_version,
   b.commit_sha,
   b.branch,
-  b.commit_date,
+  b.commit_date,--deprecated
   b.commit_author,
   b.commit_message,
   b.created_at AS created_at,
   COUNT(DISTINCT m.classname) AS total_classes,
   COUNT(*) AS total_methods,
-  SUM(m.probes_count) AS total_probes
+  SUM(m.probes_count) AS total_probes,
+  COALESCE(b.committed_at, b.created_at) AS committed_at
 FROM raw_data.builds b
 JOIN raw_data.view_methods_with_rules m ON b.id = m.build_id
 GROUP BY b.id;

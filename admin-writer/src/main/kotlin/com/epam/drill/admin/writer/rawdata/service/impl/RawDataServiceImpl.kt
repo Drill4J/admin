@@ -23,6 +23,11 @@ import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import kotlinx.datetime.*
+import kotlinx.datetime.TimeZone
+import java.time.LocalDateTime
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 private const val EXEC_DATA_BATCH_SIZE = 100
 
@@ -53,7 +58,7 @@ class RawDataServiceImpl(
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
             branch = buildPayload.branch,
-            commitDate = buildPayload.commitDate,
+            commitDate = buildPayload.commitDate?.let { convertGitDefaultDateTime(it) },
             commitMessage = buildPayload.commitMessage,
             commitAuthor = buildPayload.commitAuthor
         )
@@ -234,5 +239,10 @@ class RawDataServiceImpl(
         transaction {
             methodIgnoreRuleRepository.deleteById(ruleId)
         }
+    }
+
+    private fun convertGitDefaultDateTime(commitDate: String): LocalDateTime {
+        return ZonedDateTime.parse(commitDate, DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH))
+            .toLocalDateTime()
     }
 }

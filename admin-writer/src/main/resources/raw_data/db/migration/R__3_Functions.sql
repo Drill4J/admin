@@ -3905,7 +3905,7 @@ BEGIN
 		  AND (input_branch IS NULL OR builds.branch = input_branch)
 		  --filter by builds period from
 		  AND (input_coverage_period_from IS NULL OR builds.created_at >= input_coverage_period_from)
-		ORDER BY builds.created_at DESC
+		ORDER BY COALESCE(builds.committed_at, builds.created_at) DESC
 		LIMIT input_builds_limit
 	),
 	BaselineMethods AS (

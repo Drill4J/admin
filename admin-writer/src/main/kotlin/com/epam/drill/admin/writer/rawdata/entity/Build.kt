@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import java.time.LocalDateTime
+
 class Build(
     val id: String,
     val groupId: String,
@@ -23,7 +25,7 @@ class Build(
     val buildVersion: String?,
     val branch: String?,
     val instanceId: String?,
-    val commitDate: String?,
+    val commitDate: LocalDateTime?,
     val commitMessage: String?,
     val commitAuthor: String?
 )
