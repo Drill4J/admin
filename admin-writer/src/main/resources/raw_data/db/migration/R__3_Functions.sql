@@ -3896,7 +3896,7 @@ BEGIN
 	Builds AS (
 		SELECT
 			builds.id AS build_id,
-			COALESCE(builds.build_version, builds.commit_sha, builds.instance_id) AS build_version,
+			split_part(builds.id, ':', 3) AS version_id,
 			builds.created_at AS build_created_at
 		FROM raw_data.builds builds
 		WHERE builds.group_id = input_group_id
@@ -4003,7 +4003,7 @@ BEGIN
     )
     SELECT
         coverage.build_id::VARCHAR,
-        builds.build_version,
+        builds.version_id::VARCHAR AS build_version,
         coverage.total_probes::INT,
         COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
         (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
