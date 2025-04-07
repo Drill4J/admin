@@ -25,6 +25,7 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.BuildView
+import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -36,6 +37,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
+    private val logger = KotlinLogging.logger {}
 
     override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
         return transaction {
@@ -83,11 +85,11 @@ class MetricsServiceImpl(
         return buildTree(data)
     }
 
-    fun buildTree(data: List<Map<String, Any?>>): List<Map<String, Any?>> {
+    private fun buildTree(data: List<Map<String, Any?>>): List<Map<String, Any?>> {
         val nodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
         val rootNodes = mutableSetOf<String>()
 
-        // Step 1: Build tree structure
+        // Step 1: Build full uncollapsed tree
         for (item in data) {
             val pathParts = (item["name"] as String).split("/")
             var currentPath = ""
@@ -104,8 +106,8 @@ class MetricsServiceImpl(
                     nodeMap[currentPath] = mutableMapOf(
                         "name" to nodePart,
                         "full_name" to currentPath,
-                        "probes_count" to 0,
-                        "covered_probes" to 0,
+                        "probes_count" to 0L,
+                        "covered_probes" to 0L,
                         "children" to mutableSetOf<String>(),
                         "parent" to if (index == 0) null else pathParts.subList(0, index).joinToString("/"),
                         "params" to if (index == pathParts.lastIndex) item["params"] else null,
@@ -115,78 +117,133 @@ class MetricsServiceImpl(
 
                 if (index > 0) {
                     val parentPath = pathParts.subList(0, index).joinToString("/")
-                    (nodeMap[parentPath]?.get("children") as MutableSet<String>).add(currentPath)
+                    val parentNode = nodeMap.getValue(parentPath)
+                    (parentNode["children"] as MutableSet<String>).add(currentPath)
                 }
             }
 
-            val leafNode = nodeMap[currentPath]!!
-            leafNode["probes_count"] = item["probes_count"]!!
-            leafNode["covered_probes"] = item["covered_probes"]!!
+            val leafNode = nodeMap.getValue(currentPath)
+            leafNode["probes_count"] = item["probes_count"] as Long
+            leafNode["covered_probes"] = item["covered_probes"] as Long
         }
 
-        // Validation function to check tree structure
+        // Step 2: Collapse into a new map
+        val collapsedNodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
+
+        fun collapseAndCopy(path: String, parentPath: String?): String {
+            var node = nodeMap.getValue(path)
+            var name = node["name"] as String
+            var fullName = path
+            var currentPath = path
+            var children = node["children"] as Set<String>
+
+            while (children.size == 1) {
+                val childPath = children.first()
+                val child = nodeMap[childPath] ?: break
+                val grandChildren = child["children"] as Set<String>
+
+                val isSecondToLast = grandChildren.any { (nodeMap[it]?.get("children") as? Set<*>)?.isEmpty() == true }
+                if (isSecondToLast) break
+
+                val childName = child["name"] as String
+                name = "$name/$childName"
+                fullName = child["full_name"] as String
+                currentPath = fullName
+                node = child
+                children = grandChildren
+            }
+
+            val newNode = mutableMapOf(
+                "name" to name,
+                "full_name" to fullName,
+                "parent" to parentPath,
+                "probes_count" to node["probes_count"] as Long,
+                "covered_probes" to node["covered_probes"] as Long,
+                "params" to node["params"],
+                "return_type" to node["return_type"],
+                "children" to mutableSetOf<String>()
+            )
+            collapsedNodeMap[fullName] = newNode
+
+            for (child in children) {
+                val newChildPath = collapseAndCopy(child, fullName)
+                (newNode["children"] as MutableSet<String>).add(newChildPath)
+            }
+
+            return fullName
+        }
+
+        for ((path, node) in nodeMap) {
+            if (node["parent"] == null) rootNodes.add(path)
+        }
+
+        val newRoots = mutableSetOf<String>()
+        for (root in rootNodes) {
+            val collapsedRoot = collapseAndCopy(root, null)
+            newRoots.add(collapsedRoot)
+        }
+
+        // Step 3: Validate
         fun validateTreeStructure() {
-            var isValid = true
+            for ((path, node) in collapsedNodeMap) {
+                val children = node["children"] as Set<String>
+                for (child in children) {
+                    require(collapsedNodeMap.containsKey(child)) {
+                        "Invalid tree: '$path' has non-existent child '$child'"
+                    }
+                    val childNode = collapsedNodeMap.getValue(child)
+                    require(childNode["parent"] == path) {
+                        "Invalid tree: child's parent mismatch at '$child'"
+                    }
+                }
+            }
+
             for (item in data) {
                 val pathParts = (item["name"] as String).split("/")
                 var currentPath = ""
-
                 for ((index, part) in pathParts.withIndex()) {
                     var nodePart = part
                     if (index == pathParts.lastIndex) {
                         nodePart += "(${item["params"]}) -> ${item["return_type"]}"
                     }
                     currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
-                    if (!nodeMap.containsKey(currentPath)) {
-                        println("Missing node in tree: $currentPath")
-                        isValid = false
-                    }
                 }
-            }
-            if (isValid) {
-                println("Tree structure validation passed.")
-            } else {
-                println("Tree structure validation failed.")
+                require(collapsedNodeMap.containsKey(currentPath)) {
+                    "Missing node in collapsed tree: $currentPath"
+                }
             }
         }
 
         validateTreeStructure()
 
-        // Step 2: Compute aggregates recursively
-        fun computeAggregates(nodePath: String) {
-            val node = nodeMap[nodePath]!!
+        // Step 4: Aggregation
+        fun computeAggregates(path: String) {
+            val node = collapsedNodeMap.getValue(path)
             val children = node["children"] as MutableSet<String>
-            for (childPath in children) {
-                computeAggregates(childPath)
-                val child = nodeMap[childPath]!!
-                node["probes_count"] = (node["probes_count"] as Number).toLong() + (child["probes_count"] as Number).toLong()
-                node["covered_probes"] = (node["covered_probes"] as Number).toLong() + (child["covered_probes"] as Number).toLong()
+            for (child in children) {
+                computeAggregates(child)
+                val childNode = collapsedNodeMap.getValue(child)
+                node["probes_count"] = (node["probes_count"] as Long) + (childNode["probes_count"] as Long)
+                node["covered_probes"] = (node["covered_probes"] as Long) + (childNode["covered_probes"] as Long)
             }
         }
 
-        for ((path, node) in nodeMap) {
-            if (node["parent"] == null) rootNodes.add(path)
-        }
-        for (root in rootNodes) {
+        for (root in newRoots) {
             computeAggregates(root)
         }
 
-        // Step 3: Flatten tree into an array
-        val result = mutableListOf<Map<String, Any?>>()
-        for (node in nodeMap.values) {
-            result.add(
-                mapOf(
-                    "name" to node["name"],
-                    "full_name" to node["full_name"],
-                    "parent" to node["parent"],
-                    "probes_count" to node["probes_count"],
-                    "covered_probes" to node["covered_probes"],
-                    "params" to node["params"],
-                    "return_type" to node["return_type"]
-                )
+        // Step 5: Flatten
+        return collapsedNodeMap.values.map {
+            mapOf(
+                "name" to it["name"],
+                "full_name" to it["full_name"],
+                "parent" to it["parent"],
+                "probes_count" to it["probes_count"],
+                "covered_probes" to it["covered_probes"],
+                "params" to it["params"],
+                "return_type" to it["return_type"]
             )
         }
-        return result
     }
 
     override suspend fun getBuildDiffReport(
