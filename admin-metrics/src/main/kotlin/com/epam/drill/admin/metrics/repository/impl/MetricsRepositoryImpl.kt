@@ -103,9 +103,9 @@ class MetricsRepositoryImpl : MetricsRepository {
             groupId,
             appId,
             buildId,
-            testTag,
-            envId,
-            branch,
+            testTag.takeUnless { it.isNullOrBlank() },
+            envId.takeUnless { it.isNullOrBlank() },
+            branch.takeUnless { it.isNullOrBlank() },
             "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
             "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
         )
