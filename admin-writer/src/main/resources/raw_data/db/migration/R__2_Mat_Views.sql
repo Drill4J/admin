@@ -175,13 +175,14 @@ SELECT
   	build_version,
   	commit_sha,
   	branch,
-  	commit_date,
+  	commit_date,--deprecated
   	commit_author,
   	commit_message,
   	created_at,
   	total_classes,
   	total_methods,
-  	total_probes
+  	total_probes,
+  	committed_at
 FROM raw_data.view_builds;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_pk ON raw_data.matview_builds (build_id);
