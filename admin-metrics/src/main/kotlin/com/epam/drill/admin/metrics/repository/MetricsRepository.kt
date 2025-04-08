@@ -26,7 +26,8 @@ interface MetricsRepository {
     suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        useMaterializedViews: Boolean = false
     ): Map<String, String>
 
     suspend fun refreshMaterializedView(viewName: String)
@@ -36,6 +37,7 @@ interface MetricsRepository {
         baselineBuildId: String? = null,
         testsToSkip: Boolean = false,
         testTaskId: String? = null,
-        coveragePeriodFrom: LocalDateTime ?= null
+        coveragePeriodFrom: LocalDateTime ?= null,
+        useMaterializedViews: Boolean = false
     ): List<Map<String, Any?>>
 }
