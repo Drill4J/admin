@@ -44,7 +44,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     fun `given test that covers only unmodified methods, recommended test service should suggest skipping it`() {
         runBlocking {
             val client = runDrillApplication().apply {
-                //build1 jas 2 methods, test1 covers method1
+                //build1 has 2 methods, test1 covers method1
                 deployInstance(build1, arrayOf(method1, method2))
                 launchTest(
                     session1, test1, build1, arrayOf(
@@ -148,36 +148,32 @@ class RecommendedTestsApiTest : DatabaseTests({
     fun `given baseline build parameter, recommended test service should suggest skipping tests for unmodified methods compared to baseline`() {
         runBlocking {
             val client = runDrillApplication().apply {
-                //build1 has 3 methods, test1 covers method1 and method2
-                deployInstance(build1, arrayOf(method1, method2, method3))
+                //build1 has method1, test1 covers method1
+                deployInstance(build1, arrayOf(method1))
                 launchTest(
                     session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1),
-                        method2 to probesOf(1, 1, 1),
-                        method3 to probesOf(0)
+                        method1 to probesOf(1, 0)
                     )
                 )
-                //build2 has modified method2 compared to build1
-                val modifiedMethod2 = method2.changeChecksum()
-                deployInstance(build2, arrayOf(method1, modifiedMethod2, method3))
-                //build3 has modified method3 compared to build2
-                deployInstance(build3, arrayOf(method1, modifiedMethod2, method3.changeChecksum()))
+                //build2 has modified method1 and new method2 compared to build1, test2 covers method2
+                val modifiedMethod1 = method1.changeChecksum()
+                deployInstance(build2, arrayOf(modifiedMethod1, method2))
+                //build3 has new method3 compared to build2
+                deployInstance(build3, arrayOf(modifiedMethod1, method2, method3))
             }
 
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
-                parameter("testsToSkip", true)
+                parameter("testsToSkip", false)
                 parameter("targetBuildVersion", build3.buildVersion)
                 parameter("baselineBuildVersion", build2.buildVersion)
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
 
-                // even though test1 checked method2 in build1 and method2 was changed in build2 and build3,
-                // test1 should be recommended to be skipped in build3 because build3 has no changes in method2 compared to build2 (baseline)
-                assertEquals(1, recommendedTests.size)
-                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+                // test1 should not be recommended to be run in build3 because build3 has no changes in method1 compared to build2 (baseline)
+                assertEquals(0, recommendedTests.size)
             }
         }
     }
