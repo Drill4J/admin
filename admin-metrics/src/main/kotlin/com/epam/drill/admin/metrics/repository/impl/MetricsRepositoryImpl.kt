@@ -60,8 +60,6 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuildDiffReport(
-        groupId: String,
-        appId: String,
         targetBuildId: String,
         baselineBuildId: String,
         coverageThreshold: Double
@@ -71,12 +69,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                     WITH 
                     Risks AS (
                         SELECT * 
-                        FROM raw_data.get_methods_coverage(
-                            input_group_id => ?,
-                            input_app_id => ?,
+                        FROM raw_data.get_methods_coverage_v2(                        
                             input_build_id => ?, 
                             input_baseline_build_id => ?,
-                            input_aggregated_coverage => true                            
+                            input_aggregated_coverage => true,
+                            input_materialized => false
                         )	
                     ),
                     RecommendedTests AS (
@@ -95,8 +92,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT CAST(SUM(aggregated_covered_probes) AS FLOAT) / SUM(probes_count) FROM Risks) as coverage,
                         (SELECT count(*) FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
-            groupId,
-            appId,
             targetBuildId,
             baselineBuildId,
             targetBuildId,

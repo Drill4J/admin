@@ -88,7 +88,7 @@ class MetricsServiceImpl(
                 throw BuildNotFound("Build info not found for $buildId")
             }
 
-            val metrics = metricsRepository.getBuildDiffReport(groupId, appId, buildId, baselineBuildId, coverageThreshold)
+            val metrics = metricsRepository.getBuildDiffReport(buildId, baselineBuildId, coverageThreshold)
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
