@@ -112,7 +112,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String?,
         testsToSkip: Boolean,
         testTaskId: String?,
-        coveragePeriodFrom: LocalDateTime
+        coveragePeriodFrom: LocalDateTime?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """            

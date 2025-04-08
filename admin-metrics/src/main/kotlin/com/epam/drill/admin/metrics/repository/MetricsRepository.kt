@@ -36,6 +36,6 @@ interface MetricsRepository {
         baselineBuildId: String? = null,
         testsToSkip: Boolean = false,
         testTaskId: String? = null,
-        coveragePeriodFrom: LocalDateTime
+        coveragePeriodFrom: LocalDateTime ?= null
     ): List<Map<String, Any?>>
 }

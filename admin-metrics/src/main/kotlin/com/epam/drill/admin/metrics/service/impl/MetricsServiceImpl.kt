@@ -192,7 +192,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Target build info not found for $targetBuildId")
         }
 
-        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays).let {
+        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
             LocalDateTime.now().minusDays(it.toLong())
         }
 
