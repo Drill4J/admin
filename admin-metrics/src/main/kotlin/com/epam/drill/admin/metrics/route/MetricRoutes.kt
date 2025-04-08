@@ -54,6 +54,7 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
         val coverageThreshold: Double = 1.0, // TODO Float should be enough
+        val useMaterializedViews: Boolean? = null
     )
 
     @Resource("/recommended-tests")
@@ -71,6 +72,7 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
         val coveragePeriodDays: Int? = null,
+        val useMaterializedViews: Boolean? = null
     )
 }
 
@@ -106,7 +108,8 @@ fun Route.getBuildDiffReport() {
             params.baselineInstanceId,
             params.baselineCommitSha,
             params.baselineBuildVersion,
-            params.coverageThreshold
+            params.coverageThreshold,
+            params.useMaterializedViews
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -127,7 +130,8 @@ fun Route.getRecommendedTests() {
             targetBuildVersion = params.targetBuildVersion,
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion
+            baselineBuildVersion = params.baselineBuildVersion,
+            useMaterializedViews = params.useMaterializedViews
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }

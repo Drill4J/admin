@@ -64,7 +64,8 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?> {
         return transaction {
 
@@ -88,7 +89,11 @@ class MetricsServiceImpl(
                 throw BuildNotFound("Build info not found for $buildId")
             }
 
-            val metrics = metricsRepository.getBuildDiffReport(groupId, appId, buildId, baselineBuildId, coverageThreshold)
+            val metrics = metricsRepository.getBuildDiffReport(
+                buildId,
+                baselineBuildId,
+                coverageThreshold,
+                useMaterializedViews ?: false)
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
@@ -157,7 +162,8 @@ class MetricsServiceImpl(
         targetBuildVersion: String?,
         baselineInstanceId: String?,
         baselineCommitSha: String?,
-        baselineBuildVersion: String?
+        baselineBuildVersion: String?,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?> = transaction {
         val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
@@ -192,7 +198,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Target build info not found for $targetBuildId")
         }
 
-        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays).let {
+        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
             LocalDateTime.now().minusDays(it.toLong())
         }
 
@@ -201,7 +207,8 @@ class MetricsServiceImpl(
             baselineBuildId = baselineBuildId,
             testsToSkip = testsToSkip,
             testTaskId = testTaskId,
-            coveragePeriodFrom = coveragePeriodFrom
+            coveragePeriodFrom = coveragePeriodFrom,
+            useMaterializedViews = useMaterializedViews ?: false
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,

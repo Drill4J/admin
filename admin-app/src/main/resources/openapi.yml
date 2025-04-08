@@ -17,6 +17,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: useMaterializedViews
+          in: query
+          description: Indicates whether to use materialized views for the query.
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Group settings retrieved
@@ -36,6 +43,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: useMaterializedViews
+          in: query
+          description: Indicates whether to use materialized views for the query.
+          required: false
+          schema:
+            type: boolean
+            default: false
       requestBody:
         required: true
         content:
