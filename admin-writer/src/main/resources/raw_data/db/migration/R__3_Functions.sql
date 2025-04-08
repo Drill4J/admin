@@ -3504,13 +3504,19 @@ CREATE OR REPLACE FUNCTION raw_data.get_recommended_tests_v4(
     tags VARCHAR[],
     metadata JSON
 ) AS $$
+DECLARE
+    use_materialized BOOLEAN;
 BEGIN
+	use_materialized := input_materialized
+        AND input_baseline_build_id IS NULL
+		AND input_chronological IS TRUE;
+
     RETURN QUERY
     WITH
     BaselineMethods AS (
         SELECT
             baseline.signature,
-             baseline.body_checksum
+            baseline.body_checksum
         FROM raw_data.view_methods_with_rules baseline
         WHERE baseline.build_id = input_baseline_build_id
     ),
@@ -3552,12 +3558,12 @@ BEGIN
           AND (input_test_tag IS NULL OR input_test_tag = ANY(tested.test_tags))
         GROUP BY tested.test_definition_id, tested.test_launch_id
     ),
-    TestsToRun AS (
+    RecommendedTests AS (
         SELECT
             tests.test_definition_id
         FROM TestedBuildsComparison tests
         GROUP BY tests.test_definition_id
-        HAVING BOOL_AND(tests.has_changed_methods) = TRUE
+        HAVING BOOL_AND(tests.has_changed_methods) = NOT input_tests_to_skip
     ),
     TestedBuildsComparisonMaterialized AS (
         SELECT
@@ -3581,12 +3587,12 @@ BEGIN
           --filter by test tag
           AND (input_test_tag IS NULL OR input_test_tag = ANY(td.tags))
     ),
-    TestsToRunMaterialized AS (
+    RecommendedTestsMaterialized AS (
         SELECT
             tests.test_definition_id
         FROM TestedBuildsComparisonMaterialized tests
         GROUP BY tests.test_definition_id
-        HAVING BOOL_AND(tests.has_changed_methods) = TRUE
+        HAVING BOOL_AND(tests.has_changed_methods) = NOT input_tests_to_skip
     )
     SELECT
         tests.id,
@@ -3599,37 +3605,12 @@ BEGIN
     WHERE tests.group_id = split_part(input_target_build_id, ':', 1)
       AND (
 	  	  --filter by materialized view
-		  ((input_materialized IS TRUE AND input_baseline_build_id IS NULL AND input_chronological IS TRUE)
-	        AND (
-	            --filter by tests to run
-	            (input_tests_to_skip IS FALSE AND EXISTS (SELECT 1 FROM TestsToRunMaterialized runs WHERE runs.test_definition_id = tests.id))
-	            --filter by tests to skip
-	            OR (input_tests_to_skip IS TRUE AND NOT EXISTS (SELECT 1 FROM TestsToRunMaterialized runs WHERE runs.test_definition_id = tests.id))
-	        )
-	      )
+		  (use_materialized AND EXISTS (SELECT 1 FROM RecommendedTestsMaterialized rtests WHERE rtests.test_definition_id = tests.id))
+	      OR
 	      --filter by non materialized view
-	      OR ((input_materialized IS FALSE OR input_baseline_build_id IS NOT NULL OR input_chronological IS FALSE)
-	        AND (
-	            --filter by tests to run
-	            (input_tests_to_skip IS FALSE AND EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
-	            --filter by tests to skip
-	            OR (input_tests_to_skip IS TRUE AND NOT EXISTS (SELECT 1 FROM TestsToRun runs WHERE runs.test_definition_id = tests.id))
-	        )
-	      )
+	      (NOT use_materialized AND EXISTS (SELECT 1 FROM RecommendedTests rtests WHERE rtests.test_definition_id = tests.id))
 	  )
-      --filter by test task id in case of tests to skip
-      AND (input_test_task_id IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
-        SELECT DISTINCT tl.test_definition_id
-        FROM raw_data.test_launches tl
-        JOIN raw_data.test_sessions ts ON ts.id = tl.test_session_id
-        WHERE ts.test_task_id = input_test_task_id
-      ))
-      --filter by test tag in case of tests to skip
-      AND (input_test_tag IS NULL OR input_tests_to_skip IS FALSE OR tests.id IN (
-        SELECT td.id
-        FROM raw_data.test_definitions td
-        WHERE input_test_tag = ANY(td.tags)
-      ));
+	 ;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
