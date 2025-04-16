@@ -70,13 +70,20 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
         SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS probes,
         BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS covered_probes,
         coverage.created_at,
-        builds.created_at AS build_created_at
+        builds.created_at AS build_created_at,
+        launches.result AS test_result,
+        launches.id AS test_launch_id,
+        sessions.id AS test_session_id,
+        sessions.test_task_id AS test_task_id,
+        definitions.id AS test_definition_id,
+        definitions.path AS test_path
     FROM raw_data.coverage coverage
 	JOIN raw_data.view_methods_with_rules methods ON methods.classname = coverage.classname
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id
     JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
 	LEFT JOIN raw_data.test_definitions definitions ON definitions.id = launches.test_definition_id
+	LEFT JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
     WHERE TRUE
 	  AND methods.probes_count > 0
 	  AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
@@ -117,7 +124,7 @@ CREATE OR REPLACE VIEW raw_data.view_test_sessions AS
     GROUP BY ts.id;
 
 -----------------------------------------------------------------
-
+-- Deprecated, use raw_data.view_methods_coverage_v2
 -----------------------------------------------------------------
 CREATE OR REPLACE VIEW raw_data.view_methods_tests_coverage AS
     SELECT
