@@ -45,9 +45,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_tested_builds_comparison_pk ON raw
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_coverage CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_coverage_v2 CASCADE;
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds_coverage AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds_coverage_v2 AS
 WITH
   Methods AS (
 	SELECT
@@ -81,9 +81,9 @@ WITH
 		methods.method_num,
 		coverage.build_id AS coverage_build_id,
 		coverage.env_id,
-		coverage.test_tags,
+		coverage.test_launch_id,
 		BIT_OR(coverage.probes) AS probes
-	FROM raw_data.matview_methods_coverage_v2 coverage
+	FROM raw_data.view_methods_coverage_v2 coverage
 	JOIN Methods methods ON coverage.signature = methods.signature
 	  AND coverage.body_checksum = methods.body_checksum
 	  AND coverage.probes_count = methods.probes_count
@@ -91,15 +91,15 @@ WITH
 	  AND coverage.app_id = methods.app_id
 	  --filter by chronological order
 	  AND coverage.build_created_at <= methods.build_created_at
-   	GROUP BY methods.build_id, coverage.build_id, coverage.env_id, coverage.test_tags, methods.signature, methods.probes_count, methods.probes_start, methods.method_num
-	ORDER BY methods.build_id, coverage.build_id, coverage.env_id, coverage.test_tags, methods.signature
+   	GROUP BY methods.build_id, coverage.build_id, coverage.env_id, coverage.test_launch_id, methods.signature, methods.probes_count, methods.probes_start, methods.method_num
+	ORDER BY methods.build_id, coverage.build_id, coverage.env_id, coverage.test_launch_id, methods.signature
   ),
   CoverageGroupedByBuilds AS (
 	SELECT
 		coverage.target_build_id,
 		coverage.coverage_build_id,
 		coverage.env_id,
-		coverage.test_tags,
+		coverage.test_launch_id,
 		raw_data.CONCAT_VARBIT(coverage.probes::VARBIT, coverage.probes_start::INT) AS probes,
 		raw_data.CONCAT_VARBIT(CASE
 			WHEN BIT_COUNT(coverage.probes) > 0
@@ -107,14 +107,14 @@ WITH
 			ELSE REPEAT('0', 1)::VARBIT
 		END, coverage.method_num::INT) AS tested_methods
 	FROM CoverageGroupedByMethods coverage
-	GROUP BY coverage.target_build_id, coverage.coverage_build_id, coverage.env_id, coverage.test_tags
+	GROUP BY coverage.target_build_id, coverage.coverage_build_id, coverage.env_id, coverage.test_launch_id
   ),
   AugmentedCoverageGroupedByBuilds AS (
 	SELECT
 		coverage.target_build_id,
 		coverage.coverage_build_id,
 		coverage.env_id,
-		coverage.test_tags,
+		coverage.test_launch_id,
 		coverage.probes || (REPEAT('0', (builds.total_probes - BIT_LENGTH(coverage.probes))::INT)::VARBIT) AS probes,
 		coverage.tested_methods || REPEAT('0', (builds.total_methods - BIT_LENGTH(coverage.tested_methods))::INT)::VARBIT AS tested_methods,
 		builds.total_probes,
@@ -128,7 +128,7 @@ WITH
 	coverage.coverage_build_id AS coverage_build_id,
 	coverage_builds.branch,
 	coverage.env_id,
-	coverage.test_tags,
+	coverage.test_launch_id,
 	coverage.total_probes,
 	coverage.probes,
 	coverage.total_methods,
@@ -136,7 +136,7 @@ WITH
   FROM AugmentedCoverageGroupedByBuilds coverage
   JOIN raw_data.builds coverage_builds ON coverage_builds.id = coverage.coverage_build_id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_coverage_pk ON raw_data.matview_builds_coverage (build_id, coverage_build_id, env_id, branch, test_tags);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_coverage_v2_pk ON raw_data.matview_builds_coverage_v2 (build_id, coverage_build_id, env_id, branch, test_launch_id);
 
 -----------------------------------------------------------------
 

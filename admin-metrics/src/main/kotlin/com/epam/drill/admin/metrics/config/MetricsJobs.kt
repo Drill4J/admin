@@ -21,7 +21,7 @@ import org.quartz.*
 
 val refreshMethodsCoverageViewJob = createJob(
     "refreshMethodsCoverageViewJob",
-    "matview_methods_coverage_v2", "matview_builds_coverage"
+    "matview_methods_coverage_v2"
 )
 val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshMethodsCoverageViewTrigger")
@@ -46,6 +46,13 @@ val refreshBuildsViewJob = createJob(
 )
 val refreshBuildsViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshBuildsViewTrigger")
+
+val refreshBuildsCoverageViewJob = createJob(
+    "refreshBuildsCoverageViewJob",
+    "matview_builds_coverage_v2"
+)
+val refreshBuildsCoverageViewTrigger: TriggerBuilder<Trigger>
+    get() = createTrigger("refreshBuildsCoverageViewTrigger")
 
 private fun createJob(jobName: String, vararg viewNames: String): JobDetail =
     JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
