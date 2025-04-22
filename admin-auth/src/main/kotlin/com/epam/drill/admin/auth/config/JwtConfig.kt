@@ -20,7 +20,7 @@ import mu.KotlinLogging
 import java.util.*
 import javax.crypto.KeyGenerator
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.days
 
 private val logger = KotlinLogging.logger {}
 
@@ -51,10 +51,10 @@ class JwtConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("issuer")?.getString() ?: "Drill4J App"
 
     /**
-     * A lifetime of a JWT. Optional, 60 minutes by default.
+     * A lifetime of a JWT. Optional, 1 day by default.
      */
     val lifetime: Duration
-        get() = config.propertyOrNull("lifetime")?.getDuration() ?: 60.minutes
+        get() = config.propertyOrNull("lifetime")?.getDuration() ?: 1.days
 
     /**
      * An JWT audience. Optional, empty by default.
