@@ -31,6 +31,7 @@ interface MetricsService {
         branch: String?,
         packageNamePattern: String?,
         classNamePattern: String?,
+        rootId: String?,
     ): List<Any>
 
     suspend fun getBuildDiffReport(

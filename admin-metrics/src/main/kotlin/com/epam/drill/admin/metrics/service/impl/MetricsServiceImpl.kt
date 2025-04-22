@@ -64,7 +64,8 @@ class MetricsServiceImpl(
         envId: String?,
         branch: String?,
         packageNamePattern: String?,
-        classNamePattern: String?
+        classNamePattern: String?,
+        rootId: String?
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -82,10 +83,10 @@ class MetricsServiceImpl(
             classNamePattern,
         )
 
-        return buildTree(data)
+        return buildTree(data, rootId)
     }
 
-    private fun buildTree(data: List<Map<String, Any?>>): List<Map<String, Any?>> {
+    private fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map<String, Any?>> {
         val nodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
         val rootNodes = mutableSetOf<String>()
 
@@ -101,7 +102,9 @@ class MetricsServiceImpl(
                 }
 
                 currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
-
+                if (!rootId.isNullOrBlank() && !currentPath.startsWith(rootId)) {
+                    continue
+                }
                 if (!nodeMap.containsKey(currentPath)) {
                     nodeMap[currentPath] = mutableMapOf(
                         "name" to nodePart,

@@ -50,6 +50,7 @@ class Metrics {
         val branch: String? = null,
         val packageNamePattern: String? = null,
         val classNamePattern: String? = null,
+        val rootId: String? = null
     )
     @Resource("/build-diff-report")
     class BuildDiffReport(
@@ -115,6 +116,7 @@ fun Route.getCoverageTreemap() {
             params.branch,
             params.packageNamePattern,
             params.classNamePattern,
+            params.rootId
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
