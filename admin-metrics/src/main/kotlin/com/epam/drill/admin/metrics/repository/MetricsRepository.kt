@@ -23,6 +23,17 @@ interface MetricsRepository {
 
     suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>>
 
+    suspend fun getMaterializedMethodsCoverage(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        testTag: String? = null,
+        envId: String? = null,
+        branch: String? = null,
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+    ): List<Map<String,Any?>>
+
     suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String,

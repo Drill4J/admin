@@ -59,6 +59,58 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
+    override suspend fun getMaterializedMethodsCoverage(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?
+    ):  List<Map<String,Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+                WITH MethodsCoverage AS
+                (
+                	SELECT *
+                	FROM raw_data.get_materialized_methods_coverage(
+                        input_group_id => ?,
+                        input_app_id => ?,
+                        input_build_id => ?,
+                        input_baseline_build_id => NULL,
+                        input_aggregated_coverage => TRUE,
+                        input_test_tag => ?,
+                        input_env_id => ?,
+                        input_branch => ?,
+                        input_coverage_period_from => NULL,
+                        input_package_name_pattern => ?,
+                        input_class_name_pattern => ?,
+                        input_method_name_pattern => NULL,
+                        input_chronological => TRUE
+                	)
+                )
+                SELECT
+                	classname || '/' || name AS name,
+                	params,
+                	return_type,
+                	SUM(probes_count) AS probes_count,
+                	SUM(aggregated_covered_probes) AS covered_probes
+                FROM MethodsCoverage
+                GROUP BY name, classname, params, return_type
+                ORDER BY classname DESC
+            """.trimIndent(),
+            groupId,
+            appId,
+            buildId,
+            testTag.takeUnless { it.isNullOrBlank() },
+            envId.takeUnless { it.isNullOrBlank() },
+            branch.takeUnless { it.isNullOrBlank() },
+            "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
+            "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
+        )
+    }
+
     override suspend fun getBuildDiffReport(
         targetBuildId: String,
         baselineBuildId: String,

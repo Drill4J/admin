@@ -24,6 +24,16 @@ interface MetricsService {
         branch: String?
     ): List<BuildView>
 
+    suspend fun getCoverageTreemap (
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?,
+    ): List<Any>
+
     suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,

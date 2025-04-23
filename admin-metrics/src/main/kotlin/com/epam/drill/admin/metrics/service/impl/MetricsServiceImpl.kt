@@ -23,7 +23,9 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.BuildView
+import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -35,6 +37,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
+    private val logger = KotlinLogging.logger {}
 
     override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
         return transaction {
@@ -54,6 +57,35 @@ class MetricsServiceImpl(
             }
         }
     }
+
+    override suspend fun getCoverageTreemap(
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?
+    ): List<Any> {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        val (groupId, appId) = getAppAndGroupIdFromBuildId(buildId)
+        val data = metricsRepository.getMaterializedMethodsCoverage(
+            groupId,
+            appId,
+            buildId,
+            testTag,
+            envId,
+            branch,
+            packageNamePattern,
+            classNamePattern,
+        )
+
+        return buildTree(data, rootId)
+    }
+
 
     override suspend fun getBuildDiffReport(
         groupId: String,
