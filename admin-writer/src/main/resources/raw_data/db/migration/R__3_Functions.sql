@@ -3615,20 +3615,7 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
--- Function to get coverage details aggregated by a given build
--- @param input_build_id VARCHAR: The ID of the build
--- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
--- @param input_aggregated_coverage BOOLEAN DEFAULT FALSE: Flag to indicate if coverage collected from other builds should be used
--- @param input_test_tag VARCHAR DEFAULT NULL: Coverage collected from tests marked with this test tag (optional)
--- @param input_env_id VARCHAR DEFAULT NULL: Coverage collected from instances marked with this Environment ID (optional)
--- @param input_branch VARCHAR DEFAULT NULL: Coverage collected from builds of this branch (optional)
--- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
--- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
--- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
--- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
--- @param input_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
--- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
--- @returns TABLE: A table containing build coverage details
+-- Deprecated, use get_build_coverage_v3
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_build_coverage_v2 CASCADE;
 
@@ -4280,7 +4267,26 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
---
+-- Function for comparing unique code coverage of tests
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @param input_target_test_session_id VARCHAR DEFAULT NULL: The ID of the target test session (optional)
+-- @param input_target_test_launch_id VARCHAR DEFAULT NULL: The ID of the target test launch (optional)
+-- @param input_target_test_tag VARCHAR DEFAULT NULL: The tag of the target test (optional)
+-- @param input_target_test_path_pattern VARCHAR DEFAULT NULL: Pattern to filter by target test path (optional)
+-- @param input_comparable_test_session_id VARCHAR DEFAULT NULL: The ID of the comparable test session (optional)
+-- @param input_comparable_test_launch_id VARCHAR DEFAULT NULL: The ID of the comparable test launch (optional)
+-- @param input_comparable_test_tag VARCHAR DEFAULT NULL: The tag of the comparable test (optional)
+-- @param input_comparable_test_path_pattern VARCHAR DEFAULT NULL: Pattern to filter by comparable test path (optional)
+-- @param input_coverage_in_other_builds BOOLEAN DEFAULT FALSE: Flag to indicate if coverage from other builds should be used
+-- @param input_coverage_env_id VARCHAR DEFAULT NULL: The ID of the environment for coverage (optional)
+-- @param input_coverage_branch VARCHAR DEFAULT NULL: The branch for coverage (optional)
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
+-- @param input_coverage_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
+-- @returns TABLE: A table containing the comparison of unique code coverage of tests
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_build_tests_comparison CASCADE;
 
@@ -4345,13 +4351,10 @@ BEGIN
 			FROM raw_data.matview_methods_with_rules methods
 			LEFT JOIN BaselineMethods baseline ON baseline.signature = methods.signature
 			WHERE methods.build_id = input_build_id
-			  --filter by package pattern
+			  --Filters by methods
               AND (input_package_name_pattern IS NULL OR methods.classname LIKE input_package_name_pattern)
-              --filter by class pattern
               AND (input_class_name_pattern IS NULL OR methods.classname LIKE input_class_name_pattern)
-              --filter by method pattern
               AND (input_method_name_pattern IS NULL OR methods.name LIKE input_method_name_pattern)
-			  -- filter by baseline
 			  AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
 			GROUP BY methods.build_id
 		),
@@ -4369,8 +4372,11 @@ BEGIN
 			JOIN raw_data.builds builds ON builds.id = methods.build_id
 			LEFT JOIN BaselineMethods baseline ON baseline.signature = methods.signature
 			WHERE methods.build_id = input_build_id
-				--filter by baseline
-				AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
+				--Filters by methods
+              AND (input_package_name_pattern IS NULL OR methods.classname LIKE input_package_name_pattern)
+              AND (input_class_name_pattern IS NULL OR methods.classname LIKE input_class_name_pattern)
+              AND (input_method_name_pattern IS NULL OR methods.name LIKE input_method_name_pattern)
+              AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
 			ORDER BY methods.build_id, methods.signature
 		),
 		MethodsCoverage AS (
@@ -4464,7 +4470,7 @@ BEGIN
 			JOIN Builds builds ON builds.build_id = coverage.build_id
 			WHERE BIT_COUNT(coverage.probes) > 0
 		),
-	    AugmentedComparableBuildCoverage AS (
+	    PaddedComparableBuildCoverage AS (
 			SELECT
 				coverage.build_id,
 				coverage.probes || (REPEAT('0', (builds.total_probes - BIT_LENGTH(coverage.probes))::INT)::VARBIT) AS probes,
@@ -4557,5 +4563,258 @@ BEGIN
 			UNION ALL
 			SELECT * FROM UniqueTargetCoverage WHERE NOT use_materialized
 		) coverage;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Function to get coverage details aggregated by a given build
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @param input_coverage_in_other_builds BOOLEAN DEFAULT FALSE: Flag to indicate if coverage from other builds should be used
+-- @param input_coverage_chronological BOOLEAN DEFAULT TRUE: Flag to indicate if coverage should only be obtained in builds created earlier than the current one
+-- @param input_coverage_period_from TIMESTAMP DEFAULT NULL: Date from which to take into account the coverage (optional)
+-- @param input_coverage_branch VARCHAR DEFAULT NULL: The branch for coverage (optional)
+-- @param input_coverage_env_id VARCHAR DEFAULT NULL: The ID of the environment for coverage (optional)
+-- @param input_coverage_test_tag VARCHAR DEFAULT NULL: The tag of the test for coverage (optional)
+-- @param input_coverage_test_session_id VARCHAR DEFAULT NULL: The ID of the test session for coverage (optional)
+-- @param input_coverage_test_launch_id VARCHAR DEFAULT NULL: The ID of the test launch for coverage (optional)
+-- @param input_materialized BOOLEAN DEFAULT TRUE: Flag to indicate if materialized views should be used
+-- @returns TABLE: A table containing build coverage details
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_build_coverage_v3 CASCADE;
+
+CREATE OR REPLACE FUNCTION raw_data.get_build_coverage_v3(
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+
+    input_coverage_in_other_builds BOOLEAN DEFAULT FALSE,
+    input_coverage_chronological BOOLEAN DEFAULT TRUE,
+    input_coverage_period_from TIMESTAMP DEFAULT NULL,
+    input_coverage_branch VARCHAR DEFAULT NULL,
+    input_coverage_env_id VARCHAR DEFAULT NULL,
+    input_coverage_test_tag VARCHAR DEFAULT NULL,
+    input_coverage_test_session_id VARCHAR DEFAULT NULL,
+    input_coverage_test_launch_id VARCHAR DEFAULT NULL,
+
+    input_materialized BOOLEAN DEFAULT TRUE
+) RETURNS TABLE(
+    build_id VARCHAR,
+
+	total_probes INT,
+    isolated_covered_probes INT,
+    isolated_missed_probes INT,
+    isolated_probes_coverage_ratio FLOAT,
+	aggregated_covered_probes INT,
+    aggregated_missed_probes INT,
+    aggregated_probes_coverage_ratio FLOAT,
+
+	total_methods INT,
+    isolated_tested_methods INT,
+	isolated_missed_methods INT,
+    isolated_methods_coverage_ratio FLOAT,
+    aggregated_tested_methods INT,
+	aggregated_missed_methods INT,
+    aggregated_methods_coverage_ratio FLOAT
+) AS $$
+DECLARE
+    use_materialized_builds BOOLEAN;
+    use_materialized_methods BOOLEAN;
+BEGIN
+    use_materialized_builds := input_materialized
+        AND input_baseline_build_id IS NULL
+        AND input_coverage_chronological IS TRUE
+        AND input_package_name_pattern IS NULL
+        AND input_class_name_pattern IS NULL
+        AND input_method_name_pattern IS NULL
+        AND input_coverage_period_from IS NULL;
+
+    use_materialized_methods := input_materialized
+        AND input_coverage_test_session_id IS NULL
+        AND input_coverage_test_launch_id IS NULL;
+
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+		SELECT
+			baseline.signature,
+			baseline.body_checksum
+		FROM raw_data.matview_methods_with_rules baseline
+		WHERE baseline.build_id = input_baseline_build_id
+	),
+	Methods AS (
+		SELECT
+			builds.group_id,
+			builds.app_id,
+			methods.build_id,
+			methods.signature,
+			methods.body_checksum,
+			methods.probes_count,
+			(SUM(methods.probes_count) OVER (PARTITION BY methods.build_id ORDER BY methods.signature)) - methods.probes_count + 1 AS probes_start,
+			(COUNT(*) OVER (PARTITION BY methods.build_id ORDER BY methods.signature)) AS method_num,
+			builds.created_at AS build_created_at
+		FROM raw_data.matview_methods_with_rules methods
+		JOIN raw_data.builds builds ON builds.id = methods.build_id
+		LEFT JOIN BaselineMethods baseline ON baseline.signature = methods.signature
+		WHERE methods.build_id = input_build_id
+    	    -- Filters by methods
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
+            AND (input_package_name_pattern IS NULL OR methods.classname LIKE input_package_name_pattern)
+            AND (input_class_name_pattern IS NULL OR methods.classname LIKE input_class_name_pattern)
+            AND (input_method_name_pattern IS NULL OR methods.name LIKE input_method_name_pattern)
+		ORDER BY methods.build_id, methods.signature
+	),
+    Builds AS (
+		SELECT
+			methods.build_id,
+			SUM(methods.probes_count) AS total_probes,
+			COUNT(*) AS total_methods
+		FROM Methods methods
+		GROUP BY methods.build_id
+	),
+	MethodsCoverage AS (
+		SELECT
+			methods.build_id,
+			methods.signature,
+			methods.probes_start,
+			methods.method_num,
+			coverage.build_id AS coverage_build_id,
+			BIT_OR(coverage.probes) AS probes
+		FROM raw_data.view_methods_coverage_v2 coverage
+		JOIN Methods methods ON coverage.signature = methods.signature
+            AND coverage.body_checksum = methods.body_checksum
+            AND coverage.probes_count = methods.probes_count
+            AND coverage.group_id = methods.group_id
+            AND coverage.app_id = methods.app_id
+		WHERE TRUE
+            --Filters by coverage
+            AND (input_coverage_in_other_builds IS TRUE OR coverage.build_id = methods.build_id)
+		    AND (input_coverage_chronological IS FALSE OR coverage.build_created_at <= methods.build_created_at)
+		    AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		    AND (input_coverage_branch IS NULL OR coverage.branch = input_coverage_branch)
+			AND (input_coverage_env_id IS NULL OR coverage.env_id = input_coverage_env_id)
+			--TODO How to identify test sessions of the same test task in the same build?
+			AND (input_coverage_test_session_id IS NULL OR methods.build_id <> coverage.build_id OR coverage.test_session_id = input_coverage_test_session_id)
+			AND (input_coverage_test_launch_id IS NULL OR methods.build_id <> coverage.build_id OR coverage.test_launch_id = input_coverage_test_launch_id)
+		GROUP BY methods.build_id, coverage.build_id, methods.signature, methods.probes_start, methods.method_num
+        ORDER BY methods.build_id, coverage.build_id, methods.signature
+	),
+	MaterializedMethodsCoverage AS (
+		SELECT
+			methods.build_id,
+			methods.signature,
+			methods.probes_start,
+			methods.method_num,
+			coverage.build_id AS coverage_build_id,
+			BIT_OR(coverage.probes) AS probes
+		FROM raw_data.matview_methods_coverage_v2 coverage
+		JOIN Methods methods ON coverage.signature = methods.signature
+            AND coverage.body_checksum = methods.body_checksum
+            AND coverage.probes_count = methods.probes_count
+            AND coverage.group_id = methods.group_id
+            AND coverage.app_id = methods.app_id
+		WHERE TRUE
+            --Filters by coverage
+            AND (input_coverage_in_other_builds IS TRUE OR coverage.build_id = methods.build_id)
+		    AND (input_coverage_chronological IS FALSE OR coverage.build_created_at <= methods.build_created_at)
+		    AND (input_coverage_period_from IS NULL OR coverage.created_at >= input_coverage_period_from)
+		    AND (input_coverage_branch IS NULL OR coverage.branch = input_coverage_branch)
+			AND (input_coverage_env_id IS NULL OR coverage.env_id = input_coverage_env_id)
+		GROUP BY methods.build_id, coverage.build_id, methods.signature, methods.probes_start, methods.method_num
+        ORDER BY methods.build_id, coverage.build_id, methods.signature
+	),
+	BuildsCoverage AS (
+        SELECT
+            coverage.build_id,
+            coverage.coverage_build_id,
+            raw_data.CONCAT_VARBIT(coverage.probes::VARBIT, coverage.probes_start::INT) AS probes,
+            raw_data.CONCAT_VARBIT(REPEAT('1', 1)::VARBIT, coverage.method_num::INT) AS method_probes
+        FROM (
+			SELECT * FROM MethodsCoverage WHERE NOT use_materialized_methods
+			UNION ALL
+			SELECT * FROM MaterializedMethodsCoverage WHERE use_materialized_methods
+		) coverage
+        GROUP BY coverage.build_id, coverage.coverage_build_id
+    ),
+	PaddedBuildsCoverage AS (
+        SELECT
+            coverage.build_id,
+            coverage.coverage_build_id,
+            coverage.probes || (REPEAT('0', (builds.total_probes - BIT_LENGTH(coverage.probes))::INT)::VARBIT) AS probes,
+            coverage.method_probes || REPEAT('0', (builds.total_methods - BIT_LENGTH(coverage.method_probes))::INT)::VARBIT AS method_probes,
+            builds.total_probes,
+            builds.total_methods
+        FROM BuildsCoverage coverage
+        JOIN Builds builds ON builds.build_id = coverage.build_id
+        WHERE BIT_COUNT(coverage.probes) > 0
+    ),
+	MaterializedBuildsCoverage AS (
+		SELECT
+            coverage.build_id,
+            coverage.coverage_build_id,
+            BIT_OR(coverage.probes) AS probes,
+            BIT_OR(coverage.tested_methods) AS method_probes,
+            MAX(coverage.total_probes) AS total_probes,
+            MAX(coverage.total_methods) AS total_methods
+        FROM raw_data.matview_builds_coverage_v2 coverage
+		LEFT JOIN raw_data.test_sessions sessions ON sessions.id = coverage.test_launch_id
+        WHERE coverage.build_id = input_build_id
+		  	--Filters by coverage
+            AND (input_coverage_in_other_builds IS TRUE OR coverage.coverage_build_id = input_build_id)
+		    AND (input_coverage_branch IS NULL OR coverage.branch = input_coverage_branch)
+			AND (input_coverage_env_id IS NULL OR coverage.env_id = input_coverage_env_id)
+			--TODO How to identify test sessions of the same test task in the same build?
+			AND (input_coverage_test_session_id IS NULL OR coverage.build_id <> coverage.coverage_build_id OR sessions.id = input_coverage_test_session_id)
+			AND (input_coverage_test_launch_id IS NULL OR coverage.build_id <> coverage.coverage_build_id OR coverage.test_launch_id = input_coverage_test_launch_id)
+		GROUP BY coverage.build_id, coverage.coverage_build_id
+	),
+    TargetBuildsCoverage AS (
+        SELECT
+            coverage.build_id,
+            BIT_COUNT(BIT_OR(coverage.probes)) AS aggregated_covered_probes,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.probes
+                ELSE NULL
+            END)) AS isolated_covered_probes,
+            BIT_COUNT(BIT_OR(coverage.method_probes)) AS aggregated_tested_methods,
+            BIT_COUNT(BIT_OR(CASE
+                WHEN coverage.build_id = coverage.coverage_build_id
+                THEN coverage.method_probes
+                ELSE NULL
+            END)) AS isolated_tested_methods,
+            MAX(coverage.total_probes) AS total_probes,
+            MAX(coverage.total_methods) AS total_methods
+        FROM (
+			SELECT * FROM PaddedBuildsCoverage WHERE NOT use_materialized_builds
+			UNION ALL
+			SELECT * FROM MaterializedBuildsCoverage WHERE use_materialized_builds
+		) coverage
+        GROUP BY coverage.build_id
+    )
+	SELECT
+        coverage.build_id::VARCHAR,
+
+		coverage.total_probes::INT,
+        COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+        COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
+        (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
+        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
+
+		coverage.total_methods::INT,
+		COALESCE(coverage.isolated_tested_methods, 0)::INT AS isolated_tested_methods,
+		(coverage.total_methods - COALESCE(coverage.isolated_tested_methods, 0))::INT AS isolated_missed_methods,
+		COALESCE(CAST(COALESCE(coverage.isolated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) AS isolated_methods_coverage_ratio,
+		COALESCE(coverage.aggregated_tested_methods, 0)::INT AS aggregated_tested_methods,
+		(coverage.total_methods - COALESCE(coverage.aggregated_tested_methods, 0))::INT AS aggregated_missed_methods,
+        COALESCE(CAST(COALESCE(coverage.aggregated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) AS aggregated_methods_coverage_ratio
+    FROM TargetBuildsCoverage coverage;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

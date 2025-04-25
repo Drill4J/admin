@@ -186,3 +186,99 @@ SELECT
 FROM raw_data.view_builds;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_pk ON raw_data.matview_builds (build_id);
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_session_coverage AS
+WITH
+	SessionsCoverage AS (
+		SELECT
+			coverage.build_id,
+			launches.test_session_id,
+			BIT_OR(probes) AS probes,
+			BIT_OR(CASE WHEN coverage.build_id = coverage.coverage_build_id THEN probes ELSE NULL END) AS isolated_probes,
+			MIN(sessions.started_at) AS session_started_at
+		FROM raw_data.matview_builds_coverage_v2 coverage
+		JOIN raw_data.builds coverage_builds ON coverage_builds.id = coverage.coverage_build_id
+		JOIN raw_data.test_launches launches ON launches.id = coverage.test_launch_id
+		JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+		GROUP BY coverage.build_id, launches.test_session_id
+	),
+	SessionsWithoutCoverage AS (
+		SELECT
+			tsb.build_id,
+			sessions.id AS test_session_id,
+			NULL::VARBIT AS probes,
+			NULL::VARBIT AS isolated_probes,
+			sessions.started_at AS session_started_at
+		FROM raw_data.test_sessions sessions
+		JOIN raw_data.test_session_builds tsb ON tsb.test_session_id = sessions.id
+		GROUP BY tsb.build_id, sessions.id
+	),
+	SessionsWithAndWithoutCoverage AS (
+		SELECT
+			coverage.build_id,
+			coverage.test_session_id,
+			BIT_OR(coverage.probes) AS probes,
+			BIT_OR(coverage.isolated_probes) AS isolated_probes,
+			MIN(coverage.session_started_at) AS session_started_at
+		FROM (
+			SELECT * FROM SessionsCoverage
+			UNION ALL
+			SELECT * FROM SessionsWithoutCoverage
+		) coverage
+		GROUP BY coverage.build_id, coverage.test_session_id
+	),
+  	AccumulatedSessionsCoverage AS (
+		SELECT
+			coverage.build_id,
+		    coverage.test_session_id,
+			coverage.session_started_at,
+
+			coverage.probes,
+			BIT_OR(coverage.probes) OVER (
+				PARTITION BY coverage.build_id
+				ORDER BY coverage.session_started_at
+			) AS accumulated_probes,
+			COALESCE(coverage.probes & ~(BIT_OR(coverage.probes) OVER (
+				PARTITION BY coverage.build_id
+				ORDER BY coverage.session_started_at
+				ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+			)), coverage.probes) AS unique_probes,
+
+			coverage.isolated_probes,
+			BIT_OR(coverage.isolated_probes) OVER (
+				PARTITION BY coverage.build_id
+				ORDER BY coverage.session_started_at
+			) AS isolated_accumulated_probes,
+			COALESCE(coverage.isolated_probes & ~(BIT_OR(coverage.isolated_probes) OVER (
+				PARTITION BY coverage.build_id
+				ORDER BY coverage.session_started_at
+				ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+			)), coverage.probes) AS isolated_unique_probes
+
+		FROM SessionsWithAndWithoutCoverage coverage
+  	)
+SELECT
+    coverage.build_id,
+    coverage.test_session_id,
+	builds.total_probes,
+
+    COALESCE(BIT_COUNT(coverage.probes), 0) AS covered_probes,
+    COALESCE(BIT_COUNT(coverage.unique_probes), 0) AS unique_covered_probes,
+    COALESCE(BIT_COUNT(coverage.accumulated_probes), 0) AS accumulated_covered_probes,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS probes_coverage_ratio,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.unique_probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS unique_probes_coverage_ratio,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.accumulated_probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS accumulated_probes_coverage_ratio,
+
+	COALESCE(BIT_COUNT(coverage.isolated_probes), 0) AS isolated_covered_probes,
+    COALESCE(BIT_COUNT(coverage.isolated_unique_probes), 0) AS isolated_unique_covered_probes,
+    COALESCE(BIT_COUNT(coverage.isolated_accumulated_probes), 0) AS isolated_accumulated_covered_probes,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.isolated_probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.isolated_unique_probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS isolated_unique_probes_coverage_ratio,
+    COALESCE(CAST(COALESCE(BIT_COUNT(coverage.isolated_accumulated_probes), 0) AS FLOAT) / builds.total_probes, 0.0) AS isolated_accumulated_probes_coverage_ratio
+
+FROM AccumulatedSessionsCoverage coverage
+JOIN raw_data.view_builds builds ON builds.build_id = coverage.build_id
+ORDER BY coverage.session_started_at;
