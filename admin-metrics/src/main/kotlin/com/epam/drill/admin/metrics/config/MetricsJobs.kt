@@ -19,11 +19,11 @@ import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.job.VIEW_NAME
 import org.quartz.*
 
-val refreshMethodsCoverageViewJob = createJob(
+val refreshCoverageViewJob = createJob(
     "refreshMethodsCoverageViewJob",
-    "matview_methods_coverage_v2"
+    "matview_methods_coverage_v3, matview_builds_coverage_v3"
 )
-val refreshMethodsCoverageViewTrigger: TriggerBuilder<Trigger>
+val refreshCoverageViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshMethodsCoverageViewTrigger")
 
 val refreshTestedBuildsComparisonViewJob = createJob(
@@ -46,13 +46,6 @@ val refreshBuildsViewJob = createJob(
 )
 val refreshBuildsViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshBuildsViewTrigger")
-
-val refreshBuildsCoverageViewJob = createJob(
-    "refreshBuildsCoverageViewJob",
-    "matview_builds_coverage_v2"
-)
-val refreshBuildsCoverageViewTrigger: TriggerBuilder<Trigger>
-    get() = createTrigger("refreshBuildsCoverageViewTrigger")
 
 private fun createJob(jobName: String, vararg viewNames: String): JobDetail =
     JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
