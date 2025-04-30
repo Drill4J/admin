@@ -24,6 +24,16 @@ interface MetricsService {
         branch: String?
     ): List<BuildView>
 
+    suspend fun getCoverageTreemap (
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?,
+    ): List<Any>
+
     suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,
@@ -33,7 +43,8 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?>
 
     suspend fun getRecommendedTests(
@@ -47,7 +58,8 @@ interface MetricsService {
         targetBuildVersion: String? = null,
         baselineInstanceId: String? = null,
         baselineCommitSha: String? = null,
-        baselineBuildVersion: String? = null
+        baselineBuildVersion: String? = null,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?>
 
 }

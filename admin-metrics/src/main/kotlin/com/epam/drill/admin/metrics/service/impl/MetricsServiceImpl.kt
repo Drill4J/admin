@@ -23,7 +23,9 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.BuildView
+import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -35,6 +37,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
+    private val logger = KotlinLogging.logger {}
 
     override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
         return transaction {
@@ -55,6 +58,35 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getCoverageTreemap(
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?
+    ): List<Any> {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        val (groupId, appId) = getAppAndGroupIdFromBuildId(buildId)
+        val data = metricsRepository.getMaterializedMethodsCoverage(
+            groupId,
+            appId,
+            buildId,
+            testTag,
+            envId,
+            branch,
+            packageNamePattern,
+            classNamePattern,
+        )
+
+        return buildTree(data, rootId)
+    }
+
+
     override suspend fun getBuildDiffReport(
         groupId: String,
         appId: String,
@@ -64,7 +96,8 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?> {
         return transaction {
 
@@ -88,7 +121,11 @@ class MetricsServiceImpl(
                 throw BuildNotFound("Build info not found for $buildId")
             }
 
-            val metrics = metricsRepository.getBuildDiffReport(groupId, appId, buildId, baselineBuildId, coverageThreshold)
+            val metrics = metricsRepository.getBuildDiffReport(
+                buildId,
+                baselineBuildId,
+                coverageThreshold,
+                useMaterializedViews ?: false)
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
@@ -157,7 +194,8 @@ class MetricsServiceImpl(
         targetBuildVersion: String?,
         baselineInstanceId: String?,
         baselineCommitSha: String?,
-        baselineBuildVersion: String?
+        baselineBuildVersion: String?,
+        useMaterializedViews: Boolean?
     ): Map<String, Any?> = transaction {
         val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
@@ -192,7 +230,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Target build info not found for $targetBuildId")
         }
 
-        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays).let {
+        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
             LocalDateTime.now().minusDays(it.toLong())
         }
 
@@ -201,7 +239,8 @@ class MetricsServiceImpl(
             baselineBuildId = baselineBuildId,
             testsToSkip = testsToSkip,
             testTaskId = testTaskId,
-            coveragePeriodFrom = coveragePeriodFrom
+            coveragePeriodFrom = coveragePeriodFrom,
+            useMaterializedViews = useMaterializedViews ?: false
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,

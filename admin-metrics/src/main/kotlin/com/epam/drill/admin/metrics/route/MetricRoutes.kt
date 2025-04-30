@@ -40,7 +40,18 @@ class Metrics {
         val appId: String,
         val branch: String? = null
     )
+    @Resource("/coverage-treemap")
+    class CoverageTreemap(
+        val parent: Metrics,
 
+        val buildId: String,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
+        val packageNamePattern: String? = null,
+        val classNamePattern: String? = null,
+        val rootId: String? = null
+    )
     @Resource("/build-diff-report")
     class BuildDiffReport(
         val parent: Metrics,
@@ -54,6 +65,7 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
         val coverageThreshold: Double = 1.0, // TODO Float should be enough
+        val useMaterializedViews: Boolean? = null
     )
 
     @Resource("/recommended-tests")
@@ -71,6 +83,7 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
         val coveragePeriodDays: Int? = null,
+        val useMaterializedViews: Boolean? = null
     )
 }
 
@@ -78,6 +91,7 @@ fun Route.metricsRoutes() {
     getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
+    getCoverageTreemap()
 }
 
 fun Route.getBuilds() {
@@ -90,6 +104,23 @@ fun Route.getBuilds() {
             params.branch
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
+}
+
+fun Route.getCoverageTreemap() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.CoverageTreemap> { params ->
+        val treemap = metricsService.getCoverageTreemap(
+            params.buildId,
+            params.testTag,
+            params.envId,
+            params.branch,
+            params.packageNamePattern,
+            params.classNamePattern,
+            params.rootId
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
 }
 
@@ -106,7 +137,8 @@ fun Route.getBuildDiffReport() {
             params.baselineInstanceId,
             params.baselineCommitSha,
             params.baselineBuildVersion,
-            params.coverageThreshold
+            params.coverageThreshold,
+            params.useMaterializedViews
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -127,7 +159,8 @@ fun Route.getRecommendedTests() {
             targetBuildVersion = params.targetBuildVersion,
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion
+            baselineBuildVersion = params.baselineBuildVersion,
+            useMaterializedViews = params.useMaterializedViews
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }

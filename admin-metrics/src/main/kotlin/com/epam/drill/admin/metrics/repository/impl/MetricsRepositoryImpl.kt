@@ -59,24 +59,74 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getBuildDiffReport(
+    override suspend fun getMaterializedMethodsCoverage(
         groupId: String,
         appId: String,
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?
+    ):  List<Map<String,Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+                WITH MethodsCoverage AS
+                (
+                	SELECT *
+                	FROM raw_data.get_materialized_methods_coverage(
+                        input_group_id => ?,
+                        input_app_id => ?,
+                        input_build_id => ?,
+                        input_baseline_build_id => NULL,
+                        input_aggregated_coverage => TRUE,
+                        input_test_tag => ?,
+                        input_env_id => ?,
+                        input_branch => ?,
+                        input_coverage_period_from => NULL,
+                        input_package_name_pattern => ?,
+                        input_class_name_pattern => ?,
+                        input_method_name_pattern => NULL,
+                        input_chronological => TRUE
+                	)
+                )
+                SELECT
+                	classname || '/' || name AS name,
+                	params,
+                	return_type,
+                	SUM(probes_count) AS probes_count,
+                	SUM(aggregated_covered_probes) AS covered_probes
+                FROM MethodsCoverage
+                GROUP BY name, classname, params, return_type
+                ORDER BY classname DESC
+            """.trimIndent(),
+            groupId,
+            appId,
+            buildId,
+            testTag.takeUnless { it.isNullOrBlank() },
+            envId.takeUnless { it.isNullOrBlank() },
+            branch.takeUnless { it.isNullOrBlank() },
+            "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
+            "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
+        )
+    }
+
+    override suspend fun getBuildDiffReport(
         targetBuildId: String,
         baselineBuildId: String,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        useMaterializedViews: Boolean
     ) = transaction {
         executeQueryReturnMap(
             """
                     WITH 
                     Risks AS (
                         SELECT * 
-                        FROM raw_data.get_methods_coverage(
-                            input_group_id => ?,
-                            input_app_id => ?,
+                        FROM raw_data.get_methods_coverage_v2(                        
                             input_build_id => ?, 
                             input_baseline_build_id => ?,
-                            input_aggregated_coverage => true                            
+                            input_aggregated_coverage => true,
+                            input_materialized => false
                         )	
                     ),
                     RecommendedTests AS (
@@ -84,7 +134,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                         FROM raw_data.get_recommended_tests_v4(
                             input_target_build_id => ?, 
                             input_baseline_build_id => ?,
-                            input_materialized => false
+                            input_materialized => ?
                         )
                     )	
                     SELECT 
@@ -95,12 +145,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT CAST(SUM(aggregated_covered_probes) AS FLOAT) / SUM(probes_count) FROM Risks) as coverage,
                         (SELECT count(*) FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
-            groupId,
-            appId,
             targetBuildId,
             baselineBuildId,
             targetBuildId,
-            baselineBuildId
+            baselineBuildId,
+            useMaterializedViews
         ).first() as Map<String, String>
     }
 
@@ -117,7 +166,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String?,
         testsToSkip: Boolean,
         testTaskId: String?,
-        coveragePeriodFrom: LocalDateTime
+        coveragePeriodFrom: LocalDateTime?,
+        useMaterializedViews: Boolean
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """            
@@ -134,14 +184,15 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_test_task_id => ?,		
                     input_baseline_build_id => ?,
                     input_coverage_period_from => ?,
-                    input_materialized => false
+                    input_materialized => ?
                 )
             """.trimIndent(),
             targetBuildId,
             testsToSkip,
             testTaskId,
             baselineBuildId,
-            coveragePeriodFrom
+            coveragePeriodFrom,
+            useMaterializedViews
         )
     }
 }

@@ -17,6 +17,8 @@ package com.epam.drill.admin.common.service
 
 import com.epam.drill.admin.common.exception.InvalidParameters
 
+const val BUILD_ID_SEPARATOR = ":"
+
 fun generateBuildId(
     groupId: String,
     appId: String,
@@ -41,5 +43,12 @@ fun generateBuildId(
         groupId,
         appId,
         listOf(buildVersion, commitSha, instanceId).first { !it.isNullOrBlank() }
-    ).joinToString(":")
+    ).joinToString(BUILD_ID_SEPARATOR)
+}
+
+data class AppGroupIds(val groupId: String, val appId: String)
+
+fun getAppAndGroupIdFromBuildId(buildId: String): AppGroupIds {
+    val (groupId, appId, _) = buildId.split(BUILD_ID_SEPARATOR)
+    return AppGroupIds(groupId, appId)
 }
