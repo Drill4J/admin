@@ -279,3 +279,43 @@ SELECT
 FROM AccumulatedSessionsCoverage coverage
 JOIN raw_data.view_builds builds ON builds.build_id = coverage.build_id
 ORDER BY coverage.session_started_at;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_test_session_build_coverage CASCADE;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_test_session_build_coverage AS
+SELECT
+	s.test_session_id,
+	s.group_id,
+	s.test_task_id,
+	s.started_at,
+	s.tests,
+	s.result,
+	s.duration,
+	s.failed,
+	s.passed,
+	s.skipped,
+	s.smart_skipped,
+	s.success,
+	s.successful,
+	sb.build_id,
+	sb.build_tests,
+	sc.covered_probes,
+	sc.unique_covered_probes,
+	sc.accumulated_covered_probes,
+	sc.probes_coverage_ratio,
+	sc.unique_probes_coverage_ratio,
+	sc.accumulated_probes_coverage_ratio,
+	sc.isolated_covered_probes,
+	sc.isolated_unique_covered_probes,
+	sc.isolated_accumulated_covered_probes,
+	sc.isolated_probes_coverage_ratio,
+	sc.isolated_unique_probes_coverage_ratio,
+	sc.isolated_accumulated_probes_coverage_ratio
+FROM raw_data.view_test_sessions s
+LEFT JOIN raw_data.view_test_session_builds_v2 sb ON sb.test_session_id = s.test_session_id
+LEFT JOIN raw_data.view_test_session_coverage sc ON sc.test_session_id = s.test_session_id AND sc.build_id = sb.build_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_test_session_build_coverage_pk ON raw_data.matview_test_session_build_coverage (test_session_id, build_id);

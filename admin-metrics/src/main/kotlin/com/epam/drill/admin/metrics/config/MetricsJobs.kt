@@ -21,7 +21,7 @@ import org.quartz.*
 
 val refreshCoverageViewJob = createJob(
     "refreshMethodsCoverageViewJob",
-    "matview_methods_coverage_v3, matview_builds_coverage_v3"
+    "matview_methods_coverage_v3, matview_builds_coverage_v3, matview_test_session_build_coverage"
 )
 val refreshCoverageViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshMethodsCoverageViewTrigger")
