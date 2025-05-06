@@ -15,7 +15,9 @@ SELECT
     build_id,
     group_id,
     app_id,
-    probe_start_pos
+    probe_start_pos,--deprecated
+    probes_start,
+    method_num
 FROM raw_data.view_methods_with_rules;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_methods_with_rules_pk ON raw_data.matview_methods_with_rules (build_id, signature);
@@ -319,3 +321,100 @@ LEFT JOIN raw_data.view_test_session_builds_v2 sb ON sb.test_session_id = s.test
 LEFT JOIN raw_data.view_test_session_coverage sc ON sc.test_session_id = s.test_session_id AND sc.build_id = sb.build_id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_test_session_build_coverage_pk ON raw_data.matview_test_session_build_coverage (test_session_id, build_id);
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS raw_data.matview_builds_comparison CASCADE;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS raw_data.matview_builds_comparison AS
+WITH
+    BaselineMethods AS (
+        SELECT
+            m.group_id,
+            m.app_id,
+            m.build_id,
+            m.signature,
+            m.body_checksum,
+            m.probes_count
+        FROM raw_data.matview_methods_with_rules m
+    ),
+    TargetMethods AS (
+        SELECT
+            m.group_id,
+            m.app_id,
+            m.build_id,
+            m.signature,
+            m.body_checksum,
+            m.probes_count,
+            (SUM(m.probes_count) OVER (PARTITION BY m.build_id ORDER BY m.signature)) - m.probes_count + 1 AS probes_start,
+            (COUNT(*) OVER (PARTITION BY m.build_id ORDER BY m.signature)) AS method_num
+        FROM raw_data.matview_methods_with_rules m
+    ),
+    MethodsComparison AS (
+        SELECT
+            m.build_id,
+            m.signature,
+            m.body_checksum,
+            m.probes_count,
+            m.probes_start,
+            m.method_num,
+            baseline.build_id AS baseline_build_id,
+            baseline.body_checksum AS baseline_body_checksum,
+            (CASE WHEN m.body_checksum = baseline.body_checksum AND m.probes_count = baseline.probes_count THEN 1 ELSE 0 END) AS equal,
+            (CASE WHEN m.body_checksum <> baseline.body_checksum OR m.probes_count <> baseline.probes_count THEN 1 ELSE 0 END) AS modified
+        FROM TargetMethods m
+        JOIN BaselineMethods baseline ON baseline.group_id = m.group_id
+            AND baseline.app_id = m.app_id
+            AND baseline.signature = m.signature
+        JOIN raw_data.builds target_builds ON target_builds.id = m.build_id
+        JOIN raw_data.builds baseline_builds ON baseline_builds.id = baseline.build_id
+        WHERE baseline.build_id <> m.build_id
+            --filter by chronology
+            AND baseline_builds.created_at <= target_builds.created_at
+        ORDER BY m.build_id, baseline.build_id, m.signature
+    ),
+    BuildsComparison AS (
+        SELECT
+            m.build_id,
+            m.baseline_build_id,
+            SUM(m.equal) AS equal,
+            SUM(m.modified) AS modified,
+            raw_data.CONCAT_VARBIT(REPEAT(m.equal::VARCHAR, m.probes_count)::VARBIT, m.probes_start::INT) AS probes,
+            raw_data.CONCAT_VARBIT(REPEAT(m.equal::VARCHAR, 1)::VARBIT, m.method_num::INT) AS methods_probes
+        FROM MethodsComparison m
+        GROUP BY m.build_id, m.baseline_build_id
+    ),
+    PaddedBuildsComparison AS (
+        SELECT
+            m.build_id,
+            m.baseline_build_id,
+            m.equal,
+            m.modified,
+            target_b.total_methods - m.modified - m.equal AS added,
+            baseline_b.total_methods - m.modified - m.equal AS deleted,
+            target_b.total_methods AS total_methods,
+            target_b.total_probes AS total_probes,
+            baseline_b.total_methods AS baseline_total_methods,
+            baseline_b.total_probes AS baseline_total_probes,
+            m.probes || (REPEAT('0', (target_b.total_probes - BIT_LENGTH(m.probes))::INT)::VARBIT) AS probes,
+            m.methods_probes || REPEAT('0', (target_b.total_methods - BIT_LENGTH(m.methods_probes))::INT)::VARBIT AS methods_probes
+        FROM BuildsComparison m
+        JOIN raw_data.matview_builds target_b ON target_b.build_id = m.build_id
+        JOIN raw_data.matview_builds baseline_b ON baseline_b.build_id = m.baseline_build_id
+    )
+    SELECT
+        builds.build_id,
+        builds.baseline_build_id,
+        builds.equal,
+        builds.modified,
+        builds.added,
+        builds.deleted,
+        builds.total_methods,
+        builds.total_probes,
+        builds.baseline_total_methods,
+        builds.baseline_total_probes,
+        (builds.equal::FLOAT / builds.total_methods::FLOAT) AS identity_ratio,
+        builds.probes AS probes,
+        builds.methods_probes AS methods_probes
+    FROM PaddedBuildsComparison builds;

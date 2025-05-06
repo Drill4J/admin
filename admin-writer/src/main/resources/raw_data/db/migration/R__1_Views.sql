@@ -40,7 +40,9 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         build_id,
         group_id,
         app_id,
-        probe_start_pos
+        probe_start_pos,--deprecated
+        (SUM(probes_count) OVER (PARTITION BY build_id ORDER BY signature)) - probes_count + 1 AS probes_start,
+        (COUNT(*) OVER (PARTITION BY build_id ORDER BY signature)) AS method_num
     FROM raw_data.methods m
     WHERE probes_count > 0
         AND NOT EXISTS (
@@ -445,79 +447,3 @@ SELECT
 FROM raw_data.builds b
 JOIN raw_data.view_methods_with_rules m ON b.id = m.build_id
 GROUP BY b.id;
-
------------------------------------------------------------------
-
------------------------------------------------------------------
-CREATE OR REPLACE VIEW raw_data.view_builds_comparison AS
-WITH
-  Methods AS (
-	SELECT
-	    builds.group_id,
-		builds.app_id,
-		methods.build_id,
-		methods.signature,
-		methods.body_checksum,
-		methods.probes_count,
-		(SUM(methods.probes_count) OVER (PARTITION BY methods.build_id ORDER BY methods.signature)) - methods.probes_count + 1 AS probes_start,
-		(COUNT(*) OVER (PARTITION BY methods.build_id ORDER BY methods.signature)) AS method_num,
-		builds.created_at AS build_created_at
-	FROM raw_data.view_methods_with_rules methods
-	JOIN raw_data.builds builds ON builds.id = methods.build_id
-	ORDER BY methods.build_id, methods.signature
-  ),
-  BuildProbes AS (
-	SELECT
-		methods.build_id,
-		raw_data.CONCAT_VARBIT(REPEAT('1', methods.probes_count)::VARBIT, methods.probes_start::INT) AS probes,
-		SUM(methods.probes_count) AS total_probes,
-		COUNT(*) AS total_methods
-	FROM Methods methods
-	GROUP BY methods.build_id
-  ),
-  MethodProbesComparison AS (
-	SELECT
-		methods.build_id,
-		baseline.build_id AS baseline_build_id,
-		methods.signature,
-		methods.probes_count,
-		methods.probes_start,
-		methods.method_num
-	FROM Methods methods
-	JOIN Methods baseline ON methods.group_id = baseline.group_id
-		AND methods.app_id = baseline.app_id
-		AND methods.signature = baseline.signature
-		AND methods.body_checksum = baseline.body_checksum
-		AND methods.probes_count = baseline.probes_count
-		-- Filter by chronological order
-		AND baseline.build_created_at <= methods.build_created_at
-	ORDER BY methods.build_id, baseline.build_id, methods.signature
-  ),
-  BuildProbesComparison AS (
-	SELECT
-	 	methods.build_id,
-		methods.baseline_build_id,
-		raw_data.CONCAT_VARBIT(REPEAT('1', methods.probes_count)::VARBIT, methods.probes_start::INT) AS probes,
-		raw_data.CONCAT_VARBIT(REPEAT('1', 1)::VARBIT, methods.method_num::INT) AS methods_probes
-	FROM MethodProbesComparison methods
-	GROUP BY methods.build_id, methods.baseline_build_id
-  ),
-  PaddedBuildProbesComparison AS (
-	SELECT
-	 	comparison.build_id,
-		comparison.baseline_build_id,
-		builds.total_probes,
-		comparison.probes || (REPEAT('0', (builds.total_probes - BIT_LENGTH(comparison.probes))::INT)::VARBIT) AS probes,
-		builds.total_methods,
-		comparison.methods_probes || (REPEAT('0', (builds.total_methods - BIT_LENGTH(comparison.methods_probes))::INT)::VARBIT) AS methods_probes
-	FROM BuildProbesComparison comparison
-	JOIN BuildProbes builds ON builds.build_id = comparison.build_id
-  )
-  SELECT
-  	builds.build_id,
-	builds.baseline_build_id,
-	builds.total_probes,
-	builds.probes,
-	builds.total_methods,
-	builds.methods_probes
-  FROM PaddedBuildProbesComparison builds;
