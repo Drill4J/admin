@@ -418,3 +418,5 @@ WITH
         builds.probes AS probes,
         builds.methods_probes AS methods_probes
     FROM PaddedBuildsComparison builds;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_comparison_pk ON raw_data.matview_builds_comparison (build_id, baseline_build_id);

@@ -33,16 +33,9 @@ val refreshTestedBuildsComparisonViewJob = createJob(
 val refreshTestedBuildsComparisonViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshTestedBuildsComparisonViewTrigger")
 
-val refreshMethodsWithRulesViewJob = createJob(
-    "refreshMethodsWithRulesViewJob",
-    "matview_methods_with_rules"
-)
-val refreshMethodsWithRulesViewTrigger: TriggerBuilder<Trigger>
-    get() = createTrigger("refreshMethodsWithRulesViewTrigger")
-
 val refreshBuildsViewJob = createJob(
     "refreshBuildsViewJob",
-    "matview_builds"
+    "matview_methods_with_rules, matview_builds, matview_builds_comparison"
 )
 val refreshBuildsViewTrigger: TriggerBuilder<Trigger>
     get() = createTrigger("refreshBuildsViewTrigger")
