@@ -1669,10 +1669,8 @@ BEGIN
             BIT_COUNT(~baseline.probes) AS total_probes,
             BIT_COUNT(~baseline.methods_probes) AS total_methods
         FROM BuildsCoverage coverage
-		JOIN raw_data.get_builds_compared_to_baseline_v2(
-			input_build_id => coverage.build_id,
-			input_baseline_build_id => input_baseline_build_id
-		) baseline ON input_baseline_build_id IS NOT NULL
+		JOIN raw_data.matview_builds_comparison baseline ON baseline.build_id = coverage.build_id
+		WHERE baseline.baseline_build_id = input_baseline_build_id
 	),
     TargetBuildsCoverage AS (
         SELECT
