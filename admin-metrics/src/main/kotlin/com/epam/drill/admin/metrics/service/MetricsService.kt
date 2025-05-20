@@ -15,9 +15,14 @@
  */
 package com.epam.drill.admin.metrics.service
 
+import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 
 interface MetricsService {
+    suspend fun getApplications(
+        groupId: String? = null,
+    ): List<ApplicationView>
+
     suspend fun getBuilds(
         groupId: String,
         appId: String,

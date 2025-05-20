@@ -21,6 +21,8 @@ interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
 
+    suspend fun getApplications(groupId: String? = null): List<Map<String, Any>>
+
     suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>>
 
     suspend fun getMaterializedMethodsCoverage(

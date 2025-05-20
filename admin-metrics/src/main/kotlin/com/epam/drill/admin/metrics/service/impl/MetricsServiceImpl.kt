@@ -24,6 +24,7 @@ import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
+import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 import mu.KotlinLogging
 import java.net.URI
@@ -38,6 +39,17 @@ class MetricsServiceImpl(
     private val testRecommendationsConfig: TestRecommendationsConfig
 ) : MetricsService {
     private val logger = KotlinLogging.logger {}
+
+    override suspend fun getApplications(groupId: String?): List<ApplicationView> {
+        return transaction {
+            metricsRepository.getApplications(groupId).map {
+                ApplicationView(
+                    groupId = it["group_id"] as String,
+                    appId = it["app_id"] as String,
+                )
+            }
+        }
+    }
 
     override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
         return transaction {

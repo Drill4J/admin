@@ -31,7 +31,12 @@ private val logger = KotlinLogging.logger {}
 
 @Resource("/metrics")
 class Metrics {
+    @Resource("/applications")
+    class Applications(
+        val parent: Metrics,
 
+        val groupId: String? = null,
+    )
     @Resource("/builds")
     class Builds(
         val parent: Metrics,
@@ -88,10 +93,22 @@ class Metrics {
 }
 
 fun Route.metricsRoutes() {
+    getApplications()
     getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
     getCoverageTreemap()
+}
+
+fun Route.getApplications() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Applications> { params ->
+        val data = metricsService.getApplications(
+            params.groupId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
 }
 
 fun Route.getBuilds() {

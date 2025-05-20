@@ -35,6 +35,27 @@ class MetricsRepositoryImpl : MetricsRepository {
         x[0]["check_build_exists"] == true
     }
 
+    override suspend fun getApplications(groupId: String?): List<Map<String, Any>> = transaction {
+        val query = buildString {
+            append(
+                """
+                SELECT DISTINCT
+                    group_id,
+                    app_id
+                FROM raw_data.builds                
+                """.trimIndent()
+            )
+            if (groupId != null) {
+                append(" WHERE builds.group_id = ?")
+            }
+        }
+        val params = mutableListOf<Any>().apply {
+            if (groupId != null) add(groupId)
+        }
+
+        executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
+    }
+
     override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>> = transaction {
         val query = buildString {
             append(
