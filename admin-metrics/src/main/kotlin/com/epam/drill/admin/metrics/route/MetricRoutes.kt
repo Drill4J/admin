@@ -43,7 +43,11 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
-        val branch: String? = null
+        val branch: String? = null,
+        val envId: String? = null,
+
+        val page: Int? = null,
+        val size: Int? = null
     )
     @Resource("/coverage-treemap")
     class CoverageTreemap(
@@ -118,7 +122,10 @@ fun Route.getBuilds() {
         val report = metricsService.getBuilds(
             params.groupId,
             params.appId,
-            params.branch
+            params.branch,
+            params.envId,
+            params.page,
+            params.size
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }

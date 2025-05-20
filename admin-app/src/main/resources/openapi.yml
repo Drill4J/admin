@@ -302,6 +302,10 @@ paths:
           in: query
           schema:
             type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: List of builds

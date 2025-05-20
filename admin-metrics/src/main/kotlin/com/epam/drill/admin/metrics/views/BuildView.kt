@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.views
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 @Serializable
 class BuildView (
@@ -24,8 +25,8 @@ class BuildView (
     val commitSha: String?,
     val buildVersion: String?,
     val branch: String?,
-    val instanceId: String?,
-    val commitDate: String?,
+    val envIds: List<String>,
+    val commitDate: LocalDateTime?,
     val commitMessage: String?,
     val commitAuthor: String?
 )

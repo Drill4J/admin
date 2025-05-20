@@ -56,17 +56,30 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>> = transaction {
+    override suspend fun getBuilds(groupId: String, appId: String, branch: String?, envId: String?): List<Map<String, Any>> = transaction {
         val query = buildString {
             append(
             """
-            SELECT *
-            FROM raw_data.builds builds
+            SELECT 
+                build_id,
+                group_id,
+                app_id,
+                env_ids,
+                build_version,
+                branch,
+                commit_sha,                                
+                commit_author,
+                commit_message,
+                committed_at
+            FROM raw_data.view_builds builds
             WHERE builds.group_id = ? AND builds.app_id = ?
             """.trimIndent()
             )
             if (branch != null) {
                 append(" AND builds.branch = ?")
+            }
+            if (envId != null) {
+                append(" AND ? = ANY(builds.env_ids)")
             }
             append(" ORDER BY created_at DESC")
         }
@@ -75,6 +88,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             add(groupId)
             add(appId)
             if (branch != null) add(branch)
+            if (envId != null) add(envId)
         }
 
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>

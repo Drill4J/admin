@@ -182,7 +182,8 @@ SELECT
   	total_classes,
   	total_methods,
   	total_probes,
-  	committed_at
+  	committed_at,
+  	env_ids
 FROM raw_data.view_builds;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_matview_builds_pk ON raw_data.matview_builds (build_id);

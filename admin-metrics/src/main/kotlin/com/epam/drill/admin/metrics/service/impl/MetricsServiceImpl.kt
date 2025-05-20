@@ -26,6 +26,7 @@ import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
+import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
@@ -51,18 +52,25 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
+    override suspend fun getBuilds(
+        groupId: String,
+        appId: String,
+        branch: String?,
+        envId: String?,
+        page: Int?,
+        size: Int?
+    ): List<BuildView> {
         return transaction {
-            metricsRepository.getBuilds(groupId, appId, branch).map {
+            metricsRepository.getBuilds(groupId, appId, branch, envId).map {
                 BuildView(
-                    id = it["id"] as String,
+                    id = it["build_id"] as String,
                     groupId = it["group_id"] as String,
                     appId = it["app_id"] as String,
-                    commitSha = it["commit_sha"] as String?,
                     buildVersion = it["build_version"] as String?,
                     branch = it["branch"] as String?,
-                    instanceId = it["instance_id"] as String?,
-                    commitDate = it["commit_date"] as String?,
+                    envIds = (it["env_ids"] as List<String>?) ?: emptyList(),
+                    commitSha = it["commit_sha"] as String?,
+                    commitDate = (it["committed_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
                     commitMessage = it["commit_message"] as String?,
                     commitAuthor = it["commit_author"] as String?
                 )
@@ -137,7 +145,8 @@ class MetricsServiceImpl(
                 buildId,
                 baselineBuildId,
                 coverageThreshold,
-                useMaterializedViews ?: false)
+                useMaterializedViews ?: false
+            )
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
