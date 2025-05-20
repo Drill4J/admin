@@ -137,6 +137,43 @@ class BuildsInfoApiTest : DatabaseTests({
         }
     }
 
+    @Test
+    fun `given page and size, get metrics builds should return builds only for specified page and size`(): Unit = runBlocking {
+        val testGroup = "group-1"
+        val testApp = "app-1"
+        val app = drillApplication(rawDataServicesDIModule, metricsDIModule) {
+            dataIngestRoutes()
+            metricsRoutes()
+        }
+        val client = app.drillClient().apply {
+            initTestData()
+        }
+
+        client.get("/metrics/builds") {
+            parameter("groupId", testGroup)
+            parameter("appId", testApp)
+            parameter("page", 0)
+            parameter("size", 2)
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val json = JsonPath.parse(bodyAsText())
+            val data = json.read<List<Map<String, Any>>>("$.data")
+            assertEquals(2, data.size)
+        }
+
+        client.get("/metrics/builds") {
+            parameter("groupId", testGroup)
+            parameter("appId", testApp)
+            parameter("page", 1)
+            parameter("size", 2)
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val json = JsonPath.parse(bodyAsText())
+            val data = json.read<List<Map<String, Any>>>("$.data")
+            assertEquals(1, data.size)
+        }
+    }
+
     @AfterEach
     fun clearAll() = withTransaction {
         BuildTable.deleteAll()

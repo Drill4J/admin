@@ -60,8 +60,14 @@ class MetricsServiceImpl(
         page: Int?,
         size: Int?
     ): List<BuildView> {
+        val limit = size ?: 100
+        val offset = page?.let { it * limit } ?: 0
         return transaction {
-            metricsRepository.getBuilds(groupId, appId, branch, envId).map {
+            metricsRepository.getBuilds(
+                groupId, appId,
+                branch, envId,
+                offset, limit
+            ).map {
                 BuildView(
                     id = it["build_id"] as String,
                     groupId = it["group_id"] as String,

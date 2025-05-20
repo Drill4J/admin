@@ -119,7 +119,7 @@ fun Route.getBuilds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.Builds> { params ->
-        val report = metricsService.getBuilds(
+        val data = metricsService.getBuilds(
             params.groupId,
             params.appId,
             params.branch,
@@ -127,7 +127,7 @@ fun Route.getBuilds() {
             params.page,
             params.size
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 

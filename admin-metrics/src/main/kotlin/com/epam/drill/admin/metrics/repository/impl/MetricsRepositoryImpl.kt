@@ -56,7 +56,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getBuilds(groupId: String, appId: String, branch: String?, envId: String?): List<Map<String, Any>> = transaction {
+    override suspend fun getBuilds(groupId: String, appId: String,
+                                   branch: String?, envId: String?,
+                                   offset: Int, limit: Int): List<Map<String, Any>> = transaction {
         val query = buildString {
             append(
             """
@@ -82,6 +84,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 append(" AND ? = ANY(builds.env_ids)")
             }
             append(" ORDER BY created_at DESC")
+            append(" OFFSET ? LIMIT ?")
         }
 
         val params = mutableListOf<Any>().apply {
@@ -89,6 +92,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             add(appId)
             if (branch != null) add(branch)
             if (envId != null) add(envId)
+            add(offset)
+            add(limit)
         }
 
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
