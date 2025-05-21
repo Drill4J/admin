@@ -20,7 +20,7 @@ import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
+import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId

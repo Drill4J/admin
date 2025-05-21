@@ -1,3 +1,7 @@
+package com.epam.drill.admin.metrics.views
+
+import kotlinx.serialization.Serializable
+
 /**
  * Copyright 2020 - 2022 EPAM Systems
  *
@@ -13,11 +17,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.route.response
-
-import kotlinx.datetime.LocalDateTime
-import kotlinx.serialization.Serializable
-
 @Serializable
 class RecommendedTestsView(
     val testDefinitionId: String,
