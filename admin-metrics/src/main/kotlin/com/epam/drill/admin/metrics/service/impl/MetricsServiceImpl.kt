@@ -300,6 +300,16 @@ class MetricsServiceImpl(
         )
     }
 
+    override suspend fun refreshMaterializedViews() {
+        metricsRepository.refreshMaterializedView(methodsView)
+        metricsRepository.refreshMaterializedView(buildsView)
+        metricsRepository.refreshMaterializedView(buildsComparisonView)
+        metricsRepository.refreshMaterializedView(methodsCoverageView)
+        metricsRepository.refreshMaterializedView(buildsCoverageView)
+        metricsRepository.refreshMaterializedView(testSessionBuildsCoverageView)
+        metricsRepository.refreshMaterializedView(testedBuildsComparisonView)
+    }
+
     // TODO good candidate to be moved to common functions (probably)
     private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {
         val uri = URI(baseUrl).resolve(path)

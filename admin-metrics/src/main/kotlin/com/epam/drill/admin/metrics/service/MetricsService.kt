@@ -70,4 +70,6 @@ interface MetricsService {
         useMaterializedViews: Boolean?
     ): Map<String, Any?>
 
+    suspend fun refreshMaterializedViews()
+
 }

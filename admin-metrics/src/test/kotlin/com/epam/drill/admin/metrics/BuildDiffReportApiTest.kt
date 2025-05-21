@@ -36,7 +36,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods
                 deployInstance(build1, arrayOf(method1, method2))
                 //build2 has 1 new method, 1 modified method and 1 deleted method compared to build1
@@ -62,7 +62,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on target build, build-diff-report service should calculate isolated coverage`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 // build1 has 2 methods
                 deployInstance(build1, arrayOf(method1, method2))
                 // build2 has 1 modified method and 1 new method compared to build1.
@@ -105,7 +105,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on different builds, build-diff-report service should calculate aggregated coverage`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 1 method, test1 covers it
                 deployInstance(build1, arrayOf(method1))
                 launchTest(
@@ -155,7 +155,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on different builds, build-diff-report service should calculate recommended tests to run`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 1 method, test1 covers it
                 deployInstance(build1, arrayOf(method1))
                 launchTest(

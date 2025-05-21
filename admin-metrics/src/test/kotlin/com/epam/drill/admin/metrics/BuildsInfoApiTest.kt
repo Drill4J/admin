@@ -33,7 +33,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -60,7 +59,7 @@ class BuildsInfoApiTest : DatabaseTests({
     fun `given groupId and appId, get builds service should return builds only for specified group and app`(): Unit = runBlocking {
         val testGroup = "group-1"
         val testApp = "app-1"
-        val client = runDrillApplication().apply {
+        val client = runDrillApplication {
             initTestData()
         }
 
@@ -85,11 +84,7 @@ class BuildsInfoApiTest : DatabaseTests({
         val testGroup = "group-1"
         val testApp = "app-1"
         val testBranch = "main"
-        val app = drillApplication(rawDataServicesDIModule, metricsDIModule) {
-            dataIngestRoutes()
-            metricsRoutes()
-        }
-        val client = app.drillClient().apply {
+        val client = runDrillApplication {
             initTestData()
         }
 
@@ -115,7 +110,7 @@ class BuildsInfoApiTest : DatabaseTests({
         val testGroup = "group-1"
         val testApp = "app-1"
         val testEnv = "env-1"
-        val client = runDrillApplication().apply {
+        val client = runDrillApplication {
             initTestData()
             initEnvironmentData()
         }
@@ -141,11 +136,7 @@ class BuildsInfoApiTest : DatabaseTests({
     fun `given page and size, get metrics builds should return builds only for specified page and size`(): Unit = runBlocking {
         val testGroup = "group-1"
         val testApp = "app-1"
-        val app = drillApplication(rawDataServicesDIModule, metricsDIModule) {
-            dataIngestRoutes()
-            metricsRoutes()
-        }
-        val client = app.drillClient().apply {
+        val client = runDrillApplication {
             initTestData()
         }
 

@@ -53,7 +53,7 @@ class ApplicationsApiTest : DatabaseTests({
     @Test
     fun `given groupId, get applications service should return applications for specified group`(): Unit = runBlocking {
         val testGroup = "group-1"
-        val client = runDrillApplication().apply {
+        val client = runDrillApplication {
             initTestData()
         }
 
@@ -70,7 +70,7 @@ class ApplicationsApiTest : DatabaseTests({
 
     @Test
     fun `given no parameters, get applications service should return all applications`(): Unit = runBlocking {
-        val client = runDrillApplication().apply {
+        val client = runDrillApplication {
             initTestData()
         }
 
