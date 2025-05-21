@@ -56,12 +56,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getBuilds(groupId: String, appId: String,
-                                   branch: String?, envId: String?,
-                                   offset: Int, limit: Int): List<Map<String, Any>> = transaction {
+    override suspend fun getBuilds(
+        groupId: String, appId: String,
+        branch: String?, envId: String?,
+        offset: Int, limit: Int
+    ): List<Map<String, Any>> = transaction {
         val query = buildString {
             append(
-            """
+                """
             SELECT 
                 build_id,
                 group_id,
@@ -108,7 +110,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         branch: String?,
         packageNamePattern: String?,
         classNamePattern: String?
-    ):  List<Map<String,Any?>> = transaction {
+    ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """
                 WITH MethodsCoverage AS
@@ -160,36 +162,55 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(
             """
                     WITH 
-                    Risks AS (
-                        SELECT * 
-                        FROM raw_data.get_methods_coverage_v2(                        
-                            input_build_id => ?, 
+                    Changes AS (
+                        SELECT 
+                            equal,
+                            modified,
+                            added,
+                            deleted
+                        FROM raw_data.get_builds_compared_to_baseline_v2(
+			                input_build_id => ?,
+			                input_baseline_build_id => ?
+                        ) AS baseline   
+                    ),   
+                    Coverage AS (
+                        SELECT
+                            isolated_probes_coverage_ratio,
+                            aggregated_probes_coverage_ratio,
+                            isolated_tested_methods,
+                            isolated_missed_methods,
+                            aggregated_tested_methods,
+                            aggregated_missed_methods
+                        FROM raw_data.get_build_coverage_v3(
+                            input_build_id => ?,
                             input_baseline_build_id => ?,
-                            input_aggregated_coverage => true,
-                            input_materialized => false
-                        )	
+                            input_coverage_in_other_builds => true
+                        )
                     ),
                     RecommendedTests AS (
-                        SELECT *
+                        SELECT count(*) AS tests_to_run
                         FROM raw_data.get_recommended_tests_v4(
                             input_target_build_id => ?, 
                             input_baseline_build_id => ?,
-                            input_materialized => ?
+                            input_tests_to_skip => false,
+                            input_materialized => true
                         )
                     )	
                     SELECT 
-                        (SELECT count(*) FROM Risks WHERE change_type = 'new') as changes_new_methods,
-                        (SELECT count(*) FROM Risks WHERE change_type = 'modified') as changes_modified_methods,
-                        (SELECT count(*) FROM Risks) as total_changes,
-                        (SELECT count(*) FROM Risks WHERE aggregated_probes_coverage_ratio > 0) as tested_changes,
-                        (SELECT CAST(SUM(aggregated_covered_probes) AS FLOAT) / SUM(probes_count) FROM Risks) as coverage,
-                        (SELECT count(*) FROM RecommendedTests) as recommended_tests
+                        (SELECT added FROM Changes) as changes_new_methods,
+                        (SELECT modified FROM Changes) as changes_modified_methods,
+                        (SELECT deleted FROM Changes) as changes_deleted_methods,
+                        (SELECT added + modified FROM Changes) as total_changes,
+                        (SELECT aggregated_tested_methods FROM Coverage) as tested_changes,
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
+                        (SELECT tests_to_run FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
             targetBuildId,
             baselineBuildId,
             targetBuildId,
             baselineBuildId,
-            useMaterializedViews
+            targetBuildId,
+            baselineBuildId
         ).first() as Map<String, String>
     }
 
