@@ -97,10 +97,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        val (groupId, appId) = getAppAndGroupIdFromBuildId(buildId)
-        val data = metricsRepository.getMaterializedMethodsCoverage(
-            groupId,
-            appId,
+        val data = metricsRepository.getMethodsCoverage(
             buildId,
             testTag,
             envId,

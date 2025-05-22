@@ -101,9 +101,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getMaterializedMethodsCoverage(
-        groupId: String,
-        appId: String,
+    override suspend fun getMethodsCoverage(
         buildId: String,
         testTag: String?,
         envId: String?,
@@ -115,21 +113,22 @@ class MetricsRepositoryImpl : MetricsRepository {
             """
                 WITH MethodsCoverage AS
                 (
-                	SELECT *
-                	FROM raw_data.get_materialized_methods_coverage(
-                        input_group_id => ?,
-                        input_app_id => ?,
+                	SELECT 
+                        classname,
+                        name,
+                        params,
+                        return_type,
+                        probes_count,
+                        aggregated_covered_probes
+                	FROM raw_data.get_methods_coverage_v2(
                         input_build_id => ?,
-                        input_baseline_build_id => NULL,
                         input_aggregated_coverage => TRUE,
+                        input_materialized => TRUE,
                         input_test_tag => ?,
                         input_env_id => ?,
-                        input_branch => ?,
-                        input_coverage_period_from => NULL,
+                        input_branch => ?,                        
                         input_package_name_pattern => ?,
-                        input_class_name_pattern => ?,
-                        input_method_name_pattern => NULL,
-                        input_chronological => TRUE
+                        input_class_name_pattern => ?                        
                 	)
                 )
                 SELECT
@@ -142,8 +141,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                 GROUP BY name, classname, params, return_type
                 ORDER BY classname DESC
             """.trimIndent(),
-            groupId,
-            appId,
             buildId,
             testTag.takeUnless { it.isNullOrBlank() },
             envId.takeUnless { it.isNullOrBlank() },
@@ -191,7 +188,6 @@ class MetricsRepositoryImpl : MetricsRepository {
                         SELECT count(*) AS tests_to_run
                         FROM raw_data.get_recommended_tests_v4(
                             input_target_build_id => ?, 
-                            input_baseline_build_id => ?,
                             input_tests_to_skip => false,
                             input_materialized => true
                         )
@@ -209,8 +205,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             baselineBuildId,
             targetBuildId,
             baselineBuildId,
-            targetBuildId,
-            baselineBuildId
+            targetBuildId
         ).first() as Map<String, String>
     }
 
