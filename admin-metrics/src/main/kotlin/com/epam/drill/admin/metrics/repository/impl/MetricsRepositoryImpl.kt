@@ -75,7 +75,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 commit_author,
                 commit_message,
                 committed_at
-            FROM raw_data.view_builds builds
+            FROM raw_data.matview_builds builds
             WHERE builds.group_id = ? AND builds.app_id = ?
             """.trimIndent()
             )
@@ -151,10 +151,8 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuildDiffReport(
-        targetBuildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double,
-        useMaterializedViews: Boolean
+        buildId: String,
+        baselineBuildId: String
     ) = transaction {
         executeQueryReturnMap(
             """
@@ -201,11 +199,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
                         (SELECT tests_to_run FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
-            targetBuildId,
+            buildId,
             baselineBuildId,
-            targetBuildId,
+            buildId,
             baselineBuildId,
-            targetBuildId
+            buildId
         ).first() as Map<String, String>
     }
 
@@ -223,7 +221,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         testsToSkip: Boolean,
         testTaskId: String?,
         coveragePeriodFrom: LocalDateTime?,
-        useMaterializedViews: Boolean
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """            
@@ -240,15 +237,14 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_test_task_id => ?,		
                     input_baseline_build_id => ?,
                     input_coverage_period_from => ?,
-                    input_materialized => ?
+                    input_materialized => TRUE
                 )
             """.trimIndent(),
             targetBuildId,
             testsToSkip,
             testTaskId,
             baselineBuildId,
-            coveragePeriodFrom,
-            useMaterializedViews
+            coveragePeriodFrom
         )
     }
 }

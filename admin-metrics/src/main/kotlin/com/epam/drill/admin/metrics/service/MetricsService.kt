@@ -51,8 +51,7 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        coverageThreshold: Double,
-        useMaterializedViews: Boolean?
+        coverageThreshold: Double
     ): Map<String, Any?>
 
     suspend fun getRecommendedTests(
@@ -66,8 +65,7 @@ interface MetricsService {
         targetBuildVersion: String? = null,
         baselineInstanceId: String? = null,
         baselineCommitSha: String? = null,
-        baselineBuildVersion: String? = null,
-        useMaterializedViews: Boolean?
+        baselineBuildVersion: String? = null
     ): Map<String, Any?>
 
     suspend fun refreshMaterializedViews()

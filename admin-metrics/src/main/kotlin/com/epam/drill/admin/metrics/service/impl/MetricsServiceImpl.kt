@@ -120,7 +120,6 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
-        useMaterializedViews: Boolean?
     ): Map<String, Any?> {
         return transaction {
 
@@ -146,9 +145,7 @@ class MetricsServiceImpl(
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
-                baselineBuildId,
-                coverageThreshold,
-                useMaterializedViews ?: false
+                baselineBuildId
             )
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
@@ -219,7 +216,6 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        useMaterializedViews: Boolean?
     ): Map<String, Any?> = transaction {
         val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
@@ -264,7 +260,6 @@ class MetricsServiceImpl(
             testsToSkip = testsToSkip,
             testTaskId = testTaskId,
             coveragePeriodFrom = coveragePeriodFrom,
-            useMaterializedViews = useMaterializedViews ?: false
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
