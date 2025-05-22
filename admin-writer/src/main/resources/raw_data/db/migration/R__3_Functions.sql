@@ -1572,18 +1572,18 @@ BEGIN
 		coverage.total_probes::INT,
         COALESCE(coverage.isolated_covered_probes, 0)::INT AS isolated_covered_probes,
         (coverage.total_probes - COALESCE(coverage.isolated_covered_probes, 0))::INT AS isolated_missed_probes,
-        COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS isolated_probes_coverage_ratio,
+        (CASE WHEN coverage.total_probes > 0 THEN COALESCE(CAST(COALESCE(coverage.isolated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) ELSE 0.0 END) AS isolated_probes_coverage_ratio,
         COALESCE(coverage.aggregated_covered_probes, 0)::INT AS aggregated_covered_probes,
         (coverage.total_probes - COALESCE(coverage.aggregated_covered_probes, 0))::INT AS aggregated_missed_probes,
-        COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) AS aggregated_probes_coverage_ratio,
+        (CASE WHEN coverage.total_probes > 0 THEN COALESCE(CAST(COALESCE(coverage.aggregated_covered_probes, 0) AS FLOAT) / coverage.total_probes, 0.0) ELSE 0.0 END) AS aggregated_probes_coverage_ratio,
 
 		coverage.total_methods::INT,
 		COALESCE(coverage.isolated_tested_methods, 0)::INT AS isolated_tested_methods,
 		(coverage.total_methods - COALESCE(coverage.isolated_tested_methods, 0))::INT AS isolated_missed_methods,
-		COALESCE(CAST(COALESCE(coverage.isolated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) AS isolated_methods_coverage_ratio,
+		(CASE WHEN coverage.total_methods > 0 THEN COALESCE(CAST(COALESCE(coverage.isolated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) ELSE 0.0 END) AS isolated_methods_coverage_ratio,
 		COALESCE(coverage.aggregated_tested_methods, 0)::INT AS aggregated_tested_methods,
 		(coverage.total_methods - COALESCE(coverage.aggregated_tested_methods, 0))::INT AS aggregated_missed_methods,
-        COALESCE(CAST(COALESCE(coverage.aggregated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) AS aggregated_methods_coverage_ratio
+        (CASE WHEN coverage.total_methods > 0 THEN COALESCE(CAST(COALESCE(coverage.aggregated_tested_methods, 0) AS FLOAT) / coverage.total_methods, 0.0) ELSE 0.0 END) AS aggregated_methods_coverage_ratio
     FROM TargetBuildsCoverage coverage;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
