@@ -23,9 +23,11 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
+import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.pagedListOf
+import com.epam.drill.admin.metrics.views.withTotal
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
@@ -33,6 +35,8 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 
+
+private const val DEFAULT_PAGE_SIZE = 100
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -58,11 +62,9 @@ class MetricsServiceImpl(
         branch: String?,
         envId: String?,
         page: Int?,
-        size: Int?
-    ): List<BuildView> {
-        val limit = size ?: 100
-        val offset = page?.let { it * limit } ?: 0
-        return transaction {
+        pageSize: Int?
+    ): PagedList<BuildView> = transaction {
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branch, envId,
@@ -81,8 +83,14 @@ class MetricsServiceImpl(
                     commitAuthor = it["commit_author"] as String?
                 )
             }
+        } withTotal {
+            metricsRepository.getBuildsCount(
+                groupId, appId,
+                branch, envId
+            )
         }
     }
+
 
     override suspend fun getCoverageTreemap(
         buildId: String,

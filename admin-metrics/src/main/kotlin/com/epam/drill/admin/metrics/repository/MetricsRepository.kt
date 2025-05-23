@@ -26,6 +26,8 @@ interface MetricsRepository {
     suspend fun getBuilds(groupId: String, appId: String,
                           branch: String? = null, envId: String? = null,
                           offset: Int, limit: Int): List<Map<String, Any>>
+    suspend fun getBuildsCount(groupId: String, appId: String,
+                          branch: String? = null, envId: String? = null): Long
 
     suspend fun getMethodsCoverage(
         buildId: String,

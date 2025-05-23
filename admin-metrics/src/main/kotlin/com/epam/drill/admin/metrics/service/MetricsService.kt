@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.service
 
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
+import com.epam.drill.admin.metrics.views.PagedList
 
 interface MetricsService {
     suspend fun getApplications(
@@ -29,8 +30,8 @@ interface MetricsService {
         branch: String?,
         envId: String?,
         page: Int?,
-        size: Int?
-    ): List<BuildView>
+        pageSize: Int?
+    ): PagedList<BuildView>
 
     suspend fun getCoverageTreemap (
         buildId: String,

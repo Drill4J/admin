@@ -16,6 +16,8 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
+import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
+import com.epam.drill.admin.metrics.repository.impl.Paging
 import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
@@ -37,6 +39,7 @@ class Metrics {
 
         val groupId: String? = null,
     )
+
     @Resource("/builds")
     class Builds(
         val parent: Metrics,
@@ -47,8 +50,9 @@ class Metrics {
         val envId: String? = null,
 
         val page: Int? = null,
-        val size: Int? = null
+        val pageSize: Int? = null
     )
+
     @Resource("/coverage-treemap")
     class CoverageTreemap(
         val parent: Metrics,
@@ -61,6 +65,7 @@ class Metrics {
         val classNamePattern: String? = null,
         val rootId: String? = null
     )
+
     @Resource("/build-diff-report")
     class BuildDiffReport(
         val parent: Metrics,
@@ -123,9 +128,15 @@ fun Route.getBuilds() {
             params.branch,
             params.envId,
             params.page,
-            params.size
+            params.pageSize
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
     }
 }
 

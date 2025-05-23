@@ -23,10 +23,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import org.postgresql.util.PGobject
 import java.sql.Timestamp
-import org.postgresql.jdbc.PgArray
 
 object AnySerializer : KSerializer<Any?> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Any")
@@ -66,4 +63,15 @@ object AnySerializer : KSerializer<Any?> {
 @Serializable
 data class ApiResponse(
     @Serializable(with = AnySerializer::class) val data: Any?
+)
+@Serializable
+data class PagedDataResponse(
+    @Serializable(with = AnySerializer::class) val data: Any?,
+    val paging: Paging
+)
+@Serializable
+data class Paging(
+    val page: Int,
+    val pageSize: Int,
+    val total: Long?
 )

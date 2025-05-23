@@ -143,25 +143,29 @@ class BuildsInfoApiTest : DatabaseTests({
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("page", 0)
-            parameter("size", 2)
+            parameter("page", 1)
+            parameter("pageSize", 2)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())
             val data = json.read<List<Map<String, Any>>>("$.data")
             assertEquals(2, data.size)
+            val total = json.read<Int>("$.paging.total")
+            assertEquals(3, total)
         }
 
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("page", 1)
-            parameter("size", 2)
+            parameter("page", 2)
+            parameter("pageSize", 2)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())
             val data = json.read<List<Map<String, Any>>>("$.data")
             assertEquals(1, data.size)
+            val total = json.read<Int>("$.paging.total")
+            assertEquals(3, total)
         }
     }
 

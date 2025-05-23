@@ -101,6 +101,35 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
+    override suspend fun getBuildsCount(
+        groupId: String, appId: String,
+        branch: String?, envId: String?
+    ): Long = transaction {
+        val query = buildString {
+            append(
+                """
+            SELECT COUNT(*) AS cnt
+            FROM raw_data.matview_builds builds
+            WHERE builds.group_id = ? AND builds.app_id = ?
+            """.trimIndent()
+            )
+            if (branch != null) {
+                append(" AND builds.branch = ?")
+            }
+            if (envId != null) {
+                append(" AND ? = ANY(builds.env_ids)")
+            }
+        }
+        val params = mutableListOf<Any>().apply {
+            add(groupId)
+            add(appId)
+            if (branch != null) add(branch)
+            if (envId != null) add(envId)
+        }
+        val result = executeQueryReturnMap(query, *params.toTypedArray())
+        (result[0]["cnt"] as? Number)?.toLong() ?: 0
+    }
+
     override suspend fun getMethodsCoverage(
         buildId: String,
         testTag: String?,
