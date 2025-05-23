@@ -40,7 +40,9 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         build_id,
         group_id,
         app_id,
-        probe_start_pos
+        probe_start_pos,--deprecated
+        (SUM(probes_count) OVER (PARTITION BY build_id ORDER BY signature)) - probes_count + 1 AS probes_start,
+        (COUNT(*) OVER (PARTITION BY build_id ORDER BY signature)) AS method_num
     FROM raw_data.methods m
     WHERE probes_count > 0
         AND NOT EXISTS (
@@ -70,13 +72,20 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
         SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count) AS probes,
         BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) AS covered_probes,
         coverage.created_at,
-        builds.created_at AS build_created_at
+        builds.created_at AS build_created_at,
+        launches.result AS test_result,
+        launches.id AS test_launch_id,
+        sessions.id AS test_session_id,
+        sessions.test_task_id AS test_task_id,
+        definitions.id AS test_definition_id,
+        definitions.path AS test_path
     FROM raw_data.coverage coverage
 	JOIN raw_data.view_methods_with_rules methods ON methods.classname = coverage.classname
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id
     JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
 	LEFT JOIN raw_data.test_definitions definitions ON definitions.id = launches.test_definition_id
+	LEFT JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
     WHERE TRUE
 	  AND methods.probes_count > 0
 	  AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
@@ -117,7 +126,7 @@ CREATE OR REPLACE VIEW raw_data.view_test_sessions AS
     GROUP BY ts.id;
 
 -----------------------------------------------------------------
-
+-- Deprecated, use raw_data.view_methods_coverage_v2
 -----------------------------------------------------------------
 CREATE OR REPLACE VIEW raw_data.view_methods_tests_coverage AS
     SELECT
@@ -151,7 +160,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_tests_coverage AS
       AND BIT_LENGTH(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) = methods.probes_count;
 
 -----------------------------------------------------------------
-
+--Deprecated, use raw_data.view_test_session_builds_v2
 -----------------------------------------------------------------
 CREATE OR REPLACE VIEW raw_data.view_test_session_builds AS
 SELECT
@@ -183,6 +192,41 @@ FROM (
 	GROUP BY tl.test_session_id, tl.build_id
 ) tsb
 GROUP BY test_session_id, build_id;
+
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
+CREATE OR REPLACE VIEW raw_data.view_test_session_builds_v2 AS
+SELECT
+  tlb.test_session_id,
+  tlb.build_id,
+  COUNT(*) AS build_tests
+FROM (
+	SELECT DISTINCT
+	 	test_launch_id,
+		test_session_id,
+		build_id
+	FROM (
+		SELECT
+			tl.id AS test_launch_id,
+			tl.test_session_id,
+			tsb.build_id
+		FROM raw_data.test_launches tl
+		JOIN raw_data.test_session_builds tsb ON tsb.test_session_id = tl.test_session_id
+		GROUP BY tl.id, tl.test_session_id, tsb.build_id
+		UNION ALL
+		SELECT
+		  tl.id AS test_launch_id,
+		  tl.test_session_id,
+		  i.build_id
+		FROM raw_data.coverage c
+		JOIN raw_data.test_launches tl ON tl.id = c.test_id
+		JOIN raw_data.instances i ON i.id = c.instance_id
+		GROUP BY tl.id, tl.test_session_id, i.build_id
+	) tlb
+) tlb
+GROUP BY tlb.test_session_id, tlb.build_id;
+
 
 -----------------------------------------------------------------
 
@@ -256,7 +300,7 @@ SELECT
         CAST(SUM(CASE WHEN ts.result <> 'FAILED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)
     ELSE 1 END) AS successful
 FROM raw_data.view_test_sessions ts
-JOIN raw_data.view_test_session_builds tsb ON tsb.test_session_id = ts.test_session_id
+JOIN raw_data.view_test_session_builds_v2 tsb ON tsb.test_session_id = ts.test_session_id
 GROUP BY ts.group_id, ts.test_task_id, tsb.build_id;
 
 -----------------------------------------------------------------

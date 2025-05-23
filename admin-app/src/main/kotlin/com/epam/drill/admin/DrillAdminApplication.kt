@@ -185,9 +185,8 @@ private fun Application.initScheduler() {
         scheduler.shutdown()
     }
     scheduler.start()
-    scheduler.scheduleJob(refreshMethodsWithRulesViewJob, refreshMethodsWithRulesViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
     scheduler.scheduleJob(refreshBuildsViewJob, refreshBuildsViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
-    scheduler.scheduleJob(refreshMethodsCoverageViewJob, refreshMethodsCoverageViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
+    scheduler.scheduleJob(refreshCoverageViewJob, refreshCoverageViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
     scheduler.scheduleJob(refreshTestedBuildsComparisonViewJob, refreshTestedBuildsComparisonViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
     scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
