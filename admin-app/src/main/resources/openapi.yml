@@ -310,7 +310,7 @@ paths:
           in: query
           schema:
             type: integer
-        - name: size
+        - name: pageSize
           in: query
           schema:
             type: integer
