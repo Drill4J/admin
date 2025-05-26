@@ -23,11 +23,16 @@ interface MetricsRepository {
 
     suspend fun getApplications(groupId: String? = null): List<Map<String, Any>>
 
-    suspend fun getBuilds(groupId: String, appId: String,
-                          branch: String? = null, envId: String? = null,
-                          offset: Int, limit: Int): List<Map<String, Any>>
-    suspend fun getBuildsCount(groupId: String, appId: String,
-                          branch: String? = null, envId: String? = null): Long
+    suspend fun getBuilds(
+        groupId: String, appId: String,
+        branch: String? = null, envId: String? = null,
+        offset: Int, limit: Int
+    ): List<Map<String, Any>>
+
+    suspend fun getBuildsCount(
+        groupId: String, appId: String,
+        branch: String? = null, envId: String? = null
+    ): Long
 
     suspend fun getMethodsCoverage(
         buildId: String,
@@ -36,7 +41,7 @@ interface MetricsRepository {
         branch: String? = null,
         packageNamePattern: String? = null,
         classNamePattern: String? = null,
-    ): List<Map<String,Any?>>
+    ): List<Map<String, Any?>>
 
     suspend fun getBuildDiffReport(
         buildId: String,
@@ -50,6 +55,13 @@ interface MetricsRepository {
         baselineBuildId: String? = null,
         testsToSkip: Boolean = false,
         testTaskId: String? = null,
-        coveragePeriodFrom: LocalDateTime ?= null,
+        coveragePeriodFrom: LocalDateTime? = null,
     ): List<Map<String, Any?>>
+
+    suspend fun getChanges(
+        buildId: String, baselineBuildId: String,
+        offset: Int, limit: Int
+    ): List<Map<String, Any?>>
+
+    suspend fun getChangesCount(buildId: String, baselineBuildId: String): Long
 }

@@ -276,4 +276,55 @@ class MetricsRepositoryImpl : MetricsRepository {
             coveragePeriodFrom
         )
     }
+
+    override suspend fun getChanges(
+        buildId: String,
+        baselineBuildId: String,
+        offset: Int,
+        limit: Int
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+                SELECT 
+                    classname,
+                    name,
+                    params,
+                    return_type,
+                    change_type,
+                    probes_count,                    
+                    isolated_covered_probes,
+                    aggregated_covered_probes,                    
+                    isolated_probes_coverage_ratio,
+                    aggregated_probes_coverage_ratio                    
+                FROM raw_data.get_methods_coverage_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,
+                    input_aggregated_coverage => TRUE,
+                    input_materialized => TRUE
+                )                
+                OFFSET ? LIMIT ?
+            """.trimIndent(),
+            buildId,
+            baselineBuildId,
+            offset,
+            limit
+        )
+    }
+
+    override suspend fun getChangesCount(buildId: String, baselineBuildId: String): Long = transaction {
+        val result = executeQueryReturnMap(
+            """
+                SELECT COUNT(*) AS cnt
+                FROM raw_data.get_methods_coverage_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,
+                    input_aggregated_coverage => TRUE,
+                    input_materialized => TRUE
+                )
+            """.trimIndent(),
+            buildId,
+            baselineBuildId
+        )
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+    }
 }

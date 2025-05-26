@@ -97,6 +97,23 @@ class Metrics {
         val baselineBuildVersion: String? = null,
         val coveragePeriodDays: Int? = null,
     )
+
+    @Resource("/changes")
+    class Changes(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+
+        val page: Int? = null,
+        val pageSize: Int? = null
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -105,6 +122,7 @@ fun Route.metricsRoutes() {
     getBuildDiffReport()
     getRecommendedTests()
     getCoverageTreemap()
+    getChanges()
 }
 
 fun Route.getApplications() {
@@ -194,5 +212,31 @@ fun Route.getRecommendedTests() {
             baselineBuildVersion = params.baselineBuildVersion,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
+    }
+}
+
+fun Route.getChanges() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Changes> { params ->
+        val data = metricsService.getChanges(
+            groupId = params.groupId,
+            appId= params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
     }
 }

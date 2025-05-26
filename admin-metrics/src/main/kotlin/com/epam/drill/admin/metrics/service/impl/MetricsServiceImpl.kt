@@ -25,6 +25,8 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
+import com.epam.drill.admin.metrics.views.ChangeType
+import com.epam.drill.admin.metrics.views.ChangeView
 import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.pagedListOf
 import com.epam.drill.admin.metrics.views.withTotal
@@ -308,6 +310,66 @@ class MetricsServiceImpl(
         metricsRepository.refreshMaterializedView(buildsCoverageView)
         metricsRepository.refreshMaterializedView(testSessionBuildsCoverageView)
         metricsRepository.refreshMaterializedView(testedBuildsComparisonView)
+    }
+
+    override suspend fun getChanges(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<ChangeView> = transaction {
+        val baselineBuildId = generateBuildId(
+            groupId,
+            appId,
+            baselineInstanceId,
+            baselineCommitSha,
+            baselineBuildVersion,
+            """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+        )
+
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+
+        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
+            metricsRepository.getChanges(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                offset = offset,
+                limit = limit
+            ).map { resultSet ->
+                ChangeView(
+                    className = resultSet["classname"] as String,
+                    name = resultSet["name"] as String,
+                    params = (resultSet["params"] as String).split(",").map(String::trim),
+                    returnType = resultSet["return_type"] as String,
+                    changeType = ChangeType.fromString(resultSet["change_type"] as String) ?: ChangeType.ADDED,
+                    probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
+                    coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
+                    coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
+                    coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+                    coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+                )
+            }
+        } withTotal {
+            metricsRepository.getChangesCount(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId
+            )
+        }
     }
 
     // TODO good candidate to be moved to common functions (probably)
