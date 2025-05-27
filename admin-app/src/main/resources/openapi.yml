@@ -438,6 +438,107 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/coverage-treemap:
+    get:
+      summary: Get coverage treemap
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: packageNamePattern
+          in: query
+          schema:
+            type: string
+        - name: classNamePattern
+          in: query
+          schema:
+            type: string
+        - name: rootId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Coverage treemap data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/changes:
+    get:
+      summary: Get method changes between builds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of method changes between builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:
