@@ -26,7 +26,7 @@ import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 import com.epam.drill.admin.metrics.views.ChangeType
-import com.epam.drill.admin.metrics.views.ChangeView
+import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.pagedListOf
 import com.epam.drill.admin.metrics.views.withTotal
@@ -323,7 +323,7 @@ class MetricsServiceImpl(
         baselineBuildVersion: String?,
         page: Int?,
         pageSize: Int?
-    ): PagedList<ChangeView> = transaction {
+    ): PagedList<MethodView> = transaction {
         val baselineBuildId = generateBuildId(
             groupId,
             appId,
@@ -350,27 +350,49 @@ class MetricsServiceImpl(
                 baselineBuildId = baselineBuildId,
                 offset = offset,
                 limit = limit
-            ).map { resultSet ->
-                ChangeView(
-                    className = resultSet["classname"] as String,
-                    name = resultSet["name"] as String,
-                    params = (resultSet["params"] as String).split(",").map(String::trim),
-                    returnType = resultSet["return_type"] as String,
-                    changeType = ChangeType.fromString(resultSet["change_type"] as String) ?: ChangeType.ADDED,
-                    probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
-                    coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
-                    coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
-                    coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
-                    coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
-                )
-            }
+            ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getChangesCount(
-                buildId = buildId,
-                baselineBuildId = baselineBuildId
-            )
+            metricsRepository.getChangesCount(buildId = buildId, baselineBuildId = baselineBuildId)
         }
     }
+
+    override suspend fun getCoverage(
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView> = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
+            metricsRepository.getChanges(
+                buildId = buildId,
+                offset = offset,
+                limit = limit
+            ).map(::mapToMethodView)
+        } withTotal {
+            metricsRepository.getChangesCount(buildId = buildId)
+        }
+    }
+
+    private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
+        className = resultSet["classname"] as String,
+        name = resultSet["name"] as String,
+        params = (resultSet["params"] as String).split(",").map(String::trim),
+        returnType = resultSet["return_type"] as String,
+        changeType = ChangeType.fromString(resultSet["change_type"] as String),
+        probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
+        coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+    )
 
     // TODO good candidate to be moved to common functions (probably)
     private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {

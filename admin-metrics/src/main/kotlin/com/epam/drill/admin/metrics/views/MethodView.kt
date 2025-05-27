@@ -18,12 +18,12 @@ package com.epam.drill.admin.metrics.views
 import kotlinx.serialization.Serializable
 
 @Serializable
-class ChangeView (
+class MethodView (
     val className: String,
     val name: String,
     val params: List<String> = emptyList(),
     val returnType: String?,
-    val changeType: ChangeType,
+    val changeType: ChangeType? = null,
     val probesCount: Int,
     val coveredProbes: Int,
     val coveredProbesInOtherBuilds: Int,

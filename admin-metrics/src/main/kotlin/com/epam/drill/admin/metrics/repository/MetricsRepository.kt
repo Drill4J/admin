@@ -59,9 +59,9 @@ interface MetricsRepository {
     ): List<Map<String, Any?>>
 
     suspend fun getChanges(
-        buildId: String, baselineBuildId: String,
+        buildId: String, baselineBuildId: String? = null,
         offset: Int, limit: Int
     ): List<Map<String, Any?>>
 
-    suspend fun getChangesCount(buildId: String, baselineBuildId: String): Long
+    suspend fun getChangesCount(buildId: String, baselineBuildId: String? = null): Long
 }

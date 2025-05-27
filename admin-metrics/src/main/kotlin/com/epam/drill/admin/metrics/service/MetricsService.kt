@@ -17,7 +17,7 @@ package com.epam.drill.admin.metrics.service
 
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
-import com.epam.drill.admin.metrics.views.ChangeView
+import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
 
 interface MetricsService {
@@ -83,6 +83,17 @@ interface MetricsService {
         baselineBuildVersion: String?,
         page: Int?,
         pageSize: Int?
-    ): PagedList<ChangeView>
+    ): PagedList<MethodView>
+
+    suspend fun getCoverage(
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView>
 
 }

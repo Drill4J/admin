@@ -19,8 +19,6 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
@@ -33,7 +31,6 @@ import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
@@ -79,7 +76,7 @@ class ChangesApiTest : DatabaseTests({
                 val data = json.read<List<Map<String, Any>>>("$.data")
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
-                assertTrue(data.any { it["name"] == method3.name && it["changeType"] == ChangeType.ADDED.name })
+                assertTrue(data.any { it["name"] == method3.name && it["changeType"] == ChangeType.NEW.name })
                 assertTrue(data.all { (it["coveredProbes"] as Int) == 0 })
             }
         }

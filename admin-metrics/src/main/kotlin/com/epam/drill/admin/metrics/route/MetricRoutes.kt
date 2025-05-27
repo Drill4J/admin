@@ -114,6 +114,21 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null
     )
+
+    @Resource("/coverage")
+    class Coverage(
+        val parent: Metrics,
+
+        val buildId: String,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
+        val packageNamePattern: String? = null,
+        val classNamePattern: String? = null,
+
+        val page: Int? = null,
+        val pageSize: Int? = null
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -123,6 +138,7 @@ fun Route.metricsRoutes() {
     getRecommendedTests()
     getCoverageTreemap()
     getChanges()
+    getCoverage()
 }
 
 fun Route.getApplications() {
@@ -221,13 +237,37 @@ fun Route.getChanges() {
     get<Metrics.Changes> { params ->
         val data = metricsService.getChanges(
             groupId = params.groupId,
-            appId= params.appId,
+            appId = params.appId,
             instanceId = params.instanceId,
             commitSha = params.commitSha,
             buildVersion = params.buildVersion,
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
+fun Route.getCoverage() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Coverage> { params ->
+        val data = metricsService.getCoverage(
+            buildId = params.buildId,
+            testTag = params.testTag,
+            envId = params.envId,
+            branch = params.branch,
+            packageNamePattern = params.packageNamePattern,
+            classNamePattern = params.classNamePattern,
             page = params.page,
             pageSize = params.pageSize,
         )

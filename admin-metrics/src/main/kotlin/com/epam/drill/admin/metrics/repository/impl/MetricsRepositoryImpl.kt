@@ -279,7 +279,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getChanges(
         buildId: String,
-        baselineBuildId: String,
+        baselineBuildId: String?,
         offset: Int,
         limit: Int
     ): List<Map<String, Any?>> = transaction {
@@ -311,7 +311,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
-    override suspend fun getChangesCount(buildId: String, baselineBuildId: String): Long = transaction {
+    override suspend fun getChangesCount(buildId: String, baselineBuildId: String?): Long = transaction {
         val result = executeQueryReturnMap(
             """
                 SELECT COUNT(*) AS cnt

@@ -16,7 +16,7 @@
 package com.epam.drill.admin.metrics.views
 
 enum class ChangeType {
-    ADDED,
+    NEW,
     MODIFIED,
     DELETED;
 

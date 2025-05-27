@@ -539,6 +539,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/coverage:
+    get:
+      summary: Get coverage by methods for a build
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: packageNamePattern
+          in: query
+          schema:
+            type: string
+        - name: classNamePattern
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Method list with coverage data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:
