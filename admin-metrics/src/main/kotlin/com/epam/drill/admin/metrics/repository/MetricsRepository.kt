@@ -36,12 +36,21 @@ interface MetricsRepository {
 
     suspend fun getMethodsCoverage(
         buildId: String,
+        baselineBuildId: String? = null,
         testTag: String? = null,
         envId: String? = null,
         branch: String? = null,
         packageNamePattern: String? = null,
         classNamePattern: String? = null,
+        offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
+
+    suspend fun getMethodsCount(
+        buildId: String,
+        baselineBuildId: String? = null,
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+    ): Long
 
     suspend fun getBuildDiffReport(
         buildId: String,
@@ -57,11 +66,4 @@ interface MetricsRepository {
         testTaskId: String? = null,
         coveragePeriodFrom: LocalDateTime? = null,
     ): List<Map<String, Any?>>
-
-    suspend fun getChanges(
-        buildId: String, baselineBuildId: String? = null,
-        offset: Int, limit: Int
-    ): List<Map<String, Any?>>
-
-    suspend fun getChangesCount(buildId: String, baselineBuildId: String? = null): Long
 }

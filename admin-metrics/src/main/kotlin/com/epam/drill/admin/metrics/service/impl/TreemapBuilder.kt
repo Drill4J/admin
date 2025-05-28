@@ -21,7 +21,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
 
     // Step 1: Build full uncollapsed tree
     for (item in data) {
-        val pathParts = (item["name"] as String).split("/")
+        val pathParts = ("${item["classname"]}/${item["name"]}").split("/")
         var currentPath = ""
 
         for ((index, part) in pathParts.withIndex()) {
@@ -55,8 +55,8 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
         }
 
         val leafNode = nodeMap.getValue(currentPath)
-        leafNode["probes_count"] = item["probes_count"] as Long
-        leafNode["covered_probes"] = item["covered_probes"] as Long
+        leafNode["probes_count"] = (item["probes_count"] as Number).toLong()
+        leafNode["covered_probes"] = (item["aggregated_covered_probes"] as Number).toLong()
     }
 
     // Step 2: Collapse into a new map
@@ -131,7 +131,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
         }
 
         for (item in data) {
-            val pathParts = (item["name"] as String).split("/")
+            val pathParts = ("${item["classname"]}/${item["name"]}").split("/")
             var currentPath = ""
             for ((index, part) in pathParts.withIndex()) {
                 var nodePart = part

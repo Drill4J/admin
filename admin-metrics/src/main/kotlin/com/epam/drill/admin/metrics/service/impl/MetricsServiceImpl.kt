@@ -108,12 +108,12 @@ class MetricsServiceImpl(
         }
 
         val data = metricsRepository.getMethodsCoverage(
-            buildId,
-            testTag,
-            envId,
-            branch,
-            packageNamePattern,
-            classNamePattern,
+            buildId= buildId,
+            testTag= testTag?.takeIf { it.isNotBlank() },
+            envId= envId?.takeIf { it.isNotBlank() },
+            branch= branch?.takeIf { it.isNotBlank() },
+            packageNamePattern= packageNamePattern?.takeIf { it.isNotBlank() },
+            classNamePattern = classNamePattern?.takeIf { it.isNotBlank() }
         )
 
         return buildTree(data, rootId)
@@ -345,14 +345,14 @@ class MetricsServiceImpl(
         }
 
         return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
-            metricsRepository.getChanges(
+            metricsRepository.getMethodsCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getChangesCount(buildId = buildId, baselineBuildId = baselineBuildId)
+            metricsRepository.getMethodsCount(buildId = buildId, baselineBuildId = baselineBuildId)
         }
     }
 
@@ -371,13 +371,18 @@ class MetricsServiceImpl(
         }
 
         return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
-            metricsRepository.getChanges(
+            metricsRepository.getMethodsCoverage(
                 buildId = buildId,
+                testTag = testTag,
+                envId = envId,
+                branch = branch,
+                packageNamePattern = packageNamePattern,
+                classNamePattern = classNamePattern,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getChangesCount(buildId = buildId)
+            metricsRepository.getMethodsCount(buildId = buildId)
         }
     }
 

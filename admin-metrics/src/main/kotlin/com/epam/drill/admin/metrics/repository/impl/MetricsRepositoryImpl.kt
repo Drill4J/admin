@@ -132,51 +132,82 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getMethodsCoverage(
         buildId: String,
+        baselineBuildId: String?,
         testTag: String?,
         envId: String?,
         branch: String?,
         packageNamePattern: String?,
-        classNamePattern: String?
+        classNamePattern: String?,
+        offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
-        executeQueryReturnMap(
-            """
-                WITH MethodsCoverage AS
-                (
-                	SELECT 
-                        classname,
-                        name,
-                        params,
-                        return_type,
-                        probes_count,
-                        aggregated_covered_probes
-                	FROM raw_data.get_methods_coverage_v2(
-                        input_build_id => ?,
-                        input_aggregated_coverage => TRUE,
-                        input_materialized => TRUE,
-                        input_test_tag => ?,
-                        input_env_id => ?,
-                        input_branch => ?,                        
-                        input_package_name_pattern => ?,
-                        input_class_name_pattern => ?                        
-                	)
+        val query = buildString {
+            append(
+                """
+                SELECT 
+                    classname,
+                    name,
+                    params,
+                    return_type,
+                    change_type,
+                    probes_count,                    
+                    isolated_covered_probes,
+                    aggregated_covered_probes,                    
+                    isolated_probes_coverage_ratio,
+                    aggregated_probes_coverage_ratio                    
+                FROM raw_data.get_methods_coverage_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,
+                    input_test_tag => ?,
+                    input_env_id => ?,
+                    input_branch => ?,                        
+                    input_package_name_pattern => ?,
+                    input_class_name_pattern => ?,
+                    input_aggregated_coverage => TRUE,
+                    input_materialized => TRUE
                 )
-                SELECT
-                	classname || '/' || name AS name,
-                	params,
-                	return_type,
-                	SUM(probes_count) AS probes_count,
-                	SUM(aggregated_covered_probes) AS covered_probes
-                FROM MethodsCoverage
-                GROUP BY name, classname, params, return_type
-                ORDER BY classname DESC
-            """.trimIndent(),
-            buildId,
-            testTag.takeUnless { it.isNullOrBlank() },
-            envId.takeUnless { it.isNullOrBlank() },
-            branch.takeUnless { it.isNullOrBlank() },
-            "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
-            "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
-        )
+                ORDER BY signature
+                """.trimIndent()
+            )
+            offset?.let { append(" OFFSET ?") }
+            limit?.let { append(" LIMIT ?") }
+        }
+        val params = mutableListOf<Any?>().apply {
+            add(buildId)
+            add(baselineBuildId)
+            add(testTag)
+            add(envId)
+            add(branch)
+            add("$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() })
+            add("%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() })
+            offset?.let { add(it) }
+            limit?.let { add(it) }
+        }
+        executeQueryReturnMap(query, *params.toTypedArray())
+    }
+
+    override suspend fun getMethodsCount(
+        buildId: String,
+        baselineBuildId: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?
+    ): Long = transaction {
+        val query = """
+            SELECT COUNT(*) AS cnt
+            FROM raw_data.get_methods_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?,
+                input_package_name_pattern => ?,
+                input_class_name_pattern => ?
+            )
+        """.trimIndent()
+        val params = mutableListOf<Any?>().apply {
+            add(buildId)
+            add(baselineBuildId)
+            add("$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() })
+            add("%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() })
+        }
+        val result = executeQueryReturnMap(query, *params.toTypedArray())
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getBuildDiffReport(
@@ -275,56 +306,5 @@ class MetricsRepositoryImpl : MetricsRepository {
             baselineBuildId,
             coveragePeriodFrom
         )
-    }
-
-    override suspend fun getChanges(
-        buildId: String,
-        baselineBuildId: String?,
-        offset: Int,
-        limit: Int
-    ): List<Map<String, Any?>> = transaction {
-        executeQueryReturnMap(
-            """
-                SELECT 
-                    classname,
-                    name,
-                    params,
-                    return_type,
-                    change_type,
-                    probes_count,                    
-                    isolated_covered_probes,
-                    aggregated_covered_probes,                    
-                    isolated_probes_coverage_ratio,
-                    aggregated_probes_coverage_ratio                    
-                FROM raw_data.get_methods_coverage_v2(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?,
-                    input_aggregated_coverage => TRUE,
-                    input_materialized => TRUE
-                )                
-                OFFSET ? LIMIT ?
-            """.trimIndent(),
-            buildId,
-            baselineBuildId,
-            offset,
-            limit
-        )
-    }
-
-    override suspend fun getChangesCount(buildId: String, baselineBuildId: String?): Long = transaction {
-        val result = executeQueryReturnMap(
-            """
-                SELECT COUNT(*) AS cnt
-                FROM raw_data.get_methods_coverage_v2(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?,
-                    input_aggregated_coverage => TRUE,
-                    input_materialized => TRUE
-                )
-            """.trimIndent(),
-            buildId,
-            baselineBuildId
-        )
-        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 }

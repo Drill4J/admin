@@ -103,7 +103,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -----------------------------------------------------------------
-
+--Deprecated, use get_methods_v2 instead
 -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS raw_data.get_methods CASCADE;
 
@@ -1712,5 +1712,83 @@ BEGIN
     FROM TargetBuildsCoverage coverage
     JOIN Builds builds ON builds.build_id = coverage.build_id
     ORDER BY builds.build_created_at ASC;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Function to get methods of a given build
+-- @param input_build_id VARCHAR: The ID of the build
+-- @param input_baseline_build_id VARCHAR DEFAULT NULL: The ID of the baseline build (optional)
+-- @param input_package_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by package name (optional)
+-- @param input_class_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by class name (optional)
+-- @param input_method_name_pattern VARCHAR DEFAULT NULL: Pattern to filter by method name (optional)
+-- @returns TABLE: A table containing methods
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_methods_v2 CASCADE;
+
+CREATE OR REPLACE FUNCTION raw_data.get_methods_v2(
+    input_build_id VARCHAR,
+    input_baseline_build_id VARCHAR DEFAULT NULL,
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+    build_id VARCHAR,
+	signature VARCHAR,
+    classname VARCHAR,
+    name VARCHAR,
+    params VARCHAR,
+    return_type VARCHAR,
+    probes_count INT,
+    change_type VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH
+    BaselineMethods AS (
+    		SELECT
+    			baseline.signature,
+                baseline.body_checksum
+    		FROM raw_data.matview_methods_with_rules baseline
+    		WHERE baseline.build_id = input_baseline_build_id
+    ),
+    Methods AS (
+        SELECT
+			methods.build_id,
+            methods.signature,
+            methods.body_checksum,
+            methods.probes_count,
+            (CASE WHEN baseline.signature IS NULL THEN 'new' ELSE 'modified' END) AS change_type,
+            builds.group_id,
+            builds.app_id,
+            builds.created_at AS build_created_at,
+			methods.classname,
+        	methods.name,
+        	methods.params,
+        	methods.return_type
+        FROM raw_data.matview_methods_with_rules methods
+        JOIN raw_data.builds builds ON builds.id = methods.build_id
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = methods.signature
+        WHERE methods.build_id = input_build_id
+            --filter by package pattern
+            AND (input_package_name_pattern IS NULL OR methods.classname LIKE input_package_name_pattern)
+            --filter by class pattern
+            AND (input_class_name_pattern IS NULL OR methods.classname LIKE input_class_name_pattern)
+            --filter by method pattern
+            AND (input_method_name_pattern IS NULL OR methods.name LIKE input_method_name_pattern)
+            --filter by baseline
+            AND (input_baseline_build_id IS NULL OR baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
+    )
+    SELECT
+        methods.build_id::VARCHAR,
+    	methods.signature::VARCHAR,
+        methods.classname,
+        methods.name,
+        methods.params,
+        methods.return_type,
+        methods.probes_count::INT,
+        methods.change_type::VARCHAR
+    FROM Methods methods;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
