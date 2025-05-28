@@ -107,13 +107,13 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        val data = metricsRepository.getMethodsCoverage(
+        val data = metricsRepository.getMethodsWithCoverage(
             buildId= buildId,
-            testTag= testTag?.takeIf { it.isNotBlank() },
-            envId= envId?.takeIf { it.isNotBlank() },
-            branch= branch?.takeIf { it.isNotBlank() },
-            packageNamePattern= packageNamePattern?.takeIf { it.isNotBlank() },
-            classNamePattern = classNamePattern?.takeIf { it.isNotBlank() }
+            coverageTestTag= testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId= envId?.takeIf { it.isNotBlank() },
+            coverageBranch= branch?.takeIf { it.isNotBlank() },
+            packageName= packageNamePattern?.takeIf { it.isNotBlank() },
+            className = classNamePattern?.takeIf { it.isNotBlank() }
         )
 
         return buildTree(data, rootId)
@@ -345,7 +345,7 @@ class MetricsServiceImpl(
         }
 
         return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
-            metricsRepository.getMethodsCoverage(
+            metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
                 offset = offset,
@@ -371,13 +371,13 @@ class MetricsServiceImpl(
         }
 
         return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
-            metricsRepository.getMethodsCoverage(
+            metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
-                testTag = testTag,
-                envId = envId,
-                branch = branch,
-                packageNamePattern = packageNamePattern,
-                classNamePattern = classNamePattern,
+                coverageTestTag = testTag,
+                coverageEnvId = envId,
+                coverageBranch = branch,
+                packageName = packageNamePattern,
+                className = classNamePattern,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)

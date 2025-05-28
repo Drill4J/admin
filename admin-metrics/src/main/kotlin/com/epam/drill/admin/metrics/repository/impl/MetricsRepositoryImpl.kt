@@ -130,14 +130,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         (result[0]["cnt"] as? Number)?.toLong() ?: 0
     }
 
-    override suspend fun getMethodsCoverage(
+    override suspend fun getMethodsWithCoverage(
         buildId: String,
         baselineBuildId: String?,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
+        coverageTestTag: String?,
+        coverageEnvId: String?,
+        coverageBranch: String?,
+        packageName: String?,
+        className: String?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
         val query = buildString {
@@ -174,11 +174,11 @@ class MetricsRepositoryImpl : MetricsRepository {
         val params = mutableListOf<Any?>().apply {
             add(buildId)
             add(baselineBuildId)
-            add(testTag)
-            add(envId)
-            add(branch)
-            add("$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() })
-            add("%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() })
+            add(coverageTestTag)
+            add(coverageEnvId)
+            add(coverageBranch)
+            add("$packageName%".takeIf { !packageName.isNullOrBlank() })
+            add("%$className".takeIf { !className.isNullOrBlank() })
             offset?.let { add(it) }
             limit?.let { add(it) }
         }

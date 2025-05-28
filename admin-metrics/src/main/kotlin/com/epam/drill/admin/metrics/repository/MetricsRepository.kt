@@ -34,14 +34,14 @@ interface MetricsRepository {
         branch: String? = null, envId: String? = null
     ): Long
 
-    suspend fun getMethodsCoverage(
+    suspend fun getMethodsWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,
-        testTag: String? = null,
-        envId: String? = null,
-        branch: String? = null,
-        packageNamePattern: String? = null,
-        classNamePattern: String? = null,
+        coverageTestTag: String? = null,
+        coverageEnvId: String? = null,
+        coverageBranch: String? = null,
+        packageName: String? = null,
+        className: String? = null,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 

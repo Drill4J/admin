@@ -123,8 +123,8 @@ class Metrics {
         val testTag: String? = null,
         val envId: String? = null,
         val branch: String? = null,
-        val packageNamePattern: String? = null,
-        val classNamePattern: String? = null,
+        val packageName: String? = null,
+        val className: String? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null
@@ -266,8 +266,8 @@ fun Route.getCoverage() {
             testTag = params.testTag,
             envId = params.envId,
             branch = params.branch,
-            packageNamePattern = params.packageNamePattern,
-            classNamePattern = params.classNamePattern,
+            packageNamePattern = params.packageName,
+            classNamePattern = params.className,
             page = params.page,
             pageSize = params.pageSize,
         )
