@@ -18,7 +18,7 @@ package com.epam.drill.admin.metrics.service.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
-import com.epam.drill.admin.metrics.exception.BuildNotFound
+import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService

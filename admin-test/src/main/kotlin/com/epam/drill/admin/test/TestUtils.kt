@@ -16,7 +16,9 @@
 package com.epam.drill.admin.test
 
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.resources.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -26,6 +28,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.kodein.di.DI
 import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
+import com.epam.drill.admin.common.route.commonStatusPages
 
 
 fun withRollback(test: suspend () -> Unit) {
@@ -55,6 +58,9 @@ fun drillApplication(
     install(Resources)
     install(ContentNegotiation) {
         json()
+    }
+    install(StatusPages) {
+        commonStatusPages()
     }
     application {
         di {
