@@ -17,9 +17,6 @@ package com.epam.drill.admin.metrics.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
@@ -97,6 +94,11 @@ fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
         override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = sql
         override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
     })
+}
+
+fun Transaction.executeQueryReturnMap(buildSql: SqlBuilder.() -> Unit): List<Map<String, Any?>> {
+    val builder = SqlBuilderImpl().apply { buildSql() }
+    return executeQueryReturnMap(builder.sqlQuery.toString(), *builder.params.toTypedArray())
 }
 
 private fun <T : Any> Transaction.executePreparedStatement(

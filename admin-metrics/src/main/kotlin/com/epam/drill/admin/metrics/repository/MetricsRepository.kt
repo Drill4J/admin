@@ -21,13 +21,13 @@ interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
 
-    suspend fun getApplications(groupId: String? = null): List<Map<String, Any>>
+    suspend fun getApplications(groupId: String? = null): List<Map<String, Any?>>
 
     suspend fun getBuilds(
         groupId: String, appId: String,
         branch: String? = null, envId: String? = null,
-        offset: Int, limit: Int
-    ): List<Map<String, Any>>
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
 
     suspend fun getBuildsCount(
         groupId: String, appId: String,
@@ -55,7 +55,7 @@ interface MetricsRepository {
     suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String
-    ): Map<String, String>
+    ): Map<String, String?>
 
     suspend fun refreshMaterializedView(viewName: String)
 

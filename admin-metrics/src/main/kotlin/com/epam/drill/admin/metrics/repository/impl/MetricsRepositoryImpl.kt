@@ -27,16 +27,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         buildId: String
     ): Boolean = transaction {
         val x = executeQueryReturnMap(
-            """
-                SELECT raw_data.check_build_exists(?)
-                """.trimIndent(),
+            "SELECT raw_data.check_build_exists(?)",
             buildId
         )
         x[0]["check_build_exists"] == true
     }
 
-    override suspend fun getApplications(groupId: String?): List<Map<String, Any>> = transaction {
-        val query = buildString {
+    override suspend fun getApplications(groupId: String?): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
             append(
                 """
                 SELECT DISTINCT
@@ -45,23 +43,16 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM raw_data.builds                
                 """.trimIndent()
             )
-            if (groupId != null) {
-                append(" WHERE builds.group_id = ?")
-            }
+            appendOptional(" WHERE builds.group_id = ?", groupId)
         }
-        val params = mutableListOf<Any>().apply {
-            if (groupId != null) add(groupId)
-        }
-
-        executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
     override suspend fun getBuilds(
         groupId: String, appId: String,
         branch: String?, envId: String?,
-        offset: Int, limit: Int
-    ): List<Map<String, Any>> = transaction {
-        val query = buildString {
+        offset: Int?, limit: Int?
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
             append(
                 """
             SELECT 
@@ -77,56 +68,29 @@ class MetricsRepositoryImpl : MetricsRepository {
                 committed_at
             FROM raw_data.matview_builds builds
             WHERE builds.group_id = ? AND builds.app_id = ?
-            """.trimIndent()
-            )
-            if (branch != null) {
-                append(" AND builds.branch = ?")
-            }
-            if (envId != null) {
-                append(" AND ? = ANY(builds.env_ids)")
-            }
-            append(" ORDER BY created_at DESC")
-            append(" OFFSET ? LIMIT ?")
+            """.trimIndent(), groupId, appId)
+            appendOptional(" AND builds.branch = ?", branch)
+            appendOptional(" AND ? = ANY(builds.env_ids)", envId)
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
-
-        val params = mutableListOf<Any>().apply {
-            add(groupId)
-            add(appId)
-            if (branch != null) add(branch)
-            if (envId != null) add(envId)
-            add(offset)
-            add(limit)
-        }
-
-        executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
         branch: String?, envId: String?
     ): Long = transaction {
-        val query = buildString {
+        val result = executeQueryReturnMap {
             append(
                 """
             SELECT COUNT(*) AS cnt
             FROM raw_data.matview_builds builds
             WHERE builds.group_id = ? AND builds.app_id = ?
-            """.trimIndent()
+            """.trimIndent(), groupId, appId
             )
-            if (branch != null) {
-                append(" AND builds.branch = ?")
-            }
-            if (envId != null) {
-                append(" AND ? = ANY(builds.env_ids)")
-            }
+            appendOptional(" AND builds.branch = ?", branch)
+            appendOptional(" AND ? = ANY(builds.env_ids)", envId)
         }
-        val params = mutableListOf<Any>().apply {
-            add(groupId)
-            add(appId)
-            if (branch != null) add(branch)
-            if (envId != null) add(envId)
-        }
-        val result = executeQueryReturnMap(query, *params.toTypedArray())
         (result[0]["cnt"] as? Number)?.toLong() ?: 0
     }
 
@@ -140,7 +104,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         className: String?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
-        val query = buildString {
+        executeQueryReturnMap {
             append(
                 """
                 SELECT 
@@ -166,23 +130,18 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_materialized => TRUE
                 )
                 ORDER BY signature
-                """.trimIndent()
+                """.trimIndent(),
+                buildId,
+                baselineBuildId,
+                coverageTestTag,
+                coverageEnvId,
+                coverageBranch,
+                "$packageName%".takeIf { !packageName.isNullOrBlank() },
+                "%$className".takeIf { !className.isNullOrBlank() }
             )
-            offset?.let { append(" OFFSET ?") }
-            limit?.let { append(" LIMIT ?") }
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
-        val params = mutableListOf<Any?>().apply {
-            add(buildId)
-            add(baselineBuildId)
-            add(coverageTestTag)
-            add(coverageEnvId)
-            add(coverageBranch)
-            add("$packageName%".takeIf { !packageName.isNullOrBlank() })
-            add("%$className".takeIf { !className.isNullOrBlank() })
-            offset?.let { add(it) }
-            limit?.let { add(it) }
-        }
-        executeQueryReturnMap(query, *params.toTypedArray())
     }
 
     override suspend fun getMethodsCount(
@@ -191,7 +150,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageNamePattern: String?,
         classNamePattern: String?
     ): Long = transaction {
-        val query = """
+        val result = executeQueryReturnMap {
+            append(
+                """
             SELECT COUNT(*) AS cnt
             FROM raw_data.get_methods_v2(
                 input_build_id => ?,
@@ -199,14 +160,13 @@ class MetricsRepositoryImpl : MetricsRepository {
                 input_package_name_pattern => ?,
                 input_class_name_pattern => ?
             )
-        """.trimIndent()
-        val params = mutableListOf<Any?>().apply {
-            add(buildId)
-            add(baselineBuildId)
-            add("$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() })
-            add("%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() })
+            """.trimIndent(),
+                buildId,
+                baselineBuildId,
+                "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
+                "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
+            )
         }
-        val result = executeQueryReturnMap(query, *params.toTypedArray())
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
