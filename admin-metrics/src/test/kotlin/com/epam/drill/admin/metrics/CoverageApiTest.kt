@@ -48,7 +48,9 @@ class CoverageApiTest : DatabaseTests({
                 deployInstance(build1, arrayOf(method1, method2))
             }
             client.get("/metrics/coverage") {
-                parameter("buildId", "$testGroup:$testApp:1.0.0")
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<Map<String, Any>>>("$.data")
@@ -70,7 +72,9 @@ class CoverageApiTest : DatabaseTests({
                 )
             }
             client.get("/metrics/coverage") {
-                parameter("buildId", "$testGroup:$testApp:1.0.0")
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val data = json.read<List<Map<String, Any>>>("$.data")
@@ -99,7 +103,9 @@ class CoverageApiTest : DatabaseTests({
             }
 
             client.get("/metrics/coverage") {
-                parameter("buildId", "$testGroup:$testApp:1.0.0")
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
                 parameter("page", 1)
                 parameter("pageSize", 10)
             }.assertSuccessStatus().apply {
@@ -111,7 +117,9 @@ class CoverageApiTest : DatabaseTests({
             }
 
             client.get("/metrics/coverage") {
-                parameter("buildId", "$testGroup:$testApp:1.0.0")
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build1.buildVersion)
                 parameter("page", 2)
                 parameter("pageSize", 10)
             }.assertSuccessStatus().apply {

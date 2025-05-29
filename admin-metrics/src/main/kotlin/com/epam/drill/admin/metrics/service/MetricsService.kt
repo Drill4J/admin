@@ -86,7 +86,11 @@ interface MetricsService {
     ): PagedList<MethodView>
 
     suspend fun getCoverage(
-        buildId: String,
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
         testTag: String?,
         envId: String?,
         branch: String?,

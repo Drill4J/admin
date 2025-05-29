@@ -357,7 +357,11 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getCoverage(
-        buildId: String,
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
         testTag: String?,
         envId: String?,
         branch: String?,
@@ -366,6 +370,7 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
+        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }

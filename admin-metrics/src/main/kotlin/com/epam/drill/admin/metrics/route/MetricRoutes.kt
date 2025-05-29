@@ -119,7 +119,11 @@ class Metrics {
     class Coverage(
         val parent: Metrics,
 
-        val buildId: String,
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
         val testTag: String? = null,
         val envId: String? = null,
         val branch: String? = null,
@@ -262,7 +266,11 @@ fun Route.getCoverage() {
 
     get<Metrics.Coverage> { params ->
         val data = metricsService.getCoverage(
-            buildId = params.buildId,
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
             testTag = params.testTag,
             envId = params.envId,
             branch = params.branch,
