@@ -23,6 +23,7 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 import com.epam.drill.admin.metrics.views.ChangeType
@@ -38,12 +39,11 @@ import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 
 
-private const val DEFAULT_PAGE_SIZE = 100
-
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
-    private val testRecommendationsConfig: TestRecommendationsConfig
+    private val testRecommendationsConfig: TestRecommendationsConfig,
+    private val metricsConfig: MetricsConfig,
 ) : MetricsService {
     private val logger = KotlinLogging.logger {}
 
@@ -66,7 +66,7 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?
     ): PagedList<BuildView> = transaction {
-        pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branch, envId,
@@ -344,7 +344,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
@@ -375,7 +375,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: DEFAULT_PAGE_SIZE) { offset, limit ->
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 coverageTestTag = testTag,
