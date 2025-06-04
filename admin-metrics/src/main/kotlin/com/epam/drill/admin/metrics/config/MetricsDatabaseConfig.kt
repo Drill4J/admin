@@ -30,6 +30,7 @@ import org.postgresql.jdbc.PgArray
 import org.postgresql.util.PGobject
 import java.sql.ResultSet
 import javax.sql.DataSource
+import kotlin.collections.emptyMap
 
 object MetricsDatabaseConfig {
     private var database: Database? = null
@@ -65,10 +66,17 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
                     is PGobject -> {
                         val json = dbValue.value
                         if (json != null) {
-                            val jsonObject = Json.parseToJsonElement(json).jsonObject
-                            jsonObject.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+                            if (json.trim().startsWith("{")) {
+                                val jsonObject = Json.parseToJsonElement(json).jsonObject
+                                jsonObject.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+                            } else if (json.trim().startsWith("[")) {
+                                val jsonArray = Json.parseToJsonElement(json).jsonArray
+                                jsonArray.map { it.jsonPrimitiveOrElement() }
+                            } else {
+                                emptyMap<String, Any?>()
+                            }
                         } else {
-                            emptyMap()
+                            null
                         }
                     }
 

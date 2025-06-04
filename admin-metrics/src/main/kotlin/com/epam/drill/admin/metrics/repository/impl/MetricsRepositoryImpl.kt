@@ -267,4 +267,40 @@ class MetricsRepositoryImpl : MetricsRepository {
             coveragePeriodFrom
         )
     }
+
+    override suspend fun getImpactedTests(
+        targetBuildId: String,
+        baselineBuildId: String,
+        testTaskId: String?,
+        testTag: String?,
+        offset: Int?,
+        limit: Int?
+    ): List<Map<String, Any?>>  = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    test_definition_id,
+                    path,
+                    name,
+                    runner,
+                    tags,
+                    metadata,
+                    impacted_methods                 
+                FROM raw_data.get_impacted_tests(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,                    
+                    input_test_task_id => ?,
+                    input_test_tag => ?                    
+                )
+                """.trimIndent(),
+                targetBuildId,
+                baselineBuildId,
+                testTaskId,
+                testTag
+            )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
 }

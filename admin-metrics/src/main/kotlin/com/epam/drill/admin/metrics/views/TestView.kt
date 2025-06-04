@@ -18,15 +18,12 @@ package com.epam.drill.admin.metrics.views
 import kotlinx.serialization.Serializable
 
 @Serializable
-class MethodView (
-    val className: String,
-    val name: String,
-    val params: List<String> = emptyList(),
-    val returnType: String?,
-    val changeType: ChangeType? = null,
-    val probesCount: Int? = null,
-    val coveredProbes: Int? = null,
-    val coveredProbesInOtherBuilds: Int? = null,
-    val coverageRatio: Double? = null,
-    val coverageRatioInOtherBuilds: Double? = null,
+class TestView(
+    val testDefinitionId: String,
+    val testRunner: String,
+    val testPath: String,
+    val testName: String,
+    val tags: List<String>,
+    val metadata: Map<String, String>,
+    val impactedMethods: List<MethodView>? = null,
 )

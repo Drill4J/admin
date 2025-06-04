@@ -133,6 +133,24 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null
     )
+
+    @Resource("/impacted-tests")
+    class ImpactedTests(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val testTaskId: String? = null,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val testTag: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -143,6 +161,7 @@ fun Route.metricsRoutes() {
     getCoverageTreemap()
     getChanges()
     getCoverage()
+    getImpactedTests()
 }
 
 fun Route.getApplications() {
@@ -276,6 +295,34 @@ fun Route.getCoverage() {
             branch = params.branch,
             packageNamePattern = params.packageName,
             classNamePattern = params.className,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
+fun Route.getImpactedTests() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.ImpactedTests> { params ->
+        val data = metricsService.getImpactedTests(
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            testTag = params.testTag,
+            testTaskId = params.testTaskId,
             page = params.page,
             pageSize = params.pageSize,
         )

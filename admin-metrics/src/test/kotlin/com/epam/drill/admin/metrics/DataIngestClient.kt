@@ -151,8 +151,8 @@ suspend fun HttpClient.refreshMaterializedViews() {
     post("/metrics/refresh-materialized-views").assertSuccessStatus()
 }
 
-fun HttpResponse.assertSuccessStatus() = also {
-    assertEquals(HttpStatusCode.OK, status)
+suspend fun HttpResponse.assertSuccessStatus() = also {
+    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
 }
 
 private fun Route.refreshMaterializedViewsRoute() {

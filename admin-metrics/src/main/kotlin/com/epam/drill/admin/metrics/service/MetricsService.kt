@@ -19,6 +19,7 @@ import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.TestView
 
 interface MetricsService {
     suspend fun getApplications(
@@ -99,5 +100,20 @@ interface MetricsService {
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>
+
+    suspend fun getImpactedTests(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTag: String?,
+        testTaskId: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<TestView>
 
 }

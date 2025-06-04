@@ -1792,3 +1792,99 @@ BEGIN
     FROM Methods methods;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Function to get impacted tests based on changes in methods
+-- @param input_build_id VARCHAR: The ID of the build to be tested
+-- @param input_baseline_build_id VARCHAR: The ID of the baseline build
+-- @param input_test_task_id VARCHAR DEFAULT NULL: The ID of the test task that will be launched for testing (optional)
+-- @param input_test_tag VARCHAR DEFAULT NULL: Coverage collected from tests marked with this test tag (optional)
+-- @returns TABLE: A table containing impacted tests with impacted methods
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS raw_data.get_impacted_tests CASCADE;
+
+CREATE OR REPLACE FUNCTION raw_data.get_impacted_tests(
+    input_build_id VARCHAR,
+	input_baseline_build_id VARCHAR,
+	input_test_task_id VARCHAR DEFAULT NULL,
+	input_test_tag VARCHAR DEFAULT NULL
+) RETURNS TABLE(
+    test_definition_id VARCHAR,
+    path VARCHAR,
+    name VARCHAR,
+    runner VARCHAR,
+    tags VARCHAR[],
+    metadata JSON,
+    impacted_methods JSON
+) AS $$
+BEGIN
+	RETURN QUERY
+    WITH
+    BaselineMethods AS (
+        SELECT
+            baseline.signature,
+            baseline.body_checksum
+        FROM raw_data.matview_methods_with_rules baseline
+        WHERE baseline.build_id = input_baseline_build_id
+    ),
+    ChangedMethods AS (
+        SELECT
+            methods.build_id,
+            methods.signature,
+			methods.classname,
+			methods.name,
+			methods.params,
+			methods.return_type,
+			builds.created_at AS build_created_at
+        FROM raw_data.matview_methods_with_rules methods
+		JOIN raw_data.builds builds ON builds.id = methods.build_id
+        LEFT JOIN BaselineMethods baseline ON baseline.signature = methods.signature
+        WHERE methods.build_id = input_build_id
+			AND (baseline.signature IS NULL OR baseline.body_checksum <> methods.body_checksum)
+    ),
+	ImpactedMethods AS (
+        SELECT DISTINCT
+        	tested.test_definition_id,
+			changed.signature,
+			changed.classname,
+			changed.name,
+			changed.params,
+			changed.return_type
+        FROM raw_data.view_tested_methods tested
+        JOIN ChangedMethods changed ON changed.signature = tested.signature
+        WHERE tested.group_id = split_part(input_build_id, ':', 1)
+          AND tested.app_id = split_part(input_build_id, ':', 2)
+          --chronological order
+          AND tested.build_created_at <= changed.build_created_at
+          --filters
+          AND (input_test_task_id IS NULL OR tested.test_task_id = input_test_task_id)
+          AND (input_test_tag IS NULL OR input_test_tag = ANY(tested.test_tags))
+    ),
+	ImpactedTests AS (
+        SELECT
+        	impacted.test_definition_id,
+			json_agg(
+    			json_build_object(
+      				'classname', impacted.classname,
+					'name', impacted.name,
+					'params', impacted.params,
+					'return_type', impacted.return_type
+    			) ORDER BY impacted.signature
+  			) AS impacted_methods
+        FROM ImpactedMethods impacted
+        GROUP BY impacted.test_definition_id
+    )
+    SELECT
+        tests.id,
+        tests.path,
+        tests.name,
+        tests.runner,
+        tests.tags,
+        tests.metadata,
+		impacted.impacted_methods AS impacted_methods
+    FROM raw_data.test_definitions tests
+	JOIN ImpactedTests impacted ON impacted.test_definition_id = tests.id
+    WHERE tests.group_id = split_part(input_build_id, ':', 1)
+	;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

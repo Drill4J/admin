@@ -29,6 +29,7 @@ import com.epam.drill.admin.metrics.views.BuildView
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.TestView
 import com.epam.drill.admin.metrics.views.pagedListOf
 import com.epam.drill.admin.metrics.views.withTotal
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -108,11 +109,11 @@ class MetricsServiceImpl(
         }
 
         val data = metricsRepository.getMethodsWithCoverage(
-            buildId= buildId,
-            coverageTestTag= testTag?.takeIf { it.isNotBlank() },
-            coverageEnvId= envId?.takeIf { it.isNotBlank() },
-            coverageBranch= branch?.takeIf { it.isNotBlank() },
-            packageName= packageNamePattern?.takeIf { it.isNotBlank() },
+            buildId = buildId,
+            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId = envId?.takeIf { it.isNotBlank() },
+            coverageBranch = branch?.takeIf { it.isNotBlank() },
+            packageName = packageNamePattern?.takeIf { it.isNotBlank() },
             className = classNamePattern?.takeIf { it.isNotBlank() }
         )
 
@@ -344,7 +345,10 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
@@ -375,7 +379,10 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 coverageTestTag = testTag,
@@ -391,12 +398,82 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getImpactedTests(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTag: String?,
+        testTaskId: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<TestView> = transaction {
+        val baselineBuildId = generateBuildId(
+            groupId,
+            appId,
+            baselineInstanceId,
+            baselineCommitSha,
+            baselineBuildVersion,
+            """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+        ).also { buildId ->
+            if (!metricsRepository.buildExists(buildId)) {
+                throw BuildNotFound("Baseline build info not found for $buildId")
+            }
+        }
+
+        val targetBuildId = generateBuildId(
+            groupId,
+            appId,
+            instanceId,
+            commitSha,
+            buildVersion,
+            """
+            Provide at least one the following: instanceId, commitSha, buildVersion
+            """.trimIndent()
+        )
+        if (!metricsRepository.buildExists(targetBuildId)) {
+            throw BuildNotFound("Target build info not found for $targetBuildId")
+        }
+
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
+            metricsRepository.getImpactedTests(
+                targetBuildId = targetBuildId,
+                baselineBuildId = baselineBuildId,
+                testTaskId = testTaskId,
+                testTag = testTag,
+                offset = offset,
+                limit = limit,
+            ).map { data ->
+                TestView(
+                    testDefinitionId = data["test_definition_id"] as String,
+                    testRunner = data["runner"] as String,
+                    testPath = data["path"] as String,
+                    testName = data["name"] as String,
+                    tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
+                    metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap(),
+                    impactedMethods = data["impacted_methods"]?.let { it as List<Map<String, Any?>> }
+                        ?.map(::mapToMethodView)
+                        ?: emptyList()
+                )
+            }
+        }
+    }
+
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         className = resultSet["classname"] as String,
         name = resultSet["name"] as String,
         params = (resultSet["params"] as String).split(",").map(String::trim),
         returnType = resultSet["return_type"] as String,
-        changeType = ChangeType.fromString(resultSet["change_type"] as String),
+        changeType = ChangeType.fromString(resultSet["change_type"] as String?),
         probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
         coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
         coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,

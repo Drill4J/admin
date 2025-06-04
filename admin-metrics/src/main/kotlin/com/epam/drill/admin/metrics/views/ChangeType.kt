@@ -21,6 +21,6 @@ enum class ChangeType {
     DELETED;
 
     companion object {
-        fun fromString(value: String): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }
+        fun fromString(value: String?): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }
     }
 }
