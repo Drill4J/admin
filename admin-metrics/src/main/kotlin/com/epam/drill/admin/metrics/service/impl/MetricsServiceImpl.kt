@@ -409,6 +409,7 @@ class MetricsServiceImpl(
         baselineBuildVersion: String?,
         testTag: String?,
         testTaskId: String?,
+        testPathPattern: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
@@ -450,6 +451,7 @@ class MetricsServiceImpl(
                 baselineBuildId = baselineBuildId,
                 testTaskId = testTaskId,
                 testTag = testTag,
+                testPathPattern = testPathPattern,
                 offset = offset,
                 limit = limit,
             ).map { data ->

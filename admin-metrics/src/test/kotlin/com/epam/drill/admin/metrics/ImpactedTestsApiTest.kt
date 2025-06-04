@@ -153,6 +153,49 @@ class ImpactedTestsApiTest : DatabaseTests({
             }
         }
 
+    @Test
+    fun `given test path filter, impacted tests service should return only tests matching the path`(): Unit =
+        runBlocking {
+            val client = runDrillApplication {
+                deployInstance(build1, arrayOf(method1, method2))
+                // Create test sessions with different paths
+                launchTest(
+                    session1, TestDetails(testName = "pathFilteredTest1", path = "com/example/path1/Test1"), build1, arrayOf(
+                        method1 to probesOf(1),
+                        method2 to probesOf(1, 1)
+                    )
+                )
+                launchTest(
+                    session1, TestDetails(testName = "pathFilteredTest2", path = "com/example/path1/Test2"), build1, arrayOf(
+                        method1 to probesOf(1),
+                        method2 to probesOf(1, 1)
+                    )
+                )
+                launchTest(
+                    session1, TestDetails(testName = "differentPathTest", path = "com/example/path2/Test3"), build1, arrayOf(
+                        method1 to probesOf(1),
+                        method2 to probesOf(1, 1)
+                    )
+                )
+                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
+            }
+
+            client.get("/metrics/impacted-tests") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+                parameter("testPath", "com/example/path1")
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertTrue(data.isNotEmpty())
+                // Verify that only tests with the specified path are returned
+                assertTrue(data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" })
+                assertTrue(data.none { it["testName"] == "differentPathTest" })
+            }
+        }
+
     @kotlin.test.AfterTest
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()

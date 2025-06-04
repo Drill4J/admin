@@ -140,14 +140,15 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
-        val testTaskId: String? = null,
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+        val testTaskId: String? = null,
         val testTag: String? = null,
+        val testPath: String? = null,
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -323,6 +324,7 @@ fun Route.getImpactedTests() {
             baselineBuildVersion = params.baselineBuildVersion,
             testTag = params.testTag,
             testTaskId = params.testTaskId,
+            testPathPattern = params.testPath,
             page = params.page,
             pageSize = params.pageSize,
         )

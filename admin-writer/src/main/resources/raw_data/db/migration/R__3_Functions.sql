@@ -1807,7 +1807,8 @@ CREATE OR REPLACE FUNCTION raw_data.get_impacted_tests(
     input_build_id VARCHAR,
 	input_baseline_build_id VARCHAR,
 	input_test_task_id VARCHAR DEFAULT NULL,
-	input_test_tag VARCHAR DEFAULT NULL
+	input_test_tag VARCHAR DEFAULT NULL,
+	input_test_path_pattern VARCHAR DEFAULT NULL
 ) RETURNS TABLE(
     test_definition_id VARCHAR,
     path VARCHAR,
@@ -1859,6 +1860,7 @@ BEGIN
           --filters
           AND (input_test_task_id IS NULL OR tested.test_task_id = input_test_task_id)
           AND (input_test_tag IS NULL OR input_test_tag = ANY(tested.test_tags))
+          AND (input_test_path_pattern IS NULL OR tested.test_path LIKE input_test_path_pattern)
     ),
 	ImpactedTests AS (
         SELECT

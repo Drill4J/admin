@@ -273,6 +273,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         baselineBuildId: String,
         testTaskId: String?,
         testTag: String?,
+        testPathPattern: String?,
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>>  = transaction {
@@ -291,13 +292,15 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_build_id => ?,
                     input_baseline_build_id => ?,                    
                     input_test_task_id => ?,
-                    input_test_tag => ?                    
+                    input_test_tag => ?,
+                    input_test_path_pattern => ?
                 )
                 """.trimIndent(),
                 targetBuildId,
                 baselineBuildId,
                 testTaskId,
-                testTag
+                testTag,
+                testPathPattern?.let { "$it%" }
             )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)

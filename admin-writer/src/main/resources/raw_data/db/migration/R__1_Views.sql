@@ -373,7 +373,8 @@ CREATE OR REPLACE VIEW raw_data.view_tested_methods AS
 		sessions.test_task_id,
 		definitions.tags AS test_tags,
 		sessions.started_at AS session_started_at,
-		builds.created_at AS build_created_at
+		builds.created_at AS build_created_at,
+		definitions.path AS test_path
     FROM raw_data.coverage coverage
 	JOIN raw_data.methods methods ON methods.classname = coverage.classname
     JOIN raw_data.instances instances ON instances.id = coverage.instance_id

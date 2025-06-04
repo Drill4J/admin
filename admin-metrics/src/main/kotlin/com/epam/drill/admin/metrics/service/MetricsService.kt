@@ -112,6 +112,7 @@ interface MetricsService {
         baselineBuildVersion: String?,
         testTag: String?,
         testTaskId: String?,
+        testPathPattern: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>

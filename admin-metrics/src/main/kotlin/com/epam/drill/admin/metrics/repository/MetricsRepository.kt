@@ -72,6 +72,7 @@ interface MetricsRepository {
         baselineBuildId: String,
         testTaskId: String? = null,
         testTag: String?,
+        testPathPattern: String?,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 }
