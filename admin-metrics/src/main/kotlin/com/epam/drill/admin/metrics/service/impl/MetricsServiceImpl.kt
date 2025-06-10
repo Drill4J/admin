@@ -38,7 +38,7 @@ import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
-
+import kotlin.time.measureTimedValue
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -46,6 +46,7 @@ class MetricsServiceImpl(
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
 ) : MetricsService {
+
     private val logger = KotlinLogging.logger {}
 
     override suspend fun getApplications(groupId: String?): List<ApplicationView> {
@@ -303,16 +304,6 @@ class MetricsServiceImpl(
         )
     }
 
-    override suspend fun refreshMaterializedViews() {
-        metricsRepository.refreshMaterializedView(methodsView)
-        metricsRepository.refreshMaterializedView(buildsView)
-        metricsRepository.refreshMaterializedView(buildsComparisonView)
-        metricsRepository.refreshMaterializedView(methodsCoverageView)
-        metricsRepository.refreshMaterializedView(buildsCoverageView)
-        metricsRepository.refreshMaterializedView(testSessionBuildsCoverageView)
-        metricsRepository.refreshMaterializedView(testedBuildsComparisonView)
-    }
-
     override suspend fun getChanges(
         groupId: String,
         appId: String,
@@ -470,6 +461,18 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun refreshMaterializedViews() {
+        logger.debug { "Refreshing materialized views..." }
+        refreshMaterializedView(methodsView)
+        refreshMaterializedView(buildsView)
+        refreshMaterializedView(buildsComparisonView)
+        refreshMaterializedView(methodsCoverageView)
+        refreshMaterializedView(buildsCoverageView)
+        refreshMaterializedView(testSessionBuildsCoverageView)
+        refreshMaterializedView(testedBuildsComparisonView)
+        logger.debug { "Materialized views were refreshed." }
+    }
+
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         className = resultSet["classname"] as String,
         name = resultSet["name"] as String,
@@ -490,5 +493,18 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
+    }
+
+    private suspend fun refreshMaterializedView(viewName: String) {
+        val result = measureTimedValue {
+            metricsRepository.refreshMaterializedView(viewName)
+        }
+        logger.debug("Materialized view $viewName was refreshed in ${formatDuration(result.duration)}.")
+    }
+
+    private fun formatDuration(duration: kotlin.time.Duration): String = when {
+        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} min"
+        duration.inWholeSeconds > 0 -> "${duration.inWholeSeconds} sec"
+        else -> "${duration.inWholeMilliseconds} ms"
     }
 }

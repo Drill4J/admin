@@ -71,8 +71,6 @@ interface MetricsService {
         baselineBuildVersion: String? = null
     ): Map<String, Any?>
 
-    suspend fun refreshMaterializedViews()
-
     suspend fun getChanges(
         groupId: String,
         appId: String,
@@ -116,5 +114,7 @@ interface MetricsService {
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>
+
+    suspend fun refreshMaterializedViews()
 
 }

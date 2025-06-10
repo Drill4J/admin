@@ -230,7 +230,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun refreshMaterializedView(viewName: String) = transaction {
         executeUpdate(
             """             
-            REFRESH MATERIALIZED VIEW CONCURRENTLY raw_data.$viewName;
+            REFRESH MATERIALIZED VIEW CONCURRENTLY $viewName;
             """.trimIndent()
         )
     }

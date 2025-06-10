@@ -17,7 +17,6 @@ package com.epam.drill.admin.metrics.job
 
 import com.epam.drill.admin.metrics.service.MetricsService
 import kotlinx.coroutines.runBlocking
-import mu.KotlinLogging
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
@@ -26,13 +25,10 @@ import org.quartz.JobExecutionContext
 class RefreshMaterializedViewJob(
     private val metricsService: MetricsService,
 ) : Job {
-    private val logger = KotlinLogging.logger {}
 
     override fun execute(context: JobExecutionContext) {
-        logger.debug { "Refreshing materialized views..." }
         runBlocking {
             metricsService.refreshMaterializedViews()
         }
-        logger.debug { "Materialized views were refreshed." }
     }
 }

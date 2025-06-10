@@ -355,9 +355,7 @@ fun Route.postRefreshMaterializedViews() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.Refresh> { params ->
-        async {
-            metricsService.refreshMaterializedViews()
-        }
-        call.ok("Materialized views refresh started.")
+        metricsService.refreshMaterializedViews()
+        call.ok("Materialized views were refreshed.")
     }
 }
