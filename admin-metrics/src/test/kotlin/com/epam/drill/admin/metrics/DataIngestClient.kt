@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
+import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.test.drillApplication
@@ -45,7 +46,7 @@ suspend fun runDrillApplication(initTestData: suspend HttpClient.() -> Unit): Ht
     drillApplication(rawDataServicesDIModule, metricsDIModule) {
         dataIngestRoutes()
         metricsRoutes()
-        refreshMaterializedViewsRoute()
+        metricsManagementRoutes()
     }.drillClient().apply {
         initTestData()
         refreshMaterializedViews()
@@ -148,20 +149,11 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
 }
 
 suspend fun HttpClient.refreshMaterializedViews() {
-    post("/metrics/refresh-materialized-views").assertSuccessStatus()
+    post("/metrics/refresh").assertSuccessStatus()
 }
 
 suspend fun HttpResponse.assertSuccessStatus() = also {
     assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
-}
-
-private fun Route.refreshMaterializedViewsRoute() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    post("/metrics/refresh-materialized-views") {
-        metricsService.refreshMaterializedViews()
-        call.respond(HttpStatusCode.OK, ApiResponse("Materialized views refreshed"))
-    }
 }
 
 private fun Array<Pair<SingleMethodPayload, IntArray>>.toClassProbes(): BooleanArray {

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.route
 
+import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -23,11 +24,14 @@ import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
 import io.ktor.server.resources.*
+import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.async
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
@@ -152,6 +156,11 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null,
     )
+
+    @Resource("/refresh")
+    class Refresh(
+        val parent: Metrics,
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -163,6 +172,10 @@ fun Route.metricsRoutes() {
     getChanges()
     getCoverage()
     getImpactedTests()
+}
+
+fun Route.metricsManagementRoutes() {
+    postRefreshMaterializedViews()
 }
 
 fun Route.getApplications() {
@@ -335,5 +348,16 @@ fun Route.getImpactedTests() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
+    }
+}
+
+fun Route.postRefreshMaterializedViews() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    post<Metrics.Refresh> { params ->
+        async {
+            metricsService.refreshMaterializedViews()
+        }
+        call.ok("Materialized views refresh started.")
     }
 }
