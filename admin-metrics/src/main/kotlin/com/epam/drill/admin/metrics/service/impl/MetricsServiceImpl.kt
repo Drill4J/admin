@@ -32,6 +32,8 @@ import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.TestView
 import com.epam.drill.admin.metrics.views.pagedListOf
 import com.epam.drill.admin.metrics.views.withTotal
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
@@ -39,6 +41,10 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import kotlin.time.measureTimedValue
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -461,15 +467,18 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun refreshMaterializedViews() {
+    override suspend fun refreshMaterializedViews() = coroutineScope {
         logger.debug { "Refreshing materialized views..." }
-        refreshMaterializedView(methodsView)
-        refreshMaterializedView(buildsView)
-        refreshMaterializedView(buildsComparisonView)
-        refreshMaterializedView(methodsCoverageView)
-        refreshMaterializedView(buildsCoverageView)
-        refreshMaterializedView(testSessionBuildsCoverageView)
-        refreshMaterializedView(testedBuildsComparisonView)
+
+        val methodsViewJob = async { refreshMaterializedView(methodsView) }
+        val buildsViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(buildsView) } }
+        val methodsCoverageViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(methodsCoverageView) } }
+        val buildsComparisonViewJob = async { waitFor(methodsViewJob, buildsViewJob).run { refreshMaterializedView(buildsComparisonView) } }
+        val testedBuildsComparisonViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(testedBuildsComparisonView) } }
+        val buildsCoverageViewJob = async { waitFor(methodsCoverageViewJob).run { refreshMaterializedView(buildsCoverageView) } }
+        val testSessionBuildsCoverageViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(testSessionBuildsCoverageView) } }
+        waitFor(buildsComparisonViewJob, testedBuildsComparisonViewJob, buildsCoverageViewJob, testSessionBuildsCoverageViewJob)
+
         logger.debug { "Materialized views were refreshed." }
     }
 
@@ -506,5 +515,9 @@ class MetricsServiceImpl(
         duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} min"
         duration.inWholeSeconds > 0 -> "${duration.inWholeSeconds} sec"
         else -> "${duration.inWholeMilliseconds} ms"
+    }
+
+    private suspend fun waitFor(vararg dependents: Deferred<Unit>) {
+        dependents.forEach { it.await() }
     }
 }
