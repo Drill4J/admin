@@ -1225,7 +1225,7 @@ BEGIN
 			FROM ComparableMethodsCoverage coverage
 			GROUP BY coverage.build_id
 		),
-	    AugmentedTargetBuildCoverage AS (
+	    PaddedTargetBuildCoverage AS (
 			SELECT
 				coverage.build_id,
 				coverage.probes || (REPEAT('0', (builds.total_probes - BIT_LENGTH(coverage.probes))::INT)::VARBIT) AS probes,
@@ -1292,8 +1292,8 @@ BEGIN
 				coverage.build_id,
 				coverage.total_probes,
 				BIT_COUNT(coverage.probes) AS covered_probes,
-				BIT_COUNT(coverage.probes & ~(SELECT probes FROM AugmentedComparableBuildCoverage)) AS unique_covered_probes
-			FROM AugmentedTargetBuildCoverage coverage
+				BIT_COUNT(coverage.probes & ~(SELECT probes FROM PaddedComparableBuildCoverage)) AS unique_covered_probes
+			FROM PaddedTargetBuildCoverage coverage
 		),
 		MaterializedUniqueTargetCoverage AS (
 			SELECT
