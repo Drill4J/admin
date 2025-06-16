@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.route
 
+import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -23,11 +24,14 @@ import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
 import io.ktor.server.resources.*
+import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.async
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
@@ -133,6 +137,30 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null
     )
+
+    @Resource("/impacted-tests")
+    class ImpactedTests(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val testTaskId: String? = null,
+        val testTag: String? = null,
+        val testPath: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
+    )
+
+    @Resource("/refresh")
+    class Refresh(
+        val parent: Metrics,
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -143,6 +171,11 @@ fun Route.metricsRoutes() {
     getCoverageTreemap()
     getChanges()
     getCoverage()
+    getImpactedTests()
+}
+
+fun Route.metricsManagementRoutes() {
+    postRefreshMaterializedViews()
 }
 
 fun Route.getApplications() {
@@ -286,5 +319,43 @@ fun Route.getCoverage() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
+    }
+}
+
+fun Route.getImpactedTests() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.ImpactedTests> { params ->
+        val data = metricsService.getImpactedTests(
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            testTag = params.testTag,
+            testTaskId = params.testTaskId,
+            testPathPattern = params.testPath,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
+fun Route.postRefreshMaterializedViews() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    post<Metrics.Refresh> { params ->
+        metricsService.refreshMaterializedViews()
+        call.ok("Materialized views were refreshed.")
     }
 }

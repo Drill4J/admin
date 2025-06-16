@@ -587,6 +587,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/impacted-tests:
+    get:
+      summary: Get impacted tests
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: testTaskId
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: testPath
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of impacted tests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/refresh:
+    post:
+      summary: Refresh materialized views
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: Materialized views refresh started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   # User Authentication Routes
   /api/sign-in:
     post:

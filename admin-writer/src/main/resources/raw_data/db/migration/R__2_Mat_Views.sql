@@ -317,7 +317,7 @@ SELECT
 	sc.isolated_probes_coverage_ratio,
 	sc.isolated_unique_probes_coverage_ratio,
 	sc.isolated_accumulated_probes_coverage_ratio
-FROM raw_data.view_test_sessions s
+FROM raw_data.view_test_sessions_v2 s
 LEFT JOIN raw_data.view_test_session_builds_v2 sb ON sb.test_session_id = s.test_session_id
 LEFT JOIN raw_data.view_test_session_coverage sc ON sc.test_session_id = s.test_session_id AND sc.build_id = sb.build_id;
 

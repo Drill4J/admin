@@ -24,6 +24,7 @@ import org.quartz.DateBuilder.MILLISECONDS_IN_MINUTE
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.jdbcjobstore.JobStoreTX
 import org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
+import org.quartz.impl.matchers.GroupMatcher
 import org.quartz.simpl.SimpleThreadPool
 import org.quartz.utils.ConnectionProvider
 import org.quartz.utils.DBConnectionManager
@@ -60,6 +61,7 @@ class DrillScheduler(
 
     fun start() {
         scheduler.start()
+        deleteDeprecatedJobs()
     }
 
     fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
@@ -86,6 +88,18 @@ class DrillScheduler(
     }
 
     private fun Long.inMinutes() = this / MILLISECONDS_IN_MINUTE
+
+    /**
+     * Deletes jobs that are no longer needed.
+     * This method is called during the initialization of the scheduler to clean up any old jobs.
+     */
+    private fun deleteDeprecatedJobs() {
+        scheduler.getJobKeys(GroupMatcher.jobGroupEquals("refreshMaterializedViews"))
+            .forEach { existingJobKey ->
+                scheduler.deleteJob(existingJobKey)
+                logger.debug { "Deleted deprecated job: $existingJobKey" }
+            }
+    }
 }
 
 class QuartzDataSourceConnectionProvider(private val dataSource: DataSource) : ConnectionProvider {

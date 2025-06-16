@@ -24,6 +24,7 @@ import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.schedulerDIModule
 import com.epam.drill.admin.metrics.config.*
+import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.scheduler.DrillScheduler
@@ -102,6 +103,7 @@ fun Application.module() {
 
             //Admin
             authenticate("jwt", "api-key") {
+                tryApiKeyRoute()
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
@@ -111,8 +113,10 @@ fun Application.module() {
 
             //Metrics
             authenticate("jwt", "api-key") {
-                tryApiKeyRoute()
                 metricsRoutes()
+                withRole(Role.ADMIN) {
+                    metricsManagementRoutes()
+                }
             }
 
             //Data
@@ -185,9 +189,7 @@ private fun Application.initScheduler() {
         scheduler.shutdown()
     }
     scheduler.start()
-    scheduler.scheduleJob(refreshBuildsViewJob, refreshBuildsViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
-    scheduler.scheduleJob(refreshCoverageViewJob, refreshCoverageViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
-    scheduler.scheduleJob(refreshTestedBuildsComparisonViewJob, refreshTestedBuildsComparisonViewTrigger.withSchedule(schedulerConfig.refreshMatViewsSchedule).build())
+    scheduler.scheduleJob(refreshMaterializedViewsJob, schedulerConfig.refreshViewsTrigger)
     scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
 

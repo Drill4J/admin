@@ -41,7 +41,7 @@ val metricsDIModule = DI.Module("metricsServices") {
         )
     }
     bind<RefreshMaterializedViewJob>() with singleton {
-        RefreshMaterializedViewJob(metricsRepository = instance())
+        RefreshMaterializedViewJob(metricsService = instance())
     }
 }
 

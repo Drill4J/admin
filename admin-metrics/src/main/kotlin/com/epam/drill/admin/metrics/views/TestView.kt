@@ -13,22 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.job
+package com.epam.drill.admin.metrics.views
 
-import com.epam.drill.admin.metrics.service.MetricsService
-import kotlinx.coroutines.runBlocking
-import org.quartz.DisallowConcurrentExecution
-import org.quartz.Job
-import org.quartz.JobExecutionContext
+import kotlinx.serialization.Serializable
 
-@DisallowConcurrentExecution
-class RefreshMaterializedViewJob(
-    private val metricsService: MetricsService,
-) : Job {
-
-    override fun execute(context: JobExecutionContext) {
-        runBlocking {
-            metricsService.refreshMaterializedViews()
-        }
-    }
-}
+@Serializable
+class TestView(
+    val testDefinitionId: String,
+    val testRunner: String,
+    val testPath: String,
+    val testName: String,
+    val tags: List<String>,
+    val metadata: Map<String, String>,
+    val impactedMethods: List<MethodView>? = null,
+)

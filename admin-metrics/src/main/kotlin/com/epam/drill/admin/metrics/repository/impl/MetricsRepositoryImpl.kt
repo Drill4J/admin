@@ -230,7 +230,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun refreshMaterializedView(viewName: String) = transaction {
         executeUpdate(
             """             
-            REFRESH MATERIALIZED VIEW CONCURRENTLY raw_data.$viewName;
+            REFRESH MATERIALIZED VIEW CONCURRENTLY $viewName;
             """.trimIndent()
         )
     }
@@ -266,5 +266,44 @@ class MetricsRepositoryImpl : MetricsRepository {
             baselineBuildId,
             coveragePeriodFrom
         )
+    }
+
+    override suspend fun getImpactedTests(
+        targetBuildId: String,
+        baselineBuildId: String,
+        testTaskId: String?,
+        testTag: String?,
+        testPathPattern: String?,
+        offset: Int?,
+        limit: Int?
+    ): List<Map<String, Any?>>  = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    test_definition_id,
+                    path,
+                    name,
+                    runner,
+                    tags,
+                    metadata,
+                    impacted_methods                 
+                FROM raw_data.get_impacted_tests(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,                    
+                    input_test_task_id => ?,
+                    input_test_tag => ?,
+                    input_test_path_pattern => ?
+                )
+                """.trimIndent(),
+                targetBuildId,
+                baselineBuildId,
+                testTaskId,
+                testTag,
+                testPathPattern?.let { "$it%" }
+            )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
     }
 }

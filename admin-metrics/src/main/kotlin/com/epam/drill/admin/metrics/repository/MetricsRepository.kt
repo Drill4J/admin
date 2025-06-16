@@ -66,4 +66,13 @@ interface MetricsRepository {
         testTaskId: String? = null,
         coveragePeriodFrom: LocalDateTime? = null,
     ): List<Map<String, Any?>>
+
+    suspend fun getImpactedTests(
+        targetBuildId: String,
+        baselineBuildId: String,
+        testTaskId: String? = null,
+        testTag: String?,
+        testPathPattern: String?,
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
 }
