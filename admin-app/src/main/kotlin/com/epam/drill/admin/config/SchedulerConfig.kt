@@ -32,7 +32,7 @@ class SchedulerConfig(private val config: ApplicationConfig) {
     private val refreshViewsIntervalInMinutes: Int =
         config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
     private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
-    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 4
+    val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
 
     val refreshMatViewsSchedule: SimpleScheduleBuilder
         get() = SimpleScheduleBuilder.simpleSchedule()
