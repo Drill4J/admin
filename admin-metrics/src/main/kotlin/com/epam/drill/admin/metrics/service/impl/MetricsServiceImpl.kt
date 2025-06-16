@@ -18,13 +18,20 @@ package com.epam.drill.admin.metrics.service.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
-import com.epam.drill.admin.metrics.exception.BuildNotFound
+import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.route.response.RecommendedTestsView
+import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.common.service.getAppAndGroupIdFromBuildId
+import com.epam.drill.admin.metrics.config.MetricsConfig
+import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
+import com.epam.drill.admin.metrics.views.ChangeType
+import com.epam.drill.admin.metrics.views.MethodView
+import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.pagedListOf
+import com.epam.drill.admin.metrics.views.withTotal
+import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
@@ -35,28 +42,57 @@ import java.time.LocalDateTime
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
-    private val testRecommendationsConfig: TestRecommendationsConfig
+    private val testRecommendationsConfig: TestRecommendationsConfig,
+    private val metricsConfig: MetricsConfig,
 ) : MetricsService {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<BuildView> {
+    override suspend fun getApplications(groupId: String?): List<ApplicationView> {
         return transaction {
-            metricsRepository.getBuilds(groupId, appId, branch).map {
-                BuildView(
-                    id = it["id"] as String,
+            metricsRepository.getApplications(groupId).map {
+                ApplicationView(
                     groupId = it["group_id"] as String,
                     appId = it["app_id"] as String,
-                    commitSha = it["commit_sha"] as String?,
-                    buildVersion = it["build_version"] as String?,
-                    branch = it["branch"] as String?,
-                    instanceId = it["instance_id"] as String?,
-                    commitDate = it["commit_date"] as String?,
-                    commitMessage = it["commit_message"] as String?,
-                    commitAuthor = it["commit_author"] as String?
                 )
             }
         }
     }
+
+    override suspend fun getBuilds(
+        groupId: String,
+        appId: String,
+        branch: String?,
+        envId: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<BuildView> = transaction {
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getBuilds(
+                groupId, appId,
+                branch, envId,
+                offset, limit
+            ).map {
+                BuildView(
+                    id = it["build_id"] as String,
+                    groupId = it["group_id"] as String,
+                    appId = it["app_id"] as String,
+                    buildVersion = it["build_version"] as String?,
+                    branch = it["branch"] as String?,
+                    envIds = (it["env_ids"] as List<String>?) ?: emptyList(),
+                    commitSha = it["commit_sha"] as String?,
+                    commitDate = (it["committed_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+                    commitMessage = it["commit_message"] as String?,
+                    commitAuthor = it["commit_author"] as String?
+                )
+            }
+        } withTotal {
+            metricsRepository.getBuildsCount(
+                groupId, appId,
+                branch, envId
+            )
+        }
+    }
+
 
     override suspend fun getCoverageTreemap(
         buildId: String,
@@ -71,13 +107,13 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        val data = metricsRepository.getMethodsCoverage(
-            buildId,
-            testTag,
-            envId,
-            branch,
-            packageNamePattern,
-            classNamePattern,
+        val data = metricsRepository.getMethodsWithCoverage(
+            buildId= buildId,
+            coverageTestTag= testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId= envId?.takeIf { it.isNotBlank() },
+            coverageBranch= branch?.takeIf { it.isNotBlank() },
+            packageName= packageNamePattern?.takeIf { it.isNotBlank() },
+            className = classNamePattern?.takeIf { it.isNotBlank() }
         )
 
         return buildTree(data, rootId)
@@ -94,7 +130,6 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
-        useMaterializedViews: Boolean?
     ): Map<String, Any?> {
         return transaction {
 
@@ -120,9 +155,8 @@ class MetricsServiceImpl(
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
-                baselineBuildId,
-                coverageThreshold,
-                useMaterializedViews ?: false)
+                baselineBuildId
+            )
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
@@ -192,7 +226,6 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        useMaterializedViews: Boolean?
     ): Map<String, Any?> = transaction {
         val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
@@ -237,7 +270,6 @@ class MetricsServiceImpl(
             testsToSkip = testsToSkip,
             testTaskId = testTaskId,
             coveragePeriodFrom = coveragePeriodFrom,
-            useMaterializedViews = useMaterializedViews ?: false
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
@@ -269,6 +301,108 @@ class MetricsServiceImpl(
             "recommendedTests" to recommendedTests,
         )
     }
+
+    override suspend fun refreshMaterializedViews() {
+        metricsRepository.refreshMaterializedView(methodsView)
+        metricsRepository.refreshMaterializedView(buildsView)
+        metricsRepository.refreshMaterializedView(buildsComparisonView)
+        metricsRepository.refreshMaterializedView(methodsCoverageView)
+        metricsRepository.refreshMaterializedView(buildsCoverageView)
+        metricsRepository.refreshMaterializedView(testSessionBuildsCoverageView)
+        metricsRepository.refreshMaterializedView(testedBuildsComparisonView)
+    }
+
+    override suspend fun getChanges(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView> = transaction {
+        val baselineBuildId = generateBuildId(
+            groupId,
+            appId,
+            baselineInstanceId,
+            baselineCommitSha,
+            baselineBuildVersion,
+            """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+        )
+
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+
+        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getMethodsWithCoverage(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                offset = offset,
+                limit = limit
+            ).map(::mapToMethodView)
+        } withTotal {
+            metricsRepository.getMethodsCount(buildId = buildId, baselineBuildId = baselineBuildId)
+        }
+    }
+
+    override suspend fun getCoverage(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView> = transaction {
+        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        return@transaction pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getMethodsWithCoverage(
+                buildId = buildId,
+                coverageTestTag = testTag,
+                coverageEnvId = envId,
+                coverageBranch = branch,
+                packageName = packageNamePattern,
+                className = classNamePattern,
+                offset = offset,
+                limit = limit
+            ).map(::mapToMethodView)
+        } withTotal {
+            metricsRepository.getMethodsCount(buildId = buildId)
+        }
+    }
+
+    private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
+        className = resultSet["classname"] as String,
+        name = resultSet["name"] as String,
+        params = (resultSet["params"] as String).split(",").map(String::trim),
+        returnType = resultSet["return_type"] as String,
+        changeType = ChangeType.fromString(resultSet["change_type"] as String),
+        probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
+        coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+    )
 
     // TODO good candidate to be moved to common functions (probably)
     private fun getUriString(baseUrl: String, path: String, queryParams: Map<String, String>): String {

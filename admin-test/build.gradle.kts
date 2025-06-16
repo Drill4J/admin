@@ -42,6 +42,7 @@ kotlin.sourceSets {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(project(":admin-common"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")

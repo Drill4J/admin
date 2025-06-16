@@ -443,7 +443,8 @@ SELECT
   COUNT(DISTINCT m.classname) AS total_classes,
   COUNT(*) AS total_methods,
   SUM(m.probes_count) AS total_probes,
-  COALESCE(b.committed_at, b.created_at) AS committed_at
+  COALESCE(b.committed_at, b.created_at) AS committed_at,
+  (SELECT ARRAY_AGG(DISTINCT env_id) FROM raw_data.instances WHERE env_id != '' AND build_id = b.id) AS env_ids
 FROM raw_data.builds b
-JOIN raw_data.view_methods_with_rules m ON b.id = m.build_id
+LEFT JOIN raw_data.view_methods_with_rules m ON b.id = m.build_id
 GROUP BY b.id;

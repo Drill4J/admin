@@ -27,126 +27,203 @@ class MetricsRepositoryImpl : MetricsRepository {
         buildId: String
     ): Boolean = transaction {
         val x = executeQueryReturnMap(
-            """
-                SELECT raw_data.check_build_exists(?)
-                """.trimIndent(),
+            "SELECT raw_data.check_build_exists(?)",
             buildId
         )
         x[0]["check_build_exists"] == true
     }
 
-    override suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>> = transaction {
-        val query = buildString {
+    override suspend fun getApplications(groupId: String?): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
             append(
-            """
-            SELECT *
-            FROM raw_data.builds builds
-            WHERE builds.group_id = ? AND builds.app_id = ?
-            """.trimIndent()
+                """
+                SELECT DISTINCT
+                    group_id,
+                    app_id
+                FROM raw_data.builds                
+                """.trimIndent()
             )
-            if (branch != null) {
-                append(" AND builds.branch = ?")
-            }
-            append(" ORDER BY created_at DESC")
+            appendOptional(" WHERE builds.group_id = ?", groupId)
         }
-
-        val params = mutableListOf<Any>().apply {
-            add(groupId)
-            add(appId)
-            if (branch != null) add(branch)
-        }
-
-        executeQueryReturnMap(query, *params.toTypedArray()) as List<Map<String, Any>>
     }
 
-    override suspend fun getMethodsCoverage(
+    override suspend fun getBuilds(
+        groupId: String, appId: String,
+        branch: String?, envId: String?,
+        offset: Int?, limit: Int?
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT 
+                build_id,
+                group_id,
+                app_id,
+                env_ids,
+                build_version,
+                branch,
+                commit_sha,                                
+                commit_author,
+                commit_message,
+                committed_at
+            FROM raw_data.matview_builds builds
+            WHERE builds.group_id = ? AND builds.app_id = ?
+            """.trimIndent(), groupId, appId)
+            appendOptional(" AND builds.branch = ?", branch)
+            appendOptional(" AND ? = ANY(builds.env_ids)", envId)
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getBuildsCount(
+        groupId: String, appId: String,
+        branch: String?, envId: String?
+    ): Long = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS cnt
+            FROM raw_data.matview_builds builds
+            WHERE builds.group_id = ? AND builds.app_id = ?
+            """.trimIndent(), groupId, appId
+            )
+            appendOptional(" AND builds.branch = ?", branch)
+            appendOptional(" AND ? = ANY(builds.env_ids)", envId)
+        }
+        (result[0]["cnt"] as? Number)?.toLong() ?: 0
+    }
+
+    override suspend fun getMethodsWithCoverage(
         buildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        baselineBuildId: String?,
+        coverageTestTag: String?,
+        coverageEnvId: String?,
+        coverageBranch: String?,
+        packageName: String?,
+        className: String?,
+        offset: Int?, limit: Int?
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    classname,
+                    name,
+                    params,
+                    return_type,
+                    change_type,
+                    probes_count,                    
+                    isolated_covered_probes,
+                    aggregated_covered_probes,                    
+                    isolated_probes_coverage_ratio,
+                    aggregated_probes_coverage_ratio                    
+                FROM raw_data.get_methods_coverage_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?,
+                    input_test_tag => ?,
+                    input_env_id => ?,
+                    input_branch => ?,                        
+                    input_package_name_pattern => ?,
+                    input_class_name_pattern => ?,
+                    input_aggregated_coverage => TRUE,
+                    input_materialized => TRUE
+                )
+                ORDER BY signature
+                """.trimIndent(),
+                buildId,
+                baselineBuildId,
+                coverageTestTag,
+                coverageEnvId,
+                coverageBranch,
+                "$packageName%".takeIf { !packageName.isNullOrBlank() },
+                "%$className".takeIf { !className.isNullOrBlank() }
+            )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getMethodsCount(
+        buildId: String,
+        baselineBuildId: String?,
         packageNamePattern: String?,
         classNamePattern: String?
-    ): List<Map<String, Any?>> = transaction {
-        executeQueryReturnMap(
-            """
-                WITH MethodsCoverage AS
-                (
-                	SELECT 
-                        classname,
-                        name,
-                        params,
-                        return_type,
-                        probes_count,
-                        aggregated_covered_probes
-                	FROM raw_data.get_methods_coverage_v2(
-                        input_build_id => ?,
-                        input_aggregated_coverage => TRUE,
-                        input_materialized => TRUE,
-                        input_test_tag => ?,
-                        input_env_id => ?,
-                        input_branch => ?,                        
-                        input_package_name_pattern => ?,
-                        input_class_name_pattern => ?                        
-                	)
-                )
-                SELECT
-                	classname || '/' || name AS name,
-                	params,
-                	return_type,
-                	SUM(probes_count) AS probes_count,
-                	SUM(aggregated_covered_probes) AS covered_probes
-                FROM MethodsCoverage
-                GROUP BY name, classname, params, return_type
-                ORDER BY classname DESC
+    ): Long = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS cnt
+            FROM raw_data.get_methods_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?,
+                input_package_name_pattern => ?,
+                input_class_name_pattern => ?
+            )
             """.trimIndent(),
-            buildId,
-            testTag.takeUnless { it.isNullOrBlank() },
-            envId.takeUnless { it.isNullOrBlank() },
-            branch.takeUnless { it.isNullOrBlank() },
-            "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
-            "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
-        )
+                buildId,
+                baselineBuildId,
+                "$packageNamePattern%".takeIf { !packageNamePattern.isNullOrBlank() },
+                "%$classNamePattern".takeIf { !classNamePattern.isNullOrBlank() }
+            )
+        }
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getBuildDiffReport(
-        targetBuildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double,
-        useMaterializedViews: Boolean
+        buildId: String,
+        baselineBuildId: String
     ) = transaction {
         executeQueryReturnMap(
             """
                     WITH 
-                    Risks AS (
-                        SELECT * 
-                        FROM raw_data.get_methods_coverage_v2(                        
-                            input_build_id => ?, 
+                    Changes AS (
+                        SELECT 
+                            equal,
+                            modified,
+                            added,
+                            deleted
+                        FROM raw_data.get_builds_compared_to_baseline_v2(
+			                input_build_id => ?,
+			                input_baseline_build_id => ?
+                        ) AS baseline   
+                    ),   
+                    Coverage AS (
+                        SELECT
+                            isolated_probes_coverage_ratio,
+                            aggregated_probes_coverage_ratio,
+                            isolated_tested_methods,
+                            isolated_missed_methods,
+                            aggregated_tested_methods,
+                            aggregated_missed_methods
+                        FROM raw_data.get_build_coverage_v3(
+                            input_build_id => ?,
                             input_baseline_build_id => ?,
-                            input_aggregated_coverage => true,
-                            input_materialized => false
-                        )	
+                            input_coverage_in_other_builds => true
+                        )
                     ),
                     RecommendedTests AS (
-                        SELECT *
+                        SELECT count(*) AS tests_to_run
                         FROM raw_data.get_recommended_tests_v4(
                             input_target_build_id => ?, 
-                            input_baseline_build_id => ?,
-                            input_materialized => ?
+                            input_tests_to_skip => false,
+                            input_materialized => true
                         )
                     )	
                     SELECT 
-                        (SELECT count(*) FROM Risks WHERE change_type = 'new') as changes_new_methods,
-                        (SELECT count(*) FROM Risks WHERE change_type = 'modified') as changes_modified_methods,
-                        (SELECT count(*) FROM Risks) as total_changes,
-                        (SELECT count(*) FROM Risks WHERE aggregated_probes_coverage_ratio > 0) as tested_changes,
-                        (SELECT CAST(SUM(aggregated_covered_probes) AS FLOAT) / SUM(probes_count) FROM Risks) as coverage,
-                        (SELECT count(*) FROM RecommendedTests) as recommended_tests
+                        (SELECT added FROM Changes) as changes_new_methods,
+                        (SELECT modified FROM Changes) as changes_modified_methods,
+                        (SELECT deleted FROM Changes) as changes_deleted_methods,
+                        (SELECT added + modified FROM Changes) as total_changes,
+                        (SELECT aggregated_tested_methods FROM Coverage) as tested_changes,
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
+                        (SELECT tests_to_run FROM RecommendedTests) as recommended_tests
                 """.trimIndent(),
-            targetBuildId,
+            buildId,
             baselineBuildId,
-            targetBuildId,
+            buildId,
             baselineBuildId,
-            useMaterializedViews
+            buildId
         ).first() as Map<String, String>
     }
 
@@ -164,7 +241,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         testsToSkip: Boolean,
         testTaskId: String?,
         coveragePeriodFrom: LocalDateTime?,
-        useMaterializedViews: Boolean
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap(
             """            
@@ -181,15 +257,14 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_test_task_id => ?,		
                     input_baseline_build_id => ?,
                     input_coverage_period_from => ?,
-                    input_materialized => ?
+                    input_materialized => TRUE
                 )
             """.trimIndent(),
             targetBuildId,
             testsToSkip,
             testTaskId,
             baselineBuildId,
-            coveragePeriodFrom,
-            useMaterializedViews
+            coveragePeriodFrom
         )
     }
 }

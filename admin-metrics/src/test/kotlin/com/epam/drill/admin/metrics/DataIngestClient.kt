@@ -16,7 +16,10 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.metricsDIModule
+import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.route.metricsRoutes
+import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
@@ -26,16 +29,27 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.server.application.call
+import io.ktor.server.response.respond
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.post
+import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.getValue
 import kotlin.test.assertEquals
 
 private val counter = AtomicInteger(0)
 
-fun runDrillApplication() =
+suspend fun runDrillApplication(initTestData: suspend HttpClient.() -> Unit): HttpClient =
     drillApplication(rawDataServicesDIModule, metricsDIModule) {
         dataIngestRoutes()
         metricsRoutes()
-    }.drillClient()
+        refreshMaterializedViewsRoute()
+    }.drillClient().apply {
+        initTestData()
+        refreshMaterializedViews()
+    }
 
 suspend fun HttpClient.deployInstance(
     instance: InstancePayload,
@@ -133,8 +147,21 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
     }.assertSuccessStatus()
 }
 
+suspend fun HttpClient.refreshMaterializedViews() {
+    post("/metrics/refresh-materialized-views").assertSuccessStatus()
+}
+
 fun HttpResponse.assertSuccessStatus() = also {
     assertEquals(HttpStatusCode.OK, status)
+}
+
+private fun Route.refreshMaterializedViewsRoute() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    post("/metrics/refresh-materialized-views") {
+        metricsService.refreshMaterializedViews()
+        call.respond(HttpStatusCode.OK, ApiResponse("Materialized views refreshed"))
+    }
 }
 
 private fun Array<Pair<SingleMethodPayload, IntArray>>.toClassProbes(): BooleanArray {

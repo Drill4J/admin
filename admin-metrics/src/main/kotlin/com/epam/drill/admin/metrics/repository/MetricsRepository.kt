@@ -21,23 +21,41 @@ interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
 
-    suspend fun getBuilds(groupId: String, appId: String, branch: String?): List<Map<String, Any>>
+    suspend fun getApplications(groupId: String? = null): List<Map<String, Any?>>
 
-    suspend fun getMethodsCoverage(
+    suspend fun getBuilds(
+        groupId: String, appId: String,
+        branch: String? = null, envId: String? = null,
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
+
+    suspend fun getBuildsCount(
+        groupId: String, appId: String,
+        branch: String? = null, envId: String? = null
+    ): Long
+
+    suspend fun getMethodsWithCoverage(
         buildId: String,
-        testTag: String? = null,
-        envId: String? = null,
-        branch: String? = null,
+        baselineBuildId: String? = null,
+        coverageTestTag: String? = null,
+        coverageEnvId: String? = null,
+        coverageBranch: String? = null,
+        packageName: String? = null,
+        className: String? = null,
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
+
+    suspend fun getMethodsCount(
+        buildId: String,
+        baselineBuildId: String? = null,
         packageNamePattern: String? = null,
         classNamePattern: String? = null,
-    ): List<Map<String,Any?>>
+    ): Long
 
     suspend fun getBuildDiffReport(
         buildId: String,
-        baselineBuildId: String,
-        coverageThreshold: Double,
-        useMaterializedViews: Boolean = false
-    ): Map<String, String>
+        baselineBuildId: String
+    ): Map<String, String?>
 
     suspend fun refreshMaterializedView(viewName: String)
 
@@ -46,7 +64,6 @@ interface MetricsRepository {
         baselineBuildId: String? = null,
         testsToSkip: Boolean = false,
         testTaskId: String? = null,
-        coveragePeriodFrom: LocalDateTime ?= null,
-        useMaterializedViews: Boolean = false
+        coveragePeriodFrom: LocalDateTime? = null,
     ): List<Map<String, Any?>>
 }

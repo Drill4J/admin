@@ -41,7 +41,7 @@ class CoverageTreemapTest : DatabaseTests({
     @Test
     fun `given build with no coverage, coverage-treemap should return empty list`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
             }
             val response = client.get("/metrics/coverage-treemap") {
@@ -58,7 +58,7 @@ class CoverageTreemapTest : DatabaseTests({
     @Test
     fun `given build with methods and coverage, coverage-treemap should return non-empty list`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
                 putMethods(MethodsPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", methods = arrayOf(method1, method2)))
                 // Simulate coverage for method1

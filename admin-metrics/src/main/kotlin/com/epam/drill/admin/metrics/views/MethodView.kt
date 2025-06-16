@@ -15,18 +15,18 @@
  */
 package com.epam.drill.admin.metrics.views
 
-import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
+
 @Serializable
-class BuildView (
-    val id: String,
-    val groupId: String,
-    val appId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val branch: String?,
-    val envIds: List<String>,
-    val commitDate: LocalDateTime?,
-    val commitMessage: String?,
-    val commitAuthor: String?
+class MethodView (
+    val className: String,
+    val name: String,
+    val params: List<String> = emptyList(),
+    val returnType: String?,
+    val changeType: ChangeType? = null,
+    val probesCount: Int,
+    val coveredProbes: Int,
+    val coveredProbesInOtherBuilds: Int,
+    val coverageRatio: Double,
+    val coverageRatioInOtherBuilds: Double,
 )

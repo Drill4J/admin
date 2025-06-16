@@ -43,7 +43,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     @Test
     fun `given test that covers only unmodified methods, recommended test service should suggest skipping it`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods, test1 covers method1
                 deployInstance(build1, arrayOf(method1, method2))
                 launchTest(
@@ -75,7 +75,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     @Test
     fun `given test that covers at least one modified method, recommended test service should suggest running it`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods, test1 covers method1 and method2
                 deployInstance(build1, arrayOf(method1, method2))
                 launchTest(
@@ -106,7 +106,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     @Test
     fun `given test that covers only unmodified methods of at least one build, recommended test service should suggest skipping it`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods, test1 covers method1
                 deployInstance(build1, arrayOf(method1, method2))
                 launchTest(
@@ -147,7 +147,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     @Test
     fun `given baseline build parameter, recommended test service should suggest skipping tests for unmodified methods compared to baseline`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has method1, test1 covers method1
                 deployInstance(build1, arrayOf(method1))
                 launchTest(
@@ -181,7 +181,7 @@ class RecommendedTestsApiTest : DatabaseTests({
     @Test
     fun `given testTaskId parameter, recommended test service should suggest running tests from only specified test task`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods, test1 and test2 cover method1 and method2
                 deployInstance(build1, arrayOf(method1, method2))
                 launchTest(

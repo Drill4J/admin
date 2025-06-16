@@ -21,6 +21,7 @@ import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.table.*
 import com.jayway.jsonpath.JsonPath
+import io.ktor.client.call.body
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
@@ -36,7 +37,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 2 methods
                 deployInstance(build1, arrayOf(method1, method2))
                 //build2 has 1 new method, 1 modified method and 1 deleted method compared to build1
@@ -62,7 +63,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on target build, build-diff-report service should calculate isolated coverage`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 // build1 has 2 methods
                 deployInstance(build1, arrayOf(method1, method2))
                 // build2 has 1 modified method and 1 new method compared to build1.
@@ -105,7 +106,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on different builds, build-diff-report service should calculate aggregated coverage`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 1 method, test1 covers it
                 deployInstance(build1, arrayOf(method1))
                 launchTest(
@@ -155,7 +156,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     @Test
     fun `given tests on different builds, build-diff-report service should calculate recommended tests to run`() {
         runBlocking {
-            val client = runDrillApplication().apply {
+            val client = runDrillApplication {
                 //build1 has 1 method, test1 covers it
                 deployInstance(build1, arrayOf(method1))
                 launchTest(
@@ -202,6 +203,24 @@ class BuildDiffReportApiTest : DatabaseTests({
         }
     }
 
+    @Test
+    fun `given non-existent baseline, build-diff-report service should return 422 status`() {
+        runBlocking {
+            val client = runDrillApplication {
+                deployInstance(build2, arrayOf(method2, method3))
+            }
+
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", "nonexistent-baseline-build")
+            }.apply {
+                assertEquals(422, status.value)
+            }
+        }
+    }
+
     @AfterEach
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()
@@ -213,3 +232,4 @@ class BuildDiffReportApiTest : DatabaseTests({
         TestDefinitionTable.deleteAll()
     }
 }
+

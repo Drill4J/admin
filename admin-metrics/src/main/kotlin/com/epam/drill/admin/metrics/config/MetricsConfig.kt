@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.route.response
+package com.epam.drill.admin.metrics.config
 
-import kotlinx.datetime.LocalDateTime
-import kotlinx.serialization.Serializable
+import io.ktor.server.config.ApplicationConfig
 
-@Serializable
-class RecommendedTestsView(
-    val testDefinitionId: String,
-    val testRunner: String,
-    val testPath: String,
-    val testName: String,
-    val tags: List<String>,
-    val metadata: Map<String, String>,
-)
+/**
+ * Configuration for the Metrics module.
+ *
+ * @property config The application configuration.
+ */
+class MetricsConfig(private val config: ApplicationConfig) {
+    /**
+     * The maximum number of items to return in a single page of results.
+     */
+    val pageSize: Int
+        get() = config.propertyOrNull("pageSize")?.getString()?.toIntOrNull() ?: 100
+}

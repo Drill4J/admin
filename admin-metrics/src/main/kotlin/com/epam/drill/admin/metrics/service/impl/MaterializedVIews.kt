@@ -13,20 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.views
+package com.epam.drill.admin.metrics.service.impl
 
-import kotlinx.datetime.LocalDateTime
-import kotlinx.serialization.Serializable
-@Serializable
-class BuildView (
-    val id: String,
-    val groupId: String,
-    val appId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val branch: String?,
-    val envIds: List<String>,
-    val commitDate: LocalDateTime?,
-    val commitMessage: String?,
-    val commitAuthor: String?
-)
+const val methodsCoverageView = "matview_methods_coverage_v3"
+const val buildsCoverageView = "matview_builds_coverage_v3"
+const val testSessionBuildsCoverageView = "matview_test_session_build_coverage"
+const val testedBuildsComparisonView = "matview_tested_builds_comparison"
+const val methodsView = "matview_methods_with_rules"
+const val buildsView = "matview_builds"
+const val buildsComparisonView = "matview_builds_comparison"
