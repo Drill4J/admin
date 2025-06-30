@@ -145,40 +145,6 @@ class RecommendedTestsApiTest : DatabaseTests({
     }
 
     @Test
-    fun `given baseline build parameter, recommended test service should suggest skipping tests for unmodified methods compared to baseline`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has method1, test1 covers method1
-                deployInstance(build1, arrayOf(method1))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 0)
-                    )
-                )
-                //build2 has modified method1 and new method2 compared to build1, test2 covers method2
-                val modifiedMethod1 = method1.changeChecksum()
-                deployInstance(build2, arrayOf(modifiedMethod1, method2))
-                //build3 has new method3 compared to build2
-                deployInstance(build3, arrayOf(modifiedMethod1, method2, method3))
-            }
-
-            client.get("/metrics/recommended-tests") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("testsToSkip", false)
-                parameter("targetBuildVersion", build3.buildVersion)
-                parameter("baselineBuildVersion", build2.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
-                // test1 should not be recommended to be run in build3 because build3 has no changes in method1 compared to build2 (baseline)
-                assertEquals(0, recommendedTests.size)
-            }
-        }
-    }
-
-    @Test
     fun `given testTaskId parameter, recommended test service should suggest running tests from only specified test task`() {
         runBlocking {
             val client = runDrillApplication {

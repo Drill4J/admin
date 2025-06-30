@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.config
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.*
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.TextColumnType
@@ -38,8 +39,15 @@ object MetricsDatabaseConfig {
     private var dataSource: DataSource? = null
 
     fun init(dataSource: DataSource) {
-        MetricsDatabaseConfig.dataSource = dataSource
-        database = Database.connect(dataSource)
+        this.dataSource = dataSource
+        this.database = Database.connect(dataSource)
+        Flyway.configure()
+            .dataSource(dataSource)
+            .schemas("metrics")
+            .baselineOnMigrate(true)
+            .locations("classpath:metrics/db/migration")
+            .load()
+            .migrate()
     }
 
     suspend fun <T> transaction(block: suspend Transaction.() -> T): T =
@@ -120,7 +128,10 @@ private fun <T : Any> Transaction.executePreparedStatement(
         override fun PreparedStatementApi.executeInternal(transaction: Transaction): T? {
             params.forEachIndexed { idx, value ->
                 if (value != null) {
-                    set(idx + 1, value)
+                    when (value) {
+                        is Collection<*> -> setArray(idx + 1, "varchar", value.toTypedArray())
+                        else -> set(idx + 1, value)
+                    }
                 } else {
                     // WORKAROUND: TextColumnType is employed to trick expose to write null values
                     // Possible issues with: BinaryColumnType, BlobColumnType

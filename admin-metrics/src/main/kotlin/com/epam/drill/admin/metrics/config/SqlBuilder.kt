@@ -16,8 +16,8 @@
 package com.epam.drill.admin.metrics.config
 
 interface SqlBuilder {
-    fun append(sqlFragment: String, vararg params: Any?)
-    fun appendOptional(sqlFragment: String, vararg params: Any?)
+    fun append(sqlFragment: String, vararg params: Any?, transform: (Any?) -> Any? = { it })
+    fun appendOptional(sqlFragment: String, vararg params: Any?, transform: (Any) -> Any = { it })
 }
 
 class SqlBuilderImpl(
@@ -25,16 +25,16 @@ class SqlBuilderImpl(
     val params: MutableList<Any?> = mutableListOf()
 ) : SqlBuilder {
 
-    override fun append(sqlFragment: String, vararg params: Any?) {
+    override fun append(sqlFragment: String, vararg params: Any?, transform: (Any?) -> Any?) {
         sqlQuery.append(sqlFragment)
-        this.params.addAll(params)
+        this.params.addAll(params.map { transform(it ?: "") })
     }
 
-    override fun appendOptional(sqlFragment: String, vararg params: Any?) {
+    override fun appendOptional(sqlFragment: String, vararg params: Any?, transform: (Any) -> Any) {
         if (params.any { it == null || (it is String && it.isBlank()) }) {
             return
         }
         sqlQuery.append(sqlFragment)
-        this.params.addAll(params)
+        this.params.addAll(params.map { transform(it ?: "") })
     }
 }
