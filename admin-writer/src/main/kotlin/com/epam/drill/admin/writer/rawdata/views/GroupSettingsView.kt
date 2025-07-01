@@ -19,5 +19,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class GroupSettingsView(
-    val retentionPeriodDays: Int? = null
+    val retentionPeriodDays: Int? = null,
+    val metricsPeriodDays: Int? = null,
 )
