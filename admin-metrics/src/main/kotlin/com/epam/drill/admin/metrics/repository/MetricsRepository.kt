@@ -36,7 +36,6 @@ interface MetricsRepository {
 
     suspend fun getMethodsWithCoverage(
         buildId: String,
-        baselineBuildId: String? = null,
         coverageTestTag: String? = null,
         coverageEnvId: String? = null,
         coverageBranch: String? = null,
@@ -46,6 +45,23 @@ interface MetricsRepository {
     ): List<Map<String, Any?>>
 
     suspend fun getMethodsCount(
+        buildId: String,
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+    ): Long
+
+    suspend fun getChangesWithCoverage(
+        buildId: String,
+        baselineBuildId: String? = null,
+        coverageTestTag: String? = null,
+        coverageEnvId: String? = null,
+        coverageBranch: String? = null,
+        packageName: String? = null,
+        className: String? = null,
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
+
+    suspend fun getChangesCount(
         buildId: String,
         baselineBuildId: String? = null,
         packageNamePattern: String? = null,
