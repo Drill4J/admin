@@ -15,44 +15,23 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import com.epam.drill.admin.common.config.DatabaseConfig
 import kotlinx.serialization.json.*
-import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.postgresql.jdbc.PgArray
 import org.postgresql.util.PGobject
 import java.sql.ResultSet
-import javax.sql.DataSource
 import kotlin.collections.emptyMap
 
-object MetricsDatabaseConfig {
-    private var database: Database? = null
-    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
-    private var dataSource: DataSource? = null
-
-    fun init(dataSource: DataSource) {
-        this.dataSource = dataSource
-        this.database = Database.connect(dataSource)
-        Flyway.configure()
-            .dataSource(dataSource)
-            .schemas("metrics")
-            .baselineOnMigrate(true)
-            .locations("classpath:metrics/db/migration")
-            .load()
-            .migrate()
-    }
-
-    suspend fun <T> transaction(block: suspend Transaction.() -> T): T =
-        newSuspendedTransaction(dispatcher, database) { block() }
-}
+object MetricsDatabaseConfig : DatabaseConfig(
+    dbSchema = "metrics",
+    schemaMigrationLocation = "classpath:metrics/db/migration"
+)
 
 fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): List<Map<String, Any?>> {
     val result = mutableListOf<Map<String, Any?>>()
