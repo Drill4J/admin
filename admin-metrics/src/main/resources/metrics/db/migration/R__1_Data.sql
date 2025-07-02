@@ -1,4 +1,9 @@
 -----------------------------------------------------------------
+-- Repeatable migration script to create materialized views for metrics
+-- Migration version: v1
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 -- Create a materialized view of builds
 -- by copying data from the `raw_data.builds` table
 -----------------------------------------------------------------
@@ -18,7 +23,8 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.builds AS
 		b.committed_at,
 		b.created_at,
 		DATE_TRUNC('day', b.created_at) AS creation_day
-	FROM raw_data.builds b;
+	FROM raw_data.builds b
+	WHERE b.created_at >= metrics.get_metrics_period(b.group_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_builds_pk ON metrics.builds (group_id, app_id, build_id);
 CREATE INDEX ON metrics.builds(group_id, app_id, build_id, created_at);
 
@@ -30,18 +36,19 @@ CREATE INDEX ON metrics.builds(group_id, app_id, build_id, created_at);
 DROP MATERIALIZED VIEW IF EXISTS metrics.methods CASCADE;
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.methods AS
     SELECT
-	    md5(signature||':'||body_checksum||':'||probes_count) as method_id,
-		group_id,
-	    app_id,
-	    signature,
-	    MIN(name) AS method_name,
-	    MIN(classname) AS class_name,
-	    MIN(params) AS method_params,
-	    MIN(return_type) AS return_type,
-	    body_checksum,
-	    probes_count
-	FROM raw_data.view_methods_with_rules
-	GROUP BY group_id, app_id, signature, body_checksum, probes_count;
+	    md5(m.signature||':'||m.body_checksum||':'||m.probes_count) as method_id,
+		m.group_id,
+	    m.app_id,
+	    m.signature,
+	    MIN(m.name) AS method_name,
+	    MIN(m.classname) AS class_name,
+	    MIN(m.params) AS method_params,
+	    MIN(m.return_type) AS return_type,
+	    m.body_checksum,
+	    m.probes_count
+	FROM raw_data.view_methods_with_rules m
+	JOIN metrics.builds b ON b.group_id = m.group_id AND b.app_id = m.app_id AND b.build_id = m.build_id
+	GROUP BY m.group_id, m.app_id, m.signature, m.body_checksum, m.probes_count;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_methods_pk ON metrics.methods (group_id, app_id, method_id);
 
 -----------------------------------------------------------------
@@ -52,14 +59,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_methods_pk ON metrics.methods (group_id, a
 DROP MATERIALIZED VIEW IF EXISTS metrics.build_methods CASCADE;
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.build_methods AS
     SELECT
-	    group_id,
-		app_id,
-	    build_id,
-	    md5(signature||':'||body_checksum||':'||probes_count) as method_id,
-		MIN(probes_start) AS probes_start,
-		MIN(method_num) AS method_num
+	    m.group_id,
+		m.app_id,
+	    m.build_id,
+	    md5(m.signature||':'||m.body_checksum||':'||m.probes_count) as method_id,
+		MIN(m.probes_start) AS probes_start,
+		MIN(m.method_num) AS method_num
 	FROM raw_data.view_methods_with_rules m
-	GROUP BY group_id, app_id, build_id, signature, body_checksum, probes_count;
+	JOIN metrics.builds b ON b.group_id = m.group_id AND b.app_id = m.app_id AND b.build_id = m.build_id
+	GROUP BY m.group_id, m.app_id, m.build_id, m.signature, m.body_checksum, m.probes_count;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_build_methods_pk ON metrics.build_methods (group_id, app_id, build_id, method_id);
 
 -----------------------------------------------------------------
@@ -82,7 +90,8 @@ SELECT
     CASE WHEN tl.result = 'SKIPPED' THEN 1 ELSE 0 END AS skipped,
     CASE WHEN tl.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END AS smart_skipped,
     CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END AS success
-FROM raw_data.test_launches tl;
+FROM raw_data.test_launches tl
+WHERE tl.created_at >= metrics.get_metrics_period(tl.group_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_launches_pk ON metrics.test_launches (group_id, test_launch_id);
 
 -----------------------------------------------------------------
@@ -101,7 +110,8 @@ SELECT
     td.metadata AS test_metadata,
     td.created_at,
     DATE_TRUNC('day', td.created_at) AS creation_day
-FROM raw_data.test_definitions td;
+FROM raw_data.test_definitions td
+WHERE td.created_at >= metrics.get_metrics_period(td.group_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_definitions_pk ON metrics.test_definitions (group_id, test_definition_id);
 
 -----------------------------------------------------------------
@@ -117,7 +127,8 @@ SELECT
     ts.started_at AS session_started_at,
     ts.created_at,
     DATE_TRUNC('day', ts.created_at) AS creation_day
-FROM raw_data.test_sessions ts;
+FROM raw_data.test_sessions ts
+WHERE ts.created_at >= metrics.get_metrics_period(ts.group_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_sessions_pk ON metrics.test_sessions (group_id, test_session_id);
 
 -----------------------------------------------------------------
@@ -148,6 +159,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.method_coverage AS
     LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_launch_id
     LEFT JOIN metrics.test_definitions td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
     LEFT JOIN metrics.test_sessions ts ON ts.group_id = tl.group_id AND ts.test_session_id = tl.test_session_id
+    WHERE c.created_at >= metrics.get_metrics_period(c.group_id)
     GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, c.test_launch_id, DATE_TRUNC('day', c.created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_method_coverage_pk ON metrics.method_coverage (group_id, app_id, method_id, build_id, app_env_id, test_launch_id, creation_day);
 CREATE INDEX ON metrics.method_coverage(group_id, app_id, build_id);
@@ -195,7 +207,7 @@ FROM (
         tsb.build_id,
         tsb.test_session_id
     FROM raw_data.test_session_builds tsb
-    JOIN raw_data.builds b ON b.group_id = tsb.group_id AND b.id = tsb.build_id
+    JOIN metrics.builds b ON b.group_id = tsb.group_id AND b.build_id = tsb.build_id
     UNION ALL
     SELECT DISTINCT
       c.group_id,
