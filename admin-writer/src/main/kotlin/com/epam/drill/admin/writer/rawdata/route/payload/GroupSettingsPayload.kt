@@ -19,5 +19,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class GroupSettingsPayload(
-    val retentionPeriodDays: Int?
+    val retentionPeriodDays: Int?,
+    val metricsPeriodDays: Int?,
 )

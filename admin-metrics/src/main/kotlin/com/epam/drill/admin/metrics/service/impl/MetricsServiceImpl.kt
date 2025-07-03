@@ -32,7 +32,6 @@ import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.TestView
 import com.epam.drill.admin.metrics.views.pagedListOf
 import com.epam.drill.admin.metrics.views.withTotal
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -43,8 +42,6 @@ import java.time.LocalDateTime
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -86,7 +83,7 @@ class MetricsServiceImpl(
                     appId = it["app_id"] as String,
                     buildVersion = it["build_version"] as String?,
                     branch = it["branch"] as String?,
-                    envIds = (it["env_ids"] as List<String>?) ?: emptyList(),
+                    envIds = (it["app_env_ids"] as List<String>?) ?: emptyList(),
                     commitSha = it["commit_sha"] as String?,
                     commitDate = (it["committed_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
                     commitMessage = it["commit_message"] as String?,
@@ -281,11 +278,8 @@ class MetricsServiceImpl(
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
-                testRunner = data["runner"] as String,
-                testPath = data["path"] as String,
-                testName = data["name"] as String,
-                tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
-                metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap()
+                testPath = data["test_path"] as String,
+                testName = data["test_name"] as String
             )
         }
 
@@ -346,14 +340,14 @@ class MetricsServiceImpl(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
-            metricsRepository.getMethodsWithCoverage(
+            metricsRepository.getChangesWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getMethodsCount(buildId = buildId, baselineBuildId = baselineBuildId)
+            metricsRepository.getChangesCount(buildId = buildId, baselineBuildId = baselineBuildId)
         }
     }
 
@@ -454,11 +448,8 @@ class MetricsServiceImpl(
             ).map { data ->
                 TestView(
                     testDefinitionId = data["test_definition_id"] as String,
-                    testRunner = data["runner"] as String,
-                    testPath = data["path"] as String,
-                    testName = data["name"] as String,
-                    tags = data["tags"]?.let { it as List<String> } ?: emptyList(),
-                    metadata = data["metadata"]?.let { it as Map<String, String> } ?: emptyMap(),
+                    testPath = data["test_path"] as String,
+                    testName = data["test_name"] as String,
                     impactedMethods = data["impacted_methods"]?.let { it as List<Map<String, Any?>> }
                         ?.map(::mapToMethodView)
                         ?: emptyList()
@@ -470,22 +461,26 @@ class MetricsServiceImpl(
     override suspend fun refreshMaterializedViews() = coroutineScope {
         logger.debug { "Refreshing materialized views..." }
 
-        val methodsViewJob = async { refreshMaterializedView(methodsView) }
-        val buildsViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(buildsView) } }
-        val methodsCoverageViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(methodsCoverageView) } }
-        val buildsComparisonViewJob = async { waitFor(methodsViewJob, buildsViewJob).run { refreshMaterializedView(buildsComparisonView) } }
-        val testedBuildsComparisonViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(testedBuildsComparisonView) } }
-        val buildsCoverageViewJob = async { waitFor(methodsCoverageViewJob).run { refreshMaterializedView(buildsCoverageView) } }
-        val testSessionBuildsCoverageViewJob = async { waitFor(methodsViewJob).run { refreshMaterializedView(testSessionBuildsCoverageView) } }
-        waitFor(buildsComparisonViewJob, testedBuildsComparisonViewJob, buildsCoverageViewJob, testSessionBuildsCoverageViewJob)
+        val buildsViewJob = async { refreshMaterializedView(buildsView) }
+        val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
+        val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
+        val testLaunchesViewJob = async { refreshMaterializedView(testLaunchesView) }
+        val testDefinitionsViewJob = async { refreshMaterializedView(testDefinitionsView) }
+        val testSessionsViewJob = async { refreshMaterializedView(testSessionsView) }
+        val methodCoverageViewJob = async { waitFor(buildsViewJob, methodsViewJob, buildMethodsViewJob,
+            testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob).run { refreshMaterializedView(methodCoverageView) } }
+        val methodSmartCoverageViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(methodSmartCoverageView) } }
+        val testSessionBuildsViewJob = async { waitFor(buildsViewJob, methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
+
+        waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
 
         logger.debug { "Materialized views were refreshed." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
-        className = resultSet["classname"] as String,
-        name = resultSet["name"] as String,
-        params = (resultSet["params"] as String).split(",").map(String::trim),
+        className = resultSet["class_name"] as String,
+        name = resultSet["method_name"] as String,
+        params = (resultSet["method_params"] as String).split(",").map(String::trim),
         returnType = resultSet["return_type"] as String,
         changeType = ChangeType.fromString(resultSet["change_type"] as String?),
         probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,

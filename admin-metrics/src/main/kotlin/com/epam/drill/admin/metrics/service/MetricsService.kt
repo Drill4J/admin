@@ -35,7 +35,7 @@ interface MetricsService {
         pageSize: Int?
     ): PagedList<BuildView>
 
-    suspend fun getCoverageTreemap (
+    suspend fun getCoverageTreemap(
         buildId: String,
         testTag: String?,
         envId: String?,

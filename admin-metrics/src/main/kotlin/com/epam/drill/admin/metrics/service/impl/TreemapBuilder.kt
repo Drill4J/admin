@@ -21,13 +21,13 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
 
     // Step 1: Build full uncollapsed tree
     for (item in data) {
-        val pathParts = ("${item["classname"]}/${item["name"]}").split("/")
+        val pathParts = ("${item["class_name"]}/${item["method_name"]}").split("/")
         var currentPath = ""
 
         for ((index, part) in pathParts.withIndex()) {
             var nodePart = part
             if (index == pathParts.lastIndex) {
-                nodePart += "(${item["params"]}) -> ${item["return_type"]}"
+                nodePart += "(${item["method_params"]}) -> ${item["return_type"]}"
             }
 
             currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
@@ -42,7 +42,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
                     "covered_probes" to 0L,
                     "children" to mutableSetOf<String>(),
                     "parent" to if (index == 0) null else pathParts.subList(0, index).joinToString("/"),
-                    "params" to if (index == pathParts.lastIndex) item["params"] else null,
+                    "params" to if (index == pathParts.lastIndex) item["method_params"] else null,
                     "return_type" to if (index == pathParts.lastIndex) item["return_type"] else null
                 )
             }
@@ -131,12 +131,12 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
         }
 
         for (item in data) {
-            val pathParts = ("${item["classname"]}/${item["name"]}").split("/")
+            val pathParts = ("${item["class_name"]}/${item["method_name"]}").split("/")
             var currentPath = ""
             for ((index, part) in pathParts.withIndex()) {
                 var nodePart = part
                 if (index == pathParts.lastIndex) {
-                    nodePart += "(${item["params"]}) -> ${item["return_type"]}"
+                    nodePart += "(${item["method_params"]}) -> ${item["return_type"]}"
                 }
                 currentPath = if (currentPath.isEmpty()) nodePart else "$currentPath/$nodePart"
             }

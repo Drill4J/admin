@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.metrics.service.impl
 
-const val methodsView = "raw_data.matview_methods_with_rules"
-const val buildsView = "raw_data.matview_builds"
-const val methodsCoverageView = "raw_data.matview_methods_coverage_v3"
-const val buildsCoverageView = "raw_data.matview_builds_coverage_v3"
-const val testSessionBuildsCoverageView = "raw_data.matview_test_session_build_coverage"
-const val buildsComparisonView = "raw_data.matview_builds_comparison"
-const val testedBuildsComparisonView = "raw_data.matview_tested_builds_comparison"
+const val buildsView = "metrics.builds"
+const val methodsView = "metrics.methods"
+const val buildMethodsView = "metrics.build_methods"
+const val testLaunchesView = "metrics.test_launches"
+const val testDefinitionsView = "metrics.test_definitions"
+const val testSessionsView = "metrics.test_sessions"
+const val methodCoverageView = "metrics.method_coverage"
+const val methodSmartCoverageView = "metrics.method_smartcoverage"
+const val testSessionBuildsView = "metrics.test_session_builds"

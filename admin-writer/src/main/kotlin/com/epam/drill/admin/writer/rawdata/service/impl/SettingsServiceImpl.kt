@@ -29,7 +29,8 @@ class SettingsServiceImpl(
     override fun getGroupSettings(groupId: String) = transaction {
         groupSettingsRepository.getByGroupId(groupId).let { settings ->
             GroupSettingsView(
-                retentionPeriodDays = settings?.retentionPeriodDays
+                retentionPeriodDays = settings?.retentionPeriodDays,
+                metricsPeriodDays = settings?.metricsPeriodDays
             )
         }
     }
@@ -38,7 +39,8 @@ class SettingsServiceImpl(
         groupSettingsRepository.save(
             GroupSettings(
                 groupId = groupId,
-                retentionPeriodDays = payload.retentionPeriodDays
+                retentionPeriodDays = payload.retentionPeriodDays,
+                metricsPeriodDays = payload.metricsPeriodDays
             )
         )
     }
