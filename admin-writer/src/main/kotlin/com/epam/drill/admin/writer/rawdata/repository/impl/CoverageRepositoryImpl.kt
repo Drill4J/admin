@@ -33,6 +33,7 @@ class CoverageRepositoryImpl: CoverageRepository {
             this[CoverageTable.instanceId] = it.instanceId
             this[CoverageTable.classname] = it.classname
             this[CoverageTable.testId] = it.testId
+            this[CoverageTable.testSessionId] = it.testSessionId
             this[CoverageTable.probes] = it.probes
         }
     }

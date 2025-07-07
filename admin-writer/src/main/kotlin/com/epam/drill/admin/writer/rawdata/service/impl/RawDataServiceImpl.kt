@@ -22,8 +22,9 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -155,6 +156,7 @@ class RawDataServiceImpl(
                 instanceId = coveragePayload.instanceId,
                 classname = coverage.classname,
                 testId = coverage.testId,
+                testSessionId = coverage.testSessionId,
                 probes = coverage.probes
             )
         }

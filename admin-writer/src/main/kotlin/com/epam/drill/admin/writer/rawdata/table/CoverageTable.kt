@@ -25,7 +25,8 @@ object CoverageTable : IntIdTable("raw_data.coverage") {
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH).references(InstanceTable.id)
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
-    val testId = varchar("test_id",  SHORT_TEXT_LENGTH)
+    val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
+    val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
     val probes = registerColumn("probes", ProbesColumnType())
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }
