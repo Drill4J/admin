@@ -28,7 +28,8 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
         return GroupSettingsTable.selectAll().map {
             GroupSettings(
                 groupId = it[GroupSettingsTable.id].value,
-                retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays]
+                retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays],
+                metricsPeriodDays = it[GroupSettingsTable.metricsPeriodDays],
             )
         }
     }
@@ -39,7 +40,8 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
             .limit(1).singleOrNull()?.let {
                 GroupSettings(
                     groupId = it[GroupSettingsTable.id].value,
-                    retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays]
+                    retentionPeriodDays = it[GroupSettingsTable.retentionPeriodDays],
+                    metricsPeriodDays = it[GroupSettingsTable.metricsPeriodDays],
                 )
             }
     }
@@ -48,6 +50,7 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
         GroupSettingsTable.upsert {
             it[id] = settings.groupId
             it[retentionPeriodDays] = settings.retentionPeriodDays
+            it[metricsPeriodDays] = settings.metricsPeriodDays
         }
     }
 

@@ -1,4 +1,10 @@
 -----------------------------------------------------------------
+-- Repeatable migration script to create views for metrics
+-- Migration version: v1
+-- Compatible with: R__1_Data.sql v1
+-----------------------------------------------------------------
+
+-----------------------------------------------------------------
 -- Create a view of builds with information about
 -- the number of methods and probes
 -----------------------------------------------------------------

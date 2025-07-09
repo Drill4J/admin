@@ -462,15 +462,15 @@ class MetricsServiceImpl(
         logger.debug { "Refreshing materialized views..." }
 
         val buildsViewJob = async { refreshMaterializedView(buildsView) }
-        val methodsViewJob = async { refreshMaterializedView(methodsView) }
-        val buildMethodsViewJob = async { refreshMaterializedView(buildMethodsView) }
+        val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
+        val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
         val testLaunchesViewJob = async { refreshMaterializedView(testLaunchesView) }
         val testDefinitionsViewJob = async { refreshMaterializedView(testDefinitionsView) }
         val testSessionsViewJob = async { refreshMaterializedView(testSessionsView) }
         val methodCoverageViewJob = async { waitFor(buildsViewJob, methodsViewJob, buildMethodsViewJob,
             testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob).run { refreshMaterializedView(methodCoverageView) } }
         val methodSmartCoverageViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(methodSmartCoverageView) } }
-        val testSessionBuildsViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
+        val testSessionBuildsViewJob = async { waitFor(buildsViewJob, methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
 
         waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
 
