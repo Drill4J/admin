@@ -15,36 +15,23 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import com.epam.drill.admin.common.config.DatabaseConfig
 import kotlinx.serialization.json.*
-import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.postgresql.jdbc.PgArray
 import org.postgresql.util.PGobject
 import java.sql.ResultSet
-import javax.sql.DataSource
 import kotlin.collections.emptyMap
 
-object MetricsDatabaseConfig {
-    private var database: Database? = null
-    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
-    private var dataSource: DataSource? = null
-
-    fun init(dataSource: DataSource) {
-        MetricsDatabaseConfig.dataSource = dataSource
-        database = Database.connect(dataSource)
-    }
-
-    suspend fun <T> transaction(block: suspend Transaction.() -> T): T =
-        newSuspendedTransaction(dispatcher, database) { block() }
-}
+object MetricsDatabaseConfig : DatabaseConfig(
+    dbSchema = "metrics",
+    schemaMigrationLocation = "classpath:metrics/db/migration"
+)
 
 fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): List<Map<String, Any?>> {
     val result = mutableListOf<Map<String, Any?>>()
@@ -120,7 +107,10 @@ private fun <T : Any> Transaction.executePreparedStatement(
         override fun PreparedStatementApi.executeInternal(transaction: Transaction): T? {
             params.forEachIndexed { idx, value ->
                 if (value != null) {
-                    set(idx + 1, value)
+                    when (value) {
+                        is Collection<*> -> setArray(idx + 1, "varchar", value.toTypedArray())
+                        else -> set(idx + 1, value)
+                    }
                 } else {
                     // WORKAROUND: TextColumnType is employed to trick expose to write null values
                     // Possible issues with: BinaryColumnType, BlobColumnType
