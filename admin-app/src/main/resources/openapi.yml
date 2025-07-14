@@ -63,6 +63,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+    delete:
+      summary: Delete group settings
+      tags:
+        - settings
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Group settings deleted successfully
 
   # Data Ingest Endpoints
   /api/data-ingest/builds:

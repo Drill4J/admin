@@ -20,10 +20,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 class TestView(
     val testDefinitionId: String,
-    val testRunner: String,
+    val testRunner: String? = null,
     val testPath: String,
     val testName: String,
-    val tags: List<String>,
-    val metadata: Map<String, String>,
+    val tags: List<String>? = null,
+    val metadata: Map<String, String>? = null,
     val impactedMethods: List<MethodView>? = null,
 )
