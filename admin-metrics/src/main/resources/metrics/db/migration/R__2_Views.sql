@@ -25,7 +25,7 @@ SELECT
     MIN(b.app_env_ids) AS app_env_ids,
     COUNT(DISTINCT m.class_name) AS total_classes,
     COUNT(*) AS total_methods,
-    SUM(m.probes_count) AS total_probes
+    SUM(COALESCE(m.probes_count, 0)) AS total_probes
 FROM metrics.builds b
 LEFT JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
 LEFT JOIN metrics.methods m ON bm.group_id = m.group_id AND bm.app_id = m.app_id AND bm.method_id = m.method_id
@@ -45,12 +45,12 @@ SELECT
     MIN(td.test_runner) AS test_runner,
     MIN(td.test_tags) AS test_tags,
     COUNT(*) AS launches,
-    AVG(tl.test_duration) AS test_duration_avg,
-    SUM(tl.passed) AS passed,
-    SUM(tl.failed) AS failed,
-    SUM(tl.skipped) AS skipped,
-    SUM(tl.smart_skipped) AS smart_skipped,
-    SUM(tl.success) AS success,
+    AVG(COALESCE(tl.test_duration, 0)) AS test_duration_avg,
+    SUM(COALESCE(tl.passed, 0)) AS passed,
+    SUM(COALESCE(tl.failed, 0)) AS failed,
+    SUM(COALESCE(tl.skipped, 0)) AS skipped,
+    SUM(COALESCE(tl.smart_skipped, 0)) AS smart_skipped,
+    SUM(COALESCE(tl.success, 0)) AS success,
     CASE
         WHEN COUNT(*) > 0 THEN CAST(SUM(tl.success) AS FLOAT) / COUNT(*)
         ELSE 1
@@ -77,16 +77,16 @@ SELECT
         WHEN SUM(tl.passed) > 0 THEN 'PASSED'
         WHEN SUM(tl.smart_skipped) > 0 THEN 'SMART_SKIPPED'
         WHEN SUM(tl.skipped) > 0 THEN 'SKIPPED'
-        ELSE null
+        ELSE 'UNKNOWN'
     END AS result,
-    SUM(tl.test_duration) AS test_duration,
-    SUM(tl.failed) AS failed,
-    SUM(tl.success) AS success,
-    SUM(tl.passed) AS passed,
-    SUM(tl.skipped) AS skipped,
-    SUM(tl.smart_skipped) AS smart_skipped,
+    SUM(COALESCE(tl.test_duration, 0)) AS test_duration,
+    SUM(COALESCE(tl.failed, 0)) AS failed,
+    SUM(COALESCE(tl.success, 0)) AS success,
+    SUM(COALESCE(tl.passed, 0)) AS passed,
+    SUM(COALESCE(tl.skipped, 0)) AS skipped,
+    SUM(COALESCE(tl.smart_skipped, 0)) AS smart_skipped,
     CASE
-        WHEN COUNT(*) > 0 THEN CAST(SUM(tl.success) AS FLOAT) / COUNT(*)
+        WHEN COUNT(*) > 0 THEN CAST(SUM(COALESCE(tl.success, 0)) AS FLOAT) / COUNT(*)
         ELSE 1
     END AS success_rate,
     SUM(CASE
@@ -114,16 +114,16 @@ SELECT
         WHEN SUM(tl.passed) > 0 THEN 'PASSED'
         WHEN SUM(tl.smart_skipped) > 0 THEN 'SMART_SKIPPED'
         WHEN SUM(tl.skipped) > 0 THEN 'SKIPPED'
-        ELSE null
+        ELSE 'UNKNOWN'
     END AS result,
-    SUM(tl.failed) AS failed,
-    SUM(tl.passed) AS passed,
-    SUM(tl.skipped) AS skipped,
-    SUM(tl.smart_skipped) AS smart_skipped,
-    SUM(tl.success) AS success,
-    SUM(tl.test_duration) AS test_duration,
+    SUM(COALESCE(tl.failed, 0)) AS failed,
+    SUM(COALESCE(tl.passed, 0)) AS passed,
+    SUM(COALESCE(tl.skipped, 0)) AS skipped,
+    SUM(COALESCE(tl.smart_skipped, 0)) AS smart_skipped,
+    SUM(COALESCE(tl.success, 0)) AS success,
+    SUM(COALESCE(tl.test_duration, 0)) AS test_duration,
     CASE
-        WHEN COUNT(*) > 0 THEN CAST(SUM(tl.success) AS FLOAT) / COUNT(*)
+        WHEN COUNT(*) > 0 THEN CAST(SUM(COALESCE(tl.success, 0)) AS FLOAT) / COUNT(*)
         ELSE 1
     END AS success_rate
 FROM metrics.test_definitions td
