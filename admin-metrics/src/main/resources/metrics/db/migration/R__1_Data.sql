@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create materialized views for metrics
--- Migration version: v2
+-- Migration version: v2.1
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -110,8 +110,7 @@ SELECT
     td.metadata AS test_metadata,
     td.created_at,
     DATE_TRUNC('day', td.created_at) AS creation_day
-FROM raw_data.test_definitions td
-WHERE td.created_at >= metrics.get_metrics_period(td.group_id);
+FROM raw_data.test_definitions td;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_definitions_pk ON metrics.test_definitions (group_id, test_definition_id);
 
 -----------------------------------------------------------------
