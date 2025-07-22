@@ -7,6 +7,7 @@ paths:
   /api/group-settings/{groupId}:
     get:
       summary: Get group settings
+      operationId: getGroupSettingsById
       tags:
         - settings
       security:
@@ -33,6 +34,7 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     put:
       summary: Save group settings
+      operationId: updateGroupSettingsById
       tags:
         - settings
       security:
@@ -65,6 +67,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
     delete:
       summary: Delete group settings
+      operationId: deleteGroupSettingsById
       tags:
         - settings
       security:
@@ -83,6 +86,7 @@ paths:
   /api/data-ingest/builds:
     put:
       summary: Save build data
+      operationId: putBuild
       tags:
         - data-ingest
       security:
@@ -106,6 +110,7 @@ paths:
   /api/data-ingest/instances:
     put:
       summary: Save instance data
+      operationId: putInstance
       tags:
         - data-ingest
       security:
@@ -129,6 +134,7 @@ paths:
   /api/data-ingest/coverage:
     post:
       summary: Save coverage data
+      operationId: postCoverage
       tags:
         - data-ingest
       security:
@@ -152,6 +158,7 @@ paths:
   /api/data-ingest/methods:
     put:
       summary: Save methods data
+      operationId: putMethods
       tags:
         - data-ingest
       security:
@@ -175,6 +182,7 @@ paths:
   /api/data-ingest/tests-metadata:
     post:
       summary: Save test metadata
+      operationId: postTestsMetadata
       tags:
         - data-ingest
       security:
@@ -198,6 +206,7 @@ paths:
   /api/data-ingest/sessions:
     put:
       summary: Save test sessions
+      operationId: putTestSession
       tags:
         - data-ingest
       security:
@@ -221,6 +230,7 @@ paths:
   /api/data-ingest/method-ignore-rules:
     post:
       summary: Save method ignore rule
+      operationId: postMethodIgnoreRules
       tags:
         - data-ingest
       security:
@@ -243,6 +253,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
     get:
       summary: Get all method ignore rules
+      operationId: getAllMethodIgnoreRules
       tags:
         - data-ingest
       security:
@@ -257,6 +268,7 @@ paths:
   /api/data-ingest/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
+      operationId: deleteMethodIgnoreRuleById
       tags:
         - data-ingest
       security:
@@ -278,6 +290,7 @@ paths:
   /api/metrics/applications:
     get:
       summary: Get applications
+      operationId: getApplications
       tags:
         - metrics
       security:
@@ -298,6 +311,7 @@ paths:
   /api/metrics/builds:
     get:
       summary: Get builds
+      operationId: getBuilds
       tags:
         - metrics
       security:
@@ -339,6 +353,7 @@ paths:
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report
+      operationId: getBuildDiffReport
       tags:
         - metrics
       security:
@@ -394,6 +409,7 @@ paths:
   /api/metrics/recommended-tests:
     get:
       summary: Get recommended tests
+      operationId: getRecommendedTests
       tags:
         - metrics
       security:
@@ -456,6 +472,7 @@ paths:
   /api/metrics/coverage-treemap:
     get:
       summary: Get coverage treemap
+      operationId: getCoverageTreemap
       tags:
         - metrics
       security:
@@ -500,6 +517,7 @@ paths:
   /api/metrics/changes:
     get:
       summary: Get method changes between builds
+      operationId: getMethodChanges
       tags:
         - metrics
       security:
@@ -557,6 +575,7 @@ paths:
   /api/metrics/coverage:
     get:
       summary: Get coverage by methods for a build
+      operationId: getCoverageByMethods
       tags:
         - metrics
       security:
@@ -605,6 +624,7 @@ paths:
   /api/metrics/impacted-tests:
     get:
       summary: Get impacted tests
+      operationId: getImpactedTests
       tags:
         - metrics
       security:
@@ -674,6 +694,7 @@ paths:
   /api/metrics/refresh:
     post:
       summary: Refresh materialized views
+      operationId: refreshMaterializedViews
       tags:
         - metrics
       security:
@@ -689,6 +710,7 @@ paths:
   /api/sign-in:
     post:
       summary: Sign in
+      operationId: signIn
       tags:
         - auth
       requestBody:
@@ -707,6 +729,7 @@ paths:
   /api/sign-up:
     post:
       summary: Sign up
+      operationId: signUp
       tags:
         - auth
       requestBody:
@@ -725,6 +748,7 @@ paths:
   /api/sign-out:
     post:
       summary: Sign out
+      operationId: signOut
       tags:
         - auth
       responses:
@@ -737,6 +761,7 @@ paths:
   /api/user-info:
     get:
       summary: Get user info
+      operationId: getUserInfo
       tags:
         - auth
       security:
@@ -751,6 +776,7 @@ paths:
   /api/update-password:
     post:
       summary: Update password
+      operationId: updatePassword
       tags:
         - auth
       security:
@@ -772,6 +798,7 @@ paths:
   /api/users:
     get:
       summary: Get users
+      operationId: getAllUsers
       tags:
         - auth
       security:
@@ -788,6 +815,7 @@ paths:
   /api/users/{userId}:
     get:
       summary: Get user by ID
+      operationId: getUserById
       tags:
         - auth
       security:
@@ -807,6 +835,7 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     put:
       summary: Edit user
+      operationId: editUserById
       tags:
         - auth
       security:
@@ -832,6 +861,7 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     delete:
       summary: Delete user
+      operationId: deleteUserById
       tags:
         - auth
       security:
@@ -852,6 +882,7 @@ paths:
   /api/users/{userId}/block:
     patch:
       summary: Block user
+      operationId: blockUserById
       tags:
         - auth
       security:
@@ -872,6 +903,7 @@ paths:
   /api/users/{userId}/unblock:
     patch:
       summary: Unblock user
+      operationId: unblockUserById
       tags:
         - auth
       security:
@@ -892,6 +924,7 @@ paths:
   /api/users/{userId}/reset-password:
     patch:
       summary: Reset user password
+      operationId: resetUserPasswordById
       tags:
         - auth
       security:
@@ -913,6 +946,7 @@ paths:
   /api/user-keys:
     get:
       summary: Get user API keys
+      operationId: getUserApiKeys
       tags:
         - auth
       security:
@@ -928,6 +962,7 @@ paths:
                   $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate user API key
+      operationId: generateUserApiKey
       tags:
         - auth
       security:
@@ -948,6 +983,7 @@ paths:
   /api/user-keys/{id}:
     delete:
       summary: Delete user API key
+      operationId: deleteUserApiKeyById
       tags:
         - auth
       security:
@@ -969,6 +1005,7 @@ paths:
   /api/api-keys:
     get:
       summary: Get API keys
+      operationId: getApiKeys
       tags:
         - auth
       security:
@@ -984,6 +1021,7 @@ paths:
                   $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate API key
+      operationId: generateApiKey
       tags:
         - auth
       security:
@@ -1004,6 +1042,7 @@ paths:
   /api/api-keys/{id}:
     delete:
       summary: Delete API key
+      operationId: deleteApiKeyById
       tags:
         - auth
       security:
