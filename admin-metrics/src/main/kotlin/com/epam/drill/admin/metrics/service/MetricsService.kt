@@ -110,10 +110,28 @@ interface MetricsService {
         baselineBuildVersion: String?,
         testTag: String?,
         testTaskId: String?,
-        testPathPattern: String?,
+        testPath: String?,
+        testName: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>
+
+    suspend fun getImpactedMethods(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTag: String?,
+        testTaskId: String?,
+        testPath: String?,
+        testName: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView>
 
     suspend fun refreshMaterializedViews()
 

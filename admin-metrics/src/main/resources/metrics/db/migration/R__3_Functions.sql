@@ -800,3 +800,86 @@ BEGIN
 	;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+-----------------------------------------------------------------
+-- Function to get impacted methods of impacted tests based on method changes and test executions
+-- @param input_build_id: The ID of the target build to analyze
+-- @param input_baseline_build_id: The ID of the baseline build for comparison
+-- @param input_package_name_pattern: Optional pattern to filter methods by package name
+-- @param input_class_name_pattern: Optional pattern to filter methods by class name
+-- @param input_method_name_pattern: Optional pattern to filter methods by method name
+-- @param input_test_task_ids: Array of test task IDs to filter tests
+-- @param input_test_tags: Array of test tags to filter tests
+-- @param input_test_path_pattern: Optional pattern to filter tests by path
+-- @param input_test_name_pattern: Optional pattern to filter tests by name
+-- @returns TABLE: A table containing impacted tests and their methods based on changes in the specified builds
+-----------------------------------------------------------------
+DROP FUNCTION IF EXISTS metrics.get_impacted_methods CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_impacted_methods(
+    input_build_id VARCHAR,
+	input_baseline_build_id VARCHAR,
+
+	input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name_pattern VARCHAR DEFAULT NULL,
+    input_method_name_pattern VARCHAR DEFAULT NULL,
+
+	input_test_task_ids VARCHAR[] DEFAULT NULL,
+    input_test_tags VARCHAR[] DEFAULT NULL,
+    input_test_path_pattern VARCHAR DEFAULT NULL,
+    input_test_name_pattern VARCHAR DEFAULT NULL
+) RETURNS TABLE(
+    group_id VARCHAR,
+    app_id VARCHAR,
+    class_name VARCHAR,
+    method_name VARCHAR,
+    method_params VARCHAR,
+    return_type VARCHAR
+) AS $$
+DECLARE
+    _group_id VARCHAR;
+    _app_id VARCHAR;
+BEGIN
+	_group_id = split_part(input_build_id, ':', 1);
+	_app_id = split_part(input_build_id, ':', 2);
+
+	RETURN QUERY
+    WITH
+	changes AS (
+	    SELECT
+	        m.group_id,
+            m.app_id,
+            m.signature,
+            m.class_name,
+            m.method_name,
+            m.method_params,
+            m.return_type,
+            m.change_type
+        FROM metrics.get_changes(
+            input_build_id => input_build_id,
+            input_baseline_build_id => input_baseline_build_id,
+            input_package_name_pattern => input_package_name_pattern,
+            input_class_name_pattern => input_class_name_pattern,
+            input_method_name_pattern => input_method_name_pattern,
+            include_deleted => true,
+            include_equal => false
+        ) m
+    )
+    SELECT DISTINCT
+        m.group_id::VARCHAR,
+        m.app_id::VARCHAR,
+        m.class_name::VARCHAR,
+        m.method_name::VARCHAR,
+        m.method_params::VARCHAR,
+        m.return_type::VARCHAR
+    FROM metrics.method_coverage c
+    JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
+    JOIN changes changed_m ON changed_m.group_id = m.group_id AND changed_m.app_id = m.app_id AND changed_m.signature = m.signature
+    WHERE true
+        -- Filters by tests
+        AND (input_test_task_ids IS NULL OR c.test_task_id = ANY(input_test_task_ids::VARCHAR[]))
+        AND (input_test_tags IS NULL OR c.test_tags && input_test_tags::VARCHAR[])
+        AND (input_test_path_pattern IS NULL OR c.test_path LIKE input_test_path_pattern)
+        AND (input_test_name_pattern IS NULL OR c.test_name LIKE input_test_name_pattern)
+    ;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

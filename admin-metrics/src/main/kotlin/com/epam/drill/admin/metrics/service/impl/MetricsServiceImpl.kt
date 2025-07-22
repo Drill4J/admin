@@ -400,7 +400,8 @@ class MetricsServiceImpl(
         baselineBuildVersion: String?,
         testTag: String?,
         testTaskId: String?,
-        testPathPattern: String?,
+        testPath: String?,
+        testName: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
@@ -442,7 +443,8 @@ class MetricsServiceImpl(
                 baselineBuildId = baselineBuildId,
                 testTaskId = testTaskId,
                 testTag = testTag,
-                testPathPattern = testPathPattern,
+                testPathPattern = testPath,
+                testNamePattern = testName,
                 offset = offset,
                 limit = limit,
             ).map { data ->
@@ -455,6 +457,66 @@ class MetricsServiceImpl(
                         ?: emptyList()
                 )
             }
+        }
+    }
+
+    override suspend fun getImpactedMethods(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTag: String?,
+        testTaskId: String?,
+        testPath: String?,
+        testName: String?,
+        page: Int?,
+        pageSize: Int?
+    ): PagedList<MethodView> = transaction {
+        val baselineBuildId = generateBuildId(
+            groupId,
+            appId,
+            baselineInstanceId,
+            baselineCommitSha,
+            baselineBuildVersion,
+            """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+        ).also { buildId ->
+            if (!metricsRepository.buildExists(buildId)) {
+                throw BuildNotFound("Baseline build info not found for $buildId")
+            }
+        }
+        val targetBuildId = generateBuildId(
+            groupId,
+            appId,
+            instanceId,
+            commitSha,
+            buildVersion,
+            """
+            Provide at least one the following: instanceId, commitSha, buildVersion
+            """.trimIndent()
+        )
+        if (!metricsRepository.buildExists(targetBuildId)) {
+            throw BuildNotFound("Target build info not found for $targetBuildId")
+        }
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
+            metricsRepository.getImpactedMethods(
+                targetBuildId = targetBuildId,
+                baselineBuildId = baselineBuildId,
+                testTaskId = testTaskId,
+                testTag = testTag,
+                testPathPattern = testPath,
+                testNamePattern = testName,
+                offset = null,
+                limit = null
+            ).map(::mapToMethodView)
         }
     }
 

@@ -89,6 +89,17 @@ interface MetricsRepository {
         testTaskId: String? = null,
         testTag: String?,
         testPathPattern: String?,
+        testNamePattern: String?,
+        offset: Int? = null, limit: Int? = null
+    ): List<Map<String, Any?>>
+
+    suspend fun getImpactedMethods(
+        targetBuildId: String,
+        baselineBuildId: String,
+        testTaskId: String? = null,
+        testTag: String? = null,
+        testPathPattern: String? = null,
+        testNamePattern: String? = null,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 }

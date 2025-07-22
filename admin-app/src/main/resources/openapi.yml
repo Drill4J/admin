@@ -691,6 +691,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/impacted-methods:
+    get:
+      summary: Get impacted methods
+      operationId: getImpactedMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: testTaskId
+          in: query
+          schema:
+            type: string
+        - name: testPath
+          in: query
+          schema:
+            type: string
+        - name: testName
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of impacted methods
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/refresh:
     post:
       summary: Refresh materialized views
