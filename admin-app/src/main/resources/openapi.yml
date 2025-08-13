@@ -1151,6 +1151,8 @@ components:
           type: string
         testId:
           type: string
+        testSessionId:
+          type: string
         probes:
           type: array
           items:

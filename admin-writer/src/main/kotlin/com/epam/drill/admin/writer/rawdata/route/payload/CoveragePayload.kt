@@ -28,6 +28,7 @@ class CoveragePayload(
 @Serializable
 class SingleClassCoveragePayload(
     val classname: String,
-    val testId: String,
+    val testId: String?,
+    val testSessionId: String?,
     val probes: BooleanArray
 )

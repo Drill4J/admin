@@ -100,6 +100,7 @@ suspend fun HttpClient.launchTest(
                 SingleClassCoveragePayload(
                     classname = testClass,
                     testId = testLaunchId,
+                    testSessionId = session.id,
                     probes = coverage.toClassProbes()
                 )
             )

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create materialized views for metrics
--- Migration version: v1
+-- Migration version: v2
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -143,14 +143,14 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.method_coverage AS
 		MD5(c.signature||':'||c.body_checksum||':'||c.probes_count) AS method_id,
 		c.build_id,
 		c.env_id AS app_env_id,
-		c.test_launch_id,
+		ts.test_session_id,
+		tl.test_launch_id,
 		MIN(b.branch) AS branch,
         MIN(td.test_tags) AS test_tags,
         MIN(td.test_path) AS test_path,
         MIN(td.test_name) AS test_name,
         MIN(ts.test_task_id) AS test_task_id,
         MIN(tl.test_result) AS test_result,
-        MIN(tl.test_session_id) AS test_session_id,
         MIN(tl.test_definition_id) AS test_definition_id,
         BIT_OR(c.probes) AS probes,
 	    DATE_TRUNC('day', c.created_at) AS creation_day
@@ -158,9 +158,9 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.method_coverage AS
 	JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
     LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_launch_id
     LEFT JOIN metrics.test_definitions td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
-    LEFT JOIN metrics.test_sessions ts ON ts.group_id = tl.group_id AND ts.test_session_id = tl.test_session_id
+    LEFT JOIN metrics.test_sessions ts ON ts.group_id = c.group_id AND ts.test_session_id = c.test_session_id
     WHERE c.created_at >= metrics.get_metrics_period(c.group_id)
-    GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, c.test_launch_id, DATE_TRUNC('day', c.created_at);
+    GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, ts.test_session_id, tl.test_launch_id, DATE_TRUNC('day', c.created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_method_coverage_pk ON metrics.method_coverage (group_id, app_id, method_id, build_id, app_env_id, test_launch_id, creation_day);
 CREATE INDEX ON metrics.method_coverage(group_id, app_id, build_id);
 CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id);

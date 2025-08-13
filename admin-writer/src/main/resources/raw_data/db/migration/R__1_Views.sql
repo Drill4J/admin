@@ -54,7 +54,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
     JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
     LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
 	LEFT JOIN raw_data.test_definitions definitions ON definitions.id = launches.test_definition_id
-	LEFT JOIN raw_data.test_sessions sessions ON sessions.id = launches.test_session_id
+	LEFT JOIN raw_data.test_sessions sessions ON sessions.id = coverage.test_session_id
     WHERE TRUE
 	  AND methods.probes_count > 0
 	  AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
