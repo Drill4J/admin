@@ -334,6 +334,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testTaskId: String?,
         testTag: String?,
         testPathPattern: String?,
+        testNamePattern: String?,
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -352,6 +353,43 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
             appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
+            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+            append("""
+                )
+            """.trimIndent())
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getImpactedMethods(
+        targetBuildId: String,
+        baselineBuildId: String,
+        testTaskId: String?,
+        testTag: String?,
+        testPathPattern: String?,
+        testNamePattern: String?,
+        offset: Int?,
+        limit: Int?
+    ): List<Map<String, Any?>>  = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    group_id,
+                    app_id,
+                    class_name,
+                    method_name,
+                    method_params,
+                    return_type                 
+                FROM metrics.get_impacted_methods(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                    """.trimIndent(), targetBuildId, baselineBuildId)
+            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
+            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
+            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
             append("""
                 )
             """.trimIndent())

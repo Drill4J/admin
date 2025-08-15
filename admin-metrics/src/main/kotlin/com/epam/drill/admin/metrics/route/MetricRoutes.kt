@@ -27,7 +27,6 @@ import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.async
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
@@ -153,6 +152,27 @@ class Metrics {
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
+        val testName: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
+    )
+
+    @Resource("/impacted-methods")
+    class ImpactedMethods(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val testTaskId: String? = null,
+        val testTag: String? = null,
+        val testPath: String? = null,
+        val testName: String? = null,
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -172,6 +192,7 @@ fun Route.metricsRoutes() {
     getChanges()
     getCoverage()
     getImpactedTests()
+    getImpactedMethods()
 }
 
 fun Route.metricsManagementRoutes() {
@@ -337,7 +358,38 @@ fun Route.getImpactedTests() {
             baselineBuildVersion = params.baselineBuildVersion,
             testTag = params.testTag,
             testTaskId = params.testTaskId,
-            testPathPattern = params.testPath,
+            testPath = params.testPath,
+            testName = params.testName,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
+fun Route.getImpactedMethods() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.ImpactedMethods> { params ->
+        val data = metricsService.getImpactedMethods(
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            testTag = params.testTag,
+            testTaskId = params.testTaskId,
+            testPath = params.testPath,
+            testName = params.testName,
             page = params.page,
             pageSize = params.pageSize,
         )
