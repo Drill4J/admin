@@ -42,6 +42,7 @@ import java.time.LocalDateTime
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -536,7 +537,7 @@ class MetricsServiceImpl(
 
         waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
 
-        logger.debug { "Materialized views were refreshed." }
+        logger.info { "Materialized views were refreshed." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -563,9 +564,16 @@ class MetricsServiceImpl(
 
     private suspend fun refreshMaterializedView(viewName: String) {
         val result = measureTimedValue {
-            metricsRepository.refreshMaterializedView(viewName)
+            try {
+                metricsRepository.refreshMaterializedView(viewName, true)
+            } catch (e: ExposedSQLException) {
+                if (isMaterializedViewNotPopulated(e)) {
+                    logger.debug { "Materialized view $viewName is not populated. Refreshing without CONCURRENTLY." }
+                    metricsRepository.refreshMaterializedView(viewName, false)
+                } else throw e
+            }
         }
-        logger.debug("Materialized view $viewName was refreshed in ${formatDuration(result.duration)}.")
+        logger.debug("Materialized view {} was refreshed in {}.", viewName, formatDuration(result.duration))
     }
 
     private fun formatDuration(duration: kotlin.time.Duration): String = when {
@@ -577,4 +585,7 @@ class MetricsServiceImpl(
     private suspend fun waitFor(vararg dependents: Deferred<Unit>) {
         dependents.forEach { it.await() }
     }
+
+    private fun isMaterializedViewNotPopulated(e: ExposedSQLException): Boolean =
+        e.message?.contains("CONCURRENTLY cannot be used when the materialized view is not populated") == true
 }

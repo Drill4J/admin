@@ -293,13 +293,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).first() as Map<String, String>
     }
 
-    override suspend fun refreshMaterializedView(viewName: String) = transaction {
-        executeUpdate(
-            """             
-            REFRESH MATERIALIZED VIEW CONCURRENTLY $viewName;
-            """.trimIndent()
-        )
-    }
 
     override suspend fun getRecommendedTests(
         targetBuildId: String,
@@ -396,5 +389,13 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) = transaction {
+        executeUpdate(
+            """             
+            REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
+            """.trimIndent()
+        )
     }
 }

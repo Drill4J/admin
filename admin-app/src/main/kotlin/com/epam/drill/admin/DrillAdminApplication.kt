@@ -176,7 +176,7 @@ private fun Application.initDB() {
 
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
-    MetricsDatabaseConfig.init(dataSource)
+    MetricsDatabaseConfig.init(dataSource, defaultMaxAttempts = 1)
 }
 
 private fun Application.initScheduler() {
