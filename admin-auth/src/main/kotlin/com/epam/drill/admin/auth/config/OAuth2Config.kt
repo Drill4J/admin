@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.config
 
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import io.ktor.server.config.*
 import java.lang.Boolean.parseBoolean
 
@@ -110,7 +110,7 @@ class OAuth2Config(private val config: ApplicationConfig) {
     /**
      * Mapping configuration from OAuth2 roles to Drill4J roles.
      *
-     * Used for map a list of OAuth2 roles to [com.epam.drill.admin.auth.principal.Role].
+     * Used for map a list of OAuth2 roles to [Role].
      * Includes user and admin roles mapping:
      * A user role mapping is a name of OAuth2 role matching the Drill4J user role. Optional, "user" by default.
      * An admin role mapping is a name of OAuth2 role matching the Drill4J admin role. Optional, "admin" by default.

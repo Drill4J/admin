@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth.route
 import com.epam.drill.admin.auth.exception.ForbiddenOperationException
 import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.model.GenerateApiKeyPayload
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.auth.service.ApiKeyService
 import io.ktor.resources.*
 import io.ktor.server.application.*

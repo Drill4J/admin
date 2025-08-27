@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.repository.impl.DatabaseApiKeyRepository
 import com.epam.drill.admin.auth.table.ApiKeyTable
 import com.epam.drill.admin.auth.table.UserTable

@@ -24,8 +24,8 @@ import com.epam.drill.admin.auth.config.AuthDatabaseConfig
 import com.epam.drill.admin.auth.entity.ApiKeyEntity
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.common.model.DataResponse
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.Role
+import com.epam.drill.admin.common.principal.User
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*

@@ -16,8 +16,8 @@
 package com.epam.drill.admin.auth.model
 
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.Role
+import com.epam.drill.admin.common.principal.User
 import kotlinx.serialization.*
 import kotlinx.datetime.LocalDateTime
 

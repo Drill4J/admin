@@ -16,7 +16,7 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.config.*
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.route.*
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.route.metricsRoutes

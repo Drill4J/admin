@@ -19,8 +19,8 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.Payload
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.Role
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.impl.JwtTokenService
 import io.ktor.server.application.*

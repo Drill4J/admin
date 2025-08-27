@@ -20,7 +20,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.epam.drill.admin.auth.config.OAuth2Config
 import com.epam.drill.admin.auth.config.OAuthUnauthorizedException
 import com.epam.drill.admin.auth.entity.UserEntity
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.service.impl.OAuthMapperImpl
 import io.ktor.server.config.*
 import org.junit.jupiter.api.assertThrows

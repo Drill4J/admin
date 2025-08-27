@@ -15,8 +15,8 @@
  */
 package com.epam.drill.admin.auth
 
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.Role
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.auth.service.impl.CaffeineCacheService
 import com.github.benmanes.caffeine.cache.Cache
 import io.ktor.server.auth.*

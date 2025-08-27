@@ -21,7 +21,7 @@ import com.epam.drill.admin.auth.exception.*
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.User
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.statuspages.*

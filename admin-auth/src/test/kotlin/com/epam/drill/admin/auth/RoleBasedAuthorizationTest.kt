@@ -18,10 +18,10 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.roleBasedAuthentication
 import com.epam.drill.admin.auth.config.withRole
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
-import com.epam.drill.admin.auth.principal.Role
-import com.epam.drill.admin.auth.principal.Role.ADMIN
-import com.epam.drill.admin.auth.principal.Role.USER
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.Role
+import com.epam.drill.admin.common.principal.Role.ADMIN
+import com.epam.drill.admin.common.principal.Role.USER
+import com.epam.drill.admin.common.principal.User
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.statuspages.*

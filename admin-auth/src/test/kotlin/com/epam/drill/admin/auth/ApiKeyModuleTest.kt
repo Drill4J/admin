@@ -16,7 +16,7 @@
 package com.epam.drill.admin.auth
 
 import com.epam.drill.admin.auth.config.*
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.service.*

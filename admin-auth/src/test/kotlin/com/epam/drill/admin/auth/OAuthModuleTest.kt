@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth
 import com.auth0.jwt.JWT
 import com.epam.drill.admin.auth.config.*
 import com.epam.drill.admin.auth.model.UserInfoView
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.service.OAuthService
 import io.ktor.server.application.*
 import io.ktor.server.auth.*

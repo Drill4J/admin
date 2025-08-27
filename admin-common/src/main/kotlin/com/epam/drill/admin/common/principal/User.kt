@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.common.principal
 
 import io.ktor.server.auth.*
 

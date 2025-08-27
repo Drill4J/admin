@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.auth.service.transaction
 
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.config.AuthDatabaseConfig.transaction
 import com.epam.drill.admin.auth.model.*

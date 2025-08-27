@@ -18,7 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.JWT_COOKIE
 import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.authStatusPages
 import com.epam.drill.admin.auth.route.userAuthenticationRoutes
@@ -26,7 +26,7 @@ import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
 import com.epam.drill.admin.auth.service.impl.UserAuthenticationServiceImpl
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.auth.route.userProfileRoutes
 import com.epam.drill.admin.auth.service.PasswordValidator
 import io.ktor.server.auth.*
