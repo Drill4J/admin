@@ -1,0 +1,1 @@
+ALTER TABLE raw_data.test_sessions ADD COLUMN created_by VARCHAR(100);
