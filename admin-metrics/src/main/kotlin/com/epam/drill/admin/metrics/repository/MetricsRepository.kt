@@ -73,8 +73,6 @@ interface MetricsRepository {
         baselineBuildId: String
     ): Map<String, String?>
 
-    suspend fun refreshMaterializedView(viewName: String)
-
     suspend fun getRecommendedTests(
         targetBuildId: String,
         baselineBuildId: String? = null,
@@ -102,4 +100,6 @@ interface MetricsRepository {
         testNamePattern: String? = null,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
+
+    suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean = true)
 }

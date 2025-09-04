@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create functions for metrics
 -- Migration version: v1
--- Compatible with: R__1_Data.sql v1
+-- Compatible with: R__1_Data.sql v3
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------

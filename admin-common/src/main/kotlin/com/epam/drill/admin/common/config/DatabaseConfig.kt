@@ -25,14 +25,23 @@ import org.flywaydb.core.Flyway
 
 open class DatabaseConfig(
     private val dbSchema: String,
-    private val schemaMigrationLocation: String
-) {
+    private val schemaMigrationLocation: String,
+
+    ) {
     private lateinit var database: Database
     private var dispatcher: CoroutineDispatcher = Dispatchers.IO
 
 
-    fun init(dataSource: DataSource) {
-        this.database = Database.connect(dataSource)
+    fun init(
+        dataSource: DataSource,
+        defaultMaxAttempts: Int = 3
+    ) {
+        this.database = Database.connect(
+            datasource = dataSource,
+            databaseConfig = org.jetbrains.exposed.sql.DatabaseConfig {
+                this.defaultMaxAttempts = defaultMaxAttempts
+            }
+        )
         Flyway.configure()
             .dataSource(dataSource)
             .schemas(dbSchema)

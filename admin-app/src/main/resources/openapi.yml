@@ -1427,3 +1427,6 @@ components:
         retentionPeriodDays:
           type: integer
           nullable: true
+        metricsPeriodDays:
+          type: integer
+          nullable: true
