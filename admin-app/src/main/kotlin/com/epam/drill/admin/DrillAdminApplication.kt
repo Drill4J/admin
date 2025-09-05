@@ -16,8 +16,9 @@
 package com.epam.drill.admin
 
 import com.epam.drill.admin.auth.config.*
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.route.*
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
@@ -36,11 +37,13 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.serialization.kotlinx.protobuf.*
 import io.ktor.server.application.*
+import io.ktor.server.application.call
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.plugins.swagger.*
 import io.ktor.server.request.*
@@ -134,7 +137,17 @@ fun Application.module() {
 }
 
 private fun Application.installPlugins() {
-    install(CallLogging)
+    install(CallLogging) {
+        format { call ->
+            val status = call.response.status()
+            val httpMethod = call.request.httpMethod.value
+            val path = call.request.path()
+            val time = call.processingTimeMillis()
+            val user = call.principal<User>()
+            val ip = call.request.origin.remoteHost
+            "$status: $httpMethod - $path in ${time}ms (user: ${user?.username}, ip: $ip)"
+        }
+    }
     install(Resources)
 
     install(ContentNegotiation) {

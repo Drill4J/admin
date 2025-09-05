@@ -18,10 +18,7 @@ package com.epam.drill.admin.auth
 import com.epam.drill.admin.auth.config.configureJwtAuthentication
 import com.epam.drill.admin.auth.config.generateSecret
 import com.epam.drill.admin.auth.config.simpleAuthDIModule
-import com.epam.drill.admin.auth.principal.Role
 import com.epam.drill.admin.auth.service.UserAuthenticationService
-import com.epam.drill.admin.auth.model.LoginPayload
-import com.epam.drill.admin.auth.model.UserInfoView
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.http.*

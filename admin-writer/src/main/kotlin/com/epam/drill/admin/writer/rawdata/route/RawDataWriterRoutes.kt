@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -42,6 +43,7 @@ import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
 import com.epam.drill.admin.common.route.ok
+import io.ktor.server.auth.principal
 
 private val logger = KotlinLogging.logger {}
 
@@ -135,7 +137,7 @@ fun Route.putTestSessions() {
     val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<TestSessionRoute> {
-        rawDataWriter.saveTestSession(call.decompressAndReceive())
+        rawDataWriter.saveTestSession(call.decompressAndReceive(), call.principal<User>())
         call.ok("Test sessions saved")
     }
 }

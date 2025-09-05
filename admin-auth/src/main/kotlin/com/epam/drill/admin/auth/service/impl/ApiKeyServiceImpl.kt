@@ -24,7 +24,7 @@ import com.epam.drill.admin.auth.model.UserApiKeyView
 import com.epam.drill.admin.auth.exception.NotAuthenticatedException
 import com.epam.drill.admin.auth.exception.NotAuthorizedException
 import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.Role
+import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.repository.ApiKeyRepository
 import com.epam.drill.admin.auth.service.*
 import kotlinx.datetime.toKotlinLocalDateTime

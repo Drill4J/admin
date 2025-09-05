@@ -45,6 +45,7 @@ class TestDefinition(
 class TestSession (
     val id: String,
     val groupId: String,
-    val testTaskId: String,
+    val testTaskId: String?,
     val startedAt: LocalDateTime,
+    val createdBy: String? = null
 )

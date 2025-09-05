@@ -135,7 +135,8 @@ SELECT
     ts.test_task_id,
     ts.started_at AS session_started_at,
     ts.created_at,
-    DATE_TRUNC('day', ts.created_at) AS creation_day
+    DATE_TRUNC('day', ts.created_at) AS creation_day,
+    ts.created_by
 FROM raw_data.test_sessions ts
 WHERE ts.created_at >= metrics.get_metrics_period(ts.group_id)
 WITH NO DATA;

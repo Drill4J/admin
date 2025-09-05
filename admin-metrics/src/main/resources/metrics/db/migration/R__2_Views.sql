@@ -70,6 +70,7 @@ SELECT
     ts.test_session_id,
     MIN(ts.test_task_id) AS test_task_id,
     MIN(ts.session_started_at) AS session_started_at,
+    MIN(ts.created_by) AS created_by,
     COUNT(DISTINCT tl.test_definition_id) AS test_definitions,
     COUNT(*) AS test_launches,
     CASE

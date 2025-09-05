@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.auth.principal
+package com.epam.drill.admin.writer.rawdata.table
 
-import io.ktor.server.auth.*
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.datetime
 
-data class User(
-    val id: Int,
-    val username: String,
-    val role: Role
-) : Principal
+
+abstract class TrackedStringIdTable(name: String = "", columnName: String = "id") : StringIdTable(name) {
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val createdBy = varchar("created_by", 100).nullable()
+}

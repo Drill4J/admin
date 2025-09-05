@@ -17,7 +17,7 @@ package com.epam.drill.admin.auth.service
 
 import com.epam.drill.admin.auth.exception.UserValidationException
 import com.epam.drill.admin.auth.model.*
-import com.epam.drill.admin.auth.principal.User
+import com.epam.drill.admin.common.principal.User
 
 /**
  * A service for authentication and user profile management.

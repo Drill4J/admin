@@ -32,6 +32,7 @@ class TestSessionRepositoryImpl : TestSessionRepository {
             it[groupId] = session.groupId
             it[testTaskId] = session.testTaskId
             it[startedAt] = session.startedAt
+            it[createdBy] = session.createdBy
         }
     }
 

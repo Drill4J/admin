@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.*
@@ -194,12 +195,13 @@ class RawDataServiceImpl(
         }.let(testDefinitionRepository::createMany)
     }
 
-    override suspend fun saveTestSession(sessionPayload: SessionPayload) {
+    override suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?) {
         val testSession = TestSession(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
             testTaskId = sessionPayload.testTaskId,
-            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime()
+            startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
+            createdBy = user?.username
         )
         transaction {
             testSessionRepository.create(testSession)

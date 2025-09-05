@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.table
+package com.epam.drill.admin.common.principal
 
-import org.jetbrains.exposed.sql.javatime.datetime
+import io.ktor.server.auth.*
 
-object TestSessionTable : TrackedStringIdTable("raw_data.test_sessions") {
-    val groupId = varchar("group_id",  SHORT_TEXT_LENGTH)
-    val testTaskId = varchar("test_task_id", SHORT_TEXT_LENGTH).nullable()
-    val startedAt = datetime("started_at")
-}
+data class User(
+    val id: Int,
+    val username: String,
+    val role: Role
+) : Principal
