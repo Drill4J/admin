@@ -60,7 +60,7 @@ class RawDataServiceImpl(
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
             branch = buildPayload.branch,
-            commitDate = buildPayload.commitDate?.let { convertGitDefaultDateTime(it) },
+            commitDate = buildPayload.commitDate?.takeIf { it.isNotEmpty() }?.let { convertGitDefaultDateTime(it) },
             commitMessage = buildPayload.commitMessage,
             commitAuthor = buildPayload.commitAuthor
         )
