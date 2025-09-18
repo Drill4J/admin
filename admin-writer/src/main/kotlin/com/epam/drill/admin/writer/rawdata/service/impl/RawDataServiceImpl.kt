@@ -22,8 +22,9 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
-import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -166,6 +167,7 @@ class RawDataServiceImpl(
             }
     }
 
+    // WARNING: keep this method for backward compatibility with existing adoptions
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
             TestLaunch(
@@ -190,6 +192,34 @@ class RawDataServiceImpl(
                 metadata = test.details.metadata
             )
         }.let(testDefinitionRepository::createMany)
+    }
+
+    override suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload) = transaction {
+        testDefinitionsPayload.definitions.map { definition ->
+            TestDefinition(
+                groupId = testDefinitionsPayload.groupId,
+                id = definition.id,
+                type = definition.type,
+                runner = definition.runner,
+                name = definition.name,
+                path = definition.path,
+                tags = definition.tags,
+                metadata = definition.metadata
+            )
+        }.let(testDefinitionRepository::createMany)
+    }
+
+    override suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload) = transaction {
+        testLaunchesPayload.launches.map { launch ->
+            TestLaunch(
+                groupId = testLaunchesPayload.groupId,
+                id = launch.id,
+                testDefinitionId = launch.testDefinitionId,
+                testSessionId = testLaunchesPayload.testSessionId,
+                result = launch.result.toString(),
+                duration = launch.duration
+            )
+        }.let(testLaunchRepository::createMany)
     }
 
     override suspend fun saveTestSession(sessionPayload: SessionPayload) {

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.route
 
+import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -22,14 +23,13 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.resources.*
-import io.ktor.server.resources.put
-import io.ktor.server.resources.post
-import io.ktor.server.resources.get
-import io.ktor.server.resources.delete
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*
+import io.ktor.server.resources.*
+import io.ktor.server.resources.post
+import io.ktor.server.resources.put
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,7 +41,6 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
-import com.epam.drill.admin.common.route.ok
 
 private val logger = KotlinLogging.logger {}
 
@@ -63,6 +62,12 @@ class TestMetadataRoute()
 @Resource("sessions")
 class TestSessionRoute()
 
+@Resource("test-definitions")
+class TestDefinitionsRoute()
+
+@Resource("test-launches")
+class TestLaunchesRoute()
+
 @Resource("method-ignore-rules")
 class MethodIgnoreRulesRoute() {
     @Resource("/{id}")
@@ -79,6 +84,8 @@ fun Route.dataIngestRoutes() {
         putMethods()
         postTestMetadata()
         putTestSessions()
+        postTestDefinitions()
+        postTestLaunches()
         postMethodIgnoreRules()
         getMethodIgnoreRules()
         deleteMethodIgnoreRule()
@@ -137,6 +144,24 @@ fun Route.putTestSessions() {
     put<TestSessionRoute> {
         rawDataWriter.saveTestSession(call.decompressAndReceive())
         call.ok("Test sessions saved")
+    }
+}
+
+fun Route.postTestDefinitions() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    post<TestDefinitionsRoute> {
+        rawDataWriter.saveTestDefinitions(call.decompressAndReceive())
+        call.ok("Test definitions saved")
+    }
+}
+
+fun Route.postTestLaunches() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    post<TestLaunchesRoute> {
+        rawDataWriter.saveTestLaunches(call.decompressAndReceive())
+        call.ok("Test launches saved")
     }
 }
 
