@@ -61,13 +61,15 @@ class OAuthServiceImpl(
         userInfoUrl: String,
         accessToken: String
     ): String = runCatching {
-        httpClient
-            .get(userInfoUrl) {
-                headers {
-                    append(HttpHeaders.Authorization, "Bearer $accessToken")
-                }
+        val response = httpClient.get(userInfoUrl) {
+            headers {
+                append(HttpHeaders.Authorization, "Bearer $accessToken")
             }
-            .body<String>()
+        }
+        if (!response.status.isSuccess()) {
+            throw OAuthUnauthorizedException("User info request failed with status: ${response.status}")
+        }
+        response.body<String>()
     }.onFailure { cause ->
         throw OAuthUnauthorizedException("User info request failed: ${cause.message}", cause)
     }.getOrThrow()

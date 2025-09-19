@@ -24,6 +24,9 @@ import com.epam.drill.admin.auth.entity.UserEntity
 import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.service.OAuthMapper
 import kotlinx.serialization.json.*
+import mu.KotlinLogging
+
+private val logger = KotlinLogging.logger { }
 
 class OAuthMapperImpl(oauth2Config: OAuth2Config) : OAuthMapper {
     private val tokenMapping = oauth2Config.tokenMapping
@@ -83,12 +86,17 @@ private fun JsonElement.getStringValue(key: String): String =
         ?: throw OAuthUnauthorizedException("The key \"$key\" is not found in user-info response $this")
 
 private fun JsonElement.getStringArray(key: String): List<String> =
-    this.jsonObject[key]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+    this.jsonObject[key]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList<String>().also {
+        logger.warn { "The key \"$key\" is not found or empty in user-info response $this" }
+    }
+
 
 private fun DecodedJWT.getStringValue(key: String): String =
     getClaim(key).asString()
         ?: throw OAuthUnauthorizedException("The claim \"$key\" is not found in access token payload ${this.payload}")
 
 private fun DecodedJWT.getStringArray(key: String): List<String> =
-    getClaim(key)?.takeIf { !it.isNull }?.asList(String::class.java) ?: emptyList()
+    getClaim(key)?.takeIf { !it.isNull }?.asList(String::class.java) ?: emptyList<String>().also {
+        logger.warn { "The key \"$key\" is not found or empty in access token payload $this" }
+    }
 
