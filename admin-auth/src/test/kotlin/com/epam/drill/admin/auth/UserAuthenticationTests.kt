@@ -21,7 +21,8 @@ import com.epam.drill.admin.auth.model.*
 import com.epam.drill.admin.common.principal.Role
 import com.epam.drill.admin.auth.repository.UserRepository
 import com.epam.drill.admin.auth.route.authStatusPages
-import com.epam.drill.admin.auth.route.userAuthenticationRoutes
+import com.epam.drill.admin.auth.route.signOutRoute
+import com.epam.drill.admin.auth.route.simpleAuthenticationRoutes
 import com.epam.drill.admin.auth.service.PasswordService
 import com.epam.drill.admin.auth.service.TokenService
 import com.epam.drill.admin.auth.service.UserAuthenticationService
@@ -348,7 +349,8 @@ class UserAuthenticationTest {
             }
         }
         routing {
-            userAuthenticationRoutes()
+            simpleAuthenticationRoutes()
+            signOutRoute()
             authenticate {
                 userProfileRoutes()
             }

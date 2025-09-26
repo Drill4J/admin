@@ -91,10 +91,9 @@ fun StatusPagesConfig.authStatusPages() {
 /**
  * A user authentication and registration routes configuration.
  */
-fun Route.userAuthenticationRoutes() {
+fun Route.simpleAuthenticationRoutes() {
     signInRoute()
     signUpRoute()
-    signOutRoute()
 }
 
 /**

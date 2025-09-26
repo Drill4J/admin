@@ -98,7 +98,8 @@ fun Application.module() {
             uiConfigRoute()
 
             //Auth
-            if (simpleAuthEnabled) userAuthenticationRoutes()
+            if (simpleAuthEnabled) simpleAuthenticationRoutes()
+            signOutRoute()
             authenticate("jwt") {
                 userProfileRoutes()
                 userApiKeyRoutes()
