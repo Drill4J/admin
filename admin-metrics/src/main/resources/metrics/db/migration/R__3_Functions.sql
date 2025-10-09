@@ -727,7 +727,7 @@ CREATE OR REPLACE FUNCTION metrics.get_recommended_tests(
     test_definition_id VARCHAR,
     test_path VARCHAR,
     test_name VARCHAR,
-    test_metadata JSON NULL
+    test_metadata JSON
 ) AS $$
 DECLARE
     _group_id VARCHAR;
