@@ -307,7 +307,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT                     
                     test_definition_id,
                     test_path,
-                    test_name                                        
+                    test_name,
+                    test_metadata
                 FROM metrics.get_recommended_tests(                    
                     input_build_id => ?,
                     tests_to_skip => ?                
