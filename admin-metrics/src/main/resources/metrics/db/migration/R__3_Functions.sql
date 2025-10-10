@@ -725,8 +725,10 @@ CREATE OR REPLACE FUNCTION metrics.get_recommended_tests(
 ) RETURNS TABLE(
     group_id VARCHAR,
     test_definition_id VARCHAR,
+    test_runner VARCHAR,
     test_path VARCHAR,
     test_name VARCHAR,
+    test_tags VARCHAR[],
     test_metadata JSON
 ) AS $$
 DECLARE
@@ -793,8 +795,10 @@ BEGIN
 	SELECT
 	    td.group_id,
 	    td.test_definition_id,
+	    td.test_runner,
         td.test_path,
         td.test_name,
+        td.test_tags,
         td.test_metadata
     FROM metrics.test_definitions td
 	JOIN recommended_tests rt ON rt.test_definition_id = td.test_definition_id

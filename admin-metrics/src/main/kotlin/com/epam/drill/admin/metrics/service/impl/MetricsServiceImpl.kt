@@ -271,8 +271,10 @@ class MetricsServiceImpl(
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
+                testRunner = data["test_runner"] as String?,
                 testPath = data["test_path"] as String,
                 testName = data["test_name"] as String,
+                tags = data["test_tags"] as List<String>?,
                 metadata = data["test_metadata"] as Map<String, String>?
             )
         }
