@@ -91,11 +91,12 @@ SELECT
         ELSE 1
     END AS success_rate,
     SUM(CASE
-        WHEN tl.smart_skipped > 0 THEN tl.test_duration
+        WHEN tl.smart_skipped > 0 THEN CAST(td.test_duration_avg AS bigint)
         ELSE 0
-    END) AS time_saved
+    END)::bigint AS time_saved
 FROM metrics.test_sessions ts
 LEFT JOIN metrics.test_launches tl ON ts.test_session_id = tl.test_session_id
+LEFT JOIN metrics.test_definitions_with_statistics td ON td.test_definition_id = tl.test_definition_id
 GROUP BY ts.group_id, ts.test_session_id;
 
 -----------------------------------------------------------------
