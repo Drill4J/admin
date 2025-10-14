@@ -15,34 +15,26 @@
  */
 package com.epam.drill.admin.metrics.service.impl
 
+import com.epam.drill.admin.common.exception.BuildNotFound
+import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
-import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.views.RecommendedTestsView
 import com.epam.drill.admin.metrics.service.MetricsService
-import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.metrics.config.MetricsConfig
-import com.epam.drill.admin.metrics.views.ApplicationView
-import com.epam.drill.admin.metrics.views.BuildView
-import com.epam.drill.admin.metrics.views.ChangeType
-import com.epam.drill.admin.metrics.views.MethodView
-import com.epam.drill.admin.metrics.views.PagedList
-import com.epam.drill.admin.metrics.views.TestView
-import com.epam.drill.admin.metrics.views.pagedListOf
-import com.epam.drill.admin.metrics.views.withTotal
+import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import kotlin.time.measureTimedValue
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
@@ -279,8 +271,11 @@ class MetricsServiceImpl(
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
+                testRunner = data["test_runner"] as String?,
                 testPath = data["test_path"] as String,
-                testName = data["test_name"] as String
+                testName = data["test_name"] as String,
+                tags = data["test_tags"] as List<String>?,
+                metadata = data["test_metadata"] as Map<String, String>?
             )
         }
 
