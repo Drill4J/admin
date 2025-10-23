@@ -681,12 +681,10 @@ BEGIN
             AND (input_class_name_pattern IS NULL OR m.class_name LIKE input_class_name_pattern)
             AND (input_method_name_pattern IS NULL OR m.method_name LIKE input_method_name_pattern)
     ),
-    impacted_test_launches AS (
+    impacted_build_test_definitions AS (
         SELECT
-            c.group_id,
-            c.app_id,
+            c.build_id,
             c.test_definition_id,
-            c.test_launch_id,
             BOOL_OR(CASE WHEN tm.method_id IS NULL THEN true ELSE false END) AS has_impacted_methods
         FROM metrics.method_coverage c
         JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
@@ -714,15 +712,14 @@ BEGIN
 			AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
             AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
 			AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
-        GROUP BY c.group_id, c.app_id, c.test_definition_id, c.test_launch_id
+        GROUP BY c.build_id, c.test_definition_id
     ),
     impacted_test_definitions AS (
         SELECT
-            itl.group_id,
-            itl.test_definition_id,
-			BOOL_AND(itl.has_impacted_methods) AS all_test_launches_impacted
-        FROM impacted_test_launches itl
-        GROUP BY itl.group_id, itl.test_definition_id
+            ibtd.test_definition_id,
+			BOOL_AND(ibtd.has_impacted_methods) AS all_tests_impacted
+        FROM impacted_build_test_definitions ibtd
+        GROUP BY ibtd.test_definition_id
     )
 	SELECT
 	    td.group_id,
@@ -732,17 +729,17 @@ BEGIN
         td.test_name,
         td.test_tags,
         td.test_metadata,
-		CASE WHEN itd.all_test_launches_impacted IS true THEN 'IMPACTED'
-		     WHEN itd.all_test_launches_impacted IS false THEN 'NOT_IMPACTED'
+		CASE WHEN itd.all_tests_impacted IS true THEN 'IMPACTED'
+		     WHEN itd.all_tests_impacted IS false THEN 'NOT_IMPACTED'
 		     ELSE 'UNKNOWN_IMPACT'
 	    END::VARCHAR AS test_impact_status
     FROM metrics.test_definitions td
-	LEFT JOIN impacted_test_definitions itd ON itd.group_id = td.group_id AND itd.test_definition_id = td.test_definition_id
+	LEFT JOIN impacted_test_definitions itd ON itd.test_definition_id = td.test_definition_id
     WHERE td.group_id = _group_id
-	  -- Filters by test impact mode
-	  AND (_need_impacted IS true OR itd.all_test_launches_impacted IS false)
-	  AND (_need_not_impacted IS true OR itd.all_test_launches_impacted IS true)
-	  AND (_need_unknown_impact IS true OR itd.all_test_launches_impacted IS NOT NULL)
+	  -- Filters by test impact statuses
+	  AND (_need_impacted IS true OR itd.all_tests_impacted IS NOT true)
+	  AND (_need_not_impacted IS true OR itd.all_tests_impacted IS NOT false)
+	  AND (_need_unknown_impact IS true OR itd.all_tests_impacted IS NOT NULL)
 	  -- Filters by tests
 	  AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
 	  AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)

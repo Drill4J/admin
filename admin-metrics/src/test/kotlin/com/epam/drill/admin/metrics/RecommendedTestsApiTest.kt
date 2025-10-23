@@ -179,10 +179,11 @@ class RecommendedTestsApiTest : DatabaseTests({
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
 
                 // test1 and test2 should be recommended to run in build2,
-                // but only test2 is from the specified test task
-                assertEquals(1, recommendedTests.size)
-                assertTrue(recommendedTests.any { it["testDefinitionId"] == test2.definitionId })
-                assertTrue(recommendedTests.any { it["testImpactStatus"] == "IMPACTED" })
+                // but only test2 is from the specified test task, that's why it should be marked as IMPACTED,
+                // even though test1 is from a different test task, it should still be included in the results but as UNKNOWN_IMPACT
+                assertEquals(2, recommendedTests.size)
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test2.definitionId && it["testImpactStatus"] == "IMPACTED" })
+                assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId && it["testImpactStatus"] == "UNKNOWN_IMPACT" })
             }
         }
     }
