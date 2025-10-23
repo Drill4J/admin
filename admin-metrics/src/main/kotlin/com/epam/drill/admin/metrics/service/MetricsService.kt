@@ -19,6 +19,8 @@ import com.epam.drill.admin.metrics.views.ApplicationView
 import com.epam.drill.admin.metrics.views.BuildView
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.RecommendedTestsView
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.metrics.views.TestView
 
 interface MetricsService {
@@ -60,7 +62,7 @@ interface MetricsService {
     suspend fun getRecommendedTests(
         groupId: String,
         appId: String,
-        testsToSkip: Boolean = false,
+        testsToSkip: Boolean? = null,
         testTaskId: String? = null,
         coveragePeriodDays: Int? = null,
         targetInstanceId: String? = null,
@@ -112,6 +114,9 @@ interface MetricsService {
         testTaskId: String?,
         testPath: String?,
         testName: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        methodNamePattern: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>

@@ -68,6 +68,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 // that's why test1 should be recommended to skip in build2
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+                assertTrue(recommendedTests.any { it["testImpactStatus"] == "NOT_IMPACTED" })
             }
         }
     }
@@ -91,6 +92,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build2.buildVersion)
+                parameter("testsToSkip", false)
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
@@ -99,6 +101,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 // that's why test1 should be recommended to run in build2
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+                assertTrue(recommendedTests.any { it["testImpactStatus"] == "IMPACTED" })
             }
         }
     }
@@ -140,6 +143,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 // despite test1 also checked method1 in build1 and method1 was modified in build2
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
+                assertTrue(recommendedTests.any { it["testImpactStatus"] == "NOT_IMPACTED" })
             }
         }
     }
@@ -169,6 +173,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build2.buildVersion)
                 parameter("testTaskId", "check2")
+                parameter("testsToSkip", false)
             }.assertSuccessStatus().apply {
                 val json = JsonPath.parse(bodyAsText())
                 val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
@@ -177,6 +182,7 @@ class RecommendedTestsApiTest : DatabaseTests({
                 // but only test2 is from the specified test task
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test2.definitionId })
+                assertTrue(recommendedTests.any { it["testImpactStatus"] == "IMPACTED" })
             }
         }
     }

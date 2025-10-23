@@ -1,7 +1,3 @@
-package com.epam.drill.admin.metrics.views
-
-import kotlinx.serialization.Serializable
-
 /**
  * Copyright 2020 - 2022 EPAM Systems
  *
@@ -17,13 +13,10 @@ import kotlinx.serialization.Serializable
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Serializable
-class RecommendedTestsView(
-    val testDefinitionId: String,
-    val testRunner: String? = null,
-    val testPath: String,
-    val testName: String,
-    val tags: List<String>? = null,
-    val metadata: Map<String, String>? = null,
-    val testImpactStatus: TestImpactStatus? = null,
-)
+package com.epam.drill.admin.metrics.views
+
+enum class TestImpactStatus {
+    IMPACTED,
+    NOT_IMPACTED,
+    UNKNOWN_IMPACT
+}

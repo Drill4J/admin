@@ -296,10 +296,27 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getRecommendedTests(
         targetBuildId: String,
-        baselineBuildId: String?,
-        testsToSkip: Boolean,
-        testTaskId: String?,
+        testImpactStatuses: List<String>,
+
+        baselineBuildIds: List<String>,
+        baselineFromBuildId: String?,
+        baselineUntilBuildId: String?,
+        baselineBuildBranches: List<String>,
+
+        testTaskIds: List<String>,
+        testTags: List<String>,
+        testPathPattern: String?,
+        testNamePattern: String?,
+
+        packageNamePattern: String?,
+        classNamePattern: String?,
+
+        coverageAppEnvIds: List<String>,
         coveragePeriodFrom: LocalDateTime?,
+        coveragePeriodUntil: LocalDateTime?,
+
+        offset: Int?,
+        limit: Int?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -310,17 +327,35 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_path,
                     test_name,
                     test_tags,
-                    test_metadata
-                FROM metrics.get_recommended_tests(                    
+                    test_metadata,
+                    test_impact_status
+                FROM metrics.get_recommended_tests_v2(                    
                     input_build_id => ?,
-                    tests_to_skip => ?                
+                    input_test_impact_statuses => ?                
             """.trimIndent()
-            , targetBuildId, testsToSkip)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
+            , targetBuildId, testImpactStatuses)
+
+            appendOptional(", input_baseline_build_ids => ?", baselineBuildIds)
+            appendOptional(", input_baseline_from_build_id => ?", baselineFromBuildId)
+            appendOptional(", input_baseline_until_build_id => ?", baselineUntilBuildId)
+            appendOptional(", input_baseline_build_branches => ?", baselineBuildBranches)
+
+            appendOptional(", input_test_task_ids => ?", testTaskIds)
+            appendOptional(", input_test_tags => ?", testTags)
+            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
+            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
+            appendOptional(", input_package_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
+
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
             appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
+            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
             append("""
                 )
             """.trimIndent())
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
     }
 
@@ -331,6 +366,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         testTag: String?,
         testPathPattern: String?,
         testNamePattern: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        methodNamePattern: String?,
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -341,8 +379,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_definition_id,
                     test_path,
                     test_name,                    
+                    test_tags,
+                    test_metadata,
                     impacted_methods                 
-                FROM metrics.get_impacted_tests(
+                FROM metrics.get_impacted_tests_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)
@@ -350,6 +390,9 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
+            appendOptional(", input_method_name_pattern => ?", methodNamePattern) { "$it%" }
             append("""
                 )
             """.trimIndent())
@@ -377,8 +420,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                     class_name,
                     method_name,
                     method_params,
-                    return_type                 
-                FROM metrics.get_impacted_methods(
+                    return_type,
+                    impacted_tests
+                FROM metrics.get_impacted_methods_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)

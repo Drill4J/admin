@@ -215,7 +215,7 @@ class MetricsServiceImpl(
     override suspend fun getRecommendedTests(
         groupId: String,
         appId: String,
-        testsToSkip: Boolean,
+        testsToSkip: Boolean?,
         testTaskId: String?,
         coveragePeriodDays: Int?,
         targetInstanceId: String?,
@@ -261,13 +261,21 @@ class MetricsServiceImpl(
         val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
             LocalDateTime.now().minusDays(it.toLong())
         }
+        val testImpactStatus = when (testsToSkip) {
+            true -> listOf(TestImpactStatus.NOT_IMPACTED)
+            false -> listOf(TestImpactStatus.IMPACTED, TestImpactStatus.UNKNOWN_IMPACT)
+            null -> TestImpactStatus.entries
+        }
+
 
         val recommendedTests = metricsRepository.getRecommendedTests(
             targetBuildId = targetBuildId,
-            baselineBuildId = baselineBuildId,
-            testsToSkip = testsToSkip,
-            testTaskId = testTaskId,
+            testImpactStatuses = testImpactStatus.map { it.name },
+            baselineUntilBuildId = baselineBuildId,
+            testTaskIds = listOfNotNull(testTaskId),
             coveragePeriodFrom = coveragePeriodFrom,
+            offset = 0,
+            limit = null
         ).map { data ->
             RecommendedTestsView(
                 testDefinitionId = data["test_definition_id"] as String,
@@ -275,7 +283,8 @@ class MetricsServiceImpl(
                 testPath = data["test_path"] as String,
                 testName = data["test_name"] as String,
                 tags = data["test_tags"] as List<String>?,
-                metadata = data["test_metadata"] as Map<String, String>?
+                metadata = data["test_metadata"] as Map<String, String>?,
+                testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
             )
         }
 
@@ -398,6 +407,9 @@ class MetricsServiceImpl(
         testTaskId: String?,
         testPath: String?,
         testName: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        methodNamePattern: String?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
@@ -441,6 +453,9 @@ class MetricsServiceImpl(
                 testTag = testTag,
                 testPathPattern = testPath,
                 testNamePattern = testName,
+                packageNamePattern = packageNamePattern,
+                classNamePattern = classNamePattern,
+                methodNamePattern = methodNamePattern,
                 offset = offset,
                 limit = limit,
             ).map { data ->
@@ -448,9 +463,9 @@ class MetricsServiceImpl(
                     testDefinitionId = data["test_definition_id"] as String,
                     testPath = data["test_path"] as String,
                     testName = data["test_name"] as String,
-                    impactedMethods = data["impacted_methods"]?.let { it as List<Map<String, Any?>> }
-                        ?.map(::mapToMethodView)
-                        ?: emptyList()
+                    tags = data["test_tags"] as List<String>?,
+                    metadata = data["test_metadata"] as Map<String, String>?,
+                    impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
         }
@@ -546,6 +561,7 @@ class MetricsServiceImpl(
         coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
         coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        impactedTests = (resultSet["impacted_tests"] as Number?)?.toInt(),
     )
 
     // TODO good candidate to be moved to common functions (probably)

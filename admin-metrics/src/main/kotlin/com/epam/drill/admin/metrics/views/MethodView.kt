@@ -18,7 +18,7 @@ package com.epam.drill.admin.metrics.views
 import kotlinx.serialization.Serializable
 
 @Serializable
-class MethodView (
+open class MethodView (
     val className: String,
     val name: String,
     val params: List<String> = emptyList(),
@@ -29,4 +29,5 @@ class MethodView (
     val coveredProbesInOtherBuilds: Int? = null,
     val coverageRatio: Double? = null,
     val coverageRatioInOtherBuilds: Double? = null,
+    val impactedTests: Int? = null,
 )

@@ -65,8 +65,7 @@ class ImpactedTestsApiTest : DatabaseTests({
                 val data = json.read<List<Map<String, Any>>>("$.data")
                 assertEquals(1, data.size)
                 assertTrue(data.any { it["testName"] == test1.testName })
-                assertTrue(data.any { (it["impactedMethods"] as List<Any>).size == 1 })
-                assertTrue(data.any { (it["impactedMethods"] as List<Map<String, Any?>>).any { method -> method["name"] == method2.name } })
+                assertTrue(data.any { (it["impactedMethods"] as Int) == 1 })
             }
         }
 
