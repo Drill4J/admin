@@ -31,7 +31,7 @@ class SqlBuilderImpl(
     }
 
     override fun appendOptional(sqlFragment: String, vararg params: Any?, transform: (Any) -> Any) {
-        if (params.any { it == null || (it is String && it.isBlank()) }) {
+        if (params.any { it == null || (it is String && it.isBlank()) || (it is List<*> && it.isEmpty()) }) {
             return
         }
         sqlQuery.append(sqlFragment)
