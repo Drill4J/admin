@@ -271,9 +271,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ),
                     RecommendedTests AS (
                         SELECT count(*) AS tests_to_run
-                        FROM metrics.get_recommended_tests(
+                        FROM metrics.get_recommended_tests_v2(
                             input_build_id => ?, 
-                            tests_to_skip => false                            
+                            input_test_impact_statuses => '{IMPACTED}'                            
                         )
                     )	
                     SELECT 
