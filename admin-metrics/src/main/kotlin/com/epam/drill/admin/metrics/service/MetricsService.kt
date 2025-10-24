@@ -70,7 +70,8 @@ interface MetricsService {
         targetBuildVersion: String? = null,
         baselineInstanceId: String? = null,
         baselineCommitSha: String? = null,
-        baselineBuildVersion: String? = null
+        baselineBuildVersion: String? = null,
+        baselineBuildBranches: List<String> = emptyList()
     ): Map<String, Any?>
 
     suspend fun getChanges(

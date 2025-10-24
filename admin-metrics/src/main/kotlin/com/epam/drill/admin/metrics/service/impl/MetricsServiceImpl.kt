@@ -224,6 +224,7 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+        baselineBuildBranches: List<String>
     ): Map<String, Any?> = transaction {
         val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
 
@@ -272,6 +273,7 @@ class MetricsServiceImpl(
             targetBuildId = targetBuildId,
             testImpactStatuses = testImpactStatus.map { it.name },
             baselineUntilBuildId = baselineBuildId,
+            baselineBuildBranches = baselineBuildBranches,
             testTaskIds = listOfNotNull(testTaskId),
             coveragePeriodFrom = coveragePeriodFrom,
             offset = 0,
