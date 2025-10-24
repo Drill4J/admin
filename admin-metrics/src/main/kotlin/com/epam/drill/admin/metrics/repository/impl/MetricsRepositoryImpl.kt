@@ -328,7 +328,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_name,
                     test_tags,
                     test_metadata,
-                    test_impact_status
+                    test_impact_status,
+                    impacted_methods,
+                    baseline_build_id
                 FROM metrics.get_recommended_tests_v2(                    
                     input_build_id => ?,
                     input_test_impact_statuses => ?                

@@ -287,6 +287,8 @@ class MetricsServiceImpl(
                 tags = data["test_tags"] as List<String>?,
                 metadata = data["test_metadata"] as Map<String, String>?,
                 testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
+                impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
+                baselineBuildId = data["baseline_build_id"] as String?,
             )
         }
 

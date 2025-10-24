@@ -619,8 +619,8 @@ CREATE OR REPLACE FUNCTION metrics.get_recommended_tests_v2(
     input_build_id VARCHAR,
 
 	input_package_name_pattern VARCHAR DEFAULT NULL,
-    input_class_name_pattern VARCHAR DEFAULT NULL,
-    input_method_name_pattern VARCHAR DEFAULT NULL,
+    input_class_name VARCHAR DEFAULT NULL,
+    input_method_signature VARCHAR DEFAULT NULL,
 
 	input_test_task_ids VARCHAR[] DEFAULT NULL,
 	input_test_tags VARCHAR[] DEFAULT NULL,
@@ -645,7 +645,9 @@ CREATE OR REPLACE FUNCTION metrics.get_recommended_tests_v2(
     test_name VARCHAR,
     test_tags VARCHAR[],
     test_metadata JSON,
-	test_impact_status VARCHAR
+	test_impact_status VARCHAR,
+	baseline_build_id VARCHAR,
+	impacted_methods NUMERIC
 ) AS $$
 DECLARE
     _group_id VARCHAR;
@@ -678,26 +680,27 @@ BEGIN
             AND bm.build_id = input_build_id
             -- Filters by methods
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
-            AND (input_class_name_pattern IS NULL OR m.class_name LIKE input_class_name_pattern)
-            AND (input_method_name_pattern IS NULL OR m.method_name LIKE input_method_name_pattern)
+            AND (input_class_name IS NULL OR m.class_name = input_class_name)
+            AND (input_method_signature IS NULL OR m.signature LIKE input_method_signature)
     ),
-    impacted_build_test_definitions AS (
+    impacted_methods AS (
         SELECT
             c.build_id,
             c.test_definition_id,
-            BOOL_OR(CASE WHEN tm.method_id IS NULL THEN true ELSE false END) AS has_impacted_methods
+			m.signature,
+            BOOL_OR(CASE WHEN tm.method_id IS NULL THEN true ELSE false END) AS impacted
         FROM metrics.method_coverage c
         JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
 		JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
         LEFT JOIN target_methods tm ON tm.group_id = c.group_id AND tm.app_id = c.app_id AND tm.method_id = c.method_id
         WHERE c.group_id = _group_id
             AND c.app_id = _app_id
-            AND c.test_launch_id IS NOT NULL
+            AND c.test_definition_id IS NOT NULL
             AND c.test_result = 'PASSED'
             -- Filters by methods
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
-            AND (input_class_name_pattern IS NULL OR m.class_name LIKE input_class_name_pattern)
-            AND (input_method_name_pattern IS NULL OR m.method_name LIKE input_method_name_pattern)
+            AND (input_class_name IS NULL OR m.class_name = input_class_name)
+            AND (input_method_signature IS NULL OR m.signature = input_method_signature)
             -- Filters by tests
             AND (input_test_task_ids IS NULL OR c.test_task_id = ANY(input_test_task_ids::VARCHAR[]))
             AND (input_test_tags IS NULL OR c.test_tags && input_test_tags::VARCHAR[])
@@ -712,14 +715,26 @@ BEGIN
 			AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
             AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
 			AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
-        GROUP BY c.build_id, c.test_definition_id
+        GROUP BY c.build_id, c.test_definition_id, m.signature
     ),
-    impacted_test_definitions AS (
+	impacted_build_tests AS (
         SELECT
-            ibtd.test_definition_id,
-			BOOL_AND(ibtd.has_impacted_methods) AS all_tests_impacted
-        FROM impacted_build_test_definitions ibtd
-        GROUP BY ibtd.test_definition_id
+            im.build_id,
+			im.test_definition_id,
+			BOOL_OR(im.impacted) AS has_impacted_methods,
+			SUM(CASE WHEN im.impacted IS true THEN 1 ELSE 0 END) AS impacted_methods
+        FROM impacted_methods im
+        GROUP BY im.build_id, im.test_definition_id
+    ),
+    impacted_tests AS (
+        SELECT
+            ibt.test_definition_id,
+			BOOL_AND(ibt.has_impacted_methods) AS all_builds_impacted,
+			MIN(ibt.impacted_methods)::NUMERIC AS impacted_methods,
+			MIN(CASE WHEN ibt.has_impacted_methods IS true THEN ibt.build_id ELSE null END)::VARCHAR AS impacted_build_id,
+			MIN(CASE WHEN ibt.has_impacted_methods IS false THEN ibt.build_id ELSE null END)::VARCHAR AS not_impacted_build_id
+        FROM impacted_build_tests ibt
+        GROUP BY ibt.test_definition_id
     )
 	SELECT
 	    td.group_id,
@@ -729,17 +744,22 @@ BEGIN
         td.test_name,
         td.test_tags,
         td.test_metadata,
-		CASE WHEN itd.all_tests_impacted IS true THEN 'IMPACTED'
-		     WHEN itd.all_tests_impacted IS false THEN 'NOT_IMPACTED'
+		CASE WHEN it.all_builds_impacted IS true THEN 'IMPACTED'
+		     WHEN it.all_builds_impacted IS false THEN 'NOT_IMPACTED'
 		     ELSE 'UNKNOWN_IMPACT'
-	    END::VARCHAR AS test_impact_status
+	    END::VARCHAR AS test_impact_status,
+		CASE WHEN it.all_builds_impacted IS true THEN it.impacted_build_id
+		     WHEN it.all_builds_impacted IS false THEN it.not_impacted_build_id
+		     ELSE null
+	    END::VARCHAR AS baseline_build_id,
+		it.impacted_methods
     FROM metrics.test_definitions td
-	LEFT JOIN impacted_test_definitions itd ON itd.test_definition_id = td.test_definition_id
+	LEFT JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
     WHERE td.group_id = _group_id
 	  -- Filters by test impact statuses
-	  AND (_need_impacted IS true OR itd.all_tests_impacted IS NOT true)
-	  AND (_need_not_impacted IS true OR itd.all_tests_impacted IS NOT false)
-	  AND (_need_unknown_impact IS true OR itd.all_tests_impacted IS NOT NULL)
+	  AND (_need_impacted IS true OR it.all_builds_impacted IS NOT true)
+	  AND (_need_not_impacted IS true OR it.all_builds_impacted IS NOT false)
+	  AND (_need_unknown_impact IS true OR it.all_builds_impacted IS NOT NULL)
 	  -- Filters by tests
 	  AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
 	  AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
