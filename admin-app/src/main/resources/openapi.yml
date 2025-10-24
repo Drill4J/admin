@@ -458,6 +458,13 @@ paths:
           in: query
           schema:
             type: string
+        - name: baselineBuildBranches
+          in: query
+          description: List of baseline build branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
         - name: coveragePeriodDays
           in: query
           schema:
@@ -1430,3 +1437,4 @@ components:
         metricsPeriodDays:
           type: integer
           nullable: true
+
