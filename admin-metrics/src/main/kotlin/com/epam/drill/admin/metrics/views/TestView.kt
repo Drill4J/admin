@@ -25,5 +25,5 @@ class TestView(
     val testName: String,
     val tags: List<String>? = null,
     val metadata: Map<String, String>? = null,
-    val impactedMethods: List<MethodView>? = null,
+    val impactedMethods: Int? = null,
 )

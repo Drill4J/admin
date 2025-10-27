@@ -25,4 +25,7 @@ class RecommendedTestsView(
     val testName: String,
     val tags: List<String>? = null,
     val metadata: Map<String, String>? = null,
+    val testImpactStatus: TestImpactStatus? = null,
+    val impactedMethods: Int? = null,
+    val baselineBuildId: String? = null,
 )

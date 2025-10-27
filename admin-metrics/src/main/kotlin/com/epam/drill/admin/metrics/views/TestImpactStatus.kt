@@ -15,19 +15,8 @@
  */
 package com.epam.drill.admin.metrics.views
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-open class MethodView (
-    val className: String,
-    val name: String,
-    val params: List<String> = emptyList(),
-    val returnType: String?,
-    val changeType: ChangeType? = null,
-    val probesCount: Int? = null,
-    val coveredProbes: Int? = null,
-    val coveredProbesInOtherBuilds: Int? = null,
-    val coverageRatio: Double? = null,
-    val coverageRatioInOtherBuilds: Double? = null,
-    val impactedTests: Int? = null,
-)
+enum class TestImpactStatus {
+    IMPACTED,
+    NOT_IMPACTED,
+    UNKNOWN_IMPACT
+}

@@ -98,6 +98,7 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+        val baselineBuildBranches: List<String> = emptyList(),
         val coveragePeriodDays: Int? = null,
     )
 
@@ -149,6 +150,9 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+        val packageNamePattern: String? = null,
+        val classNamePattern: String? = null,
+        val methodNamePattern: String? = null,
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
@@ -284,6 +288,7 @@ fun Route.getRecommendedTests() {
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
+            baselineBuildBranches = params.baselineBuildBranches,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -360,6 +365,9 @@ fun Route.getImpactedTests() {
             testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName,
+            packageNamePattern = params.packageNamePattern,
+            classNamePattern = params.classNamePattern,
+            methodNamePattern = params.methodNamePattern,
             page = params.page,
             pageSize = params.pageSize,
         )

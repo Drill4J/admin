@@ -75,10 +75,27 @@ interface MetricsRepository {
 
     suspend fun getRecommendedTests(
         targetBuildId: String,
-        baselineBuildId: String? = null,
-        testsToSkip: Boolean = false,
-        testTaskId: String? = null,
+        testImpactStatuses: List<String>,
+
+        baselineBuildIds: List<String> = emptyList(),
+        baselineFromBuildId: String? = null,
+        baselineUntilBuildId: String? = null,
+        baselineBuildBranches: List<String> = emptyList(),
+
+        testTaskIds: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        testPathPattern: String? = null,
+        testNamePattern: String? = null,
+
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+
+        coverageAppEnvIds: List<String> = emptyList(),
         coveragePeriodFrom: LocalDateTime? = null,
+        coveragePeriodUntil: LocalDateTime? = null,
+
+        offset: Int?,
+        limit: Int?
     ): List<Map<String, Any?>>
 
     suspend fun getImpactedTests(
@@ -88,6 +105,9 @@ interface MetricsRepository {
         testTag: String?,
         testPathPattern: String?,
         testNamePattern: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        methodNamePattern: String?,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
