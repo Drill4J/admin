@@ -24,7 +24,7 @@ SELECT
     MIN(b.created_at) AS created_at,
     MIN(b.app_env_ids) AS app_env_ids,
     COUNT(DISTINCT m.class_name) AS total_classes,
-    COUNT(*) AS total_methods,
+    COUNT(DISTINCT m.signature) AS total_methods,
     SUM(COALESCE(m.probes_count, 0)) AS total_probes
 FROM metrics.builds b
 LEFT JOIN metrics.build_methods bm ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
