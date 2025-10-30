@@ -15,6 +15,20 @@
  */
 package com.epam.drill.admin.metrics.config
 
+import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
+import com.epam.drill.admin.etl.impl.EtlPipelineImpl
+import com.epam.drill.admin.metrics.etl.EtlMetadataRepository
+import com.epam.drill.admin.metrics.etl.buildMethodsPipeline
+import com.epam.drill.admin.metrics.etl.buildsPipeline
+import com.epam.drill.admin.metrics.etl.coverageExtractor
+import com.epam.drill.admin.metrics.etl.coveragePipeline
+import com.epam.drill.admin.metrics.etl.methodCoverageLoader
+import com.epam.drill.admin.metrics.etl.methodsPipeline
+import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
+import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
+import com.epam.drill.admin.metrics.etl.testSessionsPipeline
+import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.repository.impl.MetricsRepositoryImpl
@@ -42,6 +56,20 @@ val metricsDIModule = DI.Module("metricsServices") {
     }
     bind<RefreshMaterializedViewJob>() with singleton {
         RefreshMaterializedViewJob(metricsService = instance())
+    }
+    bind<EtlMetadataRepository>() with singleton {
+        EtlMetadataRepositoryImpl(
+            database = MetricsDatabaseConfig.database,
+            dbSchema = MetricsDatabaseConfig.dbSchema
+        )
+    }
+    bind<UpdateMetricsEtlJob>() with singleton {
+        UpdateMetricsEtlJob(
+            orchestrator = EtlOrchestratorImpl(
+                pipelines = listOf(),
+                metadataRepository = instance()
+            )
+        )
     }
 }
 
