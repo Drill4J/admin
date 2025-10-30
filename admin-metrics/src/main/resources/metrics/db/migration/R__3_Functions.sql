@@ -348,7 +348,9 @@ CREATE OR REPLACE FUNCTION metrics.get_changes(
     input_method_name_pattern VARCHAR DEFAULT NULL,
 
     include_equal BOOLEAN DEFAULT FALSE,
-    include_deleted BOOLEAN DEFAULT FALSE
+    include_deleted BOOLEAN DEFAULT FALSE,
+
+    input_method_signature VARCHAR DEFAULT NULL
 ) RETURNS TABLE(
     group_id VARCHAR,
     app_id VARCHAR,
@@ -390,6 +392,7 @@ BEGIN
             AND bm.app_id = _app_id
             AND bm.build_id IN (input_baseline_build_id, input_build_id)
             -- Filters by methods
+            AND (input_method_signature IS NULL OR m.signature = input_method_signature)
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
             AND (input_class_name_pattern IS NULL OR m.class_name LIKE input_class_name_pattern)
             AND (input_method_name_pattern IS NULL OR m.method_name LIKE input_method_name_pattern)
@@ -444,7 +447,10 @@ CREATE OR REPLACE FUNCTION metrics.get_changes_with_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
-    is_smart_coverage_before_build BOOLEAN DEFAULT FALSE
+    is_smart_coverage_before_build BOOLEAN DEFAULT FALSE,
+
+    include_deleted BOOLEAN DEFAULT false,
+    include_equal BOOLEAN DEFAULT false
 )
 RETURNS TABLE (
     group_id VARCHAR,
@@ -490,10 +496,10 @@ BEGIN
     	input_package_name_pattern => input_package_name_pattern,
     	input_class_name_pattern => input_class_name_pattern,
     	input_method_name_pattern => input_method_name_pattern,
-    	include_deleted => false,
-    	include_equal => false
+    	include_deleted => include_deleted,
+    	include_equal => include_equal
     ) m
-    JOIN metrics.get_methods_with_coverage(
+    LEFT JOIN metrics.get_methods_with_coverage(
     	input_build_id => input_build_id,
         input_baseline_build_id => input_baseline_build_id,
         input_package_name_pattern => input_package_name_pattern,
@@ -800,7 +806,9 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
 
     input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
-    input_coverage_period_until TIMESTAMP DEFAULT NULL
+    input_coverage_period_until TIMESTAMP DEFAULT NULL,
+
+    input_method_signature VARCHAR DEFAULT NULL
 ) RETURNS TABLE(
     group_id VARCHAR,
     test_definition_id VARCHAR,
@@ -808,6 +816,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
     test_name VARCHAR,
     test_tags VARCHAR[],
     test_metadata JSON,
+    test_runner VARCHAR,
     impacted_methods NUMERIC
 ) AS $$
 DECLARE
@@ -836,7 +845,8 @@ BEGIN
             input_class_name_pattern => input_class_name_pattern,
             input_method_name_pattern => input_method_name_pattern,
             include_deleted => true,
-            include_equal => false
+            include_equal => false,
+            input_method_signature => input_method_signature
         ) m
     ),
     impacted_methods AS (
@@ -875,6 +885,7 @@ BEGIN
         td.test_name,
         td.test_tags,
         td.test_metadata,
+        td.test_runner,
         itd.impacted_methods::NUMERIC
     FROM metrics.test_definitions td
 	JOIN impacted_test_definitions itd ON itd.test_definition_id = td.test_definition_id
@@ -919,6 +930,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_methods_v2(
 ) RETURNS TABLE(
     group_id VARCHAR,
     app_id VARCHAR,
+    signature VARCHAR,
     class_name VARCHAR,
     method_name VARCHAR,
     method_params VARCHAR,
@@ -957,6 +969,7 @@ BEGIN
     SELECT DISTINCT
 		m.group_id::VARCHAR,
 		m.app_id::VARCHAR,
+		m.signature::VARCHAR,
 		m.class_name::VARCHAR,
 		m.method_name::VARCHAR,
 		m.method_params::VARCHAR,
@@ -979,7 +992,7 @@ BEGIN
 		AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
 		AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
-	GROUP BY m.group_id, m.app_id, m.class_name, m.method_name, m.method_params, m.return_type
+	GROUP BY m.group_id, m.app_id, m.signature, m.class_name, m.method_name, m.method_params, m.return_type
     ;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

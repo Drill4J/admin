@@ -521,6 +521,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/changes-coverage-treemap:
+    get:
+      summary: Get changes coverage treemap
+      operationId: getChangesCoverageTreemap
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: packageNamePattern
+          in: query
+          schema:
+            type: string
+        - name: classNamePattern
+          in: query
+          schema:
+            type: string
+        - name: rootId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+        - name: includeEqual
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Changes coverage treemap data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/changes:
     get:
       summary: Get method changes between builds

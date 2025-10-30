@@ -147,7 +147,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageName: String?,
         className: String?,
         offset: Int?,
-        limit: Int?
+        limit: Int?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -173,6 +175,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { arrayOf(it) }
             appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { arrayOf(it) }
             appendOptional(", input_coverage_branches => ?", coverageBranch) { arrayOf(it) }
+            appendOptional(", include_deleted => ?", includeDeleted) { it }
+            appendOptional(", include_equal => ?", includeEqual) { it }
             append(
                 """
                 ) 

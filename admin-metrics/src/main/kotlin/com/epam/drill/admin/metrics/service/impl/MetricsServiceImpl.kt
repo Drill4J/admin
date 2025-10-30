@@ -117,6 +117,41 @@ class MetricsServiceImpl(
         return buildTree(data, rootId)
     }
 
+    override suspend fun getChangesCoverageTreemap(
+        buildId: String,
+        baselineBuildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?,
+    ): List<Any> {
+
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        val data = metricsRepository.getChangesWithCoverage(
+            buildId = buildId,
+            baselineBuildId = baselineBuildId,
+            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId = envId?.takeIf { it.isNotBlank() },
+            coverageBranch = branch?.takeIf { it.isNotBlank() },
+            packageName = packageNamePattern?.takeIf { it.isNotBlank() },
+            className = classNamePattern?.takeIf { it.isNotBlank() },
+            includeDeleted = includeDeleted?.takeIf { it },
+            includeEqual = includeEqual?.takeIf { it },
+        )
+
+        return buildTree(data, rootId)
+    }
 
     override suspend fun getBuildDiffReport(
         groupId: String,
@@ -536,7 +571,8 @@ class MetricsServiceImpl(
     }
 
     override suspend fun refreshMaterializedViews() = coroutineScope {
-        logger.debug { "Refreshing materialized views..." }
+        val startTime = System.currentTimeMillis()
+        logger.info { "Refreshing materialized views..." }
 
         val buildsViewJob = async { refreshMaterializedView(buildsView) }
         val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
@@ -551,7 +587,8 @@ class MetricsServiceImpl(
 
         waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
 
-        logger.info { "Materialized views were refreshed." }
+        val duration = System.currentTimeMillis() - startTime
+        logger.info { "Materialized views were refreshed in $duration ms." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
