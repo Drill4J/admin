@@ -30,7 +30,6 @@ import io.ktor.server.routing.*
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
-import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
@@ -67,6 +66,24 @@ class Metrics {
         val packageNamePattern: String? = null,
         val classNamePattern: String? = null,
         val rootId: String? = null
+    )
+
+    @Resource("/changes-coverage-treemap")
+    class ChangesCoverageTreemap(
+        val parent: Metrics,
+
+        val buildId: String,
+        val baselineBuildId: String,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
+        val packageNamePattern: String? = null,
+        val classNamePattern: String? = null,
+        val rootId: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
+        val includeDeleted: Boolean? = null,
+        val includeEqual: Boolean? = null
     )
 
     @Resource("/build-diff-report")
@@ -193,6 +210,7 @@ fun Route.metricsRoutes() {
     getBuildDiffReport()
     getRecommendedTests()
     getCoverageTreemap()
+    getChangesCoverageTreemap()
     getChanges()
     getCoverage()
     getImpactedTests()
@@ -248,6 +266,26 @@ fun Route.getCoverageTreemap() {
             params.packageNamePattern,
             params.classNamePattern,
             params.rootId
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
+    }
+}
+
+fun Route.getChangesCoverageTreemap() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.ChangesCoverageTreemap> { params ->
+        val treemap = metricsService.getChangesCoverageTreemap(
+            params.buildId,
+            params.baselineBuildId,
+            params.testTag,
+            params.envId,
+            params.branch,
+            params.packageNamePattern,
+            params.classNamePattern,
+            params.rootId,
+            params.includeDeleted,
+            params.includeEqual
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }

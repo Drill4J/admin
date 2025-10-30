@@ -58,7 +58,9 @@ interface MetricsRepository {
         coverageBranch: String? = null,
         packageName: String? = null,
         className: String? = null,
-        offset: Int? = null, limit: Int? = null
+        offset: Int? = null, limit: Int? = null,
+        includeDeleted: Boolean? = null,
+        includeEqual: Boolean? = null
     ): List<Map<String, Any?>>
 
     suspend fun getChangesCount(
