@@ -66,7 +66,11 @@ val metricsDIModule = DI.Module("metricsServices") {
     bind<UpdateMetricsEtlJob>() with singleton {
         UpdateMetricsEtlJob(
             orchestrator = EtlOrchestratorImpl(
-                pipelines = listOf(),
+                pipelines = listOf(
+                    buildsPipeline, methodsPipeline, buildMethodsPipeline,
+                    testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
+                    coveragePipeline
+                ),
                 metadataRepository = instance()
             )
         )
