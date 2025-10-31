@@ -17,6 +17,6 @@ package com.epam.drill.admin.etl
 
 interface EtlOrchestrator {
     suspend fun runAll(): List<EtlProcessingResult>
-    suspend fun run(pipelineName: String): EtlProcessingResult
+    suspend fun run(pipeline: EtlPipeline<*>): EtlProcessingResult
 }
 

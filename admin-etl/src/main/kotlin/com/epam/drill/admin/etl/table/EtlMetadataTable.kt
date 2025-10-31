@@ -15,14 +15,14 @@
  */
 package com.epam.drill.admin.etl.table
 
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
-class EtlMetadataTable(tableName: String) : IdTable<String>(tableName) {
-    override val id: Column<EntityID<String>> = varchar("pipeline_name", 225).entityId()
-    override val primaryKey = PrimaryKey(id)
+class EtlMetadataTable(tableName: String) : Table(tableName) {
+    val pipelineName = varchar("pipeline_name", 225)
+    val extractorName = varchar("extractor_name", 225)
+    val loaderName = varchar("loader_name", 225)
+    override val primaryKey = PrimaryKey(pipelineName, extractorName, loaderName)
 
     val status = varchar("status", 50)
     val lastProcessedAt = timestamp("last_processed_at")
@@ -31,3 +31,4 @@ class EtlMetadataTable(tableName: String) : IdTable<String>(tableName) {
     val rowsProcessed = integer("rows_processed")
     val errorMessage = text("error_message").nullable()
 }
+

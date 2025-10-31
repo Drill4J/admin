@@ -37,7 +37,7 @@ open class EtlOrchestratorImpl(
         val results = mutableListOf<EtlProcessingResult>()
         val duration = measureTimeMillis {
             for (pipeline in pipelines) {
-                val result = run(pipeline.name)
+                val result = run(pipeline)
                 results.add(result)
             }
         }
@@ -52,57 +52,61 @@ open class EtlOrchestratorImpl(
         return results
     }
 
-    override suspend fun run(pipelineName: String): EtlProcessingResult {
-        val pipeline = pipelines.find { it.name == pipelineName }
-            ?: throw IllegalArgumentException("Unknown pipeline: $pipelineName")
-        val metadata = metadataRepository.getMetadata(pipelineName)
-            ?: EtlMetadata(
-                pipelineName = pipelineName,
-                lastProcessedAt = Instant.EPOCH,
-                lastRunAt = Instant.EPOCH,
-                duration = 0,
-                status = EtlStatus.NEVER_RUN,
-                rowsProcessed = 0,
-                errorMessage = null
-            )
+    override suspend fun run(pipeline: EtlPipeline<*>): EtlProcessingResult {
         val snapshotTime = Instant.now()
+        val metadataList = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
+        val lastProcessedTime = findMinimumProcessedRowTimestamp(metadataList, pipeline.loaders.map { it.name }.toSet())
         try {
-            val result = pipeline.execute(
-                sinceTimestamp = metadata.lastProcessedAt,
+            val pipelineResult = pipeline.execute(
+                sinceTimestamp = lastProcessedTime,
                 untilTimestamp = snapshotTime,
-                batchSize = batchSize
+                batchSize = batchSize,
+                onLoadCompleted = { loaderName, result ->
+                    try {
+                        metadataRepository.saveMetadata(
+                            EtlMetadata(
+                                pipelineName = pipeline.name,
+                                extractorName = pipeline.extractor.name,
+                                loaderName = loaderName,
+                                lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
+                                lastRunAt = snapshotTime,
+                                duration = result.duration ?: 0L,
+                                status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
+                                rowsProcessed = result.processedRows,
+                                errorMessage = result.errorMessage
+                            )
+                        )
+                    } catch (e: Exception) {
+                        logger.error("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                    }
+                }
             )
-            metadataRepository.saveMetadata(
-                metadata.copy(
-                    lastProcessedAt = result.lastProcessedAt,
-                    lastRunAt = snapshotTime,
-                    duration = result.duration,
-                    status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
-                    rowsProcessed = result.rowsProcessed,
-                    errorMessage = result.errorMessage
-                )
-            )
-            return result
+            return pipelineResult
         } catch (e: Exception) {
-            logger.error("ETL pipeline [$pipelineName] failed: ${e.message}", e)
-            val duration = Instant.now().toEpochMilli() - snapshotTime.toEpochMilli()
-            metadataRepository.saveMetadata(
-                metadata.copy(
-                    lastRunAt = snapshotTime,
-                    duration = duration,
-                    status = EtlStatus.FAILURE,
-                    errorMessage = e.message
-                )
-            )
+            logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
             return EtlProcessingResult(
-                pipelineName = pipelineName,
-                lastProcessedAt = metadata.lastProcessedAt,
+                pipelineName = pipeline.name,
+                lastProcessedAt = lastProcessedTime,
                 rowsProcessed = 0,
-                duration = duration,
                 success = false,
                 errorMessage = e.message
             )
         }
+    }
+
+    private fun findMinimumProcessedRowTimestamp(
+        metadataList: List<EtlMetadata>,
+        loaderNames: Set<String>
+    ): Instant {
+        // If there is a new loader that has no metadata yet
+        if (!loaderNames.all { it in metadataList.map(EtlMetadata::loaderName) })
+            return Instant.EPOCH
+        // Find the minimum lastProcessedAt among the specified loaders to ensure all loaders have processed up to that point
+        return metadataList
+            .filter { it.loaderName in loaderNames }
+            .minByOrNull { it.lastProcessedAt }
+            ?.lastProcessedAt
+            ?: Instant.EPOCH
     }
 }
 

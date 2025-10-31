@@ -38,27 +38,20 @@ open class EtlPipelineImpl<T>(
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        batchSize: Int
+        batchSize: Int,
+        onLoadCompleted: suspend (String, DataLoader.LoadResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         var results = DataLoader.LoadResult.EMPTY
         val duration = measureTimeMillis {
             logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
-            val data = try {
-                extractor.extract(sinceTimestamp, untilTimestamp, batchSize)
-            } catch (e: Exception) {
-                results += DataLoader.LoadResult(
-                    success = false,
-                    errorMessage = "Error during extraction data with extractor ${extractor.name}: ${e.message ?: e.javaClass.simpleName}"
-                )
-                logger.error(e) { "ETL pipeline [$name] failed for extractor [${extractor.name}]: ${e.message}" }
-                return@measureTimeMillis
-            }
-
+            val data = extractor.extract(sinceTimestamp, untilTimestamp, batchSize)
             val fanOut = FanOutSequence(data)
-            val loaderResults = loaders.associateWith { fanOut.iterator() }.map { (loader, iterator) ->
+            results = loaders.associateWith { fanOut.iterator() }.map { (loader, iterator) ->
                 async {
                     try {
-                        loader.load(iterator, batchSize)
+                        loader.load(iterator, batchSize).also { result ->
+                            onLoadCompleted(loader.name, result)
+                        }
                     } catch (e: Exception) {
                         logger.error(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
                         DataLoader.LoadResult(
@@ -67,25 +60,20 @@ open class EtlPipelineImpl<T>(
                         )
                     }
                 }
-            }.awaitAll()
-
-            loaderResults.forEach { result ->
-                results += result
-            }
+            }.awaitAll().min()
         }
         logger.info {
-            if (results.processedRows == 0) {
+            if (results.processedRows == 0 && results.success) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else
-                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, failures: ${!results.success}"
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}"
         }
         EtlProcessingResult(
             pipelineName = name,
             lastProcessedAt = results.lastProcessedAt ?: sinceTimestamp,
             rowsProcessed = results.processedRows,
             success = results.success,
-            errorMessage = results.errorMessage,
-            duration = duration
+            errorMessage = results.errorMessage
         )
     }
 }

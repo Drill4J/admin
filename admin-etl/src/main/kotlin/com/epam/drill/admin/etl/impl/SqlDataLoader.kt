@@ -23,6 +23,7 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.measureTimeMillis
 
 open class SqlDataLoader(
     override val name: String,
@@ -91,24 +92,25 @@ open class SqlDataLoader(
             }
             stmts.add(sql)
         }
-        try {
-            newSuspendedTransaction(db = database) {
-                execInBatch(stmts)
+        val duration = measureTimeMillis {
+            try {
+                newSuspendedTransaction(db = database) {
+                    execInBatch(stmts)
+                }
+                batchNo.incrementAndGet()
+            } catch (e: Exception) {
+                return DataLoader.LoadResult(
+                    success = false,
+                    errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
+                )
             }
-            batchNo.incrementAndGet()
-        } catch (e: Exception) {
-            return DataLoader.LoadResult(
-                processedRows = 0,
-                lastProcessedAt = null,
-                success = false,
-                errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
-            )
         }
-        logger.debug { "ETL [$name] loaded ${stmts.size} rows, batch: ${batchNo.get()}" }
+        logger.debug { "ETL [$name] loaded ${stmts.size} rows in ${duration}ms, batch: ${batchNo.get()}" }
         return DataLoader.LoadResult(
-            processedRows = stmts.size,
+            success = true,
             lastProcessedAt = lastExtractedAt,
-            success = true
+            processedRows = stmts.size,
+            duration = duration
         )
     }
 }

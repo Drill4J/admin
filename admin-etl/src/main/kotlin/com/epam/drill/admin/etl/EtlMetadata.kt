@@ -19,6 +19,8 @@ import java.time.Instant
 
 data class EtlMetadata(
     val pipelineName: String,
+    val extractorName: String,
+    val loaderName: String,
     val lastProcessedAt: Instant,
     val lastRunAt: Instant,
     val duration: Long,

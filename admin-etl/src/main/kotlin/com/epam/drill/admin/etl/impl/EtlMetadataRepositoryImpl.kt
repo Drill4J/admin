@@ -20,9 +20,13 @@ import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.upsert
+import java.time.Instant
 
 class EtlMetadataRepositoryImpl(
     private val database: Database,
@@ -31,30 +35,54 @@ class EtlMetadataRepositoryImpl(
 ) : EtlMetadataRepository {
     private val metadataTable: EtlMetadataTable = EtlMetadataTable("$dbSchema.$metadataTableName")
 
-    override suspend fun getMetadata(pipelineName: String): EtlMetadata? = newSuspendedTransaction(db = database) {
-        metadataTable.selectAll().where { metadataTable.id eq pipelineName }
-            .map {
-                EtlMetadata(
-                    pipelineName = it[metadataTable.id].value,
-                    lastProcessedAt = it[metadataTable.lastProcessedAt],
-                    lastRunAt = it[metadataTable.lastRunAt],
-                    duration = it[metadataTable.duration],
-                    status = EtlStatus.valueOf(it[metadataTable.status]),
-                    errorMessage = it[metadataTable.errorMessage],
-                    rowsProcessed = it[metadataTable.rowsProcessed]
-                )
-            }.singleOrNull()
+
+    override suspend fun getAllMetadataByExtractor(
+        pipelineName: String,
+        extractorName: String
+    ): List<EtlMetadata> = newSuspendedTransaction(db = database) {
+        metadataTable.selectAll()
+            .andWhere { metadataTable.pipelineName eq pipelineName }
+            .andWhere { metadataTable.extractorName eq extractorName }
+            .orderBy(metadataTable.lastProcessedAt to SortOrder.ASC)
+            .map(::mapMetadata)
+    }
+
+    override suspend fun getMetadata(
+        pipelineName: String,
+        extractorName: String,
+        loaderName: String
+    ): EtlMetadata? = newSuspendedTransaction(db = database) {
+        metadataTable.selectAll()
+            .andWhere { metadataTable.pipelineName eq pipelineName }
+            .andWhere { metadataTable.extractorName eq extractorName }
+            .andWhere { metadataTable.loaderName eq loaderName }
+            .map(::mapMetadata)
+            .singleOrNull()
     }
 
     override suspend fun saveMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
         metadataTable.upsert {
-            it[id] = metadata.pipelineName
+            it[pipelineName] = metadata.pipelineName
+            it[extractorName] = metadata.extractorName
+            it[loaderName] = metadata.loaderName
+            it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
             it[lastRunAt] = metadata.lastRunAt
             it[duration] = metadata.duration
-            it[status] = metadata.status.name
-            it[errorMessage] = metadata.errorMessage
             it[rowsProcessed] = metadata.rowsProcessed
+            it[errorMessage] = metadata.errorMessage
         }
     }
+
+    private fun mapMetadata(row: ResultRow): EtlMetadata = EtlMetadata(
+        pipelineName = row[metadataTable.pipelineName],
+        extractorName = row[metadataTable.extractorName],
+        loaderName = row[metadataTable.loaderName],
+        lastProcessedAt = row[metadataTable.lastProcessedAt],
+        lastRunAt = row[metadataTable.lastRunAt],
+        duration = row[metadataTable.duration],
+        status = EtlStatus.valueOf(row[metadataTable.status]),
+        errorMessage = row[metadataTable.errorMessage],
+        rowsProcessed = row[metadataTable.rowsProcessed]
+    )
 }
