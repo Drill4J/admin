@@ -76,13 +76,13 @@ open class EtlOrchestratorImpl(
                                 errorMessage = result.errorMessage
                             )
                         )
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         logger.error("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
                     }
                 }
             )
             return pipelineResult
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
             return EtlProcessingResult(
                 pipelineName = pipeline.name,

@@ -53,7 +53,7 @@ open class EtlPipelineImpl<T>(
                             onLoadCompleted(loader.name, result)
                         }
                     } catch (e: Exception) {
-                        logger.error(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
+                        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
                         DataLoader.LoadResult(
                             success = false,
                             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
@@ -62,7 +62,7 @@ open class EtlPipelineImpl<T>(
                 }
             }.awaitAll().min()
         }
-        logger.info {
+        logger.debug {
             if (results.processedRows == 0 && results.success) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else
