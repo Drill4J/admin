@@ -16,9 +16,9 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.table.EtlMetadataTable
-import com.epam.drill.admin.metrics.etl.EtlMetadata
-import com.epam.drill.admin.metrics.etl.EtlMetadataRepository
-import com.epam.drill.admin.metrics.etl.EtlStatus
+import com.epam.drill.admin.etl.EtlMetadata
+import com.epam.drill.admin.etl.EtlMetadataRepository
+import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction

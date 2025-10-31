@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.etl
+package com.epam.drill.admin.etl
 
 import java.time.Instant
 
 interface DataLoader<T> {
     val name: String
     suspend fun load(
-        data: Sequence<T>,
+        data: Iterator<T>,
         batchSize: Int = 1000
     ): LoadResult
 

@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.metrics.etl.DataLoader
+import com.epam.drill.admin.etl.DataLoader
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -33,17 +33,16 @@ open class SqlDataLoader(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun load(
-        data: Sequence<Map<String, Any?>>,
+        data: Iterator<Map<String, Any?>>,
         batchSize: Int
     ): DataLoader.LoadResult {
-        val iterator = data.iterator()
         val batchParams = mutableListOf<Map<String, Any?>>()
         val batchNo = AtomicInteger(0)
         var result: DataLoader.LoadResult = DataLoader.LoadResult.EMPTY
 
-        while (iterator.hasNext()) {
+        while (data.hasNext()) {
             val params = try {
-                iterator.next()
+                data.next()
             } catch (e: Exception) {
                 return result + DataLoader.LoadResult(
                     success = false,

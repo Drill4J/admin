@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.etl
+package com.epam.drill.admin.etl
 
 import java.time.Instant
 
@@ -23,6 +23,6 @@ interface DataExtractor<T> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         batchSize: Int = 1000
-    ): Sequence<T>
+    ): Iterator<T>
 }
 

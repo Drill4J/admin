@@ -15,11 +15,14 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.metrics.etl.DataExtractor
-import com.epam.drill.admin.metrics.etl.DataLoader
-import com.epam.drill.admin.metrics.etl.EtlPipeline
-import com.epam.drill.admin.metrics.etl.EtlProcessingResult
+import com.epam.drill.admin.etl.interator.FanOutSequence
+import com.epam.drill.admin.etl.DataExtractor
+import com.epam.drill.admin.etl.DataLoader
+import com.epam.drill.admin.etl.EtlPipeline
+import com.epam.drill.admin.etl.EtlProcessingResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -51,17 +54,23 @@ open class EtlPipelineImpl<T>(
                 return@measureTimeMillis
             }
 
-            loaders.forEach { loader ->
-                try {
-                    //TODO: data.toList().asSequence() is not efficient for large datasets
-                    results += loader.load(data, batchSize)
-                } catch (e: Exception) {
-                    results += DataLoader.LoadResult(
-                        success = false,
-                        errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
-                    )
-                    logger.error(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
+            val fanOut = FanOutSequence(data)
+            val loaderResults = loaders.associateWith { fanOut.iterator() }.map { (loader, iterator) ->
+                async {
+                    try {
+                        loader.load(iterator, batchSize)
+                    } catch (e: Exception) {
+                        logger.error(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
+                        DataLoader.LoadResult(
+                            success = false,
+                            errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
+                        )
+                    }
                 }
+            }.awaitAll()
+
+            loaderResults.forEach { result ->
+                results += result
             }
         }
         logger.info {
