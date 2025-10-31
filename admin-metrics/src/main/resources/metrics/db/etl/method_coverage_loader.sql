@@ -39,8 +39,9 @@ ON CONFLICT (
     app_id,
     method_id,
     build_id,
-    app_env_id,
-    test_launch_id,
+    COALESCE(app_env_id,''),
+    COALESCE(test_session_id,''),
+    COALESCE(test_launch_id,''),
     creation_day
 )
 DO UPDATE

@@ -26,11 +26,11 @@ ON CONFLICT (
     group_id,
     app_id,
     method_id,
-    branch,
-    app_env_id,
-    test_tags,
-    test_task_id,
-    test_result,
+    COALESCE(branch,''),
+    COALESCE(app_env_id,''),
+    COALESCE(test_tags,'{}'),
+    COALESCE(test_task_id,''),
+    COALESCE(test_result,''),
     creation_day
 )
 DO UPDATE

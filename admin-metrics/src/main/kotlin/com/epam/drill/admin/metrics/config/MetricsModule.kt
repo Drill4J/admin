@@ -24,6 +24,7 @@ import com.epam.drill.admin.metrics.etl.coveragePipeline
 import com.epam.drill.admin.metrics.etl.methodsPipeline
 import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
 import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
+import com.epam.drill.admin.metrics.etl.testSessionBuildsPipeline
 import com.epam.drill.admin.metrics.etl.testSessionsPipeline
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
@@ -66,7 +67,7 @@ val metricsDIModule = DI.Module("metricsServices") {
                 pipelines = listOf(
                     buildsPipeline, methodsPipeline, buildMethodsPipeline,
                     testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
-                    coveragePipeline
+                    coveragePipeline, testSessionBuildsPipeline
                 ),
                 metadataRepository = instance()
             )

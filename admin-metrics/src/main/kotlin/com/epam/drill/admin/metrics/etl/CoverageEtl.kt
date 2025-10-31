@@ -45,5 +45,5 @@ val methodSmartCoverageLoader = SqlDataLoader(
 val coveragePipeline = EtlPipelineImpl(
     name = "coverage",
     extractor = coverageExtractor,
-    loaders = listOf(methodCoverageLoader, methodSmartCoverageLoader)
+    loaders = listOf(methodCoverageLoader, methodSmartCoverageLoader, testSessionBuildsLoader)
 )
