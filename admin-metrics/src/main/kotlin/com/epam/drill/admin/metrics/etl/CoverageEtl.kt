@@ -35,8 +35,15 @@ val methodCoverageLoader = SqlDataLoader(
     database = MetricsDatabaseConfig.database
 )
 
+val methodSmartCoverageLoader = SqlDataLoader(
+    name = "method_smartcoverage",
+    sqlUpsert = fromResource("/metrics/db/etl/method_smartcoverage_loader.sql"),
+    lastExtractedAtColumnName = "created_at",
+    database = MetricsDatabaseConfig.database
+)
+
 val coveragePipeline = EtlPipelineImpl(
     name = "coverage",
     extractor = coverageExtractor,
-    loaders = listOf(methodCoverageLoader)
+    loaders = listOf(methodCoverageLoader, methodSmartCoverageLoader)
 )

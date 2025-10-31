@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.metrics.job
 
-import com.epam.drill.admin.metrics.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlOrchestrator
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job

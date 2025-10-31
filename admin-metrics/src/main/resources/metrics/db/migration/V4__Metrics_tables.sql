@@ -108,3 +108,18 @@ CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, build_id);
 CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id);
 CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_launch_id);
 CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_session_id);
+
+CREATE TABLE IF NOT EXISTS metrics.method_smartcoverage_table (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    method_id VARCHAR,
+    app_env_id VARCHAR,
+    branch VARCHAR,
+    test_tags VARCHAR[],
+    test_task_id VARCHAR,
+    test_result VARCHAR,
+    creation_day TIMESTAMP WITHOUT TIME ZONE,
+    probes VARBIT
+);
+CREATE UNIQUE INDEX method_smartcoverage_table_pk ON metrics.method_smartcoverage_table (group_id, app_id, method_id, branch, app_env_id, test_tags, test_task_id, test_result, creation_day);
+CREATE INDEX ON metrics.method_smartcoverage_table(group_id, app_id, method_id);
