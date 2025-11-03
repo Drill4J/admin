@@ -18,10 +18,9 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.EtlMetadataRepository
-import com.epam.drill.admin.metrics.etl.buildMethodsPipeline
+import com.epam.drill.admin.metrics.etl.methodsPipeline
 import com.epam.drill.admin.metrics.etl.buildsPipeline
 import com.epam.drill.admin.metrics.etl.coveragePipeline
-import com.epam.drill.admin.metrics.etl.methodsPipeline
 import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
 import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
 import com.epam.drill.admin.metrics.etl.testSessionBuildsPipeline
@@ -65,7 +64,7 @@ val metricsDIModule = DI.Module("metricsServices") {
         UpdateMetricsEtlJob(
             orchestrator = EtlOrchestratorImpl(
                 pipelines = listOf(
-                    buildsPipeline, methodsPipeline, buildMethodsPipeline,
+                    buildsPipeline, methodsPipeline,
                     testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
                     coveragePipeline, testSessionBuildsPipeline
                 ),

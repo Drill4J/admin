@@ -21,9 +21,16 @@ import com.epam.drill.admin.etl.impl.SqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val methodsExtractor = SqlDataExtractor(
-    name = "methods",
-    sqlQuery = fromResource("/metrics/db/etl/methods_extractor.sql"),
+val buildMethodsExtractor = SqlDataExtractor(
+    name = "build_methods",
+    sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
+    database = MetricsDatabaseConfig.database
+)
+
+val buildMethodsLoader = SqlDataLoader(
+    name = "build_methods",
+    sqlUpsert = fromResource("/metrics/db/etl/build_methods_loader.sql"),
+    lastExtractedAtColumnName = "created_at",
     database = MetricsDatabaseConfig.database
 )
 
@@ -36,6 +43,6 @@ val methodsLoader = SqlDataLoader(
 
 val methodsPipeline = EtlPipelineImpl(
     name = "methods",
-    extractor = methodsExtractor,
-    loaders = listOf(methodsLoader)
+    extractor = buildMethodsExtractor,
+    loaders = listOf(buildMethodsLoader, methodsLoader)
 )
