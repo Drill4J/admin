@@ -71,19 +71,3 @@ interface DataLoader<T> {
         }
     }
 }
-
-private fun min(a: Instant?, b: Instant?): Instant? {
-    return when {
-        a == null -> null
-        b == null -> null
-        else -> if (a < b) a else b
-    }
-}
-
-private fun max(a: Instant?, b: Instant?): Instant? {
-    return when {
-        a == null -> b
-        b == null -> a
-        else -> if (a > b) a else b
-    }
-}

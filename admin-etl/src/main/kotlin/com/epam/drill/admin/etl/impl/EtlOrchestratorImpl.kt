@@ -63,17 +63,18 @@ open class EtlOrchestratorImpl(
                 batchSize = batchSize,
                 onLoadCompleted = { loaderName, result ->
                     try {
+                        val oldMetadata = metadataList.find { it.loaderName == loaderName }
                         metadataRepository.saveMetadata(
                             EtlMetadata(
                                 pipelineName = pipeline.name,
                                 extractorName = pipeline.extractor.name,
                                 loaderName = loaderName,
-                                lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
-                                lastRunAt = snapshotTime,
-                                duration = result.duration ?: 0L,
                                 status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
-                                rowsProcessed = result.processedRows,
-                                errorMessage = result.errorMessage
+                                lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
+                                errorMessage = result.errorMessage,
+                                lastRunAt = snapshotTime,
+                                duration = ((oldMetadata?.duration ?: 0L) + (result.duration ?: 0L)),
+                                rowsProcessed = ((oldMetadata?.rowsProcessed ?: 0) + result.processedRows)
                             )
                         )
                     } catch (e: Throwable) {
