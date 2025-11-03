@@ -1,4 +1,4 @@
-package com.epam.drill.admin.etl.interator
+package com.epam.drill.admin.etl.iterator
 
 abstract class BatchIterator<T>(
     private val batchSize: Int,

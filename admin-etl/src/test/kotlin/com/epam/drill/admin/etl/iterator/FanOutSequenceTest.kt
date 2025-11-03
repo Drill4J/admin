@@ -1,6 +1,5 @@
 package com.epam.drill.admin.etl.iterator
 
-import com.epam.drill.admin.etl.interator.FanOutSequence
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

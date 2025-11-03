@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.interator.FanOutSequence
+import com.epam.drill.admin.etl.iterator.FanOutSequence
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlPipeline

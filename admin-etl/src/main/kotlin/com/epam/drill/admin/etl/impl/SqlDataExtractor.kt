@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.interator.BatchIterator
+import com.epam.drill.admin.etl.iterator.BatchIterator
 import com.epam.drill.admin.etl.DataExtractor
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database

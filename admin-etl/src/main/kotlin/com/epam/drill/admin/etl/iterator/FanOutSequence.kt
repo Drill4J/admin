@@ -1,4 +1,4 @@
-package com.epam.drill.admin.etl.interator
+package com.epam.drill.admin.etl.iterator
 
 import java.util.concurrent.atomic.AtomicInteger
 
