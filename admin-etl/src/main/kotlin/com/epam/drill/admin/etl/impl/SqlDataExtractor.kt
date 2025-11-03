@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.javatime.JavaInstantColumnType
 import org.jetbrains.exposed.sql.statements.StatementType
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.postgresql.util.PGobject
 import java.sql.Connection
@@ -42,7 +43,15 @@ open class SqlDataExtractor(
         untilTimestamp: Instant,
         batchSize: Int
     ): Iterator<Map<String, Any?>> {
-        return object : BatchIterator<Map<String, Any?>>(batchSize) {
+
+        val initData = newSuspendedTransaction(
+            transactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED,
+            db = database
+        ) {
+            execSqlWithPagination(sinceTimestamp, untilTimestamp, 0, batchSize)
+        }
+
+        return object : BatchIterator<Map<String, Any?>>(batchSize, initData) {
             override fun fetchBatch(
                 offset: Int,
                 batchSize: Int

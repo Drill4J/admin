@@ -1,12 +1,23 @@
 package com.epam.drill.admin.etl.interator
 
 abstract class BatchIterator<T>(
-    private val batchSize: Int
+    private val batchSize: Int,
+    initData: List<T> = emptyList()
 ) : Iterator<T> {
     private var currentBatch: List<T> = emptyList()
     private var currentIndex = 0
     private var offset = 0
     private var exhausted = false
+
+    init {
+        if (initData.isNotEmpty()) {
+            currentBatch = initData
+            offset += initData.size
+            if (initData.size < batchSize) {
+                exhausted = true
+            }
+        }
+    }
 
     abstract fun fetchBatch(
         offset: Int,
