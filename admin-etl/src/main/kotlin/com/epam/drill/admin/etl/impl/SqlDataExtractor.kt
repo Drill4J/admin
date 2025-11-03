@@ -25,6 +25,7 @@ import org.jetbrains.exposed.sql.javatime.JavaInstantColumnType
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.postgresql.util.PGobject
+import java.sql.Connection
 import java.sql.ResultSet
 import java.time.Instant
 import kotlin.collections.plus
@@ -41,30 +42,44 @@ open class SqlDataExtractor(
         untilTimestamp: Instant,
         batchSize: Int
     ): Iterator<Map<String, Any?>> {
-        //TODO : sqlQuery should be processed for named placeholders :sinceTimestamp and :untilTimestamp
-        val args = listOf(
-            JavaInstantColumnType() to sinceTimestamp,
-            JavaInstantColumnType() to untilTimestamp
-        )
         return object : BatchIterator<Map<String, Any?>>(batchSize) {
             override fun fetchBatch(
                 offset: Int,
                 batchSize: Int
             ): List<Map<String, Any?>> {
-                return transaction(db = database) {
-                    execSqlWithPagination(args, offset, batchSize)
+                return transaction(
+                    transactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED,
+                    readOnly = true,
+                    db = database
+                ) {
+                    execSqlWithPagination(sinceTimestamp, untilTimestamp, offset, batchSize)
                 }
             }
         }
     }
 
     private fun Transaction.execSqlWithPagination(
-        args: List<Pair<JavaInstantColumnType, Instant>>,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         offset: Int,
         limit: Int
     ): List<Map<String, Any?>> {
+        val sinceTimestampIndex = sqlQuery.indexOf(":since_timestamp")
+        val untilTimestampIndex = sqlQuery.indexOf(":until_timestamp")
+        if (sinceTimestampIndex == -1 || untilTimestampIndex == -1)
+            throw IllegalArgumentException("SQL query for extractor [$name] must contain :since_timestamp and :until_timestamp named parameters")
+        // Replace named parameters with positional parameters
+        val timestampedSql = sqlQuery
+            .replace(":since_timestamp", "?")
+            .replace(":until_timestamp", "?")
         // Append OFFSET and LIMIT to the SQL query
-        val paginatedQuery = "$sqlQuery OFFSET ? LIMIT ?"
+        val paginatedQuery = "$timestampedSql OFFSET ? LIMIT ?"
+        // Prepare arguments in the correct order
+        val args = listOf(
+            JavaInstantColumnType() to (if (sinceTimestampIndex < untilTimestampIndex) sinceTimestamp else untilTimestamp),
+            JavaInstantColumnType() to (if (sinceTimestampIndex > untilTimestampIndex) sinceTimestamp else untilTimestamp)
+        )
+        // Add OFFSET and LIMIT parameters
         val paginatedArgs = args + listOf(
             IntegerColumnType() to offset,
             IntegerColumnType() to limit
