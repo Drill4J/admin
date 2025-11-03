@@ -45,7 +45,7 @@ open class SqlDataExtractor(
     ): Iterator<Map<String, Any?>> {
 
         val initData = newSuspendedTransaction(
-            transactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED,
+            transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
             db = database
         ) {
             execSqlWithPagination(sinceTimestamp, untilTimestamp, 0, batchSize)
@@ -57,8 +57,7 @@ open class SqlDataExtractor(
                 batchSize: Int
             ): List<Map<String, Any?>> {
                 return transaction(
-                    transactionIsolation = Connection.TRANSACTION_READ_UNCOMMITTED,
-                    readOnly = true,
+                    transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
                     db = database
                 ) {
                     execSqlWithPagination(sinceTimestamp, untilTimestamp, offset, batchSize)

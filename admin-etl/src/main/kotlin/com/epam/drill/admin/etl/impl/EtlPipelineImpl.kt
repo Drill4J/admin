@@ -45,6 +45,7 @@ open class EtlPipelineImpl<T>(
         val duration = measureTimeMillis {
             logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
             val data = extractor.extract(sinceTimestamp, untilTimestamp, batchSize)
+            if (!data.hasNext()) return@measureTimeMillis
             val fanOut = FanOutSequence(data)
             results = loaders.associateWith { fanOut.iterator() }.map { (loader, iterator) ->
                 async {
