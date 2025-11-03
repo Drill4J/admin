@@ -57,7 +57,7 @@ open class EtlPipelineImpl<T>(
                         DataLoader.LoadResult(
                             success = false,
                             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
-                        )
+                        ).also { onLoadCompleted(loader.name, it) }
                     }
                 }
             }.awaitAll().min()
