@@ -60,7 +60,6 @@ open class EtlOrchestratorImpl(
             val pipelineResult = pipeline.execute(
                 sinceTimestamp = lastProcessedTime,
                 untilTimestamp = snapshotTime,
-                batchSize = batchSize,
                 onLoadCompleted = { loaderName, result ->
                     try {
                         val oldMetadata = metadataList.find { it.loaderName == loaderName }

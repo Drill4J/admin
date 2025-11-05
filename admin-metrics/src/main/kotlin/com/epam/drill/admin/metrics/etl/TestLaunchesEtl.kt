@@ -18,18 +18,20 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.SqlDataExtractor
 import com.epam.drill.admin.etl.impl.SqlDataLoader
+import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
+import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val testLaunchesExtractor = SqlDataExtractor(
+val testLaunchesExtractor = UntypedSqlDataExtractor(
     name = "test_launches",
     sqlQuery = fromResource("/metrics/db/etl/test_launches_extractor.sql"),
     database = MetricsDatabaseConfig.database
 )
 
-val testLaunchesLoader = SqlDataLoader(
+val testLaunchesLoader = UntypedSqlDataLoader(
     name = "test_launches",
-    sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
+    sql = fromResource("/metrics/db/etl/test_launches_loader.sql"),
     lastExtractedAtColumnName = "created_at",
     database = MetricsDatabaseConfig.database
 )

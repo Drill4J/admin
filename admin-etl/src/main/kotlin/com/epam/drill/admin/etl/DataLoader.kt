@@ -15,10 +15,15 @@
  */
 package com.epam.drill.admin.etl
 
+import kotlinx.coroutines.flow.Flow
+import java.time.Instant
+
 interface DataLoader<T> {
     val name: String
     suspend fun load(
-        data: Iterator<T>,
-        batchSize: Int = 1000
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<T>,
+        onLoadCompleted: suspend (LoadResult) -> Unit
     ): LoadResult
 }

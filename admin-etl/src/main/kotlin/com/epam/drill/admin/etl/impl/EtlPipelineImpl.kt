@@ -15,15 +15,21 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.iterator.FanOutSequence
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.LoadResult
+import com.epam.drill.admin.etl.iterator.CompletableSharedFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -32,28 +38,28 @@ import kotlin.system.measureTimeMillis
 open class EtlPipelineImpl<T>(
     override val name: String,
     override val extractor: DataExtractor<T>,
-    override val loaders: List<DataLoader<T>>
+    override val loaders: List<DataLoader<T>>,
+    private val bufferSize: Int = 1000
 ) : EtlPipeline<T> {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        batchSize: Int,
         onLoadCompleted: suspend (String, LoadResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         var results = LoadResult.EMPTY
         val duration = measureTimeMillis {
             logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
-            val data = extractor.extract(sinceTimestamp, untilTimestamp, batchSize)
-            if (!data.hasNext()) return@measureTimeMillis
-            val fanOut = FanOutSequence(data)
-            results = loaders.associateWith { fanOut.iterator() }.map { (loader, iterator) ->
+            val flow = CompletableSharedFlow<T>(
+                replay = 0,
+                extraBufferCapacity = 0
+            )
+            results = loaders.map { loader ->
                 async {
                     try {
-                        loader.load(iterator, batchSize).also { result ->
-                            onLoadCompleted(loader.name, result)
-                        }
+                        loader.load(sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
+                            .also { onLoadCompleted(loader.name, it) }
                     } catch (e: Exception) {
                         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
                         LoadResult(
@@ -61,6 +67,15 @@ open class EtlPipelineImpl<T>(
                             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
                         ).also { onLoadCompleted(loader.name, it) }
                     }
+                }
+            }.also { jobs ->
+                try {
+                    // Start extractor only after all jobs are ready to consume data
+                    flow.waitForSubscribers(jobs.count { it.isActive })
+                    extractor.extract(sinceTimestamp, untilTimestamp, flow)
+                } finally {
+                    // Complete the flow to signal jobs that extraction is done
+                    flow.complete()
                 }
             }.awaitAll().min()
         }

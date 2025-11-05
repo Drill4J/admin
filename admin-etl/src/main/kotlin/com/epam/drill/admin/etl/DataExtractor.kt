@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl
 
+import kotlinx.coroutines.flow.FlowCollector
 import java.time.Instant
 
 interface DataExtractor<T> {
@@ -22,7 +23,7 @@ interface DataExtractor<T> {
     suspend fun extract(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        batchSize: Int = 1000
-    ): Iterator<T>
+        emitter: FlowCollector<T>
+    )
 }
 

@@ -16,28 +16,28 @@
 package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
-import com.epam.drill.admin.etl.impl.SqlDataExtractor
-import com.epam.drill.admin.etl.impl.SqlDataLoader
+import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
+import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
 
-val coverageExtractor = SqlDataExtractor(
+val coverageExtractor = UntypedSqlDataExtractor(
     name = "coverage",
     sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
     database = MetricsDatabaseConfig.database
 )
 
-val methodCoverageLoader = SqlDataLoader(
+val methodCoverageLoader = UntypedSqlDataLoader(
     name = "method_coverage",
-    sqlUpsert = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
+    sql = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
     lastExtractedAtColumnName = "created_at",
     database = MetricsDatabaseConfig.database
 )
 
-val methodSmartCoverageLoader = SqlDataLoader(
+val methodSmartCoverageLoader = UntypedSqlDataLoader(
     name = "method_smartcoverage",
-    sqlUpsert = fromResource("/metrics/db/etl/method_smartcoverage_loader.sql"),
+    sql = fromResource("/metrics/db/etl/method_smartcoverage_loader.sql"),
     lastExtractedAtColumnName = "created_at",
     database = MetricsDatabaseConfig.database
 )

@@ -17,6 +17,8 @@ package com.epam.drill.admin.etl
 
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -43,23 +45,45 @@ class ETLSimpleTest {
 
     inner class SimpleExtractor : DataExtractor<SimpleClass> {
         override val name = SIMPLE_EXTRACTOR
-        override suspend fun extract(sinceTimestamp: Instant, untilTimestamp: Instant, batchSize: Int): Iterator<SimpleClass> {
-            return dataStore.filter { it.createdAt > sinceTimestamp }.iterator()
+        override suspend fun extract(
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            emitter: FlowCollector<SimpleClass>
+        ) {
+            return dataStore.filter { it.createdAt > sinceTimestamp }.forEach { emitter.emit(it) }
         }
     }
 
     inner class SimpleLoader : DataLoader<SimpleClass> {
         override val name = SIMPLE_LOADER
-        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): LoadResult {
-            val list = data.asSequence().toList()
-            return LoadResult(success = true, lastProcessedAt = list.last().createdAt, processedRows = list.count())
+        override suspend fun load(
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<SimpleClass>,
+            onLoadCompleted: suspend (LoadResult) -> Unit
+        ): LoadResult {
+            var lastExtracted: SimpleClass? = null
+            var rowsProcessed: Int = 0
+            collector.collect {
+                lastExtracted = it
+                rowsProcessed++
+            }
+            return LoadResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed)
         }
     }
 
     inner class FailingLoader : DataLoader<SimpleClass> {
         override val name = FAILING_LOADER
-        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): LoadResult {
-            throw RuntimeException("Simulated loader failure")
+        override suspend fun load(
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<SimpleClass>,
+            onLoadCompleted: suspend (LoadResult) -> Unit
+        ): LoadResult {
+            collector.collect {
+                throw RuntimeException("Simulated loader failure")
+            }
+            return LoadResult(success = false, errorMessage = "This should never be returned")
         }
     }
 

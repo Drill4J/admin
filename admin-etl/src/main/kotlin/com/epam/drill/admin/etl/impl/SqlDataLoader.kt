@@ -17,80 +17,72 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.LoadResult
+import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import java.sql.Timestamp
 import java.time.Instant
-import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
-open class SqlDataLoader(
+abstract class SqlDataLoader<T>(
     override val name: String,
     open val sqlUpsert: String,
     open val database: Database,
-    open val lastExtractedAtColumnName: String,
-) : DataLoader<Map<String, Any?>> {
+    open val batchSize: Int = 1000
+) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun load(
-        data: Iterator<Map<String, Any?>>,
-        batchSize: Int
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<T>,
+        onLoadCompleted: suspend (LoadResult) -> Unit
     ): LoadResult {
-        val batchParams = mutableListOf<Map<String, Any?>>()
-        val batchNo = AtomicInteger(0)
         var result: LoadResult = LoadResult.EMPTY
+        val batchNo = AtomicInteger(0)
+        val buffer = mutableListOf<T>()
 
-        while (data.hasNext()) {
-            val params = try {
-                data.next()
-            } catch (e: Exception) {
-                return result + LoadResult(
-                    success = false,
-                    errorMessage = "Error during extraction data for loader $name: ${e.message ?: e.javaClass.simpleName}"
-                )
-            }
-            batchParams.add(params)
+        collector.collect { row ->
+            buffer.add(row)
 
-            if (batchParams.size >= batchSize) {
-                result += execSqlInBatch(sqlUpsert, batchParams, batchNo)
+            if (buffer.size >= batchSize) {
+                result += execSqlInBatch(sqlUpsert, buffer, batchNo).also { onLoadCompleted(it) }
                 if (!result.success) {
-                    return result
+                    throw CancellationException("Loading cancelled due to previous errors: ${result.errorMessage}")
                 }
-                batchParams.clear()
+                buffer.clear()
             }
         }
-        if (batchParams.isNotEmpty()) {
-            result += execSqlInBatch(sqlUpsert, batchParams, batchNo)
+        if (result.success && buffer.isNotEmpty()) {
+            result += execSqlInBatch(sqlUpsert, buffer, batchNo).also { onLoadCompleted(it) }
         }
+
         return result
     }
 
-    private suspend fun execSqlInBatch(sqlUpsert: String, batchParams: List<Map<String, Any?>>, batchNo: AtomicInteger): LoadResult {
+    abstract fun prepareSql(sql: String, args: T): String
+    abstract fun getLastExtractedTimestamp(args: T): Instant?
+
+    private suspend fun execSqlInBatch(
+        sql: String,
+        batch: List<T>,
+        batchNo: AtomicInteger
+    ): LoadResult {
         val stmts = mutableListOf<String>()
         var lastExtractedAt: Instant? = null
-        batchParams.forEach { params ->
-            var sql = sqlUpsert
-            params.forEach {
-                val value = when (val v = it.value) {
-                    null -> "NULL"
-                    is String -> "'${v.replace("'", "''")}'"
-                    is Instant -> "'$v'"
-                    is Date -> "'$v'"
-                    else -> "'$v'"
-                }
-                sql = sql.replace(":${it.key}", value)
-            }
-            lastExtractedAt = (params[lastExtractedAtColumnName] as? Timestamp)?.toInstant()
+        batch.forEach { data ->
+            val preparedSql = prepareSql(sql, data)
+            lastExtractedAt = getLastExtractedTimestamp(data)
             if (lastExtractedAt == null) {
                 return LoadResult(
                     processedRows = 0,
                     lastProcessedAt = null,
                     success = false,
-                    errorMessage = "Error during loading data with loader $name: Missing or invalid '$lastExtractedAtColumnName' value in params $params"
+                    errorMessage = "Error during loading data with loader $name: Missing timestamp column in the extracted data"
                 )
             }
-            stmts.add(sql)
+            stmts.add(preparedSql)
         }
         val duration = try {
             newSuspendedTransaction(db = database) {
