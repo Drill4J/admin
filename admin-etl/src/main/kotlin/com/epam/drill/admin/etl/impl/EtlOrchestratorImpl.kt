@@ -28,7 +28,7 @@ import kotlin.system.measureTimeMillis
 open class EtlOrchestratorImpl(
     open val pipelines: List<EtlPipeline<*>>,
     open val metadataRepository: EtlMetadataRepository,
-    open val batchSize: Int = 100
+    open val batchSize: Int = 1000
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 

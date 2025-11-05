@@ -99,7 +99,7 @@ open class SqlDataExtractor(
         ) { rs ->
             parseResultSet(rs)
         } ?: emptyList()
-        logger.debug { "ETL [$name] extracted ${result.size} rows, offset $offset" }
+        logger.debug { "ETL [$name] extracted ${result.size} rows in ${duration}ms, offset $offset" }
         return result
     }
 
