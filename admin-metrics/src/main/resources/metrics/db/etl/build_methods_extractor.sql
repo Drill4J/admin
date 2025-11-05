@@ -22,8 +22,8 @@ WHERE m.created_at >= metrics.get_metrics_period(m.group_id)
        FROM raw_data.method_ignore_rules r
        WHERE r.group_id = m.group_id
         AND r.app_id = m.app_id
-        AND (r.name_pattern IS NOT NULL AND m.name::text like r.name_pattern::text
-            OR r.classname_pattern IS NOT NULL AND m.classname::text like r.classname_pattern::text
-            OR r.annotations_pattern IS NOT NULL AND m.annotations::text like r.annotations_pattern::text
-            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text like r.class_annotations_pattern::text))
+        AND (r.name_pattern IS NOT NULL AND m.name::text ~ r.name_pattern::text
+            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
+            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
+            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text))
 ORDER BY m.created_at ASC, m.signature

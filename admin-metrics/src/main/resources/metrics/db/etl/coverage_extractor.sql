@@ -25,4 +25,4 @@ WHERE c.created_at >= metrics.get_metrics_period(c.group_id)
     AND c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
 GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, c.test_session_id, c.test_launch_id, DATE_TRUNC('day', c.created_at)
-ORDER BY c.created_at ASC, c.signature ASC
+ORDER BY MAX(c.created_at) ASC, c.signature ASC
