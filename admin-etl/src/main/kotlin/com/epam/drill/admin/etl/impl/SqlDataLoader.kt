@@ -89,7 +89,7 @@ abstract class SqlDataLoader<T>(
                 execInBatch(stmts)
                 duration
             }.also { duration ->
-                logger.debug { "ETL [$name] loaded ${stmts.size} rows in ${duration}ms, batch: ${batchNo.incrementAndGet()}" }
+                logger.debug { "ETL loader [$name] loaded ${stmts.size} rows in ${duration}ms, batch: ${batchNo.incrementAndGet()}" }
             }
         } catch (e: Exception) {
             return LoadResult(

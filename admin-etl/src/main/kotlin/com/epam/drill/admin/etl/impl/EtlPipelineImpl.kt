@@ -21,15 +21,11 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.LoadResult
 import com.epam.drill.admin.etl.iterator.CompletableSharedFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -48,36 +44,10 @@ open class EtlPipelineImpl<T>(
         untilTimestamp: Instant,
         onLoadCompleted: suspend (String, LoadResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
+        logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
         var results = LoadResult.EMPTY
         val duration = measureTimeMillis {
-            logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
-            val flow = CompletableSharedFlow<T>(
-                replay = 0,
-                extraBufferCapacity = 0
-            )
-            results = loaders.map { loader ->
-                async {
-                    try {
-                        loader.load(sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
-                            .also { onLoadCompleted(loader.name, it) }
-                    } catch (e: Exception) {
-                        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
-                        LoadResult(
-                            success = false,
-                            errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
-                        ).also { onLoadCompleted(loader.name, it) }
-                    }
-                }
-            }.also { jobs ->
-                try {
-                    // Start extractor only after all jobs are ready to consume data
-                    flow.waitForSubscribers(jobs.count { it.isActive })
-                    extractor.extract(sinceTimestamp, untilTimestamp, flow)
-                } finally {
-                    // Complete the flow to signal jobs that extraction is done
-                    flow.complete()
-                }
-            }.awaitAll().min()
+            results = processEtl(sinceTimestamp, untilTimestamp, onLoadCompleted)
         }
         logger.debug {
             if (results.processedRows == 0 && results.success) {
@@ -92,5 +62,55 @@ open class EtlPipelineImpl<T>(
             success = results.success,
             errorMessage = results.errorMessage
         )
+    }
+
+    private suspend fun CoroutineScope.processEtl(
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        onLoadCompleted: suspend (String, LoadResult) -> Unit
+    ): LoadResult {
+        val flow = CompletableSharedFlow<T>(
+            replay = 0,
+            extraBufferCapacity = bufferSize
+        )
+        return loaders.map { loader ->
+            async {
+                loadData(loader, sinceTimestamp, untilTimestamp, flow, onLoadCompleted)
+            }
+        }.also { jobs ->
+            extractData(flow, jobs, sinceTimestamp, untilTimestamp)
+        }.awaitAll().min()
+    }
+
+    private suspend fun extractData(
+        flow: CompletableSharedFlow<T>,
+        jobs: List<Deferred<LoadResult>>,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant
+    ) {
+        try {
+            // Start extractor only after all jobs are ready to consume data otherwise data may be lost
+            flow.waitForSubscribers(jobs.count { it.isActive })
+            extractor.extract(sinceTimestamp, untilTimestamp, flow)
+        } finally {
+            // Complete the flow to signal jobs that extraction is done
+            flow.complete()
+        }
+    }
+
+    private suspend fun loadData(
+        loader: DataLoader<T>,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        flow: CompletableSharedFlow<T>,
+        onLoadCompleted: suspend (String, LoadResult) -> Unit
+    ): LoadResult = try {
+        loader.load(sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
+    } catch (e: Exception) {
+        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
+        LoadResult(
+            success = false,
+            errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
+        ).also { onLoadCompleted(loader.name, it) }
     }
 }

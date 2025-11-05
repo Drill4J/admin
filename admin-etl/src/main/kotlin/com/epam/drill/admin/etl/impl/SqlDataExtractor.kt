@@ -17,10 +17,7 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.MutableSharedFlow
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Database
@@ -79,7 +76,7 @@ abstract class SqlDataExtractor<T>(
                     resultSet = stmt.executeQuery()
                 }
                 resultSet.use { rs ->
-                    logger.debug { "ETL [$name] extracted rows in ${duration}ms" }
+                    logger.debug { "ETL extractor [$name] extracted rows in ${duration}ms" }
                     collect(rs)
                 }
             }

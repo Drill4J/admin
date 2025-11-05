@@ -68,7 +68,9 @@ class ETLSimpleTest {
                 lastExtracted = it
                 rowsProcessed++
             }
-            return LoadResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed)
+            return LoadResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
+                onLoadCompleted(it)
+            }
         }
     }
 
@@ -129,7 +131,7 @@ class ETLSimpleTest {
     inner class SimpleOrchestrator(
         override val pipelines: List<EtlPipeline<SimpleClass>> = listOf(SimplePipelineImpl()),
         override val metadataRepository: EtlMetadataRepository = SimpleMetadataRepository()
-    ) : EtlOrchestratorImpl(pipelines, metadataRepository)
+    ) : EtlOrchestratorImpl("simple-etl", pipelines, metadataRepository)
 
     @BeforeEach
     fun setUp() {

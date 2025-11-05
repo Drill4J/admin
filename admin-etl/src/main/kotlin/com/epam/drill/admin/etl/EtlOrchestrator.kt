@@ -15,8 +15,11 @@
  */
 package com.epam.drill.admin.etl
 
+import java.time.Instant
+
 interface EtlOrchestrator {
-    suspend fun runAll(): List<EtlProcessingResult>
-    suspend fun run(pipeline: EtlPipeline<*>): EtlProcessingResult
+    val name: String
+    suspend fun runAll(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
+    suspend fun run(pipeline: EtlPipeline<*>, initTimestamp: Instant = Instant.EPOCH): EtlProcessingResult
 }
 

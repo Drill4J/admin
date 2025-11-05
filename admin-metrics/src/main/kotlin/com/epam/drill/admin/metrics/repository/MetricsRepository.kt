@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository
 
+import java.time.Instant
 import java.time.LocalDateTime
 
 interface MetricsRepository {
@@ -122,4 +123,6 @@ interface MetricsRepository {
     ): List<Map<String, Any?>>
 
     suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean = true)
+
+    suspend fun getMetricsPeriodDays(): Instant
 }

@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.job
 
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.metrics.repository.MetricsRepository
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
@@ -23,12 +24,13 @@ import org.quartz.JobExecutionContext
 
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
-    private val orchestrator: EtlOrchestrator
+    private val orchestrator: EtlOrchestrator,
+    private val metricsRepository: MetricsRepository
 ) : Job {
 
     override fun execute(context: JobExecutionContext) {
         runBlocking {
-            orchestrator.runAll()
+            orchestrator.runAll(metricsRepository.getMetricsPeriodDays())
         }
     }
 }

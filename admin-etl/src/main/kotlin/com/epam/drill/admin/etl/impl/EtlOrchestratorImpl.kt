@@ -26,18 +26,18 @@ import java.time.Instant
 import kotlin.system.measureTimeMillis
 
 open class EtlOrchestratorImpl(
+    override val name: String,
     open val pipelines: List<EtlPipeline<*>>,
     open val metadataRepository: EtlMetadataRepository,
-    open val batchSize: Int = 1000
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun runAll(): List<EtlProcessingResult> {
-        logger.debug("ETL started...")
+    override suspend fun runAll(initTimestamp: Instant): List<EtlProcessingResult> {
+        logger.debug("ETL [$name] started...")
         val results = mutableListOf<EtlProcessingResult>()
         val duration = measureTimeMillis {
             for (pipeline in pipelines) {
-                val result = run(pipeline)
+                val result = run(pipeline, initTimestamp)
                 results.add(result)
             }
         }
@@ -45,17 +45,23 @@ open class EtlOrchestratorImpl(
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { !it.success }
             if (rowsProcessed == 0 && failures == 0)
-                "ETL completed in ${duration}ms, no new rows"
+                "ETL [$name] completed in ${duration}ms, no new rows"
             else
-                "ETL completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL [$name] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return results
     }
 
-    override suspend fun run(pipeline: EtlPipeline<*>): EtlProcessingResult {
+    override suspend fun run(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
         val snapshotTime = Instant.now()
         val metadataList = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
-        val lastProcessedTime = findMinimumProcessedRowTimestamp(metadataList, pipeline.loaders.map { it.name }.toSet())
+        val loaderNames = pipeline.loaders.map { it.name }.toSet()
+        val lastProcessedTime = findMinimumProcessedRowTimestamp(
+            metadataList,
+            loaderNames,
+            initTimestamp
+        )
+
         try {
             val pipelineResult = pipeline.execute(
                 sinceTimestamp = lastProcessedTime,
@@ -96,17 +102,18 @@ open class EtlOrchestratorImpl(
 
     private fun findMinimumProcessedRowTimestamp(
         metadataList: List<EtlMetadata>,
-        loaderNames: Set<String>
+        loaderNames: Set<String>,
+        initTimestamp: Instant
     ): Instant {
         // If there is a new loader that has no metadata yet
         if (!loaderNames.all { it in metadataList.map(EtlMetadata::loaderName) })
-            return Instant.EPOCH
+            return initTimestamp
         // Find the minimum lastProcessedAt among the specified loaders to ensure all loaders have processed up to that point
         return metadataList
             .filter { it.loaderName in loaderNames }
             .minByOrNull { it.lastProcessedAt }
             ?.lastProcessedAt
-            ?: Instant.EPOCH
+            ?: initTimestamp
     }
 }
 

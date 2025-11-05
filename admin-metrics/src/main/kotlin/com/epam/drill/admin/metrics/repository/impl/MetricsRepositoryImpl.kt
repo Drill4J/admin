@@ -19,7 +19,9 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset.UTC
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -446,5 +448,13 @@ class MetricsRepositoryImpl : MetricsRepository {
             REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
             """.trimIndent()
         )
+    }
+
+    override suspend fun getMetricsPeriodDays(): Instant = transaction {
+        (executeQueryReturnMap(
+            """             
+                SELECT min(metrics.get_metrics_period(group_id)) AS period_days FROM metrics.builds GROUP BY group_id
+                 """.trimIndent()
+        ).first()["period_days"] as LocalDateTime).toInstant(UTC)
     }
 }
