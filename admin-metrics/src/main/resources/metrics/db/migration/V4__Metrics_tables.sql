@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS metrics.builds_table (
     creation_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id)
 );
-CREATE INDEX ON metrics.builds_table(group_id, app_id, build_id, created_at);
+CREATE INDEX ON metrics.builds_table(group_id, creation_day);
+CREATE INDEX ON metrics.builds_table(group_id, app_id, build_id);
 
 CREATE TABLE IF NOT EXISTS metrics.methods_table (
     group_id VARCHAR,
@@ -27,8 +28,10 @@ CREATE TABLE IF NOT EXISTS metrics.methods_table (
     return_type VARCHAR,
     body_checksum VARCHAR,
     probes_count INT,
+    creation_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, method_id)
 );
+CREATE INDEX ON metrics.methods_table(group_id, creation_day);
 CREATE INDEX ON metrics.methods_table (group_id, app_id, signature);
 
 CREATE TABLE IF NOT EXISTS metrics.build_methods_table (
@@ -36,10 +39,10 @@ CREATE TABLE IF NOT EXISTS metrics.build_methods_table (
     app_id VARCHAR,
     build_id VARCHAR,
     method_id VARCHAR(32),
-    probes_start INT,
-    method_num INT,
+    creation_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id, method_id)
 );
+CREATE INDEX ON metrics.build_methods_table(group_id, creation_day);
 
 CREATE TABLE IF NOT EXISTS metrics.test_launches_table (
     test_launch_id VARCHAR,
@@ -57,7 +60,9 @@ CREATE TABLE IF NOT EXISTS metrics.test_launches_table (
     success INT,
     PRIMARY KEY (group_id, test_launch_id)
 );
-CREATE INDEX ON metrics.test_launches_table(group_id, test_launch_id, created_at);
+CREATE INDEX ON metrics.test_launches_table(group_id, creation_day);
+CREATE INDEX ON metrics.test_launches_table(group_id, test_definition_id);
+CREATE INDEX ON metrics.test_launches_table(group_id, test_session_id);
 
 CREATE TABLE IF NOT EXISTS metrics.test_definitions_table (
     test_definition_id VARCHAR,
@@ -71,7 +76,9 @@ CREATE TABLE IF NOT EXISTS metrics.test_definitions_table (
     creation_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, test_definition_id)
 );
-CREATE INDEX ON metrics.test_definitions_table(group_id, test_definition_id, created_at);
+CREATE INDEX ON metrics.test_launches_table(group_id, creation_day);
+CREATE INDEX ON metrics.test_definitions_table(group_id, test_path);
+CREATE INDEX ON metrics.test_definitions_table(group_id, test_name);
 
 CREATE TABLE IF NOT EXISTS metrics.test_sessions_table (
     test_session_id VARCHAR,
@@ -83,7 +90,7 @@ CREATE TABLE IF NOT EXISTS metrics.test_sessions_table (
     created_by VARCHAR,
     PRIMARY KEY (group_id, test_session_id)
 );
-CREATE INDEX ON metrics.test_sessions_table(group_id, test_session_id, created_at);
+CREATE INDEX ON metrics.test_sessions_table(group_id, creation_day);
 
 CREATE TABLE IF NOT EXISTS metrics.method_coverage_table (
     group_id VARCHAR,
@@ -104,10 +111,11 @@ CREATE TABLE IF NOT EXISTS metrics.method_coverage_table (
     creation_day TIMESTAMP WITHOUT TIME ZONE
 );
 CREATE UNIQUE INDEX method_coverage_table_pk ON metrics.method_coverage_table (group_id, app_id, method_id, build_id, COALESCE(app_env_id,''), COALESCE(test_session_id,''), COALESCE(test_launch_id,''), creation_day);
+CREATE INDEX ON metrics.method_coverage_table(group_id, creation_day);
 CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, build_id);
 CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id);
-CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_launch_id);
-CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_session_id);
+CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_launch_id) WHERE test_launch_id IS NOT NULL;
+CREATE INDEX ON metrics.method_coverage_table(group_id, app_id, method_id, test_session_id) WHERE test_session_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS metrics.method_smartcoverage_table (
     group_id VARCHAR,
@@ -122,6 +130,7 @@ CREATE TABLE IF NOT EXISTS metrics.method_smartcoverage_table (
     probes VARBIT
 );
 CREATE UNIQUE INDEX method_smartcoverage_table_pk ON metrics.method_smartcoverage_table (group_id, app_id, method_id, COALESCE(branch,''), COALESCE(app_env_id,''), COALESCE(test_tags,'{}'), COALESCE(test_task_id,''), COALESCE(test_result,''), creation_day);
+CREATE INDEX ON metrics.method_smartcoverage_table(group_id, creation_day);
 CREATE INDEX ON metrics.method_smartcoverage_table(group_id, app_id, method_id);
 
 CREATE TABLE IF NOT EXISTS metrics.test_session_builds_table (
@@ -129,7 +138,9 @@ CREATE TABLE IF NOT EXISTS metrics.test_session_builds_table (
     app_id VARCHAR,
     build_id VARCHAR,
     test_session_id VARCHAR,
+    creation_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id, test_session_id)
 );
+CREATE INDEX ON metrics.test_session_builds_table(group_id, creation_day);
 CREATE INDEX ON metrics.test_session_builds_table(group_id, app_id, build_id);
-CREATE INDEX ON metrics.test_session_builds_table(group_id, app_id, test_session_id);
+CREATE INDEX ON metrics.test_session_builds_table(group_id, app_id, test_session_id) WHERE test_session_id IS NOT NULL;

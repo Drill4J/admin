@@ -7,7 +7,7 @@ SELECT
     ts.created_by,
     ts.created_at
 FROM raw_data.test_sessions ts
-WHERE ts.created_at > :since_timestamp
+WHERE ts.created_at >= metrics.get_metrics_period(ts.group_id)
+    AND ts.created_at > :since_timestamp
     AND ts.created_at <= :until_timestamp
 ORDER BY ts.created_at ASC, ts.id ASC
-

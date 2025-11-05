@@ -8,7 +8,8 @@ INSERT INTO metrics.methods_table (
     method_params,
     return_type,
     body_checksum,
-    probes_count
+    probes_count,
+    creation_day
 )
 VALUES (
     :group_id,
@@ -20,7 +21,8 @@ VALUES (
     :method_params,
     :return_type,
     :body_checksum,
-    :probes_count
+    :probes_count,
+    :creation_day
 )
 ON CONFLICT (
     group_id,

@@ -68,6 +68,7 @@ val metricsDIModule = DI.Module("metricsServices") {
                     testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
                     coveragePipeline, testSessionBuildsPipeline
                 ),
+                batchSize = 1000,
                 metadataRepository = instance()
             )
         )
