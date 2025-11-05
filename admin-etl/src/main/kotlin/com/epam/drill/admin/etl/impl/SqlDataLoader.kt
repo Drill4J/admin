@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataLoader
+import com.epam.drill.admin.etl.LoadResult
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -35,16 +36,16 @@ open class SqlDataLoader(
     override suspend fun load(
         data: Iterator<Map<String, Any?>>,
         batchSize: Int
-    ): DataLoader.LoadResult {
+    ): LoadResult {
         val batchParams = mutableListOf<Map<String, Any?>>()
         val batchNo = AtomicInteger(0)
-        var result: DataLoader.LoadResult = DataLoader.LoadResult.EMPTY
+        var result: LoadResult = LoadResult.EMPTY
 
         while (data.hasNext()) {
             val params = try {
                 data.next()
             } catch (e: Exception) {
-                return result + DataLoader.LoadResult(
+                return result + LoadResult(
                     success = false,
                     errorMessage = "Error during extraction data for loader $name: ${e.message ?: e.javaClass.simpleName}"
                 )
@@ -65,7 +66,7 @@ open class SqlDataLoader(
         return result
     }
 
-    private suspend fun execSqlInBatch(sqlUpsert: String, batchParams: List<Map<String, Any?>>, batchNo: AtomicInteger): DataLoader.LoadResult {
+    private suspend fun execSqlInBatch(sqlUpsert: String, batchParams: List<Map<String, Any?>>, batchNo: AtomicInteger): LoadResult {
         val stmts = mutableListOf<String>()
         var lastExtractedAt: Instant? = null
         batchParams.forEach { params ->
@@ -82,7 +83,7 @@ open class SqlDataLoader(
             }
             lastExtractedAt = (params[lastExtractedAtColumnName] as? Timestamp)?.toInstant()
             if (lastExtractedAt == null) {
-                return DataLoader.LoadResult(
+                return LoadResult(
                     processedRows = 0,
                     lastProcessedAt = null,
                     success = false,
@@ -99,12 +100,12 @@ open class SqlDataLoader(
                 logger.debug { "ETL [$name] loaded ${stmts.size} rows in ${duration}ms, batch: ${batchNo.incrementAndGet()}" }
             }
         } catch (e: Exception) {
-            return DataLoader.LoadResult(
+            return LoadResult(
                 success = false,
                 errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
             )
         }
-        return DataLoader.LoadResult(
+        return LoadResult(
             success = true,
             lastProcessedAt = lastExtractedAt,
             processedRows = stmts.size,

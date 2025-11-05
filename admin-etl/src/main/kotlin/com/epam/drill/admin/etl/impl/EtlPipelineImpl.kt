@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
+import com.epam.drill.admin.etl.LoadResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -39,9 +40,9 @@ open class EtlPipelineImpl<T>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         batchSize: Int,
-        onLoadCompleted: suspend (String, DataLoader.LoadResult) -> Unit
+        onLoadCompleted: suspend (String, LoadResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        var results = DataLoader.LoadResult.EMPTY
+        var results = LoadResult.EMPTY
         val duration = measureTimeMillis {
             logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
             val data = extractor.extract(sinceTimestamp, untilTimestamp, batchSize)
@@ -55,7 +56,7 @@ open class EtlPipelineImpl<T>(
                         }
                     } catch (e: Exception) {
                         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
-                        DataLoader.LoadResult(
+                        LoadResult(
                             success = false,
                             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
                         ).also { onLoadCompleted(loader.name, it) }

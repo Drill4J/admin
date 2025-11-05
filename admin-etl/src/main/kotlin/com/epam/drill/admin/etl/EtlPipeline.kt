@@ -25,7 +25,7 @@ interface EtlPipeline<T> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         batchSize: Int = 1000,
-        onLoadCompleted: suspend (loaderName: String, result: DataLoader.LoadResult) -> Unit = { l, r -> }
+        onLoadCompleted: suspend (loaderName: String, result: LoadResult) -> Unit = { l, r -> }
     ): EtlProcessingResult
 }
 

@@ -50,15 +50,15 @@ class ETLSimpleTest {
 
     inner class SimpleLoader : DataLoader<SimpleClass> {
         override val name = SIMPLE_LOADER
-        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): DataLoader.LoadResult {
+        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): LoadResult {
             val list = data.asSequence().toList()
-            return DataLoader.LoadResult(success = true, lastProcessedAt = list.last().createdAt, processedRows = list.count())
+            return LoadResult(success = true, lastProcessedAt = list.last().createdAt, processedRows = list.count())
         }
     }
 
     inner class FailingLoader : DataLoader<SimpleClass> {
         override val name = FAILING_LOADER
-        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): DataLoader.LoadResult {
+        override suspend fun load(data: Iterator<SimpleClass>, batchSize: Int): LoadResult {
             throw RuntimeException("Simulated loader failure")
         }
     }
