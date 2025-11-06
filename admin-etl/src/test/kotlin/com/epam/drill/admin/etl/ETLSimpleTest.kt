@@ -60,15 +60,15 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
-            onLoadCompleted: suspend (LoadResult) -> Unit
-        ): LoadResult {
+            onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+        ): EtlLoadingResult {
             var lastExtracted: SimpleClass? = null
             var rowsProcessed: Int = 0
             collector.collect {
                 lastExtracted = it
                 rowsProcessed++
             }
-            return LoadResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
+            return EtlLoadingResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
                 onLoadCompleted(it)
             }
         }
@@ -80,20 +80,14 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
-            onLoadCompleted: suspend (LoadResult) -> Unit
-        ): LoadResult {
+            onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+        ): EtlLoadingResult {
             collector.collect {
                 throw RuntimeException("Simulated loader failure")
             }
-            return LoadResult(success = false, errorMessage = "This should never be returned")
+            return EtlLoadingResult(success = false, errorMessage = "This should never be returned")
         }
     }
-
-    inner class SimplePipelineImpl(
-        override val name: String = SIMPLE_PIPELINE,
-        override val extractor: DataExtractor<SimpleClass> = SimpleExtractor(),
-        override val loaders: List<DataLoader<SimpleClass>> = listOf(SimpleLoader())
-    ) : EtlPipelineImpl<SimpleClass>(name, extractor, loaders)
 
     inner class SimpleMetadataRepository : EtlMetadataRepository {
         private var metadata = EtlMetadata(
@@ -128,10 +122,15 @@ class ETLSimpleTest {
         ): List<EtlMetadata> = listOf(metadata).filter { it.extractorName == extractorName && it.pipelineName == pipelineName }
     }
 
-    inner class SimpleOrchestrator(
-        override val pipelines: List<EtlPipeline<SimpleClass>> = listOf(SimplePipelineImpl()),
-        override val metadataRepository: EtlMetadataRepository = SimpleMetadataRepository()
-    ) : EtlOrchestratorImpl("simple-etl", pipelines, metadataRepository)
+    val simpleOrchestrator = EtlOrchestratorImpl("simple-etl",
+        listOf(
+            EtlPipelineImpl("simple-pipeline",
+                extractor = SimpleExtractor(),
+                loaders = listOf(SimpleLoader())
+            )
+        ),
+        metadataRepository = SimpleMetadataRepository()
+    )
 
     @BeforeEach
     fun setUp() {
@@ -141,7 +140,7 @@ class ETLSimpleTest {
 
     @Test
     fun `given success loading, ETL orchestrator should move lastProcessedAt forward`() = runBlocking {
-        val orchestrator = SimpleOrchestrator()
+        val orchestrator = simpleOrchestrator
 
         // Get initial lastProcessedAt timestamp
         val initialMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
@@ -151,7 +150,7 @@ class ETLSimpleTest {
         addNewRecords(3)
 
         // Run ETL
-        val result = orchestrator.runAll()
+        val result = orchestrator.run()
 
         // Verify ETL was successful
         assertTrue(result.first().success)
@@ -167,9 +166,15 @@ class ETLSimpleTest {
 
     @Test
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
-        val orchestrator = SimpleOrchestrator(listOf(SimplePipelineImpl(
-            loaders = listOf(FailingLoader())
-        )))
+        val orchestrator = EtlOrchestratorImpl("failed-etl",
+            listOf(
+                EtlPipelineImpl("failed-pipeline",
+                    extractor = SimpleExtractor(),
+                    loaders = listOf(FailingLoader())
+                )
+            ),
+            metadataRepository = SimpleMetadataRepository()
+        )
 
         // Get initial lastProcessedAt timestamp (should be EPOCH)
         val initialMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
@@ -179,7 +184,7 @@ class ETLSimpleTest {
         addNewRecords(3)
 
         // Run ETL - should fail
-        val result = orchestrator.runAll()
+        val result = orchestrator.run()
 
         // Verify ETL failed
         assertTrue(!result.first().success)
@@ -195,12 +200,12 @@ class ETLSimpleTest {
 
     @Test
     fun `given several launches, ETL orchestrator should process only new data`() = runBlocking {
-        val orchestrator = SimpleOrchestrator()
+        val orchestrator = simpleOrchestrator
 
         // Add initial data
         addNewRecords(5)
         // First run ETL — should process all initial data
-        val result1 = orchestrator.runAll()
+        val result1 = orchestrator.run()
         assertTrue(result1.first().success)
         assertEquals(5, result1.first().rowsProcessed)
 
@@ -208,7 +213,7 @@ class ETLSimpleTest {
         // Add new data after last processed timestamp
         addNewRecords(3)
         // Second run ETL — should process only new data
-        val result2 = orchestrator.runAll()
+        val result2 = orchestrator.run()
         println(result2.first().errorMessage)
         assertTrue(result2.first().success)
         assertEquals(3, result2.first().rowsProcessed)

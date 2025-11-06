@@ -13,18 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl
+package com.epam.drill.admin.etl.flow
 
-import java.time.Instant
+import kotlinx.coroutines.flow.Flow
 
-interface EtlPipeline<T> {
-    val name: String
-    val extractor: DataExtractor<T>
-    val loaders: List<DataLoader<T>>
-    suspend fun execute(
-        sinceTimestamp: Instant,
-        untilTimestamp: Instant,
-        onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { l, r -> }
-    ): EtlProcessingResult
+interface StoppableFlow<out T>: Flow<T> {
+    suspend fun stop()
 }
-

@@ -13,8 +13,7 @@ SELECT
     CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END AS success,
     tl.created_at
 FROM raw_data.test_launches tl
-WHERE tl.created_at >= metrics.get_metrics_period(tl.group_id)
-    AND tl.created_at > :since_timestamp
+WHERE tl.created_at > :since_timestamp
     AND tl.created_at <= :until_timestamp
 ORDER BY tl.created_at ASC, tl.id ASC
 

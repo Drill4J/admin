@@ -21,8 +21,14 @@ import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.system.measureTimeMillis
 
 open class EtlOrchestratorImpl(
@@ -32,14 +38,15 @@ open class EtlOrchestratorImpl(
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun runAll(initTimestamp: Instant): List<EtlProcessingResult> {
-        logger.debug("ETL [$name] started...")
-        val results = mutableListOf<EtlProcessingResult>()
+    override suspend fun run(initTimestamp: Instant): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
+        logger.info("ETL [$name] started with init timestamp $initTimestamp...")
+        val results = CopyOnWriteArrayList<EtlProcessingResult>()
         val duration = measureTimeMillis {
-            for (pipeline in pipelines) {
-                val result = run(pipeline, initTimestamp)
-                results.add(result)
-            }
+            pipelines.map { pipeline ->
+                async {
+                    results += runPipeline(pipeline, initTimestamp)
+                }
+            }.awaitAll()
         }
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
@@ -49,10 +56,10 @@ open class EtlOrchestratorImpl(
             else
                 "ETL [$name] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
-        return results
+        return@withContext results
     }
 
-    override suspend fun run(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
+    private suspend fun runPipeline(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
         val snapshotTime = Instant.now()
         val metadataList = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
         val loaderNames = pipeline.loaders.map { it.name }.toSet()
@@ -65,28 +72,26 @@ open class EtlOrchestratorImpl(
         try {
             val pipelineResult = pipeline.execute(
                 sinceTimestamp = lastProcessedTime,
-                untilTimestamp = snapshotTime,
-                onLoadCompleted = { loaderName, result ->
-                    try {
-                        val oldMetadata = metadataList.find { it.loaderName == loaderName }
-                        metadataRepository.saveMetadata(
-                            EtlMetadata(
-                                pipelineName = pipeline.name,
-                                extractorName = pipeline.extractor.name,
-                                loaderName = loaderName,
-                                status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
-                                lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
-                                errorMessage = result.errorMessage,
-                                lastRunAt = snapshotTime,
-                                duration = ((oldMetadata?.duration ?: 0L) + (result.duration ?: 0L)),
-                                rowsProcessed = ((oldMetadata?.rowsProcessed ?: 0) + result.processedRows)
-                            )
+                untilTimestamp = snapshotTime
+            ) { loaderName, result ->
+                try {
+                    metadataRepository.saveMetadata(
+                        EtlMetadata(
+                            pipelineName = pipeline.name,
+                            extractorName = pipeline.extractor.name,
+                            loaderName = loaderName,
+                            status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
+                            lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
+                            errorMessage = result.errorMessage,
+                            lastRunAt = snapshotTime,
+                            duration = result.duration ?: 0L,
+                            rowsProcessed = result.processedRows
                         )
-                    } catch (e: Throwable) {
-                        logger.error("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
-                    }
+                    )
+                } catch (e: Throwable) {
+                    logger.error("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
                 }
-            )
+            }
             return pipelineResult
         } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
@@ -112,7 +117,7 @@ open class EtlOrchestratorImpl(
         return metadataList
             .filter { it.loaderName in loaderNames }
             .minByOrNull { it.lastProcessedAt }
-            ?.lastProcessedAt
+            ?.lastProcessedAt?.takeIf { it > initTimestamp }
             ?: initTimestamp
     }
 }

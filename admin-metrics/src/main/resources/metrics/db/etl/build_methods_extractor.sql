@@ -15,8 +15,7 @@ SELECT
     DATE_TRUNC('day', m.created_at) AS creation_day,
     m.created_at AS created_at
 from raw_data.methods m
-WHERE m.created_at >= metrics.get_metrics_period(m.group_id)
-   AND m.created_at > :since_timestamp
+WHERE m.created_at > :since_timestamp
    AND m.created_at <= :until_timestamp
    AND NOT EXISTS (SELECT 1
        FROM raw_data.method_ignore_rules r

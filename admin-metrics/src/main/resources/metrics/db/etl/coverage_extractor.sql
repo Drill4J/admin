@@ -21,8 +21,7 @@ JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.
 LEFT JOIN raw_data.test_launches tl ON tl.group_id = c.group_id AND tl.id = c.test_launch_id
 LEFT JOIN raw_data.test_definitions td ON td.group_id = tl.group_id AND td.id = tl.test_definition_id
 LEFT JOIN raw_data.test_sessions ts ON ts.group_id = c.group_id AND ts.id = c.test_session_id
-WHERE c.created_at >= metrics.get_metrics_period(c.group_id)
-    AND c.created_at > :since_timestamp
+WHERE c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
 GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, c.test_session_id, c.test_launch_id, DATE_TRUNC('day', c.created_at)
 ORDER BY MAX(c.created_at) ASC, c.signature ASC

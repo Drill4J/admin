@@ -27,6 +27,6 @@ val refreshMaterializedViewsJob: JobDetail = JobBuilder.newJob(RefreshMaterializ
 
 val updateMetricsEtlJob: JobDetail = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
     .storeDurably()
-    .withDescription("Job for ETL process.")
-    .withIdentity("etlJob", "metricsJobs")
+    .withDescription("Job for updating metrics using ETL processing.")
+    .withIdentity("metricsEtl", "metricsJobs")
     .build()

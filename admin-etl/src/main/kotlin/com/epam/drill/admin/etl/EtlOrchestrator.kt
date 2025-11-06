@@ -19,7 +19,6 @@ import java.time.Instant
 
 interface EtlOrchestrator {
     val name: String
-    suspend fun runAll(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
-    suspend fun run(pipeline: EtlPipeline<*>, initTimestamp: Instant = Instant.EPOCH): EtlProcessingResult
+    suspend fun run(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
 }
 

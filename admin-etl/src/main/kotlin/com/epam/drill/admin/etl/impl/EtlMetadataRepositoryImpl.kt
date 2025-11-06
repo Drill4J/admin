@@ -26,7 +26,6 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.upsert
-import java.time.Instant
 
 class EtlMetadataRepositoryImpl(
     private val database: Database,
@@ -61,6 +60,16 @@ class EtlMetadataRepositoryImpl(
     }
 
     override suspend fun saveMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
+        val existingMetadata = metadataTable.selectAll()
+            .andWhere { metadataTable.pipelineName eq metadata.pipelineName }
+            .andWhere { metadataTable.extractorName eq metadata.extractorName }
+            .andWhere { metadataTable.loaderName eq metadata.loaderName }
+            .map(::mapMetadata)
+            .singleOrNull()
+
+        val accumulatedDuration = (existingMetadata?.duration ?: 0L) + metadata.duration
+        val accumulatedRowsProcessed = (existingMetadata?.rowsProcessed ?: 0) + metadata.rowsProcessed
+
         metadataTable.upsert {
             it[pipelineName] = metadata.pipelineName
             it[extractorName] = metadata.extractorName
@@ -68,8 +77,8 @@ class EtlMetadataRepositoryImpl(
             it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
             it[lastRunAt] = metadata.lastRunAt
-            it[duration] = metadata.duration
-            it[rowsProcessed] = metadata.rowsProcessed
+            it[duration] = accumulatedDuration
+            it[rowsProcessed] = accumulatedRowsProcessed
             it[errorMessage] = metadata.errorMessage
         }
     }

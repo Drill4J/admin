@@ -24,6 +24,6 @@ interface DataLoader<T> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
-        onLoadCompleted: suspend (LoadResult) -> Unit
-    ): LoadResult
+        onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+    ): EtlLoadingResult
 }

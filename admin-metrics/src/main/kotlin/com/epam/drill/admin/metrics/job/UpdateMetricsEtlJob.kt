@@ -30,7 +30,7 @@ class UpdateMetricsEtlJob(
 
     override fun execute(context: JobExecutionContext) {
         runBlocking {
-            orchestrator.runAll(metricsRepository.getMetricsPeriodDays())
+            orchestrator.run(metricsRepository.getMetricsPeriodDays())
         }
     }
 }

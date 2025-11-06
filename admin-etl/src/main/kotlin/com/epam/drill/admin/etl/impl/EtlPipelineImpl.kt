@@ -19,19 +19,20 @@ import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
-import com.epam.drill.admin.etl.LoadResult
-import com.epam.drill.admin.etl.iterator.CompletableSharedFlow
+import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.flow.CompletableSharedFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
 import kotlin.system.measureTimeMillis
 
-open class EtlPipelineImpl<T>(
+class EtlPipelineImpl<T>(
     override val name: String,
     override val extractor: DataExtractor<T>,
     override val loaders: List<DataLoader<T>>,
@@ -42,10 +43,10 @@ open class EtlPipelineImpl<T>(
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        onLoadCompleted: suspend (String, LoadResult) -> Unit
+        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        logger.debug { "ETL pipeline [$name] started since $sinceTimestamp" }
-        var results = LoadResult.EMPTY
+        logger.debug { "ETL pipeline [$name] started since $sinceTimestamp..." }
+        var results = EtlLoadingResult.EMPTY
         val duration = measureTimeMillis {
             results = processEtl(sinceTimestamp, untilTimestamp, onLoadCompleted)
         }
@@ -67,8 +68,8 @@ open class EtlPipelineImpl<T>(
     private suspend fun CoroutineScope.processEtl(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        onLoadCompleted: suspend (String, LoadResult) -> Unit
-    ): LoadResult {
+        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
+    ): EtlLoadingResult {
         val flow = CompletableSharedFlow<T>(
             replay = 0,
             extraBufferCapacity = bufferSize
@@ -84,7 +85,7 @@ open class EtlPipelineImpl<T>(
 
     private suspend fun extractData(
         flow: CompletableSharedFlow<T>,
-        jobs: List<Deferred<LoadResult>>,
+        jobs: List<Deferred<EtlLoadingResult>>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant
     ) {
@@ -102,13 +103,13 @@ open class EtlPipelineImpl<T>(
         loader: DataLoader<T>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        flow: CompletableSharedFlow<T>,
-        onLoadCompleted: suspend (String, LoadResult) -> Unit
-    ): LoadResult = try {
+        flow: Flow<T>,
+        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
+    ): EtlLoadingResult = try {
         loader.load(sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
     } catch (e: Exception) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
-        LoadResult(
+        EtlLoadingResult(
             success = false,
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
         ).also { onLoadCompleted(loader.name, it) }
