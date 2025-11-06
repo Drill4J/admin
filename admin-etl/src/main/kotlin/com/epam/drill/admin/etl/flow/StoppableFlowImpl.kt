@@ -40,17 +40,22 @@ class StoppableFlowImpl<out T>(
 fun <T> Flow<T>.stoppable(): StoppableFlow<T> = StoppableFlowImpl(this)
 
 fun <T> Flow<T>.takeUntil(other: Flow<*>): Flow<T> = channelFlow {
-    val main = launch {
-        collect { send(it) }
+    val scope = this
+    val mainJob = launch {
+        try {
+            collect { send(it) }
+        } finally {
+            scope.close()
+        }
     }
-    val stopper = launch {
+    val stopperJob = launch {
         other.collect {
-            main.cancel()
-            close()
+            mainJob.cancel()
+            scope.close()
         }
     }
     awaitClose {
-        main.cancel()
-        stopper.cancel()
+        mainJob.cancel()
+        stopperJob.cancel()
     }
 }
