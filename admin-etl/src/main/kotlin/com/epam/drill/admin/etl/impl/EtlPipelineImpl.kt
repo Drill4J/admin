@@ -45,7 +45,7 @@ class EtlPipelineImpl<T>(
         untilTimestamp: Instant,
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        logger.debug { "ETL pipeline [$name] started since $sinceTimestamp..." }
+        logger.debug { "ETL pipeline [$name] starting since $sinceTimestamp..." }
         var results = EtlLoadingResult.EMPTY
         val duration = measureTimeMillis {
             results = processEtl(sinceTimestamp, untilTimestamp, onLoadCompleted)

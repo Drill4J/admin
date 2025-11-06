@@ -32,7 +32,8 @@ import kotlin.use
 abstract class SqlDataExtractor<T>(
     override val name: String,
     open val sqlQuery: String,
-    open val database: Database
+    open val database: Database,
+    open val fetchSize: Int = 2000,
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -69,14 +70,17 @@ abstract class SqlDataExtractor<T>(
         collect: suspend (ResultSet) -> Unit
     ) {
         newSuspendedTransaction(Dispatchers.IO) {
+            connection.autoCommit = false
+            connection.readOnly = true
             connection.prepareStatement(sql, false).let { stmt ->
+                stmt.fetchSize = fetchSize
                 stmt.fillParameters(args)
                 val resultSet: ResultSet
                 val duration = measureTimeMillis {
                     resultSet = stmt.executeQuery()
                 }
+                logger.debug { "ETL extractor [$name] extracted rows in ${duration}ms" }
                 resultSet.use { rs ->
-                    logger.debug { "ETL extractor [$name] extracted rows in ${duration}ms" }
                     collect(rs)
                 }
             }

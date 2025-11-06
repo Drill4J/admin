@@ -23,7 +23,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 abstract class SqlDataLoader<T>(
     override val name: String,
     override val batchSize: Int,
-    open val sql: String,
+    open val sqlUpsert: String,
     open val database: Database
 ) : BatchDataLoader<T>(name, batchSize) {
     private val logger = KotlinLogging.logger {}
@@ -36,15 +36,13 @@ abstract class SqlDataLoader<T>(
     ): BatchResult {
         val stmts = mutableListOf<String>()
         batch.forEach { data ->
-            val preparedSql = prepareSql(sql, data)
+            val preparedSql = prepareSql(sqlUpsert, data)
             stmts += preparedSql
         }
         val duration = try {
             newSuspendedTransaction(db = database) {
                 execInBatch(stmts)
                 duration
-            }.also { duration ->
-                logger.debug { "ETL loader [$name] loaded ${stmts.size} rows in ${duration}ms, batch: $batchNo" }
             }
         } catch (e: Exception) {
             return BatchResult(

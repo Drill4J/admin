@@ -27,8 +27,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.Collections
 import kotlin.system.measureTimeMillis
 
 open class EtlOrchestratorImpl(
@@ -39,8 +38,8 @@ open class EtlOrchestratorImpl(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun run(initTimestamp: Instant): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info("ETL [$name] started with init timestamp $initTimestamp...")
-        val results = CopyOnWriteArrayList<EtlProcessingResult>()
+        logger.info("ETL [$name] starting with init timestamp $initTimestamp...")
+        val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val duration = measureTimeMillis {
             pipelines.map { pipeline ->
                 async {
@@ -89,7 +88,7 @@ open class EtlOrchestratorImpl(
                         )
                     )
                 } catch (e: Throwable) {
-                    logger.error("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                    logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
                 }
             }
             return pipelineResult

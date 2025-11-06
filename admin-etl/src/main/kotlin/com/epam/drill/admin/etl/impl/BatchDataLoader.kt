@@ -21,6 +21,7 @@ import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.flow.StoppableFlow
 import com.epam.drill.admin.etl.flow.stoppable
 import kotlinx.coroutines.flow.Flow
+import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -28,6 +29,7 @@ abstract class BatchDataLoader<T>(
     override val name: String,
     open val batchSize: Int = 1000
 ) : DataLoader<T> {
+    private val logger = KotlinLogging.logger {}
 
     override suspend fun load(
         sinceTimestamp: Instant,
@@ -75,10 +77,6 @@ abstract class BatchDataLoader<T>(
                 return@collect
             }
 
-            //TODO remove after checking
-            if (!result.success) {
-                println("!!! Stopping data load due to previous errors.")
-            }
             buffer += row
             previousTimestamp = currentTimestamp
         }
@@ -112,5 +110,6 @@ abstract class BatchDataLoader<T>(
     }.also {
         buffer.clear()
         onLoadCompleted(it)
+        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration}ms, batch: $batchNo, success: ${it.success}" }
     }
 }
