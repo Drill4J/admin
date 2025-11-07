@@ -174,9 +174,11 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
 
-        val packageNamePattern: String? = null,
+        val packageName: String? = null,
         val className: String? = null,
-        val methodSignature: String? = null,
+        val methodName: String? = null,
+        @Deprecated("Use packageName instead")
+        val packageNamePattern: String? = null,
         @Deprecated("Use className instead")
         val classNamePattern: String? = null,
 
@@ -208,9 +210,11 @@ class Metrics {
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
 
-        val packageNamePattern: String? = null,
+        val packageName: String? = null,
         val className: String? = null,
-        val methodSignature: String? = null,
+        val methodName: String? = null,
+        @Deprecated("Use packageName instead")
+        val packageNamePattern: String? = null,
         @Deprecated("Use className instead")
         val classNamePattern: String? = null,
 
@@ -444,9 +448,9 @@ fun Route.getImpactedTests() {
                 testName = params.testName
             ),
             methodCriteria = MethodCriteria(
-                packageNamePattern = params.packageNamePattern,
+                packageName = params.packageName ?: params.packageNamePattern,
                 className = params.className ?: params.classNamePattern,
-                methodSignature = params.methodSignature
+                methodName = params.methodName
             ),
             coverageCriteria = CoverageCriteria(
                 branches = params.coverageBranches,
@@ -495,9 +499,9 @@ fun Route.getImpactedMethods() {
                 testName = params.testName
             ),
             methodCriteria = MethodCriteria(
-                packageNamePattern = params.packageNamePattern,
+                packageName = params.packageName ?: params.packageNamePattern,
                 className = params.className ?: params.classNamePattern,
-                methodSignature = params.methodSignature
+                methodName = params.methodName
             ),
             coverageCriteria = CoverageCriteria(
                 branches = params.coverageBranches,

@@ -375,8 +375,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testNamePattern: String?,
 
         packageNamePattern: String?,
-        className: String?,
-        methodSignature: String?,
+        methodSignaturePattern: String?,
 
         coverageBuildIds: List<String>,
         coverageBranches: List<String>,
@@ -408,8 +407,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name => ?", className)
-            appendOptional(", input_method_signature => ?", methodSignature)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
             appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)
@@ -435,8 +433,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testNamePattern: String?,
 
         packageNamePattern: String?,
-        className: String?,
-        methodSignature: String?,
+        methodSignaturePattern: String?,
 
         coverageBuildIds: List<String>,
         coverageBranches: List<String>,
@@ -467,9 +464,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
 
-            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name => ?", className)
-            appendOptional(", input_method_signature => ?", methodSignature)
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
             appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)

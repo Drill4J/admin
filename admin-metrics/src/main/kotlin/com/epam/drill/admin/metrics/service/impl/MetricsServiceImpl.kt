@@ -471,8 +471,7 @@ class MetricsServiceImpl(
                 testNamePattern = testCriteria.testName,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
-                className = methodCriteria.className,
-                methodSignature = methodCriteria.methodSignature,
+                methodSignaturePattern = methodCriteria.signaturePattern,
 
                 coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
@@ -528,8 +527,7 @@ class MetricsServiceImpl(
                 testNamePattern = testCriteria.testName,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
-                className = methodCriteria.className,
-                methodSignature = methodCriteria.methodSignature,
+                methodSignaturePattern = methodCriteria.signaturePattern,
 
                 coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
