@@ -10,8 +10,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
         group_id,
         app_id,
         probe_start_pos,--deprecated
-        (SUM(probes_count) OVER (PARTITION BY build_id ORDER BY signature)) - probes_count + 1 AS probes_start,
-        (COUNT(*) OVER (PARTITION BY build_id ORDER BY signature)) AS method_num
+        NULL::BIGINT AS probes_start,--deprecated
+        NULL::BIGINT AS method_num --deprecated
     FROM raw_data.methods m
     WHERE probes_count > 0
         AND NOT EXISTS (
