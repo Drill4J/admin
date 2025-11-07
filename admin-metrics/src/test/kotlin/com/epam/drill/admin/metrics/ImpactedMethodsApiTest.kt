@@ -33,6 +33,7 @@ import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ImpactedMethodsApiTest : DatabaseTests({
@@ -40,19 +41,33 @@ class ImpactedMethodsApiTest : DatabaseTests({
     MetricsDatabaseConfig.init(it)
 }) {
     @Test
-    fun `given a build with changes, impacted methods service should return a list of impacted methods`(): Unit =
+    fun `given baseline build tests, impacted methods service should return only impacted methods compared to baseline`(): Unit =
         runBlocking {
             val client = runDrillApplication {
+                // build1 has method1 and method2
                 deployInstance(build1, arrayOf(method1, method2))
+                // test1 hits method1 on build1
                 launchTest(
                     session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 1)
+                        method1 to probesOf(0, 1),
+                        method2 to probesOf(0, 0, 0)
                     )
                 )
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
+                // test2 hits method2 on build1
+                launchTest(
+                    session1, test2, build1, arrayOf(
+                        method1 to probesOf(0, 0), method2 to probesOf(0, 0, 1)
+                    )
+                )
+                // build2 has changed method2 compared to build1
+                deployInstance(
+                    build2, arrayOf(
+                        method1, method2.changed()
+                    )
+                )
             }
 
+            // Check impacted methods in build2 compared to build1
             client.get("/metrics/impacted-methods") {
                 parameter("groupId", build1.groupId)
                 parameter("appId", build1.appId)
@@ -64,6 +79,100 @@ class ImpactedMethodsApiTest : DatabaseTests({
                 assertTrue(data.isNotEmpty())
                 assertTrue(data.any { it["name"] == method2.name })
                 assertTrue(data.any { (it["impactedTests"] as Int) == 1 })
+            }
+        }
+
+    @Test
+    fun `given partial baseline build tests, impacted methods service should return missing impacted methods from other builds`(): Unit =
+        runBlocking {
+            val client = runDrillApplication {
+                // build1 has method1 and method2
+                deployInstance(build1, arrayOf(method1, method2))
+                // test1 hits method1 on build1
+                launchTest(
+                    session1, test1, build1, arrayOf(
+                        method1 to probesOf(0, 1),
+                        method2 to probesOf(0, 0, 0)
+                    )
+                )
+                // test2 hits method2 on build1
+                launchTest(
+                    session1, test2, build1, arrayOf(
+                        method1 to probesOf(0, 0),
+                        method2 to probesOf(0, 0, 1)
+                    )
+                )
+                // build2 has changed method2 compared to build1
+                deployInstance(build2, arrayOf(method1, method2.changed()))
+                launchTest(
+                    session2, test2, build2, arrayOf(
+                        method1 to probesOf(0, 0),
+                        method2 to probesOf(0, 0, 1) // test2 hits changed method2
+                    )
+                )
+                // build3 has changed method1 compared to build2
+                deployInstance(build3, arrayOf(method1.changed(), method2.changed()))
+            }
+
+            // Check impacted methods for build3 against build2
+            client.get("/metrics/impacted-methods") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build3.buildVersion)
+                parameter("baselineBuildVersion", build2.buildVersion)
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(1, data.size)
+                assertTrue(data.any { it["name"] == method1.name })
+                assertTrue(data.any { (it["impactedTests"] as Int) == 1 })
+            }
+        }
+
+    @Test
+    fun `given partial baseline build tests with onlyBaselineBuildTestsEnabled, impacted methods service should return impacted methods from only baseline build tests`(): Unit =
+        runBlocking {
+            val client = runDrillApplication {
+                // build1 has method1 and method2
+                deployInstance(build1, arrayOf(method1, method2))
+                // test1 hits method1 on build1
+                launchTest(
+                    session1, test1, build1, arrayOf(
+                        method1 to probesOf(0, 1),
+                        method2 to probesOf(0, 0, 0)
+                    )
+                )
+                // test2 hits method2 on build1
+                launchTest(
+                    session1, test2, build1, arrayOf(
+                        method1 to probesOf(0, 0),
+                        method2 to probesOf(0, 0, 1)
+                    )
+                )
+                // build2 has changed method2 compared to build1
+                deployInstance(build2, arrayOf(method1, method2.changed()))
+                // test2 hits changed method2 on build2
+                launchTest(
+                    session2, test2, build2, arrayOf(
+                        method1 to probesOf(0, 0),
+                        method2 to probesOf(0, 0, 1)
+                    )
+                )
+                // build3 has changed method1 compared to build2
+                deployInstance(build3, arrayOf(method1.changed(), method2.changed()))
+            }
+
+            // Check impacted methods for build3 against build2 with onlyBaselineBuildTestsEnabled=true
+            client.get("/metrics/impacted-methods") {
+                parameter("groupId", build1.groupId)
+                parameter("appId", build1.appId)
+                parameter("buildVersion", build3.buildVersion)
+                parameter("baselineBuildVersion", build2.buildVersion)
+                parameter("onlyBaselineBuildTestsEnabled", true)
+            }.assertSuccessStatus().apply {
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<Map<String, Any>>>("$.data")
+                assertEquals(0, data.size)
             }
         }
 
