@@ -40,6 +40,29 @@ class ImpactedTestsApiTest : DatabaseTests({
     RawDataWriterDatabaseConfig.init(it)
     MetricsDatabaseConfig.init(it)
 }) {
+    fun test() {
+        runBlocking {
+            drill {
+                build1 has setOf(method1, method2)
+                test1 covers method1 on build1
+                test2 covers method2 on build1
+                build2 hasModified method2 comparedTo build1
+            }.apply {
+                get("/metrics/impacted-tests") {
+                    parameter("groupId", build1.groupId)
+                    parameter("appId", build1.appId)
+                    parameter("buildVersion", build2.buildVersion)
+                    parameter("baselineBuildVersion", build1.buildVersion)
+                }.assertSuccessStatusAnd { data ->
+                    // Only test2 should be impacted as it hits changed method2
+                    assertEquals(1, data.size)
+                    assertTrue(data.any { it["testName"] == test2.testName })
+                    assertTrue(data.any { (it["impactedMethods"] as Int) == 1 })
+                }
+            }
+        }
+    }
+
     @Test
     fun `given baseline build tests, impacted tests service should return only impacted tests compared to baseline`(): Unit =
         runBlocking {

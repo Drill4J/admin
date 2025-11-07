@@ -26,6 +26,7 @@ import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -155,6 +156,14 @@ suspend fun HttpClient.refreshMaterializedViews() {
 
 suspend fun HttpResponse.assertSuccessStatus() = also {
     assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+}
+
+suspend fun HttpResponse.assertSuccessStatusAnd(body: (List<Map<String, Any?>>) -> Unit) = also {
+    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+}.apply {
+    val json = JsonPath.parse(bodyAsText())
+    val data = json.read<List<Map<String, Any>>>("$.data")
+    body(data)
 }
 
 private fun Array<Pair<SingleMethodPayload, IntArray>>.toClassProbes(): BooleanArray {
