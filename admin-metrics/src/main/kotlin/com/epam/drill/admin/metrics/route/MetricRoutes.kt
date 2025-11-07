@@ -16,6 +16,11 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -164,16 +169,27 @@ class Metrics {
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
+
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+
         val packageNamePattern: String? = null,
+        val className: String? = null,
+        val methodSignature: String? = null,
+        @Deprecated("Use className instead")
         val classNamePattern: String? = null,
-        val methodNamePattern: String? = null,
+
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+
+        val onlyBaselineBuildTestsEnabled: Boolean = false,
+        val coverageBranches: List<String> = emptyList(),
+        val coverageAppEnvIds: List<String> = emptyList(),
+        val coveragePeriodDays: Int? = null,
+
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -187,13 +203,27 @@ class Metrics {
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
+
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+
+        val packageNamePattern: String? = null,
+        val className: String? = null,
+        val methodSignature: String? = null,
+        @Deprecated("Use className instead")
+        val classNamePattern: String? = null,
+
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+
+        val coverageBaselineBuildOnly: Boolean = false,
+        val coverageBranches: List<String> = emptyList(),
+        val coverageAppEnvIds: List<String> = emptyList(),
+        val coveragePeriodDays: Int? = null,
+
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -390,22 +420,40 @@ fun Route.getImpactedTests() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ImpactedTests> { params ->
+        val targetBuild = Build(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion
+        )
+        val baselineBuild = BaselineBuild(
+            params.groupId,
+            params.appId,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
+        )
         val data = metricsService.getImpactedTests(
-            groupId = params.groupId,
-            appId = params.appId,
-            instanceId = params.instanceId,
-            commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            testTag = params.testTag,
-            testTaskId = params.testTaskId,
-            testPath = params.testPath,
-            testName = params.testName,
-            packageNamePattern = params.packageNamePattern,
-            classNamePattern = params.classNamePattern,
-            methodNamePattern = params.methodNamePattern,
+            build = targetBuild,
+            baselineBuild = baselineBuild,
+            testCriteria = TestCriteria(
+                testTags = listOfNotNull(params.testTag),
+                testTaskId = params.testTaskId,
+                testPath = params.testPath,
+                testName = params.testName
+            ),
+            methodCriteria = MethodCriteria(
+                packageNamePattern = params.packageNamePattern,
+                className = params.className ?: params.classNamePattern,
+                methodSignature = params.methodSignature
+            ),
+            coverageCriteria = CoverageCriteria(
+                branches = params.coverageBranches,
+                builds = listOfNotNull(baselineBuild.takeIf { params.onlyBaselineBuildTestsEnabled }),
+                appEnvIds = params.coverageAppEnvIds,
+                periodDays = params.coveragePeriodDays
+            ),
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -423,19 +471,40 @@ fun Route.getImpactedMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ImpactedMethods> { params ->
+        val targetBuild = Build(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion
+        )
+        val baselineBuild = BaselineBuild(
+            params.groupId,
+            params.appId,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
+        )
         val data = metricsService.getImpactedMethods(
-            groupId = params.groupId,
-            appId = params.appId,
-            instanceId = params.instanceId,
-            commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            testTag = params.testTag,
-            testTaskId = params.testTaskId,
-            testPath = params.testPath,
-            testName = params.testName,
+            build = targetBuild,
+            baselineBuild = baselineBuild,
+            testCriteria = TestCriteria(
+                testTags = listOfNotNull(params.testTag),
+                testTaskId = params.testTaskId,
+                testPath = params.testPath,
+                testName = params.testName
+            ),
+            methodCriteria = MethodCriteria(
+                packageNamePattern = params.packageNamePattern,
+                className = params.className ?: params.classNamePattern,
+                methodSignature = params.methodSignature
+            ),
+            coverageCriteria = CoverageCriteria(
+                branches = params.coverageBranches,
+                builds = listOfNotNull(baselineBuild.takeIf { params.coverageBaselineBuildOnly }),
+                appEnvIds = params.coverageAppEnvIds,
+                periodDays = params.coveragePeriodDays
+            ),
             page = params.page,
             pageSize = params.pageSize,
         )

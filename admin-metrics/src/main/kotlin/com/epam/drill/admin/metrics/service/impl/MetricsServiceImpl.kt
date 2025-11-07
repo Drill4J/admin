@@ -21,6 +21,11 @@ import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
@@ -434,51 +439,22 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedTests(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria,
+        methodCriteria: MethodCriteria,
+        coverageCriteria: CoverageCriteria,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        ).also { buildId ->
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Baseline build info not found for $buildId")
-            }
-        }
+        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            instanceId,
-            commitSha,
-            buildVersion,
-            """
-            Provide at least one the following: instanceId, commitSha, buildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
+        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
+            LocalDateTime.now().minusDays(it.toLong())
         }
 
         return@transaction pagedListOf(
@@ -488,13 +464,21 @@ class MetricsServiceImpl(
             metricsRepository.getImpactedTests(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
-                testTaskId = testTaskId,
-                testTag = testTag,
-                testPathPattern = testPath,
-                testNamePattern = testName,
-                packageNamePattern = packageNamePattern,
-                classNamePattern = classNamePattern,
-                methodNamePattern = methodNamePattern,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                className = methodCriteria.className,
+                methodSignature = methodCriteria.methodSignature,
+
+                coverageBuildIds = coverageCriteria.builds.map(Build::id),
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+                coveragePeriodFrom = coveragePeriodFrom,
+
                 offset = offset,
                 limit = limit,
             ).map { data ->
@@ -502,6 +486,7 @@ class MetricsServiceImpl(
                     testDefinitionId = data["test_definition_id"] as String,
                     testPath = data["test_path"] as String,
                     testName = data["test_name"] as String,
+                    testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as Map<String, String>?,
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
@@ -511,48 +496,24 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedMethods(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria,
+        methodCriteria: MethodCriteria,
+        coverageCriteria: CoverageCriteria,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        ).also { buildId ->
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Baseline build info not found for $buildId")
-            }
+        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+
+        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
+            LocalDateTime.now().minusDays(it.toLong())
         }
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            instanceId,
-            commitSha,
-            buildVersion,
-            """
-            Provide at least one the following: instanceId, commitSha, buildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
-        }
+
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -560,10 +521,21 @@ class MetricsServiceImpl(
             metricsRepository.getImpactedMethods(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
-                testTaskId = testTaskId,
-                testTag = testTag,
-                testPathPattern = testPath,
-                testNamePattern = testName,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                className = methodCriteria.className,
+                methodSignature = methodCriteria.methodSignature,
+
+                coverageBuildIds = coverageCriteria.builds.map(Build::id),
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+                coveragePeriodFrom = coveragePeriodFrom,
+
                 offset = null,
                 limit = null
             ).map(::mapToMethodView)

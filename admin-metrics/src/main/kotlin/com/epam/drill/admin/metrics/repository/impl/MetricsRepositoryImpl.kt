@@ -368,13 +368,22 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
         packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        className: String?,
+        methodSignature: String?,
+
+        coverageBuildIds: List<String>,
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+        coveragePeriodFrom: LocalDateTime?,
+        coveragePeriodUntil: LocalDateTime?,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -384,7 +393,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT 
                     test_definition_id,
                     test_path,
-                    test_name,                    
+                    test_name,      
+                    test_runner,
                     test_tags,
                     test_metadata,
                     impacted_methods                 
@@ -392,13 +402,21 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
-            appendOptional(", input_method_name_pattern => ?", methodNamePattern) { "$it%" }
+            appendOptional(", input_class_name => ?", className)
+            appendOptional(", input_method_signature => ?", methodSignature)
+
+            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
+            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
+
             append("""
                 )
             """.trimIndent())
@@ -410,13 +428,25 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
+        packageNamePattern: String?,
+        className: String?,
+        methodSignature: String?,
+
+        coverageBuildIds: List<String>,
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+        coveragePeriodFrom: LocalDateTime?,
+        coveragePeriodUntil: LocalDateTime?,
+
         offset: Int?,
         limit: Int?
-    ): List<Map<String, Any?>>  = transaction {
+    ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
                 """
@@ -432,10 +462,21 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_class_name => ?", className)
+            appendOptional(", input_method_signature => ?", methodSignature)
+
+            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
+            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
+
             append("""
                 )
             """.trimIndent())
