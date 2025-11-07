@@ -737,6 +737,18 @@ paths:
           in: query
           schema:
             type: string
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
+          in: query
+          schema:
+            type: string
         - name: testTaskId
           in: query
           schema:
@@ -749,6 +761,37 @@ paths:
           in: query
           schema:
             type: string
+        - name: testName
+          in: query
+          schema:
+            type: string
+        - name: onlyBaselineBuildTestsEnabled
+          description: If true, only tests launched in the baseline build will be considered.
+          in: query
+          schema:
+            type: boolean
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coveragePeriodDays
+          in: query
+          schema:
+            type: integer
         - name: page
           in: query
           schema:
@@ -807,11 +850,23 @@ paths:
           in: query
           schema:
             type: string
-        - name: testTag
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
           in: query
           schema:
             type: string
         - name: testTaskId
+          in: query
+          schema:
+            type: string
+        - name: testTag
           in: query
           schema:
             type: string
@@ -823,6 +878,33 @@ paths:
           in: query
           schema:
             type: string
+        - name: onlyBaselineBuildTestsEnabled
+          in: query
+          description: If true, only tests launched in the baseline build will be considered.
+          schema:
+            type: boolean
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coveragePeriodDays
+          in: query
+          schema:
+            type: integer
         - name: page
           in: query
           schema:
