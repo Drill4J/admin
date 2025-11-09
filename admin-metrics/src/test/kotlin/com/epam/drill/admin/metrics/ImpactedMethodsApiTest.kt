@@ -32,6 +32,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -40,123 +41,74 @@ class ImpactedMethodsApiTest : DatabaseTests({
     MetricsDatabaseConfig.init(it)
 }) {
     @Test
-    fun `given a build with changes, impacted methods service should return a list of impacted methods`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 1)
-                    )
-                )
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
-            }
-
-            client.get("/metrics/impacted-methods") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+    fun `given a build with changes, impacted methods service should return a list of impacted methods`() =
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat { client ->
+             client.getImpactedMethods(build2, build1).returns { data ->
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.any { it["name"] == method2.name })
-                assertTrue(data.any { (it["impactedTests"] as Int) == 1 })
+                assertTrue(data.any { it["name"] == method1.name })
+                assertTrue(data.none { it["name"] == method2.name })
             }
         }
 
     @Test
-    fun `given page and size, impacted methods service should return methods only for specified page and size`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                // Create multiple test sessions with coverage to generate impacted methods
-                for (i in 1..15) {
-                    val testName = "test$i"
-                    launchTest(
-                        session1, TestDetails(testName = testName), build1, arrayOf(
-                            method1 to probesOf(1),
-                            method2 to probesOf(1, 1)
-                        )
-                    )
-                }
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
+    fun `given page and size, impacted methods service should return methods only for specified page and size`() =
+        havingData {
+            build1 has listOf(method1, method2)
+            // Simulate multiple test launches to generate enough impacted methods for pagination
+            repeat(15) { i ->
+                val test = TestDetails(testName = "test$i")
+                test covers method1 on build1
+                test covers method2 on build1
             }
-
-            client.get("/metrics/impacted-methods") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedMethods(build2, build1) {
                 parameter("page", 1)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 // Should return at most 10 records
-                assertTrue(data.size <= 10)
+                assertTrue(data.size <= 10, "Expected at most 10 records, but got ${data.size}")
             }
 
-            client.get("/metrics/impacted-methods") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+            client.getImpactedMethods(build2, build1) {
                 parameter("page", 2)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                // The second page should contain the remaining methods (5 or fewer)
-                assertTrue(data.size <= 5)
+            }.returns { data ->
+                // The second page should contain the remaining tests (5 or fewer)
+                assertTrue(data.size <= 5, "Expected at most 5 records, but got ${data.size}")
             }
         }
 
     @Test
-    fun `given test filter, impacted methods service should return only methods matching path and name`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                // Create test sessions with different paths
-                launchTest(
-                    session1, TestDetails(testName = "test1", path = "com/example/path1/Test1"), build1, arrayOf(
-                        method1 to probesOf(1),
-                        method2 to probesOf(0, 0)
-                    )
-                )
-                launchTest(
-                    session1, TestDetails(testName = "test2", path = "com/example/path1/Test2"), build1, arrayOf(
-                        method1 to probesOf(0),
-                        method2 to probesOf(1, 1)
-                    )
-                )
-                launchTest(
-                    session1, TestDetails(testName = "test2", path = "com/example/other_path/Test3"), build1, arrayOf(
-                        method1 to probesOf(1),
-                        method2 to probesOf(1, 1)
-                    )
-                )
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
-            }
-
-            client.get("/metrics/impacted-methods") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+    fun `given test filter, impacted methods service should return only methods matching path and name`() =
+        havingData {
+            build1 has listOf(method1, method2)
+            val test1Details = TestDetails(testName = "test1", path = "com/example/path1/Test1")
+            val test2Details = TestDetails(testName = "test2", path = "com/example/path1/Test2")
+            val test3Details = TestDetails(testName = "test2", path = "com/example/other_path/Test3")
+            test1Details covers method1 on build1
+            test2Details covers method2 on build1
+            test3Details covers method1 on build1
+            test3Details covers method2 on build1
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedMethods(build2, build1) {
                 parameter("testPath", "com/example/path1")
                 parameter("testName", "test2")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertTrue(data.isNotEmpty())
                 assertTrue(data.any { it["name"] == method2.name })
             }
         }
 
-    @kotlin.test.AfterTest
+    @AfterTest
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()
         InstanceTable.deleteAll()
