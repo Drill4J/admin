@@ -39,7 +39,7 @@ class UntypedSqlDataExtractor(
                         else -> throw IllegalStateException("Unsupported BIT/VARBIT type: ${bit?.javaClass?.name}")
                     }
                 }
-
+                "json" -> rs.getObject(i).toString().replace("'", "''")
                 else -> rs.getObject(i)
             }
             row[columnName] = value
