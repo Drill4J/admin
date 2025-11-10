@@ -19,8 +19,8 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
             FROM raw_data.method_ignore_rules r
             WHERE r.group_id = m.group_id
 		        AND r.app_id = m.app_id
-		        AND (r.name_pattern IS NOT NULL AND m.name::text ~ r.name_pattern::text
-		            OR r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
+		        AND (r.classname_pattern IS NOT NULL AND m.classname::text ~ r.classname_pattern::text
+		            OR r.name_pattern IS NOT NULL AND m.name::text ~ r.name_pattern::text
 		            OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
 		            OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text));
 
@@ -49,12 +49,12 @@ CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v2 AS
         definitions.id AS test_definition_id,
         definitions.path AS test_path
     FROM raw_data.coverage coverage
-	JOIN raw_data.view_methods_with_rules methods ON methods.classname = coverage.classname
-    JOIN raw_data.instances instances ON instances.id = coverage.instance_id
-    JOIN raw_data.builds builds ON builds.id = methods.build_id AND builds.id = instances.build_id
-    LEFT JOIN raw_data.test_launches launches ON launches.id = coverage.test_id
-	LEFT JOIN raw_data.test_definitions definitions ON definitions.id = launches.test_definition_id
-	LEFT JOIN raw_data.test_sessions sessions ON sessions.id = coverage.test_session_id
+	JOIN raw_data.view_methods_with_rules methods ON methods.group_id = coverage.group_id AND methods.app_id = coverage.app_id AND methods.classname = coverage.classname
+    JOIN raw_data.instances instances ON instances.group_id = coverage.group_id AND instances.app_id = coverage.app_id AND instances.id = coverage.instance_id
+    JOIN raw_data.builds builds ON builds.group_id = methods.build_id AND builds.app_id = methods.app_id AND builds.id = methods.build_id AND builds.id = instances.build_id
+    LEFT JOIN raw_data.test_launches launches ON launches.group_id = coverage.group_id AND launches.id = coverage.test_id
+	LEFT JOIN raw_data.test_definitions definitions ON definitions.group_id = launches.group_id AND definitions.id = launches.test_definition_id
+	LEFT JOIN raw_data.test_sessions sessions ON sessions.group_id = coverage.group_id AND sessions.id = coverage.test_session_id
     WHERE TRUE
 	  AND methods.probes_count > 0
 	  AND BIT_COUNT(SUBSTRING(coverage.probes FROM methods.probe_start_pos + 1 FOR methods.probes_count)) > 0
