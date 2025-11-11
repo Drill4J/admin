@@ -1,7 +1,21 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create materialized views for metrics
--- Migration version: v3
+-- Migration version: v4
 -----------------------------------------------------------------
+
+-----------------------------------------------------------------
+-- Create a materialized view of last updated timestamps
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.last_update_status CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.last_update_status AS
+SELECT
+    b.group_id,
+	metrics.get_metrics_period(b.group_id) AS since_timestamp,
+	CURRENT_TIMESTAMP AS until_timestamp
+FROM raw_data.builds b
+GROUP BY b.group_id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_last_update_status_pk ON metrics.last_update_status (group_id);
 
 -----------------------------------------------------------------
 -- Create a materialized view of builds
@@ -24,7 +38,8 @@ SELECT
     b.created_at,
     DATE_TRUNC('day', b.created_at) AS creation_day
 FROM raw_data.builds b
-WHERE b.created_at >= metrics.get_metrics_period(b.group_id)
+JOIN metrics.last_update_status lus ON lus.group_id = b.group_id
+WHERE b.created_at >= lus.since_timestamp AND b.created_at < lus.until_timestamp
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_builds_pk ON metrics.builds (group_id, app_id, build_id);
@@ -54,6 +69,8 @@ GROUP BY m.group_id, m.app_id, m.signature, m.body_checksum, m.probes_count
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_methods_pk ON metrics.methods (group_id, app_id, method_id);
+CREATE INDEX ON metrics.methods(group_id, app_id, signature);
+CREATE INDEX ON metrics.methods(group_id, app_id, class_name);
 
 -----------------------------------------------------------------
 -- Create a materialized view of specific build methods
@@ -67,8 +84,7 @@ SELECT
     m.app_id,
     m.build_id,
     md5(m.signature||':'||m.body_checksum||':'||m.probes_count) as method_id,
-    MIN(m.probes_start) AS probes_start,
-    MIN(m.method_num) AS method_num
+    MIN(m.probe_start_pos) AS class_probes_start
 FROM raw_data.view_methods_with_rules m
 JOIN metrics.builds b ON b.group_id = m.group_id AND b.app_id = m.app_id AND b.build_id = m.build_id
 GROUP BY m.group_id, m.app_id, m.build_id, m.signature, m.body_checksum, m.probes_count
@@ -97,7 +113,8 @@ SELECT
     CASE WHEN tl.result = 'SMART_SKIPPED' THEN 1 ELSE 0 END AS smart_skipped,
     CASE WHEN tl.result <> 'FAILED' THEN 1 ELSE 0 END AS success
 FROM raw_data.test_launches tl
-WHERE tl.created_at >= metrics.get_metrics_period(tl.group_id)
+JOIN metrics.last_update_status lus ON lus.group_id = tl.group_id
+WHERE tl.created_at >= lus.since_timestamp AND tl.created_at < lus.until_timestamp
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_launches_pk ON metrics.test_launches (group_id, test_launch_id);
@@ -138,72 +155,128 @@ SELECT
     DATE_TRUNC('day', ts.created_at) AS creation_day,
     ts.created_by
 FROM raw_data.test_sessions ts
-WHERE ts.created_at >= metrics.get_metrics_period(ts.group_id)
+JOIN metrics.last_update_status lus ON lus.group_id = ts.group_id
+WHERE ts.created_at >= lus.since_timestamp AND ts.created_at < lus.until_timestamp
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_sessions_pk ON metrics.test_sessions (group_id, test_session_id);
 
+------------------------------------------------------------------
+-- Create a materialized view of method coverage per test definition
+-- by aggregation data from the `metrics.build_method_test_launch_coverage_view`
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.build_method_test_definition_coverage CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.build_method_test_definition_coverage AS
+SELECT
+    c.group_id,
+    c.app_id,
+    c.build_id,
+    c.method_id,
+    c.test_session_id,
+    tl.test_definition_id,
+    c.app_env_id,
+    tl.test_result,
+    DATE_TRUNC('day', c.created_at) AS creation_day,
+    BIT_OR(c.probes) AS probes
+FROM raw_data.view_methods_coverage_v3 c
+JOIN metrics.last_update_status lus ON lus.group_id = c.group_id
+LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_launch_id
+WHERE c.created_at >= lus.since_timestamp AND c.created_at < lus.until_timestamp
+GROUP BY c.group_id, c.app_id, c.build_id, c.method_id, c.test_session_id, tl.test_definition_id, c.app_env_id, tl.test_result, DATE_TRUNC('day', c.created_at)
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_definition_coverage_pk ON metrics.build_method_test_definition_coverage (group_id, app_id, build_id, method_id, test_session_id, test_definition_id, app_env_id, test_result, creation_day);
+-- Used in build_method_test_session_coverage
+CREATE INDEX ON metrics.build_method_test_definition_coverage(group_id, test_definition_id);
+-- Used in test_to_code_mapping
+CREATE INDEX ON metrics.build_method_test_definition_coverage(group_id, app_id, build_id, method_id, test_session_id) WHERE test_result = 'PASSED';
+
+------------------------------------------------------------------
+-- Create a materialized view of method coverage per test session
+-- by copying data from the `metrics.build_method_test_definition_coverage` view
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.build_method_test_session_coverage CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.build_method_test_session_coverage AS
+SELECT
+    c.group_id,
+    c.app_id,
+    c.build_id,
+    c.method_id,
+    c.test_session_id,
+    c.app_env_id,
+    test_tag,
+    c.test_result,
+    c.creation_day,
+    BIT_OR(c.probes) AS probes
+FROM metrics.build_method_test_definition_coverage c
+LEFT JOIN metrics.test_definitions td ON td.group_id = c.group_id AND td.test_definition_id = c.test_definition_id
+LEFT JOIN LATERAL unnest(td.test_tags) AS test_tag ON TRUE
+GROUP BY c.group_id, c.app_id, c.build_id, c.method_id, c.test_session_id, c.app_env_id, test_tag, c.test_result, c.creation_day
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_session_coverage_pk ON metrics.build_method_test_session_coverage (group_id, app_id, build_id, method_id, test_session_id, app_env_id, test_tag, test_result, creation_day);
+-- Used in build_method_coverage
+CREATE INDEX ON metrics.build_method_test_session_coverage(group_id, test_session_id);
+-- Used in test_session_builds
+CREATE INDEX ON metrics.build_method_test_session_coverage(test_session_id) WHERE test_session_id IS NOT NULL;
+
 -----------------------------------------------------------------
 -- Create a materialized view of method coverage
 -- by copying data from the `raw_data.view_methods_coverage_v2` view
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.build_method_coverage CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.build_method_coverage AS
+SELECT
+    c.group_id,
+    c.app_id,
+    c.build_id,
+    c.method_id,
+    c.app_env_id,
+    ts.test_task_id,
+    c.test_tag,
+    c.test_result,
+    c.creation_day,
+    BIT_OR(c.probes) AS probes
+FROM metrics.build_method_test_session_coverage c
+LEFT JOIN metrics.test_sessions ts ON ts.group_id = c.group_id AND ts.test_session_id  = c.test_session_id
+GROUP BY c.group_id, c.app_id, c.build_id, c.method_id, c.app_env_id, ts.test_task_id, c.test_tag, c.test_result, c.creation_day
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_coverage_pk ON metrics.build_method_coverage (group_id, app_id, build_id, method_id, app_env_id, test_task_id, test_tag, test_result, creation_day);
+-- Used in method_coverage
+CREATE INDEX ON metrics.build_method_coverage(group_id, app_id, method_id);
+-- Used in Build Summary Dashboard
+CREATE INDEX ON metrics.build_method_coverage(group_id, app_id, build_id, method_id, app_env_id, test_tag);
+CREATE INDEX ON metrics.build_method_coverage(group_id, app_id, build_id, method_id, test_tag);
+
+-----------------------------------------------------------------
+-- Create a materialized view of method coverage
+-- by aggregating data from the `metrics.build_method_coverage` view
 -----------------------------------------------------------------
 DROP MATERIALIZED VIEW IF EXISTS metrics.method_coverage CASCADE;
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.method_coverage AS
 SELECT
     c.group_id,
     c.app_id,
-    MD5(c.signature||':'||c.body_checksum||':'||c.probes_count) AS method_id,
-    c.build_id,
-    c.env_id AS app_env_id,
-    ts.test_session_id,
-    tl.test_launch_id,
-    MIN(b.branch) AS branch,
-    MIN(td.test_tags) AS test_tags,
-    MIN(td.test_path) AS test_path,
-    MIN(td.test_name) AS test_name,
-    MIN(ts.test_task_id) AS test_task_id,
-    MIN(tl.test_result) AS test_result,
-    MIN(tl.test_definition_id) AS test_definition_id,
-    BIT_OR(c.probes) AS probes,
-    DATE_TRUNC('day', c.created_at) AS creation_day
-FROM raw_data.view_methods_coverage_v2 c
-JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
-LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_launch_id
-LEFT JOIN metrics.test_definitions td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
-LEFT JOIN metrics.test_sessions ts ON ts.group_id = c.group_id AND ts.test_session_id = c.test_session_id
-WHERE c.created_at >= metrics.get_metrics_period(c.group_id)
-GROUP BY c.group_id, c.app_id, c.signature, c.body_checksum, c.probes_count, c.build_id, c.env_id, ts.test_session_id, tl.test_launch_id, DATE_TRUNC('day', c.created_at)
-WITH NO DATA;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_method_coverage_pk ON metrics.method_coverage (group_id, app_id, method_id, build_id, app_env_id, test_launch_id, creation_day);
-CREATE INDEX ON metrics.method_coverage(group_id, app_id, build_id);
-CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id);
-CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id, test_launch_id);
-CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id, test_session_id);
-
------------------------------------------------------------------
--- Create a materialized view of method smart coverage
--- by aggregating data from the `metrics.method_coverage` view
------------------------------------------------------------------
-DROP MATERIALIZED VIEW IF EXISTS metrics.method_smartcoverage CASCADE;
-CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.method_smartcoverage AS
-SELECT
-    c.group_id,
-    c.app_id,
     c.method_id,
+    b.branch,
     c.app_env_id,
-    c.branch,
-    c.test_tags,
     c.test_task_id,
+    c.test_tag,
     c.test_result,
     c.creation_day,
     BIT_OR(c.probes) AS probes
-FROM metrics.method_coverage c
-GROUP BY c.group_id, c.app_id, c.method_id, c.branch, c.app_env_id, c.test_tags, c.test_task_id, c.test_result, c.creation_day
+FROM metrics.build_method_coverage c
+JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
+GROUP BY c.group_id, c.app_id, c.method_id, b.branch, c.app_env_id, c.test_task_id, c.test_tag, c.test_result, c.creation_day
 WITH NO DATA;
 
-CREATE UNIQUE INDEX ON metrics.method_smartcoverage(group_id, app_id, method_id, branch, app_env_id, test_tags, test_task_id, test_result, creation_day);
-CREATE INDEX ON metrics.method_smartcoverage(group_id, app_id, method_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_method_coverage_pk ON metrics.method_coverage (group_id, app_id, method_id, branch, app_env_id, test_task_id, test_tag, test_result, creation_day);
+-- Used in get_methods_with_coverage
+CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id, creation_day);
+-- Used in Build Summary Dashboard
+CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id, app_env_id, test_tag);
+CREATE INDEX ON metrics.method_coverage(group_id, app_id, method_id, test_tag);
 
 -----------------------------------------------------------------
 -- Create a materialized view of test session builds
@@ -230,9 +303,40 @@ FROM (
       c.app_id,
       c.build_id,
       c.test_session_id
-    FROM metrics.method_coverage c
+    FROM metrics.build_method_test_session_coverage c
     WHERE c.test_session_id IS NOT NULL
 ) tsb
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_session_builds_pk ON metrics.test_session_builds (group_id, app_id, build_id, test_session_id);
+
+-----------------------------------------------------------------
+-- Create a materialized view of test to method mapping
+-- by aggregating data from the `metrics.build_method_test_definition_coverage` view
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.test_to_code_mapping CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.test_to_code_mapping AS
+SELECT
+    c.group_id,
+    c.app_id,
+    m.signature,
+    c.test_definition_id,
+    b.branch,
+    c.app_env_id,
+    MIN(m.class_name) AS class_name,
+    MIN(m.method_name) AS method_name,
+    MIN(m.method_params) AS method_params,
+    MIN(m.return_type) AS return_type,
+    ts.test_task_id
+FROM metrics.build_method_test_definition_coverage c
+JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
+JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
+JOIN metrics.test_sessions ts ON ts.group_id = c.group_id AND ts.test_session_id = c.test_session_id
+WHERE c.test_result = 'PASSED'
+GROUP BY c.group_id, c.app_id, m.signature, c.test_definition_id, b.branch, c.app_env_id, ts.test_task_id
+WITH NO DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_test_to_code_mapping_pk ON metrics.test_to_code_mapping (group_id, app_id, signature, test_definition_id, branch, app_env_id, test_task_id);
+-- Used in get_impacted_tests, get_impacted_methods
+CREATE INDEX ON metrics.test_to_code_mapping(group_id, app_id, signature, test_definition_id, app_env_id, test_task_id);
+CREATE INDEX ON metrics.test_to_code_mapping(group_id, app_id, signature, test_task_id);

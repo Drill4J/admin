@@ -15,12 +15,16 @@
  */
 package com.epam.drill.admin.metrics.service.impl
 
+const val lastUpdateStatusView = "metrics.last_update_status"
 const val buildsView = "metrics.builds"
 const val methodsView = "metrics.methods"
 const val buildMethodsView = "metrics.build_methods"
 const val testLaunchesView = "metrics.test_launches"
 const val testDefinitionsView = "metrics.test_definitions"
 const val testSessionsView = "metrics.test_sessions"
+const val buildMethodTestDefinitionCoverageView = "metrics.build_method_test_definition_coverage"
+const val buildMethodTestSessionCoverageView = "metrics.build_method_test_session_coverage"
+const val buildMethodCoverageView = "metrics.build_method_coverage"
 const val methodCoverageView = "metrics.method_coverage"
-const val methodSmartCoverageView = "metrics.method_smartcoverage"
 const val testSessionBuildsView = "metrics.test_session_builds"
+const val test2CodeMappingView = "metrics.test_to_code_mapping"

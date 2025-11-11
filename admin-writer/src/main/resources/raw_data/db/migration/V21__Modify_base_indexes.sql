@@ -1,16 +1,15 @@
 CREATE INDEX IF NOT EXISTS idx_builds_pk ON raw_data.builds(group_id, app_id, id);
 
 DROP INDEX IF EXISTS idx_methods_build_id;
-CREATE INDEX IF NOT EXISTS idx_methods_build_id_signature ON raw_data.methods(group_id, app_id, build_id, signature) WHERE probes_count > 0;
-CREATE INDEX IF NOT EXISTS idx_methods_signature_build_id ON raw_data.methods(group_id, app_id, signature, build_id) WHERE probes_count > 0;
-CREATE INDEX IF NOT EXISTS idx_methods_classname_name ON raw_data.methods(group_id, app_id, classname, name) WHERE probes_count > 0;
+--Used in raw_data.view_methods_with_rules
+CREATE INDEX IF NOT EXISTS idx_methods_classname ON raw_data.methods(group_id, app_id, classname, name, annotations, class_annotations) WHERE probes_count > 0;
+--Used in metrics.build_method_test_launch_coverage_view
+CREATE INDEX IF NOT EXISTS idx_methods_build_id_classname ON raw_data.methods(group_id, app_id, build_id, classname) WHERE probes_count > 0;
 
 DROP INDEX IF EXISTS idx_coverage_instance_id;
-CREATE INDEX IF NOT EXISTS idx_coverage_pk ON raw_data.coverage(group_id, app_id, classname, instance_id, test_id, test_session_id);
-
-DROP INDEX IF EXISTS idx_coverage_test_id;
-CREATE INDEX IF NOT EXISTS idx_coverage_test_launch_id ON raw_data.coverage(group_id, test_id);
-CREATE INDEX IF NOT EXISTS idx_coverage_test_session_id ON raw_data.coverage(group_id, test_session_id);
+--Used in metrics.build_method_test_launch_coverage_view
+CREATE INDEX IF NOT EXISTS idx_coverage_instance_id ON raw_data.coverage(group_id, app_id, instance_id, classname, test_session_id, test_id);
+CREATE INDEX IF NOT EXISTS idx_coverage_created_at ON raw_data.coverage(group_id, created_at);
 
 DROP INDEX IF EXISTS idx_instances_pk;
 CREATE INDEX idx_instances_pk ON raw_data.instances(group_id, app_id, id);

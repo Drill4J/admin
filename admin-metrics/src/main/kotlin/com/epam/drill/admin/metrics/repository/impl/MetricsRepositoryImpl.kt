@@ -377,11 +377,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageNamePattern: String?,
         methodSignaturePattern: String?,
 
-        coverageBuildIds: List<String>,
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-        coveragePeriodFrom: LocalDateTime?,
-        coveragePeriodUntil: LocalDateTime?,
 
         offset: Int?,
         limit: Int?
@@ -409,11 +406,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
-            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
-            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
 
             append("""
                 )
@@ -435,11 +429,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageNamePattern: String?,
         methodSignaturePattern: String?,
 
-        coverageBuildIds: List<String>,
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-        coveragePeriodFrom: LocalDateTime?,
-        coveragePeriodUntil: LocalDateTime?,
 
         offset: Int?,
         limit: Int?
@@ -467,11 +458,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_package_name_pattern => ?", packageNamePattern)
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
-            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
-            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
 
             append("""
                 )

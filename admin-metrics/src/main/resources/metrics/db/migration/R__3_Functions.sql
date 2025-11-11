@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create functions for metrics
--- Migration version: v2
--- Compatible with: R__1_Data.sql v3
+-- Migration version: v3
+-- Compatible with: R__1_Data.sql v4
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -63,8 +63,6 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- Function to get methods with coverage for a build
 -- @param input_build_id: The ID of the build
 -- @param input_build_ids: Array of build IDs
--- @param input_test_session_id: Optional test session ID to filter coverage
--- @param input_test_launch_id: Optional test launch ID to filter coverage
 -- @param input_baseline_build_id: Optional baseline build ID for comparison
 -- @param input_package_name_pattern: Optional pattern to filter methods by package name
 -- @param input_class_name_pattern: Optional pattern to filter methods by class name
@@ -81,8 +79,6 @@ DROP FUNCTION IF EXISTS metrics.get_methods_with_coverage CASCADE;
 CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage(
     input_build_id VARCHAR DEFAULT NULL,
 	input_build_ids VARCHAR[] DEFAULT NULL,
-	input_test_session_id VARCHAR DEFAULT NULL,
-	input_test_launch_id VARCHAR DEFAULT NULL,
 
     input_baseline_build_id VARCHAR DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
@@ -142,26 +138,21 @@ BEGIN
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
 		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
 		LEFT JOIN metrics.build_methods baseline_bm ON baseline_bm.group_id = bm.group_id AND baseline_bm.app_id = bm.app_id
-			AND baseline_bm.method_id = bm.method_id
 			AND baseline_bm.build_id = input_baseline_build_id
-		LEFT JOIN metrics.method_coverage ic ON  ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.method_id = bm.method_id
-			AND ic.build_id = bm.build_id
+			AND baseline_bm.method_id = bm.method_id
+		LEFT JOIN metrics.build_method_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id
 			-- Filters by isolated coverage
-			AND (input_test_session_id IS NULL OR ic.test_session_id = input_test_session_id)
-			AND (input_test_launch_id IS NULL OR ic.test_launch_id = input_test_launch_id)
-			AND (input_coverage_branches IS NULL OR ic.branch = ANY(input_coverage_branches::VARCHAR[]))
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-		  	AND (input_coverage_test_tags IS NULL OR ic.test_tags && input_coverage_test_tags::VARCHAR[])
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
+		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR ic.creation_day >= input_coverage_period_from)
-		LEFT JOIN metrics.method_smartcoverage sc ON sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
+		LEFT JOIN metrics.method_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
 			-- Filters by smart coverage
-			AND (include_smart_coverage IS true)
 			AND (is_smart_coverage_before_build IS false OR sc.creation_day <= b.creation_day)
 			AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
 		  	AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-		  	AND (input_coverage_test_tags IS NULL OR sc.test_tags && input_coverage_test_tags::VARCHAR[])
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
+		  	AND (input_coverage_test_tags IS NULL OR sc.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR sc.creation_day >= input_coverage_period_from)
 		WHERE bm.group_id = _group_id
 			AND bm.app_id = _app_id
@@ -220,8 +211,6 @@ DROP FUNCTION IF EXISTS metrics.get_builds_with_coverage CASCADE;
 CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage(
     input_build_id VARCHAR DEFAULT NULL,
     input_build_ids VARCHAR[] DEFAULT NULL,
-    input_test_session_id VARCHAR DEFAULT NULL,
-    input_test_launch_id VARCHAR DEFAULT NULL,
 
     input_baseline_build_id VARCHAR DEFAULT NULL,
     input_package_name_pattern VARCHAR DEFAULT NULL,
@@ -283,8 +272,6 @@ BEGIN
             COUNT(CASE WHEN c.aggregated_covered_probes > 0 THEN c.method_id END) AS aggregated_tested_methods
         FROM metrics.get_methods_with_coverage(
             input_build_ids => _build_ids,
-            input_test_session_id => input_test_session_id,
-            input_test_launch_id => input_test_launch_id,
 
             input_baseline_build_id => input_baseline_build_id,
             input_package_name_pattern => input_package_name_pattern,
@@ -388,7 +375,7 @@ BEGIN
                 ELSE null
             END::VARCHAR AS change_type
         FROM metrics.build_methods bm
-        JOIN metrics.methods m ON m.method_id = bm.method_id
+        JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
         WHERE bm.group_id = _group_id
             AND bm.app_id = _app_id
             AND bm.build_id IN (input_baseline_build_id, input_build_id)
@@ -699,32 +686,33 @@ BEGIN
             c.test_definition_id,
 			m.signature,
             BOOL_OR(CASE WHEN tm.method_id IS NULL THEN true ELSE false END) AS impacted
-        FROM metrics.method_coverage c
-        JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
-		JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
-        LEFT JOIN target_methods tm ON tm.group_id = c.group_id AND tm.app_id = c.app_id AND tm.method_id = c.method_id
+        FROM metrics.build_method_test_definition_coverage c
+        JOIN metrics.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.build_id = c.build_id
+        JOIN metrics.build_methods bm ON bm.group_id = c.group_id AND bm.app_id = c.app_id AND bm.build_id = c.build_id AND bm.method_id = c.method_id
+        JOIN metrics.test_sessions ts ON ts.group_id = c.group_id AND ts.test_session_id = c.test_session_id
+        JOIN metrics.test_definitions td ON td.group_id = c.group_id AND td.test_definition_id = c.test_definition_id
+        JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+        LEFT JOIN target_methods tm ON tm.group_id = m.group_id AND tm.app_id = m.app_id AND tm.method_id = m.method_id
         WHERE c.group_id = _group_id
             AND c.app_id = _app_id
-            AND c.test_definition_id IS NOT NULL
-            AND c.test_result = 'PASSED'
-            -- Filters by methods
-            AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
-            AND (input_class_name IS NULL OR m.class_name = input_class_name)
-            AND (input_method_signature IS NULL OR m.signature = input_method_signature)
-            -- Filters by tests
-            AND (input_test_task_ids IS NULL OR c.test_task_id = ANY(input_test_task_ids::VARCHAR[]))
-            AND (input_test_tags IS NULL OR c.test_tags && input_test_tags::VARCHAR[])
-            AND (input_test_path_pattern IS NULL OR c.test_path LIKE input_test_path_pattern)
-            AND (input_test_name_pattern IS NULL OR c.test_name LIKE input_test_name_pattern)
-			-- Filters by baseline
-			AND (input_baseline_build_ids IS NULL OR c.build_id = ANY(input_baseline_build_ids::VARCHAR[]))
-			AND (input_baseline_build_branches IS NULL OR c.branch = ANY(input_baseline_build_branches::VARCHAR[]))
+            -- Filters by baseline
+            AND (input_baseline_build_ids IS NULL OR c.build_id = ANY(input_baseline_build_ids::VARCHAR[]))
+            AND (input_baseline_build_branches IS NULL OR b.branch = ANY(input_baseline_build_branches::VARCHAR[]))
             AND (_baseline_build_from IS NULL OR COALESCE(b.committed_at, b.created_at) >= _baseline_build_from)
-			AND (_baseline_build_until IS NULL OR COALESCE(b.committed_at, b.created_at) <= _baseline_build_until)
+            AND (_baseline_build_until IS NULL OR COALESCE(b.committed_at, b.created_at) <= _baseline_build_until)
+            -- Filters by tests
+            AND (input_test_task_ids IS NULL OR ts.test_task_id = ANY(input_test_task_ids::VARCHAR[]))
+            AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+            AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+            AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
 			-- Filters by coverage
 			AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
             AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
 			AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
+			-- Filters by methods
+            AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
+            AND (input_class_name IS NULL OR m.class_name = input_class_name)
+            AND (input_method_signature IS NULL OR m.signature = input_method_signature)
         GROUP BY c.build_id, c.test_definition_id, m.signature
     ),
 	impacted_build_tests AS (
@@ -809,11 +797,8 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
     input_test_path_pattern VARCHAR DEFAULT NULL,
     input_test_name_pattern VARCHAR DEFAULT NULL,
 
-    input_coverage_build_ids VARCHAR[] DEFAULT NULL,
     input_coverage_branches VARCHAR[] DEFAULT NULL,
-    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
-    input_coverage_period_from TIMESTAMP DEFAULT NULL,
-    input_coverage_period_until TIMESTAMP DEFAULT NULL
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
 ) RETURNS TABLE(
     group_id VARCHAR,
     test_definition_id VARCHAR,
@@ -854,35 +839,24 @@ BEGIN
             include_equal => false
         ) m
     ),
-    impacted_methods AS (
-        SELECT DISTINCT
-            c.test_definition_id,
-            m.signature
-        FROM metrics.method_coverage c
-        JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
-        JOIN changes changed_m ON changed_m.group_id = m.group_id AND changed_m.app_id = m.app_id AND changed_m.signature = m.signature
-        WHERE c.group_id = _group_id
-            AND c.app_id = _app_id
-            AND c.test_launch_id IS NOT NULL
-            AND c.test_result = 'PASSED'
-            -- Filters by tests
-            AND (input_test_task_id IS NULL OR c.test_task_id = input_test_task_id)
-            AND (input_test_tags IS NULL OR c.test_tags && input_test_tags::VARCHAR[])
-            AND (input_test_path_pattern IS NULL OR c.test_path LIKE input_test_path_pattern)
-            AND (input_test_name_pattern IS NULL OR c.test_name LIKE input_test_name_pattern)
-            -- Filters by coverage
-            AND (input_coverage_build_ids IS NULL OR c.build_id = ANY(input_coverage_build_ids::VARCHAR[]))
-            AND (input_coverage_branches IS NULL OR c.branch = ANY(input_coverage_branches::VARCHAR[]))
-            AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-            AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
-            AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
-    ),
-    impacted_test_definitions AS (
+    impacted_tests AS (
         SELECT
-            im.test_definition_id,
-            COUNT(DISTINCT im.signature) AS impacted_methods
-        FROM impacted_methods im
-        GROUP BY im.test_definition_id
+            tc.test_definition_id,
+            COUNT(DISTINCT tc.signature) AS impacted_methods
+        FROM metrics.test_to_code_mapping tc
+        JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
+        JOIN metrics.test_definitions td ON td.group_id = tc.group_id AND td.test_definition_id = tc.test_definition_id
+        WHERE tc.group_id = _group_id
+            AND tc.app_id = _app_id
+            -- Filters by coverage
+            AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
+            AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+            -- Filters by tests
+            AND (input_test_task_id IS NULL OR tc.test_task_id = input_test_task_id)
+            AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+            AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+            AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+        GROUP BY tc.test_definition_id
     )
     SELECT
         td.group_id,
@@ -892,9 +866,9 @@ BEGIN
         td.test_tags,
         td.test_metadata,
         td.test_runner,
-        itd.impacted_methods::NUMERIC
+        it.impacted_methods::NUMERIC
     FROM metrics.test_definitions td
-	JOIN impacted_test_definitions itd ON itd.test_definition_id = td.test_definition_id
+	JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
     WHERE td.group_id = _group_id
 	;
 END;
@@ -931,11 +905,8 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_methods_v2(
     input_test_path_pattern VARCHAR DEFAULT NULL,
     input_test_name_pattern VARCHAR DEFAULT NULL,
 
-    input_coverage_build_ids VARCHAR[] DEFAULT NULL,
     input_coverage_branches VARCHAR[] DEFAULT NULL,
-    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
-    input_coverage_period_from TIMESTAMP DEFAULT NULL,
-    input_coverage_period_until TIMESTAMP DEFAULT NULL
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
 ) RETURNS TABLE(
     group_id VARCHAR,
     app_id VARCHAR,
@@ -976,34 +947,29 @@ BEGIN
             include_equal => false
         ) m
     )
-    SELECT DISTINCT
-		m.group_id::VARCHAR,
-		m.app_id::VARCHAR,
-		m.signature::VARCHAR,
-		MIN(m.class_name)::VARCHAR AS class_name,
-		MIN(m.method_name)::VARCHAR AS method_name,
-		MIN(m.method_params)::VARCHAR AS method_params,
-		MIN(m.return_type)::VARCHAR AS return_type,
-		COUNT(DISTINCT c.test_definition_id)::NUMERIC AS impacted_tests
-	FROM metrics.method_coverage c
-	JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
-	JOIN changes changed_m ON changed_m.group_id = m.group_id AND changed_m.app_id = m.app_id AND changed_m.signature = m.signature
-	WHERE c.group_id = _group_id
-		AND c.app_id = _app_id
-		AND c.test_launch_id IS NOT NULL
-		AND c.test_result = 'PASSED'
-		-- Filters by tests
-		AND (input_test_task_id IS NULL OR c.test_task_id = input_test_task_id)
-		AND (input_test_tags IS NULL OR c.test_tags && input_test_tags::VARCHAR[])
-		AND (input_test_path_pattern IS NULL OR c.test_path LIKE input_test_path_pattern)
-		AND (input_test_name_pattern IS NULL OR c.test_name LIKE input_test_name_pattern)
+    SELECT
+		tc.group_id::VARCHAR,
+		tc.app_id::VARCHAR,
+		tc.signature::VARCHAR,
+		MIN(changed_m.class_name)::VARCHAR AS class_name,
+		MIN(changed_m.method_name)::VARCHAR AS method_name,
+		MIN(changed_m.method_params)::VARCHAR AS method_params,
+		MIN(changed_m.return_type)::VARCHAR AS return_type,
+		COUNT(DISTINCT tc.test_definition_id)::NUMERIC AS impacted_tests
+	FROM metrics.test_to_code_mapping tc
+	JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
+	JOIN metrics.test_definitions td ON td.group_id = tc.group_id AND td.test_definition_id = tc.test_definition_id
+	WHERE tc.group_id = _group_id
+		AND tc.app_id = _app_id
 		-- Filters by coverage
-		AND (input_coverage_build_ids IS NULL OR c.build_id = ANY(input_coverage_build_ids::VARCHAR[]))
-        AND (input_coverage_branches IS NULL OR c.branch = ANY(input_coverage_branches::VARCHAR[]))
-		AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-		AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
-		AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
-	GROUP BY m.group_id, m.app_id, m.signature
+        AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
+        AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+		-- Filters by tests
+		AND (input_test_task_id IS NULL OR tc.test_task_id = input_test_task_id)
+		AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+		AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+		AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+	GROUP BY tc.group_id, tc.app_id, tc.signature
     ;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

@@ -187,10 +187,8 @@ class Metrics {
         val testPath: String? = null,
         val testName: String? = null,
 
-        val onlyBaselineBuildTestsEnabled: Boolean = false,
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
-        val coveragePeriodDays: Int? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null,
@@ -454,9 +452,7 @@ fun Route.getImpactedTests() {
             ),
             coverageCriteria = CoverageCriteria(
                 branches = params.coverageBranches,
-                builds = listOfNotNull(baselineBuild.takeIf { params.onlyBaselineBuildTestsEnabled }),
                 appEnvIds = params.coverageAppEnvIds,
-                periodDays = params.coveragePeriodDays
             ),
             page = params.page,
             pageSize = params.pageSize,
@@ -505,9 +501,7 @@ fun Route.getImpactedMethods() {
             ),
             coverageCriteria = CoverageCriteria(
                 branches = params.coverageBranches,
-                builds = listOfNotNull(baselineBuild.takeIf { params.onlyBaselineBuildTestsEnabled }),
                 appEnvIds = params.coverageAppEnvIds,
-                periodDays = params.coveragePeriodDays
             ),
             page = params.page,
             pageSize = params.pageSize,

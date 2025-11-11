@@ -453,10 +453,6 @@ class MetricsServiceImpl(
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -473,10 +469,8 @@ class MetricsServiceImpl(
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
 
-                coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
-                coveragePeriodFrom = coveragePeriodFrom,
 
                 offset = offset,
                 limit = limit,
@@ -509,10 +503,6 @@ class MetricsServiceImpl(
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -529,10 +519,8 @@ class MetricsServiceImpl(
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
 
-                coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
-                coveragePeriodFrom = coveragePeriodFrom,
 
                 offset = null,
                 limit = null
@@ -544,18 +532,37 @@ class MetricsServiceImpl(
         val startTime = System.currentTimeMillis()
         logger.info { "Refreshing materialized views..." }
 
-        val buildsViewJob = async { refreshMaterializedView(buildsView) }
+        val lastUpdateStatusViewJob = async { refreshMaterializedView(lastUpdateStatusView) }
+        val buildsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(buildsView) } }
         val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
         val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
-        val testLaunchesViewJob = async { refreshMaterializedView(testLaunchesView) }
-        val testDefinitionsViewJob = async { refreshMaterializedView(testDefinitionsView) }
-        val testSessionsViewJob = async { refreshMaterializedView(testSessionsView) }
-        val methodCoverageViewJob = async { waitFor(buildsViewJob, methodsViewJob, buildMethodsViewJob,
-            testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob).run { refreshMaterializedView(methodCoverageView) } }
-        val methodSmartCoverageViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(methodSmartCoverageView) } }
-        val testSessionBuildsViewJob = async { waitFor(buildsViewJob, methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
+        val testLaunchesViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testLaunchesView) } }
+        val testDefinitionsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testDefinitionsView) } }
+        val testSessionsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testSessionsView) } }
+        val buildMethodTestDefinitionCoverageViewJob =
+            async {
+                waitFor(
+                    buildsViewJob, methodsViewJob, buildMethodsViewJob,
+                    testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob
+                ).run { refreshMaterializedView(buildMethodTestDefinitionCoverageView) }
+            }
+        val buildMethodTestSessionCoverageViewJob = async {
+            waitFor(buildMethodTestDefinitionCoverageViewJob).run {
+                refreshMaterializedView(buildMethodTestSessionCoverageView)
+            }
+        }
+        val buildMethodCoverageViewJob = async {
+            waitFor(buildMethodTestSessionCoverageViewJob).run { refreshMaterializedView(buildMethodCoverageView) }
+        }
+        val methodCoverageViewJob =
+            async { waitFor(buildMethodCoverageViewJob).run { refreshMaterializedView(methodCoverageView) } }
+        val test2CodeMappingViewJob =
+            async { waitFor(buildMethodTestDefinitionCoverageViewJob).run { refreshMaterializedView(test2CodeMappingView) } }
+        val testSessionBuildsViewJob = async {
+            waitFor(buildMethodTestSessionCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) }
+        }
 
-        waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
+        waitFor(testSessionBuildsViewJob, methodCoverageViewJob, test2CodeMappingViewJob)
 
         val duration = System.currentTimeMillis() - startTime
         logger.info { "Materialized views were refreshed in $duration ms." }
