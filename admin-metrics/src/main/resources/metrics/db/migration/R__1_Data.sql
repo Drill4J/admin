@@ -162,6 +162,40 @@ WITH NO DATA;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_test_sessions_pk ON metrics.test_sessions (group_id, test_session_id);
 
 ------------------------------------------------------------------
+-- Create a materialized view of class coverage per test definition
+-- by aggregation data from the `raw_data.coverage` table
+-----------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS metrics.build_class_test_definition_coverage CASCADE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics.build_class_test_definition_coverage AS
+SELECT
+    c.group_id,
+    c.app_id,
+    i.build_id,
+    c.classname AS class_name,
+    c.test_session_id,
+    tl.test_definition_id,
+    i.env_id AS app_env_id,
+    tl.test_result,
+    DATE_TRUNC('day', c.created_at) AS creation_day,
+    BIT_OR(c.probes) AS probes
+FROM raw_data.coverage c
+JOIN raw_data.instances i ON i.group_id = c.group_id AND i.app_id = c.app_id AND i.id = c.instance_id
+LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_id
+JOIN metrics.last_update_status lus ON lus.group_id = c.group_id
+WHERE c.created_at >= lus.since_timestamp AND c.created_at < lus.until_timestamp
+    AND NOT EXISTS (
+        SELECT 1
+        FROM raw_data.method_ignore_rules r
+        WHERE r.group_id = c.group_id
+            AND r.app_id = c.app_id
+            AND r.classname_pattern IS NOT NULL AND c.classname::text ~ r.classname_pattern::text)
+GROUP BY c.group_id, c.app_id, i.build_id, c.classname, c.test_session_id, tl.test_definition_id, i.env_id, tl.test_result, DATE_TRUNC('day', c.created_at)
+WITH NO DATA;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_class_test_definition_coverage_pk ON metrics.build_class_test_definition_coverage (group_id, app_id, build_id, class_name, test_session_id, test_definition_id, app_env_id, test_result, creation_day);
+-- Used in build_method_test_definition_coverage
+CREATE INDEX ON metrics.build_class_test_definition_coverage(group_id, app_id, class_name, build_id);
+
+------------------------------------------------------------------
 -- Create a materialized view of method coverage per test definition
 -- by aggregation data from the `metrics.build_method_test_launch_coverage_view`
 -----------------------------------------------------------------
@@ -171,18 +205,19 @@ SELECT
     c.group_id,
     c.app_id,
     c.build_id,
-    c.method_id,
+    m.method_id,
     c.test_session_id,
-    tl.test_definition_id,
+    c.test_definition_id,
     c.app_env_id,
-    tl.test_result,
-    DATE_TRUNC('day', c.created_at) AS creation_day,
-    BIT_OR(c.probes) AS probes
-FROM raw_data.view_methods_coverage_v3 c
-JOIN metrics.last_update_status lus ON lus.group_id = c.group_id
-LEFT JOIN metrics.test_launches tl ON tl.group_id = c.group_id AND tl.test_launch_id = c.test_launch_id
-WHERE c.created_at >= lus.since_timestamp AND c.created_at < lus.until_timestamp
-GROUP BY c.group_id, c.app_id, c.build_id, c.method_id, c.test_session_id, tl.test_definition_id, c.app_env_id, tl.test_result, DATE_TRUNC('day', c.created_at)
+    c.test_result,
+    c.creation_day,
+    BIT_OR(SUBSTRING(c.probes FROM bm.class_probes_start + 1 FOR m.probes_count)) AS probes
+FROM metrics.build_class_test_definition_coverage c
+JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.class_name = c.class_name
+JOIN metrics.build_methods bm ON bm.group_id = m.group_id AND bm.app_id = m.app_id AND bm.build_id = c.build_id AND bm.method_id = m.method_id
+    AND BIT_COUNT(SUBSTRING(c.probes FROM bm.class_probes_start + 1 FOR m.probes_count)) > 0
+    AND BIT_LENGTH(SUBSTRING(c.probes FROM bm.class_probes_start + 1 FOR m.probes_count)) = m.probes_count
+GROUP BY c.group_id, c.app_id, c.build_id, m.method_id, c.test_session_id, c.test_definition_id, c.app_env_id, c.test_result, c.creation_day
 WITH NO DATA;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_definition_coverage_pk ON metrics.build_method_test_definition_coverage (group_id, app_id, build_id, method_id, test_session_id, test_definition_id, app_env_id, test_result, creation_day);
@@ -219,6 +254,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_session_coverage_pk ON m
 CREATE INDEX ON metrics.build_method_test_session_coverage(group_id, test_session_id);
 -- Used in test_session_builds
 CREATE INDEX ON metrics.build_method_test_session_coverage(test_session_id) WHERE test_session_id IS NOT NULL;
+-- Used in get_methods_with_coverage_by_test_session
+CREATE INDEX ON metrics.build_method_test_session_coverage(group_id, app_id, build_id, method_id, test_session_id) WHERE test_session_id IS NOT NULL;
 
 -----------------------------------------------------------------
 -- Create a materialized view of method coverage

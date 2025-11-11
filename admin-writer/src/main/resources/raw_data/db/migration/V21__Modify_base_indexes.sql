@@ -9,7 +9,8 @@ CREATE INDEX IF NOT EXISTS idx_methods_build_id_classname ON raw_data.methods(gr
 DROP INDEX IF EXISTS idx_coverage_instance_id;
 --Used in metrics.build_method_test_launch_coverage_view
 CREATE INDEX IF NOT EXISTS idx_coverage_instance_id ON raw_data.coverage(group_id, app_id, instance_id, classname, test_session_id, test_id);
-CREATE INDEX IF NOT EXISTS idx_coverage_created_at ON raw_data.coverage(group_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_coverage_classname ON raw_data.coverage(group_id, app_id, classname, instance_id);
+CREATE INDEX IF NOT EXISTS idx_coverage_created_at ON raw_data.coverage(created_at);
 
 DROP INDEX IF EXISTS idx_instances_pk;
 CREATE INDEX idx_instances_pk ON raw_data.instances(group_id, app_id, id);

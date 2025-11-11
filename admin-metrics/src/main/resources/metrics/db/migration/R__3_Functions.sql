@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create functions for metrics
 -- Migration version: v3
--- Compatible with: R__1_Data.sql v4
+-- Compatible with: R__1_Data.sql v4.2
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -971,5 +971,327 @@ BEGIN
 		AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
 	GROUP BY tc.group_id, tc.app_id, tc.signature
     ;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+
+DROP FUNCTION IF EXISTS metrics.get_builds_with_coverage_by_test_session CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage_by_test_session(
+    input_build_id VARCHAR,
+    input_test_session_id VARCHAR,
+
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_signature_pattern VARCHAR DEFAULT NULL,
+
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_test_tags VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    build_id VARCHAR,
+    test_session_id VARCHAR,
+
+	total_probes INT,
+    covered_probes INT,
+    missed_probes INT,
+    probes_coverage_ratio FLOAT,
+
+
+	total_methods INT,
+    tested_methods INT,
+	missed_methods INT,
+    methods_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+    test_session_coverage AS (
+        SELECT
+            c.group_id,
+            c.app_id,
+            c.build_id,
+            c.test_session_id,
+
+            COALESCE(SUM(c.probes_count), 0) AS total_probes,
+            COALESCE(SUM(c.covered_probes), 0) AS covered_probes,
+
+            COUNT(*) AS total_methods,
+            COUNT(CASE WHEN c.covered_probes > 0 THEN c.method_id END) AS tested_methods
+        FROM metrics.get_methods_with_coverage_by_test_session(
+            input_build_id => input_build_id,
+            input_test_session_id => input_test_session_id,
+
+            input_package_name_pattern => input_package_name_pattern,
+            input_signature_pattern => input_signature_pattern,
+
+            input_coverage_app_env_ids => input_coverage_app_env_ids,
+            input_coverage_test_tags => input_coverage_test_tags
+        ) c
+        GROUP BY c.group_id, c.app_id, c.build_id, c.test_session_id
+    )
+	SELECT
+		c.group_id::VARCHAR,
+		c.app_id::VARCHAR,
+		c.build_id::VARCHAR,
+		c.test_session_id::VARCHAR,
+
+		c.total_probes::INT,
+		c.covered_probes::INT,
+		(c.total_probes - c.covered_probes)::INT AS missed_probes,
+		COALESCE(c.covered_probes::FLOAT / COALESCE(c.total_probes, 0), 0.0)::FLOAT AS probes_coverage_ratio,
+
+		c.total_methods::INT,
+		c.tested_methods::INT,
+		(c.total_methods - c.tested_methods)::INT AS missed_methods,
+		COALESCE(c.tested_methods::FLOAT / COALESCE(c.total_methods, 0), 0.0)::FLOAT AS methods_coverage_ratio
+	FROM test_session_coverage c
+    ;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+
+DROP FUNCTION IF EXISTS metrics.get_methods_with_coverage_by_test_session CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage_by_test_session(
+    input_build_id VARCHAR,
+    input_test_session_id VARCHAR,
+
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_signature_pattern VARCHAR DEFAULT NULL,
+
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_test_tags VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    build_id VARCHAR,
+    test_session_id VARCHAR,
+    method_id VARCHAR,
+	signature VARCHAR,
+    class_name VARCHAR,
+    method_name VARCHAR,
+    method_params VARCHAR,
+    return_type VARCHAR,
+    probes_count INT,
+    covered_probes INT,
+    missed_probes INT,
+    probes_coverage_ratio FLOAT
+) AS $$
+DECLARE
+    _group_id VARCHAR;
+    _app_id VARCHAR;
+BEGIN
+	_group_id = split_part(input_build_id, ':', 1);
+	_app_id = split_part(input_build_id, ':', 2);
+
+    RETURN QUERY
+    WITH
+	methods_with_coverage_by_test_session AS (
+		SELECT
+			bm.group_id,
+			bm.app_id,
+			bm.build_id,
+			bm.method_id,
+			ic.test_session_id,
+			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
+		FROM metrics.build_methods bm
+		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+		LEFT JOIN metrics.build_method_test_session_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id AND ic.test_session_id = input_test_session_id
+			-- Filters by isolated coverage
+		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
+		WHERE bm.group_id = _group_id
+			AND bm.app_id = _app_id
+			AND bm.build_id = input_build_id
+			-- Filters by methods
+			AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
+			AND (input_signature_pattern IS NULL OR m.signature LIKE input_signature_pattern)
+		GROUP BY bm.group_id, bm.app_id, bm.build_id, ic.test_session_id, bm.method_id
+	)
+    SELECT
+        c.group_id::VARCHAR,
+        c.app_id::VARCHAR,
+        c.build_id::VARCHAR,
+        c.test_session_id::VARCHAR,
+        c.method_id::VARCHAR,
+    	m.signature::VARCHAR,
+        m.class_name::VARCHAR,
+        m.method_name::VARCHAR,
+        m.method_params::VARCHAR,
+        m.return_type::VARCHAR,
+        m.probes_count::INT,
+
+		COALESCE(c.covered_probes, 0)::INT AS covered_probes,
+        (m.probes_count - COALESCE(c.covered_probes, 0))::INT AS missed_probes,
+        COALESCE(CAST(COALESCE(c.covered_probes, 0) AS FLOAT) / m.probes_count, 0.0) AS probes_coverage_ratio
+	FROM methods_with_coverage_by_test_session c
+	JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
+	;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+
+DROP FUNCTION IF EXISTS metrics.get_builds_with_coverage_by_test_definition CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage_by_test_definition(
+    input_build_id VARCHAR,
+    input_test_session_id VARCHAR,
+    input_test_definition_id VARCHAR,
+
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_signature_pattern VARCHAR DEFAULT NULL,
+
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    build_id VARCHAR,
+    test_session_id VARCHAR,
+    test_definition_id VARCHAR,
+
+	total_probes INT,
+    covered_probes INT,
+    missed_probes INT,
+    probes_coverage_ratio FLOAT,
+
+
+	total_methods INT,
+    tested_methods INT,
+	missed_methods INT,
+    methods_coverage_ratio FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+	WITH
+    test_definition_coverage AS (
+        SELECT
+            c.group_id,
+            c.app_id,
+            c.build_id,
+            c.test_session_id,
+            c.test_definition_id,
+
+            COALESCE(SUM(c.probes_count), 0) AS total_probes,
+            COALESCE(SUM(c.covered_probes), 0) AS covered_probes,
+
+            COUNT(*) AS total_methods,
+            COUNT(CASE WHEN c.covered_probes > 0 THEN c.method_id END) AS tested_methods
+        FROM metrics.get_methods_with_coverage_by_test_definition(
+            input_build_id => input_build_id,
+            input_test_session_id => input_test_session_id,
+            input_test_definition_id => input_test_definition_id,
+
+            input_package_name_pattern => input_package_name_pattern,
+            input_signature_pattern => input_signature_pattern,
+
+            input_coverage_app_env_ids => input_coverage_app_env_ids
+        ) c
+        GROUP BY c.group_id, c.app_id, c.build_id, c.test_session_id, c.test_definition_id
+    )
+	SELECT
+		c.group_id::VARCHAR,
+		c.app_id::VARCHAR,
+		c.build_id::VARCHAR,
+		c.test_session_id::VARCHAR,
+		c.test_definition_id::VARCHAR,
+
+		c.total_probes::INT,
+		c.covered_probes::INT,
+		(c.total_probes - c.covered_probes)::INT AS missed_probes,
+		COALESCE(c.covered_probes::FLOAT / COALESCE(c.total_probes, 0), 0.0)::FLOAT AS probes_coverage_ratio,
+
+		c.total_methods::INT,
+		c.tested_methods::INT,
+		(c.total_methods - c.tested_methods)::INT AS missed_methods,
+		COALESCE(c.tested_methods::FLOAT / COALESCE(c.total_methods, 0), 0.0)::FLOAT AS methods_coverage_ratio
+	FROM test_definition_coverage c
+    ;
+END;
+$$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
+
+
+DROP FUNCTION IF EXISTS metrics.get_methods_with_coverage_by_test_definition CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage_by_test_definition(
+    input_build_id VARCHAR,
+    input_test_session_id VARCHAR,
+    input_test_definition_id VARCHAR,
+
+    input_package_name_pattern VARCHAR DEFAULT NULL,
+    input_signature_pattern VARCHAR DEFAULT NULL,
+
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
+)
+RETURNS TABLE (
+    group_id VARCHAR,
+    app_id VARCHAR,
+    build_id VARCHAR,
+    test_session_id VARCHAR,
+    test_definition_id VARCHAR,
+    method_id VARCHAR,
+	signature VARCHAR,
+    class_name VARCHAR,
+    method_name VARCHAR,
+    method_params VARCHAR,
+    return_type VARCHAR,
+    probes_count INT,
+    covered_probes INT,
+    missed_probes INT,
+    probes_coverage_ratio FLOAT
+) AS $$
+DECLARE
+    _group_id VARCHAR;
+    _app_id VARCHAR;
+BEGIN
+	_group_id = split_part(input_build_id, ':', 1);
+	_app_id = split_part(input_build_id, ':', 2);
+
+    RETURN QUERY
+    WITH
+	methods_with_coverage_by_test_definition AS (
+		SELECT
+			bm.group_id,
+			bm.app_id,
+			bm.build_id,
+			bm.method_id,
+			ic.test_session_id,
+			ic.test_definition_id,
+			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
+		FROM metrics.build_methods bm
+		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
+		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
+		LEFT JOIN metrics.build_method_test_definition_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id
+		    AND ic.test_session_id = input_test_session_id AND ic.test_definition_id = input_test_definition_id
+			-- Filters by isolated coverage
+		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+		WHERE bm.group_id = _group_id
+			AND bm.app_id = _app_id
+			AND bm.build_id = input_build_id
+			-- Filters by methods
+			AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
+			AND (input_signature_pattern IS NULL OR m.signature LIKE input_signature_pattern)
+		GROUP BY bm.group_id, bm.app_id, bm.build_id, ic.test_session_id, ic.test_definition_id, bm.method_id
+	)
+    SELECT
+        c.group_id::VARCHAR,
+        c.app_id::VARCHAR,
+        c.build_id::VARCHAR,
+        c.test_session_id::VARCHAR,
+        c.test_definition_id::VARCHAR,
+        c.method_id::VARCHAR,
+    	m.signature::VARCHAR,
+        m.class_name::VARCHAR,
+        m.method_name::VARCHAR,
+        m.method_params::VARCHAR,
+        m.return_type::VARCHAR,
+        m.probes_count::INT,
+
+		COALESCE(c.covered_probes, 0)::INT AS covered_probes,
+        (m.probes_count - COALESCE(c.covered_probes, 0))::INT AS missed_probes,
+        COALESCE(CAST(COALESCE(c.covered_probes, 0) AS FLOAT) / m.probes_count, 0.0) AS probes_coverage_ratio
+	FROM methods_with_coverage_by_test_definition c
+	JOIN metrics.methods m ON m.group_id = c.group_id AND m.app_id = c.app_id AND m.method_id = c.method_id
+	;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
