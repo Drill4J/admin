@@ -1,11 +1,11 @@
-ALTER TABLE raw_data.builds
+ALTER TABLE metrics.builds_table
 ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-UPDATE raw_data.builds
+UPDATE metrics.builds_table
 SET updated_at = created_at;
 
-ALTER TABLE raw_data.test_definitions
+ALTER TABLE metrics.test_definitions_table
 ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-UPDATE raw_data.test_definitions
+UPDATE metrics.test_definitions_table
 SET updated_at = created_at;
