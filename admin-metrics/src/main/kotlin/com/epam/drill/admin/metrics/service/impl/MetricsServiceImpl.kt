@@ -25,12 +25,14 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -528,50 +530,39 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun refreshMaterializedViews() = coroutineScope {
-        val startTime = System.currentTimeMillis()
-        logger.info { "Refreshing materialized views..." }
+    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) = coroutineScope {
+        val resolvedScopes = scopes.ifEmpty { MatViewScope.entries.toSet() }
+        val jobs = mutableListOf<Deferred<Unit>>()
+        fun refresh(view: MatView) = async {
+            refreshMatViewOfScopes(view, resolvedScopes)
+        }.also { jobs += it }
+        fun waitAndRefresh(view: MatView, vararg dependents: Deferred<Unit>) = async {
+            dependents.forEach { it.await() }
+            refreshMatViewOfScopes(view, resolvedScopes)
+        }.also { jobs += it }
 
-        val lastUpdateStatusViewJob = async { refreshMaterializedView(lastUpdateStatusView) }
-        val buildsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(buildsView) } }
-        val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
-        val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
-        val testLaunchesViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testLaunchesView) } }
-        val testDefinitionsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testDefinitionsView) } }
-        val testSessionsViewJob = async { waitFor(lastUpdateStatusViewJob).run { refreshMaterializedView(testSessionsView) } }
-        val buildClassTestDefinitionCoverageViewJob =
-            async {
-                waitFor(
-                    buildsViewJob, methodsViewJob, buildMethodsViewJob,
-                    testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob
-                ).run { refreshMaterializedView(buildClassTestDefinitionCoverageView) }
-            }
-        val buildMethodTestDefinitionCoverageViewJob =
-            async {
-                waitFor(
-                    buildClassTestDefinitionCoverageViewJob
-                ).run { refreshMaterializedView(buildMethodTestDefinitionCoverageView) }
-            }
-        val buildMethodTestSessionCoverageViewJob = async {
-            waitFor(buildMethodTestDefinitionCoverageViewJob).run {
-                refreshMaterializedView(buildMethodTestSessionCoverageView)
-            }
-        }
-        val buildMethodCoverageViewJob = async {
-            waitFor(buildMethodTestSessionCoverageViewJob).run { refreshMaterializedView(buildMethodCoverageView) }
-        }
-        val methodCoverageViewJob =
-            async { waitFor(buildMethodCoverageViewJob).run { refreshMaterializedView(methodCoverageView) } }
-        val test2CodeMappingViewJob =
-            async { waitFor(buildMethodTestDefinitionCoverageViewJob).run { refreshMaterializedView(test2CodeMappingView) } }
-        val testSessionBuildsViewJob = async {
-            waitFor(buildMethodTestSessionCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) }
+        logger.info { "Refreshing materialized views ${resolvedScopes}..." }
+
+        val duration = measureTimedValue {
+            val lastUpdateStatusViewJob = refresh(lastUpdateStatusView)
+            val buildsViewJob = waitAndRefresh(buildsView, lastUpdateStatusViewJob)
+            val methodsViewJob = waitAndRefresh(methodsView, buildsViewJob)
+            val buildMethodsViewJob = waitAndRefresh(buildMethodsView, buildsViewJob)
+            val testLaunchesViewJob = waitAndRefresh(testLaunchesView, lastUpdateStatusViewJob)
+            val testDefinitionsViewJob = waitAndRefresh(testDefinitionsView, lastUpdateStatusViewJob)
+            val testSessionViewJob = waitAndRefresh(testSessionsView, lastUpdateStatusViewJob)
+            val buildClassTestDefCoverageViewJob = waitAndRefresh(buildClassTestDefinitionCoverageView,
+                buildsViewJob, methodsViewJob, buildMethodsViewJob, testLaunchesViewJob, testDefinitionsViewJob, testSessionViewJob)
+            val buildMethodTestDefCoverageViewJob = waitAndRefresh(buildMethodTestDefinitionCoverageView, buildClassTestDefCoverageViewJob)
+            val buildMethodTestSessionCoverageViewJob = waitAndRefresh(buildMethodTestSessionCoverageView, buildMethodTestDefCoverageViewJob)
+            val buildMethodCoverageViewJob = waitAndRefresh(buildMethodCoverageView, buildMethodTestSessionCoverageViewJob)
+            waitAndRefresh(methodCoverageView, buildMethodCoverageViewJob)
+            waitAndRefresh(test2CodeMappingView, buildMethodTestDefCoverageViewJob)
+            waitAndRefresh(testSessionBuildsView, buildMethodTestSessionCoverageViewJob)
+            jobs.awaitAll()
         }
 
-        waitFor(testSessionBuildsViewJob, methodCoverageViewJob, test2CodeMappingViewJob)
-
-        val duration = System.currentTimeMillis() - startTime
-        logger.info { "Materialized views were refreshed in $duration ms." }
+        logger.info { "Materialized views $resolvedScopes were refreshed in ${formatDuration(duration.duration)}." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -597,18 +588,23 @@ class MetricsServiceImpl(
         return URI("$uri?$queryString").toString()
     }
 
-    private suspend fun refreshMaterializedView(viewName: String) {
+    private suspend fun refreshMatViewOfScopes(view: MatView, scopes: Set<MatViewScope>) {
+        if ((view.scope == null) || (view.scope in scopes)) {
+            refreshMatView(view)
+        }
+    }
+    private suspend fun refreshMatView(view: MatView) {
         val result = measureTimedValue {
             try {
-                metricsRepository.refreshMaterializedView(viewName, true)
+                metricsRepository.refreshMaterializedView(view.name, true)
             } catch (e: ExposedSQLException) {
                 if (isMaterializedViewNotPopulated(e)) {
-                    logger.debug { "Materialized view $viewName is not populated. Refreshing without CONCURRENTLY." }
-                    metricsRepository.refreshMaterializedView(viewName, false)
+                    logger.debug { "Materialized view ${view.name} is not populated. Refreshing without CONCURRENTLY." }
+                    metricsRepository.refreshMaterializedView(view.name, false)
                 } else throw e
             }
         }
-        logger.debug("Materialized view {} was refreshed in {}.", viewName, formatDuration(result.duration))
+        logger.debug("Materialized view {} was refreshed in {}.", view.name, formatDuration(result.duration))
     }
 
     private fun formatDuration(duration: kotlin.time.Duration): String = when {
@@ -617,9 +613,6 @@ class MetricsServiceImpl(
         else -> "${duration.inWholeMilliseconds} ms"
     }
 
-    private suspend fun waitFor(vararg dependents: Deferred<Unit>) {
-        dependents.forEach { it.await() }
-    }
 
     private fun isMaterializedViewNotPopulated(e: ExposedSQLException): Boolean =
         e.message?.contains("CONCURRENTLY cannot be used when the materialized view is not populated") == true
