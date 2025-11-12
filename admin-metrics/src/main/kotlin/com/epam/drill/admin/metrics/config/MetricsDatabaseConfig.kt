@@ -96,6 +96,11 @@ fun Transaction.executeQueryReturnMap(buildSql: SqlBuilder.() -> Unit): List<Map
     return executeQueryReturnMap(builder.sqlQuery.toString(), *builder.params.toTypedArray())
 }
 
+fun fromResource(resourcePath: String): String {
+    return MetricsDatabaseConfig::class.java.getResource(resourcePath)?.readText()
+        ?: throw IllegalArgumentException("Resource not found: $resourcePath")
+}
+
 private fun <T : Any> Transaction.executePreparedStatement(
     stmt: String,
     vararg params: Any?,

@@ -24,17 +24,15 @@ import javax.sql.DataSource
 import org.flywaydb.core.Flyway
 
 open class DatabaseConfig(
-    private val dbSchema: String,
-    private val schemaMigrationLocation: String,
-
-    ) {
-    private lateinit var database: Database
-    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
-
+    val dbSchema: String,
+    val schemaMigrationLocation: String,
+) {
+    lateinit var database: Database
+    var dispatcher: CoroutineDispatcher = Dispatchers.IO
 
     fun init(
         dataSource: DataSource,
-        defaultMaxAttempts: Int = 3
+        defaultMaxAttempts: Int = 1
     ) {
         this.database = Database.connect(
             datasource = dataSource,

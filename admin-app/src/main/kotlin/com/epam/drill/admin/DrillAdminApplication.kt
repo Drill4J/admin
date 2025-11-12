@@ -204,6 +204,7 @@ private fun Application.initScheduler() {
     }
     scheduler.start()
     scheduler.scheduleJob(refreshMaterializedViewsJob, schedulerConfig.refreshViewsTrigger)
+    scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
     scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
 
