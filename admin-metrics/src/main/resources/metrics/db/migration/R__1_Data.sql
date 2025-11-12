@@ -240,15 +240,15 @@ SELECT
     c.test_result,
     c.creation_day,
     c.method_id,
-    test_tag,
+    NULL::VARCHAR AS test_tag,
     c.test_session_id,
     BIT_OR(c.probes) AS probes
 FROM metrics.build_method_test_definition_coverage c
 LEFT JOIN metrics.test_definitions td ON td.group_id = c.group_id AND td.test_definition_id = c.test_definition_id
-LEFT JOIN LATERAL unnest(td.test_tags) AS test_tag ON TRUE
-GROUP BY c.group_id, c.app_id, c.build_id, c.app_env_id, c.test_result, c.creation_day, c.method_id, c.test_session_id,test_tag
+--LEFT JOIN LATERAL unnest(td.test_tags) AS test_tag ON TRUE
+GROUP BY c.group_id, c.app_id, c.build_id, c.app_env_id, c.test_result, c.creation_day, c.method_id, c.test_session_id --,test_tag
 WITH NO DATA;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_session_coverage_pk ON metrics.build_method_test_session_coverage (group_id, app_id, build_id, app_env_id, test_result, creation_day, method_id, test_session_id, test_tag);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_method_test_session_coverage_pk ON metrics.build_method_test_session_coverage (group_id, app_id, build_id, app_env_id, test_result, creation_day, method_id, test_session_id); --, test_tag);
 -- Used in build_method_coverage
 CREATE INDEX ON metrics.build_method_test_session_coverage(group_id, test_session_id);
 -- Used in get_methods_with_coverage_by_test_session
