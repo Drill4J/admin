@@ -20,7 +20,9 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
+import com.epam.drill.admin.metrics.payload.RefreshPayload
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -28,6 +30,7 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
+import io.ktor.server.request.receive
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
@@ -520,7 +523,8 @@ fun Route.postRefreshMaterializedViews() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.Refresh> { params ->
-        metricsService.refreshMaterializedViews()
+        val refreshPayload = call.receive<RefreshPayload>()
+        metricsService.refreshMaterializedViews(scopes = refreshPayload.scopes)
         call.ok("Materialized views were refreshed.")
     }
 }
