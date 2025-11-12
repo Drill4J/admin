@@ -240,7 +240,7 @@ SELECT
     c.test_result,
     c.creation_day,
     c.method_id,
-    NULL::VARCHAR AS test_tag,
+    NULL::VARCHAR AS test_tag,--removed test_tag for performance reasons
     c.test_session_id,
     BIT_OR(c.probes) AS probes
 FROM metrics.build_method_test_definition_coverage c
