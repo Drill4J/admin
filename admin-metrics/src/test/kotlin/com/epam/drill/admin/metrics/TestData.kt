@@ -106,7 +106,7 @@ val session3 = SessionPayload(
     startedAt = Clock.System.now()
 )
 
-fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
+fun SingleMethodPayload.changed() = SingleMethodPayload(
     classname = classname,
     name = name,
     params = params,
@@ -115,6 +115,8 @@ fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
     probesStartPos = probesStartPos,
     bodyChecksum = bodyChecksum + "0",
 )
+
+fun SingleMethodPayload.changeChecksum() = changed()
 
 fun probesOf(vararg probes: Int): IntArray = probes
 
