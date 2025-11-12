@@ -530,36 +530,29 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) = coroutineScope {
+    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) {
         val resolvedScopes = scopes.ifEmpty { MatViewScope.entries.toSet() }
-        val jobs = mutableListOf<Deferred<Unit>>()
-        fun refresh(view: MatView) = async {
+        suspend fun refresh(view: MatView) {
             refreshMatViewOfScopes(view, resolvedScopes)
-        }.also { jobs += it }
-        fun waitAndRefresh(view: MatView, vararg dependents: Deferred<Unit>) = async {
-            dependents.forEach { it.await() }
-            refreshMatViewOfScopes(view, resolvedScopes)
-        }.also { jobs += it }
+        }
 
         logger.info { "Refreshing materialized views ${resolvedScopes}..." }
 
         val duration = measureTimedValue {
-            val lastUpdateStatusViewJob = refresh(lastUpdateStatusView)
-            val buildsViewJob = waitAndRefresh(buildsView, lastUpdateStatusViewJob)
-            val methodsViewJob = waitAndRefresh(methodsView, buildsViewJob)
-            val buildMethodsViewJob = waitAndRefresh(buildMethodsView, buildsViewJob)
-            val testLaunchesViewJob = waitAndRefresh(testLaunchesView, lastUpdateStatusViewJob)
-            val testDefinitionsViewJob = waitAndRefresh(testDefinitionsView, lastUpdateStatusViewJob)
-            val testSessionViewJob = waitAndRefresh(testSessionsView, lastUpdateStatusViewJob)
-            val buildClassTestDefCoverageViewJob = waitAndRefresh(buildClassTestDefinitionCoverageView,
-                buildsViewJob, methodsViewJob, buildMethodsViewJob, testLaunchesViewJob, testDefinitionsViewJob, testSessionViewJob)
-            val buildMethodTestDefCoverageViewJob = waitAndRefresh(buildMethodTestDefinitionCoverageView, buildClassTestDefCoverageViewJob)
-            val buildMethodTestSessionCoverageViewJob = waitAndRefresh(buildMethodTestSessionCoverageView, buildMethodTestDefCoverageViewJob)
-            val buildMethodCoverageViewJob = waitAndRefresh(buildMethodCoverageView, buildMethodTestSessionCoverageViewJob)
-            waitAndRefresh(methodCoverageView, buildMethodCoverageViewJob)
-            waitAndRefresh(test2CodeMappingView, buildMethodTestDefCoverageViewJob)
-            waitAndRefresh(testSessionBuildsView, buildMethodTestSessionCoverageViewJob)
-            jobs.awaitAll()
+            refresh(lastUpdateStatusView)
+            refresh(buildsView)
+            refresh(methodsView)
+            refresh(buildMethodsView)
+            refresh(testLaunchesView)
+            refresh(testDefinitionsView)
+            refresh(testSessionsView)
+            refresh(buildClassTestDefinitionCoverageView)
+            refresh(buildMethodTestDefinitionCoverageView)
+            refresh(buildMethodTestSessionCoverageView)
+            refresh(buildMethodCoverageView)
+            refresh(methodCoverageView)
+            refresh(test2CodeMappingView)
+            refresh(testSessionBuildsView)
         }
 
         logger.info { "Materialized views $resolvedScopes were refreshed in ${formatDuration(duration.duration)}." }

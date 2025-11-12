@@ -1,6 +1,6 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create materialized views for metrics
--- Migration version: v4
+-- Migration version: v4.3
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -177,6 +177,7 @@ SELECT
     c.classname AS class_name,
     c.test_session_id,
     tl.test_definition_id,
+    BIT_LENGTH(c.probes) AS class_probes_count,
     BIT_OR(c.probes) AS probes
 FROM raw_data.coverage c
 JOIN raw_data.instances i ON i.group_id = c.group_id AND i.app_id = c.app_id AND i.id = c.instance_id
@@ -189,9 +190,9 @@ WHERE c.created_at >= lus.since_timestamp AND c.created_at < lus.until_timestamp
         WHERE r.group_id = c.group_id
             AND r.app_id = c.app_id
             AND r.classname_pattern IS NOT NULL AND c.classname::text ~ r.classname_pattern::text)
-GROUP BY c.group_id, c.app_id, i.build_id, i.env_id, tl.test_result, DATE_TRUNC('day', c.created_at), c.classname, c.test_session_id, tl.test_definition_id
+GROUP BY c.group_id, c.app_id, i.build_id, i.env_id, tl.test_result, DATE_TRUNC('day', c.created_at), c.classname, c.test_session_id, tl.test_definition_id, BIT_LENGTH(c.probes)
 WITH NO DATA;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_build_class_test_definition_coverage_pk ON metrics.build_class_test_definition_coverage (group_id, app_id, build_id, app_env_id, test_result, creation_day, class_name, test_session_id, test_definition_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_build_class_test_definition_coverage_pk ON metrics.build_class_test_definition_coverage (group_id, app_id, build_id, app_env_id, test_result, creation_day, class_name, test_session_id, test_definition_id, class_probes_count);
 -- Used in build_method_test_definition_coverage
 CREATE INDEX ON metrics.build_class_test_definition_coverage(group_id, app_id, class_name, build_id);
 
