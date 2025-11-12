@@ -11,8 +11,9 @@ SELECT
     b.commit_message,
     b.committed_at,
     DATE_TRUNC('day', b.created_at) AS creation_day,
-    b.created_at
+    b.created_at,
+    b.updated_at
 FROM raw_data.builds b
-WHERE b.created_at > :since_timestamp
-    AND b.created_at <= :until_timestamp
-ORDER BY b.created_at ASC
+WHERE b.updated_at > :since_timestamp
+    AND b.updated_at <= :until_timestamp
+ORDER BY b.updated_at ASC

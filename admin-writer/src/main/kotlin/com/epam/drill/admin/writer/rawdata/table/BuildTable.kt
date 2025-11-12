@@ -29,4 +29,5 @@ object BuildTable : StringIdTable("raw_data.builds") {
     val commitMessage = varchar("commit_message", SHORT_TEXT_LENGTH).nullable()
     val committedAt = datetime("committed_at").nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

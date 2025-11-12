@@ -18,19 +18,19 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Build
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.BuildTable.select
-import com.epam.drill.admin.writer.rawdata.table.CoverageTable
-import com.epam.drill.admin.writer.rawdata.table.InstanceTable
-import com.epam.drill.admin.writer.rawdata.table.MethodTable
-import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
 class BuildRepositoryImpl: BuildRepository {
     override fun create(build: Build) {
-        BuildTable.upsert() {
+        BuildTable.upsert(
+            onUpdateExclude = listOf(BuildTable.createdAt),
+        ) {
             it[id] = build.id
             it[groupId] = build.groupId
             it[appId] = build.appId
@@ -41,6 +41,7 @@ class BuildRepositoryImpl: BuildRepository {
             it[committedAt] = build.commitDate
             it[commitAuthor] = build.commitAuthor
             it[commitMessage] = build.commitMessage
+            it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
     override fun existsById(buildId: String): Boolean {
@@ -48,6 +49,6 @@ class BuildRepositoryImpl: BuildRepository {
     }
 
     override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        BuildTable.deleteWhere { (BuildTable.groupId eq groupId) and (BuildTable.createdAt less createdBefore.atStartOfDay()) }
+        BuildTable.deleteWhere { (BuildTable.groupId eq groupId) and (BuildTable.updatedAt less createdBefore.atStartOfDay()) }
     }
 }

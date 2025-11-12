@@ -16,8 +16,6 @@
 package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
-import com.epam.drill.admin.etl.impl.SqlDataExtractor
-import com.epam.drill.admin.etl.impl.SqlDataLoader
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
@@ -32,7 +30,7 @@ val testDefinitionsExtractor = UntypedSqlDataExtractor(
 val testDefinitionsLoader = UntypedSqlDataLoader(
     name = "test_definitions",
     sql = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
+    lastExtractedAtColumnName = "updated_at",
     database = MetricsDatabaseConfig.database
 )
 

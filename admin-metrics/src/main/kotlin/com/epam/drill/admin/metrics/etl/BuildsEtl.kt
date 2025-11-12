@@ -30,7 +30,7 @@ val buildsExtractor = UntypedSqlDataExtractor(
 val buildsLoader = UntypedSqlDataLoader(
     name = "builds",
     sql = fromResource("/metrics/db/etl/builds_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
+    lastExtractedAtColumnName = "updated_at",
     database = MetricsDatabaseConfig.database
 )
 

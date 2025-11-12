@@ -11,7 +11,8 @@ INSERT INTO metrics.builds_table (
     commit_message,
     committed_at,
     created_at,
-    creation_day
+    creation_day,
+    updated_at
 )
 VALUES (
     :group_id,
@@ -26,7 +27,8 @@ VALUES (
     :commit_message,
     :committed_at,
     :created_at,
-    :creation_day
+    :creation_day,
+    :updated_at
 )
 ON CONFLICT (
     group_id,
@@ -42,5 +44,4 @@ SET
     commit_author = EXCLUDED.commit_author,
     commit_message = EXCLUDED.commit_message,
     committed_at = EXCLUDED.committed_at,
-    created_at = EXCLUDED.created_at,
-    creation_day = EXCLUDED.creation_day
+    updated_at = EXCLUDED.updated_at

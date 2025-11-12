@@ -7,7 +7,8 @@ INSERT INTO metrics.test_definitions_table (
     test_tags,
     test_metadata,
     created_at,
-    creation_day
+    creation_day,
+    updated_at
 )
 VALUES (
     :test_definition_id,
@@ -18,7 +19,8 @@ VALUES (
     :test_tags,
     :test_metadata,
     :created_at,
-    :creation_day
+    :creation_day,
+    :updated_at
 )
 ON CONFLICT (
     group_id,
@@ -31,6 +33,4 @@ SET
     test_runner = EXCLUDED.test_runner,
     test_tags = EXCLUDED.test_tags,
     test_metadata = EXCLUDED.test_metadata,
-    created_at = EXCLUDED.created_at,
-    creation_day = EXCLUDED.creation_day
-
+    updated_at = EXCLUDED.updated_at
