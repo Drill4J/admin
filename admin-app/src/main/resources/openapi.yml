@@ -765,11 +765,6 @@ paths:
           in: query
           schema:
             type: string
-        - name: onlyBaselineBuildTestsEnabled
-          description: If true, only tests launched in the baseline build will be considered.
-          in: query
-          schema:
-            type: boolean
         - name: coverageBranches
           in: query
           description: List of coverage branches to consider.
@@ -788,10 +783,6 @@ paths:
               type: string
           style: form
           explode: true
-        - name: coveragePeriodDays
-          in: query
-          schema:
-            type: integer
         - name: page
           in: query
           schema:
@@ -878,11 +869,6 @@ paths:
           in: query
           schema:
             type: string
-        - name: onlyBaselineBuildTestsEnabled
-          in: query
-          description: If true, only tests launched in the baseline build will be considered.
-          schema:
-            type: boolean
         - name: coverageBranches
           in: query
           description: List of coverage branches to consider.
@@ -901,10 +887,6 @@ paths:
               type: string
           style: form
           explode: true
-        - name: coveragePeriodDays
-          in: query
-          schema:
-            type: integer
         - name: page
           in: query
           schema:
