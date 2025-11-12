@@ -73,6 +73,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ?", branch)
             appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
