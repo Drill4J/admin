@@ -32,6 +32,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
+import org.junit.jupiter.api.Disabled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -177,6 +178,7 @@ class ImpactedTestsApiTest : DatabaseTests({
         }
 
     @Test
+    @Disabled("Removed test tag filtering feature due to performance concerns")
     fun `given test tag filter, impacted tests service should return only tests matching the tag`(): Unit =
         runBlocking {
             val client = runDrillApplication {
