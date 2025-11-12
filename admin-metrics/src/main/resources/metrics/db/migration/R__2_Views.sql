@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create views for metrics
 -- Migration version: v3
--- Compatible with: R__1_Data.sql v4.2
+-- Compatible with: R__1_Data.sql v4.3
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
