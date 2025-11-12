@@ -31,6 +31,7 @@ import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveNullable
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
@@ -237,6 +238,12 @@ class Metrics {
     class Refresh(
         val parent: Metrics,
     )
+
+    @Resource("/refresh/{scope}")
+    class RefreshScope(
+        val parent: Metrics,
+        val scope: MatViewScope
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -254,6 +261,7 @@ fun Route.metricsRoutes() {
 
 fun Route.metricsManagementRoutes() {
     postRefreshMaterializedViews()
+    postRefreshMaterializedViewsWithScope()
 }
 
 fun Route.getApplications() {
@@ -523,8 +531,16 @@ fun Route.postRefreshMaterializedViews() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.Refresh> { params ->
-        val refreshPayload = call.receive<RefreshPayload>()
-        metricsService.refreshMaterializedViews(scopes = refreshPayload.scopes)
+        metricsService.refreshMaterializedViews()
         call.ok("Materialized views were refreshed.")
+    }
+}
+
+fun Route.postRefreshMaterializedViewsWithScope() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    post<Metrics.RefreshScope> { params ->
+        metricsService.refreshMaterializedViews(scopes = setOfNotNull(params.scope))
+        call.ok("Materialized views [${params.scope}] were refreshed.")
     }
 }
