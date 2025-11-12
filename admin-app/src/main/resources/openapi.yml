@@ -910,12 +910,28 @@ paths:
         - metrics
       security:
         - apiKeyAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshPayload'
+      responses:
+        '200':
+          description: Materialized views refresh started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/refresh/{scope}:
+    post:
+      summary: Refresh materialized views with scope
+      operationId: refreshMaterializedViewsWithScope
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: scope
+          description: Scope of the refresh operation ('BUILDS', 'TESTS', 'COVERAGE')
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Materialized views refresh started
@@ -1573,19 +1589,3 @@ components:
         metricsPeriodDays:
           type: integer
           nullable: true
-    # Metrics Schemas
-    RefreshPayload:
-      type: object
-      properties:
-        scopes:
-          type: array
-          description: Scope of the refresh operation ('BUILDS', 'TESTS', 'COVERAGE'). If not provided, all views will be refreshed.
-          nullable: true
-          items:
-            $ref: '#/components/schemas/MatViewScope'
-    MatViewScope:
-      type: string
-      enum:
-        - BUILDS
-        - TESTS
-        - COVERAGE
