@@ -73,6 +73,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ?", branch)
             appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -375,14 +376,10 @@ class MetricsRepositoryImpl : MetricsRepository {
         testNamePattern: String?,
 
         packageNamePattern: String?,
-        className: String?,
-        methodSignature: String?,
+        methodSignaturePattern: String?,
 
-        coverageBuildIds: List<String>,
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-        coveragePeriodFrom: LocalDateTime?,
-        coveragePeriodUntil: LocalDateTime?,
 
         offset: Int?,
         limit: Int?
@@ -408,14 +405,10 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name => ?", className)
-            appendOptional(", input_method_signature => ?", methodSignature)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
-            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
-            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
 
             append("""
                 )
@@ -435,14 +428,10 @@ class MetricsRepositoryImpl : MetricsRepository {
         testNamePattern: String?,
 
         packageNamePattern: String?,
-        className: String?,
-        methodSignature: String?,
+        methodSignaturePattern: String?,
 
-        coverageBuildIds: List<String>,
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-        coveragePeriodFrom: LocalDateTime?,
-        coveragePeriodUntil: LocalDateTime?,
 
         offset: Int?,
         limit: Int?
@@ -467,15 +456,11 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
 
-            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name => ?", className)
-            appendOptional(", input_method_signature => ?", methodSignature)
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
 
-            appendOptional(", input_coverage_build_ids => ?", coverageBuildIds)
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
-            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
 
             append("""
                 )

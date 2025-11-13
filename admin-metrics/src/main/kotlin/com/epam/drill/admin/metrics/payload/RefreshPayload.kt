@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.models
+package com.epam.drill.admin.metrics.payload
 
+import com.epam.drill.admin.metrics.models.MatViewScope
 import kotlinx.serialization.Serializable
 
 @Serializable
-open class CoverageCriteria(
-    val branches: List<String> = emptyList(),
-    val appEnvIds: List<String> = emptyList(),
-) {
-    object NONE: CoverageCriteria()
-}
-
+class RefreshPayload(val scopes: Set<MatViewScope> = emptySet())

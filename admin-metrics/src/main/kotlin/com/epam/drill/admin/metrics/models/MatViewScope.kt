@@ -15,13 +15,8 @@
  */
 package com.epam.drill.admin.metrics.models
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-open class CoverageCriteria(
-    val branches: List<String> = emptyList(),
-    val appEnvIds: List<String> = emptyList(),
-) {
-    object NONE: CoverageCriteria()
+enum class MatViewScope {
+    BUILDS,
+    TESTS,
+    COVERAGE
 }
-

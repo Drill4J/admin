@@ -25,12 +25,14 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -453,10 +455,6 @@ class MetricsServiceImpl(
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -471,13 +469,10 @@ class MetricsServiceImpl(
                 testNamePattern = testCriteria.testName,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
-                className = methodCriteria.className,
-                methodSignature = methodCriteria.methodSignature,
+                methodSignaturePattern = methodCriteria.signaturePattern,
 
-                coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
-                coveragePeriodFrom = coveragePeriodFrom,
 
                 offset = offset,
                 limit = limit,
@@ -510,10 +505,6 @@ class MetricsServiceImpl(
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        val coveragePeriodFrom = coverageCriteria.periodDays?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -528,13 +519,10 @@ class MetricsServiceImpl(
                 testNamePattern = testCriteria.testName,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
-                className = methodCriteria.className,
-                methodSignature = methodCriteria.methodSignature,
+                methodSignaturePattern = methodCriteria.signaturePattern,
 
-                coverageBuildIds = coverageCriteria.builds.map(Build::id),
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
-                coveragePeriodFrom = coveragePeriodFrom,
 
                 offset = null,
                 limit = null
@@ -542,25 +530,32 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun refreshMaterializedViews() = coroutineScope {
-        val startTime = System.currentTimeMillis()
-        logger.info { "Refreshing materialized views..." }
+    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) {
+        val resolvedScopes = scopes.ifEmpty { MatViewScope.entries.toSet() }
+        suspend fun refresh(view: MatView) {
+            refreshMatViewOfScopes(view, resolvedScopes)
+        }
 
-        val buildsViewJob = async { refreshMaterializedView(buildsView) }
-        val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
-        val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
-        val testLaunchesViewJob = async { refreshMaterializedView(testLaunchesView) }
-        val testDefinitionsViewJob = async { refreshMaterializedView(testDefinitionsView) }
-        val testSessionsViewJob = async { refreshMaterializedView(testSessionsView) }
-        val methodCoverageViewJob = async { waitFor(buildsViewJob, methodsViewJob, buildMethodsViewJob,
-            testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob).run { refreshMaterializedView(methodCoverageView) } }
-        val methodSmartCoverageViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(methodSmartCoverageView) } }
-        val testSessionBuildsViewJob = async { waitFor(buildsViewJob, methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
+        logger.info { "Refreshing materialized views ${resolvedScopes}..." }
 
-        waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
+        val duration = measureTimedValue {
+            refresh(lastUpdateStatusView)
+            refresh(buildsView)
+            refresh(methodsView)
+            refresh(buildMethodsView)
+            refresh(testLaunchesView)
+            refresh(testDefinitionsView)
+            refresh(testSessionsView)
+            refresh(buildClassTestDefinitionCoverageView)
+            refresh(buildMethodTestDefinitionCoverageView)
+            refresh(buildMethodTestSessionCoverageView)
+            refresh(buildMethodCoverageView)
+            refresh(methodCoverageView)
+            refresh(test2CodeMappingView)
+            refresh(testSessionBuildsView)
+        }
 
-        val duration = System.currentTimeMillis() - startTime
-        logger.info { "Materialized views were refreshed in $duration ms." }
+        logger.info { "Materialized views $resolvedScopes were refreshed in ${formatDuration(duration.duration)}." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -586,18 +581,23 @@ class MetricsServiceImpl(
         return URI("$uri?$queryString").toString()
     }
 
-    private suspend fun refreshMaterializedView(viewName: String) {
+    private suspend fun refreshMatViewOfScopes(view: MatView, scopes: Set<MatViewScope>) {
+        if ((view.scope == null) || (view.scope in scopes)) {
+            refreshMatView(view)
+        }
+    }
+    private suspend fun refreshMatView(view: MatView) {
         val result = measureTimedValue {
             try {
-                metricsRepository.refreshMaterializedView(viewName, true)
+                metricsRepository.refreshMaterializedView(view.name, true)
             } catch (e: ExposedSQLException) {
                 if (isMaterializedViewNotPopulated(e)) {
-                    logger.debug { "Materialized view $viewName is not populated. Refreshing without CONCURRENTLY." }
-                    metricsRepository.refreshMaterializedView(viewName, false)
+                    logger.debug { "Materialized view ${view.name} is not populated. Refreshing without CONCURRENTLY." }
+                    metricsRepository.refreshMaterializedView(view.name, false)
                 } else throw e
             }
         }
-        logger.debug("Materialized view {} was refreshed in {}.", viewName, formatDuration(result.duration))
+        logger.debug("Materialized view {} was refreshed in {}.", view.name, formatDuration(result.duration))
     }
 
     private fun formatDuration(duration: kotlin.time.Duration): String = when {
@@ -606,9 +606,6 @@ class MetricsServiceImpl(
         else -> "${duration.inWholeMilliseconds} ms"
     }
 
-    private suspend fun waitFor(vararg dependents: Deferred<Unit>) {
-        dependents.forEach { it.await() }
-    }
 
     private fun isMaterializedViewNotPopulated(e: ExposedSQLException): Boolean =
         e.message?.contains("CONCURRENTLY cannot be used when the materialized view is not populated") == true

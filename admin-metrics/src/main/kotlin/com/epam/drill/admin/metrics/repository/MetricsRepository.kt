@@ -110,14 +110,10 @@ interface MetricsRepository {
         testNamePattern: String? = null,
 
         packageNamePattern: String? = null,
-        className: String? = null,
-        methodSignature: String? = null,
+        methodSignaturePattern: String? = null,
 
-        coverageBuildIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
-        coveragePeriodFrom: LocalDateTime? = null,
-        coveragePeriodUntil: LocalDateTime? = null,
 
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
@@ -132,14 +128,10 @@ interface MetricsRepository {
         testNamePattern: String?,
 
         packageNamePattern: String? = null,
-        className: String? = null,
-        methodSignature: String? = null,
+        methodSignaturePattern: String? = null,
 
-        coverageBuildIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
-        coveragePeriodFrom: LocalDateTime? = null,
-        coveragePeriodUntil: LocalDateTime? = null,
 
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
