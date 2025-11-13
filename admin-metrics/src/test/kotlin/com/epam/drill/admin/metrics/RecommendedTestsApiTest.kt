@@ -93,7 +93,7 @@ class RecommendedTestsApiTest : DatabaseTests({
             test1 covers method1 with probesOf(1, 1) on build1
             build2 hasModified method1 comparedTo build1
             test1 covers method1 with probesOf(1, 1) on build2
-            build3 hasNew method3 comparedTo build2
+            build3 hasTheSameMethodsComparedTo build2
         }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
