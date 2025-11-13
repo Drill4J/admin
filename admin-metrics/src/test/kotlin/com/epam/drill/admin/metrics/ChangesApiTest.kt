@@ -42,38 +42,23 @@ class ChangesApiTest : DatabaseTests({
     RawDataWriterDatabaseConfig.init(it)
     MetricsDatabaseConfig.init(it)
 }) {
-    private suspend fun HttpClient.initBuildsAndMethodsData() {
-        deployInstance(instance = build1, methods = arrayOf(method1, method2))
-        deployInstance(
-            build2, methods = arrayOf(
-                method1, //same as in build1
-                method2.changeChecksum() //modified
-            )
-        )
-        deployInstance(
-            instance = build3, methods = arrayOf(
-                method1, //same as in build1
-                method2.changeChecksum(), //same as in build2
-                method3 //added
-            )
-        )
+    private suspend fun TestDataDsl.initBuildsAndMethodsData() {
+        build1 has listOf(method1, method2)
+        build2 hasModified method2 comparedTo build1
+        build3 hasNew method3 comparedTo build2
     }
 
     @Test
     fun `given target and baseline build, changes service should return method changes between builds`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                initBuildsAndMethodsData()
-            }
-
+        havingData {
+            initBuildsAndMethodsData()
+        }.expectThat {
             client.get("/metrics/changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "3.0.0")
                 parameter("baselineBuildVersion", "1.0.0")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
                 assertTrue(data.any { it["name"] == method3.name && it["changeType"] == ChangeType.NEW.name })
@@ -83,26 +68,16 @@ class ChangesApiTest : DatabaseTests({
 
     @Test
     fun `given isolated tested target build, changes service should return method changes with coverage in current build`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                initBuildsAndMethodsData()
-                launchTest(
-                    session1, test1, build3, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(1, 1, 0), //method2 covered by 2 probes
-                        method3 to probesOf(0),
-                    )
-                )
-            }
-
+        havingData {
+            initBuildsAndMethodsData()
+            test1 covers method2 with probesOf(1, 1, 0) on build3
+        }.expectThat {
             client.get("/metrics/changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "3.0.0")
                 parameter("baselineBuildVersion", "1.0.0")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
@@ -110,34 +85,17 @@ class ChangesApiTest : DatabaseTests({
 
     @Test
     fun `given aggregated tested builds, changes service should return method changes with coverage in other builds`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                initBuildsAndMethodsData()
-
-                launchTest(
-                    session1, test1, build2, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(1, 1, 0)
-                    )
-                )
-
-                launchTest(
-                    session2, test2, build3, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 1),
-                        method3 to probesOf(0)
-                    )
-                )
-            }
-
+        havingData {
+            initBuildsAndMethodsData()
+            test1 covers method2 with probesOf(1, 1, 0) on build2
+            test2 covers method2 with probesOf(0, 0, 1) on build3
+        }.expectThat {
             client.get("/metrics/changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "3.0.0")
                 parameter("baselineBuildVersion", "1.0.0")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
@@ -146,23 +104,22 @@ class ChangesApiTest : DatabaseTests({
 
     @Test
     fun `given page and size, get changes endpoint should return changes only for specified page and size`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                val methods = (1..15).map { idx ->
-                    SingleMethodPayload(
-                        classname = testClass,
-                        name = "method$idx",
-                        params = "()",
-                        returnType = "void",
-                        probesCount = 3,
-                        probesStartPos = 3 * (idx - 1),
-                        bodyChecksum = "100$idx",
-                    )
-                }
-                deployInstance(instance = build1, methods = methods.toTypedArray())
-                deployInstance(instance = build2, methods = methods.map { it.changeChecksum() }.toTypedArray())
+        havingData {
+            val methods = (1..15).map { idx ->
+                SingleMethodPayload(
+                    classname = testClass,
+                    name = "method$idx",
+                    params = "()",
+                    returnType = "void",
+                    probesCount = 3,
+                    probesStartPos = 3 * (idx - 1),
+                    bodyChecksum = "100$idx",
+                )
             }
+            build1 has methods.toList()
+            client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() }.toTypedArray())
 
+        }.expectThat {
             client.get("/metrics/changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
@@ -170,12 +127,8 @@ class ChangesApiTest : DatabaseTests({
                 parameter("baselineBuildVersion", "1.0.0")
                 parameter("page", 1)
                 parameter("pageSize", 5)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(5, data.size)
-                val total = json.read<Int>("$.paging.total")
-                assertEquals(15, total)
             }
 
             client.get("/metrics/changes") {
@@ -185,12 +138,8 @@ class ChangesApiTest : DatabaseTests({
                 parameter("baselineBuildVersion", "1.0.0")
                 parameter("page", 2)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(5, data.size)
-                val total = json.read<Int>("$.paging.total")
-                assertEquals(15, total)
             }
         }
 

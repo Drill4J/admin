@@ -20,10 +20,11 @@ import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
+const val testBranch = "main"
+const val testEnv = "env-1"
 const val testTask = "check"
 const val testClass = "com.example.Class"
 const val testPath = "com.example.Test"

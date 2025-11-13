@@ -36,23 +36,18 @@ class BuildDiffReportApiTest : DatabaseTests({
 }) {
     @Test
     fun `given builds with different methods, build-diff-report service should calculate total changes`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 2 methods
-                deployInstance(build1, arrayOf(method1, method2))
-                //build2 has 1 new method, 1 modified method and 1 deleted method compared to build1
-                deployInstance(build2, arrayOf(method2.changeChecksum(), method3))
-            }
-
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasDeleted method1 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+        }.expectThat {
             client.get("/metrics/build-diff-report") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", build2.buildVersion)
                 parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val metrics = json.read<Map<String, Any>>("$.data.metrics")
-
+            }.returnsSingle("$.data.metrics") { metrics ->
                 assertEquals(1, metrics["changes_new_methods"])
                 assertEquals(1, metrics["changes_modified_methods"])
                 assertEquals(2, metrics["total_changes"])
@@ -61,88 +56,49 @@ class BuildDiffReportApiTest : DatabaseTests({
     }
 
     @Test
-    fun `given tests on target build, build-diff-report service should calculate isolated coverage`() {
-        runBlocking {
-            val client = runDrillApplication {
-                // build1 has 2 methods
-                deployInstance(build1, arrayOf(method1, method2))
-                // build2 has 1 modified method and 1 new method compared to build1.
-                // test1 covers method1 and method2, test2 covers method3
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum(), method3))
-                launchTest(
-                    session1, test1, build2, arrayOf(
-                        method1 to probesOf(1, 1),
-                        method2 to probesOf(1, 0, 0),
-                        method3 to probesOf(0)
-                    )
-                )
-                launchTest(
-                    session1, test2, build2, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 0),
-                        method3 to probesOf(1)
-                    )
-                )
-            }
-
-            client.get("/metrics/build-diff-report") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val metrics = json.read<Map<String, Any>>("$.data.metrics")
-
-                // test1 covers method2 by 1 of 3 probes,
-                // test2 covers method3 by 1 of 1 probes,
-                // coverage in method1 is not considered because method1 was not changed,
-                // so total coverage is 2 of 4 probes
-                assertEquals(0.5, metrics["coverage"])
-            }
+    fun `given tests on target build, build-diff-report service should calculate isolated coverage`() = havingData {
+        build1 has listOf(method1, method2)
+        build2 hasModified method2 comparedTo build1
+        build2 hasNew method3 comparedTo build1
+        test1 covers method1 with probesOf(1, 1) on build2
+        test1 covers method2 with probesOf(1, 0, 0) on build2
+        test2 covers method3 with probesOf(1) on build2
+    }.expectThat {
+        client.get("/metrics/build-diff-report") {
+            parameter("groupId", testGroup)
+            parameter("appId", testApp)
+            parameter("buildVersion", build2.buildVersion)
+            parameter("baselineBuildVersion", build1.buildVersion)
+        }.returnsSingle("$.data.metrics") { metrics ->
+            // test1 covers method2 by 1 of 3 probes,
+            // test2 covers method3 by 1 of 1 probes,
+            // coverage in method1 is not considered because method1 was not changed,
+            // so total coverage is 2 of 4 probes
+            assertEquals(0.5, metrics["coverage"])
         }
     }
 
     @Test
-    fun `given tests on different builds, build-diff-report service should calculate aggregated coverage`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 1 method, test1 covers it
-                deployInstance(build1, arrayOf(method1))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1)
-                    )
-                )
-                //build2 has 2 new methods compared to build1, test2 covers method2 and method3
-                deployInstance(build2, arrayOf(method1, method2, method3))
-                launchTest(
-                    session2, test2, build2, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(1, 0, 0),
-                        method3 to probesOf(1)
-                    )
-                )
-                //build3 has 1 modified method compared to build2, test3 covers method2
-                deployInstance(build3, arrayOf(method1, method2, method3.changeChecksum()))
-                launchTest(
-                    session3, test3, build3, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 1, 0),
-                        method3 to probesOf(0)
-                    )
-                )
-            }
+    fun `given tests on different builds, build-diff-report service should calculate aggregated coverage`() =
+        havingData {
+            build1 has listOf(method1)
+            test1 covers method1 with probesOf(1, 1) on build1
+
+            build2 hasNew method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+            test2 covers method2 with probesOf(1, 0, 0) on build2
+            test2 covers method3 with probesOf(1) on build2
+
+            build3 hasModified method3 comparedTo build2
+            test3 covers method2 with probesOf(0, 1, 0) on build3
+        }.expectThat {
 
             client.get("/metrics/build-diff-report") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", build3.buildVersion)
                 parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val metrics = json.read<Map<String, Any>>("$.data.metrics")
-
+            }.returnsSingle("$.data.metrics") { metrics ->
                 // test2 covers method2 by 1 of 3 probes,
                 // test3 covers method2 by 1 of 3 probes but different probes compared to test2,
                 // coverage in method1 is not considered because method1 was not changed,
@@ -151,48 +107,26 @@ class BuildDiffReportApiTest : DatabaseTests({
                 assertEquals(0.5, metrics["coverage"])
             }
         }
-    }
 
     @Test
     fun `given tests on different builds, build-diff-report service should calculate recommended tests to run`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 1 method, test1 covers it
-                deployInstance(build1, arrayOf(method1))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1)
-                    )
-                )
-                //build2 has 2 new methods compared to build1, test2 covers method2 and method3
-                deployInstance(build2, arrayOf(method1, method2, method3))
-                launchTest(
-                    session2, test2, build2, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(1, 0, 0),
-                        method3 to probesOf(1)
-                    )
-                )
-                //build3 has 1 modified method compared to build2, test3 covers method3
-                deployInstance(build3, arrayOf(method1, method2, method3.changeChecksum()))
-                launchTest(
-                    session3, test3, build3, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 0),
-                        method3 to probesOf(1)
-                    )
-                )
-            }
+        havingData {
+            build1 has listOf(method1)
+            test1 covers method1 with probesOf(1, 1) on build1
 
+            build2 has listOf(method1, method2, method3)
+            test2 covers method2 with probesOf(1, 0, 0) on build2
+            test2 covers method3 with probesOf(1) on build2
+
+            build3 hasModified method3 comparedTo build2
+            test3 covers method3 with probesOf(1) on build3
+        }.expectThat {
             client.get("/metrics/build-diff-report") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", build3.buildVersion)
                 parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val metrics = json.read<Map<String, Any>>("$.data.metrics")
-
+            }.returnsSingle("$.data.metrics") { metrics ->
                 // coverage in method1 is not considered because method1 was not changed,
                 // test1 is not recommended to run because it covers only method1,
                 // test2 is recommended to run because it covers method3, but method3 was changed in build3,
@@ -205,11 +139,9 @@ class BuildDiffReportApiTest : DatabaseTests({
 
     @Test
     fun `given non-existent baseline, build-diff-report service should return 422 status`() {
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build2, arrayOf(method2, method3))
-            }
-
+        havingData {
+            build2 has listOf(method2, method3)
+        }.expectThat {
             client.get("/metrics/build-diff-report") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)

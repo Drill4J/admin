@@ -43,28 +43,17 @@ class RecommendedTestsApiTest : DatabaseTests({
 }) {
     @Test
     fun `given test that covers only unmodified methods, recommended test service should suggest skipping it`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 2 methods, test1 covers method1
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 0), method2 to probesOf(0, 0, 0)
-                    )
-                )
-                //build2 has modified method2 compared to build1
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
-            }
-
+         havingData {
+             build1 has listOf(method1, method2)
+             test1 covers method1 with probesOf(1, 0) on build1
+             build2 hasModified method2 comparedTo build1
+         }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("testsToSkip", true)
                 parameter("targetBuildVersion", build2.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 already checked method1 in build1 and method1 was not modified in build2,
                 // that's why test1 should be recommended to skip in build2
                 assertEquals(1, recommendedTests.size)
@@ -76,28 +65,18 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @Test
     fun `given test that covers at least one modified method, recommended test service should suggest running it`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 2 methods, test1 covers method1 and method2
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 0), method2 to probesOf(1, 0, 0)
-                    )
-                )
-                //build2 has modified method2 compared to build1
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
-            }
-
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 with probesOf(1, 0) on build1
+            test1 covers method2 with probesOf(1, 0, 0) on build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build2.buildVersion)
                 parameter("testsToSkip", false)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 checked method1 and method2 in build1, but method2 was modified in build2,
                 // that's why test1 should be recommended to run in build2
                 assertEquals(1, recommendedTests.size)
@@ -109,36 +88,19 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @Test
     fun `given test that covers only unmodified methods of at least one build, recommended test service should suggest skipping it`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 2 methods, test1 covers method1
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
-                    )
-                )
-                //build2 has modified method1 compared to build1, test1 covers modified method1
-                val modifiedMethod1 = method1.changeChecksum()
-                deployInstance(build2, arrayOf(modifiedMethod1, method2))
-                launchTest(
-                    session2, test1, build2, arrayOf(
-                        modifiedMethod1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
-                    )
-                )
-                //build3 has the same methods as build2
-                deployInstance(build3, arrayOf(modifiedMethod1, method2))
-            }
-
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 with probesOf(1, 1) on build1
+            build2 hasModified method1 comparedTo build1
+            test1 covers method1 with probesOf(1, 1) on build2
+            build3 hasNew method3 comparedTo build2
+        }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("testsToSkip", true)
                 parameter("targetBuildVersion", build3.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 already checked method1 in build2 and method1 was not modified in build3 compared to build2,
                 // that's why test1 should be recommended to skip in build3,
                 // despite test1 also checked method1 in build1 and method1 was modified in build2
@@ -151,34 +113,29 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @Test
     fun `given testTaskId parameter, recommended test service should suggest running tests from only specified test task`() {
-        runBlocking {
-            val client = runDrillApplication {
-                //build1 has 2 methods, test1 and test2 cover method1 and method2
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1.testTaskId("check1"), test1, build1, arrayOf(
-                        method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)
-                    )
+        havingData {
+            //build1 has 2 methods, test1 and test2 cover method1 and method2
+            client.deployInstance(build1, arrayOf(method1, method2))
+            client.launchTest(
+                session1.testTaskId("check1"), test1, build1, arrayOf(
+                    method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)
                 )
-                launchTest(
-                    session2.testTaskId("check2"), test2, build1, arrayOf(
-                        method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)
-                    )
+            )
+            client.launchTest(
+                session2.testTaskId("check2"), test2, build1, arrayOf(
+                    method1 to probesOf(1, 1), method2 to probesOf(1, 1, 1)
                 )
-                //build2 has modified method2 compared to build1
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
-            }
-
+            )
+            //build2 has modified method2 compared to build1
+            client.deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
+        }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build2.buildVersion)
                 parameter("testTaskId", "check2")
                 parameter("testsToSkip", false)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 and test2 should be recommended to run in build2,
                 // but only test2 is from the specified test task, that's why it should be marked as IMPACTED,
                 // even though test1 is from a different test task, it should still be included in the results but as UNKNOWN_IMPACT
@@ -191,38 +148,33 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @Test
     fun `given baselineBuildBranches parameter, recommended test service should suggest skipping tests if they are not impacted in baselines from specified branch`() {
-        runBlocking {
-            val client = runDrillApplication {
-                putBuild(BuildPayload(groupId = build1.groupId, appId = build1.appId, buildVersion = build1.buildVersion, branch = "main"))
-                putBuild(BuildPayload(groupId = build2.groupId, appId = build2.appId, buildVersion = build2.buildVersion, branch = "feature"))
-                //build1 on main branch, test1 covers method2
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)
-                    )
+        havingData {
+            client.putBuild(BuildPayload(groupId = build1.groupId, appId = build1.appId, buildVersion = build1.buildVersion, branch = "main"))
+            client.putBuild(BuildPayload(groupId = build2.groupId, appId = build2.appId, buildVersion = build2.buildVersion, branch = "feature"))
+            //build1 on main branch, test1 covers method2
+            client.deployInstance(build1, arrayOf(method1, method2))
+            client.launchTest(
+                session1, test1, build1, arrayOf(
+                    method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)
                 )
-                //build2 on feature branch, test1 covers method1
-                deployInstance(build2, arrayOf(method1, method2))
-                launchTest(
-                    session2, test1, build2, arrayOf(
-                        method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
-                    )
+            )
+            //build2 on feature branch, test1 covers method1
+            client.deployInstance(build2, arrayOf(method1, method2))
+            client.launchTest(
+                session2, test1, build2, arrayOf(
+                    method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
                 )
-                //build3 has modified method2 compared to build1 and build2
-                deployInstance(build3, arrayOf(method1, method2.changeChecksum()))
-            }
-
+            )
+            //build3 has modified method2 compared to build1 and build2
+            client.deployInstance(build3, arrayOf(method1, method2.changeChecksum()))
+        }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build3.buildVersion)
                 parameter("baselineBuildBranches", "feature")
                 parameter("testsToSkip", true)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 should be not impacted because in baseline 'build2' from specified branch 'feature' method2 was not impacted by test1
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
@@ -233,34 +185,29 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @Test
     fun `given two launches of same test are impacted and not impacted in same build, recommended test service should suggest running it`() {
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                //test1 in session1 covers method2
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)
-                    )
+        havingData {
+            client.deployInstance(build1, arrayOf(method1, method2))
+            //test1 in session1 covers method2
+            client.launchTest(
+                session1, test1, build1, arrayOf(
+                    method1 to probesOf(0, 0), method2 to probesOf(1, 1, 1)
                 )
-                //test1 in session2 does not cover method2
-                launchTest(
-                    session2, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
-                    )
+            )
+            //test1 in session2 does not cover method2
+            client.launchTest(
+                session2, test1, build1, arrayOf(
+                    method1 to probesOf(1, 1), method2 to probesOf(0, 0, 0)
                 )
-                //build2 has modified method2 compared to build1
-                deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
-            }
-
+            )
+            //build2 has modified method2 compared to build1
+            client.deployInstance(build2, arrayOf(method1, method2.changeChecksum()))
+        }.expectThat {
             client.get("/metrics/recommended-tests") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("targetBuildVersion", build2.buildVersion)
                 parameter("testsToSkip", false)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val recommendedTests = json.read<List<Map<String, Any>>>("$.data.recommendedTests")
-
+            }.returns("$.data.recommendedTests") { recommendedTests ->
                 // test1 should be impacted because shouldn't trust it if the coverage map differs on the same build for the same test.
                 assertEquals(1, recommendedTests.size)
                 assertTrue(recommendedTests.any { it["testDefinitionId"] == test1.definitionId })
@@ -280,4 +227,3 @@ class RecommendedTestsApiTest : DatabaseTests({
         TestDefinitionTable.deleteAll()
     }
 }
-

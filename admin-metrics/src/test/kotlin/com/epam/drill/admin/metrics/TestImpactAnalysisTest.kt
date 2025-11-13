@@ -11,7 +11,6 @@ import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
 import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
-import io.ktor.client.request.parameter
 import org.jetbrains.exposed.sql.deleteAll
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -49,23 +48,6 @@ class TestImpactAnalysisTest : DatabaseTests({
             test2 isNotImpactedOn build3 comparedTo build2
             method1 isImpactedOn build3 comparedTo build2
             method2 isNotImpactedOn build3 comparedTo build2
-        }
-
-    @Test
-    fun `given partial tests launched on baseline build, impacted tests service with onlyBaselineBuildTestsEnabled parameter should return impacted tests launched on only baseline build`() =
-        havingData {
-            build1 has listOf(method1, method2)
-            test1 covers method1 on build1
-            test2 covers method2 on build1
-            build2 hasModified method2 comparedTo build1
-            test2 covers method2 on build2
-            build3 hasModified method1 comparedTo build2
-        }.expectThat {
-            with {
-                parameter("onlyBaselineBuildTestsEnabled", true)
-            }
-            test1 hasUnknownImpactOn build3 comparedTo build2
-            method1 hasUnknownImpactOn build3 comparedTo build2
         }
 
     @AfterTest

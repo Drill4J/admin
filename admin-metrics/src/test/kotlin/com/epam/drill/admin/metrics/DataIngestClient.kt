@@ -148,11 +148,19 @@ suspend fun HttpResponse.assertSuccessStatus() = also {
     assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
 }
 
-suspend fun HttpResponse.returns(body: (List<Map<String, Any?>>) -> Unit) = also {
+suspend fun HttpResponse.returns(path: String = "$.data", body: (List<Map<String, Any?>>) -> Unit) = also {
     assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
 }.apply {
     val json = JsonPath.parse(bodyAsText())
-    val data = json.read<List<Map<String, Any>>>("$.data")
+    val data = json.read<List<Map<String, Any>>>(path)
+    body(data)
+}
+
+suspend fun HttpResponse.returnsSingle(path: String = "$.data", body: (Map<String, Any?>) -> Unit) = also {
+    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+}.apply {
+    val json = JsonPath.parse(bodyAsText())
+    val data = json.read<Map<String, Any>>(path)
     body(data)
 }
 
