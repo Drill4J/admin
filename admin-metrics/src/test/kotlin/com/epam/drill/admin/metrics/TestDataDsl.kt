@@ -45,41 +45,33 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     }
 }
 
-abstract class DrillDsl(open val client: HttpClient) {
-    open suspend infix fun InstancePayload.hasModified(method: SingleMethodPayload) =
-        MethodComparison(this, method, ChangeType.MODIFIED)
+class TestCoverageMap(
+    val test: TestDetails,
+    val method: SingleMethodPayload,
+    val probes: IntArray
+)
 
-    open suspend infix fun InstancePayload.hasNew(method: SingleMethodPayload) =
-        MethodComparison(this, method, ChangeType.NEW)
+class MethodComparison(
+    val build: InstancePayload,
+    val method: SingleMethodPayload,
+    val changeType: ChangeType
+)
 
-    open suspend infix fun InstancePayload.hasDeleted(method: SingleMethodPayload) =
-        MethodComparison(this, method, ChangeType.DELETED)
+data class MethodCoverage(
+    val method: SingleMethodPayload,
+    val coverageRate: Double
+)
 
-    open suspend infix fun TestDetails.covers(method: SingleMethodPayload): TestCoverageMap {
-        return TestCoverageMap(this, method, IntArray(method.probesCount) { 1 })
-    }
+val Int.percent: Double
+    get() = this / 100.0
 
-    open suspend infix fun TestCoverageMap.with(probes: IntArray): TestCoverageMap {
-        return TestCoverageMap(this.test, this.method, probes)
-    }
+data class ImpactedMethods(
+    val methods: List<SingleMethodPayload>,
+    val build: InstancePayload,
+    val impactedStatus: TestImpactStatus,
+)
 
-    abstract suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload)
-    abstract suspend infix fun InstancePayload.hasTheSameMethodsComparedTo(baseline: InstancePayload)
-
-    class TestCoverageMap(
-        val test: TestDetails,
-        val method: SingleMethodPayload,
-        val probes: IntArray
-    )
-
-    class MethodComparison(
-        val build: InstancePayload,
-        val method: SingleMethodPayload,
-        val changeType: ChangeType
-    )
-}
-
-class TestDataDsl(client: HttpClient): DrillDsl(client) {
+class TestDataDsl(val client: HttpClient) {
     private val builds = mutableMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
 
     suspend infix fun InstancePayload.has(methods: List<SingleMethodPayload>) {
@@ -87,28 +79,49 @@ class TestDataDsl(client: HttpClient): DrillDsl(client) {
         client.deployInstance(this, methods.toTypedArray())
     }
 
-    override suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
-        val otherMethods = builds.getOrDefault(baseline, ArrayList())
-        val methods = builds.getOrDefault(this.build, ArrayList(otherMethods))
-        builds.put(this.build, methods)
+    suspend infix fun InstancePayload.hasModified(method: SingleMethodPayload) =
+        MethodComparison(this, method, ChangeType.MODIFIED)
+
+    suspend infix fun InstancePayload.hasNew(method: SingleMethodPayload) =
+        MethodComparison(this, method, ChangeType.NEW)
+
+    suspend infix fun InstancePayload.hasDeleted(method: SingleMethodPayload) =
+        MethodComparison(this, method, ChangeType.DELETED)
+
+    suspend infix fun TestDetails.covers(method: SingleMethodPayload): TestCoverageMap {
+        return TestCoverageMap(this, method, IntArray(method.probesCount) { 1 })
+    }
+
+    suspend infix fun TestCoverageMap.with(probes: IntArray): TestCoverageMap {
+        return TestCoverageMap(this.test, this.method, probes)
+    }
+
+    suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
+        val baselineMethods = builds.getOrDefault(baseline, ArrayList())
+        val targetMethods = builds.getOrDefault(this.build, ArrayList(baselineMethods))
+        builds.put(this.build, targetMethods)
         when (this.changeType) {
             ChangeType.NEW -> {
-                methods.add(this.method)
+                targetMethods.add(this.method)
             }
 
             ChangeType.MODIFIED -> {
-                methods.removeIf { isSignatureEqual(it, this.method) }
-                methods.add(this.method.changed())
+                targetMethods.removeIf { isSignatureEqual(it, this.method) }
+                targetMethods.add(this.method.changed())
             }
 
             ChangeType.DELETED -> {
-                methods.removeIf { isSignatureEqual(it, this.method) }
+                targetMethods.removeIf { isSignatureEqual(it, this.method) }
+            }
+
+            ChangeType.EQUAL -> {
+                // no changes
             }
         }
-        client.deployInstance(this.build, methods.toTypedArray())
+        client.deployInstance(this.build, targetMethods.toTypedArray())
     }
 
-    override suspend fun InstancePayload.hasTheSameMethodsComparedTo(
+    suspend infix fun InstancePayload.hasTheSameMethodsComparedTo(
         baseline: InstancePayload
     ) {
         val otherMethods = builds.getOrDefault(baseline, ArrayList())
@@ -145,19 +158,53 @@ fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
 }
 
 class ExpectationDsl(
-    client: HttpClient,
+    val client: HttpClient,
     var parameters: HttpRequestBuilder.() -> Unit = {}
-): DrillDsl(client) {
+) {
 
-    override suspend fun MethodComparison.comparedTo(baseline: InstancePayload) {
+    suspend infix fun SingleMethodPayload.isEqualOn(build: InstancePayload) =
+        MethodComparison(build, this, ChangeType.EQUAL)
+
+    suspend infix fun SingleMethodPayload.isNewOn(build: InstancePayload) =
+        MethodComparison(build, this, ChangeType.NEW)
+
+    suspend infix fun SingleMethodPayload.isModifiedOn(build: InstancePayload) =
+        MethodComparison(build, this, ChangeType.MODIFIED)
+
+    suspend infix fun SingleMethodPayload.isDeletedOn(build: InstancePayload) =
+        MethodComparison(build, this, ChangeType.DELETED)
+
+    suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
         client.getChanges(this.build, baseline, parameters).returns { data ->
             when (this.changeType) {
                 ChangeType.MODIFIED -> this.method.assertMethodIsModified(data)
                 ChangeType.NEW -> this.method.assertMethodIsNew(data)
                 ChangeType.DELETED -> this.method.assertMethodIsDeleted(data)
+                ChangeType.EQUAL -> this.method.assertMethodIsEqual(data)
             }
         }
     }
+
+    suspend infix fun SingleMethodPayload.isCoveredOn(build: InstancePayload) {
+        client.getCoverage(build, parameters).returns { data ->
+            this.assertThatMethodIsCovered(data)
+        }
+    }
+
+    suspend infix fun SingleMethodPayload.isNotCoveredOn(build: InstancePayload) {
+        client.getCoverage(build, parameters).returns { data ->
+            this.assertThatMethodIsNotCovered(data)
+        }
+    }
+
+    suspend infix fun SingleMethodPayload.isCoveredBy(percent: Double) = MethodCoverage(this, percent)
+
+    suspend infix fun MethodCoverage.on(build: InstancePayload) {
+        client.getCoverage(build, parameters).returns { data ->
+            this.method.assertThatMethodIsCoveredBy(data, this.coverageRate)
+        }
+    }
+
 
     suspend fun with(parameters: HttpRequestBuilder.() -> Unit) {
         this.parameters = parameters
@@ -209,18 +256,4 @@ class ExpectationDsl(
             }
         }
     }
-
-    override suspend fun InstancePayload.hasTheSameMethodsComparedTo(
-        baseline: InstancePayload
-    ) {
-        client.getChanges(this, baseline, parameters).returns { data ->
-            assertTrue(data.isEmpty(), "Expected no changes between builds, but some were found.")
-        }
-    }
-
-    data class ImpactedMethods(
-        val methods: List<SingleMethodPayload>,
-        val build: InstancePayload,
-        val impactedStatus: TestImpactStatus,
-    )
 }

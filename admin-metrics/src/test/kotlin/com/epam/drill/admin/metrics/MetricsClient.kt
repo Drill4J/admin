@@ -68,6 +68,19 @@ suspend fun HttpClient.getChanges(
     }.assertSuccessStatus()
 }
 
+
+suspend fun HttpClient.getCoverage(
+    build: InstancePayload,
+    otherParameters: HttpRequestBuilder.() -> Unit
+): HttpResponse {
+    return get("/metrics/coverage") {
+        parameter("groupId", build.groupId)
+        parameter("appId", build.appId)
+        parameter("buildVersion", build.buildVersion)
+        otherParameters()
+    }.assertSuccessStatus()
+}
+
 fun TestDetails.assertTestIsImpacted(data: List<Map<String, Any?>>) {
     assertTrue(data.any {
         it["testName"] == this.testName && it["testPath"] == this.path
@@ -152,5 +165,75 @@ fun SingleMethodPayload.assertMethodIsDeleted(data: List<Map<String, Any?>>) {
     assertTrue(
         actual["changeType"] == ChangeType.DELETED.name,
         "Expected method [${this.classname}.${this.name}] to be deleted, but it was marked as ${actual["changeType"]} in response of changes."
+    )
+}
+
+fun SingleMethodPayload.assertMethodIsEqual(data: List<Map<String, Any?>>) {
+    val actual = data.find {
+        it["name"] == this.name
+    }
+    assertTrue(
+        actual != null,
+        "Expected method [${this.classname}.${this.name}] to be equal, but it was not found in response of changes."
+    )
+    assertTrue(
+        actual["changeType"] == ChangeType.EQUAL.name,
+        "Expected method [${this.classname}.${this.name}] to be equal, but it was marked as ${actual["changeType"]} in response of changes."
+    )
+}
+
+fun SingleMethodPayload.assertThatMethodIsCoveredBy(
+    data: List<Map<String, Any?>>,
+    expectedRate: Double,
+    tolerance: Double = 0.01
+) {
+    val actual = data.find {
+        it["name"] == this.name && it["className"] == this.classname
+    }
+    assertTrue(
+        actual != null,
+        "Expected method [${this.classname}.${this.name}] to be present in coverage data, but it was not found."
+    )
+    val actualCoveredProbes = actual["coveredProbes"] ?: 0
+    val actualRate = (actualCoveredProbes as Int).toDouble() / this.probesCount
+
+    assertTrue(
+        kotlin.math.abs(actualRate - expectedRate) <= tolerance,
+        "Expected method [${this.classname}.${this.name}] to have coverage rate of at least $expectedRate ± $tolerance, " +
+                "but found $actualRate."
+    )
+}
+
+fun SingleMethodPayload.assertThatMethodIsCovered(
+    data: List<Map<String, Any?>>
+) {
+    val actual = data.find {
+        it["name"] == this.name && it["className"] == this.classname
+    }
+    assertTrue(
+        actual != null,
+        "Expected method [${this.classname}.${this.name}] to be present in coverage data, but it was not found."
+    )
+    val actualCoveredProbes = (actual["coveredProbes"] ?: 0) as Int
+    assertTrue(
+        actualCoveredProbes > 0,
+        "Expected method [${this.classname}.${this.name}] to be covered, but it has 0 covered probes."
+    )
+}
+
+fun SingleMethodPayload.assertThatMethodIsNotCovered(
+    data: List<Map<String, Any?>>
+) {
+    val actual = data.find {
+        it["name"] == this.name && it["className"] == this.classname
+    }
+    assertTrue(
+        actual != null,
+        "Expected method [${this.classname}.${this.name}] to be present in coverage data, but it was not found."
+    )
+    val actualCoveredProbes = (actual["coveredProbes"] ?: 0) as Int
+    assertTrue(
+        actualCoveredProbes == 0,
+        "Expected method [${this.classname}.${this.name}] to be not covered, but it has $actualCoveredProbes covered probes."
     )
 }

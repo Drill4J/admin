@@ -18,7 +18,8 @@ package com.epam.drill.admin.metrics.views
 enum class ChangeType {
     NEW,
     MODIFIED,
-    DELETED;
+    DELETED,
+    EQUAL;
 
     companion object {
         fun fromString(value: String?): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }

@@ -36,37 +36,35 @@ class TestImpactAnalysisTest : DatabaseTests({
 }) {
 
     @Test
-    fun `given full tests launched on baseline build, impacted tests service should return only impacted tests compared to baseline`() =
+    fun `given modified methods compared to baseline, impacted tests service should return tests which cover modified methods`() =
         havingData {
-            build1 has listOf(method1, method2)
+            build1 has listOf(method1)
             test1 covers method1 on build1
-            test2 covers method2 on build1
-            build2 hasModified method2 comparedTo build1
+            build2 hasModified method1 comparedTo build1
         }.expectThat {
-            test2 isImpactedOn build2 comparedTo build1
-            test1 isNotImpactedOn build2 comparedTo build1
-            method2 isImpactedOn build2 comparedTo build1
-            method1 isNotImpactedOn build2 comparedTo build1
+            test1 isImpactedOn build2 comparedTo build1
+            method1 isImpactedOn build2 comparedTo build1
+            //because
+            method1 isModifiedOn build2 comparedTo build1
         }
 
     @Test
-    fun `given partial tests launched on baseline build, impacted tests service should return missing impacted tests on other builds`() =
+    fun `given equal methods compared to baseline, impacted tests service should not return tests which cover equal methods`() =
         havingData {
-            build1 has listOf(method1, method2)
+            build1 has listOf(method1)
             test1 covers method1 on build1
-            test2 covers method2 on build1
-            build2 hasModified method2 comparedTo build1
-            test2 covers method2 on build2
-            build3 hasModified method1 comparedTo build2
+            build2 hasModified method1 comparedTo build1
+            test1 covers method1 on build2
+            build3 hasTheSameMethodsComparedTo build2
         }.expectThat {
-            test1 isImpactedOn build3 comparedTo build2
-            test2 isNotImpactedOn build3 comparedTo build2
-            method1 isImpactedOn build3 comparedTo build2
-            method2 isNotImpactedOn build3 comparedTo build2
+            test1 isNotImpactedOn build3 comparedTo build2
+            method1 isNotImpactedOn build3 comparedTo build2
+            //because
+            //method1 isEqualOn build3 comparedTo build2 TODO includeEqual is not implemented yet in /metrics/changes endpoint
         }
 
     @Test
-    fun `given deleted method compared to baseline, impacted tests service should return tests witch cover deleted method`() =
+    fun `given deleted methods compared to baseline, impacted tests service should return tests witch cover deleted methods`() =
         havingData {
             build1 has listOf(method1, method2)
             test1 covers method1 on build1
@@ -74,11 +72,24 @@ class TestImpactAnalysisTest : DatabaseTests({
         }.expectThat {
             test1 isImpactedOn build2 comparedTo build1
             method1 isImpactedOn build2 comparedTo build1
-//            build2 hasDeleted method1 comparedTo build1 TODO includeDeleted is not implemented yet in /metrics/changes endpoint
+//            method1 isDeletedOn build2 comparedTo build1 TODO includeDeleted is not implemented yet in /metrics/changes endpoint
         }
 
     @Test
-    fun `given no changes compared to baseline, impacted tests service should return no impacted tests`() =
+    fun `given new methods compared to baseline, impacted tests service should return tests which cover new methods`() =
+        havingData {
+            build1 has listOf(method1)
+            build2 hasNew method2 comparedTo build1
+            test1 covers method2 on build2
+        }.expectThat {
+            test1 isImpactedOn build2 comparedTo build1
+            method2 isImpactedOn build2 comparedTo build1
+            //because
+            method2 isNewOn build2 comparedTo build1
+        }
+
+    @Test
+    fun `given tests covering non-existent methods on both target and baseline builds, impacted tests service should not return these tests`() =
         havingData {
             build1 has listOf(method1)
             build2 hasNew method2 comparedTo build1
@@ -87,23 +98,7 @@ class TestImpactAnalysisTest : DatabaseTests({
         }.expectThat {
             test1 isNotImpactedOn build3 comparedTo build1
             method2 isNotImpactedOn build3 comparedTo build1
-            build3 hasTheSameMethodsComparedTo build1
-        }
-
-    @Test
-    fun `given new method compared to baseline, impacted tests service should return no impacted tests`() =
-        havingData {
-            build1 has listOf(method1)
-            build2 hasNew method2 comparedTo build1
-            test1 covers method2 on build2
-            build3 hasModified method2 comparedTo build2
-        }.expectThat {
-//            TODO new methods are not ignored yet in impacted tests analysis
-//            test1 isNotImpactedOn build3 comparedTo build1
-//            method2 isNotImpactedOn build3 comparedTo build1
-            test1 isImpactedOn build3 comparedTo build1
-            method2 isImpactedOn build3 comparedTo build1
-            build3 hasNew method2 comparedTo build1
+            //because method2 does not exist on both build3 and build1
         }
 
     @AfterTest
