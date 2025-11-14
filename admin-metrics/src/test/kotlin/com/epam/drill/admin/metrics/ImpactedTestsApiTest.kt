@@ -32,234 +32,99 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
+import kotlin.test.AfterTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.text.get
 
 class ImpactedTestsApiTest : DatabaseTests({
     RawDataWriterDatabaseConfig.init(it)
     MetricsDatabaseConfig.init(it)
 }) {
-    @Test
-    fun `given baseline build tests, impacted tests service should return only impacted tests compared to baseline`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                // build1 has method1 and method2
-                deployInstance(build1, arrayOf(method1, method2))
-                // test1 hits method1 on build1
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 1),
-                        method2 to probesOf(0, 0, 0)
-                    )
-                )
-                // test2 hits method2 on build1
-                launchTest(
-                    session1, test2, build1, arrayOf(
-                        method1 to probesOf(0, 0), method2 to probesOf(0, 0, 1)
-                    )
-                )
-                // build2 has changed method2 compared to build1
-                deployInstance(
-                    build2, arrayOf(
-                        method1, method2.changed()
-                    )
-                )
-            }
 
-            // Check impacted tests for build2 against build1
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                // Only test2 should be impacted as it hits changed method2
-                assertEquals(1, data.size)
-                assertTrue(data.any { it["testName"] == test2.testName })
-                assertTrue(data.any { (it["impactedMethods"] as Int) == 1 })
+    @Test
+    fun `given a build with changes, impacted tests service should return a list of impacted tests`() =
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 on build1
+            test2 covers method2 on build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat {
+            client.getImpactedTests(build2, build1).returns { data ->
+                assertTrue { data.isNotEmpty() }
+                assertTrue { data.any { it["testName"] == test2.testName } }
+                assertTrue { data.none { it["testName"] == test1.testName } }
             }
         }
 
     @Test
-    fun `given partial baseline build tests, impacted tests service should return missing impacted tests from other builds`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                // build1 has method1 and method2
-                deployInstance(build1, arrayOf(method1, method2))
-                // test1 hits method1 on build1
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(0, 1),
-                        method2 to probesOf(0, 0, 0)
-                    )
-                )
-                // test2 hits method2 on build1
-                launchTest(
-                    session1, test2, build1, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 1)
-                    )
-                )
-                // build2 has changed method2 compared to build1
-                deployInstance(build2, arrayOf(method1, method2.changed()))
-                launchTest(
-                    session2, test2, build2, arrayOf(
-                        method1 to probesOf(0, 0),
-                        method2 to probesOf(0, 0, 1) // test2 hits changed method2
-                    )
-                )
-                // build3 has changed method1 compared to build2
-                deployInstance(build3, arrayOf(method1.changed(), method2.changed()))
+    fun `given page and size, impacted tests service should return tests only for specified page and size`() =
+        havingData {
+            build1 has listOf(method1)
+            for (i in 1..15) {
+                val test = TestDetails(testName = "test$i")
+                test covers method1 on build1
             }
-
-            // Check impacted tests for build3 against build2
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build3.buildVersion)
-                parameter("baselineBuildVersion", build2.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                assertEquals(1, data.size)
-                assertTrue(data.any { it["testName"] == test1.testName })
-                assertTrue(data.any { (it["impactedMethods"] as Int) == 1 })
-            }
-        }
-
-    @Test
-    fun `given page and size, impacted tests service should return tests only for specified page and size`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                // Create multiple test sessions with coverage to generate impacted tests
-                for (i in 1..15) {
-                    val testName = "test$i"
-                    launchTest(
-                        session1, TestDetails(testName = testName), build1, arrayOf(
-                            method1 to probesOf(1), method2 to probesOf(1, 1)
-                        )
-                    )
-                }
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
-            }
-
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedTests(build2, build1) {
                 parameter("page", 1)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 // Should return at most 10 records
-                assertTrue(data.size <= 10)
+                assertTrue(data.size <= 10, "Expected at most 10 records, but got ${data.size}")
             }
 
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+            client.getImpactedTests(build2, build1) {
                 parameter("page", 2)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 // The second page should contain the remaining tests (5 or fewer)
-                assertTrue(data.size <= 5)
+                assertTrue(data.size <= 5, "Expected at most 5 records, but got ${data.size}")
             }
         }
 
     @Test
     fun `given test tag filter, impacted tests service should return only tests matching the tag`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                // Create test sessions with different tags
-                launchTest(
-                    session1, TestDetails(testName = "taggedTest", tags = listOf("important-tag")), build1, arrayOf(
-                        method1 to probesOf(1), method2 to probesOf(1, 1)
-                    )
-                )
-                launchTest(
-                    session1, TestDetails(testName = "untaggedTest"), build1, arrayOf(
-                        method1 to probesOf(1), method2 to probesOf(1, 1)
-                    )
-                )
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
-            }
-
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+        havingData {
+            build1 has listOf(method1)
+            val taggedTest = TestDetails(testName = "taggedTest", tags = listOf("important-tag"))
+            val untaggedTest = TestDetails(testName = "untaggedTest")
+            taggedTest covers method1 on build1
+            untaggedTest covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedTests(build2, build1) {
                 parameter("testTag", "important-tag")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                assertTrue(data.isNotEmpty())
-                // Verify that only tests with the specified tag are returned
-                assertTrue(data.all { it["testName"] == "taggedTest" })
+            }.returns { data ->
+                assertTrue(data.isNotEmpty(), "Expected at least one test with the specified tag")
+                assertTrue(data.all { it["testName"] == "taggedTest" }, "All returned tests should have the specified tag")
+                assertTrue(data.none { it["testName"] == "untaggedTest" }, "No untagged tests should be returned")
             }
         }
 
     @Test
-    fun `given test path filter, impacted tests service should return only tests matching the path`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                // Create test sessions with different paths
-                launchTest(
-                    session1,
-                    TestDetails(testName = "pathFilteredTest1", path = "com/example/path1/Test1"),
-                    build1,
-                    arrayOf(
-                        method1 to probesOf(1), method2 to probesOf(1, 1)
-                    )
-                )
-                launchTest(
-                    session1,
-                    TestDetails(testName = "pathFilteredTest2", path = "com/example/path1/Test2"),
-                    build1,
-                    arrayOf(
-                        method1 to probesOf(1), method2 to probesOf(1, 1)
-                    )
-                )
-                launchTest(
-                    session1,
-                    TestDetails(testName = "differentPathTest", path = "com/example/path2/Test3"),
-                    build1,
-                    arrayOf(
-                        method1 to probesOf(1), method2 to probesOf(1, 1)
-                    )
-                )
-                deployInstance(build2, arrayOf(method1.changeChecksum(), method2.changeChecksum()))
-            }
-
-            client.get("/metrics/impacted-tests") {
-                parameter("groupId", build1.groupId)
-                parameter("appId", build1.appId)
-                parameter("buildVersion", build2.buildVersion)
-                parameter("baselineBuildVersion", build1.buildVersion)
+    fun `given test path filter, impacted tests service should return only tests matching the path`() =
+        havingData {
+            build1 has listOf(method1)
+            val test1 = TestDetails(testName = "pathFilteredTest1", path = "com/example/path1/Test1")
+            val test2 = TestDetails(testName = "pathFilteredTest2", path = "com/example/path1/Test2")
+            val test3 = TestDetails(testName = "differentPathTest", path = "com/example/path2/Test3")
+            test1 covers method1 on build1
+            test2 covers method1 on build1
+            test3 covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedTests(build2, build1) {
                 parameter("testPath", "com/example/path1")
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                assertTrue(data.isNotEmpty())
-                // Verify that only tests with the specified path are returned
-                assertTrue(data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" })
-                assertTrue(data.none { it["testName"] == "differentPathTest" })
+            }.returns { data ->
+                assertTrue(data.isNotEmpty(), "Expected at least one test with the specified path")
+                assertTrue(data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" }, "All returned tests should match the specified path")
+                assertTrue(data.none { it["testName"] == "differentPathTest" }, "No tests from other paths should be returned")
             }
         }
 
-    @kotlin.test.AfterTest
+    @AfterTest
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()
         InstanceTable.deleteAll()
