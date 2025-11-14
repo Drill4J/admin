@@ -15,13 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.metrics.route.metricsManagementRoutes
-import com.epam.drill.admin.metrics.route.metricsRoutes
-import com.epam.drill.admin.test.drillApplication
-import com.epam.drill.admin.test.drillClient
-import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
-import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
@@ -32,16 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 
 private val counter = AtomicInteger(0)
-
-suspend fun runDrillApplication(initTestData: suspend HttpClient.() -> Unit): HttpClient =
-    drillApplication(rawDataServicesDIModule, metricsDIModule) {
-        dataIngestRoutes()
-        metricsRoutes()
-        metricsManagementRoutes()
-    }.drillClient().apply {
-        initTestData()
-        refreshMaterializedViews()
-    }
 
 suspend fun HttpClient.deployInstance(
     instance: InstancePayload,

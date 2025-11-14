@@ -73,6 +73,15 @@ val method3 = SingleMethodPayload(
     probesStartPos = 5,
     bodyChecksum = "300",
 )
+val method4 = SingleMethodPayload(
+    classname = testClass,
+    name = "method4",
+    params = "()",
+    returnType = "void",
+    probesCount = 4,
+    probesStartPos = 6,
+    bodyChecksum = "400",
+)
 val test1 = TestDetails(
     runner = "junit",
     path = testPath,
@@ -115,6 +124,16 @@ fun SingleMethodPayload.changed() = SingleMethodPayload(
     probesCount = probesCount,
     probesStartPos = probesStartPos,
     bodyChecksum = bodyChecksum + "0",
+)
+
+fun SingleMethodPayload.setProbesStartPos(pos: Int) = SingleMethodPayload(
+    classname = classname,
+    name = name,
+    params = params,
+    returnType = returnType,
+    probesCount = probesCount,
+    probesStartPos = pos,
+    bodyChecksum = bodyChecksum,
 )
 
 fun SingleMethodPayload.changeChecksum() = changed()

@@ -57,6 +57,8 @@ suspend fun HttpClient.getImpactedMethods(
 suspend fun HttpClient.getChanges(
     build: InstancePayload,
     baselineBuild: InstancePayload,
+    includeDeleted: Boolean? = null,
+    includeEqual: Boolean? = null,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
     return get("/metrics/changes") {
@@ -64,6 +66,8 @@ suspend fun HttpClient.getChanges(
         parameter("appId", build.appId)
         parameter("buildVersion", build.buildVersion)
         parameter("baselineBuildVersion", baselineBuild.buildVersion)
+        parameter("includeDeleted", includeDeleted)
+        parameter("includeEqual", includeEqual)
         otherParameters()
     }.assertSuccessStatus()
 }

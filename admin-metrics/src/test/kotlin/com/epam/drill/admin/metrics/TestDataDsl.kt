@@ -30,7 +30,6 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.coroutines.runBlocking
-import kotlin.test.assertTrue
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
@@ -75,8 +74,9 @@ class TestDataDsl(val client: HttpClient) {
     private val builds = mutableMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
 
     suspend infix fun InstancePayload.has(methods: List<SingleMethodPayload>) {
-        builds.put(this, ArrayList(methods))
-        client.deployInstance(this, methods.toTypedArray())
+        val newMethods = methods.recalcProbesStartPos()
+        builds.put(this, ArrayList(newMethods))
+        client.deployInstance(this, newMethods.toTypedArray())
     }
 
     suspend infix fun InstancePayload.hasModified(method: SingleMethodPayload) =
@@ -98,8 +98,7 @@ class TestDataDsl(val client: HttpClient) {
 
     suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
         val baselineMethods = builds.getOrDefault(baseline, ArrayList())
-        val targetMethods = builds.getOrDefault(this.build, ArrayList(baselineMethods))
-        builds.put(this.build, targetMethods)
+        val targetMethods = builds.getOrDefault(this.build, ArrayList(baselineMethods)).toMutableList()
         when (this.changeType) {
             ChangeType.NEW -> {
                 targetMethods.add(this.method)
@@ -118,7 +117,21 @@ class TestDataDsl(val client: HttpClient) {
                 // no changes
             }
         }
-        client.deployInstance(this.build, targetMethods.toTypedArray())
+        val newTargetMethods = targetMethods.recalcProbesStartPos()
+        builds.put(this.build, newTargetMethods)
+        client.deployInstance(this.build, newTargetMethods.toTypedArray())
+    }
+
+    private fun List<SingleMethodPayload>.recalcProbesStartPos(): MutableList<SingleMethodPayload> {
+        val resultList = mutableListOf<SingleMethodPayload>()
+        var nextMethodProbesStartPos = 0
+        this.forEach {
+            val newMethod = it.setProbesStartPos(nextMethodProbesStartPos)
+            nextMethodProbesStartPos = newMethod.probesStartPos + newMethod.probesCount
+            resultList += newMethod
+        }
+        resultList.sortBy { it.probesStartPos }
+        return resultList
     }
 
     suspend infix fun InstancePayload.hasTheSameMethodsComparedTo(
@@ -138,7 +151,7 @@ class TestDataDsl(val client: HttpClient) {
     suspend infix fun TestCoverageMap.on(build: InstancePayload) {
         val methods = builds[build]?.associate {
             if (isSignatureEqual(it, this.method))
-                this.method to this.probes
+                it to this.probes
             else
                 it to IntArray(it.probesCount) { 0 }
         }?.map { it.key to it.value }?.toTypedArray() ?: arrayOf(
@@ -175,7 +188,13 @@ class ExpectationDsl(
         MethodComparison(build, this, ChangeType.DELETED)
 
     suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
-        client.getChanges(this.build, baseline, parameters).returns { data ->
+        client.getChanges(
+            build = this.build,
+            baselineBuild = baseline,
+            includeDeleted = (this.changeType == ChangeType.DELETED),
+            includeEqual = (this.changeType == ChangeType.EQUAL),
+            otherParameters = parameters
+        ).returns { data ->
             when (this.changeType) {
                 ChangeType.MODIFIED -> this.method.assertMethodIsModified(data)
                 ChangeType.NEW -> this.method.assertMethodIsNew(data)

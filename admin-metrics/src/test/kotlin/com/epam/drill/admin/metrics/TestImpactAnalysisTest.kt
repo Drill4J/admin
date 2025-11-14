@@ -60,7 +60,7 @@ class TestImpactAnalysisTest : DatabaseTests({
             test1 isNotImpactedOn build3 comparedTo build2
             method1 isNotImpactedOn build3 comparedTo build2
             //because
-            //method1 isEqualOn build3 comparedTo build2 TODO includeEqual is not implemented yet in /metrics/changes endpoint
+            method1 isEqualOn build3 comparedTo build2
         }
 
     @Test
@@ -72,7 +72,8 @@ class TestImpactAnalysisTest : DatabaseTests({
         }.expectThat {
             test1 isImpactedOn build2 comparedTo build1
             method1 isImpactedOn build2 comparedTo build1
-//            method1 isDeletedOn build2 comparedTo build1 TODO includeDeleted is not implemented yet in /metrics/changes endpoint
+            //because
+            method1 isDeletedOn build2 comparedTo build1
         }
 
     @Test

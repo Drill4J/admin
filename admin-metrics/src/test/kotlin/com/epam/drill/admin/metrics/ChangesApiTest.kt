@@ -43,8 +43,9 @@ class ChangesApiTest : DatabaseTests({
     MetricsDatabaseConfig.init(it)
 }) {
     private suspend fun TestDataDsl.initBuildsAndMethodsData() {
-        build1 has listOf(method1, method2)
+        build1 has listOf(method1, method2, method4)
         build2 hasModified method2 comparedTo build1
+        build3 hasDeleted method4 comparedTo build2
         build3 hasNew method3 comparedTo build2
     }
 
@@ -99,6 +100,38 @@ class ChangesApiTest : DatabaseTests({
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
                 assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
+            }
+        }
+
+    @Test
+    fun `given includeDeleted parameter, changes service should return deleted methods between builds`(): Unit =
+        havingData {
+            initBuildsAndMethodsData()
+        }.expectThat {
+            client.get("/metrics/changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+                parameter("includeDeleted", true)
+            }.returns { data ->
+                assertTrue(data.any { it["name"] == method4.name && it["changeType"] == ChangeType.DELETED.name })
+            }
+        }
+
+    @Test
+    fun `given includeEqual parameter, changes service should return equal methods between builds`(): Unit =
+        havingData {
+            initBuildsAndMethodsData()
+        }.expectThat {
+            client.get("/metrics/changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+                parameter("includeEqual", true)
+            }.returns { data ->
+                assertTrue(data.any { it["name"] == method1.name && it["changeType"] == ChangeType.EQUAL.name })
             }
         }
 
