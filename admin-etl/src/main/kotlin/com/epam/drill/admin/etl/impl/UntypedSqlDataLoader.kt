@@ -31,18 +31,17 @@ class UntypedSqlDataLoader(
         sql: String,
         args: Map<String, Any?>
     ): String {
-        var preparedSql = sql
-        args.forEach {
-            val value = when (val v = it.value) {
+        val preparedArgs = args.mapValues {
+            when (val v = it.value) {
                 null -> "NULL"
                 is String -> "'${v.replace("'", "''")}'"
                 is Instant -> "'$v'"
                 is Date -> "'$v'"
                 else -> "'$v'"
             }
-            preparedSql = preparedSql.replace(":${it.key}", value)
+
         }
-        return preparedSql
+        return sql.replacePlaceholders(preparedArgs)
     }
 
     override fun getLastExtractedTimestamp(args: Map<String, Any?>): Instant? {
@@ -53,5 +52,14 @@ class UntypedSqlDataLoader(
             is String -> Instant.parse(timestamp)
             else -> null
         }
+    }
+
+    fun String.replacePlaceholders(replacements: Map<String, String>): String {
+        var result = this
+        for ((key, value) in replacements) {
+            val regex = Regex(":$key(?![A-Za-z0-9_])")
+            result = result.replace(regex) { value }
+        }
+        return result
     }
 }
