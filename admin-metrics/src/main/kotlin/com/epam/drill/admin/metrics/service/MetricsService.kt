@@ -15,13 +15,13 @@
  */
 package com.epam.drill.admin.metrics.service
 
-import com.epam.drill.admin.metrics.views.ApplicationView
-import com.epam.drill.admin.metrics.views.BuildView
-import com.epam.drill.admin.metrics.views.MethodView
-import com.epam.drill.admin.metrics.views.PagedList
-import com.epam.drill.admin.metrics.views.RecommendedTestsView
-import com.epam.drill.admin.metrics.views.TestImpactStatus
-import com.epam.drill.admin.metrics.views.TestView
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
+import com.epam.drill.admin.metrics.models.TestCriteria
+import com.epam.drill.admin.metrics.views.*
 
 interface MetricsService {
     suspend fun getApplications(
@@ -45,6 +45,19 @@ interface MetricsService {
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
+    ): List<Any>
+
+    suspend fun getChangesCoverageTreemap(
+        buildId: String,
+        baselineBuildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+        packageNamePattern: String?,
+        classNamePattern: String?,
+        rootId: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?
     ): List<Any>
 
     suspend fun getBuildDiffReport(
@@ -103,42 +116,25 @@ interface MetricsService {
     ): PagedList<MethodView>
 
     suspend fun getImpactedTests(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria = TestCriteria.NONE,
+        methodCriteria: MethodCriteria = MethodCriteria.NONE,
+        coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>
 
     suspend fun getImpactedMethods(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria = TestCriteria.NONE,
+        methodCriteria: MethodCriteria = MethodCriteria.NONE,
+        coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>
 
-    suspend fun refreshMaterializedViews()
+    suspend fun refreshMaterializedViews(scopes: Set<MatViewScope> = emptySet())
 
 }

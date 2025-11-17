@@ -59,7 +59,9 @@ interface MetricsRepository {
         coverageBranch: String? = null,
         packageName: String? = null,
         className: String? = null,
-        offset: Int? = null, limit: Int? = null
+        offset: Int? = null, limit: Int? = null,
+        includeDeleted: Boolean? = null,
+        includeEqual: Boolean? = null
     ): List<Map<String, Any?>>
 
     suspend fun getChangesCount(
@@ -102,23 +104,36 @@ interface MetricsRepository {
     suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String? = null,
-        testTag: String?,
-        testPathPattern: String?,
-        testNamePattern: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        testTags: List<String> = emptyList(),
+        testPathPattern: String? = null,
+        testNamePattern: String? = null,
+
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+
+        coverageBranches: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
     suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String? = null,
-        testTag: String? = null,
-        testPathPattern: String? = null,
-        testNamePattern: String? = null,
+        testTags: List<String> = emptyList(),
+        testPathPattern: String?,
+        testNamePattern: String?,
+
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+
+        coverageBranches: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 

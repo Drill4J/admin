@@ -521,6 +521,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/changes-coverage-treemap:
+    get:
+      summary: Get changes coverage treemap
+      operationId: getChangesCoverageTreemap
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: packageNamePattern
+          in: query
+          schema:
+            type: string
+        - name: classNamePattern
+          in: query
+          schema:
+            type: string
+        - name: rootId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+        - name: includeEqual
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Changes coverage treemap data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/changes:
     get:
       summary: Get method changes between builds
@@ -671,6 +737,18 @@ paths:
           in: query
           schema:
             type: string
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
+          in: query
+          schema:
+            type: string
         - name: testTaskId
           in: query
           schema:
@@ -683,6 +761,28 @@ paths:
           in: query
           schema:
             type: string
+        - name: testName
+          in: query
+          schema:
+            type: string
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: page
           in: query
           schema:
@@ -741,11 +841,23 @@ paths:
           in: query
           schema:
             type: string
-        - name: testTag
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
           in: query
           schema:
             type: string
         - name: testTaskId
+          in: query
+          schema:
+            type: string
+        - name: testTag
           in: query
           schema:
             type: string
@@ -757,6 +869,24 @@ paths:
           in: query
           schema:
             type: string
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: page
           in: query
           schema:
@@ -780,6 +910,28 @@ paths:
         - metrics
       security:
         - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: Materialized views refresh started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/refresh/{scope}:
+    post:
+      summary: Refresh materialized views with scope
+      operationId: refreshMaterializedViewsWithScope
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: scope
+          description: Scope of the refresh operation ('BUILDS', 'TESTS', 'COVERAGE')
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Materialized views refresh started
@@ -1437,4 +1589,3 @@ components:
         metricsPeriodDays:
           type: integer
           nullable: true
-
