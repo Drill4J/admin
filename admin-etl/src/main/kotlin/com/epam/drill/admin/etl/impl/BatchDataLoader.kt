@@ -45,10 +45,12 @@ abstract class BatchDataLoader<T>(
                 success = false,
                 errorMessage = message
             )
+            onLoadCompleted(result)
         }
         val batchNo = AtomicInteger(0)
         val buffer = mutableListOf<T>()
         var previousTimestamp: Instant? = null
+        logger.debug { "ETL loader [$name] loading rows..." }
 
         flow.collect { row ->
             val currentTimestamp = getLastExtractedTimestamp(row)
@@ -85,6 +87,7 @@ abstract class BatchDataLoader<T>(
         if (result.success && buffer.isNotEmpty()) {
             result += flushBuffer(buffer, batchNo, previousTimestamp, onLoadCompleted)
         }
+        logger.debug { "ETL loader [$name] complete loading for ${result.processedRows} rows, success: ${result.success}" }
         return result
     }
 

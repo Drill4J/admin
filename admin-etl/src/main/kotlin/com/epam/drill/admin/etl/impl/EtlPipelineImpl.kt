@@ -53,8 +53,10 @@ class EtlPipelineImpl<T>(
         logger.debug {
             if (results.processedRows == 0 && results.success) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
-            } else
-                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}"
+            } else {
+                val errors = results.errorMessage?.let { ", errors: $it" } ?: ""
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}" + errors
+            }
         }
         EtlProcessingResult(
             pipelineName = name,

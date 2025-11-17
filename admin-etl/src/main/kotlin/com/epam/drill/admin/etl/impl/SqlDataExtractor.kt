@@ -76,6 +76,7 @@ abstract class SqlDataExtractor<T>(
                 stmt.fetchSize = fetchSize
                 stmt.fillParameters(args)
                 val resultSet: ResultSet
+                logger.debug { "ETL extractor [$name] extracting rows..." }
                 val duration = measureTimeMillis {
                     resultSet = stmt.executeQuery()
                 }
