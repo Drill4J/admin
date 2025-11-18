@@ -15,10 +15,16 @@
  */
 package com.epam.drill.admin.metrics.repository.impl
 
+import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.database
+import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.dispatcher
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.sql.Connection
+import java.time.Instant
 import java.time.LocalDateTime
 
 class MetricsRepositoryImpl : MetricsRepository {
@@ -339,8 +345,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM metrics.get_recommended_tests_v2(                    
                     input_build_id => ?,
                     input_test_impact_statuses => ?                
-            """.trimIndent()
-            , targetBuildId, testImpactStatuses)
+            """.trimIndent(), targetBuildId, testImpactStatuses
+            )
 
             appendOptional(", input_baseline_build_ids => ?", baselineBuildIds)
             appendOptional(", input_baseline_from_build_id => ?", baselineFromBuildId)
@@ -358,9 +364,11 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
             appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
             appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
-            append("""
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -398,7 +406,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM metrics.get_impacted_tests_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
-                    """.trimIndent(), targetBuildId, baselineBuildId)
+                    """.trimIndent(), targetBuildId, baselineBuildId
+            )
             appendOptional(", input_test_task_id => ?", testTaskId)
             appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
@@ -410,9 +419,11 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
 
-            append("""
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -450,7 +461,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM metrics.get_impacted_methods_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
-                    """.trimIndent(), targetBuildId, baselineBuildId)
+                    """.trimIndent(), targetBuildId, baselineBuildId
+            )
             appendOptional(", input_test_task_id => ?", testTaskId)
             appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
@@ -462,19 +474,29 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
 
-            append("""
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
     }
 
-    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) = transaction {
-        executeUpdate(
-            """             
+    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) {
+        val conn = database.connector()
+        conn.autoCommit = true
+        val tx = TransactionManager.manager.newTransaction(Connection.TRANSACTION_READ_COMMITTED)
+        try {
+            tx.exec(
+                """             
             REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
             """.trimIndent()
-        )
+            )
+        } finally {
+            tx.close()
+            conn.close()
+        }
     }
 }

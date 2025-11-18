@@ -28,8 +28,8 @@ open class DatabaseConfig(
     private val schemaMigrationLocation: String,
 
     ) {
-    private lateinit var database: Database
-    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
+    lateinit var database: Database
+    var dispatcher: CoroutineDispatcher = Dispatchers.IO
 
 
     fun init(
