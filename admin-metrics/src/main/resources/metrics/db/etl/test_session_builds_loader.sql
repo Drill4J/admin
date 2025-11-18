@@ -3,14 +3,16 @@ INSERT INTO metrics.test_session_builds_table (
     app_id,
     build_id,
     test_session_id,
-    creation_day
+    created_at_day,
+    updated_at_day
 )
 SELECT
     :group_id,
     :app_id,
     :build_id,
     :test_session_id,
-    :creation_day
+    :created_at_day,
+    :created_at_day
 WHERE :test_session_id IS NOT NULL
 ON CONFLICT (
     group_id,
@@ -18,4 +20,5 @@ ON CONFLICT (
     build_id,
     test_session_id
 )
-DO NOTHING
+DO UPDATE SET
+    updated_at_day = EXCLUDED.created_at_day;

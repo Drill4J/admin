@@ -1,8 +1,8 @@
-INSERT INTO metrics.method_coverage_table (
+INSERT INTO metrics.build_method_coverage_table (
     group_id,
     app_id,
+    build_id,
     method_id,
-    branch,
     app_env_id,
     test_result,
     test_tag,
@@ -14,8 +14,8 @@ INSERT INTO metrics.method_coverage_table (
 VALUES (
     :group_id,
     :app_id,
+    :build_id,
     :method_id,
-    :branch,
     :app_env_id,
     :test_result,
     :test_tag,
@@ -27,8 +27,8 @@ VALUES (
 ON CONFLICT (
     group_id,
     app_id,
+    build_id,
     method_id,
-    COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
     COALESCE(test_tag,''),
@@ -36,5 +36,5 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = method_coverage_table.probes | EXCLUDED.probes,
+    probes = build_method_coverage_table.probes | EXCLUDED.probes,
     updated_at_day = EXCLUDED.created_at_day;

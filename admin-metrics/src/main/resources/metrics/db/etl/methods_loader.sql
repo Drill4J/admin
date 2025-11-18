@@ -9,7 +9,7 @@ INSERT INTO metrics.methods_table (
     return_type,
     body_checksum,
     probes_count,
-    creation_day
+    created_at_day
 )
 VALUES (
     :group_id,
@@ -22,7 +22,7 @@ VALUES (
     :return_type,
     :body_checksum,
     :probes_count,
-    :creation_day
+    :created_at_day
 )
 ON CONFLICT (
     group_id,

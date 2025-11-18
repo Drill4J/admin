@@ -10,9 +10,10 @@ SELECT
     b.commit_author,
     b.commit_message,
     b.committed_at,
-    DATE_TRUNC('day', b.created_at) AS creation_day,
     b.created_at,
-    b.updated_at
+    b.updated_at,
+    DATE_TRUNC('day', b.created_at) AS created_at_day,
+    DATE_TRUNC('day', b.updated_at) AS updated_at_day
 FROM raw_data.builds b
 WHERE b.updated_at > :since_timestamp
     AND b.updated_at <= :until_timestamp

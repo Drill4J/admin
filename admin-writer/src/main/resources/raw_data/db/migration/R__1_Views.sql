@@ -28,12 +28,13 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v3 AS
+CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v4 AS
 SELECT
     c.group_id,
     c.app_id,
     i.build_id,
     MD5(m.signature||':'||m.body_checksum||':'||m.probes_count) AS method_id,
+    m.signature,
     CASE WHEN c.test_session_id = 'GLOBAL' THEN NULL ELSE c.test_session_id END AS test_session_id,
     CASE WHEN c.test_id = 'TEST_CONTEXT_NONE' THEN NULL ELSE test_id END AS test_launch_id,
     i.env_id AS app_env_id,
@@ -41,8 +42,8 @@ SELECT
     SUBSTRING(c.probes FROM m.probe_start_pos + 1 FOR m.probes_count) AS probes
 FROM raw_data.coverage c
 JOIN raw_data.instances i ON i.group_id = c.group_id AND i.app_id = c.app_id AND i.id = c.instance_id
-JOIN raw_data.view_methods_with_rules m ON m.probes_count > 0
-    AND m.group_id = i.group_id AND m.app_id = i.app_id AND m.build_id = i.build_id
+JOIN raw_data.view_methods_with_rules m ON m.group_id = i.group_id AND m.app_id = i.app_id
+    AND m.build_id = i.build_id
     AND m.classname = c.classname
     AND BIT_COUNT(SUBSTRING(c.probes FROM m.probe_start_pos + 1 FOR m.probes_count)) > 0
     AND BIT_LENGTH(SUBSTRING(c.probes FROM m.probe_start_pos + 1 FOR m.probes_count)) = m.probes_count;

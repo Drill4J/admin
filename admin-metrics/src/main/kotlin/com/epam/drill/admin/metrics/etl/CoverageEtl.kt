@@ -28,6 +28,27 @@ val coverageExtractor = UntypedSqlDataExtractor(
     database = MetricsDatabaseConfig.database
 )
 
+val buildMethodTestDefinitionCoverageLoader = UntypedSqlDataLoader(
+    name = "build_method_test_definition_coverage",
+    sql = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
+    lastExtractedAtColumnName = "created_at",
+    database = MetricsDatabaseConfig.database
+)
+
+val buildMethodTestSessionCoverageLoader = UntypedSqlDataLoader(
+    name = "build_method_test_session_coverage",
+    sql = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
+    lastExtractedAtColumnName = "created_at",
+    database = MetricsDatabaseConfig.database
+)
+
+val buildMethodCoverageLoader = UntypedSqlDataLoader(
+    name = "build_method_coverage",
+    sql = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
+    lastExtractedAtColumnName = "created_at",
+    database = MetricsDatabaseConfig.database
+)
+
 val methodCoverageLoader = UntypedSqlDataLoader(
     name = "method_coverage",
     sql = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
@@ -35,9 +56,9 @@ val methodCoverageLoader = UntypedSqlDataLoader(
     database = MetricsDatabaseConfig.database
 )
 
-val methodSmartCoverageLoader = UntypedSqlDataLoader(
-    name = "method_smartcoverage",
-    sql = fromResource("/metrics/db/etl/method_smartcoverage_loader.sql"),
+val test2CodeMappingLoader = UntypedSqlDataLoader(
+    name = "test_to_code_mapping",
+    sql = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
     lastExtractedAtColumnName = "created_at",
     database = MetricsDatabaseConfig.database
 )
@@ -45,5 +66,12 @@ val methodSmartCoverageLoader = UntypedSqlDataLoader(
 val coveragePipeline = EtlPipelineImpl(
     name = "coverage",
     extractor = coverageExtractor,
-    loaders = listOf(methodCoverageLoader, methodSmartCoverageLoader, testSessionBuildsLoader)
+    loaders = listOf(
+        buildMethodTestDefinitionCoverageLoader,
+        buildMethodTestSessionCoverageLoader,
+        buildMethodCoverageLoader,
+        methodCoverageLoader,
+        test2CodeMappingLoader,
+        testSessionBuildsLoader
+    )
 )
