@@ -66,7 +66,7 @@ val dataSourceDIModule = DI.Module("dataSource") {
             this.password = password
             this.maximumPoolSize = maxPoolSize
             this.isAutoCommit = true
-            this.transactionIsolation = "TRANSACTION_READ_UNCOMMITTED"
+            this.transactionIsolation = "TRANSACTION_READ_COMMITTED"
             this.addDataSourceProperty("rewriteBatchedInserts", true)
             this.addDataSourceProperty("rewriteBatchedStatements", true)
             this.validate()

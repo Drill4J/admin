@@ -494,6 +494,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
             """.trimIndent()
             )
+            tx.commit()
         } finally {
             tx.close()
             conn.close()
