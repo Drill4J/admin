@@ -16,11 +16,8 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.metrics.repository.MetricsRepository
-import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.metrics.route.metricsRoutes
-import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
@@ -30,14 +27,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.call
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.post
-import org.kodein.di.instance
-import org.kodein.di.ktor.closestDI
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.getValue
 import kotlin.test.assertEquals
 
 private val counter = AtomicInteger(0)
@@ -150,7 +140,9 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
 }
 
 suspend fun HttpClient.refreshMaterializedViews() {
-    post("/metrics/refresh").assertSuccessStatus()
+    post("/metrics/refresh") {
+        parameter("reset", "true")
+    }.assertSuccessStatus()
 }
 
 suspend fun HttpResponse.assertSuccessStatus() = also {

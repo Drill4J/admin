@@ -472,19 +472,13 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) = transaction {
-        executeUpdate(
-            """             
-            REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
-            """.trimIndent()
-        )
-    }
-
     override suspend fun getMetricsPeriodDays(): Instant = transaction {
         (executeQueryReturnMap(
             """             
-                SELECT min(metrics.get_metrics_period(group_id)) AS period_days FROM metrics.builds GROUP BY group_id
+                SELECT COALESCE(MIN(metrics_period), 'epoch')::TIMESTAMP AS metrics_period FROM (
+	                SELECT DISTINCT group_id, metrics.get_metrics_period(group_id) AS metrics_period FROM raw_data.builds
+                ) group_metrics_periods
                  """.trimIndent()
-        ).first()["period_days"] as LocalDateTime).toInstant(UTC)
+        ).first()["metrics_period"] as LocalDateTime).toInstant(UTC)
     }
 }

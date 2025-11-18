@@ -21,21 +21,25 @@ import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val buildsExtractor = UntypedSqlDataExtractor(
-    name = "builds",
-    sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val buildsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "builds",
+        sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
+        database = MetricsDatabaseConfig.database
+    )
 
-val buildsLoader = UntypedSqlDataLoader(
-    name = "builds",
-    sql = fromResource("/metrics/db/etl/builds_loader.sql"),
-    lastExtractedAtColumnName = "updated_at",
-    database = MetricsDatabaseConfig.database
-)
+val buildsLoader
+    get() = UntypedSqlDataLoader(
+        name = "builds",
+        sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
+        lastExtractedAtColumnName = "updated_at",
+        database = MetricsDatabaseConfig.database
+    )
 
-val buildsPipeline = EtlPipelineImpl(
-    name = "builds",
-    extractor = buildsExtractor,
-    loaders = listOf(buildsLoader)
-)
+val buildsPipeline
+    get() = EtlPipelineImpl(
+        name = "builds",
+        extractor = buildsExtractor,
+        loaders = listOf(buildsLoader)
+    )

@@ -1,4 +1,4 @@
-INSERT INTO metrics.test_launches_table (
+INSERT INTO metrics.test_launches (
     test_launch_id,
     group_id,
     test_definition_id,

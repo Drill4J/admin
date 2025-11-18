@@ -20,9 +20,7 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
-import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
-import com.epam.drill.admin.metrics.payload.RefreshPayload
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -30,8 +28,6 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.request.receive
-import io.ktor.server.request.receiveNullable
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
@@ -237,12 +233,14 @@ class Metrics {
     @Resource("/refresh")
     class Refresh(
         val parent: Metrics,
+        val reset: Boolean = false
     )
 
     @Resource("/refresh/{scope}")
+    @Deprecated("Use /metrics/refresh instead")
     class RefreshScope(
         val parent: Metrics,
-        val scope: MatViewScope
+        val scope: String
     )
 }
 
@@ -260,8 +258,8 @@ fun Route.metricsRoutes() {
 }
 
 fun Route.metricsManagementRoutes() {
-    postRefreshMaterializedViews()
-    postRefreshMaterializedViewsWithScope()
+    postRefreshMetrics()
+    postRefreshMetricsWithScope()
 }
 
 fun Route.getApplications() {
@@ -527,20 +525,20 @@ fun Route.getImpactedMethods() {
     }
 }
 
-fun Route.postRefreshMaterializedViews() {
+fun Route.postRefreshMetrics() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.Refresh> { params ->
-        metricsService.refreshMaterializedViews()
+        metricsService.refresh(params.reset)
         call.ok("Materialized views were refreshed.")
     }
 }
 
-fun Route.postRefreshMaterializedViewsWithScope() {
+fun Route.postRefreshMetricsWithScope() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.RefreshScope> { params ->
-        metricsService.refreshMaterializedViews(scopes = setOfNotNull(params.scope))
-        call.ok("Materialized views [${params.scope}] were refreshed.")
+        metricsService.refresh()
+        call.ok("Materialized views were refreshed.")
     }
 }

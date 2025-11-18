@@ -1,4 +1,4 @@
-INSERT INTO metrics.test_definitions_table (
+INSERT INTO metrics.test_definitions (
     test_definition_id,
     group_id,
     test_path,

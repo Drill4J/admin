@@ -741,7 +741,7 @@ BEGIN
         td.test_path,
         td.test_name,
         td.test_tags,
-        td.test_metadata,
+        td.test_metadata::JSON,
 		CASE WHEN it.all_builds_impacted IS true THEN 'IMPACTED'
 		     WHEN it.all_builds_impacted IS false THEN 'NOT_IMPACTED'
 		     ELSE 'UNKNOWN_IMPACT'

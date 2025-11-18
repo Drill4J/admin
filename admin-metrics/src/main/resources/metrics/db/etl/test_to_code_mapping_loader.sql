@@ -1,4 +1,4 @@
-INSERT INTO metrics.test_to_code_mapping_table(
+INSERT INTO metrics.test_to_code_mapping(
     group_id,
     app_id,
     signature,
@@ -24,7 +24,7 @@ ON CONFLICT (
     group_id,
     app_id,
     signature,
-    test_definition_id
+    test_definition_id,
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_task_id,'')

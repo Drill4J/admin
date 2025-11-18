@@ -1,4 +1,4 @@
-INSERT INTO metrics.build_method_test_definition_coverage_table (
+INSERT INTO metrics.build_method_test_definition_coverage (
     group_id,
     app_id,
     build_id,
@@ -36,5 +36,5 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = build_method_test_definition_coverage_table.probes | EXCLUDED.probes,
+    probes = build_method_test_definition_coverage.probes | EXCLUDED.probes,
     updated_at_day = EXCLUDED.created_at_day;

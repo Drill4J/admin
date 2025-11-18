@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
@@ -25,26 +26,20 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
-import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
-import org.jetbrains.exposed.exceptions.ExposedSQLException
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
-import kotlin.time.measureTimedValue
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
+    private val etl: EtlOrchestrator,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
@@ -530,32 +525,12 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) {
-        val resolvedScopes = scopes.ifEmpty { MatViewScope.entries.toSet() }
-        suspend fun refresh(view: MatView) {
-            refreshMatViewOfScopes(view, resolvedScopes)
-        }
-
-        logger.info { "Refreshing materialized views ${resolvedScopes}..." }
-
-        val duration = measureTimedValue {
-            refresh(lastUpdateStatusView)
-            refresh(buildsView)
-            refresh(methodsView)
-            refresh(buildMethodsView)
-            refresh(testLaunchesView)
-            refresh(testDefinitionsView)
-            refresh(testSessionsView)
-            refresh(buildClassTestDefinitionCoverageView)
-            refresh(buildMethodTestDefinitionCoverageView)
-            refresh(buildMethodTestSessionCoverageView)
-            refresh(buildMethodCoverageView)
-            refresh(methodCoverageView)
-            refresh(test2CodeMappingView)
-            refresh(testSessionBuildsView)
-        }
-
-        logger.info { "Materialized views $resolvedScopes were refreshed in ${formatDuration(duration.duration)}." }
+    override suspend fun refresh(reset: Boolean) {
+        val initTimestamp = metricsRepository.getMetricsPeriodDays()
+        if (reset)
+            etl.rerun(initTimestamp, withDataDeletion = true)
+        else
+            etl.run(initTimestamp)
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -580,33 +555,4 @@ class MetricsServiceImpl(
         }
         return URI("$uri?$queryString").toString()
     }
-
-    private suspend fun refreshMatViewOfScopes(view: MatView, scopes: Set<MatViewScope>) {
-        if ((view.scope == null) || (view.scope in scopes)) {
-            refreshMatView(view)
-        }
-    }
-    private suspend fun refreshMatView(view: MatView) {
-        val result = measureTimedValue {
-            try {
-                metricsRepository.refreshMaterializedView(view.name, true)
-            } catch (e: ExposedSQLException) {
-                if (isMaterializedViewNotPopulated(e)) {
-                    logger.debug { "Materialized view ${view.name} is not populated. Refreshing without CONCURRENTLY." }
-                    metricsRepository.refreshMaterializedView(view.name, false)
-                } else throw e
-            }
-        }
-        logger.debug("Materialized view {} was refreshed in {}.", view.name, formatDuration(result.duration))
-    }
-
-    private fun formatDuration(duration: kotlin.time.Duration): String = when {
-        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} min"
-        duration.inWholeSeconds > 0 -> "${duration.inWholeSeconds} sec"
-        else -> "${duration.inWholeMilliseconds} ms"
-    }
-
-
-    private fun isMaterializedViewNotPopulated(e: ExposedSQLException): Boolean =
-        e.message?.contains("CONCURRENTLY cannot be used when the materialized view is not populated") == true
 }

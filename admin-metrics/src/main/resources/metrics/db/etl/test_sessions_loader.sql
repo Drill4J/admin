@@ -1,4 +1,4 @@
-INSERT INTO metrics.test_sessions_table (
+INSERT INTO metrics.test_sessions (
     test_session_id,
     group_id,
     test_task_id,

@@ -137,7 +137,5 @@ interface MetricsRepository {
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
-    suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean = true)
-
     suspend fun getMetricsPeriodDays(): Instant
 }

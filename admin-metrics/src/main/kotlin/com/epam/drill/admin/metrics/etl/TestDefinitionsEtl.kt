@@ -21,22 +21,26 @@ import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val testDefinitionsExtractor = UntypedSqlDataExtractor(
-    name = "test_definitions",
-    sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val testDefinitionsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "test_definitions",
+        sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
+        database = MetricsDatabaseConfig.database
+    )
 
-val testDefinitionsLoader = UntypedSqlDataLoader(
-    name = "test_definitions",
-    sql = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
-    lastExtractedAtColumnName = "updated_at",
-    database = MetricsDatabaseConfig.database
-)
+val testDefinitionsLoader
+    get() = UntypedSqlDataLoader(
+        name = "test_definitions",
+        sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
+        lastExtractedAtColumnName = "updated_at",
+        database = MetricsDatabaseConfig.database
+    )
 
-val testDefinitionsPipeline = EtlPipelineImpl(
-    name = "test_definitions",
-    extractor = testDefinitionsExtractor,
-    loaders = listOf(testDefinitionsLoader)
-)
+val testDefinitionsPipeline
+    get() = EtlPipelineImpl(
+        name = "test_definitions",
+        extractor = testDefinitionsExtractor,
+        loaders = listOf(testDefinitionsLoader)
+    )
 

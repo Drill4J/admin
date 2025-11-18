@@ -16,35 +16,39 @@
 package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
-import com.epam.drill.admin.etl.impl.SqlDataExtractor
-import com.epam.drill.admin.etl.impl.SqlDataLoader
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val buildMethodsExtractor = UntypedSqlDataExtractor(
-    name = "build_methods",
-    sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val buildMethodsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "build_methods",
+        sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
+        database = MetricsDatabaseConfig.database
+    )
 
-val buildMethodsLoader = UntypedSqlDataLoader(
-    name = "build_methods",
-    sql = fromResource("/metrics/db/etl/build_methods_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
-    database = MetricsDatabaseConfig.database
-)
+val buildMethodsLoader
+    get() = UntypedSqlDataLoader(
+        name = "build_methods",
+        sqlUpsert = fromResource("/metrics/db/etl/build_methods_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_methods_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database
+    )
 
-val methodsLoader = UntypedSqlDataLoader(
-    name = "methods",
-    sql = fromResource("/metrics/db/etl/methods_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
-    database = MetricsDatabaseConfig.database
-)
+val methodsLoader
+    get() = UntypedSqlDataLoader(
+        name = "methods",
+        sqlUpsert = fromResource("/metrics/db/etl/methods_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/methods_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database
+    )
 
-val methodsPipeline = EtlPipelineImpl(
-    name = "methods",
-    extractor = buildMethodsExtractor,
-    loaders = listOf(buildMethodsLoader, methodsLoader)
-)
+val methodsPipeline
+    get() = EtlPipelineImpl(
+        name = "methods",
+        extractor = buildMethodsExtractor,
+        loaders = listOf(buildMethodsLoader, methodsLoader)
+    )

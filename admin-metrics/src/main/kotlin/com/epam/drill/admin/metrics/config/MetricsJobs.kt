@@ -16,14 +16,7 @@
 package com.epam.drill.admin.metrics.config
 
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.metrics.job.RefreshMaterializedViewJob
 import org.quartz.*
-
-val refreshMaterializedViewsJob: JobDetail = JobBuilder.newJob(RefreshMaterializedViewJob::class.java)
-    .storeDurably()
-    .withDescription("Job for updating the materialized views.")
-    .withIdentity("refreshMaterializedViews", "metricsJobs")
-    .build()
 
 val updateMetricsEtlJob: JobDetail = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
     .storeDurably()

@@ -1,4 +1,4 @@
-INSERT INTO metrics.method_coverage_table (
+INSERT INTO metrics.method_coverage (
     group_id,
     app_id,
     method_id,
@@ -36,5 +36,5 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = method_coverage_table.probes | EXCLUDED.probes,
+    probes = method_coverage.probes | EXCLUDED.probes,
     updated_at_day = EXCLUDED.created_at_day;

@@ -1,4 +1,4 @@
-INSERT INTO metrics.build_methods_table (
+INSERT INTO metrics.build_methods (
     group_id,
     app_id,
     build_id,
