@@ -19,11 +19,13 @@ import com.epam.drill.admin.etl.BatchResult
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.time.Instant
 
 abstract class SqlDataLoader<T>(
     override val name: String,
     override val batchSize: Int,
     open val sqlUpsert: String,
+    open val sqlDelete: String,
     open val database: Database
 ) : BatchDataLoader<T>(name, batchSize) {
     private val logger = KotlinLogging.logger {}
@@ -54,5 +56,19 @@ abstract class SqlDataLoader<T>(
             success = true,
             duration = duration
         )
+    }
+
+    override suspend fun deleteAll() {
+        logger.info { "Loader [$name] deleting data" }
+        val duration = try {
+            newSuspendedTransaction(db = database) {
+                exec(sqlDelete)
+                duration
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error during deleting data with loader $name: ${e.message ?: e.javaClass.simpleName}" }
+            throw e
+        }
+        logger.info { "Loader [$name] deleted data in ${duration}ms" }
     }
 }

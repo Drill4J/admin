@@ -15,18 +15,18 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.DataLoader
 import org.jetbrains.exposed.sql.Database
 import java.time.Instant
 import java.util.Date
 
 class UntypedSqlDataLoader(
     name: String,
-    sql: String,
+    sqlUpsert: String,
+    sqlDelete: String,
     database: Database,
     private val lastExtractedAtColumnName: String,
     batchSize: Int = 1000
-) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sql, database) {
+) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sqlUpsert, sqlDelete, database) {
     override fun prepareSql(
         sql: String,
         args: Map<String, Any?>

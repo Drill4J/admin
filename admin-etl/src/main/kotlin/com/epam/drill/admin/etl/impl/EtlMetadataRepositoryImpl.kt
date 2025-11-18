@@ -22,7 +22,10 @@ import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.upsert
@@ -80,6 +83,12 @@ class EtlMetadataRepositoryImpl(
             it[duration] = accumulatedDuration
             it[rowsProcessed] = accumulatedRowsProcessed
             it[errorMessage] = metadata.errorMessage
+        }
+    }
+
+    override suspend fun deleteMetadataByPipeline(pipelineName: String) {
+        newSuspendedTransaction(db = database) {
+            metadataTable.deleteWhere { metadataTable.pipelineName eq pipelineName }
         }
     }
 

@@ -43,6 +43,7 @@ class EtlPipelineImpl<T>(
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
+
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         logger.debug { "ETL pipeline [$name] starting since $sinceTimestamp..." }
@@ -65,6 +66,10 @@ class EtlPipelineImpl<T>(
             success = results.success,
             errorMessage = results.errorMessage
         )
+    }
+
+    override suspend fun cleanUp() {
+        loaders.forEach { it.deleteAll() }
     }
 
     private suspend fun CoroutineScope.processEtl(
