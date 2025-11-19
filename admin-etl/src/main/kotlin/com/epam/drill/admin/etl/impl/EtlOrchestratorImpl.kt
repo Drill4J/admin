@@ -59,16 +59,15 @@ open class EtlOrchestratorImpl(
     }
 
     override suspend fun rerun(initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info { "ETL [$name] restarting with init timestamp $initTimestamp..." }
         pipelines.map { it.name }.forEach { pipelineName ->
             metadataRepository.deleteMetadataByPipeline(pipelineName)
         }
+        logger.info { "ETL [$name] deleted all metadata for rerun." }
         if (withDataDeletion) {
             pipelines.forEach { it.cleanUp() }
             logger.info { "ETL [$name] deleted all data for rerun." }
         }
         val results = run(initTimestamp)
-        logger.info { "ETL [$name] rerun completed." }
         return@withContext results
     }
 
