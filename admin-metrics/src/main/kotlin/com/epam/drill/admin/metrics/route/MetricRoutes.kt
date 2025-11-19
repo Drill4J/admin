@@ -136,6 +136,8 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+        val includeDeleted: Boolean? = null,
+        val includeEqual: Boolean? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null
@@ -386,6 +388,8 @@ fun Route.getChanges() {
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
+            includeDeleted = params.includeDeleted,
+            includeEqual = params.includeEqual,
             page = params.page,
             pageSize = params.pageSize,
         )
