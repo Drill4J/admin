@@ -18,29 +18,32 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val testSessionBuildsExtractor
+val EtlConfig.testSessionBuildsExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_session_builds",
         sqlQuery = fromResource("/metrics/db/etl/test_session_builds_extractor.sql"),
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
     )
 
-val testSessionBuildsLoader
+val EtlConfig.testSessionBuildsLoader
     get() = UntypedSqlDataLoader(
         name = "test_session_builds",
         sqlUpsert = fromResource("/metrics/db/etl/test_session_builds_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_session_builds_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val testSessionBuildsPipeline
+val EtlConfig.testSessionBuildsPipeline
     get() = EtlPipelineImpl(
         name = "test_session_builds",
         extractor = testSessionBuildsExtractor,
-        loaders = listOf(testSessionBuildsLoader)
+        loaders = listOf(testSessionBuildsLoader),
+        bufferSize = bufferSize
     )
-

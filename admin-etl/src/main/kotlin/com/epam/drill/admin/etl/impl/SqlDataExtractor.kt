@@ -33,7 +33,7 @@ abstract class SqlDataExtractor<T>(
     override val name: String,
     open val sqlQuery: String,
     open val database: Database,
-    open val fetchSize: Int = 2000,
+    open val fetchSize: Int,
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 

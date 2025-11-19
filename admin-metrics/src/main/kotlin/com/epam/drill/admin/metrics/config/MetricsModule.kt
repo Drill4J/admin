@@ -49,15 +49,19 @@ val metricsDIModule = DI.Module("metricsServices") {
         )
     }
     bind<EtlOrchestrator>() with singleton {
-        EtlOrchestratorImpl(
-            name = "metrics",
-            pipelines = listOf(
-                buildsPipeline, methodsPipeline,
-                testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
-                coveragePipeline, testSessionBuildsPipeline
-            ),
-            metadataRepository = instance()
-        )
+        val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
+        val etlConfig = EtlConfig(drillConfig.config("etl"))
+        with(etlConfig) {
+            EtlOrchestratorImpl(
+                name = "metrics",
+                pipelines = listOf(
+                    buildsPipeline, methodsPipeline,
+                    testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
+                    coveragePipeline, testSessionBuildsPipeline
+                ),
+                metadataRepository = instance()
+            )
+        }
     }
     bind<MetricsService>() with singleton {
         val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")

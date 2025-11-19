@@ -18,63 +18,70 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
 
-val coverageExtractor
+val EtlConfig.coverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "coverage",
         sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
     )
 
-val buildMethodTestDefinitionCoverageLoader
+val EtlConfig.buildMethodTestDefinitionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_definition_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val buildMethodTestSessionCoverageLoader
+val EtlConfig.buildMethodTestSessionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_session_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val buildMethodCoverageLoader
+val EtlConfig.buildMethodCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val methodCoverageLoader
+val EtlConfig.methodCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "method_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/method_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val test2CodeMappingLoader
+val EtlConfig.test2CodeMappingLoader
     get() = UntypedSqlDataLoader(
         name = "test_to_code_mapping",
         sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val coveragePipeline
+val EtlConfig.coveragePipeline
     get() = EtlPipelineImpl(
         name = "coverage",
         extractor = coverageExtractor,
@@ -85,5 +92,6 @@ val coveragePipeline
             methodCoverageLoader,
             test2CodeMappingLoader,
             testSessionBuildsLoader
-        )
+        ),
+        bufferSize = bufferSize
     )

@@ -23,8 +23,9 @@ import java.sql.ResultSetMetaData
 class UntypedSqlDataExtractor(
     name: String,
     sqlQuery: String,
-    database: Database
-) : SqlDataExtractor<Map<String, Any?>>(name, sqlQuery, database) {
+    database: Database,
+    fetchSize: Int = 2000
+) : SqlDataExtractor<Map<String, Any?>>(name, sqlQuery, database, fetchSize) {
     override fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): Map<String, Any?> {
         val row = mutableMapOf<String, Any?>()
         for (i in 1..columnCount) {

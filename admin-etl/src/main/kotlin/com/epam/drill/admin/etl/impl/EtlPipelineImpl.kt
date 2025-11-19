@@ -36,7 +36,7 @@ class EtlPipelineImpl<T>(
     override val name: String,
     override val extractor: DataExtractor<T>,
     override val loaders: List<DataLoader<T>>,
-    private val bufferSize: Int = 1000
+    private val bufferSize: Int = 2000
 ) : EtlPipeline<T> {
     private val logger = KotlinLogging.logger {}
 

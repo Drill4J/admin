@@ -18,29 +18,32 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val testLaunchesExtractor
+val EtlConfig.testLaunchesExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_launches",
         sqlQuery = fromResource("/metrics/db/etl/test_launches_extractor.sql"),
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
     )
 
-val testLaunchesLoader
+val EtlConfig.testLaunchesLoader
     get() = UntypedSqlDataLoader(
         name = "test_launches",
         sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_launches_delete.sql"),
         lastExtractedAtColumnName = "created_at",
-        database = MetricsDatabaseConfig.database
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
     )
 
-val testLaunchesPipeline
+val EtlConfig.testLaunchesPipeline
     get() = EtlPipelineImpl(
         name = "test_launches",
         extractor = testLaunchesExtractor,
-        loaders = listOf(testLaunchesLoader)
+        loaders = listOf(testLaunchesLoader),
+        bufferSize = bufferSize
     )
-
