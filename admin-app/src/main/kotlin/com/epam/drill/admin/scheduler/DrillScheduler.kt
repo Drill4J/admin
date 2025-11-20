@@ -25,6 +25,9 @@ import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.jdbcjobstore.JobStoreTX
 import org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
 import org.quartz.impl.matchers.GroupMatcher
+import org.quartz.impl.matchers.KeyMatcher
+import org.quartz.impl.matchers.NameMatcher
+import org.quartz.impl.matchers.OrMatcher
 import org.quartz.simpl.SimpleThreadPool
 import org.quartz.utils.ConnectionProvider
 import org.quartz.utils.DBConnectionManager
@@ -95,6 +98,12 @@ class DrillScheduler(
      */
     private fun deleteDeprecatedJobs() {
         scheduler.getJobKeys(GroupMatcher.jobGroupEquals("refreshMaterializedViews"))
+            .forEach { existingJobKey ->
+                scheduler.deleteJob(existingJobKey)
+                logger.debug { "Deleted deprecated job: $existingJobKey" }
+            }
+        scheduler.getJobKeys(GroupMatcher.jobGroupEquals("metricsJobs"))
+            .filter { it.name == "refreshMaterializedViews" }
             .forEach { existingJobKey ->
                 scheduler.deleteJob(existingJobKey)
                 logger.debug { "Deleted deprecated job: $existingJobKey" }

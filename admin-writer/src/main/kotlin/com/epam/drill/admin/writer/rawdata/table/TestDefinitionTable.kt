@@ -31,4 +31,5 @@ object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val tags = array<String>("tags", MEDIUM_TEXT_LENGTH).nullable()
     val metadata = json("metadata", Json, MapSerializer(String.serializer(), String.serializer())).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

@@ -13,22 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.job
+package com.epam.drill.admin.etl
 
-import com.epam.drill.admin.metrics.service.MetricsService
-import kotlinx.coroutines.runBlocking
-import org.quartz.DisallowConcurrentExecution
-import org.quartz.Job
-import org.quartz.JobExecutionContext
+import java.time.Instant
 
-@DisallowConcurrentExecution
-class RefreshMaterializedViewJob(
-    private val metricsService: MetricsService,
-) : Job {
+data class EtlMetadata(
+    val pipelineName: String,
+    val extractorName: String,
+    val loaderName: String,
+    val lastProcessedAt: Instant,
+    val lastRunAt: Instant,
+    val duration: Long,
+    val status: EtlStatus,
+    val errorMessage: String?,
+    val rowsProcessed: Int
+)
 
-    override fun execute(context: JobExecutionContext) {
-        runBlocking {
-            metricsService.refreshMaterializedViews()
-        }
-    }
-}

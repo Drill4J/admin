@@ -42,7 +42,7 @@ class DatabaseConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("password")?.getString() ?: "postgres"
 
     val maxPoolSize: Int
-        get() = config.propertyOrNull("maximumPoolSize")?.getString()?.toInt() ?: 20
+        get() = config.propertyOrNull("maximumPoolSize")?.getString()?.toInt() ?: 50
 }
 
 val dataSourceDIModule = DI.Module("dataSource") {

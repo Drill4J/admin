@@ -36,6 +36,7 @@ class SchedulerConfig(private val config: ApplicationConfig) {
     private val refreshViewsJobCron: String =
         config.propertyOrNull("refreshViewsJobCron")?.getString()
             ?: intervalToCron(refreshViewsIntervalInMinutes)
+    private val etlJobCron: String = config.propertyOrNull("etlJobCron")?.getString() ?: "0 * * * * ?"
     private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
 
@@ -45,6 +46,15 @@ class SchedulerConfig(private val config: ApplicationConfig) {
             .startNow()
             .withSchedule(
                 CronScheduleBuilder.cronSchedule(refreshViewsJobCron)
+            )
+            .build()
+
+    val etlTrigger: CronTrigger
+        get() = TriggerBuilder.newTrigger()
+            .withIdentity("etlTrigger", "refreshViews")
+            .startNow()
+            .withSchedule(
+                CronScheduleBuilder.cronSchedule(etlJobCron)
             )
             .build()
 
