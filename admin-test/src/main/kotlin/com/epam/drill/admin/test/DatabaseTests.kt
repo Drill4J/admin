@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import javax.sql.DataSource
+import kotlin.concurrent.fixedRateTimer
 
 @Testcontainers
 open class DatabaseTests(private val initialization: (DataSource) -> Unit) {
@@ -58,6 +59,7 @@ open class DatabaseTests(private val initialization: (DataSource) -> Unit) {
         @JvmStatic
         @AfterAll
         fun finish() {
+            (dataSource as HikariDataSource).close()
             postgresqlContainer.stop()
         }
     }
