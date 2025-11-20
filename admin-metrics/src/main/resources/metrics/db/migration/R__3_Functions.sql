@@ -146,9 +146,9 @@ BEGIN
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
-		LEFT JOIN metrics.method_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
+		LEFT JOIN metrics.method_daily_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
 			-- Filters by smart coverage
-			AND (is_smart_coverage_before_build IS false OR sc.updated_at_day <= b.created_at_day)
+			AND (is_smart_coverage_before_build IS false OR sc.created_at_day <= b.created_at_day)
 			AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
 		  	AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))

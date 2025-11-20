@@ -1,4 +1,4 @@
-INSERT INTO metrics.method_coverage (
+INSERT INTO metrics.method_daily_coverage (
     group_id,
     app_id,
     method_id,
@@ -8,7 +8,6 @@ INSERT INTO metrics.method_coverage (
     test_tag,
     test_task_id,
     created_at_day,
-    updated_at_day,
     probes
 )
 VALUES (
@@ -21,13 +20,13 @@ VALUES (
     :test_tag,
     :test_task_id,
     :created_at_day,
-    :created_at_day,
     :probes
 )
 ON CONFLICT (
     group_id,
     app_id,
     method_id,
+    created_at_day,
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
@@ -36,5 +35,4 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = method_coverage.probes | EXCLUDED.probes,
-    updated_at_day = EXCLUDED.created_at_day;
+    probes = method_daily_coverage.probes | EXCLUDED.probes;

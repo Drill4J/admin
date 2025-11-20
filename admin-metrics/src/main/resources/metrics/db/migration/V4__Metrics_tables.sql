@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS metrics.builds (
     updated_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id)
 );
-CREATE INDEX ON metrics.builds(group_id, updated_at_day);
+CREATE INDEX ON metrics.builds (group_id, app_id, branch);
+CREATE INDEX ON metrics.builds (created_at_day);
 
 CREATE TABLE IF NOT EXISTS metrics.methods (
     group_id VARCHAR,
@@ -48,7 +49,6 @@ CREATE TABLE IF NOT EXISTS metrics.methods (
     created_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, method_id)
 );
-CREATE INDEX ON metrics.methods(group_id, created_at_day);
 CREATE INDEX ON metrics.methods (group_id, app_id, signature);
 
 CREATE TABLE IF NOT EXISTS metrics.build_methods (
@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS metrics.build_methods (
     created_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id, method_id)
 );
-CREATE INDEX ON metrics.build_methods(group_id, created_at_day);
 
 CREATE TABLE IF NOT EXISTS metrics.test_launches (
     group_id VARCHAR,
@@ -77,7 +76,6 @@ CREATE TABLE IF NOT EXISTS metrics.test_launches (
     success INT,
     PRIMARY KEY (group_id, test_launch_id)
 );
-CREATE INDEX ON metrics.test_launches(group_id, created_at_day);
 CREATE INDEX ON metrics.test_launches(group_id, test_definition_id);
 CREATE INDEX ON metrics.test_launches(group_id, test_session_id);
 
@@ -95,7 +93,6 @@ CREATE TABLE IF NOT EXISTS metrics.test_definitions (
     updated_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, test_definition_id)
 );
-CREATE INDEX ON metrics.test_definitions(group_id, updated_at_day);
 CREATE INDEX ON metrics.test_definitions(group_id, test_path, test_name);
 
 CREATE TABLE IF NOT EXISTS metrics.test_sessions (
@@ -108,7 +105,8 @@ CREATE TABLE IF NOT EXISTS metrics.test_sessions (
     created_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, test_session_id)
 );
-CREATE INDEX ON metrics.test_sessions(group_id, created_at_day);
+CREATE INDEX ON metrics.test_sessions(session_started_at);
+CREATE INDEX ON metrics.test_sessions(group_id, test_task_id);
 
 CREATE TABLE IF NOT EXISTS metrics.test_session_builds (
     group_id VARCHAR,
@@ -119,7 +117,6 @@ CREATE TABLE IF NOT EXISTS metrics.test_session_builds (
     updated_at_day TIMESTAMP WITHOUT TIME ZONE,
     PRIMARY KEY (group_id, app_id, build_id, test_session_id)
 );
-CREATE INDEX ON metrics.test_session_builds(group_id, updated_at_day);
 CREATE INDEX ON metrics.test_session_builds(group_id, test_session_id);
 
 CREATE TABLE IF NOT EXISTS metrics.build_method_test_definition_coverage (
@@ -145,8 +142,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_definition_coverage_pk ON me
     COALESCE(app_env_id,''),
     COALESCE(test_result,'')
 );
-CREATE INDEX ON metrics.build_method_test_definition_coverage(group_id, updated_at_day);
-
 
 CREATE TABLE IF NOT EXISTS metrics.build_method_test_session_coverage (
     group_id VARCHAR,
@@ -171,9 +166,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_test_session_coverage_pk ON metri
     COALESCE(test_result,''),
     COALESCE(test_tag,'')
 );
-CREATE INDEX ON metrics.build_method_test_session_coverage(group_id, updated_at_day);
-
-
 
 CREATE TABLE IF NOT EXISTS metrics.build_method_coverage (
     group_id VARCHAR,
@@ -198,10 +190,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS build_method_coverage_pk ON metrics.build_meth
     COALESCE(test_tag,''),
     COALESCE(test_task_id,'')
 );
-CREATE INDEX ON metrics.build_method_coverage(group_id, updated_at_day);
 
-
-CREATE TABLE IF NOT EXISTS metrics.method_coverage (
+CREATE TABLE IF NOT EXISTS metrics.method_daily_coverage (
     group_id VARCHAR,
     app_id VARCHAR,
     method_id VARCHAR(32),
@@ -211,20 +201,20 @@ CREATE TABLE IF NOT EXISTS metrics.method_coverage (
     test_tag VARCHAR,
     test_task_id VARCHAR,
     created_at_day TIMESTAMP WITHOUT TIME ZONE,
-    updated_at_day TIMESTAMP WITHOUT TIME ZONE,
     probes VARBIT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS method_coverage_pk ON metrics.method_coverage (
+CREATE UNIQUE INDEX IF NOT EXISTS method_daily_coverage_pk ON metrics.method_daily_coverage (
     group_id,
     app_id,
     method_id,
+    created_at_day,
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
     COALESCE(test_tag,''),
     COALESCE(test_task_id,'')
 );
-CREATE INDEX ON metrics.method_coverage(group_id, updated_at_day);
+CREATE INDEX ON metrics.method_daily_coverage(created_at_day);
 
 
 CREATE TABLE IF NOT EXISTS metrics.test_to_code_mapping (
@@ -247,4 +237,3 @@ CREATE UNIQUE INDEX IF NOT EXISTS test_to_code_mapping_pk ON metrics.test_to_cod
     COALESCE(app_env_id,''),
     COALESCE(test_task_id,'')
 );
-CREATE INDEX ON metrics.test_to_code_mapping(group_id, updated_at_day);
