@@ -531,10 +531,14 @@ class MetricsServiceImpl(
 
     override suspend fun refresh(reset: Boolean) {
         val initTimestamp = metricsRepository.getMetricsPeriodDays()
-        if (reset)
+        val results = if (reset)
             etl.rerun(initTimestamp, withDataDeletion = true)
         else
             etl.run(initTimestamp)
+        if (results.any { !it.success }) {
+            val errorMessages = results.mapNotNull { it.errorMessage }.joinToString(separator = "\n")
+            throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
+        }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
