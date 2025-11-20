@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.BatchResult
+import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -61,7 +62,7 @@ abstract class SqlDataLoader<T>(
     override suspend fun deleteAll() {
         logger.info { "Loader [$name] deleting data" }
         val duration = try {
-            newSuspendedTransaction(db = database) {
+            newSuspendedTransaction(context = Dispatchers.IO, db = database) {
                 exec(sqlDelete)
                 duration
             }

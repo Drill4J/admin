@@ -18,8 +18,9 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import org.quartz.*
 
-val updateMetricsEtlJob: JobDetail = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
-    .storeDurably()
-    .withDescription("Job for updating metrics using ETL processing.")
-    .withIdentity("metricsEtl", "metricsJobs")
-    .build()
+val updateMetricsEtlJob: JobDetail
+    get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
+        .storeDurably()
+        .withDescription("Job for updating metrics using ETL processing.")
+        .withIdentity("metricsEtl", "metricsJobs")
+        .build()

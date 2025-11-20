@@ -16,24 +16,13 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.test.DatabaseTests
-import com.epam.drill.admin.test.drillApplication
-import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
-import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.jayway.jsonpath.JsonPath
-import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test

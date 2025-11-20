@@ -69,7 +69,7 @@ abstract class SqlDataExtractor<T>(
         args: List<Pair<ColumnType<*>, Instant>>,
         collect: suspend (ResultSet) -> Unit
     ) {
-        newSuspendedTransaction(Dispatchers.IO) {
+        newSuspendedTransaction(context = Dispatchers.IO, db = database) {
             connection.autoCommit = false
             connection.readOnly = true
             val stmt = connection.prepareStatement(sql, false)
