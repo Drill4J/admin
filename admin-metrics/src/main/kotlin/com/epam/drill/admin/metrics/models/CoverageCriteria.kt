@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.service.impl
+package com.epam.drill.admin.metrics.models
 
-const val buildsView = "metrics.builds"
-const val methodsView = "metrics.methods"
-const val buildMethodsView = "metrics.build_methods"
-const val testLaunchesView = "metrics.test_launches"
-const val testDefinitionsView = "metrics.test_definitions"
-const val testSessionsView = "metrics.test_sessions"
-const val methodCoverageView = "metrics.method_coverage"
-const val methodSmartCoverageView = "metrics.method_smartcoverage"
-const val testSessionBuildsView = "metrics.test_session_builds"
+import kotlinx.serialization.Serializable
+
+@Serializable
+open class CoverageCriteria(
+    val branches: List<String> = emptyList(),
+    val appEnvIds: List<String> = emptyList(),
+) {
+    object NONE: CoverageCriteria()
+}
+

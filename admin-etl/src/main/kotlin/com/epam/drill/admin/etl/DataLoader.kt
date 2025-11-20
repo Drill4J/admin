@@ -26,4 +26,6 @@ interface DataLoader<T> {
         collector: Flow<T>,
         onLoadCompleted: suspend (EtlLoadingResult) -> Unit
     ): EtlLoadingResult
+
+    suspend fun deleteAll()
 }

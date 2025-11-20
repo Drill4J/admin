@@ -19,5 +19,6 @@ interface EtlMetadataRepository {
     suspend fun getAllMetadataByExtractor(pipelineName: String, extractorName: String): List<EtlMetadata>
     suspend fun getMetadata(pipelineName: String, extractorName: String, loaderName: String): EtlMetadata?
     suspend fun saveMetadata(metadata: EtlMetadata)
+    suspend fun deleteMetadataByPipeline(pipelineName: String)
 }
 

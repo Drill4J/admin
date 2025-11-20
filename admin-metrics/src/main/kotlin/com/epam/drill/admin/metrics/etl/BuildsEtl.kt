@@ -18,24 +18,32 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val buildsExtractor = UntypedSqlDataExtractor(
-    name = "builds",
-    sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.buildsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "builds",
+        sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
+    )
 
-val buildsLoader = UntypedSqlDataLoader(
-    name = "builds",
-    sql = fromResource("/metrics/db/etl/builds_loader.sql"),
-    lastExtractedAtColumnName = "updated_at",
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.buildsLoader
+    get() = UntypedSqlDataLoader(
+        name = "builds",
+        sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
+        lastExtractedAtColumnName = "updated_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
 
-val buildsPipeline = EtlPipelineImpl(
-    name = "builds",
-    extractor = buildsExtractor,
-    loaders = listOf(buildsLoader)
-)
+val EtlConfig.buildsPipeline
+    get() = EtlPipelineImpl(
+        name = "builds",
+        extractor = buildsExtractor,
+        loaders = listOf(buildsLoader),
+        bufferSize = bufferSize
+    )

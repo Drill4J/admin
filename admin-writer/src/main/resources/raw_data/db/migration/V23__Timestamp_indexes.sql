@@ -6,6 +6,3 @@ CREATE INDEX IF NOT EXISTS idx_test_launches_created_at ON raw_data.test_launche
 CREATE INDEX IF NOT EXISTS idx_test_sessions_created_at ON raw_data.test_sessions(created_at);
 CREATE INDEX IF NOT EXISTS idx_test_session_builds_created_at ON raw_data.test_session_builds(created_at);
 CREATE INDEX IF NOT EXISTS idx_test_definitions_created_at ON raw_data.test_definitions(created_at);
-
-CREATE INDEX IF NOT EXISTS idx_methods_group_id_app_id_signature ON raw_data.methods(group_id, app_id, signature);
-CREATE INDEX IF NOT EXISTS idx_methods_group_id_app_id_build_id ON raw_data.methods(group_id, app_id, build_id);

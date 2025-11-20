@@ -10,13 +10,12 @@ SELECT
     m.classname AS class_name,
     m.params AS method_params,
     m.return_type,
-    null AS probes_start,--deprecated field
-	null AS method_num,--deprecated field
-    DATE_TRUNC('day', m.created_at) AS creation_day,
-    m.created_at AS created_at
-from raw_data.methods m
+    m.created_at AS created_at,
+    DATE_TRUNC('day', m.created_at) AS created_at_day
+FROM raw_data.methods m
 WHERE m.created_at > :since_timestamp
    AND m.created_at <= :until_timestamp
+   AND probes_count > 0
    AND NOT EXISTS (SELECT 1
        FROM raw_data.method_ignore_rules r
        WHERE r.group_id = m.group_id

@@ -1,7 +1,7 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create views for metrics
--- Migration version: v2
--- Compatible with: R__1_Data.sql v3
+-- Migration version: v3
+-- Compatible with: R__1_Data.sql v4.3
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -56,7 +56,7 @@ SELECT
         ELSE 1
     END AS success_rate
 FROM metrics.test_definitions td
-LEFT JOIN metrics.test_launches tl ON tl.test_definition_id = td.test_definition_id
+LEFT JOIN metrics.test_launches tl ON tl.group_id = td.group_id AND tl.test_definition_id = td.test_definition_id
 GROUP BY td.group_id, td.test_definition_id;
 
 -----------------------------------------------------------------
@@ -95,8 +95,8 @@ SELECT
         ELSE 0
     END)::bigint AS time_saved
 FROM metrics.test_sessions ts
-LEFT JOIN metrics.test_launches tl ON ts.test_session_id = tl.test_session_id
-LEFT JOIN metrics.test_definitions_with_statistics td ON td.test_definition_id = tl.test_definition_id
+LEFT JOIN metrics.test_launches tl ON tl.group_id = ts.group_id AND tl.test_session_id = ts.test_session_id
+LEFT JOIN metrics.test_definitions_with_statistics td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
 GROUP BY ts.group_id, ts.test_session_id;
 
 -----------------------------------------------------------------
@@ -129,5 +129,5 @@ SELECT
         ELSE 1
     END AS success_rate
 FROM metrics.test_definitions td
-LEFT JOIN metrics.test_launches tl ON td.test_definition_id = tl.test_definition_id
+LEFT JOIN metrics.test_launches tl ON tl.group_id = td.group_id AND tl.test_definition_id = td.test_definition_id
 GROUP BY td.group_id, td.test_path, tl.test_session_id;

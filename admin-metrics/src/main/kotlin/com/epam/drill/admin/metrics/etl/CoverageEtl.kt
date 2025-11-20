@@ -18,32 +18,80 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
 
-val coverageExtractor = UntypedSqlDataExtractor(
-    name = "coverage",
-    sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.coverageExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "coverage",
+        sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
+    )
 
-val methodCoverageLoader = UntypedSqlDataLoader(
-    name = "method_coverage",
-    sql = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.buildMethodTestDefinitionCoverageLoader
+    get() = UntypedSqlDataLoader(
+        name = "build_method_test_definition_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
 
-val methodSmartCoverageLoader = UntypedSqlDataLoader(
-    name = "method_smartcoverage",
-    sql = fromResource("/metrics/db/etl/method_smartcoverage_loader.sql"),
-    lastExtractedAtColumnName = "created_at",
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.buildMethodTestSessionCoverageLoader
+    get() = UntypedSqlDataLoader(
+        name = "build_method_test_session_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
 
-val coveragePipeline = EtlPipelineImpl(
-    name = "coverage",
-    extractor = coverageExtractor,
-    loaders = listOf(methodCoverageLoader, methodSmartCoverageLoader, testSessionBuildsLoader)
-)
+val EtlConfig.buildMethodCoverageLoader
+    get() = UntypedSqlDataLoader(
+        name = "build_method_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
+
+val EtlConfig.methodCoverageLoader
+    get() = UntypedSqlDataLoader(
+        name = "method_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/method_coverage_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
+
+val EtlConfig.test2CodeMappingLoader
+    get() = UntypedSqlDataLoader(
+        name = "test_to_code_mapping",
+        sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
+        lastExtractedAtColumnName = "created_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
+
+val EtlConfig.coveragePipeline
+    get() = EtlPipelineImpl(
+        name = "coverage",
+        extractor = coverageExtractor,
+        loaders = listOf(
+            buildMethodTestDefinitionCoverageLoader,
+            buildMethodTestSessionCoverageLoader,
+            buildMethodCoverageLoader,
+            methodCoverageLoader,
+            test2CodeMappingLoader,
+            testSessionBuildsLoader
+        ),
+        bufferSize = bufferSize
+    )

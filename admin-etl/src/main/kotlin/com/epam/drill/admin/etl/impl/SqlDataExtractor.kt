@@ -33,7 +33,7 @@ abstract class SqlDataExtractor<T>(
     override val name: String,
     open val sqlQuery: String,
     open val database: Database,
-    open val fetchSize: Int = 2000,
+    open val fetchSize: Int,
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -69,13 +69,15 @@ abstract class SqlDataExtractor<T>(
         args: List<Pair<ColumnType<*>, Instant>>,
         collect: suspend (ResultSet) -> Unit
     ) {
-        newSuspendedTransaction(Dispatchers.IO) {
+        newSuspendedTransaction(context = Dispatchers.IO, db = database) {
             connection.autoCommit = false
             connection.readOnly = true
-            connection.prepareStatement(sql, false).let { stmt ->
+            val stmt = connection.prepareStatement(sql, false)
+            try {
                 stmt.fetchSize = fetchSize
                 stmt.fillParameters(args)
                 val resultSet: ResultSet
+                logger.debug { "ETL extractor [$name] extracting rows..." }
                 val duration = measureTimeMillis {
                     resultSet = stmt.executeQuery()
                 }
@@ -83,6 +85,8 @@ abstract class SqlDataExtractor<T>(
                 resultSet.use { rs ->
                     collect(rs)
                 }
+            } finally {
+                stmt.closeIfPossible()
             }
         }
     }

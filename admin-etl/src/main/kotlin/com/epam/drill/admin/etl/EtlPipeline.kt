@@ -26,5 +26,6 @@ interface EtlPipeline<T> {
         untilTimestamp: Instant,
         onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { l, r -> }
     ): EtlProcessingResult
-}
 
+    suspend fun cleanUp()
+}

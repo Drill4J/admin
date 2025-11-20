@@ -20,5 +20,6 @@ import java.time.Instant
 interface EtlOrchestrator {
     val name: String
     suspend fun run(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
+    suspend fun rerun(initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
 }
 

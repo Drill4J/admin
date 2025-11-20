@@ -1,49 +1,38 @@
-INSERT INTO metrics.method_coverage_table (
+INSERT INTO metrics.method_daily_coverage (
     group_id,
     app_id,
     method_id,
-    build_id,
-    app_env_id,
-    test_session_id,
-    test_launch_id,
     branch,
-    test_tags,
-    test_path,
-    test_name,
-    test_task_id,
+    app_env_id,
     test_result,
-    test_definition_id,
-    probes,
-    creation_day
+    test_tag,
+    test_task_id,
+    created_at_day,
+    probes
 )
 VALUES (
     :group_id,
     :app_id,
     :method_id,
-    :build_id,
-    :app_env_id,
-    :test_session_id,
-    :test_launch_id,
     :branch,
-    :test_tags,
-    :test_path,
-    :test_name,
-    :test_task_id,
+    :app_env_id,
     :test_result,
-    :test_definition_id,
-    :probes,
-    :creation_day
+    :test_tag,
+    :test_task_id,
+    :created_at_day,
+    :probes
 )
 ON CONFLICT (
     group_id,
     app_id,
     method_id,
-    build_id,
+    created_at_day,
+    COALESCE(branch,''),
     COALESCE(app_env_id,''),
-    COALESCE(test_session_id,''),
-    COALESCE(test_launch_id,''),
-    creation_day
+    COALESCE(test_result,''),
+    COALESCE(test_tag,''),
+    COALESCE(test_task_id,'')
 )
 DO UPDATE
 SET
-    probes = method_coverage_table.probes | EXCLUDED.probes
+    probes = method_daily_coverage.probes | EXCLUDED.probes;

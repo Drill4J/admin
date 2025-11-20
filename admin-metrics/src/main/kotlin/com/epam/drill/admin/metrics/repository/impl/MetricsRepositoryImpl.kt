@@ -75,6 +75,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ?", branch)
             appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -149,7 +150,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageName: String?,
         className: String?,
         offset: Int?,
-        limit: Int?
+        limit: Int?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -175,6 +178,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { arrayOf(it) }
             appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { arrayOf(it) }
             appendOptional(", input_coverage_branches => ?", coverageBranch) { arrayOf(it) }
+            appendOptional(", include_deleted => ?", includeDeleted) { it }
+            appendOptional(", include_equal => ?", includeEqual) { it }
             append(
                 """
                 ) 
@@ -366,13 +371,18 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
         packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        methodSignaturePattern: String?,
+
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -382,7 +392,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT 
                     test_definition_id,
                     test_path,
-                    test_name,                    
+                    test_name,      
+                    test_runner,
                     test_tags,
                     test_metadata,
                     impacted_methods                 
@@ -390,13 +401,17 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
-            appendOptional(", input_method_name_pattern => ?", methodNamePattern) { "$it%" }
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
             append("""
                 )
             """.trimIndent())
@@ -408,13 +423,21 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+
         offset: Int?,
         limit: Int?
-    ): List<Map<String, Any?>>  = transaction {
+    ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
                 """
@@ -430,10 +453,17 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
             append("""
                 )
             """.trimIndent())
@@ -442,19 +472,13 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) = transaction {
-        executeUpdate(
-            """             
-            REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
-            """.trimIndent()
-        )
-    }
-
     override suspend fun getMetricsPeriodDays(): Instant = transaction {
         (executeQueryReturnMap(
             """             
-                SELECT min(metrics.get_metrics_period(group_id)) AS period_days FROM metrics.builds GROUP BY group_id
+                SELECT COALESCE(MIN(metrics_period), 'epoch')::TIMESTAMP AS metrics_period FROM (
+	                SELECT DISTINCT group_id, metrics.get_metrics_period(group_id) AS metrics_period FROM raw_data.builds
+                ) group_metrics_periods
                  """.trimIndent()
-        ).first()["period_days"] as LocalDateTime).toInstant(UTC)
+        ).first()["metrics_period"] as LocalDateTime).toInstant(UTC)
     }
 }

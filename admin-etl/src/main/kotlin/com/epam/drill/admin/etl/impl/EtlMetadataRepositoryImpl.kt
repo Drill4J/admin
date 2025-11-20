@@ -22,7 +22,12 @@ import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.upsert
@@ -70,7 +75,9 @@ class EtlMetadataRepositoryImpl(
         val accumulatedDuration = (existingMetadata?.duration ?: 0L) + metadata.duration
         val accumulatedRowsProcessed = (existingMetadata?.rowsProcessed ?: 0) + metadata.rowsProcessed
 
-        metadataTable.upsert {
+        metadataTable.upsert(
+            onUpdateExclude = listOf(metadataTable.createdAt),
+        ) {
             it[pipelineName] = metadata.pipelineName
             it[extractorName] = metadata.extractorName
             it[loaderName] = metadata.loaderName
@@ -80,6 +87,13 @@ class EtlMetadataRepositoryImpl(
             it[duration] = accumulatedDuration
             it[rowsProcessed] = accumulatedRowsProcessed
             it[errorMessage] = metadata.errorMessage
+            it[updatedAt] = CurrentDateTime
+        }
+    }
+
+    override suspend fun deleteMetadataByPipeline(pipelineName: String) {
+        newSuspendedTransaction(db = database) {
+            metadataTable.deleteWhere { metadataTable.pipelineName eq pipelineName }
         }
     }
 

@@ -1,4 +1,4 @@
-INSERT INTO metrics.test_definitions_table (
+INSERT INTO metrics.test_definitions (
     test_definition_id,
     group_id,
     test_path,
@@ -7,8 +7,9 @@ INSERT INTO metrics.test_definitions_table (
     test_tags,
     test_metadata,
     created_at,
-    creation_day,
-    updated_at
+    updated_at,
+    created_at_day,
+    updated_at_day
 )
 VALUES (
     :test_definition_id,
@@ -19,8 +20,9 @@ VALUES (
     :test_tags,
     :test_metadata,
     :created_at,
-    :creation_day,
-    :updated_at
+    :updated_at,
+    :created_at_day,
+    :updated_at_day
 )
 ON CONFLICT (
     group_id,
@@ -33,4 +35,5 @@ SET
     test_runner = EXCLUDED.test_runner,
     test_tags = EXCLUDED.test_tags,
     test_metadata = EXCLUDED.test_metadata,
-    updated_at = EXCLUDED.updated_at
+    updated_at = EXCLUDED.updated_at,
+    updated_at_day = EXCLUDED.updated_at_day

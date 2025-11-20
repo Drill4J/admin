@@ -16,6 +16,8 @@
 package com.epam.drill.admin.etl.table
 
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 class EtlMetadataTable(tableName: String) : Table(tableName) {
@@ -30,5 +32,8 @@ class EtlMetadataTable(tableName: String) : Table(tableName) {
     val duration = long("duration")
     val rowsProcessed = integer("rows_processed")
     val errorMessage = text("error_message").nullable()
+
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }
 

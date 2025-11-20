@@ -1,0 +1,1 @@
+DELETE FROM metrics.method_daily_coverage

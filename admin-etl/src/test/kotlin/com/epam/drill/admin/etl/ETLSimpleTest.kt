@@ -72,6 +72,10 @@ class ETLSimpleTest {
                 onLoadCompleted(it)
             }
         }
+
+        override suspend fun deleteAll() {
+            dataStore.clear()
+        }
     }
 
     inner class FailingLoader : DataLoader<SimpleClass> {
@@ -86,6 +90,10 @@ class ETLSimpleTest {
                 throw RuntimeException("Simulated loader failure")
             }
             return EtlLoadingResult(success = false, errorMessage = "This should never be returned")
+        }
+
+        override suspend fun deleteAll() {
+            dataStore.clear()
         }
     }
 
@@ -114,6 +122,22 @@ class ETLSimpleTest {
 
         override suspend fun saveMetadata(metadata: EtlMetadata) {
             this@SimpleMetadataRepository.metadata = metadata
+        }
+
+        override suspend fun deleteMetadataByPipeline(pipelineName: String) {
+            if (metadata.pipelineName == pipelineName) {
+                metadata = EtlMetadata(
+                    pipelineName = pipelineName,
+                    lastProcessedAt = Instant.EPOCH,
+                    lastRunAt = Instant.EPOCH,
+                    duration = 0,
+                    status = EtlStatus.SUCCESS,
+                    rowsProcessed = 0,
+                    errorMessage = null,
+                    extractorName = SIMPLE_EXTRACTOR,
+                    loaderName = SIMPLE_LOADER
+                )
+            }
         }
 
         override suspend fun getAllMetadataByExtractor(

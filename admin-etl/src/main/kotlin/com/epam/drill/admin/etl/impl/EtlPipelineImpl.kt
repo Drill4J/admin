@@ -36,13 +36,14 @@ class EtlPipelineImpl<T>(
     override val name: String,
     override val extractor: DataExtractor<T>,
     override val loaders: List<DataLoader<T>>,
-    private val bufferSize: Int = 1000
+    private val bufferSize: Int = 2000
 ) : EtlPipeline<T> {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
+
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         logger.debug { "ETL pipeline [$name] starting since $sinceTimestamp..." }
@@ -53,8 +54,10 @@ class EtlPipelineImpl<T>(
         logger.debug {
             if (results.processedRows == 0 && results.success) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
-            } else
-                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}"
+            } else {
+                val errors = results.errorMessage?.let { ", errors: $it" } ?: ""
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}" + errors
+            }
         }
         EtlProcessingResult(
             pipelineName = name,
@@ -63,6 +66,10 @@ class EtlPipelineImpl<T>(
             success = results.success,
             errorMessage = results.errorMessage
         )
+    }
+
+    override suspend fun cleanUp() {
+        loaders.forEach { it.deleteAll() }
     }
 
     private suspend fun CoroutineScope.processEtl(

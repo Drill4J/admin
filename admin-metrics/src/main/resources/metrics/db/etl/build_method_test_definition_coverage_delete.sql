@@ -1,0 +1,1 @@
+DELETE FROM metrics.build_method_test_definition_coverage

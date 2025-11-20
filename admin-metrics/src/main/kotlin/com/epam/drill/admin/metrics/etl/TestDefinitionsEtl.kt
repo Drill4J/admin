@@ -18,25 +18,32 @@ package com.epam.drill.admin.metrics.etl
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 
-val testDefinitionsExtractor = UntypedSqlDataExtractor(
-    name = "test_definitions",
-    sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.testDefinitionsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "test_definitions",
+        sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize
+    )
 
-val testDefinitionsLoader = UntypedSqlDataLoader(
-    name = "test_definitions",
-    sql = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
-    lastExtractedAtColumnName = "updated_at",
-    database = MetricsDatabaseConfig.database
-)
+val EtlConfig.testDefinitionsLoader
+    get() = UntypedSqlDataLoader(
+        name = "test_definitions",
+        sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
+        lastExtractedAtColumnName = "updated_at",
+        database = MetricsDatabaseConfig.database,
+        batchSize = batchSize
+    )
 
-val testDefinitionsPipeline = EtlPipelineImpl(
-    name = "test_definitions",
-    extractor = testDefinitionsExtractor,
-    loaders = listOf(testDefinitionsLoader)
-)
-
+val EtlConfig.testDefinitionsPipeline
+    get() = EtlPipelineImpl(
+        name = "test_definitions",
+        extractor = testDefinitionsExtractor,
+        loaders = listOf(testDefinitionsLoader),
+        bufferSize = bufferSize
+    )
