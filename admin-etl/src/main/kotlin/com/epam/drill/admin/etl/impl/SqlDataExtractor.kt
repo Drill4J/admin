@@ -72,7 +72,8 @@ abstract class SqlDataExtractor<T>(
         newSuspendedTransaction(Dispatchers.IO) {
             connection.autoCommit = false
             connection.readOnly = true
-            connection.prepareStatement(sql, false).let { stmt ->
+            val stmt = connection.prepareStatement(sql, false)
+            try {
                 stmt.fetchSize = fetchSize
                 stmt.fillParameters(args)
                 val resultSet: ResultSet
@@ -84,6 +85,8 @@ abstract class SqlDataExtractor<T>(
                 resultSet.use { rs ->
                     collect(rs)
                 }
+            } finally {
+                stmt.closeIfPossible()
             }
         }
     }
