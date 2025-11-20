@@ -92,7 +92,7 @@ CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
-	is_smart_coverage_before_build BOOLEAN DEFAULT FALSE
+	is_smart_coverage_before_build BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE (
     group_id VARCHAR,
@@ -224,7 +224,7 @@ CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
-	is_smart_coverage_before_build BOOLEAN DEFAULT FALSE
+	is_smart_coverage_before_build BOOLEAN DEFAULT TRUE
 )
 RETURNS TABLE (
     group_id VARCHAR,
@@ -438,7 +438,7 @@ CREATE OR REPLACE FUNCTION metrics.get_changes_with_coverage(
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
-    is_smart_coverage_before_build BOOLEAN DEFAULT FALSE,
+    is_smart_coverage_before_build BOOLEAN DEFAULT TRUE,
 
     include_deleted BOOLEAN DEFAULT false,
     include_equal BOOLEAN DEFAULT false
