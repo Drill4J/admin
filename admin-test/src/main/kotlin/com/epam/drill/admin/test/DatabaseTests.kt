@@ -50,6 +50,7 @@ open class DatabaseTests(private val initialization: (DataSource) -> Unit) {
                 this.username = postgresqlContainer.username
                 this.password = postgresqlContainer.password
                 this.driverClassName = postgresqlContainer.driverClassName
+                this.maximumPoolSize = 50
                 this.validate()
             })
         }
