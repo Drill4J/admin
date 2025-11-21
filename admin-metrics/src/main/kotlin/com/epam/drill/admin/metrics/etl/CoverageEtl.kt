@@ -63,9 +63,9 @@ val EtlConfig.buildMethodCoverageLoader
 
 val EtlConfig.methodCoverageLoader
     get() = UntypedSqlDataLoader(
-        name = "method_coverage",
-        sqlUpsert = fromResource("/metrics/db/etl/method_coverage_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/method_coverage_delete.sql"),
+        name = "method_daily_coverage",
+        sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize

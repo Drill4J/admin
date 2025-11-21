@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.CompletableSharedFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -43,7 +44,6 @@ class EtlPipelineImpl<T>(
     override suspend fun execute(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         logger.debug { "ETL pipeline [$name] starting since $sinceTimestamp..." }
@@ -52,18 +52,18 @@ class EtlPipelineImpl<T>(
             results = processEtl(sinceTimestamp, untilTimestamp, onLoadCompleted)
         }
         logger.debug {
-            if (results.processedRows == 0 && results.success) {
+            if (results.processedRows == 0 && results.status == EtlStatus.SUCCESS) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else {
                 val errors = results.errorMessage?.let { ", errors: $it" } ?: ""
-                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, success: ${results.success}" + errors
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${results.processedRows}, status: ${results.status}" + errors
             }
         }
         EtlProcessingResult(
             pipelineName = name,
             lastProcessedAt = results.lastProcessedAt ?: sinceTimestamp,
             rowsProcessed = results.processedRows,
-            success = results.success,
+            status = results.status,
             errorMessage = results.errorMessage
         )
     }
@@ -117,7 +117,7 @@ class EtlPipelineImpl<T>(
     } catch (e: Exception) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
-            success = false,
+            status = EtlStatus.FAILED,
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
         ).also { onLoadCompleted(loader.name, it) }
     }

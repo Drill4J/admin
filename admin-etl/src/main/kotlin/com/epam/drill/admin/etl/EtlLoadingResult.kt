@@ -17,35 +17,27 @@ package com.epam.drill.admin.etl
 
 import java.time.Instant
 
-open class BatchResult(
-    open val success: Boolean,
-    open val duration: Long? = null,
-    open val errorMessage: String? = null
-)
-
 data class EtlLoadingResult(
     val lastProcessedAt: Instant? = null,
     val processedRows: Int = 0,
-    override val success: Boolean,
-    override val duration: Long? = null,
-    override val errorMessage: String? = null
-): BatchResult(success, duration, errorMessage), Comparable<EtlLoadingResult> {
+    val status: EtlStatus,
+    val duration: Long? = null,
+    val errorMessage: String? = null
+) : Comparable<EtlLoadingResult> {
     companion object {
         val EMPTY = EtlLoadingResult(
-            success = true
+            status = EtlStatus.STARTING
         )
     }
 
+    val isFailed
+        get() = status == EtlStatus.FAILED
+
     operator fun plus(other: EtlLoadingResult): EtlLoadingResult {
-        val success = this.success && other.success
-        val lastProcessedAt = if (success) {
-            other.lastProcessedAt
-        } else {
-            this.lastProcessedAt
-        }
+        val failed = this.isFailed || other.isFailed
         return EtlLoadingResult(
-            success = success,
-            lastProcessedAt = lastProcessedAt,
+            status = if (!failed) other.status else EtlStatus.FAILED,
+            lastProcessedAt = if (!failed) other.lastProcessedAt else this.lastProcessedAt,
             processedRows = this.processedRows + other.processedRows,
             duration = listOfNotNull(this.duration, other.duration).sum(),
             errorMessage = listOfNotNull(this.errorMessage, other.errorMessage).joinToString("; ").ifEmpty { null }
@@ -53,8 +45,8 @@ data class EtlLoadingResult(
     }
 
     override fun compareTo(other: EtlLoadingResult): Int {
-        if (this.success != other.success) {
-            return if (this.success) 1 else -1
+        if (this.isFailed || other.isFailed) {
+            return if (this.isFailed) -1 else if (other.isFailed) 1 else 0
         }
         if (this.lastProcessedAt != other.lastProcessedAt) {
             return when {

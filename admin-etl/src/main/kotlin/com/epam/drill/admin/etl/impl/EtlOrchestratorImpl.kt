@@ -49,7 +49,7 @@ open class EtlOrchestratorImpl(
         }
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
-            val failures = results.count { !it.success }
+            val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0 && failures == 0)
                 "ETL [$name] completed in ${duration}ms, no new rows"
             else
@@ -94,7 +94,7 @@ open class EtlOrchestratorImpl(
                             pipelineName = pipeline.name,
                             extractorName = pipeline.extractor.name,
                             loaderName = loaderName,
-                            status = if (result.success) EtlStatus.SUCCESS else EtlStatus.FAILURE,
+                            status = result.status,
                             lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
                             errorMessage = result.errorMessage,
                             lastRunAt = snapshotTime,
@@ -113,7 +113,7 @@ open class EtlOrchestratorImpl(
                 pipelineName = pipeline.name,
                 lastProcessedAt = lastProcessedTime,
                 rowsProcessed = 0,
-                success = false,
+                status = EtlStatus.FAILED,
                 errorMessage = e.message
             )
         }

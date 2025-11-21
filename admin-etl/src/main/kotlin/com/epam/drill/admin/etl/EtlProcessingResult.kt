@@ -21,6 +21,6 @@ data class EtlProcessingResult(
     val pipelineName: String,
     val lastProcessedAt : Instant,
     val rowsProcessed: Int,
-    val success: Boolean,
+    val status: EtlStatus,
     val errorMessage: String?,
 )

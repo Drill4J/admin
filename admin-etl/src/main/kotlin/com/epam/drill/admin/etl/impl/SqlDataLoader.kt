@@ -15,12 +15,11 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.BatchResult
+import com.epam.drill.admin.etl.EtlStatus
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import java.time.Instant
 
 abstract class SqlDataLoader<T>(
     override val name: String,
@@ -50,17 +49,19 @@ abstract class SqlDataLoader<T>(
         } catch (e: Exception) {
             return BatchResult(
                 success = false,
+                rowsLoaded = 0,
                 errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
             )
         }
         return BatchResult(
             success = true,
+            rowsLoaded = batch.size,
             duration = duration
         )
     }
 
     override suspend fun deleteAll() {
-        logger.info { "Loader [$name] deleting data" }
+        logger.debug { "Loader [$name] deleting data" }
         val duration = try {
             newSuspendedTransaction(context = Dispatchers.IO, db = database) {
                 exec(sqlDelete)
@@ -70,6 +71,6 @@ abstract class SqlDataLoader<T>(
             logger.error(e) { "Error during deleting data with loader $name: ${e.message ?: e.javaClass.simpleName}" }
             throw e
         }
-        logger.info { "Loader [$name] deleted data in ${duration}ms" }
+        logger.debug { "Loader [$name] deleted data in ${duration}ms" }
     }
 }

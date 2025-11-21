@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.service.impl
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
@@ -535,7 +536,7 @@ class MetricsServiceImpl(
             etl.rerun(initTimestamp, withDataDeletion = true)
         else
             etl.run(initTimestamp)
-        if (results.any { !it.success }) {
+        if (results.any { it.status != EtlStatus.SUCCESS }) {
             val errorMessages = results.mapNotNull { it.errorMessage }.joinToString(separator = "\n")
             throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
         }

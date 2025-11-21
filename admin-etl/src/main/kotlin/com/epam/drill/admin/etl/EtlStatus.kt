@@ -16,7 +16,8 @@
 package com.epam.drill.admin.etl
 
 enum class EtlStatus {
+    FAILED,
     SUCCESS,
-    FAILURE,
-    NEVER_RUN
+    RUNNING,
+    STARTING;
 }

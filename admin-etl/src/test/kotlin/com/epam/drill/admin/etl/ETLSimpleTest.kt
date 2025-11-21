@@ -68,7 +68,7 @@ class ETLSimpleTest {
                 lastExtracted = it
                 rowsProcessed++
             }
-            return EtlLoadingResult(success = true, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
+            return EtlLoadingResult(status = EtlStatus.SUCCESS, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
                 onLoadCompleted(it)
             }
         }
@@ -89,7 +89,7 @@ class ETLSimpleTest {
             collector.collect {
                 throw RuntimeException("Simulated loader failure")
             }
-            return EtlLoadingResult(success = false, errorMessage = "This should never be returned")
+            return EtlLoadingResult(status = EtlStatus.FAILED, errorMessage = "This should never be returned")
         }
 
         override suspend fun deleteAll() {
@@ -177,7 +177,7 @@ class ETLSimpleTest {
         val result = orchestrator.run()
 
         // Verify ETL was successful
-        assertTrue(result.first().success)
+        assertTrue(result.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result.first().rowsProcessed)
 
         // Get updated metadata and verify lastProcessedAt moved forward
@@ -211,7 +211,7 @@ class ETLSimpleTest {
         val result = orchestrator.run()
 
         // Verify ETL failed
-        assertTrue(!result.first().success)
+        assertTrue(result.first().status == EtlStatus.FAILED)
         assertEquals(0, result.first().rowsProcessed)
 
         // Get updated metadata and verify lastProcessedAt remained unchanged
@@ -219,7 +219,7 @@ class ETLSimpleTest {
         val updatedLastProcessedAt = updatedMetadata.lastProcessedAt
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)
-        assertEquals(EtlStatus.FAILURE, updatedMetadata.status)
+        assertEquals(EtlStatus.FAILED, updatedMetadata.status)
     }
 
     @Test
@@ -230,7 +230,7 @@ class ETLSimpleTest {
         addNewRecords(5)
         // First run ETL — should process all initial data
         val result1 = orchestrator.run()
-        assertTrue(result1.first().success)
+        assertTrue(result1.first().status == EtlStatus.SUCCESS)
         assertEquals(5, result1.first().rowsProcessed)
 
         Thread.sleep(10)
@@ -239,7 +239,7 @@ class ETLSimpleTest {
         // Second run ETL — should process only new data
         val result2 = orchestrator.run()
         println(result2.first().errorMessage)
-        assertTrue(result2.first().success)
+        assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result2.first().rowsProcessed)
     }
 }

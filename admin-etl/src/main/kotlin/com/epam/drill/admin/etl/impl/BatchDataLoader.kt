@@ -15,9 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.BatchResult
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.StoppableFlow
 import com.epam.drill.admin.etl.flow.stoppable
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +31,13 @@ abstract class BatchDataLoader<T>(
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 
+    class BatchResult(
+        val success: Boolean,
+        val rowsLoaded: Int,
+        val duration: Long? = null,
+        val errorMessage: String? = null
+    )
+
     override suspend fun load(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
@@ -38,15 +45,18 @@ abstract class BatchDataLoader<T>(
         onLoadCompleted: suspend (EtlLoadingResult) -> Unit
     ): EtlLoadingResult {
         var result: EtlLoadingResult = EtlLoadingResult.EMPTY
+        onLoadCompleted(result)
         val flow = collector.stoppable()
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
             stop()
             result += EtlLoadingResult(
-                success = false,
+                status = EtlStatus.FAILED,
                 errorMessage = message
-            )
-            onLoadCompleted(result)
+            ).also {
+                onLoadCompleted(it)
+            }
         }
+
         val batchNo = AtomicInteger(0)
         val buffer = mutableListOf<T>()
         var previousTimestamp: Instant? = null
@@ -70,11 +80,21 @@ abstract class BatchDataLoader<T>(
             // If timestamp changed and buffer is full, flush the buffer
             if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
                 if (buffer.size >= batchSize) {
-                    result += flushBuffer(buffer, batchNo, previousTimestamp, onLoadCompleted)
+                    result += flushBuffer(buffer, batchNo) { batch ->
+                        EtlLoadingResult(
+                            status = if (batch.success) EtlStatus.RUNNING else EtlStatus.FAILED,
+                            errorMessage = if (!batch.success) result.errorMessage else null,
+                            lastProcessedAt = previousTimestamp,
+                            processedRows = if (batch.success) batch.rowsLoaded else 0,
+                            duration = batch.duration
+                        ).also {
+                            onLoadCompleted(it)
+                        }
+                    }
                 }
             }
 
-            if (!result.success) {
+            if (result.isFailed) {
                 flow.stop()
                 return@collect
             }
@@ -83,11 +103,31 @@ abstract class BatchDataLoader<T>(
             previousTimestamp = currentTimestamp
         }
 
-        // Commit any remaining rows in the buffer
-        if (result.success && buffer.isNotEmpty()) {
-            result += flushBuffer(buffer, batchNo, previousTimestamp, onLoadCompleted)
+        if (!result.isFailed) {
+            if (buffer.isNotEmpty()) {
+                // Commit any remaining rows in the buffer
+                result += flushBuffer(buffer, batchNo) { batch ->
+                    EtlLoadingResult(
+                        status = if (batch.success) EtlStatus.SUCCESS else EtlStatus.FAILED,
+                        errorMessage = if (!batch.success) result.errorMessage else null,
+                        lastProcessedAt = previousTimestamp,
+                        processedRows = if (batch.success) batch.rowsLoaded else 0,
+                        duration = batch.duration
+                    ).also {
+                        onLoadCompleted(it)
+                    }
+                }
+            } else {
+                // Finalize with success
+                result += EtlLoadingResult(
+                    status = EtlStatus.SUCCESS,
+                    lastProcessedAt = previousTimestamp
+                ).also {
+                    onLoadCompleted(it)
+                }
+            }
         }
-        logger.debug { "ETL loader [$name] complete loading for ${result.processedRows} rows, success: ${result.success}" }
+        logger.debug { "ETL loader [$name] complete loading for ${result.processedRows} rows, status: ${result.status}" }
         return result
     }
 
@@ -97,22 +137,14 @@ abstract class BatchDataLoader<T>(
     private suspend fun flushBuffer(
         buffer: MutableList<T>,
         batchNo: AtomicInteger,
-        previousTimestamp: Instant?,
-        onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+        onBatchCompleted: suspend (BatchResult) -> EtlLoadingResult
     ): EtlLoadingResult = loadBatch(
         buffer,
         batchNo.incrementAndGet()
-    ).let { result ->
-        EtlLoadingResult(
-            success = result.success,
-            errorMessage = if (!result.success) result.errorMessage else null,
-            lastProcessedAt = previousTimestamp,
-            processedRows = if (result.success) buffer.size else 0,
-            duration = result.duration
-        )
-    }.also {
+    ).let {
         buffer.clear()
-        onLoadCompleted(it)
-        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration}ms, batch: $batchNo, success: ${it.success}" }
+        onBatchCompleted(it)
+    }.also {
+        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration ?: 0}ms, batch: $batchNo, status: ${it.status}" }
     }
 }
