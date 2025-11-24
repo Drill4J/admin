@@ -1,0 +1,1 @@
+ALTER TABLE metrics.test_session_builds DROP COLUMN updated_at_day;

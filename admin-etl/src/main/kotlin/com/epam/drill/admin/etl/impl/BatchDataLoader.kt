@@ -63,6 +63,9 @@ abstract class BatchDataLoader<T>(
         logger.debug { "ETL loader [$name] loading rows..." }
 
         flow.collect { row ->
+            if (!isProcessable(row)) {
+                return@collect
+            }
             val currentTimestamp = getLastExtractedTimestamp(row)
             if (currentTimestamp == null) {
                 flow.stopWithMessage("Could not extract timestamp from the data row: $row")
@@ -132,6 +135,7 @@ abstract class BatchDataLoader<T>(
     }
 
     abstract fun getLastExtractedTimestamp(args: T): Instant?
+    abstract fun isProcessable(args: T): Boolean
     abstract suspend fun loadBatch(batch: List<T>, batchNo: Int): BatchResult
 
     private suspend fun flushBuffer(

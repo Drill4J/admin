@@ -918,28 +918,13 @@ paths:
         - metrics
       security:
         - apiKeyAuth: [ ]
-      responses:
-        '200':
-          description: Materialized views refresh started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-  /api/metrics/refresh/{scope}:
-    post:
-      summary: Refresh materialized views with scope
-      operationId: refreshMaterializedViewsWithScope
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
       parameters:
-        - name: scope
-          description: Scope of the refresh operation ('BUILDS', 'TESTS', 'COVERAGE')
-          in: path
-          required: true
+        - name: reset
+          description: Remove all data before start ETL processing
+          in: query
+          required: false
           schema:
-            type: string
+            type: boolean
       responses:
         '200':
           description: Materialized views refresh started

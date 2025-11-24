@@ -38,7 +38,8 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
     )
 
 val EtlConfig.buildMethodTestSessionCoverageLoader
@@ -48,7 +49,8 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        processable = { it["test_session_id"] != null }
     )
 
 val EtlConfig.buildMethodCoverageLoader
@@ -78,7 +80,8 @@ val EtlConfig.test2CodeMappingLoader
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
     )
 
 val EtlConfig.coveragePipeline

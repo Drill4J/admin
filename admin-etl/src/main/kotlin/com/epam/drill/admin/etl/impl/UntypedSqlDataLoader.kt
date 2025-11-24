@@ -25,23 +25,29 @@ class UntypedSqlDataLoader(
     sqlDelete: String,
     database: Database,
     private val lastExtractedAtColumnName: String,
-    batchSize: Int = 1000
+    batchSize: Int = 1000,
+    val processable: (Map<String, Any?>) -> Boolean = { true }
 ) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sqlUpsert, sqlDelete, database) {
-    override fun prepareSql(
-        sql: String,
-        args: Map<String, Any?>
-    ): String {
-        val preparedArgs = args.mapValues {
-            when (val v = it.value) {
-                null -> "NULL"
-                is String -> "'${v.replace("'", "''")}'"
-                is Instant -> "'$v'"
-                is Date -> "'$v'"
-                else -> "'$v'"
-            }
 
+    class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : PreparedSql<Map<String, Any?>> {
+        override fun getSql() = preparedSql
+        override fun getArgs(row: Map<String, Any?>): List<Any?> {
+            return indexes.map { row[it] }
         }
-        return sql.replacePlaceholders(preparedArgs)
+    }
+
+    override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
+        val regex = Regex(""":([a-zA-Z_][a-zA-Z0-9_]*)(?![:=])""")
+
+        val indexes = mutableListOf<String>()
+
+        val prepared = regex.replace(sql) { match ->
+            val name = match.groupValues[1]
+            indexes += name
+            "?"
+        }
+
+        return UntypedPreparedSql(prepared, indexes)
     }
 
     override fun getLastExtractedTimestamp(args: Map<String, Any?>): Instant? {
@@ -54,12 +60,7 @@ class UntypedSqlDataLoader(
         }
     }
 
-    fun String.replacePlaceholders(replacements: Map<String, String>): String {
-        var result = this
-        for ((key, value) in replacements) {
-            val regex = Regex(":$key(?![A-Za-z0-9_])")
-            result = result.replace(regex) { value }
-        }
-        return result
+    override fun isProcessable(args: Map<String, Any?>): Boolean {
+        return processable(args)
     }
 }

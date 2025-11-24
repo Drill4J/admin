@@ -37,7 +37,8 @@ val EtlConfig.testSessionBuildsLoader
         sqlDelete = fromResource("/metrics/db/etl/test_session_builds_delete.sql"),
         lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        processable = { it["test_session_id"] != null }
     )
 
 val EtlConfig.testSessionBuildsPipeline

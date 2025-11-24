@@ -15,10 +15,15 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.EtlStatus
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.TextColumnType
+import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.statements.Statement
+import org.jetbrains.exposed.sql.statements.StatementType
+import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
 abstract class SqlDataLoader<T>(
@@ -30,20 +35,37 @@ abstract class SqlDataLoader<T>(
 ) : BatchDataLoader<T>(name, batchSize) {
     private val logger = KotlinLogging.logger {}
 
-    abstract fun prepareSql(sql: String, args: T): String
+    interface PreparedSql<T> {
+        fun getSql(): String
+        fun getArgs(row: T): List<Any?>
+    }
+    abstract fun prepareSql(sql: String): PreparedSql<T>
 
     override suspend fun loadBatch(
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
-        val stmts = mutableListOf<String>()
-        batch.forEach { data ->
-            val preparedSql = prepareSql(sqlUpsert, data)
-            stmts += preparedSql
-        }
+        val preparedSql = prepareSql(sqlUpsert)
         val duration = try {
             newSuspendedTransaction(db = database) {
-                execInBatch(stmts)
+                exec(object : Statement<Unit>(StatementType.INSERT, emptyList()) {
+                    override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
+                        batch.forEach { row ->
+                            val columns = preparedSql.getArgs(row)
+                            for (index in columns.indices) {
+                                val value = columns[index]
+                                if (value != null) {
+                                    set(index + 1, value)
+                                } else
+                                    setNull(index + 1, TextColumnType())
+                            }
+                            addBatch()
+                        }
+                        executeBatch()
+                    }
+                    override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()
+                    override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
+                })
                 duration
             }
         } catch (e: Exception) {

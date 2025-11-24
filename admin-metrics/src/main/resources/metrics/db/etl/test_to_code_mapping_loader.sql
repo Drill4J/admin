@@ -9,7 +9,7 @@ INSERT INTO metrics.test_to_code_mapping(
     created_at_day,
     updated_at_day
 )
-SELECT
+VALUES (
     :group_id,
     :app_id,
     :signature,
@@ -19,7 +19,7 @@ SELECT
     :test_task_id,
     :created_at_day,
     :created_at_day
-WHERE :test_definition_id IS NOT NULL AND :test_result = 'PASSED'
+)
 ON CONFLICT (
     group_id,
     app_id,

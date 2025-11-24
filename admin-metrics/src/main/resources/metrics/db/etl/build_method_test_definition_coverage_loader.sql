@@ -11,7 +11,7 @@ INSERT INTO metrics.build_method_test_definition_coverage (
     updated_at_day,
     probes
 )
-SELECT
+VALUES (
     :group_id,
     :app_id,
     :build_id,
@@ -23,7 +23,7 @@ SELECT
     :created_at_day,
     :created_at_day,
     :probes
-WHERE :test_session_id IS NOT NULL AND :test_definition_id IS NOT NULL
+)
 ON CONFLICT (
     group_id,
     app_id,
