@@ -63,20 +63,26 @@ abstract class BatchDataLoader<T>(
         logger.debug { "ETL loader [$name] loading rows..." }
 
         flow.collect { row ->
-            if (!isProcessable(row)) {
-                return@collect
-            }
             val currentTimestamp = getLastExtractedTimestamp(row)
             if (currentTimestamp == null) {
                 flow.stopWithMessage("Could not extract timestamp from the data row: $row")
                 return@collect
             }
 
-            // Skip rows that are already processed
-            if (currentTimestamp <= sinceTimestamp && currentTimestamp > untilTimestamp) return@collect
-
             if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                 flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                return@collect
+            }
+
+            // Skip rows that are already processed
+            if (currentTimestamp <= sinceTimestamp && currentTimestamp > untilTimestamp) {
+                previousTimestamp = currentTimestamp
+                return@collect
+            }
+
+            // Skip rows that are not processable
+            if (!isProcessable(row)) {
+                previousTimestamp = currentTimestamp
                 return@collect
             }
 
