@@ -22,13 +22,13 @@ import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.config.dataSourceDIModule
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
+import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.schedulerDIModule
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
-import com.epam.drill.admin.scheduler.DrillScheduler
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.dataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
@@ -198,7 +198,7 @@ private fun Application.initScheduler() {
     val schedulerConfig by closestDI().instance<SchedulerConfig>()
     val scheduler by closestDI().instance<DrillScheduler>()
 
-    scheduler.init(closestDI(), dataSource)
+    scheduler.init(KodeinJobFactory(closestDI()), dataSource)
     environment.monitor.subscribe(ApplicationStopped) {
         scheduler.shutdown()
     }

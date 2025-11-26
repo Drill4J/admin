@@ -15,7 +15,8 @@
  */
 package com.epam.drill.admin.metrics.job
 
-import com.epam.drill.admin.metrics.service.MetricsService
+import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.metrics.repository.MetricsRepository
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
@@ -23,12 +24,19 @@ import org.quartz.JobExecutionContext
 
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
-    private val metricsService: MetricsService
+    private val metricsRepository: MetricsRepository,
+    private val etl: EtlOrchestrator,
 ) : Job {
 
     override fun execute(context: JobExecutionContext) {
+        val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
         runBlocking {
-            metricsService.refresh()
+            val initTimestamp = metricsRepository.getMetricsPeriodDays()
+            val results = if (reset)
+                etl.rerun(initTimestamp, withDataDeletion = true)
+            else
+                etl.run(initTimestamp)
+            context.result = results
         }
     }
 }

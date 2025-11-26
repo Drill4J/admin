@@ -534,7 +534,7 @@ fun Route.postRefreshMetrics() {
 
     post<Metrics.Refresh> { params ->
         metricsService.refresh(params.reset)
-        call.ok("Materialized views were refreshed.")
+        call.ok("Metrics were refreshed.")
     }
 }
 
@@ -543,6 +543,6 @@ fun Route.postRefreshMetricsWithScope() {
 
     post<Metrics.RefreshScope> { params ->
         metricsService.refresh()
-        call.ok("Materialized views were refreshed.")
+        call.ok("Metrics were refreshed.")
     }
 }

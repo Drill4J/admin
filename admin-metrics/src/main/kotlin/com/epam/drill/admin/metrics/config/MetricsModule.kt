@@ -68,7 +68,7 @@ val metricsDIModule
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
             MetricsServiceImpl(
                 metricsRepository = instance(),
-                etl = instance(),
+                scheduler = instance(),
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
                 testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
@@ -76,7 +76,8 @@ val metricsDIModule
         }
         bind<UpdateMetricsEtlJob>() with singleton {
             UpdateMetricsEtlJob(
-                metricsService = instance()
+                metricsRepository = instance(),
+                etl = instance()
             )
         }
     }

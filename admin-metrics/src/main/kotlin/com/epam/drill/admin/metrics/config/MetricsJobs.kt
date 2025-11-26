@@ -18,9 +18,15 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import org.quartz.*
 
+fun getUpdateMetricsEtlDataMap(reset: Boolean) = JobDataMap().apply {
+    put("reset", reset)
+}
+val updateMetricsEtlJobKey: JobKey
+    get() = JobKey.jobKey("metricsEtl", "metricsJobs")
 val updateMetricsEtlJob: JobDetail
     get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
         .storeDurably()
         .withDescription("Job for updating metrics using ETL processing.")
-        .withIdentity("metricsEtl", "metricsJobs")
+        .withIdentity(updateMetricsEtlJobKey)
+        .usingJobData(getUpdateMetricsEtlDataMap(false))
         .build()

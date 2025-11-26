@@ -16,13 +16,16 @@
 package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.common.exception.BuildNotFound
+import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.common.service.generateBuildId
-import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
+import com.epam.drill.admin.metrics.config.getUpdateMetricsEtlDataMap
+import com.epam.drill.admin.metrics.config.updateMetricsEtlJobKey
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
@@ -31,16 +34,19 @@ import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
-    private val etl: EtlOrchestrator,
+    private val scheduler: DrillScheduler,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
@@ -530,12 +536,17 @@ class MetricsServiceImpl(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     override suspend fun refresh(reset: Boolean) {
-        val initTimestamp = metricsRepository.getMetricsPeriodDays()
-        val results = if (reset)
-            etl.rerun(initTimestamp, withDataDeletion = true)
-        else
-            etl.run(initTimestamp)
+        val params = getUpdateMetricsEtlDataMap(reset)
+        val results = suspendCancellableCoroutine { continuation ->
+            scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
+                if (exception != null)
+                    continuation.resumeWithException(exception)
+                else
+                    continuation.resume(results as List<EtlProcessingResult>)
+            }
+        }
         if (results.any { it.status != EtlStatus.SUCCESS }) {
             val errorMessages = results.mapNotNull { it.errorMessage }.joinToString(separator = "\n")
             throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
