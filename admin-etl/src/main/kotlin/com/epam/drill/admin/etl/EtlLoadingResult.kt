@@ -46,7 +46,8 @@ data class EtlLoadingResult(
 
     override fun compareTo(other: EtlLoadingResult): Int {
         if (this.isFailed || other.isFailed) {
-            return if (this.isFailed) -1 else if (other.isFailed) 1 else 0
+            // Failed results are considered "more important" successful ones
+            return if (this.isFailed) 1 else if (other.isFailed) -1 else 0
         }
         if (this.lastProcessedAt != other.lastProcessedAt) {
             return when {

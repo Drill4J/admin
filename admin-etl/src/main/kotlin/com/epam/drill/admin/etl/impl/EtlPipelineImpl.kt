@@ -87,7 +87,7 @@ class EtlPipelineImpl<T>(
             }
         }.also { jobs ->
             extractData(flow, jobs, sinceTimestamp, untilTimestamp)
-        }.awaitAll().min()
+        }.awaitAll().max()
     }
 
     private suspend fun extractData(
