@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.config
 
+import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.EtlMetadataRepository
@@ -68,7 +69,7 @@ val metricsDIModule
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
             MetricsServiceImpl(
                 metricsRepository = instance(),
-                scheduler = instance(),
+                scheduler = instance<DrillScheduler>(),
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
                 testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
