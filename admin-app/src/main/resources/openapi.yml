@@ -920,14 +920,14 @@ paths:
         - apiKeyAuth: [ ]
       parameters:
         - name: reset
-          description: Remove all data before start ETL processing
+          description: If true, clears existing computed data and restarts the ETL process from scratch.
           in: query
           required: false
           schema:
             type: boolean
       responses:
         '200':
-          description: Materialized views refresh started
+          description: Metrics were refreshed
           content:
             application/json:
               schema:
