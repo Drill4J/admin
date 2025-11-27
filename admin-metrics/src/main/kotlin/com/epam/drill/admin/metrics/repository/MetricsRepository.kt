@@ -138,4 +138,8 @@ interface MetricsRepository {
     ): List<Map<String, Any?>>
 
     suspend fun getMetricsPeriodDays(): Instant
+
+    suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllTestDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant)
 }

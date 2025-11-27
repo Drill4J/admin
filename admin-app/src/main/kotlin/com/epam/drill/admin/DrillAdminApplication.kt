@@ -205,6 +205,7 @@ private fun Application.initScheduler() {
     scheduler.start()
     scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
     scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
+    scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
 }
 
 val Application.oauth2Enabled: Boolean

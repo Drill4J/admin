@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.config
 
+import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import org.quartz.*
 
@@ -29,4 +30,10 @@ val updateMetricsEtlJob: JobDetail
         .withDescription("Job for updating metrics using ETL processing.")
         .withIdentity(updateMetricsEtlJobKey)
         .usingJobData(getUpdateMetricsEtlDataMap(false))
+        .build()
+val metricsDataRetentionPolicyJob: JobDetail
+    get() = JobBuilder.newJob(MetricsDataRetentionPolicyJob::class.java)
+        .storeDurably()
+        .withDescription("Job for deleting metrics data older than the retention period.")
+        .withIdentity("metricsRetentionPolicyJob", "metricsJobs")
         .build()

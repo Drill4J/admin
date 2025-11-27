@@ -82,7 +82,15 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
 fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
     exec(object : Statement<Unit>(StatementType.UPDATE, emptyList()) {
         override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
-            params.forEachIndexed { idx, value -> set(idx + 1, value ?: "NULL") }
+            params.forEachIndexed { idx, value ->
+                if (value == null) {
+                    // WORKAROUND: TextColumnType is employed to trick expose to write null values
+                    // Possible issues with: BinaryColumnType, BlobColumnType
+                    // see setNull implementation for more details
+                    setNull(idx + 1, TextColumnType())
+                } else
+                    set(idx + 1, value)
+            }
             executeUpdate()
         }
 
