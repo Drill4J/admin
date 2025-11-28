@@ -44,22 +44,23 @@ abstract class BatchDataLoader<T>(
         collector: Flow<T>,
         onLoadCompleted: suspend (EtlLoadingResult) -> Unit
     ): EtlLoadingResult {
-        var result: EtlLoadingResult = EtlLoadingResult.EMPTY
+        var result = EtlLoadingResult(status = EtlStatus.STARTING, lastProcessedAt = sinceTimestamp)
         onLoadCompleted(result)
         val flow = collector.stoppable()
+        val batchNo = AtomicInteger(0)
+        val buffer = mutableListOf<T>()
+        var lastLoadedTimestamp: Instant = sinceTimestamp
+        var previousTimestamp: Instant? = null
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
             stop()
             result += EtlLoadingResult(
                 status = EtlStatus.FAILED,
-                errorMessage = message
+                errorMessage = message,
+                lastProcessedAt = lastLoadedTimestamp
             ).also {
                 onLoadCompleted(it)
             }
         }
-
-        val batchNo = AtomicInteger(0)
-        val buffer = mutableListOf<T>()
-        var previousTimestamp: Instant? = null
         logger.debug { "ETL loader [$name] loading rows..." }
 
         flow.collect { row ->
@@ -75,8 +76,13 @@ abstract class BatchDataLoader<T>(
             }
 
             // Skip rows that are already processed
-            if (currentTimestamp <= sinceTimestamp && currentTimestamp > untilTimestamp) {
+            if (currentTimestamp <= sinceTimestamp) {
                 previousTimestamp = currentTimestamp
+                return@collect
+            }
+
+            if (currentTimestamp > untilTimestamp) {
+                flow.stop()
                 return@collect
             }
 
@@ -90,10 +96,13 @@ abstract class BatchDataLoader<T>(
             if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
                 if (buffer.size >= batchSize) {
                     result += flushBuffer(buffer, batchNo) { batch ->
+                        if (batch.success) {
+                            lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                        }
                         EtlLoadingResult(
                             status = if (batch.success) EtlStatus.RUNNING else EtlStatus.FAILED,
                             errorMessage = if (!batch.success) result.errorMessage else null,
-                            lastProcessedAt = previousTimestamp,
+                            lastProcessedAt = lastLoadedTimestamp,
                             processedRows = if (batch.success) batch.rowsLoaded else 0,
                             duration = batch.duration
                         ).also {
@@ -116,10 +125,13 @@ abstract class BatchDataLoader<T>(
             if (buffer.isNotEmpty()) {
                 // Commit any remaining rows in the buffer
                 result += flushBuffer(buffer, batchNo) { batch ->
+                    if (batch.success) {
+                        lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                    }
                     EtlLoadingResult(
                         status = if (batch.success) EtlStatus.SUCCESS else EtlStatus.FAILED,
                         errorMessage = if (!batch.success) result.errorMessage else null,
-                        lastProcessedAt = previousTimestamp,
+                        lastProcessedAt = lastLoadedTimestamp,
                         processedRows = if (batch.success) batch.rowsLoaded else 0,
                         duration = batch.duration
                     ).also {
@@ -128,9 +140,10 @@ abstract class BatchDataLoader<T>(
                 }
             } else {
                 // Finalize with success
+                lastLoadedTimestamp = previousTimestamp ?: sinceTimestamp
                 result += EtlLoadingResult(
                     status = EtlStatus.SUCCESS,
-                    lastProcessedAt = previousTimestamp
+                    lastProcessedAt = lastLoadedTimestamp
                 ).also {
                     onLoadCompleted(it)
                 }
@@ -155,6 +168,6 @@ abstract class BatchDataLoader<T>(
         buffer.clear()
         onBatchCompleted(it)
     }.also {
-        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration ?: 0}ms, batch: $batchNo, status: ${it.status}" }
+        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration ?: 0}ms, batch: $batchNo" }
     }
 }

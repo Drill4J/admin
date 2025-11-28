@@ -75,17 +75,15 @@ open class EtlOrchestratorImpl(
 
     private suspend fun runPipeline(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
         val snapshotTime = Instant.now()
-        val metadataList = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
+        val metadata = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name).associate {
+            it.loaderName to it
+        }
         val loaderNames = pipeline.loaders.map { it.name }.toSet()
-        val lastProcessedTime = findMinimumProcessedRowTimestamp(
-            metadataList,
-            loaderNames,
-            initTimestamp
-        )
+        val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
 
         try {
             val pipelineResult = pipeline.execute(
-                sinceTimestamp = lastProcessedTime,
+                sinceTimestampPerLoader = timestampPerLoader,
                 untilTimestamp = snapshotTime
             ) { loaderName, result ->
                 try {
@@ -95,7 +93,7 @@ open class EtlOrchestratorImpl(
                             extractorName = pipeline.extractor.name,
                             loaderName = loaderName,
                             status = result.status,
-                            lastProcessedAt = result.lastProcessedAt ?: lastProcessedTime,
+                            lastProcessedAt = result.lastProcessedAt,
                             errorMessage = result.errorMessage,
                             lastRunAt = snapshotTime,
                             duration = result.duration ?: 0L,
@@ -111,28 +109,12 @@ open class EtlOrchestratorImpl(
             logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
             return EtlProcessingResult(
                 pipelineName = pipeline.name,
-                lastProcessedAt = lastProcessedTime,
+                lastProcessedAt = initTimestamp,
                 rowsProcessed = 0,
                 status = EtlStatus.FAILED,
                 errorMessage = e.message
             )
         }
-    }
-
-    private fun findMinimumProcessedRowTimestamp(
-        metadataList: List<EtlMetadata>,
-        loaderNames: Set<String>,
-        initTimestamp: Instant
-    ): Instant {
-        // If there is a new loader that has no metadata yet
-        if (!loaderNames.all { it in metadataList.map(EtlMetadata::loaderName) })
-            return initTimestamp
-        // Find the minimum lastProcessedAt among the specified loaders to ensure all loaders have processed up to that point
-        return metadataList
-            .filter { it.loaderName in loaderNames }
-            .minByOrNull { it.lastProcessedAt }
-            ?.lastProcessedAt?.takeIf { it > initTimestamp }
-            ?: initTimestamp
     }
 }
 

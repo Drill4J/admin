@@ -18,18 +18,12 @@ package com.epam.drill.admin.etl
 import java.time.Instant
 
 data class EtlLoadingResult(
-    val lastProcessedAt: Instant? = null,
+    val lastProcessedAt: Instant,
     val processedRows: Int = 0,
     val status: EtlStatus,
     val duration: Long? = null,
     val errorMessage: String? = null
 ) : Comparable<EtlLoadingResult> {
-    companion object {
-        val EMPTY = EtlLoadingResult(
-            status = EtlStatus.STARTING
-        )
-    }
-
     val isFailed
         get() = status == EtlStatus.FAILED
 
@@ -50,11 +44,7 @@ data class EtlLoadingResult(
             return if (this.isFailed) 1 else if (other.isFailed) -1 else 0
         }
         if (this.lastProcessedAt != other.lastProcessedAt) {
-            return when {
-                this.lastProcessedAt == null -> -1
-                other.lastProcessedAt == null -> 1
-                else -> this.lastProcessedAt.compareTo(other.lastProcessedAt)
-            }
+            return this.lastProcessedAt.compareTo(other.lastProcessedAt)
         }
         if (this.processedRows != other.processedRows) {
             return this.processedRows.compareTo(other.processedRows)

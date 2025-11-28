@@ -68,7 +68,11 @@ class ETLSimpleTest {
                 lastExtracted = it
                 rowsProcessed++
             }
-            return EtlLoadingResult(status = EtlStatus.SUCCESS, lastProcessedAt = lastExtracted?.createdAt, processedRows = rowsProcessed).also {
+            return EtlLoadingResult(
+                status = EtlStatus.SUCCESS,
+                lastProcessedAt = lastExtracted?.createdAt ?: sinceTimestamp,
+                processedRows = rowsProcessed
+            ).also {
                 onLoadCompleted(it)
             }
         }
@@ -89,7 +93,10 @@ class ETLSimpleTest {
             collector.collect {
                 throw RuntimeException("Simulated loader failure")
             }
-            return EtlLoadingResult(status = EtlStatus.FAILED, errorMessage = "This should never be returned")
+            return EtlLoadingResult(
+                status = EtlStatus.FAILED,
+                errorMessage = "This should never be returned",
+                lastProcessedAt = sinceTimestamp)
         }
 
         override suspend fun deleteAll() {
@@ -143,12 +150,15 @@ class ETLSimpleTest {
         override suspend fun getAllMetadataByExtractor(
             pipelineName: String,
             extractorName: String
-        ): List<EtlMetadata> = listOf(metadata).filter { it.extractorName == extractorName && it.pipelineName == pipelineName }
+        ): List<EtlMetadata> =
+            listOf(metadata).filter { it.extractorName == extractorName && it.pipelineName == pipelineName }
     }
 
-    val simpleOrchestrator = EtlOrchestratorImpl("simple-etl",
+    val simpleOrchestrator = EtlOrchestratorImpl(
+        "simple-etl",
         listOf(
-            EtlPipelineImpl("simple-pipeline",
+            EtlPipelineImpl(
+                "simple-pipeline",
                 extractor = SimpleExtractor(),
                 loaders = listOf(SimpleLoader())
             )
@@ -167,7 +177,8 @@ class ETLSimpleTest {
         val orchestrator = simpleOrchestrator
 
         // Get initial lastProcessedAt timestamp
-        val initialMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
+        val initialMetadata =
+            orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
         val initialLastProcessedAt = initialMetadata.lastProcessedAt
 
         // Add some data
@@ -181,7 +192,8 @@ class ETLSimpleTest {
         assertEquals(3, result.first().rowsProcessed)
 
         // Get updated metadata and verify lastProcessedAt moved forward
-        val updatedMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
+        val updatedMetadata =
+            orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
         val updatedLastProcessedAt = updatedMetadata.lastProcessedAt
 
         assertTrue(updatedLastProcessedAt > initialLastProcessedAt)
@@ -190,9 +202,11 @@ class ETLSimpleTest {
 
     @Test
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
-        val orchestrator = EtlOrchestratorImpl("failed-etl",
+        val orchestrator = EtlOrchestratorImpl(
+            "failed-etl",
             listOf(
-                EtlPipelineImpl("failed-pipeline",
+                EtlPipelineImpl(
+                    "failed-pipeline",
                     extractor = SimpleExtractor(),
                     loaders = listOf(FailingLoader())
                 )
@@ -201,7 +215,8 @@ class ETLSimpleTest {
         )
 
         // Get initial lastProcessedAt timestamp (should be EPOCH)
-        val initialMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
+        val initialMetadata =
+            orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
         val initialLastProcessedAt = initialMetadata.lastProcessedAt
 
         // Add some data
@@ -215,7 +230,8 @@ class ETLSimpleTest {
         assertEquals(0, result.first().rowsProcessed)
 
         // Get updated metadata and verify lastProcessedAt remained unchanged
-        val updatedMetadata = orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
+        val updatedMetadata =
+            orchestrator.metadataRepository.getMetadata(SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
         val updatedLastProcessedAt = updatedMetadata.lastProcessedAt
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)

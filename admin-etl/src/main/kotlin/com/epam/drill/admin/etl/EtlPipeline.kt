@@ -22,7 +22,7 @@ interface EtlPipeline<T> {
     val extractor: DataExtractor<T>
     val loaders: List<DataLoader<T>>
     suspend fun execute(
-        sinceTimestamp: Instant,
+        sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
         onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { l, r -> }
     ): EtlProcessingResult

@@ -42,14 +42,15 @@ class EtlPipelineImpl<T>(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun execute(
-        sinceTimestamp: Instant,
+        sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
-    ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        logger.debug { "ETL pipeline [$name] starting since $sinceTimestamp..." }
-        var results = EtlLoadingResult.EMPTY
+    ): EtlProcessingResult  = withContext(Dispatchers.IO) {
+        val minProcessedTime = sinceTimestampPerLoader.values.min()
+        logger.debug { "ETL pipeline [$name] starting since $minProcessedTime..." }
+        var results = EtlLoadingResult(status = EtlStatus.STARTING, lastProcessedAt = minProcessedTime)
         val duration = measureTimeMillis {
-            results = processEtl(sinceTimestamp, untilTimestamp, onLoadCompleted)
+            results = processEtl(minProcessedTime, sinceTimestampPerLoader, untilTimestamp, onLoadCompleted)
         }
         logger.debug {
             if (results.processedRows == 0 && results.status == EtlStatus.SUCCESS) {
@@ -61,7 +62,7 @@ class EtlPipelineImpl<T>(
         }
         EtlProcessingResult(
             pipelineName = name,
-            lastProcessedAt = results.lastProcessedAt ?: sinceTimestamp,
+            lastProcessedAt = results.lastProcessedAt ?: minProcessedTime,
             rowsProcessed = results.processedRows,
             status = results.status,
             errorMessage = results.errorMessage
@@ -73,7 +74,8 @@ class EtlPipelineImpl<T>(
     }
 
     private suspend fun CoroutineScope.processEtl(
-        sinceTimestamp: Instant,
+        extractorSinceTimestamp: Instant,
+        sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlLoadingResult {
@@ -83,10 +85,10 @@ class EtlPipelineImpl<T>(
         )
         return loaders.map { loader ->
             async {
-                loadData(loader, sinceTimestamp, untilTimestamp, flow, onLoadCompleted)
+                loadData(loader, sinceTimestampPerLoader[loader.name] ?: extractorSinceTimestamp, untilTimestamp, flow, onLoadCompleted)
             }
         }.also { jobs ->
-            extractData(flow, jobs, sinceTimestamp, untilTimestamp)
+            extractData(flow, jobs, extractorSinceTimestamp, untilTimestamp)
         }.awaitAll().max()
     }
 
@@ -114,11 +116,12 @@ class EtlPipelineImpl<T>(
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlLoadingResult = try {
         loader.load(sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
             status = EtlStatus.FAILED,
-            errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}"
+            errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
+            lastProcessedAt = sinceTimestamp
         ).also { onLoadCompleted(loader.name, it) }
     }
 }
