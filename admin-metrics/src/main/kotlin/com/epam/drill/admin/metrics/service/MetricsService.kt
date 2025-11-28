@@ -96,6 +96,8 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>

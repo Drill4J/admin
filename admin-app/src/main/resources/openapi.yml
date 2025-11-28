@@ -630,6 +630,14 @@ paths:
           in: query
           schema:
             type: string
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+        - name: includeEqual
+          in: query
+          schema:
+            type: boolean
         - name: page
           in: query
           schema:
