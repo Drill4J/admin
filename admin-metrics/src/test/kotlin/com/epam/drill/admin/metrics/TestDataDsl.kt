@@ -54,7 +54,7 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             metricsManagementRoutes()
         }.drillClient().apply {
             testsData(TestDataDsl(this))
-            refreshMaterializedViews()
+            refreshMetrics()
         }
     }
 }
