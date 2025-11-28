@@ -18,13 +18,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: useMaterializedViews
-          in: query
-          description: Indicates whether to use materialized views for the query.
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: Group settings retrieved
@@ -45,13 +38,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: useMaterializedViews
-          in: query
-          description: Indicates whether to use materialized views for the query.
-          required: false
-          schema:
-            type: boolean
-            default: false
       requestBody:
         required: true
         content:
@@ -630,6 +616,14 @@ paths:
           in: query
           schema:
             type: string
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+        - name: includeEqual
+          in: query
+          schema:
+            type: boolean
         - name: page
           in: query
           schema:
@@ -737,6 +731,18 @@ paths:
           in: query
           schema:
             type: string
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
+          in: query
+          schema:
+            type: string
         - name: testTaskId
           in: query
           schema:
@@ -749,6 +755,28 @@ paths:
           in: query
           schema:
             type: string
+        - name: testName
+          in: query
+          schema:
+            type: string
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: page
           in: query
           schema:
@@ -807,11 +835,23 @@ paths:
           in: query
           schema:
             type: string
-        - name: testTag
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: className
+          in: query
+          schema:
+            type: string
+        - name: methodName
           in: query
           schema:
             type: string
         - name: testTaskId
+          in: query
+          schema:
+            type: string
+        - name: testTag
           in: query
           schema:
             type: string
@@ -823,6 +863,24 @@ paths:
           in: query
           schema:
             type: string
+        - name: coverageBranches
+          in: query
+          description: List of coverage branches to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: coverageAppEnvIds
+          in: query
+          description: List of coverage app env IDs to consider.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: page
           in: query
           schema:
@@ -840,15 +898,22 @@ paths:
                 $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/refresh:
     post:
-      summary: Refresh materialized views
-      operationId: refreshMaterializedViews
+      summary: Refresh metrics
+      operationId: refreshMetrics
       tags:
         - metrics
       security:
         - apiKeyAuth: [ ]
+      parameters:
+        - name: reset
+          description: If true, clears existing computed data and restarts the ETL process from scratch.
+          in: query
+          required: false
+          schema:
+            type: boolean
       responses:
         '200':
-          description: Materialized views refresh started
+          description: Metrics were refreshed
           content:
             application/json:
               schema:
@@ -1503,4 +1568,3 @@ components:
         metricsPeriodDays:
           type: integer
           nullable: true
-
