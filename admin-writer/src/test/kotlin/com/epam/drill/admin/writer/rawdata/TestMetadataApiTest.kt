@@ -15,21 +15,25 @@
  */
 package com.epam.drill.admin.writer.rawdata
 
-import com.epam.drill.admin.writer.rawdata.route.postTestMetadata
-import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
-import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
-import com.epam.drill.admin.test.*
+import com.epam.drill.admin.test.DatabaseTests
+import com.epam.drill.admin.test.assertJsonEquals
+import com.epam.drill.admin.test.drillApplication
+import com.epam.drill.admin.test.withRollback
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.route.postTestMetadata
+import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
+import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.serialization.json.jsonObject
 import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
 
@@ -123,7 +127,7 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             assertNotNull(it[TestDefinitionTable.name])
             assertNotNull(it[TestDefinitionTable.path])
             assertEquals(2, it[TestDefinitionTable.tags]?.size)
-            assertEquals(2, it[TestDefinitionTable.metadata]?.size)
+            assertEquals(2, it[TestDefinitionTable.metadata]?.jsonObject?.size)
             assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
         }
     }
