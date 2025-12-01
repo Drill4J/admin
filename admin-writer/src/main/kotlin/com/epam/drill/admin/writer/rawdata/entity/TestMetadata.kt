@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import kotlinx.serialization.json.JsonElement
 import java.time.LocalDateTime
 
 class TestMetadata (
@@ -39,7 +40,7 @@ class TestDefinition(
     val name: String?,
     val path: String?,
     val tags: List<String>?,
-    val metadata: Map<String, String>?
+    val metadata: JsonElement?
 )
 
 class TestSession (

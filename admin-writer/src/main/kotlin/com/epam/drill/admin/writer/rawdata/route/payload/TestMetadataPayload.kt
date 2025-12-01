@@ -17,6 +17,7 @@ package com.epam.drill.admin.writer.rawdata.route.payload
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 // TODO rework alongside with Java Autotest Agent
 @Serializable
@@ -41,7 +42,7 @@ class TestDetails @JvmOverloads constructor(
     val path: String = "",
     val testName: String = "",
     val testParams: List<String> = emptyList(),
-    val metadata: Map<String, String> = emptyMap(),
+    val metadata: JsonElement? = null,
     val tags: List<String> = emptyList(),
 )
 
