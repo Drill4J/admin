@@ -18,6 +18,18 @@ package com.epam.drill.admin.etl
 import kotlinx.coroutines.flow.FlowCollector
 import java.time.Instant
 
+/**
+ * DataExtractor defines the read-side contract for the ETL process.
+ * Its primary responsibility is to efficiently fetch raw data from a specific data source.
+ *
+ * Key characteristics:
+ * - Owns the **SQL queries** or repository calls used to access raw data.
+ * - Respects `fetchSize` to avoid loading the entire dataset at once.
+ * - Streams data out as a **sequence / flow of domain objects**.
+ * - Is agnostic of:
+ *     - how data will be transformed,
+ *     - how metrics will be stored.
+ */
 interface DataExtractor<T> {
     val name: String
     suspend fun extract(

@@ -17,6 +17,12 @@ package com.epam.drill.admin.etl
 
 import java.time.Instant
 
+/**
+ * EtlOrchestrator is responsible for:
+ * - Coordinating the lifecycle of multiple pipelines.
+ * - Storing and retrieving ETL metadata.
+ * - Providing high-level monitoring and error handling.
+ */
 interface EtlOrchestrator {
     val name: String
     suspend fun run(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>

@@ -18,6 +18,17 @@ package com.epam.drill.admin.etl
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
+/**
+ * DataLoader` defines the write-side contract for the ETL process.
+ * It receives already transformed data (usually metric DTOs or aggregated entities) and persists it to target storage.
+ *
+ * Key characteristics:
+ * - Encapsulates all write logic:
+ *     - upserts,
+ *     - deletions (if needed).
+ * - Uses `batchSize` to control transaction size and DB pressure.
+ * - Is resilient to partial failures
+ */
 interface DataLoader<T> {
     val name: String
     suspend fun load(

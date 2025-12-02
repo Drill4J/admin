@@ -17,6 +17,24 @@ package com.epam.drill.admin.etl
 
 import java.time.Instant
 
+/**
+ * EtlPipeline represents a single ETL flow connecting:
+ * - one `DataExtractor` (source),
+ * - one or more `DataLoader`-s (sinks).
+ * It encodes business logic of how raw data becomes metric data.
+ *
+ * Core Concepts:
+ * - **Composition**: EtlPipeline is typically constructed with specific extractor and loaders.
+ * - **Concurrency control**: may use coroutines to run:
+ *     - extractor in one coroutine,
+ *     - loaders in another,
+ *     - sharing a bounded buffer (`bufferSize`).
+ * - **Backpressure**:
+ *     - if loaders are slow, the buffer fills up and extractor suspends, keeping memory usage controlled.
+ * - **Error propagation**:
+ *     - failures in loaders or extractor are propagated to the pipeline,
+ *     - pipeline may cancel child coroutines and report status to `EtlOrchestrator`.
+ */
 interface EtlPipeline<T> {
     val name: String
     val extractor: DataExtractor<T>
