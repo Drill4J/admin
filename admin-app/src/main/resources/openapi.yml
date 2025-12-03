@@ -918,6 +918,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/refresh-status:
+    get:
+      summary: Get refresh status
+      operationId: metricsRefreshStatus
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: Metrics status was retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:

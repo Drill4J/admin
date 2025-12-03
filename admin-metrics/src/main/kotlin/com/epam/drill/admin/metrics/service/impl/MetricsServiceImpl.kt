@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.service.impl
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.metrics.config.MetricsConfig
@@ -35,12 +36,14 @@ import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.time.Instant
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -50,6 +53,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
+    private val etlRepository: EtlMetadataRepository,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
@@ -550,6 +554,25 @@ class MetricsServiceImpl(
         if (results.any { it.status != EtlStatus.SUCCESS }) {
             val errorMessages = results.mapNotNull { it.errorMessage }.joinToString(separator = "\n")
             throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
+        }
+    }
+
+    override suspend fun getRefreshStatus(): Map<String, Any?> {
+        val metadata = etlRepository.getAllMetadata()
+        if (metadata.isEmpty()) return emptyMap()
+
+        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.STARTING, EtlStatus.RUNNING, EtlStatus.SUCCESS)
+        val minStatus = metadata.minByOrNull { statusOrder.indexOf(it.status) }?.status ?: EtlStatus.SUCCESS
+        fun Instant.toTimestamp() = LocalDateTime.ofInstant(this, ZoneId.systemDefault())
+        val maxLastProcessedAt = metadata.maxOfOrNull { it.lastProcessedAt.toTimestamp() }
+        val maxLastRunAt = metadata.maxOfOrNull { it.lastRunAt.toTimestamp() }
+        val errorMessages = metadata.mapNotNull { it.errorMessage }
+
+        return buildMap {
+            put("status", minStatus.name)
+            put("lastProcessedAt", maxLastProcessedAt)
+            put("lastRunAt", maxLastRunAt)
+            if (errorMessages.isNotEmpty()) put("errorMessage", errorMessages.joinToString("; "))
         }
     }
 

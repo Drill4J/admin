@@ -138,4 +138,6 @@ interface MetricsService {
 
     suspend fun refresh(reset: Boolean = false)
 
+    suspend fun getRefreshStatus(): Map<String, Any?>
+
 }

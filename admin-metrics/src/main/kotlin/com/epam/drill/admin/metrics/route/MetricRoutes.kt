@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.route
 
+import com.epam.drill.admin.common.model.DataResponse
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
@@ -244,6 +245,11 @@ class Metrics {
         val parent: Metrics,
         val scope: String
     )
+
+    @Resource("/refresh-status")
+    class RefreshStatus(
+        val parent: Metrics,
+    )
 }
 
 fun Route.metricsRoutes() {
@@ -262,6 +268,7 @@ fun Route.metricsRoutes() {
 fun Route.metricsManagementRoutes() {
     postRefreshMetrics()
     postRefreshMetricsWithScope()
+    getRefreshStatus()
 }
 
 fun Route.getApplications() {
@@ -544,5 +551,14 @@ fun Route.postRefreshMetricsWithScope() {
     post<Metrics.RefreshScope> { params ->
         metricsService.refresh()
         call.ok("Metrics were refreshed.")
+    }
+}
+
+fun Route.getRefreshStatus() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.RefreshStatus> { params ->
+        val status = metricsService.getRefreshStatus()
+        this.call.respond(HttpStatusCode.OK, ApiResponse(status))
     }
 }

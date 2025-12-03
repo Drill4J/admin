@@ -152,6 +152,10 @@ class ETLSimpleTest {
             extractorName: String
         ): List<EtlMetadata> =
             listOf(metadata).filter { it.extractorName == extractorName && it.pipelineName == pipelineName }
+
+        override suspend fun getAllMetadata(): List<EtlMetadata> {
+            return listOf(metadata)
+        }
     }
 
     val simpleOrchestrator = EtlOrchestratorImpl(

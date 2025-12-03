@@ -39,6 +39,11 @@ class EtlMetadataRepositoryImpl(
 ) : EtlMetadataRepository {
     private val metadataTable: EtlMetadataTable = EtlMetadataTable("$dbSchema.$metadataTableName")
 
+    override suspend fun getAllMetadata(): List<EtlMetadata> {
+        return newSuspendedTransaction(db = database) {
+            metadataTable.selectAll().map(::mapMetadata)
+        }
+    }
 
     override suspend fun getAllMetadataByExtractor(
         pipelineName: String,
