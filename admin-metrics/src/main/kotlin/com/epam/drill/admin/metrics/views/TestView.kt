@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.views
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 class TestView(
@@ -24,6 +25,6 @@ class TestView(
     val testPath: String,
     val testName: String,
     val tags: List<String>? = null,
-    val metadata: Map<String, String>? = null,
+    val metadata: JsonElement? = null,
     val impactedMethods: Int? = null,
 )

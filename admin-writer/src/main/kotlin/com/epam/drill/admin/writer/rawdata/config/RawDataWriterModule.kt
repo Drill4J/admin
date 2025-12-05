@@ -29,52 +29,60 @@ import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
-val rawDataDIModule = DI.Module("rawDataServices") {
-    import(rawDataServicesDIModule)
-    import(settingsServicesDIModule)
+val rawDataDIModule
+    get() = DI.Module("rawDataServices") {
+        import(rawDataServicesDIModule)
+        import(settingsServicesDIModule)
 
-    bind<DataRetentionPolicyJob>() with singleton { DataRetentionPolicyJob(
-        groupSettingsRepository = instance(),
-        instanceRepository = instance(),
-        coverageRepository = instance(),
-        testSessionRepository = instance(),
-        testLaunchRepository = instance(),
-        methodRepository = instance(),
-        buildRepository = instance(),
-    ) }
-}
+        bind<DataRetentionPolicyJob>() with singleton {
+            DataRetentionPolicyJob(
+                groupSettingsRepository = instance(),
+                instanceRepository = instance(),
+                coverageRepository = instance(),
+                testSessionRepository = instance(),
+                testLaunchRepository = instance(),
+                methodRepository = instance(),
+                buildRepository = instance(),
+            )
+        }
+    }
 
-val rawDataServicesDIModule = DI.Module("rawDataWriterServices") {
-    bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
-    bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
-    bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
-    bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
-    bind<TestDefinitionRepository>() with singleton { TestDefinitionRepositoryImpl() }
-    bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
-    bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
-    bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
-    bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+val rawDataServicesDIModule
+    get() = DI.Module("rawDataWriterServices") {
+        bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
+        bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
+        bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
+        bind<CoverageRepository>() with singleton { CoverageRepositoryImpl() }
+        bind<TestDefinitionRepository>() with singleton { TestDefinitionRepositoryImpl() }
+        bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
+        bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
+        bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
+        bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
 
-    bind<RawDataWriter>() with singleton { RawDataServiceImpl(
-        instanceRepository = instance(),
-        coverageRepository = instance(),
-        testDefinitionRepository = instance(),
-        testLaunchRepository = instance(),
-        methodRepository = instance(),
-        buildRepository = instance(),
-        testSessionRepository = instance(),
-        testSessionBuildRepository = instance(),
-        methodIgnoreRuleRepository = instance()
-    ) }
-}
+        bind<RawDataWriter>() with singleton {
+            RawDataServiceImpl(
+                instanceRepository = instance(),
+                coverageRepository = instance(),
+                testDefinitionRepository = instance(),
+                testLaunchRepository = instance(),
+                methodRepository = instance(),
+                buildRepository = instance(),
+                testSessionRepository = instance(),
+                testSessionBuildRepository = instance(),
+                methodIgnoreRuleRepository = instance()
+            )
+        }
+    }
 
-val settingsServicesDIModule = DI.Module("settingsServices") {
-    bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
-    bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
-}
+val settingsServicesDIModule
+    get() = DI.Module("settingsServices") {
+        bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
+        bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+    }
 
-val dataRetentionPolicyJob: JobDetail = JobBuilder.newJob(DataRetentionPolicyJob::class.java)
-    .storeDurably()
-    .withDescription("Job for deleting raw data older than the retention period.")
-    .withIdentity("rawDataRetentionPolicyJob", "retentionPolicies")
-    .build()
+val dataRetentionPolicyJob: JobDetail
+    get() = JobBuilder.newJob(DataRetentionPolicyJob::class.java)
+        .storeDurably()
+        .withDescription("Job for deleting raw data older than the retention period.")
+        .withIdentity("rawDataRetentionPolicyJob", "retentionPolicies")
+        .build()

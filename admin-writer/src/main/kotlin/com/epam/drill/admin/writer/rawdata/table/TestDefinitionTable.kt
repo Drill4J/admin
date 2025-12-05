@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.json.json
@@ -29,6 +28,7 @@ object TestDefinitionTable : StringIdTable("raw_data.test_definitions") {
     val name = varchar("name",  MEDIUM_TEXT_LENGTH).nullable()
     val path = varchar("path",  MEDIUM_TEXT_LENGTH).nullable()
     val tags = array<String>("tags", MEDIUM_TEXT_LENGTH).nullable()
-    val metadata = json("metadata", Json, MapSerializer(String.serializer(), String.serializer())).nullable()
+    val metadata = json<JsonElement>("metadata", Json).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

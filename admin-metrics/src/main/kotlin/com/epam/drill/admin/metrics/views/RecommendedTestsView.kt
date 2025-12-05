@@ -1,6 +1,7 @@
 package com.epam.drill.admin.metrics.views
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Copyright 2020 - 2022 EPAM Systems
@@ -24,7 +25,7 @@ class RecommendedTestsView(
     val testPath: String,
     val testName: String,
     val tags: List<String>? = null,
-    val metadata: Map<String, String>? = null,
+    val metadata: JsonElement? = null,
     val testImpactStatus: TestImpactStatus? = null,
     val impactedMethods: Int? = null,
     val baselineBuildId: String? = null,

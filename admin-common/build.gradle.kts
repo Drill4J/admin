@@ -22,6 +22,7 @@ val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val quartzVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -60,6 +61,7 @@ dependencies {
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
     api("org.flywaydb:flyway-core:${flywaydbVersion}")
+    api("org.quartz-scheduler:quartz:${quartzVersion}")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")

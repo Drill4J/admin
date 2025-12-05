@@ -42,6 +42,7 @@ kotlin.sourceSets {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":admin-common"))
+    implementation(project(":admin-etl"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
@@ -73,6 +74,9 @@ dependencies {
 tasks {
     test {
         useJUnitPlatform()
+        testLogging {
+            showStandardStreams = true
+        }
     }
 }
 

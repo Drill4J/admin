@@ -19,7 +19,10 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import java.sql.Timestamp
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset.UTC
 
 class MetricsRepositoryImpl : MetricsRepository {
 
@@ -73,6 +76,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ?", branch)
             appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -338,8 +342,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM metrics.get_recommended_tests_v2(                    
                     input_build_id => ?,
                     input_test_impact_statuses => ?                
-            """.trimIndent()
-            , targetBuildId, testImpactStatuses)
+            """.trimIndent(), targetBuildId, testImpactStatuses
+            )
 
             appendOptional(", input_baseline_build_ids => ?", baselineBuildIds)
             appendOptional(", input_baseline_from_build_id => ?", baselineFromBuildId)
@@ -357,9 +361,11 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
             appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
             appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
-            append("""
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -368,13 +374,18 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
         packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        methodSignaturePattern: String?,
+
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -384,24 +395,32 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT 
                     test_definition_id,
                     test_path,
-                    test_name,                    
+                    test_name,      
+                    test_runner,
                     test_tags,
                     test_metadata,
                     impacted_methods                 
                 FROM metrics.get_impacted_tests_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
-                    """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+                    """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
-            appendOptional(", input_method_name_pattern => ?", methodNamePattern) { "$it%" }
-            append("""
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -410,13 +429,21 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
+
         testTaskId: String?,
-        testTag: String?,
+        testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+
         offset: Int?,
         limit: Int?
-    ): List<Map<String, Any?>>  = transaction {
+    ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
                 """
@@ -431,24 +458,180 @@ class MetricsRepositoryImpl : MetricsRepository {
                 FROM metrics.get_impacted_methods_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
-                    """.trimIndent(), targetBuildId, baselineBuildId)
-            appendOptional(", input_test_task_ids => ?", testTaskId) { listOf(it) }
-            appendOptional(", input_test_tags => ?", testTag) { listOf(it) }
+                    """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
-            append("""
+
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
+            append(
+                """
                 )
-            """.trimIndent())
+            """.trimIndent()
+            )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
     }
 
-    override suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean) = transaction {
-        executeUpdate(
+    override suspend fun getMetricsPeriodDays(): Instant = transaction {
+        (executeQueryReturnMap(
             """             
-            REFRESH MATERIALIZED VIEW ${if (concurrently) "CONCURRENTLY" else ""} $viewName;
-            """.trimIndent()
+                SELECT COALESCE(MIN(metrics_period), 'epoch')::TIMESTAMP AS metrics_period FROM (
+	                SELECT DISTINCT group_id, metrics.get_metrics_period(group_id) AS metrics_period FROM raw_data.builds
+                ) group_metrics_periods
+                 """.trimIndent()
+        ).first()["metrics_period"] as LocalDateTime).toInstant(UTC)
+    }
+
+   override suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant) = transaction {
+       val timestamp = Timestamp.from(timestamp)
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_test_definition_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = c.group_id
+                        AND b.app_id = c.app_id
+                        AND b.build_id = c.build_id
+                )
+                """.trimIndent(), timestamp
         )
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_test_session_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = c.group_id
+                        AND b.app_id = c.app_id
+                        AND b.build_id = c.build_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = c.group_id
+                        AND b.app_id = c.app_id
+                        AND b.build_id = c.build_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.test_session_builds tsb
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = tsb.group_id
+                        AND b.app_id = tsb.app_id
+                        AND b.build_id = tsb.build_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_methods bm
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.builds b 
+                    WHERE b.updated_at_day < ?
+                        AND b.group_id = bm.group_id
+                        AND b.app_id = bm.app_id
+                        AND b.build_id = bm.build_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.methods m
+                WHERE m.created_at_day < ?
+                    AND NOT EXISTS (SELECT 1 
+                        FROM metrics.build_methods bm 
+                        WHERE bm.group_id = m.group_id 
+                            AND bm.app_id = m.app_id
+                            AND bm.method_id = m.method_id
+                    )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate("DELETE FROM metrics.builds WHERE updated_at_day < ?", timestamp)
+    }
+
+    override suspend fun deleteAllTestDataCreatedBefore(timestamp: Instant) = transaction {
+        val timestamp = Timestamp.from(timestamp)
+        executeUpdate("DELETE FROM metrics.test_launches WHERE created_at_day < ?", timestamp)
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_test_definition_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.test_sessions ts 
+                    WHERE ts.created_at_day < ?
+                        AND ts.group_id = c.group_id
+                        AND ts.test_session_id = c.test_session_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_test_session_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.test_sessions ts 
+                    WHERE ts.created_at_day < ?
+                        AND ts.group_id = c.group_id
+                        AND ts.test_session_id = c.test_session_id
+                )   
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.test_session_builds tsb
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.test_sessions ts 
+                    WHERE ts.created_at_day < ?
+                        AND ts.group_id = tsb.group_id
+                        AND ts.test_session_id = tsb.test_session_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate("DELETE FROM metrics.test_sessions WHERE created_at_day < ?", timestamp)
+        executeUpdate(
+            """
+                DELETE FROM metrics.build_method_test_definition_coverage c
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.test_definitions td 
+                    WHERE td.updated_at_day < ?
+                        AND td.group_id = c.group_id
+                        AND td.test_definition_id = c.test_definition_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.test_to_code_mapping tcm
+                WHERE EXISTS (SELECT 1 
+                    FROM metrics.test_definitions td
+                    WHERE td.updated_at_day < ?
+                        AND td.group_id = tcm.group_id
+                        AND td.test_definition_id = tcm.test_definition_id
+                )
+                """.trimIndent(), timestamp
+        )
+        executeUpdate("DELETE FROM metrics.test_definitions WHERE updated_at_day < ?", timestamp)
+    }
+
+    override suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant) = transaction {
+        val timestamp = Timestamp.from(timestamp)
+        executeUpdate("DELETE FROM metrics.method_daily_coverage WHERE created_at_day < ?", timestamp)
     }
 }

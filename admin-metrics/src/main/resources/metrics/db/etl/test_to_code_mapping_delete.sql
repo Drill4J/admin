@@ -1,0 +1,1 @@
+DELETE FROM metrics.test_to_code_mapping
