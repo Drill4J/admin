@@ -38,6 +38,7 @@ import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
 import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
@@ -333,7 +334,7 @@ class MetricsServiceImpl(
                 testPath = data["test_path"] as String,
                 testName = data["test_name"] as String,
                 tags = data["test_tags"] as List<String>?,
-                metadata = data["test_metadata"] as Map<String, String>?,
+                metadata = data["test_metadata"] as JsonElement?,
                 testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
                 impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 baselineBuildId = data["baseline_build_id"] as String?,
@@ -493,7 +494,7 @@ class MetricsServiceImpl(
                     testName = data["test_name"] as String,
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
-                    metadata = data["test_metadata"] as Map<String, String>?,
+                    metadata = data["test_metadata"] as JsonElement?,
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
