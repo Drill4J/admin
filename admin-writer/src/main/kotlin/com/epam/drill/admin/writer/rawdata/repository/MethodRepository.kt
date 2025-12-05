@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.entity.Method
 import java.time.LocalDate
 
 interface MethodRepository {
-    fun createMany(data: List<Method>)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun createMany(data: List<Method>)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
 }

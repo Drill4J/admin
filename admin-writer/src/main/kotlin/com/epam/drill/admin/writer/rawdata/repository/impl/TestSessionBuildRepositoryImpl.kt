@@ -25,7 +25,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
 class TestSessionBuildRepositoryImpl : TestSessionBuildRepository {
-    override fun create(testSessionId: String, buildId: String, groupId: String) {
+    override suspend fun create(testSessionId: String, buildId: String, groupId: String) {
         TestSessionBuildTable.insert {
             it[TestSessionBuildTable.testSessionId] = testSessionId
             it[TestSessionBuildTable.buildId] = buildId
@@ -33,14 +33,28 @@ class TestSessionBuildRepositoryImpl : TestSessionBuildRepository {
         }
     }
 
-    override fun deleteAllByTestSessionId(testSessionId: String) {
+    override suspend fun deleteAllByTestSessionId(testSessionId: String) {
         TestSessionBuildTable.deleteWhere { TestSessionBuildTable.testSessionId eq testSessionId }
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         TestSessionBuildTable.deleteWhere {
             (TestSessionBuildTable.groupId eq groupId) and
                     (TestSessionBuildTable.createdAt less createdBefore.atStartOfDay())
+        }
+    }
+
+    override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
+        TestSessionBuildTable.deleteWhere {
+            (TestSessionBuildTable.groupId eq groupId) and
+            (TestSessionBuildTable.buildId eq buildId)
+        }
+    }
+
+    override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
+        TestSessionBuildTable.deleteWhere {
+            (TestSessionBuildTable.groupId eq groupId) and
+            (TestSessionBuildTable.testSessionId eq testSessionId)
         }
     }
 }

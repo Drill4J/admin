@@ -26,7 +26,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
 class TestLaunchRepositoryImpl: TestLaunchRepository {
-    override fun createMany(testLaunchList: List<TestLaunch>) {
+    override suspend fun createMany(testLaunchList: List<TestLaunch>) {
         TestLaunchTable.batchUpsert(testLaunchList, shouldReturnGeneratedValues = false) {
             this[TestLaunchTable.id] = it.id
             this[TestLaunchTable.groupId] = it.groupId
@@ -37,7 +37,14 @@ class TestLaunchRepositoryImpl: TestLaunchRepository {
         }
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         TestLaunchTable.deleteWhere { (TestLaunchTable.groupId eq groupId) and (TestLaunchTable.createdAt less createdBefore.atStartOfDay()) }
+    }
+
+    override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
+        TestLaunchTable.deleteWhere {
+            (TestLaunchTable.groupId eq groupId) and
+            (TestLaunchTable.testSessionId eq testSessionId)
+        }
     }
 }

@@ -18,8 +18,10 @@ package com.epam.drill.admin.writer.rawdata.config
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
+import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
+import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
 import org.kodein.di.DI
@@ -70,6 +72,17 @@ val rawDataServicesDIModule
                 testSessionRepository = instance(),
                 testSessionBuildRepository = instance(),
                 methodIgnoreRuleRepository = instance()
+            )
+        }
+        bind<DataManagementService>() with singleton {
+            DataManagementServiceImpl(
+                instanceRepository = instance(),
+                buildRepository = instance(),
+                methodRepository = instance(),
+                coverageRepository = instance(),
+                testSessionRepository = instance(),
+                testLaunchRepository = instance(),
+                testSessionBuildRepository = instance(),
             )
         }
     }

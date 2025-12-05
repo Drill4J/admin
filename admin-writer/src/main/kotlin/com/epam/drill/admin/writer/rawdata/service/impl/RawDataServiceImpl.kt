@@ -85,7 +85,7 @@ class RawDataServiceImpl(
             envId = instancePayload.envId
         )
         transaction {
-            if (!buildRepository.existsById(buildId)) {
+            if (!buildRepository.existsById(instancePayload.groupId, instancePayload.appId, buildId)) {
                 val build = Build(
                     id = buildId,
                     groupId = instancePayload.groupId,
@@ -179,7 +179,7 @@ class RawDataServiceImpl(
                 result = test.result.toString(),
                 duration = test.duration
             )
-        }.let(testLaunchRepository::createMany)
+        }.let { testLaunchRepository::createMany }
 
         testsPayload.tests.map { test ->
             TestDefinition(

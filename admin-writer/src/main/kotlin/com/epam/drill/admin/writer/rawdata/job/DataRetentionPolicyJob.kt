@@ -15,9 +15,10 @@
  */
 package com.epam.drill.admin.writer.rawdata.job
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.repository.*
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
@@ -37,22 +38,24 @@ class DataRetentionPolicyJob(
     private val logger = KotlinLogging.logger {}
 
     override fun execute(context: JobExecutionContext) {
-        val groupSettings = transaction {
-            groupSettingsRepository.getAll()
-        }
-        groupSettings.forEach { settings ->
-            val groupId = settings.groupId
-            val retentionPeriodDays = settings.retentionPeriodDays ?: return@forEach
-            val createdBefore: LocalDate = LocalDate.now(ZoneId.systemDefault()).minusDays(retentionPeriodDays.toLong())
-            transaction {
-                logger.debug { "Deleting all data of $groupId older than $createdBefore..." }
-                coverageRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                instanceRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                testLaunchRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                testSessionRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                methodRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                buildRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                logger.debug { "Data of $groupId older than $createdBefore deleted successfully." }
+        runBlocking {
+            val groupSettings = transaction {
+                groupSettingsRepository.getAll()
+            }
+            groupSettings.forEach { settings ->
+                val groupId = settings.groupId
+                val retentionPeriodDays = settings.retentionPeriodDays ?: return@forEach
+                val createdBefore: LocalDate = LocalDate.now(ZoneId.systemDefault()).minusDays(retentionPeriodDays.toLong())
+                transaction {
+                    logger.debug { "Deleting all data of $groupId older than $createdBefore..." }
+                    coverageRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    instanceRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    testLaunchRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    testSessionRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    methodRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    buildRepository.deleteAllCreatedBefore(groupId, createdBefore)
+                    logger.debug { "Data of $groupId older than $createdBefore deleted successfully." }
+                }
             }
         }
     }

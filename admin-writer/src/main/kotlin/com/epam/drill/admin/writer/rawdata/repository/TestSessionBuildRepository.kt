@@ -18,11 +18,13 @@ package com.epam.drill.admin.writer.rawdata.repository
 import java.time.LocalDate
 
 interface TestSessionBuildRepository {
-    fun create(
+    suspend fun create(
         testSessionId: String,
         buildId: String,
         groupId: String
     )
-    fun deleteAllByTestSessionId(testSessionId: String)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByTestSessionId(testSessionId: String)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
 }

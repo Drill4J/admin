@@ -115,6 +115,13 @@ fun Application.module() {
                 }
             }
 
+            //Data Management
+            authenticate("jwt", "api-key") {
+                withRole(Role.ADMIN) {
+                    dataManagementRoutes()
+                }
+            }
+
             //Metrics
             authenticate("jwt", "api-key") {
                 metricsRoutes()
@@ -123,7 +130,7 @@ fun Application.module() {
                 }
             }
 
-            //Data
+            //Data Ingest
             authenticate("api-key") {
                 withRole(Role.USER, Role.ADMIN) {
                     intercept(ApplicationCallPipeline.Call) {
