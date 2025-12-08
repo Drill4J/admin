@@ -33,7 +33,7 @@ abstract class BatchDataLoader<T>(
 
     class BatchResult(
         val success: Boolean,
-        val rowsLoaded: Int,
+        val rowsLoaded: Long,
         val duration: Long? = null,
         val errorMessage: String? = null
     )
@@ -44,8 +44,7 @@ abstract class BatchDataLoader<T>(
         collector: Flow<T>,
         onLoadCompleted: suspend (EtlLoadingResult) -> Unit
     ): EtlLoadingResult {
-        var result = EtlLoadingResult(status = EtlStatus.STARTING, lastProcessedAt = sinceTimestamp)
-        onLoadCompleted(result)
+        var result = EtlLoadingResult(status = EtlStatus.LOADING, lastProcessedAt = sinceTimestamp)
         val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
         val buffer = mutableListOf<T>()
@@ -100,10 +99,10 @@ abstract class BatchDataLoader<T>(
                             lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                         }
                         EtlLoadingResult(
-                            status = if (batch.success) EtlStatus.RUNNING else EtlStatus.FAILED,
+                            status = if (batch.success) EtlStatus.LOADING else EtlStatus.FAILED,
                             errorMessage = if (!batch.success) result.errorMessage else null,
                             lastProcessedAt = lastLoadedTimestamp,
-                            processedRows = if (batch.success) batch.rowsLoaded else 0,
+                            processedRows = if (batch.success) batch.rowsLoaded else 0L,
                             duration = batch.duration
                         ).also {
                             onLoadCompleted(it)

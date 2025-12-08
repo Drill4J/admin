@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
@@ -30,6 +31,7 @@ import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
 
 class EtlMetadataRepositoryImpl(
@@ -70,18 +72,12 @@ class EtlMetadataRepositoryImpl(
     }
 
     override suspend fun saveMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
-        val existingMetadata = metadataTable.selectAll()
-            .andWhere { metadataTable.pipelineName eq metadata.pipelineName }
-            .andWhere { metadataTable.extractorName eq metadata.extractorName }
-            .andWhere { metadataTable.loaderName eq metadata.loaderName }
-            .map(::mapMetadata)
-            .singleOrNull()
-
-        val accumulatedDuration = (existingMetadata?.duration ?: 0L) + metadata.duration
-        val accumulatedRowsProcessed = (existingMetadata?.rowsProcessed ?: 0) + metadata.rowsProcessed
-
         metadataTable.upsert(
-            onUpdateExclude = listOf(metadataTable.createdAt),
+            onUpdateExclude = listOf(
+                metadataTable.duration,
+                metadataTable.rowsProcessed,
+                metadataTable.createdAt
+            ),
         ) {
             it[pipelineName] = metadata.pipelineName
             it[extractorName] = metadata.extractorName
@@ -89,8 +85,26 @@ class EtlMetadataRepositoryImpl(
             it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
             it[lastRunAt] = metadata.lastRunAt
-            it[duration] = accumulatedDuration
-            it[rowsProcessed] = accumulatedRowsProcessed
+            it[lastDuration] = metadata.lastDuration
+            it[lastRowsProcessed] = metadata.lastRowsProcessed
+            it[errorMessage] = metadata.errorMessage
+            it[updatedAt] = CurrentDateTime
+        }
+    }
+
+    override suspend fun accumulateMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
+        metadataTable.update(where = {
+            (metadataTable.pipelineName eq metadata.pipelineName) and
+                    (metadataTable.extractorName eq metadata.extractorName) and
+                    (metadataTable.loaderName eq metadata.loaderName)
+        }) {
+            it[status] = metadata.status.name
+            it[lastProcessedAt] = metadata.lastProcessedAt
+            it[lastRunAt] = metadata.lastRunAt
+            it[lastDuration] = lastDuration + metadata.lastDuration
+            it[lastRowsProcessed] = lastRowsProcessed + metadata.lastRowsProcessed
+            it[duration] = duration + metadata.lastDuration
+            it[rowsProcessed] = rowsProcessed + metadata.lastRowsProcessed
             it[errorMessage] = metadata.errorMessage
             it[updatedAt] = CurrentDateTime
         }
@@ -102,15 +116,31 @@ class EtlMetadataRepositoryImpl(
         }
     }
 
+    override suspend fun accumulateMetadataDurationByExtractor(
+        pipelineName: String,
+        extractorName: String,
+        duration: Long
+    ) {
+        newSuspendedTransaction(db = database) {
+            metadataTable.update(where = {
+                (metadataTable.pipelineName eq pipelineName) and (metadataTable.extractorName eq extractorName)
+            }) {
+                it[lastDuration] = lastDuration + duration
+                it[metadataTable.duration] = metadataTable.duration + duration
+                it[metadataTable.updatedAt] = CurrentDateTime
+            }
+        }
+    }
+
     private fun mapMetadata(row: ResultRow): EtlMetadata = EtlMetadata(
         pipelineName = row[metadataTable.pipelineName],
         extractorName = row[metadataTable.extractorName],
         loaderName = row[metadataTable.loaderName],
         lastProcessedAt = row[metadataTable.lastProcessedAt],
         lastRunAt = row[metadataTable.lastRunAt],
-        duration = row[metadataTable.duration],
+        lastDuration = row[metadataTable.lastDuration],
+        lastRowsProcessed = row[metadataTable.lastRowsProcessed],
         status = EtlStatus.valueOf(row[metadataTable.status]),
         errorMessage = row[metadataTable.errorMessage],
-        rowsProcessed = row[metadataTable.rowsProcessed]
     )
 }

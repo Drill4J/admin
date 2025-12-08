@@ -38,6 +38,7 @@ import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
 import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.serialization.json.JsonElement
 import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
@@ -333,7 +334,7 @@ class MetricsServiceImpl(
                 testPath = data["test_path"] as String,
                 testName = data["test_name"] as String,
                 tags = data["test_tags"] as List<String>?,
-                metadata = data["test_metadata"] as Map<String, String>?,
+                metadata = data["test_metadata"] as JsonElement?,
                 testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
                 impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 baselineBuildId = data["baseline_build_id"] as String?,
@@ -493,7 +494,7 @@ class MetricsServiceImpl(
                     testName = data["test_name"] as String,
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
-                    metadata = data["test_metadata"] as Map<String, String>?,
+                    metadata = data["test_metadata"] as JsonElement?,
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
@@ -561,18 +562,22 @@ class MetricsServiceImpl(
         val metadata = etlRepository.getAllMetadata()
         if (metadata.isEmpty()) return emptyMap()
 
-        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.STARTING, EtlStatus.RUNNING, EtlStatus.SUCCESS)
+        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)
         val minStatus = metadata.minByOrNull { statusOrder.indexOf(it.status) }?.status ?: EtlStatus.SUCCESS
         fun Instant.toTimestamp() = LocalDateTime.ofInstant(this, ZoneId.systemDefault())
         val maxLastProcessedAt = metadata.maxOfOrNull { it.lastProcessedAt.toTimestamp() }
         val maxLastRunAt = metadata.maxOfOrNull { it.lastRunAt.toTimestamp() }
         val errorMessages = metadata.mapNotNull { it.errorMessage }
+        val sumDuration = metadata.sumOf { it.lastDuration }
+        val sumRowsProcessed = metadata.sumOf { it.lastRowsProcessed }
 
         return buildMap {
             put("status", minStatus.name)
             put("lastProcessedAt", maxLastProcessedAt)
             put("lastRunAt", maxLastRunAt)
             if (errorMessages.isNotEmpty()) put("errorMessage", errorMessages.joinToString("; "))
+            put("lastDuration", sumDuration)
+            put("lastRowsProcessed", sumRowsProcessed)
         }
     }
 

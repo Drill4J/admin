@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
+import com.epam.drill.admin.etl.EtlExtractingResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
@@ -40,7 +41,8 @@ abstract class SqlDataExtractor<T>(
     override suspend fun extract(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        emitter: FlowCollector<T>
+        emitter: FlowCollector<T>,
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit
     ) {
         val sinceTimestampIndex = sqlQuery.indexOf(":since_timestamp")
         val untilTimestampIndex = sqlQuery.indexOf(":until_timestamp")
@@ -59,7 +61,8 @@ abstract class SqlDataExtractor<T>(
         execSuspend(
             sql = timestampedSql,
             args = args,
-        ) { rs ->
+        ) { rs, duration ->
+            onExtractCompleted(EtlExtractingResult(success = true, duration = duration))
             collectInFlow(rs, emitter)
         }
     }
@@ -67,7 +70,7 @@ abstract class SqlDataExtractor<T>(
     private suspend fun execSuspend(
         sql: String,
         args: List<Pair<ColumnType<*>, Instant>>,
-        collect: suspend (ResultSet) -> Unit
+        collect: suspend (ResultSet, Long) -> Unit
     ) {
         newSuspendedTransaction(context = Dispatchers.IO, db = database) {
             connection.autoCommit = false
@@ -83,7 +86,7 @@ abstract class SqlDataExtractor<T>(
                 }
                 logger.debug { "ETL extractor [$name] extracted rows in ${duration}ms" }
                 resultSet.use { rs ->
-                    collect(rs)
+                    collect(rs, duration)
                 }
             } finally {
                 stmt.closeIfPossible()

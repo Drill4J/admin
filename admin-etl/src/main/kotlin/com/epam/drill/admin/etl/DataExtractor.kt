@@ -35,7 +35,8 @@ interface DataExtractor<T> {
     suspend fun extract(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        emitter: FlowCollector<T>
+        emitter: FlowCollector<T>,
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit
     )
 }
 

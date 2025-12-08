@@ -19,7 +19,7 @@ import java.time.Instant
 
 data class EtlLoadingResult(
     val lastProcessedAt: Instant,
-    val processedRows: Int = 0,
+    val processedRows: Long = 0L,
     val status: EtlStatus,
     val duration: Long? = null,
     val errorMessage: String? = null

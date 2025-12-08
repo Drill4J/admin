@@ -20,7 +20,7 @@ import java.time.Instant
 data class EtlProcessingResult(
     val pipelineName: String,
     val lastProcessedAt : Instant,
-    val rowsProcessed: Int,
+    val rowsProcessed: Long,
     val status: EtlStatus,
     val errorMessage: String?,
 )

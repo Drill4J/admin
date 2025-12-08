@@ -42,7 +42,8 @@ interface EtlPipeline<T> {
     suspend fun execute(
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
-        onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { l, r -> }
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit = {},
+        onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { _, _ -> },
     ): EtlProcessingResult
 
     suspend fun cleanUp()

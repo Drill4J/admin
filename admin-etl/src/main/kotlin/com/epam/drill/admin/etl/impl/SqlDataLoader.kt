@@ -77,7 +77,7 @@ abstract class SqlDataLoader<T>(
         }
         return BatchResult(
             success = true,
-            rowsLoaded = batch.size,
+            rowsLoaded = batch.size.toLong(),
             duration = duration
         )
     }

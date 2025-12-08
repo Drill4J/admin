@@ -54,13 +54,11 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
                         val json = dbValue.value
                         if (json != null) {
                             if (json.trim().startsWith("{")) {
-                                val jsonObject = Json.parseToJsonElement(json).jsonObject
-                                jsonObject.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+                                Json.parseToJsonElement(json).jsonObject
                             } else if (json.trim().startsWith("[")) {
-                                val jsonArray = Json.parseToJsonElement(json).jsonArray
-                                jsonArray.map { it.jsonPrimitiveOrElement() }
+                                Json.parseToJsonElement(json).jsonArray
                             } else {
-                                emptyMap<String, Any?>()
+                                json
                             }
                         } else {
                             null

@@ -50,7 +50,7 @@ open class EtlOrchestratorImpl(
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
-            if (rowsProcessed == 0 && failures == 0)
+            if (rowsProcessed == 0L && failures == 0)
                 "ETL [$name] completed in ${duration}ms, no new rows"
             else
                 "ETL [$name] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
@@ -58,52 +58,79 @@ open class EtlOrchestratorImpl(
         return@withContext results
     }
 
-    override suspend fun rerun(initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info { "ETL [$name] deleting all metadata for rerun." }
-        pipelines.map { it.name }.forEach { pipelineName ->
-            metadataRepository.deleteMetadataByPipeline(pipelineName)
+    override suspend fun rerun(initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> =
+        withContext(Dispatchers.IO) {
+            logger.info { "ETL [$name] deleting all metadata for rerun." }
+            pipelines.map { it.name }.forEach { pipelineName ->
+                metadataRepository.deleteMetadataByPipeline(pipelineName)
+            }
+            logger.info { "ETL [$name] deleted all metadata for rerun." }
+            if (withDataDeletion) {
+                logger.info { "ETL [$name] deleting all data for rerun." }
+                pipelines.forEach { it.cleanUp() }
+                logger.info { "ETL [$name] deleted all data for rerun." }
+            }
+            val results = run(initTimestamp)
+            return@withContext results
         }
-        logger.info { "ETL [$name] deleted all metadata for rerun." }
-        if (withDataDeletion) {
-            logger.info { "ETL [$name] deleting all data for rerun." }
-            pipelines.forEach { it.cleanUp() }
-            logger.info { "ETL [$name] deleted all data for rerun." }
-        }
-        val results = run(initTimestamp)
-        return@withContext results
-    }
 
     private suspend fun runPipeline(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
         val snapshotTime = Instant.now()
-        val metadata = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name).associate {
-            it.loaderName to it
-        }
+        val metadata = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
+            .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.name }.toSet()
         val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
 
         try {
+            for (loader in loaderNames) {
+                metadataRepository.saveMetadata(
+                    EtlMetadata(
+                        pipelineName = pipeline.name,
+                        extractorName = pipeline.extractor.name,
+                        loaderName = loader,
+                        status = EtlStatus.EXTRACTING,
+                        lastProcessedAt = initTimestamp,
+                        lastRunAt = snapshotTime,
+                        lastDuration = 0L,
+                        lastRowsProcessed = 0L,
+                        errorMessage = null
+                    )
+                )
+            }
             val pipelineResult = pipeline.execute(
                 sinceTimestampPerLoader = timestampPerLoader,
-                untilTimestamp = snapshotTime
-            ) { loaderName, result ->
-                try {
-                    metadataRepository.saveMetadata(
-                        EtlMetadata(
-                            pipelineName = pipeline.name,
-                            extractorName = pipeline.extractor.name,
-                            loaderName = loaderName,
-                            status = result.status,
-                            lastProcessedAt = result.lastProcessedAt,
-                            errorMessage = result.errorMessage,
-                            lastRunAt = snapshotTime,
-                            duration = result.duration ?: 0L,
-                            rowsProcessed = result.processedRows
+                untilTimestamp = snapshotTime,
+                onExtractCompleted = { result ->
+                    try {
+                        metadataRepository.accumulateMetadataDurationByExtractor(
+                            pipeline.name,
+                            pipeline.extractor.name,
+                            result.duration
                         )
-                    )
-                } catch (e: Throwable) {
-                    logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                    } catch (e: Throwable) {
+                        logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                    }
+                },
+                onLoadCompleted = { loaderName, result ->
+                    try {
+                        metadataRepository.accumulateMetadata(
+                            EtlMetadata(
+                                pipelineName = pipeline.name,
+                                extractorName = pipeline.extractor.name,
+                                loaderName = loaderName,
+                                status = result.status,
+                                lastProcessedAt = result.lastProcessedAt,
+                                errorMessage = result.errorMessage,
+                                lastRunAt = snapshotTime,
+                                lastDuration = result.duration ?: 0L,
+                                lastRowsProcessed = result.processedRows
+                            )
+                        )
+                    } catch (e: Throwable) {
+                        logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                    }
                 }
-            }
+            )
             return pipelineResult
         } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)

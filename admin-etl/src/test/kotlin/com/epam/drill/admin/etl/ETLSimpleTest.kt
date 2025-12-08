@@ -48,7 +48,8 @@ class ETLSimpleTest {
         override suspend fun extract(
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
-            emitter: FlowCollector<SimpleClass>
+            emitter: FlowCollector<SimpleClass>,
+            onExtractCompleted: suspend (EtlExtractingResult) -> Unit
         ) {
             return dataStore.filter { it.createdAt > sinceTimestamp }.forEach { emitter.emit(it) }
         }
@@ -63,7 +64,7 @@ class ETLSimpleTest {
             onLoadCompleted: suspend (EtlLoadingResult) -> Unit
         ): EtlLoadingResult {
             var lastExtracted: SimpleClass? = null
-            var rowsProcessed: Int = 0
+            var rowsProcessed = 0L
             collector.collect {
                 lastExtracted = it
                 rowsProcessed++
@@ -109,9 +110,9 @@ class ETLSimpleTest {
             pipelineName = SIMPLE_PIPELINE,
             lastProcessedAt = Instant.EPOCH,
             lastRunAt = Instant.EPOCH,
-            duration = 0,
+            lastDuration = 0,
+            lastRowsProcessed = 0,
             status = EtlStatus.SUCCESS,
-            rowsProcessed = 0,
             errorMessage = null,
             extractorName = SIMPLE_EXTRACTOR,
             loaderName = SIMPLE_LOADER
@@ -137,9 +138,9 @@ class ETLSimpleTest {
                     pipelineName = pipelineName,
                     lastProcessedAt = Instant.EPOCH,
                     lastRunAt = Instant.EPOCH,
-                    duration = 0,
+                    lastDuration = 0,
+                    lastRowsProcessed = 0,
                     status = EtlStatus.SUCCESS,
-                    rowsProcessed = 0,
                     errorMessage = null,
                     extractorName = SIMPLE_EXTRACTOR,
                     loaderName = SIMPLE_LOADER
@@ -155,6 +156,25 @@ class ETLSimpleTest {
 
         override suspend fun getAllMetadata(): List<EtlMetadata> {
             return listOf(metadata)
+        }
+
+        override suspend fun accumulateMetadata(metadata: EtlMetadata) {
+            this.metadata = this.metadata.copy(
+                lastProcessedAt = metadata.lastProcessedAt,
+                lastRunAt = metadata.lastRunAt,
+                lastDuration = this.metadata.lastDuration + metadata.lastDuration,
+                lastRowsProcessed = this.metadata.lastRowsProcessed + metadata.lastRowsProcessed,
+                status = metadata.status,
+                errorMessage = metadata.errorMessage
+            )
+        }
+
+        override suspend fun accumulateMetadataDurationByExtractor(
+            pipelineName: String,
+            extractorName: String,
+            duration: Long
+        ) {
+
         }
     }
 
