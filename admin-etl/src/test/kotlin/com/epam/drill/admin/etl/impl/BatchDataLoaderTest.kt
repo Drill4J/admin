@@ -49,7 +49,7 @@ class BatchDataLoaderTest {
                 return BatchResult(success = false, rowsLoaded = 0, errorMessage = "Batch $batchNo failed")
             }
             loadedBatches.add(ArrayList(batch))
-            return BatchResult(success = true, rowsLoaded = batch.size)
+            return BatchResult(success = true, rowsLoaded = batch.size.toLong())
         }
 
         override suspend fun deleteAll() {
@@ -91,11 +91,10 @@ class BatchDataLoaderTest {
         assertEquals(10, loader.loadedBatches[1].size)
         assertEquals(5, loader.loadedBatches[2].size)
 
-        assertEquals(4, results.size)
-        assertEquals(EtlStatus.STARTING, results[0].status)
-        assertEquals(EtlStatus.RUNNING, results[1].status)
-        assertEquals(EtlStatus.RUNNING, results[2].status)
-        assertEquals(EtlStatus.SUCCESS, results[3].status)
+        assertEquals(3, results.size)
+        assertEquals(EtlStatus.LOADING, results[0].status)
+        assertEquals(EtlStatus.LOADING, results[1].status)
+        assertEquals(EtlStatus.SUCCESS, results[2].status)
     }
 
     @Test

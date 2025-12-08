@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
+import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
@@ -44,16 +45,23 @@ class EtlPipelineImpl<T>(
     override suspend fun execute(
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
-    ): EtlProcessingResult  = withContext(Dispatchers.IO) {
+    ): EtlProcessingResult = withContext(Dispatchers.IO) {
         val minProcessedTime = sinceTimestampPerLoader.values.min()
         logger.debug { "ETL pipeline [$name] starting since $minProcessedTime..." }
-        var results = EtlLoadingResult(status = EtlStatus.STARTING, lastProcessedAt = minProcessedTime)
+        var results = EtlLoadingResult(status = EtlStatus.EXTRACTING, lastProcessedAt = minProcessedTime)
         val duration = measureTimeMillis {
-            results = processEtl(minProcessedTime, sinceTimestampPerLoader, untilTimestamp, onLoadCompleted)
+            results = processEtl(
+                minProcessedTime,
+                sinceTimestampPerLoader,
+                untilTimestamp,
+                onExtractCompleted,
+                onLoadCompleted
+            )
         }
         logger.debug {
-            if (results.processedRows == 0 && results.status == EtlStatus.SUCCESS) {
+            if (results.processedRows == 0L && results.status == EtlStatus.SUCCESS) {
                 "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else {
                 val errors = results.errorMessage?.let { ", errors: $it" } ?: ""
@@ -62,7 +70,7 @@ class EtlPipelineImpl<T>(
         }
         EtlProcessingResult(
             pipelineName = name,
-            lastProcessedAt = results.lastProcessedAt ?: minProcessedTime,
+            lastProcessedAt = results.lastProcessedAt,
             rowsProcessed = results.processedRows,
             status = results.status,
             errorMessage = results.errorMessage
@@ -77,6 +85,7 @@ class EtlPipelineImpl<T>(
         extractorSinceTimestamp: Instant,
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
         onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
     ): EtlLoadingResult {
         val flow = CompletableSharedFlow<T>(
@@ -88,7 +97,7 @@ class EtlPipelineImpl<T>(
                 loadData(loader, sinceTimestampPerLoader[loader.name] ?: extractorSinceTimestamp, untilTimestamp, flow, onLoadCompleted)
             }
         }.also { jobs ->
-            extractData(flow, jobs, extractorSinceTimestamp, untilTimestamp)
+            extractData(flow, jobs, extractorSinceTimestamp, untilTimestamp, onExtractCompleted)
         }.awaitAll().max()
     }
 
@@ -96,12 +105,13 @@ class EtlPipelineImpl<T>(
         flow: CompletableSharedFlow<T>,
         jobs: List<Deferred<EtlLoadingResult>>,
         sinceTimestamp: Instant,
-        untilTimestamp: Instant
+        untilTimestamp: Instant,
+        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
     ) {
         try {
             // Start extractor only after all jobs are ready to consume data otherwise data may be lost
             flow.waitForSubscribers(jobs.count { it.isActive })
-            extractor.extract(sinceTimestamp, untilTimestamp, flow)
+            extractor.extract(sinceTimestamp, untilTimestamp, flow, onExtractCompleted)
         } finally {
             // Complete the flow to signal jobs that extraction is done
             flow.complete()

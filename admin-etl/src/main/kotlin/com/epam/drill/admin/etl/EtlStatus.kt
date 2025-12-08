@@ -18,6 +18,6 @@ package com.epam.drill.admin.etl
 enum class EtlStatus {
     FAILED,
     SUCCESS,
-    RUNNING,
-    STARTING;
+    LOADING,
+    EXTRACTING;
 }

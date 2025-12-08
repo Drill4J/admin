@@ -562,7 +562,7 @@ class MetricsServiceImpl(
         val metadata = etlRepository.getAllMetadata()
         if (metadata.isEmpty()) return emptyMap()
 
-        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.STARTING, EtlStatus.RUNNING, EtlStatus.SUCCESS)
+        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)
         val minStatus = metadata.minByOrNull { statusOrder.indexOf(it.status) }?.status ?: EtlStatus.SUCCESS
         fun Instant.toTimestamp() = LocalDateTime.ofInstant(this, ZoneId.systemDefault())
         val maxLastProcessedAt = metadata.maxOfOrNull { it.lastProcessedAt.toTimestamp() }

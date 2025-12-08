@@ -23,9 +23,9 @@ data class EtlMetadata(
     val loaderName: String,
     val lastProcessedAt: Instant,
     val lastRunAt: Instant,
-    val duration: Long,
+    val lastDuration: Long,
+    val lastRowsProcessed: Long,
     val status: EtlStatus,
     val errorMessage: String?,
-    val rowsProcessed: Int
 )
 

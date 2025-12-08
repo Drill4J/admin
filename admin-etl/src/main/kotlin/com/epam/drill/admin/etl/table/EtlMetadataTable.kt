@@ -29,9 +29,12 @@ class EtlMetadataTable(tableName: String) : Table(tableName) {
     val status = varchar("status", 50)
     val lastProcessedAt = timestamp("last_processed_at")
     val lastRunAt = timestamp("last_run_at")
-    val duration = long("duration")
-    val rowsProcessed = integer("rows_processed")
+    val lastDuration = long("last_duration")
+    val lastRowsProcessed = long("last_rows_processed")
+    val duration = long("duration").default(0L)
+    val rowsProcessed = long("rows_processed").default(0L)
     val errorMessage = text("error_message").nullable()
+
 
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
