@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.views
+package com.epam.drill.admin.metrics.models
 
-enum class ChangeType {
-    NEW,
-    MODIFIED,
-    DELETED,
-    EQUAL;
-
-    companion object {
-        fun fromString(value: String?): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }
-    }
+enum class MatViewScope {
+    BUILDS,
+    TESTS,
+    COVERAGE
 }

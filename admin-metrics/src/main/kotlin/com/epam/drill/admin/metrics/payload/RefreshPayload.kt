@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.views
+package com.epam.drill.admin.metrics.payload
 
-enum class ChangeType {
-    NEW,
-    MODIFIED,
-    DELETED,
-    EQUAL;
+import com.epam.drill.admin.metrics.models.MatViewScope
+import kotlinx.serialization.Serializable
 
-    companion object {
-        fun fromString(value: String?): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }
-    }
-}
+@Serializable
+class RefreshPayload(val scopes: Set<MatViewScope> = emptySet())

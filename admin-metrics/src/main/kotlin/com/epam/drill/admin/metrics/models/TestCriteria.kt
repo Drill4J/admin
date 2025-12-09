@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.views
+package com.epam.drill.admin.metrics.models
 
-enum class ChangeType {
-    NEW,
-    MODIFIED,
-    DELETED,
-    EQUAL;
+import kotlinx.serialization.Serializable
 
-    companion object {
-        fun fromString(value: String?): ChangeType? = ChangeType.entries.find { it.name.equals(value, ignoreCase = true) }
-    }
+@Serializable
+open class TestCriteria(
+    val testTags: List<String> = emptyList(),
+    val testPath: String? = null,
+    val testName: String? = null,
+    val testTaskId: String? = null,
+) {
+    object NONE: TestCriteria()
 }

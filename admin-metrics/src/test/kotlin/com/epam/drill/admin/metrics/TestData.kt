@@ -20,10 +20,11 @@ import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
+const val testBranch = "main"
+const val testEnv = "env-1"
 const val testTask = "check"
 const val testClass = "com.example.Class"
 const val testPath = "com.example.Test"
@@ -72,6 +73,15 @@ val method3 = SingleMethodPayload(
     probesStartPos = 5,
     bodyChecksum = "300",
 )
+val method4 = SingleMethodPayload(
+    classname = testClass,
+    name = "method4",
+    params = "()",
+    returnType = "void",
+    probesCount = 4,
+    probesStartPos = 6,
+    bodyChecksum = "400",
+)
 val test1 = TestDetails(
     runner = "junit",
     path = testPath,
@@ -106,7 +116,7 @@ val session3 = SessionPayload(
     startedAt = Clock.System.now()
 )
 
-fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
+fun SingleMethodPayload.changed() = SingleMethodPayload(
     classname = classname,
     name = name,
     params = params,
@@ -115,6 +125,18 @@ fun SingleMethodPayload.changeChecksum() = SingleMethodPayload(
     probesStartPos = probesStartPos,
     bodyChecksum = bodyChecksum + "0",
 )
+
+fun SingleMethodPayload.setProbesStartPos(pos: Int) = SingleMethodPayload(
+    classname = classname,
+    name = name,
+    params = params,
+    returnType = returnType,
+    probesCount = probesCount,
+    probesStartPos = pos,
+    bodyChecksum = bodyChecksum,
+)
+
+fun SingleMethodPayload.changeChecksum() = changed()
 
 fun probesOf(vararg probes: Int): IntArray = probes
 

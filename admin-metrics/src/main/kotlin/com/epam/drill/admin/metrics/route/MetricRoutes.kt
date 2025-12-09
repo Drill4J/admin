@@ -16,6 +16,13 @@
 package com.epam.drill.admin.metrics.route
 
 import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
+import com.epam.drill.admin.metrics.models.TestCriteria
+import com.epam.drill.admin.metrics.payload.RefreshPayload
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
 import com.epam.drill.admin.metrics.repository.impl.Paging
@@ -23,6 +30,8 @@ import com.epam.drill.admin.metrics.service.MetricsService
 import io.ktor.http.*
 import io.ktor.resources.*
 import io.ktor.server.application.*
+import io.ktor.server.request.receive
+import io.ktor.server.request.receiveNullable
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
@@ -131,6 +140,8 @@ class Metrics {
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+        val includeDeleted: Boolean? = null,
+        val includeEqual: Boolean? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null
@@ -164,16 +175,27 @@ class Metrics {
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
+
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+
+        val packageName: String? = null,
+        val className: String? = null,
+        val methodName: String? = null,
+        @Deprecated("Use packageName instead")
         val packageNamePattern: String? = null,
+        @Deprecated("Use className instead")
         val classNamePattern: String? = null,
-        val methodNamePattern: String? = null,
+
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+
+        val coverageBranches: List<String> = emptyList(),
+        val coverageAppEnvIds: List<String> = emptyList(),
+
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -187,13 +209,29 @@ class Metrics {
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
+
         val baselineInstanceId: String? = null,
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
+
+        val packageName: String? = null,
+        val className: String? = null,
+        val methodName: String? = null,
+        @Deprecated("Use packageName instead")
+        val packageNamePattern: String? = null,
+        @Deprecated("Use className instead")
+        val classNamePattern: String? = null,
+
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+
+        val onlyBaselineBuildTestsEnabled: Boolean = false,
+        val coverageBranches: List<String> = emptyList(),
+        val coverageAppEnvIds: List<String> = emptyList(),
+        val coveragePeriodDays: Int? = null,
+
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -201,6 +239,12 @@ class Metrics {
     @Resource("/refresh")
     class Refresh(
         val parent: Metrics,
+    )
+
+    @Resource("/refresh/{scope}")
+    class RefreshScope(
+        val parent: Metrics,
+        val scope: MatViewScope
     )
 }
 
@@ -219,6 +263,7 @@ fun Route.metricsRoutes() {
 
 fun Route.metricsManagementRoutes() {
     postRefreshMaterializedViews()
+    postRefreshMaterializedViewsWithScope()
 }
 
 fun Route.getApplications() {
@@ -345,6 +390,8 @@ fun Route.getChanges() {
             baselineInstanceId = params.baselineInstanceId,
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
+            includeDeleted = params.includeDeleted,
+            includeEqual = params.includeEqual,
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -390,22 +437,38 @@ fun Route.getImpactedTests() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ImpactedTests> { params ->
+        val targetBuild = Build(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion
+        )
+        val baselineBuild = BaselineBuild(
+            params.groupId,
+            params.appId,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
+        )
         val data = metricsService.getImpactedTests(
-            groupId = params.groupId,
-            appId = params.appId,
-            instanceId = params.instanceId,
-            commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            testTag = params.testTag,
-            testTaskId = params.testTaskId,
-            testPath = params.testPath,
-            testName = params.testName,
-            packageNamePattern = params.packageNamePattern,
-            classNamePattern = params.classNamePattern,
-            methodNamePattern = params.methodNamePattern,
+            build = targetBuild,
+            baselineBuild = baselineBuild,
+            testCriteria = TestCriteria(
+                testTags = listOfNotNull(params.testTag),
+                testTaskId = params.testTaskId,
+                testPath = params.testPath,
+                testName = params.testName
+            ),
+            methodCriteria = MethodCriteria(
+                packageName = params.packageName ?: params.packageNamePattern,
+                className = params.className ?: params.classNamePattern,
+                methodName = params.methodName
+            ),
+            coverageCriteria = CoverageCriteria(
+                branches = params.coverageBranches,
+                appEnvIds = params.coverageAppEnvIds,
+            ),
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -423,19 +486,38 @@ fun Route.getImpactedMethods() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.ImpactedMethods> { params ->
+        val targetBuild = Build(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion
+        )
+        val baselineBuild = BaselineBuild(
+            params.groupId,
+            params.appId,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
+        )
         val data = metricsService.getImpactedMethods(
-            groupId = params.groupId,
-            appId = params.appId,
-            instanceId = params.instanceId,
-            commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            testTag = params.testTag,
-            testTaskId = params.testTaskId,
-            testPath = params.testPath,
-            testName = params.testName,
+            build = targetBuild,
+            baselineBuild = baselineBuild,
+            testCriteria = TestCriteria(
+                testTags = listOfNotNull(params.testTag),
+                testTaskId = params.testTaskId,
+                testPath = params.testPath,
+                testName = params.testName
+            ),
+            methodCriteria = MethodCriteria(
+                packageName = params.packageName ?: params.packageNamePattern,
+                className = params.className ?: params.classNamePattern,
+                methodName = params.methodName
+            ),
+            coverageCriteria = CoverageCriteria(
+                branches = params.coverageBranches,
+                appEnvIds = params.coverageAppEnvIds,
+            ),
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -455,5 +537,14 @@ fun Route.postRefreshMaterializedViews() {
     post<Metrics.Refresh> { params ->
         metricsService.refreshMaterializedViews()
         call.ok("Materialized views were refreshed.")
+    }
+}
+
+fun Route.postRefreshMaterializedViewsWithScope() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    post<Metrics.RefreshScope> { params ->
+        metricsService.refreshMaterializedViews(scopes = setOfNotNull(params.scope))
+        call.ok("Materialized views [${params.scope}] were refreshed.")
     }
 }

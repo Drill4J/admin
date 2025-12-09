@@ -21,11 +21,18 @@ import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
+import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -357,6 +364,8 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
@@ -387,6 +396,8 @@ class MetricsServiceImpl(
             metricsRepository.getChangesWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
+                includeDeleted = includeDeleted?.takeIf { it },
+                includeEqual = includeEqual?.takeIf { it },
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
@@ -434,52 +445,19 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedTests(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria,
+        methodCriteria: MethodCriteria,
+        coverageCriteria: CoverageCriteria,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        ).also { buildId ->
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Baseline build info not found for $buildId")
-            }
-        }
+        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            instanceId,
-            commitSha,
-            buildVersion,
-            """
-            Provide at least one the following: instanceId, commitSha, buildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
-        }
+        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -488,13 +466,18 @@ class MetricsServiceImpl(
             metricsRepository.getImpactedTests(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
-                testTaskId = testTaskId,
-                testTag = testTag,
-                testPathPattern = testPath,
-                testNamePattern = testName,
-                packageNamePattern = packageNamePattern,
-                classNamePattern = classNamePattern,
-                methodNamePattern = methodNamePattern,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                methodSignaturePattern = methodCriteria.signaturePattern,
+
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+
                 offset = offset,
                 limit = limit,
             ).map { data ->
@@ -502,6 +485,7 @@ class MetricsServiceImpl(
                     testDefinitionId = data["test_definition_id"] as String,
                     testPath = data["test_path"] as String,
                     testName = data["test_name"] as String,
+                    testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as Map<String, String>?,
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
@@ -511,48 +495,20 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getImpactedMethods(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria,
+        methodCriteria: MethodCriteria,
+        coverageCriteria: CoverageCriteria,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        ).also { buildId ->
-            if (!metricsRepository.buildExists(buildId)) {
-                throw BuildNotFound("Baseline build info not found for $buildId")
-            }
-        }
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            instanceId,
-            commitSha,
-            buildVersion,
-            """
-            Provide at least one the following: instanceId, commitSha, buildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
-        }
+        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+
+        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -560,35 +516,50 @@ class MetricsServiceImpl(
             metricsRepository.getImpactedMethods(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
-                testTaskId = testTaskId,
-                testTag = testTag,
-                testPathPattern = testPath,
-                testNamePattern = testName,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                methodSignaturePattern = methodCriteria.signaturePattern,
+
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+
                 offset = null,
                 limit = null
             ).map(::mapToMethodView)
         }
     }
 
-    override suspend fun refreshMaterializedViews() = coroutineScope {
-        val startTime = System.currentTimeMillis()
-        logger.info { "Refreshing materialized views..." }
+    override suspend fun refreshMaterializedViews(scopes: Set<MatViewScope>) {
+        val resolvedScopes = scopes.ifEmpty { MatViewScope.entries.toSet() }
+        suspend fun refresh(view: MatView) {
+            refreshMatViewOfScopes(view, resolvedScopes)
+        }
 
-        val buildsViewJob = async { refreshMaterializedView(buildsView) }
-        val methodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(methodsView) } }
-        val buildMethodsViewJob = async { waitFor(buildsViewJob).run { refreshMaterializedView(buildMethodsView) } }
-        val testLaunchesViewJob = async { refreshMaterializedView(testLaunchesView) }
-        val testDefinitionsViewJob = async { refreshMaterializedView(testDefinitionsView) }
-        val testSessionsViewJob = async { refreshMaterializedView(testSessionsView) }
-        val methodCoverageViewJob = async { waitFor(buildsViewJob, methodsViewJob, buildMethodsViewJob,
-            testLaunchesViewJob, testDefinitionsViewJob, testSessionsViewJob).run { refreshMaterializedView(methodCoverageView) } }
-        val methodSmartCoverageViewJob = async { waitFor(methodCoverageViewJob).run { refreshMaterializedView(methodSmartCoverageView) } }
-        val testSessionBuildsViewJob = async { waitFor(buildsViewJob, methodCoverageViewJob).run { refreshMaterializedView(testSessionBuildsView) } }
+        logger.info { "Refreshing materialized views ${resolvedScopes}..." }
 
-        waitFor(testSessionBuildsViewJob, methodSmartCoverageViewJob)
+        val duration = measureTimedValue {
+            refresh(lastUpdateStatusView)
+            refresh(buildsView)
+            refresh(methodsView)
+            refresh(buildMethodsView)
+            refresh(testLaunchesView)
+            refresh(testDefinitionsView)
+            refresh(testSessionsView)
+            refresh(buildClassTestDefinitionCoverageView)
+            refresh(buildMethodTestDefinitionCoverageView)
+            refresh(buildMethodTestSessionCoverageView)
+            refresh(buildMethodCoverageView)
+            refresh(methodCoverageView)
+            refresh(test2CodeMappingView)
+            refresh(testSessionBuildsView)
+        }
 
-        val duration = System.currentTimeMillis() - startTime
-        logger.info { "Materialized views were refreshed in $duration ms." }
+        logger.info { "Materialized views $resolvedScopes were refreshed in ${formatDuration(duration.duration)}." }
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -614,18 +585,23 @@ class MetricsServiceImpl(
         return URI("$uri?$queryString").toString()
     }
 
-    private suspend fun refreshMaterializedView(viewName: String) {
+    private suspend fun refreshMatViewOfScopes(view: MatView, scopes: Set<MatViewScope>) {
+        if ((view.scope == null) || (view.scope in scopes)) {
+            refreshMatView(view)
+        }
+    }
+    private suspend fun refreshMatView(view: MatView) {
         val result = measureTimedValue {
             try {
-                metricsRepository.refreshMaterializedView(viewName, true)
+                metricsRepository.refreshMaterializedView(view.name, true)
             } catch (e: ExposedSQLException) {
                 if (isMaterializedViewNotPopulated(e)) {
-                    logger.debug { "Materialized view $viewName is not populated. Refreshing without CONCURRENTLY." }
-                    metricsRepository.refreshMaterializedView(viewName, false)
+                    logger.debug { "Materialized view ${view.name} is not populated. Refreshing without CONCURRENTLY." }
+                    metricsRepository.refreshMaterializedView(view.name, false)
                 } else throw e
             }
         }
-        logger.debug("Materialized view {} was refreshed in {}.", viewName, formatDuration(result.duration))
+        logger.debug("Materialized view {} was refreshed in {}.", view.name, formatDuration(result.duration))
     }
 
     private fun formatDuration(duration: kotlin.time.Duration): String = when {
@@ -634,9 +610,6 @@ class MetricsServiceImpl(
         else -> "${duration.inWholeMilliseconds} ms"
     }
 
-    private suspend fun waitFor(vararg dependents: Deferred<Unit>) {
-        dependents.forEach { it.await() }
-    }
 
     private fun isMaterializedViewNotPopulated(e: ExposedSQLException): Boolean =
         e.message?.contains("CONCURRENTLY cannot be used when the materialized view is not populated") == true

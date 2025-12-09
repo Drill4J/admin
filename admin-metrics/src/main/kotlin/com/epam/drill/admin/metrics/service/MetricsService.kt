@@ -15,6 +15,12 @@
  */
 package com.epam.drill.admin.metrics.service
 
+import com.epam.drill.admin.metrics.models.BaselineBuild
+import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.CoverageCriteria
+import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.MatViewScope
+import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
 
 interface MetricsService {
@@ -90,6 +96,8 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>
@@ -110,42 +118,25 @@ interface MetricsService {
     ): PagedList<MethodView>
 
     suspend fun getImpactedTests(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        methodNamePattern: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria = TestCriteria.NONE,
+        methodCriteria: MethodCriteria = MethodCriteria.NONE,
+        coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>
 
     suspend fun getImpactedMethods(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        testTag: String?,
-        testTaskId: String?,
-        testPath: String?,
-        testName: String?,
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria = TestCriteria.NONE,
+        methodCriteria: MethodCriteria = MethodCriteria.NONE,
+        coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>
 
-    suspend fun refreshMaterializedViews()
+    suspend fun refreshMaterializedViews(scopes: Set<MatViewScope> = emptySet())
 
 }
