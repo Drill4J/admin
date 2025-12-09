@@ -83,6 +83,7 @@ val rawDataServicesDIModule
                 testSessionRepository = instance(),
                 testLaunchRepository = instance(),
                 testSessionBuildRepository = instance(),
+                scheduler = instance(),
             )
         }
     }

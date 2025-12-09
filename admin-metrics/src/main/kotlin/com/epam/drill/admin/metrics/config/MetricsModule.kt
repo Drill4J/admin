@@ -27,6 +27,7 @@ import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
 import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
 import com.epam.drill.admin.metrics.etl.testSessionBuildsPipeline
 import com.epam.drill.admin.metrics.etl.testSessionsPipeline
+import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
 import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.metrics.repository.MetricsRepository
@@ -85,6 +86,11 @@ val metricsDIModule
         }
         bind<MetricsDataRetentionPolicyJob>() with singleton {
             MetricsDataRetentionPolicyJob(
+                metricsRepository = instance(),
+            )
+        }
+        bind<DeleteMetricsDataJob>() with singleton {
+            DeleteMetricsDataJob(
                 metricsRepository = instance(),
             )
         }

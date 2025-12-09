@@ -17,6 +17,10 @@ package com.epam.drill.admin.writer.rawdata.service.impl
 
 import com.epam.drill.admin.common.exception.InvalidParameters
 import com.epam.drill.admin.common.principal.User
+import com.epam.drill.admin.common.scheduler.DrillScheduler
+import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
+import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
+import com.epam.drill.admin.common.scheduler.getTestDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
@@ -35,6 +39,7 @@ class DataManagementServiceImpl(
     private val methodRepository: MethodRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
     private val testLaunchRepository: TestLaunchRepository,
+    private val scheduler: DrillScheduler,
 ) : DataManagementService {
 
     override suspend fun deleteBuildData(groupId: String, appId: String, buildId: String, user: User?) {
@@ -47,6 +52,7 @@ class DataManagementServiceImpl(
             methodRepository.deleteAllByBuildId(groupId, appId, buildId)
             testSessionBuildRepository.deleteAllByBuildId(groupId, appId, buildId)
             buildRepository.deleteByBuildId(groupId, appId, buildId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getBuildDataDeletionDataMap(groupId, appId, buildId))
         }
     }
 
@@ -59,6 +65,7 @@ class DataManagementServiceImpl(
             testLaunchRepository.deleteAllByTestSessionId(groupId, testSessionId)
             testSessionBuildRepository.deleteAllByTestSessionId(groupId, testSessionId)
             testSessionRepository.deleteByTestSessionId(groupId, testSessionId)
+            scheduler.triggerJob(deleteMetricsDataJobKey, getTestDataDeletionDataMap(groupId, testSessionId))
         }
     }
 }

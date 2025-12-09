@@ -100,6 +100,10 @@ class DrillSchedulerImpl(
         }
     }
 
+    override fun addJob(jobDetail: JobDetail) {
+        scheduler.addJob(jobDetail, true)
+    }
+
     override fun shutdown() {
         if (!scheduler.isShutdown) {
             scheduler.shutdown(false)

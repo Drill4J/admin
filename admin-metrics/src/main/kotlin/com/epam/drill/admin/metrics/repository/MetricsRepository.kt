@@ -142,4 +142,8 @@ interface MetricsRepository {
     suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(timestamp: Instant)
     suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllOrphanReferences()
+
+    suspend fun deleteAllBuildDataByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllTestDataByTestSessionId(groupId: String, testSessionId: String)
 }
