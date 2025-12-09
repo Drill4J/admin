@@ -179,7 +179,7 @@ class RawDataServiceImpl(
                 result = test.result.toString(),
                 duration = test.duration
             )
-        }.let { testLaunchRepository::createMany }
+        }.let { testLaunchRepository.createMany(it) }
 
         testsPayload.tests.map { test ->
             TestDefinition(
@@ -192,7 +192,7 @@ class RawDataServiceImpl(
                 tags = test.details.tags,
                 metadata = test.details.metadata
             )
-        }.let(testDefinitionRepository::createMany)
+        }.let { testDefinitionRepository.createMany(it) }
     }
 
     override suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?) {

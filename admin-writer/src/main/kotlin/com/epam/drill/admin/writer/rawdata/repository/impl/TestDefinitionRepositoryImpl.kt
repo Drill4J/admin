@@ -26,7 +26,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
 class TestDefinitionRepositoryImpl: TestDefinitionRepository {
-    override fun createMany(testDefinitionList: List<TestDefinition>) {
+    override suspend fun createMany(testDefinitionList: List<TestDefinition>) {
         TestDefinitionTable.batchUpsert(
             testDefinitionList,
             onUpdateExclude = listOf(TestDefinitionTable.createdAt),
@@ -45,7 +45,7 @@ class TestDefinitionRepositoryImpl: TestDefinitionRepository {
     }
 
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         TestDefinitionTable.deleteWhere { (TestDefinitionTable.groupId eq groupId) and (TestDefinitionTable.updatedAt less createdBefore.atStartOfDay()) }
     }
 }
