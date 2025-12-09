@@ -364,6 +364,8 @@ class MetricsServiceImpl(
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
+        includeDeleted: Boolean?,
+        includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
@@ -394,6 +396,8 @@ class MetricsServiceImpl(
             metricsRepository.getChangesWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
+                includeDeleted = includeDeleted?.takeIf { it },
+                includeEqual = includeEqual?.takeIf { it },
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)

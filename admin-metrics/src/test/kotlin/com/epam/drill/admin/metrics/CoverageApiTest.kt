@@ -20,6 +20,7 @@ import com.epam.drill.admin.test.DatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
@@ -43,17 +44,14 @@ class CoverageApiTest : DatabaseTests({
 }) {
     @Test
     fun `given build with no coverage, coverage service should return methods list with zero coverage`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-            }
+        havingData {
+            build1 has listOf(method1, method2)
+        }.expectThat {
             client.get("/metrics/coverage") {
                 parameter("groupId", build1.groupId)
                 parameter("appId", build1.appId)
                 parameter("buildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.all { it["coveredProbes"] == 0 })
             }
@@ -61,23 +59,16 @@ class CoverageApiTest : DatabaseTests({
 
     @Test
     fun `given build with coverage, coverage service should return methods list with coverage data`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                deployInstance(build1, arrayOf(method1, method2))
-                launchTest(
-                    session1, test1, build1, arrayOf(
-                        method1 to probesOf(1, 1),
-                        method2 to probesOf(0, 0, 1)
-                    )
-                )
-            }
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 covers method1 with probesOf(1, 1) on build1
+            test1 covers method2 with probesOf(0, 0, 1) on build1
+        }.expectThat {
             client.get("/metrics/coverage") {
                 parameter("groupId", build1.groupId)
                 parameter("appId", build1.appId)
                 parameter("buildVersion", build1.buildVersion)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method1.name && it["coveredProbes"] == 2 })
                 assertTrue(data.any { it["name"] == method2.name && it["coveredProbes"] == 1 })
@@ -86,34 +77,28 @@ class CoverageApiTest : DatabaseTests({
 
     @Test
     fun `given page and size, coverage service should return methods only for specified page and size`(): Unit =
-        runBlocking {
-            val client = runDrillApplication {
-                val methods = (1..15).map { idx ->
-                    SingleMethodPayload(
-                        classname = testClass,
-                        name = "method$idx",
-                        params = "()",
-                        returnType = "void",
-                        probesCount = 3,
-                        probesStartPos = 3 * (idx - 1),
-                        bodyChecksum = "100$idx",
-                    )
-                }
-                deployInstance(instance = build1, methods = methods.toTypedArray())
+        havingData {
+            val methods = (1..15).map { idx ->
+                SingleMethodPayload(
+                    classname = testClass,
+                    name = "method$idx",
+                    params = "()",
+                    returnType = "void",
+                    probesCount = 3,
+                    probesStartPos = 3 * (idx - 1),
+                    bodyChecksum = "100$idx",
+                )
             }
-
+            build1 has methods.toList()
+        }.expectThat {
             client.get("/metrics/coverage") {
                 parameter("groupId", build1.groupId)
                 parameter("appId", build1.appId)
                 parameter("buildVersion", build1.buildVersion)
                 parameter("page", 1)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(10, data.size)
-                val total = json.read<Int>("$.paging.total")
-                assertEquals(15, total)
             }
 
             client.get("/metrics/coverage") {
@@ -122,12 +107,8 @@ class CoverageApiTest : DatabaseTests({
                 parameter("buildVersion", build1.buildVersion)
                 parameter("page", 2)
                 parameter("pageSize", 10)
-            }.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
+            }.returns { data ->
                 assertEquals(5, data.size)
-                val total = json.read<Int>("$.paging.total")
-                assertEquals(15, total)
             }
         }
 

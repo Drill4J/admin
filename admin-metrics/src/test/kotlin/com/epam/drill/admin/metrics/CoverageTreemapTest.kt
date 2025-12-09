@@ -39,47 +39,40 @@ class CoverageTreemapTest : DatabaseTests({
     MetricsDatabaseConfig.init(it)
 }) {
     @Test
-    fun `given build with no coverage, coverage-treemap should return empty list`() {
-        runBlocking {
-            val client = runDrillApplication {
-                putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
-            }
-            val response = client.get("/metrics/coverage-treemap") {
-                parameter("buildId", "${testGroup}:${testApp}:1.0.0")
-            }
-            response.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Any>>("$.data")
-                assertTrue(data.isEmpty())
-            }
+    fun `given build with no methods no coverage, coverage-treemap should return empty list`() = havingData {
+        client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
+    }.expectThat {
+        client.get("/metrics/coverage-treemap") {
+            parameter("buildId", "${testGroup}:${testApp}:1.0.0")
+        }.returns { data ->
+            assertTrue(data.isEmpty())
         }
     }
 
     @Test
-    fun `given build with methods and coverage, coverage-treemap should return non-empty list`() {
-        runBlocking {
-            val client = runDrillApplication {
-                putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
-                putMethods(MethodsPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", methods = arrayOf(method1, method2)))
-                // Simulate coverage for method1
-                launchTest(session1, test1,
-                    InstancePayload(
-                        groupId = testGroup,
-                        appId = testApp,
-                        buildVersion = "1.0.0",
-                        instanceId = "i1",
-                        envId = "env-1"
-                    ), arrayOf(method1 to probesOf(1, 1), method2 to probesOf(0, 0)))
-            }
-            val response = client.get("/metrics/coverage-treemap") {
-                parameter("buildId", "${testGroup}:${testApp}:1.0.0")
-            }
-            response.assertSuccessStatus().apply {
-                val json = JsonPath.parse(bodyAsText())
-                val data = json.read<List<Map<String, Any>>>("$.data")
-                assertTrue(data.isNotEmpty())
-                assertTrue(data.any { it["name"].toString().startsWith(method1.name) })
-            }
+    fun `given build with methods but no coverage, coverage-treemap should return non-empty list with zero coverage`() = havingData {
+        build1 has listOf(method1, method2)
+    }.expectThat {
+        client.get("/metrics/coverage-treemap") {
+            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+        }.returns { data ->
+            assertTrue(data.isNotEmpty())
+            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
+            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+        }
+    }
+
+    @Test
+    fun `given build with methods and coverage, coverage-treemap should return non-empty list`() = havingData {
+        build1 has listOf(method1, method2)
+        test1 covers method1 with probesOf(1, 1) on build1
+    }.expectThat {
+        client.get("/metrics/coverage-treemap") {
+            parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
+        }.returns { data ->
+            assertTrue(data.isNotEmpty())
+            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
         }
     }
 
