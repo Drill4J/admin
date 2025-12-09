@@ -19,6 +19,8 @@ import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import java.time.LocalDate
 
 interface CoverageRepository {
-    fun createMany(data: List<Coverage>)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun createMany(data: List<Coverage>)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
 }

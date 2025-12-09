@@ -491,8 +491,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).first()["metrics_period"] as LocalDateTime).toInstant(UTC)
     }
 
-   override suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant) = transaction {
-       val timestamp = Timestamp.from(timestamp)
+    override suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant) = transaction {
+        val timestamp = Timestamp.from(timestamp)
         executeUpdate(
             """
                 DELETE FROM metrics.build_method_test_definition_coverage c
@@ -633,5 +633,120 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate("DELETE FROM metrics.method_daily_coverage WHERE created_at_day < ?", timestamp)
+    }
+
+    override suspend fun deleteAllBuildDataByBuildId(
+        groupId: String,
+        appId: String,
+        buildId: String
+    ) = transaction {
+        executeUpdate(
+            "DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.build_method_coverage WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+        // deleting from metrics.method_daily_coverage is impossible because the table does not reference build_id
+        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference build_id
+        executeUpdate(
+            "DELETE FROM metrics.test_session_builds WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.build_methods WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.builds WHERE group_id = ? AND app_id = ? AND build_id = ?",
+            groupId,
+            appId,
+            buildId
+        )
+    }
+
+    override suspend fun deleteAllTestDataByTestSessionId(
+        groupId: String,
+        testSessionId: String
+    ) = transaction {
+        executeUpdate(
+            "DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = ? AND test_session_id = ?",
+            groupId,
+            testSessionId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = ? AND test_session_id = ?",
+            groupId,
+            testSessionId
+        )
+        // deleting from metrics.build_method_coverage is impossible because the table does not reference test_session_id
+        // deleting from metrics.method_daily_coverage is impossible because the table does not linked to test_session_id
+        // deleting from metrics.test_to_code_mapping is impossible because the table does not reference test_session_id
+        executeUpdate(
+            "DELETE FROM metrics.test_launches WHERE group_id = ? AND test_session_id = ?",
+            groupId,
+            testSessionId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.test_session_builds WHERE group_id = ? AND test_session_id = ?",
+            groupId,
+            testSessionId
+        )
+        executeUpdate(
+            "DELETE FROM metrics.test_sessions WHERE group_id = ? AND test_session_id = ?",
+            groupId,
+            testSessionId
+        )
+    }
+
+    override suspend fun deleteAllOrphanReferences() = transaction {
+        executeUpdate(
+            """
+                DELETE FROM metrics.methods m
+                WHERE NOT EXISTS (SELECT 1 
+                    FROM metrics.build_methods bm 
+                    WHERE bm.group_id = m.group_id 
+                        AND bm.app_id = m.app_id
+                        AND bm.method_id = m.method_id
+                )
+                """.trimIndent()
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.method_daily_coverage c
+                WHERE NOT EXISTS (SELECT 1
+                    FROM metrics.methods m
+                    WHERE m.group_id = c.group_id
+                        AND m.app_id = c.app_id
+                        AND m.method_id = c.method_id
+                )
+                """.trimIndent()
+        )
+        executeUpdate(
+            """
+                DELETE FROM metrics.test_to_code_mapping tcm
+                WHERE NOT EXISTS (SELECT 1
+                    FROM metrics.methods m
+                    WHERE m.group_id = tcm.group_id
+                        AND m.app_id = tcm.app_id
+                        AND m.signature = tcm.signature
+                )
+                """.trimIndent()
+        )
     }
 }

@@ -272,6 +272,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  # Data Management Endpoints
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
+    delete:
+      summary: Delete build data with all associated data (coverage, methods, instances)
+      operationId: deleteBuild
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Build deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/tests/sessions/{testSessionId}:
+    delete:
+      summary: Delete test session data with all associated data (coverage, test launches)
+      operationId: deleteTestSession
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   # Metrics Endpoints
   /api/metrics/applications:
     get:

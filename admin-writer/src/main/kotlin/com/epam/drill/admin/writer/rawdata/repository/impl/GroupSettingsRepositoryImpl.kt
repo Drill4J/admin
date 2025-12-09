@@ -24,7 +24,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.upsert
 
 class GroupSettingsRepositoryImpl : GroupSettingsRepository {
-    override fun getAll(): List<GroupSettings> {
+    override suspend fun getAll(): List<GroupSettings> {
         return GroupSettingsTable.selectAll().map {
             GroupSettings(
                 groupId = it[GroupSettingsTable.id].value,
@@ -34,7 +34,7 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
         }
     }
 
-    override fun getByGroupId(groupId: String): GroupSettings? {
+    override suspend fun getByGroupId(groupId: String): GroupSettings? {
         return GroupSettingsTable.selectAll()
             .where { GroupSettingsTable.id eq groupId }
             .limit(1).singleOrNull()?.let {
@@ -46,7 +46,7 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
             }
     }
 
-    override fun save(settings: GroupSettings) {
+    override suspend fun save(settings: GroupSettings) {
         GroupSettingsTable.upsert {
             it[id] = settings.groupId
             it[retentionPeriodDays] = settings.retentionPeriodDays
@@ -54,7 +54,7 @@ class GroupSettingsRepositoryImpl : GroupSettingsRepository {
         }
     }
 
-    override fun deleteByGroupId(groupId: String) {
+    override suspend fun deleteByGroupId(groupId: String) {
         GroupSettingsTable.deleteWhere { GroupSettingsTable.id eq groupId }
     }
 }

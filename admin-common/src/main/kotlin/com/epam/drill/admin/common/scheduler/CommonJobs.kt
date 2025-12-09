@@ -16,17 +16,20 @@
 package com.epam.drill.admin.common.scheduler
 
 import org.quartz.JobDataMap
-import org.quartz.JobDetail
 import org.quartz.JobKey
-import org.quartz.Trigger
-import org.quartz.spi.JobFactory
-import javax.sql.DataSource
 
-interface DrillScheduler {
-    fun scheduleJob(jobDetail: JobDetail, trigger: Trigger)
-    fun triggerJob(jobKey: JobKey, data: JobDataMap? = null, onCompletion: ((result: Any?, exception: Exception?) -> Unit)? = null)
-    fun addJob(jobDetail: JobDetail)
-    fun init(jobFactory: JobFactory, dataSource: DataSource)
-    fun start()
-    fun shutdown()
+fun getBuildDataDeletionDataMap(groupId: String, appId: String, buildId: String) = JobDataMap().apply {
+    put("dataType", "build")
+    put("groupId", groupId)
+    put("appId", appId)
+    put("buildId", buildId)
 }
+
+fun getTestDataDeletionDataMap(groupId: String, testSessionId: String) = JobDataMap().apply {
+    put("dataType", "testSession")
+    put("groupId", groupId)
+    put("testSessionId", testSessionId)
+}
+
+val deleteMetricsDataJobKey: JobKey
+    get() = JobKey.jobKey("deleteMetricsData", "metricsJobs")

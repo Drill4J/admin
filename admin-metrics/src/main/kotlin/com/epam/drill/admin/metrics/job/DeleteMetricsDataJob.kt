@@ -15,36 +15,32 @@
  */
 package com.epam.drill.admin.metrics.job
 
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import kotlinx.coroutines.runBlocking
-import mu.KotlinLogging
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 
 @DisallowConcurrentExecution
-class MetricsDataRetentionPolicyJob(
+class DeleteMetricsDataJob(
     private val metricsRepository: MetricsRepository,
 ) : Job {
-    private val logger = KotlinLogging.logger {}
-
     override fun execute(context: JobExecutionContext) {
+        val dataType = context.mergedJobDataMap.getString("dataType")
+        val groupId = context.mergedJobDataMap.getString("groupId")
         runBlocking {
-            transaction {
-                val timestamp = metricsRepository.getMetricsPeriodDays()
-                logger.info { "Deleting all metrics data older than $timestamp..." }
-                metricsRepository.deleteAllBuildDataCreatedBefore(timestamp)
-                metricsRepository.deleteAllTestDataCreatedBefore(timestamp)
-                metricsRepository.deleteAllDailyDataCreatedBefore(timestamp)
-                logger.info { "Metrics data older than $timestamp deleted successfully." }
-            }
-            transaction {
-                logger.info { "Deleting orphan references..." }
-                metricsRepository.deleteAllOrphanReferences()
-                logger.info { "Orphan references deleted successfully." }
+            when (dataType) {
+                "build" -> {
+                    val appId = context.mergedJobDataMap.getString("appId")
+                    val buildId = context.mergedJobDataMap.getString("buildId")
+                    metricsRepository.deleteAllBuildDataByBuildId(groupId, appId, buildId)
+                }
+                "testSession" -> {
+                    val testSessionId = context.mergedJobDataMap.getString("testSessionId")
+                    metricsRepository.deleteAllTestDataByTestSessionId(groupId, testSessionId)
+                }
+                else -> throw IllegalArgumentException("Unknown dataType: $dataType")
             }
         }
     }
-
 }

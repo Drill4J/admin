@@ -47,7 +47,7 @@ class StubDrillScheduler(
     }
 
     override fun scheduleJob(jobDetail: JobDetail, trigger: Trigger) {
-        executeJob(jobDetail)
+        // no-op
     }
 
     override fun triggerJob(
@@ -66,6 +66,10 @@ class StubDrillScheduler(
             onCompletion?.invoke(null, e)
             throw e
         }
+    }
+
+    override fun addJob(jobDetail: JobDetail) {
+        // no-op
     }
 
     private fun executeJob(jobDetail: JobDetail): JobExecutionContext {

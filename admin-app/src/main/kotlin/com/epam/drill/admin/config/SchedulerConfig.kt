@@ -28,13 +28,6 @@ import org.quartz.CronTrigger
 import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
-
-    @Deprecated("Use refreshViewsJobCron instead")
-    private val refreshViewsIntervalInMinutes: Int =
-        config.propertyOrNull("refreshViewsIntervalInMinutes")?.getString()?.toInt() ?: 30
-    private val refreshViewsJobCron: String =
-        config.propertyOrNull("refreshViewsJobCron")?.getString()
-            ?: intervalToCron(refreshViewsIntervalInMinutes)
     private val etlJobCron: String = config.propertyOrNull("etlJobCron")?.getString() ?: "0 * * * * ?"
     private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
@@ -64,19 +57,5 @@ val schedulerDIModule = DI.Module("scheduler") {
     }
     bind<DrillScheduler>() with singleton {
         DrillSchedulerImpl(instance())
-    }
-}
-
-private fun intervalToCron(interval: Int): String {
-    return if (interval < 60) {
-        "0 0/${interval} * * * ?"
-    } else {
-        val hours = interval / 60
-        val minutes = interval % 60
-        if (minutes == 0) {
-            "0 0 0/${hours} * * ?"
-        } else {
-            "0 ${minutes} 0/${hours} * * ?"
-        }
     }
 }

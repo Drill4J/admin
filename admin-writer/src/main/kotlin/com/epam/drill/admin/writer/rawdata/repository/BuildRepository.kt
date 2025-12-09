@@ -19,7 +19,8 @@ import com.epam.drill.admin.writer.rawdata.entity.Build
 import java.time.LocalDate
 
 interface BuildRepository {
-    fun create(build: Build)
-    fun existsById(buildId: String): Boolean
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun create(build: Build)
+    suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String)
 }

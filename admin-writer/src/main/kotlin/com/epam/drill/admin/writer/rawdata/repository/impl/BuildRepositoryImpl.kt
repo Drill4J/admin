@@ -27,7 +27,7 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
 class BuildRepositoryImpl: BuildRepository {
-    override fun create(build: Build) {
+    override suspend fun create(build: Build) {
         BuildTable.upsert(
             onUpdateExclude = listOf(BuildTable.createdAt),
         ) {
@@ -44,11 +44,21 @@ class BuildRepositoryImpl: BuildRepository {
             it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
-    override fun existsById(buildId: String): Boolean {
-        return BuildTable.selectAll().where { BuildTable.id eq buildId }.any()
+    override suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean {
+        return BuildTable.selectAll().where {
+            (BuildTable.groupId eq groupId) and
+            (BuildTable.appId eq appId) and
+            (BuildTable.id eq buildId)
+        }.any()
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         BuildTable.deleteWhere { (BuildTable.groupId eq groupId) and (BuildTable.updatedAt less createdBefore.atStartOfDay()) }
+    }
+
+    override suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String) {
+        BuildTable.deleteWhere {
+            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+        }
     }
 }
