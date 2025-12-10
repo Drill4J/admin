@@ -15,11 +15,14 @@
  */
 package com.epam.drill.admin.metrics
 
+import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.metrics.config.metricsDIModule
+import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.TestImpactStatus
+import com.epam.drill.admin.test.StubDrillScheduler
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
@@ -30,16 +33,28 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.coroutines.runBlocking
+import org.kodein.di.DI
+import org.kodein.di.bind
+import org.kodein.di.instance
+import org.kodein.di.singleton
+
+val scheduler = DI.Module("testModule") {
+        bind<DrillScheduler>() with singleton {
+            StubDrillScheduler(UpdateMetricsEtlJob(
+                instance(), instance()
+            ))
+        }
+    }
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(rawDataServicesDIModule, metricsDIModule) {
+        drillApplication(scheduler, rawDataServicesDIModule, metricsDIModule) {
             dataIngestRoutes()
             metricsRoutes()
             metricsManagementRoutes()
         }.drillClient().apply {
             testsData(TestDataDsl(this))
-            refreshMaterializedViews()
+            refreshMetrics()
         }
     }
 }

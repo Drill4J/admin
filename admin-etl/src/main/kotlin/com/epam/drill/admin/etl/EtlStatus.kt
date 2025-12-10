@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.payload
+package com.epam.drill.admin.etl
 
-import com.epam.drill.admin.metrics.models.MatViewScope
-import kotlinx.serialization.Serializable
-
-@Serializable
-class RefreshPayload(val scopes: Set<MatViewScope> = emptySet())
+enum class EtlStatus {
+    FAILED,
+    SUCCESS,
+    LOADING,
+    EXTRACTING;
+}

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository
 
+import java.time.Instant
 import java.time.LocalDateTime
 
 interface MetricsRepository {
@@ -136,5 +137,13 @@ interface MetricsRepository {
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
-    suspend fun refreshMaterializedView(viewName: String, concurrently: Boolean = true)
+    suspend fun getMetricsPeriodDays(): Instant
+
+    suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllTestDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant)
+    suspend fun deleteAllOrphanReferences()
+
+    suspend fun deleteAllBuildDataByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun deleteAllTestDataByTestSessionId(groupId: String, testSessionId: String)
 }

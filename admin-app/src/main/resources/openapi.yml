@@ -18,13 +18,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: useMaterializedViews
-          in: query
-          description: Indicates whether to use materialized views for the query.
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: Group settings retrieved
@@ -45,13 +38,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: useMaterializedViews
-          in: query
-          description: Indicates whether to use materialized views for the query.
-          required: false
-          schema:
-            type: boolean
-            default: false
       requestBody:
         required: true
         content:
@@ -282,6 +268,64 @@ paths:
       responses:
         '200':
           description: Method ignore rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  # Data Management Endpoints
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
+    delete:
+      summary: Delete build data with all associated data (coverage, methods, instances)
+      operationId: deleteBuild
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Build deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/tests/sessions/{testSessionId}:
+    delete:
+      summary: Delete test session data with all associated data (coverage, test launches)
+      operationId: deleteTestSession
+      tags:
+        - data-management
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test Session deleted
           content:
             application/json:
               schema:
@@ -912,41 +956,41 @@ paths:
                 $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/refresh:
     post:
-      summary: Refresh materialized views
-      operationId: refreshMaterializedViews
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      responses:
-        '200':
-          description: Materialized views refresh started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-  /api/metrics/refresh/{scope}:
-    post:
-      summary: Refresh materialized views with scope
-      operationId: refreshMaterializedViewsWithScope
+      summary: Refresh metrics
+      operationId: refreshMetrics
       tags:
         - metrics
       security:
         - apiKeyAuth: [ ]
       parameters:
-        - name: scope
-          description: Scope of the refresh operation ('BUILDS', 'TESTS', 'COVERAGE')
-          in: path
-          required: true
+        - name: reset
+          description: If true, clears existing computed data and restarts the ETL process from scratch.
+          in: query
+          required: false
           schema:
-            type: string
+            type: boolean
       responses:
         '200':
-          description: Materialized views refresh started
+          description: Metrics were refreshed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/metrics/refresh-status:
+    get:
+      summary: Get refresh status
+      operationId: metricsRefreshStatus
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: Metrics status was retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   # User Authentication Routes
   /api/sign-in:
     post:

@@ -19,7 +19,6 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
-import com.epam.drill.admin.metrics.models.MatViewScope
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
 
@@ -137,6 +136,8 @@ interface MetricsService {
         pageSize: Int?
     ): PagedList<MethodView>
 
-    suspend fun refreshMaterializedViews(scopes: Set<MatViewScope> = emptySet())
+    suspend fun refresh(reset: Boolean = false)
+
+    suspend fun getRefreshStatus(): Map<String, Any?>
 
 }

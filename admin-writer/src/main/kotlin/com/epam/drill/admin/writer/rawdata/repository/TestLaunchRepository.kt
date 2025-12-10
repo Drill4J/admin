@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.entity.TestLaunch
 import java.time.LocalDate
 
 interface TestLaunchRepository {
-    fun createMany(testLaunchList: List<TestLaunch>)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun createMany(testLaunchList: List<TestLaunch>)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String)
 }

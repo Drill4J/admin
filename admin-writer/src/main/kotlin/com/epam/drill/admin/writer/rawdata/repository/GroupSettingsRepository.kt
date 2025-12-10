@@ -18,8 +18,8 @@ package com.epam.drill.admin.writer.rawdata.repository
 import com.epam.drill.admin.writer.rawdata.entity.GroupSettings
 
 interface GroupSettingsRepository {
-    fun getAll(): List<GroupSettings>
-    fun getByGroupId(groupId: String): GroupSettings?
-    fun save(settings: GroupSettings)
-    fun deleteByGroupId(groupId: String)
+    suspend fun getAll(): List<GroupSettings>
+    suspend fun getByGroupId(groupId: String): GroupSettings?
+    suspend fun save(settings: GroupSettings)
+    suspend fun deleteByGroupId(groupId: String)
 }

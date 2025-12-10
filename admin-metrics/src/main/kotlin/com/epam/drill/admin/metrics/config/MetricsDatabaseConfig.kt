@@ -54,13 +54,11 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
                         val json = dbValue.value
                         if (json != null) {
                             if (json.trim().startsWith("{")) {
-                                val jsonObject = Json.parseToJsonElement(json).jsonObject
-                                jsonObject.mapValues { (_, value) -> value.jsonPrimitiveOrElement() }
+                                Json.parseToJsonElement(json).jsonObject
                             } else if (json.trim().startsWith("[")) {
-                                val jsonArray = Json.parseToJsonElement(json).jsonArray
-                                jsonArray.map { it.jsonPrimitiveOrElement() }
+                                Json.parseToJsonElement(json).jsonArray
                             } else {
-                                emptyMap<String, Any?>()
+                                json
                             }
                         } else {
                             null
@@ -82,7 +80,15 @@ fun Transaction.executeQueryReturnMap(sqlQuery: String, vararg params: Any?): Li
 fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
     exec(object : Statement<Unit>(StatementType.UPDATE, emptyList()) {
         override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
-            params.forEachIndexed { idx, value -> set(idx + 1, value ?: "NULL") }
+            params.forEachIndexed { idx, value ->
+                if (value == null) {
+                    // WORKAROUND: TextColumnType is employed to trick expose to write null values
+                    // Possible issues with: BinaryColumnType, BlobColumnType
+                    // see setNull implementation for more details
+                    setNull(idx + 1, TextColumnType())
+                } else
+                    set(idx + 1, value)
+            }
             executeUpdate()
         }
 
@@ -94,6 +100,11 @@ fun Transaction.executeUpdate(sql: String, vararg params: Any?) {
 fun Transaction.executeQueryReturnMap(buildSql: SqlBuilder.() -> Unit): List<Map<String, Any?>> {
     val builder = SqlBuilderImpl().apply { buildSql() }
     return executeQueryReturnMap(builder.sqlQuery.toString(), *builder.params.toTypedArray())
+}
+
+fun fromResource(resourcePath: String): String {
+    return MetricsDatabaseConfig::class.java.getResource(resourcePath)?.readText()
+        ?: throw IllegalArgumentException("Resource not found: $resourcePath")
 }
 
 private fun <T : Any> Transaction.executePreparedStatement(

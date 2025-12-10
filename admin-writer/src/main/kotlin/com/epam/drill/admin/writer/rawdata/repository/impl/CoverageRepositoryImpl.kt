@@ -18,15 +18,17 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.table.CoverageTable
+import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
-class CoverageRepositoryImpl: CoverageRepository {
-    override fun createMany(data: List<Coverage>) {
+class CoverageRepositoryImpl : CoverageRepository {
+    override suspend fun createMany(data: List<Coverage>) {
         CoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
             this[CoverageTable.groupId] = it.groupId
             this[CoverageTable.appId] = it.appId
@@ -38,7 +40,28 @@ class CoverageRepositoryImpl: CoverageRepository {
         }
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         CoverageTable.deleteWhere { (CoverageTable.groupId eq groupId) and (CoverageTable.createdAt less createdBefore.atStartOfDay()) }
+    }
+
+    override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
+        CoverageTable.deleteWhere {
+            (CoverageTable.groupId eq groupId) and
+            (CoverageTable.appId eq appId) and
+            (CoverageTable.instanceId inSubQuery InstanceTable
+                    .select(InstanceTable.id)
+                    .where {
+                        (InstanceTable.groupId eq groupId) and
+                        (InstanceTable.appId eq appId) and
+                        (InstanceTable.buildId eq buildId)
+                    })
+        }
+    }
+
+    override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
+        CoverageTable.deleteWhere {
+            (CoverageTable.groupId eq groupId) and
+            (CoverageTable.testSessionId eq testSessionId)
+        }
     }
 }

@@ -26,8 +26,12 @@ import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
 class TestDefinitionRepositoryImpl: TestDefinitionRepository {
-    override fun createMany(testDefinitionList: List<TestDefinition>) {
-        TestDefinitionTable.batchUpsert(testDefinitionList, shouldReturnGeneratedValues = false) {
+    override suspend fun createMany(testDefinitionList: List<TestDefinition>) {
+        TestDefinitionTable.batchUpsert(
+            testDefinitionList,
+            onUpdateExclude = listOf(TestDefinitionTable.createdAt),
+            shouldReturnGeneratedValues = false
+        ) {
             this[TestDefinitionTable.id] = it.id
             this[TestDefinitionTable.groupId] = it.groupId
             this[TestDefinitionTable.type] = it.type
@@ -36,10 +40,12 @@ class TestDefinitionRepositoryImpl: TestDefinitionRepository {
             this[TestDefinitionTable.path] = it.path
             this[TestDefinitionTable.metadata] = it.metadata
             this[TestDefinitionTable.tags] = it.tags
+            this[TestDefinitionTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        TestDefinitionTable.deleteWhere { (TestDefinitionTable.groupId eq groupId) and (TestDefinitionTable.createdAt less createdBefore.atStartOfDay()) }
+
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+        TestDefinitionTable.deleteWhere { (TestDefinitionTable.groupId eq groupId) and (TestDefinitionTable.updatedAt less createdBefore.atStartOfDay()) }
     }
 }

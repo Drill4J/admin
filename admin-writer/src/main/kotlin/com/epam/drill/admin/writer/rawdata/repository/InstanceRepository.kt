@@ -19,6 +19,7 @@ import com.epam.drill.admin.writer.rawdata.entity.Instance
 import java.time.LocalDate
 
 interface InstanceRepository {
-    fun create(instance: Instance)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun create(instance: Instance)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
 }

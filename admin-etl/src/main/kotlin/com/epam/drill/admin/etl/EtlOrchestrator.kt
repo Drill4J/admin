@@ -13,22 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.job
+package com.epam.drill.admin.etl
 
-import com.epam.drill.admin.metrics.service.MetricsService
-import kotlinx.coroutines.runBlocking
-import org.quartz.DisallowConcurrentExecution
-import org.quartz.Job
-import org.quartz.JobExecutionContext
+import java.time.Instant
 
-@DisallowConcurrentExecution
-class RefreshMaterializedViewJob(
-    private val metricsService: MetricsService,
-) : Job {
-
-    override fun execute(context: JobExecutionContext) {
-        runBlocking {
-            metricsService.refreshMaterializedViews()
-        }
-    }
+/**
+ * EtlOrchestrator is responsible for:
+ * - Coordinating the lifecycle of multiple pipelines.
+ * - Storing and retrieving ETL metadata.
+ * - Providing high-level monitoring and error handling.
+ */
+interface EtlOrchestrator {
+    val name: String
+    suspend fun run(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
+    suspend fun rerun(initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
 }
+

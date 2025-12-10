@@ -27,7 +27,7 @@ import java.time.LocalDate
 
 class InstanceRepositoryImpl: InstanceRepository {
 
-    override fun create(instance: Instance) {
+    override suspend fun create(instance: Instance) {
         InstanceTable.upsert() {
             it[id] = instance.id
             it[groupId] = instance.groupId
@@ -37,7 +37,15 @@ class InstanceRepositoryImpl: InstanceRepository {
         }
     }
 
-    override fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
+    override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
         InstanceTable.deleteWhere { (InstanceTable.groupId eq groupId) and (InstanceTable.createdAt less createdBefore.atStartOfDay()) }
+    }
+
+    override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
+        InstanceTable.deleteWhere {
+            (InstanceTable.groupId eq groupId) and
+            (InstanceTable.appId eq appId) and
+            (InstanceTable.buildId eq buildId)
+        }
     }
 }

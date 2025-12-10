@@ -1,0 +1,1 @@
+DELETE FROM metrics.test_launches

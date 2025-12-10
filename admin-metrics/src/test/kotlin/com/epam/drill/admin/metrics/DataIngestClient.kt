@@ -123,8 +123,10 @@ suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
     }.assertSuccessStatus()
 }
 
-suspend fun HttpClient.refreshMaterializedViews() {
-    post("/metrics/refresh").assertSuccessStatus()
+suspend fun HttpClient.refreshMetrics() {
+    post("/metrics/refresh") {
+        parameter("reset", "true")
+    }.assertSuccessStatus()
 }
 
 suspend fun HttpResponse.assertSuccessStatus() = also {

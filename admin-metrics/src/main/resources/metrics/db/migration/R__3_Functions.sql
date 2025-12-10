@@ -145,15 +145,15 @@ BEGIN
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
-		  	AND (input_coverage_period_from IS NULL OR ic.creation_day >= input_coverage_period_from)
-		LEFT JOIN metrics.method_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
+		  	AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
+		LEFT JOIN metrics.method_daily_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
 			-- Filters by smart coverage
-			AND (is_smart_coverage_before_build IS false OR sc.creation_day <= b.creation_day)
+			AND (is_smart_coverage_before_build IS false OR sc.created_at_day <= b.created_at_day)
 			AND (input_coverage_branches IS NULL OR sc.branch = ANY(input_coverage_branches::VARCHAR[]))
 		  	AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR sc.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
-		  	AND (input_coverage_period_from IS NULL OR sc.creation_day >= input_coverage_period_from)
+		  	AND (input_coverage_period_from IS NULL OR sc.created_at_day >= input_coverage_period_from)
 		WHERE bm.group_id = _group_id
 			AND bm.app_id = _app_id
 			AND bm.build_id = ANY(_build_ids)
@@ -707,8 +707,8 @@ BEGIN
             AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
 			-- Filters by coverage
 			AND (input_coverage_app_env_ids IS NULL OR c.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-            AND (input_coverage_period_from IS NULL OR c.creation_day >= input_coverage_period_from)
-			AND (input_coverage_period_until IS NULL OR c.creation_day <= input_coverage_period_until)
+            AND (input_coverage_period_from IS NULL OR c.created_at_day >= input_coverage_period_from)
+			AND (input_coverage_period_until IS NULL OR c.created_at_day <= input_coverage_period_until)
 			-- Filters by methods
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
             AND (input_class_name IS NULL OR m.class_name = input_class_name)
@@ -741,7 +741,7 @@ BEGIN
         td.test_path,
         td.test_name,
         td.test_tags,
-        td.test_metadata,
+        td.test_metadata::JSON,
 		CASE WHEN it.all_builds_impacted IS true THEN 'IMPACTED'
 		     WHEN it.all_builds_impacted IS false THEN 'NOT_IMPACTED'
 		     ELSE 'UNKNOWN_IMPACT'
@@ -864,7 +864,7 @@ BEGIN
         td.test_path,
         td.test_name,
         td.test_tags,
-        td.test_metadata,
+        td.test_metadata::JSON,
         td.test_runner,
         it.impacted_methods::NUMERIC
     FROM metrics.test_definitions td

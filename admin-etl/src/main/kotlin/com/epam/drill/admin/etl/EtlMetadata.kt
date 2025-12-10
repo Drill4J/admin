@@ -13,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.models
+package com.epam.drill.admin.etl
 
-enum class MatViewScope {
-    BUILDS,
-    TESTS,
-    COVERAGE
-}
+import java.time.Instant
+
+data class EtlMetadata(
+    val pipelineName: String,
+    val extractorName: String,
+    val loaderName: String,
+    val lastProcessedAt: Instant,
+    val lastRunAt: Instant,
+    val lastDuration: Long,
+    val lastRowsProcessed: Long,
+    val status: EtlStatus,
+    val errorMessage: String?,
+)
+

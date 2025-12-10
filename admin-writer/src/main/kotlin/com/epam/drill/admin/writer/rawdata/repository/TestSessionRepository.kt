@@ -19,6 +19,8 @@ import com.epam.drill.admin.writer.rawdata.entity.TestSession
 import java.time.LocalDate
 
 interface TestSessionRepository {
-    fun create(session: TestSession)
-    fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun existsById(groupId: String, testSessionId: String): Boolean
+    suspend fun create(session: TestSession)
+    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
+    suspend fun deleteByTestSessionId(groupId: String, testSessionId: String)
 }

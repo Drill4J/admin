@@ -20,6 +20,8 @@ import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 const val testGroup = "group-1"
 const val testApp = "app-1"
@@ -85,17 +87,20 @@ val method4 = SingleMethodPayload(
 val test1 = TestDetails(
     runner = "junit",
     path = testPath,
-    testName = "test1"
+    testName = "test1",
+    metadata = Json.parseToJsonElement("{\"metadata\":[\"value1\"]}")
 )
 val test2 = TestDetails(
     runner = "junit",
     path = testPath,
-    testName = "test2"
+    testName = "test2",
+    metadata = Json.parseToJsonElement("{\"metadata\":[\"value2\"]}")
 )
 val test3 = TestDetails(
     runner = "junit",
     path = testPath,
-    testName = "test3"
+    testName = "test3",
+    metadata = Json.parseToJsonElement("{\"metadata\":[\"value3\"]}")
 )
 val session1 = SessionPayload(
     groupId = testGroup,
