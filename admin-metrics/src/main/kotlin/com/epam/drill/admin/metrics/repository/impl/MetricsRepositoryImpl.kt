@@ -481,17 +481,21 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun getMetricsPeriodDays(): Instant = transaction {
-        (executeQueryReturnMap(
+    override suspend fun getMetricsPeriodDays(): Map<String, Instant> = transaction {
+        executeQueryReturnMap(
             """             
-                SELECT COALESCE(MIN(metrics_period), 'epoch')::TIMESTAMP AS metrics_period FROM (
-	                SELECT DISTINCT group_id, metrics.get_metrics_period(group_id) AS metrics_period FROM raw_data.builds
-                ) group_metrics_periods
+                SELECT 
+                    group_id, 
+                    metrics.get_metrics_period(group_id) AS metrics_period
+                FROM raw_data.builds
+                GROUP BY group_id
                  """.trimIndent()
-        ).first()["metrics_period"] as LocalDateTime).toInstant(UTC)
+        ).associate {
+            it["group_id"] as String to (it["metrics_period"] as LocalDateTime).toInstant(UTC)
+        }
     }
 
-    override suspend fun deleteAllBuildDataCreatedBefore(timestamp: Instant) = transaction {
+    override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(
             """
@@ -568,7 +572,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeUpdate("DELETE FROM metrics.builds WHERE updated_at_day < ?", timestamp)
     }
 
-    override suspend fun deleteAllTestDataCreatedBefore(timestamp: Instant) = transaction {
+    override suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate("DELETE FROM metrics.test_launches WHERE created_at_day < ?", timestamp)
         executeUpdate(
@@ -630,7 +634,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeUpdate("DELETE FROM metrics.test_definitions WHERE updated_at_day < ?", timestamp)
     }
 
-    override suspend fun deleteAllDailyDataCreatedBefore(timestamp: Instant) = transaction {
+    override suspend fun deleteAllDailyDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate("DELETE FROM metrics.method_daily_coverage WHERE created_at_day < ?", timestamp)
     }

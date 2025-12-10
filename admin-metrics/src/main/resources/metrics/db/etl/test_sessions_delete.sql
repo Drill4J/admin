@@ -1,1 +1,1 @@
-DELETE FROM metrics.test_sessions
+DELETE FROM metrics.test_sessions WHERE group_id = :group_id

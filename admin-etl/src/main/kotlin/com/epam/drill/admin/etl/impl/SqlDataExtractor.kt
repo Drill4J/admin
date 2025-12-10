@@ -20,9 +20,8 @@ import com.epam.drill.admin.etl.EtlExtractingResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
-import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.javatime.JavaInstantColumnType
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
@@ -39,28 +38,21 @@ abstract class SqlDataExtractor<T>(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extract(
+        groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<T>,
         onExtractCompleted: suspend (EtlExtractingResult) -> Unit
     ) {
-        val sinceTimestampIndex = sqlQuery.indexOf(":since_timestamp")
-        val untilTimestampIndex = sqlQuery.indexOf(":until_timestamp")
-        if (sinceTimestampIndex == -1 || untilTimestampIndex == -1)
-            throw IllegalArgumentException("SQL query for extractor [$name] must contain :since_timestamp and :until_timestamp named parameters")
-        // Replace named parameters with positional parameters
-        val timestampedSql = sqlQuery
-            .replace(":since_timestamp", "?")
-            .replace(":until_timestamp", "?")
-        // Prepare arguments in the correct order
-        val args = listOf(
-            JavaInstantColumnType() to (if (sinceTimestampIndex < untilTimestampIndex) sinceTimestamp else untilTimestamp),
-            JavaInstantColumnType() to (if (sinceTimestampIndex > untilTimestampIndex) sinceTimestamp else untilTimestamp)
+        val preparedSql = prepareSql(sqlQuery)
+        val params = mapOf(
+            "group_id" to groupId,
+            "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
+            "until_timestamp" to java.sql.Timestamp.from(untilTimestamp)
         )
-
         execSuspend(
-            sql = timestampedSql,
-            args = args,
+            sql = preparedSql.getSql(),
+            args = preparedSql.getArgs(params),
         ) { rs, duration ->
             onExtractCompleted(EtlExtractingResult(success = true, duration = duration))
             collectInFlow(rs, emitter)
@@ -69,7 +61,7 @@ abstract class SqlDataExtractor<T>(
 
     private suspend fun execSuspend(
         sql: String,
-        args: List<Pair<ColumnType<*>, Instant>>,
+        args: List<Any?>,
         collect: suspend (ResultSet, Long) -> Unit
     ) {
         newSuspendedTransaction(context = Dispatchers.IO, db = database) {
@@ -78,7 +70,16 @@ abstract class SqlDataExtractor<T>(
             val stmt = connection.prepareStatement(sql, false)
             try {
                 stmt.fetchSize = fetchSize
-                stmt.fillParameters(args)
+
+                val columns = args
+                for (index in columns.indices) {
+                    val value = columns[index]
+                    if (value != null) {
+                        stmt.set(index + 1, value)
+                    } else
+                        stmt.setNull(index + 1, TextColumnType())
+                }
+
                 val resultSet: ResultSet
                 logger.debug { "ETL extractor [$name] extracting rows..." }
                 val duration = measureTimeMillis {
@@ -103,6 +104,7 @@ abstract class SqlDataExtractor<T>(
     }
 
     abstract fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): T
+    abstract fun prepareSql(sql: String): PreparedSql<Map<String, Any?>>
 }
 
 

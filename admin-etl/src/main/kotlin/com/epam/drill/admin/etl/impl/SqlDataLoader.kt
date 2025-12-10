@@ -35,13 +35,10 @@ abstract class SqlDataLoader<T>(
 ) : BatchDataLoader<T>(name, batchSize) {
     private val logger = KotlinLogging.logger {}
 
-    interface PreparedSql<T> {
-        fun getSql(): String
-        fun getArgs(row: T): List<Any?>
-    }
     abstract fun prepareSql(sql: String): PreparedSql<T>
 
     override suspend fun loadBatch(
+        groupId: String,
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
@@ -82,17 +79,25 @@ abstract class SqlDataLoader<T>(
         )
     }
 
-    override suspend fun deleteAll() {
-        logger.debug { "Loader [$name] deleting data" }
+    override suspend fun deleteAll(groupId: String) {
+        logger.debug { "Loader [$name] deleting data for group [$groupId]" }
+        val preparedSql = prepareSql(sqlDelete)
         val duration = try {
             newSuspendedTransaction(context = Dispatchers.IO, db = database) {
-                exec(sqlDelete)
+                exec(object : Statement<Unit>(StatementType.DELETE, emptyList()) {
+                    override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
+                        set(1, groupId)
+                        executeUpdate()
+                    }
+                    override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()
+                    override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
+                })
                 duration
             }
         } catch (e: Exception) {
-            logger.error(e) { "Error during deleting data with loader $name: ${e.message ?: e.javaClass.simpleName}" }
+            logger.error(e) { "Error during deleting data with loader $name for groupId $groupId: ${e.message ?: e.javaClass.simpleName}" }
             throw e
         }
-        logger.debug { "Loader [$name] deleted data in ${duration}ms" }
+        logger.debug { "Loader [$name] deleted data for groupId $groupId in ${duration}ms" }
     }
 }

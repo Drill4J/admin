@@ -39,6 +39,7 @@ abstract class BatchDataLoader<T>(
     )
 
     override suspend fun load(
+        groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
@@ -94,7 +95,7 @@ abstract class BatchDataLoader<T>(
             // If timestamp changed and buffer is full, flush the buffer
             if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
                 if (buffer.size >= batchSize) {
-                    result += flushBuffer(buffer, batchNo) { batch ->
+                    result += flushBuffer(groupId, buffer, batchNo) { batch ->
                         if (batch.success) {
                             lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                         }
@@ -123,7 +124,7 @@ abstract class BatchDataLoader<T>(
         if (!result.isFailed) {
             if (buffer.isNotEmpty()) {
                 // Commit any remaining rows in the buffer
-                result += flushBuffer(buffer, batchNo) { batch ->
+                result += flushBuffer(groupId, buffer, batchNo) { batch ->
                     if (batch.success) {
                         lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                     }
@@ -154,13 +155,15 @@ abstract class BatchDataLoader<T>(
 
     abstract fun getLastExtractedTimestamp(args: T): Instant?
     abstract fun isProcessable(args: T): Boolean
-    abstract suspend fun loadBatch(batch: List<T>, batchNo: Int): BatchResult
+    abstract suspend fun loadBatch(groupId: String, batch: List<T>, batchNo: Int): BatchResult
 
     private suspend fun flushBuffer(
+        groupId: String,
         buffer: MutableList<T>,
         batchNo: AtomicInteger,
         onBatchCompleted: suspend (BatchResult) -> EtlLoadingResult
     ): EtlLoadingResult = loadBatch(
+        groupId,
         buffer,
         batchNo.incrementAndGet()
     ).let {

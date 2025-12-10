@@ -37,13 +37,13 @@ open class EtlOrchestratorImpl(
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun run(initTimestamp: Instant): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info("ETL [$name] starting with init timestamp $initTimestamp...")
+    override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
+        logger.info("ETL [$name] starting for group [$groupId] with init timestamp $initTimestamp...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val duration = measureTimeMillis {
             pipelines.map { pipeline ->
                 async {
-                    results += runPipeline(pipeline, initTimestamp)
+                    results += runPipeline(groupId, pipeline, initTimestamp)
                 }
             }.awaitAll()
         }
@@ -51,32 +51,32 @@ open class EtlOrchestratorImpl(
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0L && failures == 0)
-                "ETL [$name] completed in ${duration}ms, no new rows"
+                "ETL [$name] for group [$groupId] completed in ${duration}ms, no new rows"
             else
-                "ETL [$name] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL [$name] for group [$groupId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return@withContext results
     }
 
-    override suspend fun rerun(initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> =
+    override suspend fun rerun(groupId: String, initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
-            logger.info { "ETL [$name] deleting all metadata for rerun." }
+            logger.info { "ETL [$name] deleting all metadata for group [$groupId] for rerun." }
             pipelines.map { it.name }.forEach { pipelineName ->
-                metadataRepository.deleteMetadataByPipeline(pipelineName)
+                metadataRepository.deleteMetadataByPipeline(groupId, pipelineName)
             }
-            logger.info { "ETL [$name] deleted all metadata for rerun." }
+            logger.info { "ETL [$name] deleted all metadata for group [$groupId] for rerun." }
             if (withDataDeletion) {
-                logger.info { "ETL [$name] deleting all data for rerun." }
-                pipelines.forEach { it.cleanUp() }
-                logger.info { "ETL [$name] deleted all data for rerun." }
+                logger.info { "ETL [$name] deleting all data for group [$groupId] for rerun." }
+                pipelines.forEach { it.cleanUp(groupId) }
+                logger.info { "ETL [$name] deleted all data for group [$groupId] for rerun." }
             }
-            val results = run(initTimestamp)
+            val results = run(groupId, initTimestamp)
             return@withContext results
         }
 
-    private suspend fun runPipeline(pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
+    private suspend fun runPipeline(groupId: String, pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
         val snapshotTime = Instant.now()
-        val metadata = metadataRepository.getAllMetadataByExtractor(pipeline.name, pipeline.extractor.name)
+        val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.name }.toSet()
         val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
@@ -85,6 +85,7 @@ open class EtlOrchestratorImpl(
             for (loader in loaderNames) {
                 metadataRepository.saveMetadata(
                     EtlMetadata(
+                        groupId = groupId,
                         pipelineName = pipeline.name,
                         extractorName = pipeline.extractor.name,
                         loaderName = loader,
@@ -98,11 +99,13 @@ open class EtlOrchestratorImpl(
                 )
             }
             val pipelineResult = pipeline.execute(
+                groupId = groupId,
                 sinceTimestampPerLoader = timestampPerLoader,
                 untilTimestamp = snapshotTime,
                 onExtractCompleted = { result ->
                     try {
                         metadataRepository.accumulateMetadataDurationByExtractor(
+                            groupId,
                             pipeline.name,
                             pipeline.extractor.name,
                             result.duration
@@ -115,6 +118,7 @@ open class EtlOrchestratorImpl(
                     try {
                         metadataRepository.accumulateMetadata(
                             EtlMetadata(
+                                groupId = groupId,
                                 pipelineName = pipeline.name,
                                 extractorName = pipeline.extractor.name,
                                 loaderName = loaderName,
@@ -135,6 +139,7 @@ open class EtlOrchestratorImpl(
         } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
             return EtlProcessingResult(
+                groupId = groupId,
                 pipelineName = pipeline.name,
                 lastProcessedAt = initTimestamp,
                 rowsProcessed = 0,

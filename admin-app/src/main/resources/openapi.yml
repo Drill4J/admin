@@ -963,6 +963,12 @@ paths:
       security:
         - apiKeyAuth: [ ]
       parameters:
+        - name: groupId
+          description: Group ID to refresh metrics for. If not provided, refreshes metrics for all groups.
+          in: query
+          required: false
+          schema:
+            type: string
         - name: reset
           description: If true, clears existing computed data and restarts the ETL process from scratch.
           in: query
@@ -984,6 +990,12 @@ paths:
         - metrics
       security:
         - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Metrics status was retrieved

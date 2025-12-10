@@ -17,11 +17,14 @@ package com.epam.drill.admin.metrics.job
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
+import java.time.Instant
 
 @DisallowConcurrentExecution
 class MetricsDataRetentionPolicyJob(
@@ -30,14 +33,20 @@ class MetricsDataRetentionPolicyJob(
     private val logger = KotlinLogging.logger {}
 
     override fun execute(context: JobExecutionContext) {
+        val groupId: String? = context.mergedJobDataMap.getString("groupId")
         runBlocking {
             transaction {
-                val timestamp = metricsRepository.getMetricsPeriodDays()
-                logger.info { "Deleting all metrics data older than $timestamp..." }
-                metricsRepository.deleteAllBuildDataCreatedBefore(timestamp)
-                metricsRepository.deleteAllTestDataCreatedBefore(timestamp)
-                metricsRepository.deleteAllDailyDataCreatedBefore(timestamp)
-                logger.info { "Metrics data older than $timestamp deleted successfully." }
+                metricsRepository.getMetricsPeriodDays().let {
+                    if (groupId != null) mapOf(groupId to (it[groupId] ?: Instant.EPOCH)) else it
+                }.map { (groupId, initTimestamp) ->
+                    async {
+                        logger.info { "Deleting all metrics data for groupId $groupId older than $initTimestamp..." }
+                        metricsRepository.deleteAllBuildDataCreatedBefore(groupId, initTimestamp)
+                        metricsRepository.deleteAllTestDataCreatedBefore(groupId, initTimestamp)
+                        metricsRepository.deleteAllDailyDataCreatedBefore(groupId, initTimestamp)
+                        logger.info { "Metrics data for groupId $groupId older than $initTimestamp deleted successfully." }
+                    }
+                }.awaitAll()
             }
             transaction {
                 logger.info { "Deleting orphan references..." }

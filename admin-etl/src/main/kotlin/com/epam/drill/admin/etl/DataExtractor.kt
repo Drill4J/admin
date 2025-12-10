@@ -33,6 +33,7 @@ import java.time.Instant
 interface DataExtractor<T> {
     val name: String
     suspend fun extract(
+        groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<T>,

@@ -23,6 +23,7 @@ LEFT JOIN raw_data.test_sessions ts ON ts.group_id = c.group_id AND ts.id = c.te
 LEFT JOIN raw_data.test_launches tl ON tl.group_id = c.group_id AND tl.id = c.test_launch_id
 LEFT JOIN raw_data.test_definitions td ON td.group_id = tl.group_id AND td.id = tl.test_definition_id
 LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
-WHERE c.created_at > :since_timestamp
+WHERE c.group_id = :group_id
+    AND c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
 ORDER BY c.created_at ASC, c.method_id ASC

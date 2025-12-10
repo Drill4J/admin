@@ -13,19 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl
+package com.epam.drill.admin.etl.impl
 
-import java.time.Instant
-
-/**
- * EtlOrchestrator is responsible for:
- * - Coordinating the lifecycle of multiple pipelines.
- * - Storing and retrieving ETL metadata.
- * - Providing high-level monitoring and error handling.
- */
-interface EtlOrchestrator {
-    val name: String
-    suspend fun run(groupId: String, initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
-    suspend fun rerun(groupId: String, initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
+interface PreparedSql<T> {
+    fun getSql(): String
+    fun getArgs(row: T): List<Any?>
 }
-
