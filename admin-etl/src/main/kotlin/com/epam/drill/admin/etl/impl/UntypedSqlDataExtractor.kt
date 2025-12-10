@@ -27,25 +27,8 @@ class UntypedSqlDataExtractor(
     fetchSize: Int = 2000
 ) : SqlDataExtractor<Map<String, Any?>>(name, sqlQuery, database, fetchSize) {
 
-    class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : PreparedSql<Map<String, Any?>> {
-        override fun getSql() = preparedSql
-        override fun getArgs(row: Map<String, Any?>): List<Any?> {
-            return indexes.map { row[it] }
-        }
-    }
-
     override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
-        val regex = Regex("""(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)(?![:=])""")
-
-        val indexes = mutableListOf<String>()
-
-        val prepared = regex.replace(sql) { match ->
-            val name = match.groupValues[1]
-            indexes += name
-            "?"
-        }
-
-        return UntypedPreparedSql(prepared, indexes)
+        return UntypedPreparedSql.prepareSql(sql)
     }
 
     override fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): Map<String, Any?> {
