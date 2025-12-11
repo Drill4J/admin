@@ -15,6 +15,7 @@ SELECT
     DATE_TRUNC('day', b.created_at) AS created_at_day,
     DATE_TRUNC('day', b.updated_at) AS updated_at_day
 FROM raw_data.builds b
-WHERE b.updated_at > :since_timestamp
+WHERE b.group_id = :group_id
+    AND b.updated_at > :since_timestamp
     AND b.updated_at <= :until_timestamp
 ORDER BY b.updated_at ASC

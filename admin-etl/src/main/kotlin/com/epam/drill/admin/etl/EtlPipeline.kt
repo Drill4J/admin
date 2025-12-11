@@ -40,11 +40,12 @@ interface EtlPipeline<T> {
     val extractor: DataExtractor<T>
     val loaders: List<DataLoader<T>>
     suspend fun execute(
+        groupId: String,
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
         onExtractCompleted: suspend (EtlExtractingResult) -> Unit = {},
         onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { _, _ -> },
     ): EtlProcessingResult
 
-    suspend fun cleanUp()
+    suspend fun cleanUp(groupId: String)
 }

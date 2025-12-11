@@ -21,7 +21,8 @@ import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
 import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import org.quartz.*
 
-fun getUpdateMetricsEtlDataMap(reset: Boolean) = JobDataMap().apply {
+fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().apply {
+    groupId?.let { put("groupId", it) }
     put("reset", reset)
 }
 val updateMetricsEtlJobKey: JobKey
@@ -31,7 +32,7 @@ val updateMetricsEtlJob: JobDetail
         .storeDurably()
         .withDescription("Job for updating metrics using ETL processing.")
         .withIdentity(updateMetricsEtlJobKey)
-        .usingJobData(getUpdateMetricsEtlDataMap(false))
+        .usingJobData(getUpdateMetricsEtlDataMap(null, false))
         .build()
 val metricsDataRetentionPolicyJob: JobDetail
     get() = JobBuilder.newJob(MetricsDataRetentionPolicyJob::class.java)

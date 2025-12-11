@@ -26,6 +26,11 @@ class UntypedSqlDataExtractor(
     database: Database,
     fetchSize: Int = 2000
 ) : SqlDataExtractor<Map<String, Any?>>(name, sqlQuery, database, fetchSize) {
+
+    override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
+        return UntypedPreparedSql.prepareSql(sql)
+    }
+
     override fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): Map<String, Any?> {
         val row = mutableMapOf<String, Any?>()
         for (i in 1..columnCount) {

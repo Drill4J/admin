@@ -28,7 +28,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
-import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
@@ -41,17 +40,21 @@ class EtlMetadataRepositoryImpl(
 ) : EtlMetadataRepository {
     private val metadataTable: EtlMetadataTable = EtlMetadataTable("$dbSchema.$metadataTableName")
 
-    override suspend fun getAllMetadata(): List<EtlMetadata> {
+    override suspend fun getAllMetadata(groupId: String): List<EtlMetadata> {
         return newSuspendedTransaction(db = database) {
-            metadataTable.selectAll().map(::mapMetadata)
+            metadataTable.selectAll()
+                .andWhere { metadataTable.groupId eq groupId }
+                .map(::mapMetadata)
         }
     }
 
     override suspend fun getAllMetadataByExtractor(
+        groupId: String,
         pipelineName: String,
         extractorName: String
     ): List<EtlMetadata> = newSuspendedTransaction(db = database) {
         metadataTable.selectAll()
+            .andWhere { metadataTable.groupId eq groupId }
             .andWhere { metadataTable.pipelineName eq pipelineName }
             .andWhere { metadataTable.extractorName eq extractorName }
             .orderBy(metadataTable.lastProcessedAt to SortOrder.ASC)
@@ -59,11 +62,13 @@ class EtlMetadataRepositoryImpl(
     }
 
     override suspend fun getMetadata(
+        groupId: String,
         pipelineName: String,
         extractorName: String,
         loaderName: String
     ): EtlMetadata? = newSuspendedTransaction(db = database) {
         metadataTable.selectAll()
+            .andWhere { metadataTable.groupId eq groupId }
             .andWhere { metadataTable.pipelineName eq pipelineName }
             .andWhere { metadataTable.extractorName eq extractorName }
             .andWhere { metadataTable.loaderName eq loaderName }
@@ -79,6 +84,7 @@ class EtlMetadataRepositoryImpl(
                 metadataTable.createdAt
             ),
         ) {
+            it[groupId] = metadata.groupId
             it[pipelineName] = metadata.pipelineName
             it[extractorName] = metadata.extractorName
             it[loaderName] = metadata.loaderName
@@ -94,7 +100,8 @@ class EtlMetadataRepositoryImpl(
 
     override suspend fun accumulateMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
         metadataTable.update(where = {
-            (metadataTable.pipelineName eq metadata.pipelineName) and
+            (metadataTable.groupId eq metadata.groupId) and
+                    (metadataTable.pipelineName eq metadata.pipelineName) and
                     (metadataTable.extractorName eq metadata.extractorName) and
                     (metadataTable.loaderName eq metadata.loaderName)
         }) {
@@ -110,20 +117,25 @@ class EtlMetadataRepositoryImpl(
         }
     }
 
-    override suspend fun deleteMetadataByPipeline(pipelineName: String) {
+    override suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String) {
         newSuspendedTransaction(db = database) {
-            metadataTable.deleteWhere { metadataTable.pipelineName eq pipelineName }
+            metadataTable.deleteWhere { 
+                (metadataTable.groupId eq groupId) and (metadataTable.pipelineName eq pipelineName)
+            }
         }
     }
 
     override suspend fun accumulateMetadataDurationByExtractor(
+        groupId: String,
         pipelineName: String,
         extractorName: String,
         duration: Long
     ) {
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
-                (metadataTable.pipelineName eq pipelineName) and (metadataTable.extractorName eq extractorName)
+                (metadataTable.groupId eq groupId) and
+                (metadataTable.pipelineName eq pipelineName) and 
+                (metadataTable.extractorName eq extractorName)
             }) {
                 it[lastDuration] = lastDuration + duration
                 it[metadataTable.duration] = metadataTable.duration + duration
@@ -133,6 +145,7 @@ class EtlMetadataRepositoryImpl(
     }
 
     private fun mapMetadata(row: ResultRow): EtlMetadata = EtlMetadata(
+        groupId = row[metadataTable.groupId],
         pipelineName = row[metadataTable.pipelineName],
         extractorName = row[metadataTable.extractorName],
         loaderName = row[metadataTable.loaderName],

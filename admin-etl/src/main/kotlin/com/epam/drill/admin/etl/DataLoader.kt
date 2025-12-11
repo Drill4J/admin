@@ -32,11 +32,12 @@ import java.time.Instant
 interface DataLoader<T> {
     val name: String
     suspend fun load(
+        groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
         onLoadCompleted: suspend (EtlLoadingResult) -> Unit
     ): EtlLoadingResult
 
-    suspend fun deleteAll()
+    suspend fun deleteAll(groupId: String)
 }

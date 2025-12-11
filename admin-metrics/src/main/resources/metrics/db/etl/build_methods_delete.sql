@@ -1,1 +1,1 @@
-DELETE FROM metrics.build_methods
+DELETE FROM metrics.build_methods WHERE group_id = :group_id

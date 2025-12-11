@@ -1,1 +1,1 @@
-DELETE FROM metrics.test_to_code_mapping
+DELETE FROM metrics.test_to_code_mapping WHERE group_id = :group_id

@@ -1,1 +1,1 @@
-DELETE FROM metrics.method_daily_coverage
+DELETE FROM metrics.method_daily_coverage WHERE group_id = :group_id

@@ -16,12 +16,12 @@
 package com.epam.drill.admin.etl
 
 interface EtlMetadataRepository {
-    suspend fun getAllMetadata(): List<EtlMetadata>
-    suspend fun getAllMetadataByExtractor(pipelineName: String, extractorName: String): List<EtlMetadata>
-    suspend fun getMetadata(pipelineName: String, extractorName: String, loaderName: String): EtlMetadata?
+    suspend fun getAllMetadata(groupId: String): List<EtlMetadata>
+    suspend fun getAllMetadataByExtractor(groupId: String, pipelineName: String, extractorName: String): List<EtlMetadata>
+    suspend fun getMetadata(groupId: String, pipelineName: String, extractorName: String, loaderName: String): EtlMetadata?
     suspend fun saveMetadata(metadata: EtlMetadata)
     suspend fun accumulateMetadata(metadata: EtlMetadata)
-    suspend fun deleteMetadataByPipeline(pipelineName: String)
-    suspend fun accumulateMetadataDurationByExtractor(pipelineName: String, extractorName: String, duration: Long)
+    suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String)
+    suspend fun accumulateMetadataDurationByExtractor(groupId: String, pipelineName: String, extractorName: String, duration: Long)
 }
 

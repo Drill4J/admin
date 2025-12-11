@@ -1,1 +1,1 @@
-DELETE FROM metrics.build_method_test_session_coverage
+DELETE FROM metrics.build_method_test_session_coverage WHERE group_id = :group_id

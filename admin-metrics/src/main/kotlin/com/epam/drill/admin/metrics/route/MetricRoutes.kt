@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.common.model.DataResponse
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
@@ -236,19 +235,14 @@ class Metrics {
     @Resource("/refresh")
     class Refresh(
         val parent: Metrics,
+        val groupId: String? = null,
         val reset: Boolean = false
-    )
-
-    @Resource("/refresh/{scope}")
-    @Deprecated("Use /metrics/refresh instead")
-    class RefreshScope(
-        val parent: Metrics,
-        val scope: String
     )
 
     @Resource("/refresh-status")
     class RefreshStatus(
         val parent: Metrics,
+        val groupId: String
     )
 }
 
@@ -267,7 +261,6 @@ fun Route.metricsRoutes() {
 
 fun Route.metricsManagementRoutes() {
     postRefreshMetrics()
-    postRefreshMetricsWithScope()
     getRefreshStatus()
 }
 
@@ -540,16 +533,7 @@ fun Route.postRefreshMetrics() {
     val metricsService by closestDI().instance<MetricsService>()
 
     post<Metrics.Refresh> { params ->
-        metricsService.refresh(params.reset)
-        call.ok("Metrics were refreshed.")
-    }
-}
-
-fun Route.postRefreshMetricsWithScope() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    post<Metrics.RefreshScope> { params ->
-        metricsService.refresh()
+        metricsService.refresh(params.groupId, params.reset)
         call.ok("Metrics were refreshed.")
     }
 }
@@ -558,7 +542,7 @@ fun Route.getRefreshStatus() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.RefreshStatus> { params ->
-        val status = metricsService.getRefreshStatus()
+        val status = metricsService.getRefreshStatus(params.groupId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(status))
     }
 }

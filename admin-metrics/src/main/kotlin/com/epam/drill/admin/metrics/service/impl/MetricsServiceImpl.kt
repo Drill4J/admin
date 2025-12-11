@@ -542,8 +542,8 @@ class MetricsServiceImpl(
     }
 
     @Suppress("UNCHECKED_CAST")
-    override suspend fun refresh(reset: Boolean) {
-        val params = getUpdateMetricsEtlDataMap(reset)
+    override suspend fun refresh(groupId: String?, reset: Boolean) {
+        val params = getUpdateMetricsEtlDataMap(groupId, reset)
         val results = suspendCancellableCoroutine { continuation ->
             scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
                 if (exception != null)
@@ -553,13 +553,15 @@ class MetricsServiceImpl(
             }
         }
         if (results.any { it.status != EtlStatus.SUCCESS }) {
-            val errorMessages = results.mapNotNull { it.errorMessage }.joinToString(separator = "\n")
+            val errorMessages = results.filter { it.status == EtlStatus.FAILED }.joinToString(separator = "\n") {
+                "Pipeline `${it.pipelineName}`: ${it.errorMessage ?: "Unknown error"}"
+            }
             throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
         }
     }
 
-    override suspend fun getRefreshStatus(): Map<String, Any?> {
-        val metadata = etlRepository.getAllMetadata()
+    override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {
+        val metadata = etlRepository.getAllMetadata(groupId)
         if (metadata.isEmpty()) return emptyMap()
 
         val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)

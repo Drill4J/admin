@@ -21,10 +21,11 @@ import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 class EtlMetadataTable(tableName: String) : Table(tableName) {
+    val groupId = varchar("group_id", 225)
     val pipelineName = varchar("pipeline_name", 225)
     val extractorName = varchar("extractor_name", 225)
     val loaderName = varchar("loader_name", 225)
-    override val primaryKey = PrimaryKey(pipelineName, extractorName, loaderName)
+    override val primaryKey = PrimaryKey(groupId, pipelineName, extractorName, loaderName)
 
     val status = varchar("status", 50)
     val lastProcessedAt = timestamp("last_processed_at")
