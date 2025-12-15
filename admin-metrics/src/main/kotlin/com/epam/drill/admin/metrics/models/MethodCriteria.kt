@@ -23,7 +23,8 @@ open class MethodCriteria(
     val className: String? = null,
     val methodName: String? = null,
     val methodParams: String? = null,
-    val returnType: String? = null
+    val returnType: String? = null,
+    val excludeMethodSignatures: List<String> = emptyList()
 ) {
     object NONE : MethodCriteria()
 

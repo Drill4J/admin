@@ -113,6 +113,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -159,6 +160,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -382,6 +384,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
+        excludeMethodSignatures: List<String>,
 
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
@@ -412,6 +415,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
 
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
@@ -437,6 +441,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
+        excludeMethodSignatures: List<String>,
 
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
@@ -450,6 +455,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT 
                     group_id,
                     app_id,
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -467,6 +473,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern)
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
 
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)

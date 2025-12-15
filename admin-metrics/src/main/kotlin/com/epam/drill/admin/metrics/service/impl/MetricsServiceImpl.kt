@@ -481,6 +481,7 @@ class MetricsServiceImpl(
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
@@ -531,6 +532,7 @@ class MetricsServiceImpl(
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
@@ -584,6 +586,7 @@ class MetricsServiceImpl(
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
+        signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
         name = resultSet["method_name"] as String,
         params = (resultSet["method_params"] as String).split(",").map(String::trim),

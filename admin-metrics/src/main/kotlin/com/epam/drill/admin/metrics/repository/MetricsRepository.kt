@@ -112,6 +112,7 @@ interface MetricsRepository {
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
+        excludeMethodSignatures: List<String> = emptyList(),
 
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
@@ -130,6 +131,7 @@ interface MetricsRepository {
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
+        excludeMethodSignatures: List<String> = emptyList(),
 
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
