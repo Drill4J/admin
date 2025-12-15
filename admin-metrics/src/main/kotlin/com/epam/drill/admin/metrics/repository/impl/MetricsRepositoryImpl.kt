@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.repository.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import java.sql.Timestamp
 import java.time.Instant
@@ -113,6 +114,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -159,6 +161,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -382,13 +385,19 @@ class MetricsRepositoryImpl : MetricsRepository {
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
+        excludeMethodSignatures: List<String>,
 
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
 
+        sortBy: String?,
+        sortOrder: SortOrder?,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+
         executeQueryReturnMap {
             append(
                 """
@@ -412,6 +421,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
 
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
@@ -421,6 +431,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
+
+            if (sortBy != null) {
+                append(" ORDER BY $sortBy $sortDirection")
+            }
+
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -437,6 +452,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
+        excludeMethodSignatures: List<String>,
 
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
@@ -450,6 +466,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 SELECT 
                     group_id,
                     app_id,
+                    signature,
                     class_name,
                     method_name,
                     method_params,
@@ -467,6 +484,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
             appendOptional(", input_package_name_pattern => ?", packageNamePattern)
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
 
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)

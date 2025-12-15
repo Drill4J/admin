@@ -31,6 +31,7 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
@@ -457,6 +458,8 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
@@ -465,6 +468,16 @@ class MetricsServiceImpl(
 
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        // Map response field names to database column names
+        val sortingFieldMapping = mapOf(
+            "testPath" to "test_path",
+            "testName" to "test_name",
+            "testRunner" to "test_runner",
+            "impactedMethods" to "impacted_methods"
+        )
+
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -481,9 +494,13 @@ class MetricsServiceImpl(
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
 
                 offset = offset,
                 limit = limit,
@@ -531,6 +548,7 @@ class MetricsServiceImpl(
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
@@ -584,6 +602,7 @@ class MetricsServiceImpl(
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
+        signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
         name = resultSet["method_name"] as String,
         params = (resultSet["method_params"] as String).split(",").map(String::trim),

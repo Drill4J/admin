@@ -332,6 +332,7 @@ CREATE OR REPLACE FUNCTION metrics.get_changes(
 
 	input_package_name_pattern VARCHAR DEFAULT NULL,
 	input_method_signature_pattern VARCHAR DEFAULT NULL,
+	input_exclude_method_signatures VARCHAR[] DEFAULT NULL,
 	input_class_name VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
     input_method_signature VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
     input_class_name_pattern VARCHAR DEFAULT NULL,-- Deprecated, use input_method_signature_pattern
@@ -382,6 +383,7 @@ BEGIN
             -- Filters by methods
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
             AND (input_method_signature_pattern IS NULL OR m.signature LIKE input_method_signature_pattern)
+            AND (input_exclude_method_signatures IS NULL OR m.signature != ANY(input_exclude_method_signatures::VARCHAR[]))
             -- Deprecated filters
             AND (input_method_signature IS NULL OR m.signature = input_method_signature)
             AND (input_class_name IS NULL OR m.class_name = input_class_name)
@@ -789,6 +791,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
 
 	input_package_name_pattern VARCHAR DEFAULT NULL,
 	input_method_signature_pattern VARCHAR DEFAULT NULL,
+	input_exclude_method_signatures VARCHAR[] DEFAULT NULL,
     input_class_name VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
     input_method_signature VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
 
@@ -833,6 +836,7 @@ BEGIN
             input_baseline_build_id => input_baseline_build_id,
             input_package_name_pattern => input_package_name_pattern,
             input_method_signature_pattern => input_method_signature_pattern,
+            input_exclude_method_signatures => input_exclude_method_signatures,
             input_class_name => input_class_name,
             input_method_signature => input_method_signature,
             include_deleted => true,
@@ -897,6 +901,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_methods_v2(
 
 	input_package_name_pattern VARCHAR DEFAULT NULL,
 	input_method_signature_pattern VARCHAR DEFAULT NULL,
+	input_exclude_method_signatures VARCHAR[] DEFAULT NULL,
     input_class_name VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
     input_method_signature VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
 
@@ -941,6 +946,7 @@ BEGIN
             input_baseline_build_id => input_baseline_build_id,
             input_package_name_pattern => input_package_name_pattern,
             input_method_signature_pattern => input_method_signature_pattern,
+            input_exclude_method_signatures => input_exclude_method_signatures,
             input_class_name => input_class_name,
             input_method_signature => input_method_signature,
             include_deleted => true,

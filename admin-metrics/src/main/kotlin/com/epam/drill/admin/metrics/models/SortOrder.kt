@@ -18,24 +18,8 @@ package com.epam.drill.admin.metrics.models
 import kotlinx.serialization.Serializable
 
 @Serializable
-open class MethodCriteria(
-    val packageName: String? = null,
-    val className: String? = null,
-    val methodName: String? = null,
-    val methodParams: String? = null,
-    val returnType: String? = null,
-    val excludeMethodSignatures: List<String> = emptyList()
-) {
-    object NONE : MethodCriteria()
-
-    open val packageNamePattern: String?
-        get() = packageName?.let { it.removeSuffix("/") + "/" + "%" }
-
-    open val signaturePattern: String?
-        get() = listOf(
-            className ?: "%",
-            methodName ?: "%",
-            methodParams ?: "%",
-            returnType ?: "%"
-        ).joinToString(":").takeIf { it != "%:%:%:%" }
+enum class SortOrder {
+    ASC,
+    DESC
 }
+

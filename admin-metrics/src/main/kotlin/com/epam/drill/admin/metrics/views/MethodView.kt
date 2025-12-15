@@ -19,6 +19,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 open class MethodView (
+    val signature: String,
     val className: String,
     val name: String,
     val params: List<String> = emptyList(),
