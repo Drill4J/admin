@@ -877,6 +877,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+    post:
+      summary: Get impacted tests (POST)
+      operationId: postImpactedTests
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactedTestsRequest'
+      responses:
+        '200':
+          description: List of impacted tests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/impacted-methods:
     get:
       summary: Get impacted methods
@@ -974,6 +994,26 @@ paths:
           in: query
           schema:
             type: integer
+      responses:
+        '200':
+          description: List of impacted methods
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+    post:
+      summary: Get impacted methods (POST)
+      operationId: postImpactedMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactedMethodsRequest'
       responses:
         '200':
           description: List of impacted methods
@@ -1678,5 +1718,157 @@ components:
           type: integer
           nullable: true
         metricsPeriodDays:
+          type: integer
+          nullable: true
+    # Metrics Request Schemas
+    ImpactedTestsRequest:
+      type: object
+      required:
+        - groupId
+        - appId
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        instanceId:
+          type: string
+          nullable: true
+        commitSha:
+          type: string
+          nullable: true
+        buildVersion:
+          type: string
+          nullable: true
+        baselineInstanceId:
+          type: string
+          nullable: true
+        baselineCommitSha:
+          type: string
+          nullable: true
+        baselineBuildVersion:
+          type: string
+          nullable: true
+        packageName:
+          type: string
+          nullable: true
+        className:
+          type: string
+          nullable: true
+        methodName:
+          type: string
+          nullable: true
+        excludeMethodSignatures:
+          type: array
+          items:
+            type: string
+          description: List of method signatures to exclude from impact analysis. Signature format is "className:methodName:params:returnType".
+        testTaskId:
+          type: string
+          nullable: true
+        testTag:
+          type: string
+          nullable: true
+        testPath:
+          type: string
+          nullable: true
+        testName:
+          type: string
+          nullable: true
+        coverageBranches:
+          type: array
+          items:
+            type: string
+          description: List of coverage branches to consider.
+        coverageAppEnvIds:
+          type: array
+          items:
+            type: string
+          description: List of coverage app env IDs to consider.
+        sortBy:
+          type: string
+          enum:
+            - testPath
+            - testName
+            - testRunner
+            - impactedMethods
+          description: Field name to sort results by.
+          nullable: true
+        sortOrder:
+          type: string
+          enum:
+            - ASC
+            - DESC
+          description: Sort order direction. Defaults to ASC if not specified.
+          nullable: true
+        page:
+          type: integer
+          nullable: true
+        pageSize:
+          type: integer
+          nullable: true
+    ImpactedMethodsRequest:
+      type: object
+      required:
+        - groupId
+        - appId
+      properties:
+        groupId:
+          type: string
+        appId:
+          type: string
+        instanceId:
+          type: string
+          nullable: true
+        commitSha:
+          type: string
+          nullable: true
+        buildVersion:
+          type: string
+          nullable: true
+        baselineInstanceId:
+          type: string
+          nullable: true
+        baselineCommitSha:
+          type: string
+          nullable: true
+        baselineBuildVersion:
+          type: string
+          nullable: true
+        packageName:
+          type: string
+          nullable: true
+        className:
+          type: string
+          nullable: true
+        methodName:
+          type: string
+          nullable: true
+        testTaskId:
+          type: string
+          nullable: true
+        testTag:
+          type: string
+          nullable: true
+        testPath:
+          type: string
+          nullable: true
+        testName:
+          type: string
+          nullable: true
+        coverageBranches:
+          type: array
+          items:
+            type: string
+          description: List of coverage branches to consider.
+        coverageAppEnvIds:
+          type: array
+          items:
+            type: string
+          description: List of coverage app env IDs to consider.
+        page:
+          type: integer
+          nullable: true
+        pageSize:
           type: integer
           nullable: true
