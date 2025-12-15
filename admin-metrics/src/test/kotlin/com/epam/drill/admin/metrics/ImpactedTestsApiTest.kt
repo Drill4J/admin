@@ -124,6 +124,89 @@ class ImpactedTestsApiTest : DatabaseTests({
             }
         }
 
+
+    @Test
+    fun `given sortBy impactedMethods and sortOrder DESC, impacted tests should be sorted by number of impacted methods descending`() =
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            val test1 = TestDetails(testName = "testWith1Method")
+            val test2 = TestDetails(testName = "testWith2Methods")
+            val test3 = TestDetails(testName = "testWith3Methods")
+
+            // test1 covers only method1
+            test1 covers method1 on build1
+
+            // test2 covers method1 and method2
+            test2 covers method1 on build1
+            test2 covers method2 on build1
+
+            // test3 covers all three methods
+            test3 covers method1 on build1
+            test3 covers method2 on build1
+            test3 covers method3 on build1
+
+            // Modify all methods so all tests are impacted
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+            build2 hasModified method3 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedTests(build2, build1) {
+                parameter("sortBy", "impactedMethods")
+                parameter("sortOrder", "DESC")
+            }.returns { data ->
+                assertTrue(data.size >= 3, "Expected at least 3 tests")
+                val sortedByImpactedMethods = data.sortedByDescending { (it["impactedMethods"] as Number?)?.toInt() ?: 0 }
+                val actualTestNames = data.map { it["testName"] as String }
+                val expectedTestNames = sortedByImpactedMethods.map { it["testName"] as String }
+                assertTrue(actualTestNames == expectedTestNames,
+                    "Tests should be sorted by impactedMethods DESC. Expected: $expectedTestNames, but got: $actualTestNames")
+            }
+        }
+
+    @Test
+    fun `given excludeMethodSignatures, impacted tests should exclude tests that only cover excluded methods`() =
+        havingData {
+            build1 has listOf(method1, method2, method3)
+            val testCoveringMethod1 = TestDetails(testName = "testCoveringMethod1")
+            val testCoveringMethod2 = TestDetails(testName = "testCoveringMethod2")
+            val testCoveringBoth = TestDetails(testName = "testCoveringBoth")
+
+            // testCoveringMethod1 covers only method1
+            testCoveringMethod1 covers method1 on build1
+
+            // testCoveringMethod2 covers only method2
+            testCoveringMethod2 covers method2 on build1
+
+            // testCoveringBoth covers both method1 and method2
+            testCoveringBoth covers method1 on build1
+            testCoveringBoth covers method2 on build1
+
+            // Modify all methods
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+        }.expectThat { client ->
+            // Exclude method1 signature: className:methodName:params:returnType
+            val method1Signature = "${method1.classname}:${method1.name}:${method1.params}:${method1.returnType}"
+
+            client.getImpactedTests(build2, build1) {
+                parameter("excludeMethodSignatures", method1Signature)
+            }.returns { data ->
+                assertTrue(data.isNotEmpty(), "Expected some tests to remain after exclusion")
+
+                // testCoveringMethod1 should NOT be in results (only covers excluded method1)
+                assertTrue(data.none { it["testName"] == "testCoveringMethod1" },
+                    "testCoveringMethod1 should be excluded as it only covers method1")
+
+                // testCoveringMethod2 should be in results (covers non-excluded method2)
+                assertTrue(data.any { it["testName"] == "testCoveringMethod2" },
+                    "testCoveringMethod2 should be included as it covers non-excluded method2")
+
+                // testCoveringBoth should be in results (covers not only excluded method1)
+                assertTrue(data.any { it["testName"] == "testCoveringBoth" },
+                    "testCoveringBoth should be included as it covers not only method1")
+            }
+        }
+
     @AfterTest
     fun clearAll() = withTransaction {
         CoverageTable.deleteAll()

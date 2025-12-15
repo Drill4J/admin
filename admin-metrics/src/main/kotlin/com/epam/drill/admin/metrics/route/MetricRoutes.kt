@@ -20,6 +20,7 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.impl.ApiResponse
 import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
@@ -191,6 +192,8 @@ class Metrics {
         @Deprecated("Use className instead")
         val classNamePattern: String? = null,
 
+        val excludeMethodSignatures: List<String> = emptyList(),
+
         val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
@@ -198,6 +201,9 @@ class Metrics {
 
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
+
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null,
@@ -549,12 +555,15 @@ private suspend fun getImpactedTests(
         methodCriteria = MethodCriteria(
             packageName = params.packageName ?: params.packageNamePattern,
             className = params.className ?: params.classNamePattern,
-            methodName = params.methodName
+            methodName = params.methodName,
+            excludeMethodSignatures = params.excludeMethodSignatures
         ),
         coverageCriteria = CoverageCriteria(
             branches = params.coverageBranches,
             appEnvIds = params.coverageAppEnvIds,
         ),
+        sortBy = params.sortBy,
+        sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
     )

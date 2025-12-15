@@ -19,6 +19,7 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
 
@@ -122,6 +123,8 @@ interface MetricsService {
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView>

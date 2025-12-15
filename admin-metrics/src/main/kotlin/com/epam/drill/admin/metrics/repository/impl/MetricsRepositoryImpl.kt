@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.repository.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import java.sql.Timestamp
 import java.time.Instant
@@ -389,9 +390,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
 
+        sortBy: String?,
+        sortOrder: SortOrder?,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+
         executeQueryReturnMap {
             append(
                 """
@@ -425,6 +431,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
+
+            if (sortBy != null) {
+                append(" ORDER BY $sortBy $sortDirection")
+            }
+
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }

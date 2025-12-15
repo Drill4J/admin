@@ -31,6 +31,7 @@ import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
+import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.service.MetricsService
@@ -457,6 +458,8 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
@@ -465,6 +468,19 @@ class MetricsServiceImpl(
 
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        // Map response field names to database column names
+        val sortingFieldMapping = mapOf(
+            "testDefinitionId" to "test_definition_id",
+            "testPath" to "test_path",
+            "testName" to "test_name",
+            "testRunner" to "test_runner",
+            "tags" to "test_tags",
+            "metadata" to "test_metadata",
+            "impactedMethods" to "impacted_methods"
+        )
+
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -485,6 +501,9 @@ class MetricsServiceImpl(
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
 
                 offset = offset,
                 limit = limit,

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository
 
+import com.epam.drill.admin.metrics.models.SortOrder
 import java.time.Instant
 import java.time.LocalDateTime
 
@@ -116,6 +117,9 @@ interface MetricsRepository {
 
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
+
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
 
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
