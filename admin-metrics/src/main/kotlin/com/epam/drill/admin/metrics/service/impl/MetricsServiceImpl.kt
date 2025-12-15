@@ -471,12 +471,9 @@ class MetricsServiceImpl(
 
         // Map response field names to database column names
         val sortingFieldMapping = mapOf(
-            "testDefinitionId" to "test_definition_id",
             "testPath" to "test_path",
             "testName" to "test_name",
             "testRunner" to "test_runner",
-            "tags" to "test_tags",
-            "metadata" to "test_metadata",
             "impactedMethods" to "impacted_methods"
         )
 

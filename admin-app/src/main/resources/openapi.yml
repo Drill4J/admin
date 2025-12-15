@@ -835,6 +835,33 @@ paths:
               type: string
           style: form
           explode: true
+        - name: excludeMethodSignatures
+          in: query
+          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType" (e.g., "com.example.Class:method1:():void").
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: sortBy
+          in: query
+          description: Field name to sort results by. Supported values are testPath, testName, testRunner, impactedMethods.
+          schema:
+            type: string
+            enum:
+              - testPath
+              - testName
+              - testRunner
+              - impactedMethods
+        - name: sortOrder
+          in: query
+          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
           schema:
