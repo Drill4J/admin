@@ -986,6 +986,24 @@ paths:
               type: string
           style: form
           explode: true
+        - name: sortBy
+          in: query
+          description: Field name to sort results by. Supported values are signature, className, name, impactedTests.
+          schema:
+            type: string
+            enum:
+              - signature
+              - className
+              - name
+              - impactedTests
+        - name: sortOrder
+          in: query
+          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
           schema:
@@ -1866,6 +1884,22 @@ components:
           items:
             type: string
           description: List of coverage app env IDs to consider.
+        sortBy:
+          type: string
+          enum:
+            - signature
+            - className
+            - name
+            - impactedTests
+          description: Field name to sort results by.
+          nullable: true
+        sortOrder:
+          type: string
+          enum:
+            - ASC
+            - DESC
+          description: Sort order direction. Defaults to ASC if not specified.
+          nullable: true
         page:
           type: integer
           nullable: true

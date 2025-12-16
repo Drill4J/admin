@@ -457,9 +457,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
 
+        sortBy: String?,
+        sortOrder: SortOrder?,
+
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+
         executeQueryReturnMap {
             append(
                 """
@@ -494,6 +499,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
+
+            if (sortBy != null) {
+                append(" ORDER BY $sortBy $sortDirection")
+            }
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }

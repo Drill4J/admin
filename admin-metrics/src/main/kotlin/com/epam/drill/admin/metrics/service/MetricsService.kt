@@ -135,6 +135,8 @@ interface MetricsService {
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>

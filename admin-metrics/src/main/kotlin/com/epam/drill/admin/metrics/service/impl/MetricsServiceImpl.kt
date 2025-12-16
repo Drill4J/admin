@@ -476,7 +476,6 @@ class MetricsServiceImpl(
             "testRunner" to "test_runner",
             "impactedMethods" to "impacted_methods"
         )
-
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
         return@transaction pagedListOf(
@@ -524,6 +523,8 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
@@ -532,6 +533,15 @@ class MetricsServiceImpl(
 
         val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        // Map response field names to database column names
+        val sortingFieldMapping = mapOf(
+            "signature" to "signature",
+            "className" to "class_name",
+            "name" to "method_name",
+            "impactedTests" to "impacted_tests"
+        )
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -553,8 +563,11 @@ class MetricsServiceImpl(
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
 
-                offset = null,
-                limit = null
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
+
+                offset = offset,
+                limit = limit
             ).map(::mapToMethodView)
         }
     }

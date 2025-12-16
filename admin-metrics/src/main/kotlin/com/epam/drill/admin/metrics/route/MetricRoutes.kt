@@ -210,8 +210,9 @@ class Metrics {
     )
 
     @Resource("/impacted-methods")
+    @Serializable
     class ImpactedMethods(
-        val parent: Metrics,
+        val parent: Metrics = Metrics(),
 
         val groupId: String,
         val appId: String,
@@ -240,6 +241,9 @@ class Metrics {
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
         val coveragePeriodDays: Int? = null,
+
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null,
@@ -605,6 +609,8 @@ private suspend fun getImpactedMethods(
             branches = params.coverageBranches,
             appEnvIds = params.coverageAppEnvIds,
         ),
+        sortBy = params.sortBy,
+        sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
     )
