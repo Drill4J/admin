@@ -90,7 +90,7 @@ open class EtlOrchestratorImpl(
                         extractorName = pipeline.extractor.name,
                         loaderName = loader,
                         status = EtlStatus.EXTRACTING,
-                        lastProcessedAt = initTimestamp,
+                        lastProcessedAt = timestampPerLoader[loader] ?: initTimestamp,
                         lastRunAt = snapshotTime,
                         lastDuration = 0L,
                         lastRowsProcessed = 0L,
