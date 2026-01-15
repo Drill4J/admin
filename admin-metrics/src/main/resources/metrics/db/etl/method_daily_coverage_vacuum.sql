@@ -1,0 +1,1 @@
+VACUUM ANALYZE metrics.method_daily_coverage;

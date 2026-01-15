@@ -17,17 +17,20 @@ package com.epam.drill.admin.etl.impl
 
 import org.jetbrains.exposed.sql.Database
 import java.time.Instant
-import java.util.Date
+import java.util.*
 
 class UntypedSqlDataLoader(
     name: String,
     sqlUpsert: String,
     sqlDelete: String,
+    sqlVacuum: String? = null,
+    vacuumEnabled: Boolean = false,
+    vacuumAfterRows: Int = 100_000,
     database: Database,
     private val lastExtractedAtColumnName: String,
     batchSize: Int = 1000,
     val processable: (Map<String, Any?>) -> Boolean = { true }
-) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sqlUpsert, sqlDelete, database) {
+) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sqlUpsert, sqlDelete, sqlVacuum, vacuumEnabled, vacuumAfterRows, database) {
 
     override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
         return UntypedPreparedSql.prepareSql(sql)

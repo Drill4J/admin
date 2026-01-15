@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import io.ktor.server.config.ApplicationConfig
+import io.ktor.server.config.*
 
 /**
  * Configuration parameters for ETL processing.
@@ -38,4 +38,11 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val batchSize : Int
         get() = config.propertyOrNull("batchSize")?.getString()?.toIntOrNull() ?: 1000
+
+    /**
+     * Controls intervals (in a number of written rows) for loader to run vacuum on a table.
+     */
+    val vacuumAfterRows: Int
+        get() = config.propertyOrNull("vacuumAfterRows")?.getString()?.toIntOrNull() ?: 100_000
+
 }

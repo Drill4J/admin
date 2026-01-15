@@ -1,0 +1,1 @@
+VACUUM ANALYZE metrics.build_method_coverage;

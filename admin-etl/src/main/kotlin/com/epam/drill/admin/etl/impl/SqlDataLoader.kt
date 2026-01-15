@@ -31,11 +31,36 @@ abstract class SqlDataLoader<T>(
     override val batchSize: Int,
     open val sqlUpsert: String,
     open val sqlDelete: String,
-    open val database: Database
-) : BatchDataLoader<T>(name, batchSize) {
+    private val sqlVacuum: String?,
+    private val vacuumEnabled: Boolean,
+    vacuumAfterRows: Int,
+    open val database: Database,
+) : BatchDataLoader<T>(name, batchSize, vacuumAfterRows) {
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>
+
+    override suspend fun vacuum(groupId: String) {
+        if (!vacuumEnabled) return
+
+        if (sqlVacuum.isNullOrBlank()) {
+            logger.error { "Loader [$name] could not run vacuum - no SQL query provided" }
+            return
+        }
+
+        logger.debug { "Loader [$name] running vacuum for [$groupId]" }
+        val duration = try {
+            newSuspendedTransaction(context = Dispatchers.IO, db = database) {
+                exec(sqlVacuum)
+                duration
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error during vacuum with loader [$name] for group [$groupId]: ${e.message ?: e.javaClass.simpleName}" }
+            throw e
+        }
+
+        logger.debug { "Loader [$name] ran vacuum for group [$groupId] in ${duration}ms" }
+    }
 
     override suspend fun loadBatch(
         groupId: String,
@@ -100,4 +125,6 @@ abstract class SqlDataLoader<T>(
         }
         logger.debug { "Loader [$name] deleted data for groupId $groupId in ${duration}ms" }
     }
+
+
 }

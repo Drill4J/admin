@@ -27,7 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 abstract class BatchDataLoader<T>(
     override val name: String,
-    open val batchSize: Int = 1000
+    open val batchSize: Int = 1000,
+    private val vacuumAfterRows: Int,
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -91,10 +92,10 @@ abstract class BatchDataLoader<T>(
                 previousTimestamp = currentTimestamp
                 return@collect
             }
-
             // If timestamp changed and buffer is full, flush the buffer
             if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
                 if (buffer.size >= batchSize) {
+                    val before = result.processedRows / vacuumAfterRows
                     result += flushBuffer(groupId, buffer, batchNo) { batch ->
                         if (batch.success) {
                             lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
@@ -108,6 +109,10 @@ abstract class BatchDataLoader<T>(
                         ).also {
                             onLoadCompleted(it)
                         }
+                    }
+                    val after = result.processedRows / vacuumAfterRows
+                    if (!result.isFailed && (after > before)) {
+                        vacuum(groupId)
                     }
                 }
             }
@@ -156,6 +161,7 @@ abstract class BatchDataLoader<T>(
     abstract fun getLastExtractedTimestamp(args: T): Instant?
     abstract fun isProcessable(args: T): Boolean
     abstract suspend fun loadBatch(groupId: String, batch: List<T>, batchNo: Int): BatchResult
+    abstract suspend fun vacuum(groupId: String)
 
     private suspend fun flushBuffer(
         groupId: String,
