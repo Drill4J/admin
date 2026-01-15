@@ -1,0 +1,1 @@
+VACUUM ANALYZE metrics.test_session_builds;
