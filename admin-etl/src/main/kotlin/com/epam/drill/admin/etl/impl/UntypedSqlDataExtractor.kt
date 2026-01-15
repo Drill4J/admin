@@ -15,23 +15,28 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.UntypedRow
 import org.jetbrains.exposed.sql.Database
 import org.postgresql.util.PGobject
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
+import java.time.Instant
+import java.util.Date
 
 class UntypedSqlDataExtractor(
     name: String,
     sqlQuery: String,
     database: Database,
-    fetchSize: Int = 2000
-) : SqlDataExtractor<Map<String, Any?>>(name, sqlQuery, database, fetchSize) {
+    fetchSize: Int = 2000,
+    extractionLimit: Int = 1_000_000,
+    private val lastExtractedAtColumnName: String,
+) : SqlDataExtractor<UntypedRow>(name, sqlQuery, database, fetchSize, extractionLimit) {
 
-    override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
+    override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)
     }
 
-    override fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): Map<String, Any?> {
+    override fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): UntypedRow {
         val row = mutableMapOf<String, Any?>()
         for (i in 1..columnCount) {
             val columnName = meta.getColumnName(i)
@@ -55,6 +60,16 @@ class UntypedSqlDataExtractor(
             }
             row[columnName] = value
         }
-        return row
+        return UntypedRow(getLastExtractedTimestamp(row), row)
+    }
+
+    private fun getLastExtractedTimestamp(args: Map<String, Any?>): Instant {
+        val timestamp = args[lastExtractedAtColumnName]
+        return when (timestamp) {
+            is Instant -> timestamp
+            is Date -> timestamp.toInstant()
+            is String -> Instant.parse(timestamp)
+            else -> throw IllegalStateException("Could not extract timestamp column $lastExtractedAtColumnName from row: $args")
+        }
     }
 }

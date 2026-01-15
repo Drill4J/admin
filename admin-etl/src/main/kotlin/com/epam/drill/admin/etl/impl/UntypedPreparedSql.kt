@@ -15,14 +15,16 @@
  */
 package com.epam.drill.admin.etl.impl
 
-class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : PreparedSql<Map<String, Any?>> {
+import com.epam.drill.admin.etl.UntypedRow
+
+class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : PreparedSql<UntypedRow> {
     override fun getSql() = preparedSql
-    override fun getArgs(row: Map<String, Any?>): List<Any?> {
+    override fun getArgs(row: UntypedRow): List<Any?> {
         return indexes.map { row[it] }
     }
 
     companion object {
-        fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
+        fun prepareSql(sql: String): PreparedSql<UntypedRow> {
             val regex = Regex("""(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)(?![:=])""")
 
             val indexes = mutableListOf<String>()

@@ -21,6 +21,7 @@ import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.CompletableSharedFlow
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,7 @@ import mu.KotlinLogging
 import java.time.Instant
 import kotlin.system.measureTimeMillis
 
-class EtlPipelineImpl<T>(
+class EtlPipelineImpl<T: EtlRow>(
     override val name: String,
     override val extractor: DataExtractor<T>,
     override val loaders: List<DataLoader<T>>,
@@ -46,28 +47,30 @@ class EtlPipelineImpl<T>(
         groupId: String,
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
-        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit,
+        onLoadingProgress: suspend (String, EtlLoadingResult) -> Unit,
+        onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         val minProcessedTime = sinceTimestampPerLoader.values.min()
         logger.debug { "ETL pipeline [$name] starting for group [$groupId] since $minProcessedTime..." }
-        var results = EtlLoadingResult(status = EtlStatus.EXTRACTING, lastProcessedAt = minProcessedTime)
+        var results = EtlLoadingResult(lastProcessedAt = minProcessedTime)
         val duration = measureTimeMillis {
             results = processEtl(
                 groupId,
                 minProcessedTime,
                 sinceTimestampPerLoader,
                 untilTimestamp,
-                onExtractCompleted,
-                onLoadCompleted
+                onExtractingProgress,
+                onLoadingProgress,
+                onStatusChanged
             )
         }
         logger.debug {
-            if (results.processedRows == 0L && results.status == EtlStatus.SUCCESS) {
+            if (results.processedRows == 0L && !results.isFailed) {
                 "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, no new rows"
             } else {
                 val errors = results.errorMessage?.let { ", errors: $it" } ?: ""
-                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, rows processed: ${results.processedRows}, status: ${results.status}" + errors
+                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, rows processed: ${results.processedRows}" + errors
             }
         }
         EtlProcessingResult(
@@ -75,8 +78,8 @@ class EtlPipelineImpl<T>(
             pipelineName = name,
             lastProcessedAt = results.lastProcessedAt,
             rowsProcessed = results.processedRows,
-            status = results.status,
-            errorMessage = results.errorMessage
+            errorMessage = results.errorMessage,
+            status = if (results.isFailed) EtlStatus.FAILED else EtlStatus.SUCCESS
         )
     }
 
@@ -89,8 +92,9 @@ class EtlPipelineImpl<T>(
         extractorSinceTimestamp: Instant,
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
-        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit,
+        onLoadingProgress: suspend (loaderName: String, EtlLoadingResult) -> Unit,
+        onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlLoadingResult {
         val flow = CompletableSharedFlow<T>(
             replay = 0,
@@ -98,10 +102,18 @@ class EtlPipelineImpl<T>(
         )
         return loaders.map { loader ->
             async {
-                loadData(groupId, loader, sinceTimestampPerLoader[loader.name] ?: extractorSinceTimestamp, untilTimestamp, flow, onLoadCompleted)
+                loadData(
+                    groupId,
+                    loader,
+                    sinceTimestampPerLoader[loader.name] ?: extractorSinceTimestamp,
+                    untilTimestamp,
+                    flow,
+                    onLoadingProgress,
+                    onStatusChanged
+                )
             }
         }.also { jobs ->
-            extractData(groupId, flow, jobs, extractorSinceTimestamp, untilTimestamp, onExtractCompleted)
+            extractData(groupId, flow, jobs, extractorSinceTimestamp, untilTimestamp, onExtractingProgress)
         }.awaitAll().max()
     }
 
@@ -111,12 +123,19 @@ class EtlPipelineImpl<T>(
         jobs: List<Deferred<EtlLoadingResult>>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit,
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit,
     ) {
         try {
             // Start extractor only after all jobs are ready to consume data otherwise data may be lost
             flow.waitForSubscribers(jobs.count { it.isActive })
-            extractor.extract(groupId, sinceTimestamp, untilTimestamp, flow, onExtractCompleted)
+            extractor.extract(groupId, sinceTimestamp, untilTimestamp, flow, onExtractingProgress)
+        } catch (e: Throwable) {
+            logger.debug(e) { "ETL pipeline [$name] failed for extractor [${extractor.name}]: ${e.message}" }
+            onExtractingProgress(
+                EtlExtractingResult(
+                    errorMessage = "Error during extracting data with extractor ${extractor.name}: ${e.message ?: e.javaClass.simpleName}",
+                )
+            )
         } finally {
             // Complete the flow to signal jobs that extraction is done
             flow.complete()
@@ -129,15 +148,18 @@ class EtlPipelineImpl<T>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         flow: Flow<T>,
-        onLoadCompleted: suspend (String, EtlLoadingResult) -> Unit
+        onLoadingProgress: suspend (loaderNmae: String, result: EtlLoadingResult) -> Unit,
+        onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlLoadingResult = try {
-        loader.load(groupId, sinceTimestamp, untilTimestamp, flow) { onLoadCompleted(loader.name, it) }
+        loader.load(groupId, sinceTimestamp, untilTimestamp, flow,
+            onLoadingProgress =  { onLoadingProgress(loader.name, it) },
+            onStatusChanged = { onStatusChanged(loader.name, it) }
+        )
     } catch (e: Throwable) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
-            status = EtlStatus.FAILED,
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
             lastProcessedAt = sinceTimestamp
-        ).also { onLoadCompleted(loader.name, it) }
+        ).also { onLoadingProgress(loader.name, it) }
     }
 }

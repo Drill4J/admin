@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.StoppableFlow
 import com.epam.drill.admin.etl.flow.stoppable
@@ -25,7 +26,7 @@ import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
-abstract class BatchDataLoader<T>(
+abstract class BatchDataLoader<T: EtlRow>(
     override val name: String,
     open val batchSize: Int = 1000
 ) : DataLoader<T> {
@@ -43,33 +44,32 @@ abstract class BatchDataLoader<T>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
-        onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+        onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+        onStatusChanged: suspend (EtlStatus) -> Unit
     ): EtlLoadingResult {
-        var result = EtlLoadingResult(status = EtlStatus.LOADING, lastProcessedAt = sinceTimestamp)
+        var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
         val buffer = mutableListOf<T>()
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
+        var firstRow = true
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
             stop()
             result += EtlLoadingResult(
-                status = EtlStatus.FAILED,
                 errorMessage = message,
                 lastProcessedAt = lastLoadedTimestamp
             ).also {
-                onLoadCompleted(it)
+                onLoadingProgress(it)
             }
         }
         logger.debug { "ETL loader [$name] loading rows..." }
 
         flow.collect { row ->
-            val currentTimestamp = getLastExtractedTimestamp(row)
-            if (currentTimestamp == null) {
-                flow.stopWithMessage("Could not extract timestamp from the data row: $row")
-                return@collect
-            }
-
+            if (firstRow)
+                onStatusChanged(EtlStatus.LOADING)
+            firstRow = false
+            val currentTimestamp = row.timestamp
             if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                 flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
                 return@collect
@@ -100,13 +100,12 @@ abstract class BatchDataLoader<T>(
                             lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                         }
                         EtlLoadingResult(
-                            status = if (batch.success) EtlStatus.LOADING else EtlStatus.FAILED,
                             errorMessage = if (!batch.success) result.errorMessage else null,
                             lastProcessedAt = lastLoadedTimestamp,
                             processedRows = if (batch.success) batch.rowsLoaded else 0L,
                             duration = batch.duration
                         ).also {
-                            onLoadCompleted(it)
+                            onLoadingProgress(it)
                         }
                     }
                 }
@@ -129,31 +128,24 @@ abstract class BatchDataLoader<T>(
                         lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                     }
                     EtlLoadingResult(
-                        status = if (batch.success) EtlStatus.SUCCESS else EtlStatus.FAILED,
-                        errorMessage = if (!batch.success) result.errorMessage else null,
+                        errorMessage = if (!batch.success) batch.errorMessage else null,
                         lastProcessedAt = lastLoadedTimestamp,
                         processedRows = if (batch.success) batch.rowsLoaded else 0,
                         duration = batch.duration
                     ).also {
-                        onLoadCompleted(it)
+                        onLoadingProgress(it)
                     }
                 }
-            } else {
-                // Finalize with success
-                lastLoadedTimestamp = previousTimestamp ?: sinceTimestamp
-                result += EtlLoadingResult(
-                    status = EtlStatus.SUCCESS,
-                    lastProcessedAt = lastLoadedTimestamp
-                ).also {
-                    onLoadCompleted(it)
-                }
             }
+            onStatusChanged(EtlStatus.SUCCESS)
         }
-        logger.debug { "ETL loader [$name] complete loading for ${result.processedRows} rows, status: ${result.status}" }
+        logger.debug {
+            val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
+            "ETL loader [$name] complete loading for ${result.processedRows} rows" + errors
+        }
         return result
     }
 
-    abstract fun getLastExtractedTimestamp(args: T): Instant?
     abstract fun isProcessable(args: T): Boolean
     abstract suspend fun loadBatch(groupId: String, batch: List<T>, batchNo: Int): BatchResult
 

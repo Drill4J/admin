@@ -35,7 +35,7 @@ import java.time.Instant
  *     - failures in loaders or extractor are propagated to the pipeline,
  *     - pipeline may cancel child coroutines and report status to `EtlOrchestrator`.
  */
-interface EtlPipeline<T> {
+interface EtlPipeline<T: EtlRow> {
     val name: String
     val extractor: DataExtractor<T>
     val loaders: List<DataLoader<T>>
@@ -43,8 +43,9 @@ interface EtlPipeline<T> {
         groupId: String,
         sinceTimestampPerLoader: Map<String, Instant>,
         untilTimestamp: Instant,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit = {},
-        onLoadCompleted: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { _, _ -> },
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit = {},
+        onLoadingProgress: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { _, _ -> },
+        onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit = { _, _ -> },
     ): EtlProcessingResult
 
     suspend fun cleanUp(groupId: String)

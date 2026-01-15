@@ -28,7 +28,9 @@ val EtlConfig.coverageExtractor
         name = "coverage",
         sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
         database = MetricsDatabaseConfig.database,
-        fetchSize = fetchSize
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        lastExtractedAtColumnName = "created_at",
     )
 
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
@@ -36,7 +38,6 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         name = "build_method_test_definition_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
@@ -47,7 +48,6 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         name = "build_method_test_session_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         processable = { it["test_session_id"] != null }
@@ -58,7 +58,6 @@ val EtlConfig.buildMethodCoverageLoader
         name = "build_method_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
@@ -68,7 +67,6 @@ val EtlConfig.methodCoverageLoader
         name = "method_daily_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
@@ -78,7 +76,6 @@ val EtlConfig.test2CodeMappingLoader
         name = "test_to_code_mapping",
         sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }

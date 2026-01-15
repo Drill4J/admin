@@ -37,28 +37,33 @@ open class EtlOrchestratorImpl(
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info("ETL [$name] starting for group [$groupId] with init timestamp $initTimestamp...")
-        val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
-        val duration = measureTimeMillis {
-            pipelines.map { pipeline ->
-                async {
-                    results += runPipeline(groupId, pipeline, initTimestamp)
-                }
-            }.awaitAll()
+    override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> =
+        withContext(Dispatchers.IO) {
+            logger.info("ETL [$name] starting for group [$groupId] with init timestamp $initTimestamp...")
+            val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
+            val duration = measureTimeMillis {
+                pipelines.map { pipeline ->
+                    async {
+                        results += runPipeline(groupId, pipeline, initTimestamp)
+                    }
+                }.awaitAll()
+            }
+            logger.info {
+                val rowsProcessed = results.sumOf { it.rowsProcessed }
+                val failures = results.count { it.status == EtlStatus.FAILED }
+                if (rowsProcessed == 0L && failures == 0)
+                    "ETL [$name] for group [$groupId] completed in ${duration}ms, no new rows"
+                else
+                    "ETL [$name] for group [$groupId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+            }
+            return@withContext results
         }
-        logger.info {
-            val rowsProcessed = results.sumOf { it.rowsProcessed }
-            val failures = results.count { it.status == EtlStatus.FAILED }
-            if (rowsProcessed == 0L && failures == 0)
-                "ETL [$name] for group [$groupId] completed in ${duration}ms, no new rows"
-            else
-                "ETL [$name] for group [$groupId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
-        }
-        return@withContext results
-    }
 
-    override suspend fun rerun(groupId: String, initTimestamp: Instant, withDataDeletion: Boolean): List<EtlProcessingResult> =
+    override suspend fun rerun(
+        groupId: String,
+        initTimestamp: Instant,
+        withDataDeletion: Boolean
+    ): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
             logger.info { "ETL [$name] deleting all metadata for group [$groupId] for rerun." }
             pipelines.map { it.name }.forEach { pipelineName ->
@@ -74,7 +79,11 @@ open class EtlOrchestratorImpl(
             return@withContext results
         }
 
-    private suspend fun runPipeline(groupId: String, pipeline: EtlPipeline<*>, initTimestamp: Instant): EtlProcessingResult {
+    private suspend fun runPipeline(
+        groupId: String,
+        pipeline: EtlPipeline<*>,
+        initTimestamp: Instant
+    ): EtlProcessingResult {
         val snapshotTime = Instant.now()
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
@@ -92,9 +101,6 @@ open class EtlOrchestratorImpl(
                         status = EtlStatus.EXTRACTING,
                         lastProcessedAt = timestampPerLoader[loader] ?: initTimestamp,
                         lastRunAt = snapshotTime,
-                        lastDuration = 0L,
-                        lastRowsProcessed = 0L,
-                        errorMessage = null
                     )
                 )
             }
@@ -102,36 +108,52 @@ open class EtlOrchestratorImpl(
                 groupId = groupId,
                 sinceTimestampPerLoader = timestampPerLoader,
                 untilTimestamp = snapshotTime,
-                onExtractCompleted = { result ->
+                onExtractingProgress = { result ->
                     try {
-                        metadataRepository.accumulateMetadataDurationByExtractor(
-                            groupId,
-                            pipeline.name,
-                            pipeline.extractor.name,
-                            result.duration
+                        metadataRepository.accumulateMetadataByExtractor(
+                            groupId = groupId,
+                            pipelineName = pipeline.name,
+                            extractorName = pipeline.extractor.name,
+                            errorMessage = result.errorMessage,
+                            extractDuration = result.duration
                         )
                     } catch (e: Throwable) {
-                        logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                        logger.warn(
+                            "ETL pipeline [${pipeline.name}] failed to update extracting progress: ${e.message}",
+                            e
+                        )
                     }
                 },
-                onLoadCompleted = { loaderName, result ->
+                onLoadingProgress = { loaderName, result ->
                     try {
-                        metadataRepository.accumulateMetadata(
-                            EtlMetadata(
-                                groupId = groupId,
-                                pipelineName = pipeline.name,
-                                extractorName = pipeline.extractor.name,
-                                loaderName = loaderName,
-                                status = result.status,
-                                lastProcessedAt = result.lastProcessedAt,
-                                errorMessage = result.errorMessage,
-                                lastRunAt = snapshotTime,
-                                lastDuration = result.duration ?: 0L,
-                                lastRowsProcessed = result.processedRows
-                            )
+                        metadataRepository.accumulateMetadataByLoader(
+                            groupId = groupId,
+                            pipelineName = pipeline.name,
+                            extractorName = pipeline.extractor.name,
+                            loaderName = loaderName,
+                            errorMessage = result.errorMessage,
+                            lastProcessedAt = result.lastProcessedAt,
+                            loadDuration = result.duration ?: 0L,
+                            rowsProcessed = result.processedRows
                         )
                     } catch (e: Throwable) {
-                        logger.warn("ETL pipeline [${pipeline.name}] failed to update metadata: ${e.message}", e)
+                        logger.warn(
+                            "ETL pipeline [${pipeline.name}] failed to update loading progress: ${e.message}",
+                            e
+                        )
+                    }
+                },
+                onStatusChanged = { loaderName, status ->
+                    try {
+                        metadataRepository.accumulateMetadataByLoader(
+                            groupId = groupId,
+                            pipelineName = pipeline.name,
+                            extractorName = pipeline.extractor.name,
+                            loaderName = loaderName,
+                            status = status
+                        )
+                    } catch (e: Throwable) {
+                        logger.warn("ETL pipeline [${pipeline.name}] failed to update loading status: ${e.message}", e)
                     }
                 }
             )

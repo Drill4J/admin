@@ -27,3 +27,4 @@ WHERE c.group_id = :group_id
     AND c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
 ORDER BY c.created_at ASC, c.method_id ASC
+LIMIT :limit

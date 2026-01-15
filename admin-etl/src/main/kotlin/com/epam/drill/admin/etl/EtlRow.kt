@@ -17,17 +17,6 @@ package com.epam.drill.admin.etl
 
 import java.time.Instant
 
-data class EtlMetadata(
-    val groupId: String,
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastRunAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
-    val errorMessage: String? = null,
+open class EtlRow(
+    val timestamp: Instant,
 )
-

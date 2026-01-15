@@ -38,4 +38,10 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val batchSize : Int
         get() = config.propertyOrNull("batchSize")?.getString()?.toIntOrNull() ?: 1000
+
+    /**
+     * Sets a limit on the total number of records to be extracted by the ETL process in a single query.
+     */
+    val extractionLimit : Int
+        get() = config.propertyOrNull("extractionLimit")?.getString()?.toIntOrNull() ?: 1_000_000
 }

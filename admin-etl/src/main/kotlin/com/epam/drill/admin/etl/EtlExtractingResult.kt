@@ -16,7 +16,6 @@
 package com.epam.drill.admin.etl
 
 class EtlExtractingResult(
-    val success: Boolean,
-    val duration: Long,
+    val duration: Long = 0,
     val errorMessage: String? = null
 )

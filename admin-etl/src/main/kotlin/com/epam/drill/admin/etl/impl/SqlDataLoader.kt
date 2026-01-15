@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.EtlRow
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -26,7 +27,7 @@ import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 
-abstract class SqlDataLoader<T>(
+abstract class SqlDataLoader<T: EtlRow>(
     override val name: String,
     override val batchSize: Int,
     open val sqlUpsert: String,

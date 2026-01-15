@@ -32,6 +32,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
+import java.time.Instant
 
 class EtlMetadataRepositoryImpl(
     private val database: Database,
@@ -79,8 +80,10 @@ class EtlMetadataRepositoryImpl(
     override suspend fun saveMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
         metadataTable.upsert(
             onUpdateExclude = listOf(
-                metadataTable.duration,
+                metadataTable.loadDuration,
+                metadataTable.extractDuration,
                 metadataTable.rowsProcessed,
+                metadataTable.lastProcessedAt,
                 metadataTable.createdAt
             ),
         ) {
@@ -91,54 +94,82 @@ class EtlMetadataRepositoryImpl(
             it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
             it[lastRunAt] = metadata.lastRunAt
-            it[lastDuration] = metadata.lastDuration
+            it[lastLoadDuration] = metadata.lastLoadDuration
+            it[lastExtractDuration] = metadata.lastExtractDuration
             it[lastRowsProcessed] = metadata.lastRowsProcessed
             it[errorMessage] = metadata.errorMessage
             it[updatedAt] = CurrentDateTime
         }
     }
 
-    override suspend fun accumulateMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
-        metadataTable.update(where = {
-            (metadataTable.groupId eq metadata.groupId) and
-                    (metadataTable.pipelineName eq metadata.pipelineName) and
-                    (metadataTable.extractorName eq metadata.extractorName) and
-                    (metadataTable.loaderName eq metadata.loaderName)
-        }) {
-            it[status] = metadata.status.name
-            it[lastProcessedAt] = metadata.lastProcessedAt
-            it[lastRunAt] = metadata.lastRunAt
-            it[lastDuration] = lastDuration + metadata.lastDuration
-            it[lastRowsProcessed] = lastRowsProcessed + metadata.lastRowsProcessed
-            it[duration] = duration + metadata.lastDuration
-            it[rowsProcessed] = rowsProcessed + metadata.lastRowsProcessed
-            it[errorMessage] = metadata.errorMessage
-            it[updatedAt] = CurrentDateTime
+    override suspend fun accumulateMetadataByLoader(
+        groupId: String,
+        pipelineName: String,
+        extractorName: String,
+        loaderName: String,
+        lastProcessedAt: Instant?,
+        status: EtlStatus?,
+        loadDuration: Long,
+        rowsProcessed: Long,
+        errorMessage: String?
+    ) {
+        newSuspendedTransaction(db = database) {
+            metadataTable.update(where = {
+                (metadataTable.groupId eq groupId) and
+                        (metadataTable.pipelineName eq pipelineName) and
+                        (metadataTable.extractorName eq extractorName) and
+                        (metadataTable.loaderName eq loaderName)
+            }) {
+                if (errorMessage != null) {
+                    it[metadataTable.errorMessage] = errorMessage
+                    it[metadataTable.status] = EtlStatus.FAILED.name
+                }
+                if (status != null) {
+                    it[metadataTable.status] = status.name
+                }
+                if (lastProcessedAt != null) {
+                    it[metadataTable.lastProcessedAt] = lastProcessedAt
+                }
+                it[metadataTable.lastLoadDuration] = metadataTable.lastLoadDuration + loadDuration
+                it[metadataTable.lastRowsProcessed] = metadataTable.lastRowsProcessed + rowsProcessed
+                it[metadataTable.loadDuration] = metadataTable.loadDuration + loadDuration
+                it[metadataTable.rowsProcessed] = metadataTable.rowsProcessed + rowsProcessed
+                it[updatedAt] = CurrentDateTime
+            }
         }
     }
 
     override suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String) {
         newSuspendedTransaction(db = database) {
-            metadataTable.deleteWhere { 
+            metadataTable.deleteWhere {
                 (metadataTable.groupId eq groupId) and (metadataTable.pipelineName eq pipelineName)
             }
         }
     }
 
-    override suspend fun accumulateMetadataDurationByExtractor(
+    override suspend fun accumulateMetadataByExtractor(
         groupId: String,
         pipelineName: String,
         extractorName: String,
-        duration: Long
+        status: EtlStatus?,
+        extractDuration: Long,
+        errorMessage: String?
     ) {
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
                 (metadataTable.groupId eq groupId) and
-                (metadataTable.pipelineName eq pipelineName) and 
+                (metadataTable.pipelineName eq pipelineName) and
                 (metadataTable.extractorName eq extractorName)
             }) {
-                it[lastDuration] = lastDuration + duration
-                it[metadataTable.duration] = metadataTable.duration + duration
+                if (errorMessage != null) {
+                    it[metadataTable.errorMessage] = errorMessage
+                    it[metadataTable.status] = EtlStatus.FAILED.name
+                }
+                if (status != null) {
+                    it[metadataTable.status] = status.name
+                }
+                it[metadataTable.lastExtractDuration] = metadataTable.lastExtractDuration + extractDuration
+                it[metadataTable.extractDuration] = metadataTable.extractDuration + extractDuration
                 it[metadataTable.updatedAt] = CurrentDateTime
             }
         }
@@ -151,7 +182,8 @@ class EtlMetadataRepositoryImpl(
         loaderName = row[metadataTable.loaderName],
         lastProcessedAt = row[metadataTable.lastProcessedAt],
         lastRunAt = row[metadataTable.lastRunAt],
-        lastDuration = row[metadataTable.lastDuration],
+        lastLoadDuration = row[metadataTable.lastLoadDuration],
+        lastExtractDuration = row[metadataTable.lastExtractDuration],
         lastRowsProcessed = row[metadataTable.lastRowsProcessed],
         status = EtlStatus.valueOf(row[metadataTable.status]),
         errorMessage = row[metadataTable.errorMessage],
