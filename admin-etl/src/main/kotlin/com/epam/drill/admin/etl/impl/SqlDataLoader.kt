@@ -25,6 +25,8 @@ import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.sql.Connection
+import kotlin.system.measureTimeMillis
 
 abstract class SqlDataLoader<T>(
     override val name: String,
@@ -50,15 +52,17 @@ abstract class SqlDataLoader<T>(
 
         logger.debug { "Loader [$name] running vacuum for [$groupId]" }
         val duration = try {
-            newSuspendedTransaction(context = Dispatchers.IO, db = database) {
-                exec(sqlVacuum)
-                duration
+            measureTimeMillis {
+                (database.connector().connection as Connection).use { connection: Connection? ->
+                    connection?.createStatement().use { statement: java.sql.Statement? ->
+                        statement?.execute(sqlVacuum)
+                    }
+                }
             }
         } catch (e: Exception) {
             logger.error(e) { "Error during vacuum with loader [$name] for group [$groupId]: ${e.message ?: e.javaClass.simpleName}" }
             throw e
         }
-
         logger.debug { "Loader [$name] ran vacuum for group [$groupId] in ${duration}ms" }
     }
 
