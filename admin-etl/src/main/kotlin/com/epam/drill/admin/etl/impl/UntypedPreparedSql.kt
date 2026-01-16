@@ -20,7 +20,9 @@ import com.epam.drill.admin.etl.UntypedRow
 class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : PreparedSql<UntypedRow> {
     override fun getSql() = preparedSql
     override fun getArgs(row: UntypedRow): List<Any?> {
-        return indexes.map { row[it] }
+        return indexes.map {
+            row[it]
+        }
     }
 
     companion object {

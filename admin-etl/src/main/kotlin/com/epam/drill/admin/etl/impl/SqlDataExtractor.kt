@@ -15,12 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.DataExtractor
-import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.TextColumnType
@@ -33,113 +30,44 @@ import kotlin.use
 
 abstract class SqlDataExtractor<T : EtlRow>(
     override val name: String,
+    override val extractionLimit: Int,
     open val sqlQuery: String,
     open val database: Database,
     open val fetchSize: Int,
-    open val extractionLimit: Int,
-) : DataExtractor<T> {
+) : PageDataExtractor<T>(name, extractionLimit) {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun extract(
+    override suspend fun extractPage(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        emitter: FlowCollector<T>,
-        onExtractingProgress: suspend (EtlExtractingResult) -> Unit
+        limit: Int,
+        onExtractionExecuted: suspend (Long) -> Unit,
+        rowsExtractor: suspend (T) -> Unit
     ) {
         val preparedSql = prepareSql(sqlQuery)
-        var currentSince = sinceTimestamp
-        var page = 0
-        var hasMore = true
-        val buffer: MutableList<T> = mutableListOf()
 
-        try {
-            while (hasMore && currentSince < untilTimestamp) {
-                page++
-
-                val params = mapOf(
+        execSuspend(
+            sql = preparedSql.getSql(),
+            args = preparedSql.getArgs(
+                UntypedRow(sinceTimestamp, mapOf(
                     "group_id" to groupId,
-                    "since_timestamp" to java.sql.Timestamp.from(currentSince),
+                    "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
                     "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
-                    "limit" to extractionLimit,
-                )
+                    "limit" to limit,
+                ))
+            ),
+        ) { rs, duration ->
+            val meta = rs.metaData
+            val columnCount = meta.columnCount
 
-                logger.debug { "ETL extractor [$name] for group [$groupId] executing query for page $page since $currentSince ..." }
-                execSuspend(
-                    sql = preparedSql.getSql(),
-                    args = preparedSql.getArgs(
-                        UntypedRow(currentSince, params)
-                    ),
-                ) { rs, duration ->
-                    logger.debug { "ETL extractor [$name] for group [$groupId] executed query for page $page in ${duration}ms " }
-                    onExtractingProgress(
-                        EtlExtractingResult(
-                            duration = duration
-                        )
-                    )
-
-                    val meta = rs.metaData
-                    val columnCount = meta.columnCount
-                    var previousTimestamp: Instant? = null
-                    var previousEmittedTimestamp: Instant? = null
-                    var pageRows = 0L
-
-                    while (rs.next()) {
-                        pageRows++
-
-                        val row = parseRow(rs, meta, columnCount)
-                        val currentTimestamp = row.timestamp
-
-                        if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
-                            throw IllegalStateException("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
-                        }
-                        buffer.add(row)
-
-                        if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
-                            // Emit buffered rows when timestamp changes
-                            emitBuffer(buffer, emitter)
-                            previousEmittedTimestamp = previousTimestamp
-                        }
-
-                        previousTimestamp = currentTimestamp
-                    }
-
-                    if (pageRows == 0L || pageRows < extractionLimit) {
-                        hasMore = false
-                        emitBuffer(buffer, emitter)
-                        logger.debug { "ETL extractor [$name] for group [$groupId] completed fetching, total pages: $page, last extracted at $currentSince" }
-                    } else {
-                        currentSince = previousEmittedTimestamp
-                            ?: throw IllegalStateException("No rows were emitted on page $page because all fetched records had the same timestamp. " +
-                                    "Please increase the extraction limit. Current is $extractionLimit.")
-                        hasMore = true
-                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page $page, last extracted at $currentSince" }
-                    }
-                }
+            onExtractionExecuted(duration)
+            while (rs.next()) {
+                val row = parseRow(rs, meta, columnCount)
+                rowsExtractor(row)
             }
-        } catch (e: Exception) {
-            logger.error {
-                "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
-            }
-            onExtractingProgress(
-                EtlExtractingResult(
-                    errorMessage = e.message
-                )
-            )
         }
     }
-
-    private suspend fun emitBuffer(
-        buffer: MutableList<T>,
-        emitter: FlowCollector<T>
-    ) {
-        if (buffer.isEmpty()) return;
-        for (bufferedRow in buffer) {
-            emitter.emit(bufferedRow)
-        }
-        buffer.clear()
-    }
-
 
     private suspend fun execSuspend(
         sql: String,
