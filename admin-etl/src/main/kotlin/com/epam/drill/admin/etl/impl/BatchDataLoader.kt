@@ -63,11 +63,12 @@ abstract class BatchDataLoader<T: EtlRow>(
                 onLoadingProgress(it)
             }
         }
-        logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
 
         flow.collect { row ->
-            if (firstRow)
+            if (firstRow) {
+                logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
                 onStatusChanged(EtlStatus.LOADING)
+            }
             firstRow = false
             val currentTimestamp = row.timestamp
             if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
