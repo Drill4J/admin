@@ -63,7 +63,7 @@ abstract class BatchDataLoader<T: EtlRow>(
                 onLoadingProgress(it)
             }
         }
-        logger.debug { "ETL loader [$name] loading rows..." }
+        logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
 
         flow.collect { row ->
             if (firstRow)
@@ -125,7 +125,7 @@ abstract class BatchDataLoader<T: EtlRow>(
                 // Commit any remaining rows in the buffer
                 result += flushBuffer(groupId, buffer, batchNo) { batch ->
                     if (batch.success) {
-                        lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                        lastLoadedTimestamp = untilTimestamp
                     }
                     EtlLoadingResult(
                         errorMessage = if (!batch.success) batch.errorMessage else null,
@@ -136,12 +136,19 @@ abstract class BatchDataLoader<T: EtlRow>(
                         onLoadingProgress(it)
                     }
                 }
+            } else {
+                // Update last processed timestamp even if no rows were left in the buffer
+                result += EtlLoadingResult(
+                    lastProcessedAt = untilTimestamp
+                ).also {
+                    onLoadingProgress(it)
+                }
             }
             onStatusChanged(EtlStatus.SUCCESS)
         }
         logger.debug {
             val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
-            "ETL loader [$name] complete loading for ${result.processedRows} rows" + errors
+            "ETL loader [$name] for group [$groupId] complete loading for ${result.processedRows} rows" + errors
         }
         return result
     }
@@ -162,6 +169,6 @@ abstract class BatchDataLoader<T: EtlRow>(
         buffer.clear()
         onBatchCompleted(it)
     }.also {
-        logger.trace { "ETL loader [$name] loaded ${it.processedRows} rows in ${it.duration ?: 0}ms, batch: $batchNo" }
+        logger.trace { "ETL loader [$name] for group [$groupId] loaded ${it.processedRows} rows in ${it.duration ?: 0}ms, batch: $batchNo" }
     }
 }

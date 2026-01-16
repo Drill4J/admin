@@ -119,7 +119,7 @@ open class EtlOrchestratorImpl(
                         )
                     } catch (e: Throwable) {
                         logger.warn(
-                            "ETL pipeline [${pipeline.name}] failed to update extracting progress: ${e.message}",
+                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update extracting progress: ${e.message}",
                             e
                         )
                     }
@@ -138,7 +138,7 @@ open class EtlOrchestratorImpl(
                         )
                     } catch (e: Throwable) {
                         logger.warn(
-                            "ETL pipeline [${pipeline.name}] failed to update loading progress: ${e.message}",
+                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading progress: ${e.message}",
                             e
                         )
                     }
@@ -153,13 +153,13 @@ open class EtlOrchestratorImpl(
                             status = status
                         )
                     } catch (e: Throwable) {
-                        logger.warn("ETL pipeline [${pipeline.name}] failed to update loading status: ${e.message}", e)
+                        logger.warn("ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading status: ${e.message}", e)
                     }
                 }
             )
             return pipelineResult
         } catch (e: Throwable) {
-            logger.error("ETL pipeline [${pipeline.name}] failed: ${e.message}", e)
+            logger.error("ETL pipeline [${pipeline.name}] for group [$groupId] failed: ${e.message}", e)
             return EtlProcessingResult(
                 groupId = groupId,
                 pipelineName = pipeline.name,

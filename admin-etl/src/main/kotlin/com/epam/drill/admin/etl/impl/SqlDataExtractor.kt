@@ -64,14 +64,14 @@ abstract class SqlDataExtractor<T : EtlRow>(
                     "limit" to extractionLimit,
                 )
 
-                logger.debug { "ETL extractor [$name] executing query for page $page..." }
+                logger.debug { "ETL extractor [$name] for group [$groupId] executing query for page $page since $currentSince ..." }
                 execSuspend(
                     sql = preparedSql.getSql(),
                     args = preparedSql.getArgs(
                         UntypedRow(currentSince, params)
                     ),
                 ) { rs, duration ->
-                    logger.debug { "ETL extractor [$name] executed query for page $page in ${duration}ms " }
+                    logger.debug { "ETL extractor [$name] for group [$groupId] executed query for page $page in ${duration}ms " }
                     onExtractingProgress(
                         EtlExtractingResult(
                             duration = duration
@@ -107,13 +107,13 @@ abstract class SqlDataExtractor<T : EtlRow>(
                     if (pageRows == 0L || pageRows < extractionLimit) {
                         hasMore = false
                         emitBuffer(buffer, emitter)
-                        logger.debug { "ETL extractor [$name] completed fetching, total pages: $page, last extracted at $currentSince" }
+                        logger.debug { "ETL extractor [$name] for group [$groupId] completed fetching, total pages: $page, last extracted at $currentSince" }
                     } else {
                         currentSince = previousEmittedTimestamp
                             ?: throw IllegalStateException("No rows were emitted on page $page because all fetched records had the same timestamp. " +
                                     "Please increase the extraction limit. Current is $extractionLimit.")
                         hasMore = true
-                        logger.debug { "ETL extractor [$name] fetched $pageRows rows on page $page, last extracted at $currentSince" }
+                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page $page, last extracted at $currentSince" }
                     }
                 }
             }

@@ -52,7 +52,7 @@ class EtlPipelineImpl<T: EtlRow>(
         onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         val minProcessedTime = sinceTimestampPerLoader.values.min()
-        logger.debug { "ETL pipeline [$name] starting for group [$groupId] since $minProcessedTime..." }
+        logger.debug { "ETL pipeline [$name] for group [$groupId] starting since $minProcessedTime..." }
         var results = EtlLoadingResult(lastProcessedAt = minProcessedTime)
         val duration = measureTimeMillis {
             results = processEtl(
@@ -130,7 +130,7 @@ class EtlPipelineImpl<T: EtlRow>(
             flow.waitForSubscribers(jobs.count { it.isActive })
             extractor.extract(groupId, sinceTimestamp, untilTimestamp, flow, onExtractingProgress)
         } catch (e: Throwable) {
-            logger.debug(e) { "ETL pipeline [$name] failed for extractor [${extractor.name}]: ${e.message}" }
+            logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for extractor [${extractor.name}]: ${e.message}" }
             onExtractingProgress(
                 EtlExtractingResult(
                     errorMessage = "Error during extracting data with extractor ${extractor.name}: ${e.message ?: e.javaClass.simpleName}",
@@ -156,7 +156,7 @@ class EtlPipelineImpl<T: EtlRow>(
             onStatusChanged = { onStatusChanged(loader.name, it) }
         )
     } catch (e: Throwable) {
-        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
+        logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
             lastProcessedAt = sinceTimestamp
