@@ -200,10 +200,10 @@ class ETLSimpleTest {
     val simpleOrchestrator = EtlOrchestratorImpl(
         "simple-etl",
         listOf(
-            EtlPipelineImpl(
+            EtlPipelineImpl.singleLoader(
                 "simple-pipeline",
                 extractor = SimpleExtractor(),
-                loaders = listOf(SimpleLoader())
+                loader = SimpleLoader()
             )
         ),
         metadataRepository = SimpleMetadataRepository()
@@ -250,10 +250,10 @@ class ETLSimpleTest {
         val orchestrator = EtlOrchestratorImpl(
             "failed-etl",
             listOf(
-                EtlPipelineImpl(
+                EtlPipelineImpl.singleLoader(
                     "failed-pipeline",
                     extractor = SimpleExtractor(),
-                    loaders = listOf(FailingLoader())
+                    loader = FailingLoader()
                 )
             ),
             metadataRepository = SimpleMetadataRepository()

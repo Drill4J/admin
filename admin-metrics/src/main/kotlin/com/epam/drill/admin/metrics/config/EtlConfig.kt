@@ -44,4 +44,10 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val extractionLimit : Int
         get() = config.propertyOrNull("extractionLimit")?.getString()?.toIntOrNull() ?: 1_000_000
+
+    /**
+     * Controls the in-memory buffer capacity used for the shared flow between the transformer and loaders.
+     */
+    val transformationBufferSize : Int
+        get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
 }

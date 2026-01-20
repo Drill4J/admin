@@ -42,9 +42,9 @@ val EtlConfig.testLaunchesLoader
     )
 
 val EtlConfig.testLaunchesPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_launches",
         extractor = testLaunchesExtractor,
-        loaders = listOf(testLaunchesLoader),
+        loader = testLaunchesLoader,
         bufferSize = bufferSize
     )

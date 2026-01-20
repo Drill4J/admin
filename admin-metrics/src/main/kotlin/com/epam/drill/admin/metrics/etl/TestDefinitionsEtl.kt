@@ -42,9 +42,9 @@ val EtlConfig.testDefinitionsLoader
     )
 
 val EtlConfig.testDefinitionsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_definitions",
         extractor = testDefinitionsExtractor,
-        loaders = listOf(testDefinitionsLoader),
+        loader = testDefinitionsLoader,
         bufferSize = bufferSize
     )

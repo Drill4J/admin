@@ -42,9 +42,9 @@ val EtlConfig.buildsLoader
     )
 
 val EtlConfig.buildsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "builds",
         extractor = buildsExtractor,
-        loaders = listOf(buildsLoader),
+        loader = buildsLoader,
         bufferSize = bufferSize
     )

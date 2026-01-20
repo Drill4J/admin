@@ -42,9 +42,9 @@ val EtlConfig.testSessionsLoader
     )
 
 val EtlConfig.testSessionsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_sessions",
         extractor = testSessionsExtractor,
-        loaders = listOf(testSessionsLoader),
+        loader = testSessionsLoader,
         bufferSize = bufferSize
     )

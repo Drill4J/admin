@@ -51,7 +51,7 @@ val EtlConfig.methodsLoader
     )
 
 val EtlConfig.methodsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.multiLoaders(
         name = "methods",
         extractor = buildMethodsExtractor,
         loaders = listOf(buildMethodsLoader, methodsLoader),

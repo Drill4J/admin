@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
+import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,7 +33,7 @@ import kotlin.system.measureTimeMillis
 
 open class EtlOrchestratorImpl(
     override val name: String,
-    open val pipelines: List<EtlPipeline<*>>,
+    open val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
@@ -81,13 +82,13 @@ open class EtlOrchestratorImpl(
 
     private suspend fun runPipeline(
         groupId: String,
-        pipeline: EtlPipeline<*>,
+        pipeline: EtlPipeline<*, *>,
         initTimestamp: Instant
     ): EtlProcessingResult {
         val snapshotTime = Instant.now()
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
-        val loaderNames = pipeline.loaders.map { it.name }.toSet()
+        val loaderNames = pipeline.loaders.map { it.second.name }.toSet()
         val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
 
         try {
@@ -153,7 +154,10 @@ open class EtlOrchestratorImpl(
                             status = status
                         )
                     } catch (e: Throwable) {
-                        logger.warn("ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading status: ${e.message}", e)
+                        logger.warn(
+                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading status: ${e.message}",
+                            e
+                        )
                     }
                 }
             )
