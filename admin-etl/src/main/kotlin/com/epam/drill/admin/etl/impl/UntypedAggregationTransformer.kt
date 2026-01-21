@@ -37,17 +37,17 @@ class UntypedAggregationTransformer(
         var processedRows = 0
         var evictedRows = 0
 
-        val evicted = Channel<UntypedRow>(capacity = bufferSize)
-        val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize) { _, value ->
-            evictedRows++
-            evicted.trySendBlocking(value)
-        }
-        suspend fun drainEvicted() {
-            var next = evicted.tryReceive().getOrNull()
+        val emittingChannel = Channel<UntypedRow>(capacity = bufferSize)
+        suspend fun drainChannel() {
+            var next = emittingChannel.tryReceive().getOrNull()
             while (next != null) {
                 emit(next)
-                next = evicted.tryReceive().getOrNull()
+                next = emittingChannel.tryReceive().getOrNull()
             }
+        }
+        val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize) { _, value ->
+            evictedRows++
+            emittingChannel.trySendBlocking(value)
         }
 
         collector.collect { row ->
@@ -60,12 +60,12 @@ class UntypedAggregationTransformer(
                     aggregate(value, row)
                 }
             }
-            drainEvicted()
+            drainChannel()
         }
 
         // Emit remaining aggregated rows
         buffer.evictAll()
-        drainEvicted()
-        evicted.close()
+        drainChannel()
+        emittingChannel.close()
     }
 }
