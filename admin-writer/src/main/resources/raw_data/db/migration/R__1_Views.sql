@@ -28,7 +28,7 @@ CREATE OR REPLACE VIEW raw_data.view_methods_with_rules AS
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
-CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v4 AS
+CREATE OR REPLACE VIEW raw_data.view_methods_coverage_v5 AS
 SELECT
     c.group_id,
     c.app_id,
