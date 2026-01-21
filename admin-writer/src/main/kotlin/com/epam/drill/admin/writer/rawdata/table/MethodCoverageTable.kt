@@ -28,5 +28,6 @@ object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
     val probes = registerColumn("probes", ProbesColumnType())
+    val probesCount = integer("probes_count")
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }
