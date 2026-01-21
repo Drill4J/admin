@@ -1,4 +1,4 @@
-DROP TABLE raw_data.method_coverage CASCADE;
+DROP TABLE IF EXISTS raw_data.method_coverage CASCADE;
 CREATE TABLE IF NOT EXISTS raw_data.method_coverage(
     id SERIAL PRIMARY KEY,
     instance_id VARCHAR,
