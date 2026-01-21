@@ -22,12 +22,13 @@ class CoveragePayload(
     val groupId: String,
     val appId: String,
     val instanceId: String,
-    val coverage: Array<SingleClassCoveragePayload>,
+    val coverage: Array<SingleMethodCoveragePayload>,
 )
 
 @Serializable
-class SingleClassCoveragePayload(
+class SingleMethodCoveragePayload(
     val classname: String,
+    val signature: String,
     val testId: String?,
     val testSessionId: String?,
     val probes: BooleanArray

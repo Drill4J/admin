@@ -156,6 +156,7 @@ class RawDataServiceImpl(
                 appId = coveragePayload.appId,
                 instanceId = coveragePayload.instanceId,
                 classname = coverage.classname,
+                signature = coverage.signature,
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,
                 probes = coverage.probes

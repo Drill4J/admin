@@ -20,6 +20,7 @@ class Coverage(
     val appId: String,
     val instanceId: String,
     val classname: String,
+    val signature: String,
     val testId: String?,
     val testSessionId: String?,
     val probes: BooleanArray

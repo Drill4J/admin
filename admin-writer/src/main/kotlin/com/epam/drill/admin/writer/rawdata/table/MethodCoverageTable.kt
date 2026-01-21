@@ -20,11 +20,12 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
-object CoverageTable : IntIdTable("raw_data.coverage") {
+object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH).references(InstanceTable.id)
     val classname = varchar("classname",  LONG_TEXT_LENGTH)
+    val signature = varchar("signature",  LONG_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
     val probes = registerColumn("probes", ProbesColumnType())

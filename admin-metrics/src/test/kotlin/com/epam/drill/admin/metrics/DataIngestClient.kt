@@ -71,7 +71,7 @@ suspend fun HttpClient.launchTest(
             appId = instance.appId,
             instanceId = instance.instanceId,
             coverage = arrayOf(
-                SingleClassCoveragePayload(
+                SingleMethodCoveragePayload(
                     classname = testClass,
                     testId = testLaunchId,
                     testSessionId = session.id,
