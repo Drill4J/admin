@@ -10,6 +10,9 @@ class LruMap<K, V>(
 ) {
     private val map = LinkedHashMap<K, V>(16, 0.75f, true)
 
+    val size: Int
+        get() = map.size
+
     fun compute(key: K, update: (V?) -> V) {
         map[key] = update(map[key])
         if (map.size >= maxSize) {
