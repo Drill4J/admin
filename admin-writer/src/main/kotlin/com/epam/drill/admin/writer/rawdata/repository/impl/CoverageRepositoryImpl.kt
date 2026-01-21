@@ -33,7 +33,6 @@ class CoverageRepositoryImpl : CoverageRepository {
             this[MethodCoverageTable.groupId] = it.groupId
             this[MethodCoverageTable.appId] = it.appId
             this[MethodCoverageTable.instanceId] = it.instanceId
-            this[MethodCoverageTable.classname] = it.classname
             this[MethodCoverageTable.signature] = it.signature
             this[MethodCoverageTable.testId] = it.testId
             this[MethodCoverageTable.testSessionId] = it.testSessionId

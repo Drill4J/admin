@@ -27,7 +27,6 @@ class CoveragePayload(
 
 @Serializable
 class SingleMethodCoveragePayload(
-    val classname: String,
     val signature: String,
     val testId: String?,
     val testSessionId: String?,

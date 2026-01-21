@@ -19,7 +19,6 @@ class Coverage(
     val groupId: String,
     val appId: String,
     val instanceId: String,
-    val classname: String,
     val signature: String,
     val testId: String?,
     val testSessionId: String?,
