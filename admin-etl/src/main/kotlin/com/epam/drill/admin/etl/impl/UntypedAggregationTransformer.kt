@@ -17,39 +17,55 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.UntypedRow
+import com.epam.drill.admin.etl.flow.LruMap
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class UntypedGroupAggregateTransformer(
+class UntypedAggregationTransformer(
     override val name: String,
     private val bufferSize: Int,
     private val groupKeys: List<String>,
     private val aggregate: (current: UntypedRow, next: UntypedRow) -> UntypedRow
 ) : DataTransformer<UntypedRow, UntypedRow> {
+
     override suspend fun transform(
         groupId: String,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
-        val buffer = mutableMapOf<List<Any?>, UntypedRow>()
+        var processedRows = 0
+        var evictedRows = 0
 
-        collector.collect { row ->
-            val groupKey = groupKeys.map { row[it] }
-            val current = buffer[groupKey]
-            val aggregated = if (current == null) {
-                row
-            } else {
-                aggregate(current, row)
-            }
-            buffer[groupKey] = aggregated
-
-            // Emit buffer contents when full
-            if (buffer.size >= bufferSize) {
-                buffer.forEach { emit(it.value) }
-                buffer.clear()
+        val evicted = Channel<UntypedRow>(capacity = bufferSize)
+        val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize) { _, value ->
+            evictedRows++
+            evicted.trySendBlocking(value)
+        }
+        suspend fun drainEvicted() {
+            var next = evicted.tryReceive().getOrNull()
+            while (next != null) {
+                emit(next)
+                next = evicted.tryReceive().getOrNull()
             }
         }
 
-        // Emit remaining buffered items
-        buffer.forEach { emit(it.value) }
+        collector.collect { row ->
+            processedRows++
+            val groupKey = groupKeys.map { row[it] }
+            buffer.compute(groupKey) { value ->
+                if (value == null) {
+                    row
+                } else {
+                    aggregate(value, row)
+                }
+            }
+            drainEvicted()
+        }
+
+        // Emit remaining aggregated rows
+        buffer.evictAll()
+        drainEvicted()
+        evicted.close()
     }
 }

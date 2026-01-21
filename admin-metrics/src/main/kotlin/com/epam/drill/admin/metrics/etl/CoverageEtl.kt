@@ -17,7 +17,7 @@ package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
-import com.epam.drill.admin.etl.impl.UntypedGroupAggregateTransformer
+import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.untypedNopTransformer
@@ -59,7 +59,7 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
 
 
 val EtlConfig.buildMethodCoverageTransformer
-    get() = UntypedGroupAggregateTransformer(
+    get() = UntypedAggregationTransformer(
         name = "build_method_coverage",
         bufferSize = transformationBufferSize,
         groupKeys = listOf(
@@ -90,7 +90,7 @@ val EtlConfig.buildMethodCoverageLoader
     )
 
 val EtlConfig.methodDailyCoverageTransformer
-    get() = UntypedGroupAggregateTransformer(
+    get() = UntypedAggregationTransformer(
         name = "method_daily_coverage",
         bufferSize = transformationBufferSize,
         groupKeys = listOf(
