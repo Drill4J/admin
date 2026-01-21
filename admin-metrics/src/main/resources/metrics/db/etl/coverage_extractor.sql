@@ -17,7 +17,7 @@ SELECT
     c.created_at,
     DATE_TRUNC('day', c.created_at) AS created_at_day,
     c.probes AS probes
-FROM raw_data.view_methods_coverage_v4 c
+FROM raw_data.view_methods_coverage_v5 c
 JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id
 LEFT JOIN raw_data.test_sessions ts ON ts.group_id = c.group_id AND ts.id = c.test_session_id
 LEFT JOIN raw_data.test_launches tl ON tl.group_id = c.group_id AND tl.id = c.test_launch_id
