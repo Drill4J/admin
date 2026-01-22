@@ -27,7 +27,7 @@ import mu.KotlinLogging
 class UntypedAggregationTransformer(
     override val name: String,
     private val bufferSize: Int,
-    private val logEveryNRows: Int = 10_000,
+    private val logEveryNRows: Int = 10000,
     private val groupKeys: List<String>,
     private val aggregate: (current: UntypedRow, next: UntypedRow) -> UntypedRow
 ) : DataTransformer<UntypedRow, UntypedRow> {
@@ -39,7 +39,7 @@ class UntypedAggregationTransformer(
     ): Flow<UntypedRow> = flow {
         var transformedRows = 0
         var emittedRows = 0
-        fun getAggregationRatio(): Double = if (emittedRows == 0) 0.0 else (1 - transformedRows.toDouble() / emittedRows)
+        fun getAggregationRatio(): Double = if (transformedRows == 0) 0.0 else (1 - emittedRows.toDouble() / transformedRows)
 
         val emittingChannel = Channel<UntypedRow>(capacity = bufferSize)
         suspend fun drainChannel() {
