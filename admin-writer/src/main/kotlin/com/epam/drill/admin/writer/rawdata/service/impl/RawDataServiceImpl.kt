@@ -150,11 +150,19 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
-        coveragePayload.coverage.map { coverage ->
+        val buildId = generateBuildId(
+            coveragePayload.groupId,
+            coveragePayload.appId,
+            coveragePayload.instanceId,
+            coveragePayload.commitSha,
+            coveragePayload.buildVersion
+        )
+        coveragePayload.coverage.filter { probes -> probes.probes.any { it } }.map { coverage ->
             Coverage(
                 groupId = coveragePayload.groupId,
                 appId = coveragePayload.appId,
                 instanceId = coveragePayload.instanceId,
+                buildId = buildId,
                 signature = coverage.signature,
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,

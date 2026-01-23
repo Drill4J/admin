@@ -36,7 +36,7 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
         val testGroup = "test-group"
         val testApp = "test-app"
         val testInstance = "test-instance"
-        val testClassname = "com.example.TestClass"
+        val testBuildVersion = "0.0.1"
         val testMethodSignature1 = "com.example.TestClass:myMethod:myParam:void"
         val testMethodSignature2 = "com.example.TestClass:myMethod2:myParam:void"
         val testTestId = "test-id"
@@ -53,15 +53,14 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
                     "groupId": "$testGroup",
                     "appId": "$testApp",
                     "instanceId": "$testInstance",
+                    "buildVersion": "$testBuildVersion",
                     "coverage": [
-                        {
-                            "classname": "$testClassname",
+                        {                            
                             "signature": "$testMethodSignature1",
                             "testId": "$testTestId",
                             "probes": [true, false, true]
                         },
-                        {
-                            "classname": "$testClassname",
+                        {                         
                             "signature": "$testMethodSignature2",
                             "testId": "$testTestId",
                             "probes": [false, true, false]
@@ -85,7 +84,7 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.groupId] == testGroup }
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
-            .filter { it[MethodCoverageTable.classname] == testClassname }
+            .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
             .filter { it[MethodCoverageTable.signature] == testMethodSignature1 }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
@@ -98,7 +97,7 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.groupId] == testGroup }
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
-            .filter { it[MethodCoverageTable.classname] == testClassname }
+            .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
             .filter { it[MethodCoverageTable.signature] == testMethodSignature2 }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
