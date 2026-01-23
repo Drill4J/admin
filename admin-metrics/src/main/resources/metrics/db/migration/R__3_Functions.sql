@@ -383,7 +383,7 @@ BEGIN
             -- Filters by methods
             AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
             AND (input_method_signature_pattern IS NULL OR m.signature LIKE input_method_signature_pattern)
-            AND (input_exclude_method_signatures IS NULL OR m.signature != ANY(input_exclude_method_signatures::VARCHAR[]))
+            AND (input_exclude_method_signatures IS NULL OR m.signature <> ALL(input_exclude_method_signatures::VARCHAR[]))
             -- Deprecated filters
             AND (input_method_signature IS NULL OR m.signature = input_method_signature)
             AND (input_class_name IS NULL OR m.class_name = input_class_name)
