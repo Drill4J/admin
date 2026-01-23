@@ -119,6 +119,25 @@ val EtlConfig.methodDailyCoverageLoader
         batchSize = batchSize
     )
 
+val EtlConfig.test2CodeMappingTransformer
+    get() = UntypedAggregationTransformer(
+        name = "test_to_code_mapping",
+        bufferSize = transformationBufferSize,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "signature",
+            "test_definition_id",
+            "branch",
+            "app_env_id",
+            "test_task_id",
+        )
+    ) { current, next ->
+        val map = HashMap<String, Any?>(current)
+        map["updated_at_day"] = next["created_at_day"]
+        UntypedRow(next.timestamp, map)
+    }
+
 val EtlConfig.test2CodeMappingLoader
     get() = UntypedSqlDataLoader(
         name = "test_to_code_mapping",
@@ -138,7 +157,7 @@ val EtlConfig.coveragePipeline
             untypedNopTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
-            untypedNopTransformer to test2CodeMappingLoader,
+            test2CodeMappingTransformer to test2CodeMappingLoader,
             untypedNopTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
