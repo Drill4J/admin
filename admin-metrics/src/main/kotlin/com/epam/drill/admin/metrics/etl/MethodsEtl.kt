@@ -46,7 +46,7 @@ val EtlConfig.buildMethodsLoader
 
 val EtlConfig.methodLoaderTransformer
     get() = UntypedAggregationTransformer(
-        name = "method_loader",
+        name = "methods",
         bufferSize = transformationBufferSize,
         groupKeys = listOf(
             "group_id",

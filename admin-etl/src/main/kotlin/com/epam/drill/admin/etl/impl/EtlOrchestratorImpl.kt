@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
@@ -22,9 +24,14 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
+import io.ktor.util.pipeline.Pipeline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -84,12 +91,19 @@ open class EtlOrchestratorImpl(
         groupId: String,
         pipeline: EtlPipeline<*, *>,
         initTimestamp: Instant
-    ): EtlProcessingResult {
+    ): EtlProcessingResult = coroutineScope {
         val snapshotTime = Instant.now()
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.second.name }.toSet()
         val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
+
+        val loggingJob = launch {
+            while (isActive) {
+                delay(10_000) // Log every 10 seconds
+
+            }
+        }
 
         try {
             for (loader in loaderNames) {
@@ -110,39 +124,21 @@ open class EtlOrchestratorImpl(
                 sinceTimestampPerLoader = timestampPerLoader,
                 untilTimestamp = snapshotTime,
                 onExtractingProgress = { result ->
-                    try {
-                        metadataRepository.accumulateMetadataByExtractor(
-                            groupId = groupId,
-                            pipelineName = pipeline.name,
-                            extractorName = pipeline.extractor.name,
-                            errorMessage = result.errorMessage,
-                            extractDuration = result.duration
-                        )
-                    } catch (e: Throwable) {
-                        logger.warn(
-                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update extracting progress: ${e.message}",
-                            e
-                        )
-                    }
+                    progressExtracting(
+                        groupId = groupId,
+                        pipelineName = pipeline.name,
+                        extractorName = pipeline.extractor.name,
+                        result = result
+                    )
                 },
                 onLoadingProgress = { loaderName, result ->
-                    try {
-                        metadataRepository.accumulateMetadataByLoader(
-                            groupId = groupId,
-                            pipelineName = pipeline.name,
-                            extractorName = pipeline.extractor.name,
-                            loaderName = loaderName,
-                            errorMessage = result.errorMessage,
-                            lastProcessedAt = result.lastProcessedAt,
-                            loadDuration = result.duration ?: 0L,
-                            rowsProcessed = result.processedRows
-                        )
-                    } catch (e: Throwable) {
-                        logger.warn(
-                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading progress: ${e.message}",
-                            e
-                        )
-                    }
+                    progressLoading(
+                        groupId = groupId,
+                        pipelineName = pipeline.name,
+                        extractorName = pipeline.extractor.name,
+                        loaderName = loaderName,
+                        result = result
+                    )
                 },
                 onStatusChanged = { loaderName, status ->
                     try {
@@ -161,16 +157,65 @@ open class EtlOrchestratorImpl(
                     }
                 }
             )
-            return pipelineResult
+            return@coroutineScope pipelineResult
         } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] for group [$groupId] failed: ${e.message}", e)
-            return EtlProcessingResult(
+            return@coroutineScope EtlProcessingResult(
                 groupId = groupId,
                 pipelineName = pipeline.name,
                 lastProcessedAt = initTimestamp,
                 rowsProcessed = 0,
                 status = EtlStatus.FAILED,
                 errorMessage = e.message
+            )
+        }
+        finally {
+            loggingJob.cancel()
+        }
+    }
+
+    suspend fun progressExtracting(groupId: String,
+                                   pipelineName: String,
+                                   extractorName: String,
+                                   result: EtlExtractingResult) {
+        try {
+            metadataRepository.accumulateMetadataByExtractor(
+                groupId = groupId,
+                pipelineName = pipelineName,
+                extractorName = extractorName,
+                errorMessage = result.errorMessage,
+                extractDuration = result.duration
+            )
+        } catch (e: Throwable) {
+            logger.warn(
+                "ETL pipeline [${pipelineName}] for group [$groupId] failed to update extracting progress: ${e.message}",
+                e
+            )
+        }
+    }
+
+    suspend fun progressLoading(
+        groupId: String,
+        pipelineName: String,
+        extractorName: String,
+        loaderName: String,
+        result: EtlLoadingResult
+    ) {
+        try {
+            metadataRepository.accumulateMetadataByLoader(
+                groupId = groupId,
+                pipelineName = pipelineName,
+                extractorName = extractorName,
+                loaderName = loaderName,
+                errorMessage = result.errorMessage,
+                lastProcessedAt = result.lastProcessedAt,
+                loadDuration = result.duration ?: 0L,
+                rowsProcessed = result.processedRows
+            )
+        } catch (e: Throwable) {
+            logger.warn(
+                "ETL pipeline [$pipelineName] for group [$groupId] failed to update loading progress: ${e.message}",
+                e
             )
         }
     }

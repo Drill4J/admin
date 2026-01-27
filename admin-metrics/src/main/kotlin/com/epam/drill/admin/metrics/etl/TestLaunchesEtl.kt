@@ -29,6 +29,7 @@ val EtlConfig.testLaunchesExtractor
         database = MetricsDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
     )
 
@@ -38,7 +39,8 @@ val EtlConfig.testLaunchesLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_launches_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
 val EtlConfig.testLaunchesPipeline
