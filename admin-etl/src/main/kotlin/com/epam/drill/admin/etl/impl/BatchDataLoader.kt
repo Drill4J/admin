@@ -56,6 +56,7 @@ abstract class BatchDataLoader<T : EtlRow>(
         val loadedRows = AtomicLong(0)
         val skippedRows = AtomicLong(0)
         val buffer = mutableListOf<T>()
+        var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
@@ -119,14 +120,16 @@ abstract class BatchDataLoader<T : EtlRow>(
                 if (!isProcessable(row)) {
                     previousTimestamp = currentTimestamp
                     skippedRows.incrementAndGet()
+                    skippedRowsForUpdate++
                     // If timestamp changed and there are a lot of skipped rows, update progress
-                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRows.get() % batchSize == 0L) {
+                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRowsForUpdate >= batchSize) {
                         onLoadingProgress(
                             EtlLoadingResult(
                                 lastProcessedAt = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null"),
                                 processedRows = 0,
                             )
                         )
+                        skippedRowsForUpdate = 0
                     }
                     return@collect
                 }
