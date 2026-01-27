@@ -224,51 +224,5 @@ open class EtlOrchestratorImpl(
             )
         }
     }
-
-    suspend fun progressExtracting(groupId: String,
-                                   pipelineName: String,
-                                   extractorName: String,
-                                   result: EtlExtractingResult) {
-        try {
-            metadataRepository.accumulateMetadataByExtractor(
-                groupId = groupId,
-                pipelineName = pipelineName,
-                extractorName = extractorName,
-                errorMessage = result.errorMessage,
-                extractDuration = result.duration
-            )
-        } catch (e: Throwable) {
-            logger.warn(
-                "ETL pipeline [${pipelineName}] for group [$groupId] failed to update extracting progress: ${e.message}",
-                e
-            )
-        }
-    }
-
-    suspend fun progressLoading(
-        groupId: String,
-        pipelineName: String,
-        extractorName: String,
-        loaderName: String,
-        result: EtlLoadingResult
-    ) {
-        try {
-            metadataRepository.accumulateMetadataByLoader(
-                groupId = groupId,
-                pipelineName = pipelineName,
-                extractorName = extractorName,
-                loaderName = loaderName,
-                errorMessage = result.errorMessage,
-                lastProcessedAt = result.lastProcessedAt,
-                loadDuration = result.duration ?: 0L,
-                rowsProcessed = result.processedRows
-            )
-        } catch (e: Throwable) {
-            logger.warn(
-                "ETL pipeline [$pipelineName] for group [$groupId] failed to update loading progress: ${e.message}",
-                e
-            )
-        }
-    }
 }
 
