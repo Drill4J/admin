@@ -37,6 +37,7 @@ import mu.KotlinLogging
 import java.time.Instant
 import java.util.Collections
 import kotlin.system.measureTimeMillis
+import kotlin.time.Duration.Companion.minutes
 
 open class EtlOrchestratorImpl(
     override val name: String,
@@ -47,14 +48,18 @@ open class EtlOrchestratorImpl(
 
     override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
-            logger.info("ETL [$name] starting for group [$groupId] with init timestamp $initTimestamp...")
+            logger.info("ETL [$name] for group [$groupId] is starting with init timestamp $initTimestamp...")
             val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
             val duration = measureTimeMillis {
-                pipelines.map { pipeline ->
-                    async {
-                        results += runPipeline(groupId, pipeline, initTimestamp)
-                    }
-                }.awaitAll()
+                trackProgressOf {
+                    pipelines.map { pipeline ->
+                        async {
+                            results += runPipeline(groupId, pipeline, initTimestamp)
+                        }
+                    }.awaitAll()
+                }.every(1.minutes) {
+                    logger.info { "ETL [$name] for group [$groupId] is still running..." }
+                }
             }
             logger.info {
                 val rowsProcessed = results.sumOf { it.rowsProcessed }
@@ -73,15 +78,15 @@ open class EtlOrchestratorImpl(
         withDataDeletion: Boolean
     ): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
-            logger.info { "ETL [$name] deleting all metadata for group [$groupId] for rerun." }
+            logger.info { "ETL [$name] for group [$groupId] is deleting all metadata for rerun..." }
             pipelines.map { it.name }.forEach { pipelineName ->
                 metadataRepository.deleteMetadataByPipeline(groupId, pipelineName)
             }
-            logger.info { "ETL [$name] deleted all metadata for group [$groupId] for rerun." }
+            logger.info { "ETL [$name] for group [$groupId] deleted all metadata for rerun." }
             if (withDataDeletion) {
-                logger.info { "ETL [$name] deleting all data for group [$groupId] for rerun." }
+                logger.info { "ETL [$name] for group [$groupId] is deleting all data for rerun..." }
                 pipelines.forEach { it.cleanUp(groupId) }
-                logger.info { "ETL [$name] deleted all data for group [$groupId] for rerun." }
+                logger.info { "ETL [$name] for group [$groupId] deleted all data for rerun." }
             }
             val results = run(groupId, initTimestamp)
             return@withContext results
@@ -171,6 +176,52 @@ open class EtlOrchestratorImpl(
         }
         finally {
             loggingJob.cancel()
+        }
+    }
+
+    suspend fun progressExtracting(groupId: String,
+                                   pipelineName: String,
+                                   extractorName: String,
+                                   result: EtlExtractingResult) {
+        try {
+            metadataRepository.accumulateMetadataByExtractor(
+                groupId = groupId,
+                pipelineName = pipelineName,
+                extractorName = extractorName,
+                errorMessage = result.errorMessage,
+                extractDuration = result.duration
+            )
+        } catch (e: Throwable) {
+            logger.warn(
+                "ETL pipeline [${pipelineName}] for group [$groupId] failed to update extracting progress: ${e.message}",
+                e
+            )
+        }
+    }
+
+    suspend fun progressLoading(
+        groupId: String,
+        pipelineName: String,
+        extractorName: String,
+        loaderName: String,
+        result: EtlLoadingResult
+    ) {
+        try {
+            metadataRepository.accumulateMetadataByLoader(
+                groupId = groupId,
+                pipelineName = pipelineName,
+                extractorName = extractorName,
+                loaderName = loaderName,
+                errorMessage = result.errorMessage,
+                lastProcessedAt = result.lastProcessedAt,
+                loadDuration = result.duration ?: 0L,
+                rowsProcessed = result.processedRows
+            )
+        } catch (e: Throwable) {
+            logger.warn(
+                "ETL pipeline [$pipelineName] for group [$groupId] failed to update loading progress: ${e.message}",
+                e
+            )
         }
     }
 
