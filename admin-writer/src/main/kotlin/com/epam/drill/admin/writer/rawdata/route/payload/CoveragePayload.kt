@@ -32,5 +32,6 @@ class SingleMethodCoveragePayload(
     val signature: String,
     val testId: String?,
     val testSessionId: String?,
-    val probes: BooleanArray
+    val probes: BooleanArray,
+    val bodyChecksum: String,
 )

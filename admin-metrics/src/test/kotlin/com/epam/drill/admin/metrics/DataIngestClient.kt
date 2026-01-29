@@ -80,6 +80,7 @@ suspend fun HttpClient.launchTest(
                         it.first.params,
                         it.first.returnType
                     ).joinToString(":"),
+                    bodyChecksum = it.first.bodyChecksum,
                     testId = testLaunchId,
                     testSessionId = session.id,
                     probes = it.second.map { probe -> probe != 0 }.toBooleanArray()

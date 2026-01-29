@@ -26,6 +26,7 @@ object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
     val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH).references(InstanceTable.id)
     val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val signature = varchar("signature",  LONG_TEXT_LENGTH)
+    val bodyChecksum = varchar("body_checksum",  SHORT_TEXT_LENGTH)
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
     val probes = registerColumn("probes", ProbesColumnType())

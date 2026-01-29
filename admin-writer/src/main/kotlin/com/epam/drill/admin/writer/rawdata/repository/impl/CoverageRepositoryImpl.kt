@@ -35,6 +35,7 @@ class CoverageRepositoryImpl : CoverageRepository {
             this[MethodCoverageTable.instanceId] = it.instanceId
             this[MethodCoverageTable.buildId] = it.buildId
             this[MethodCoverageTable.signature] = it.signature
+            this[MethodCoverageTable.bodyChecksum] = it.bodyChecksum
             this[MethodCoverageTable.testId] = it.testId
             this[MethodCoverageTable.testSessionId] = it.testSessionId
             this[MethodCoverageTable.probes] = it.probes

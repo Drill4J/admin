@@ -38,7 +38,9 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
         val testInstance = "test-instance"
         val testBuildVersion = "0.0.1"
         val testMethodSignature1 = "com.example.TestClass:myMethod:myParam:void"
+        val testMethod1Checksum = "AAA"
         val testMethodSignature2 = "com.example.TestClass:myMethod2:myParam:void"
+        val testMethod2Checksum = "BBB"
         val testTestId = "test-id"
         val timeBeforeTest = LocalDateTime.now()
         val app = drillApplication(rawDataServicesDIModule) {
@@ -57,11 +59,13 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
                     "coverage": [
                         {                            
                             "signature": "$testMethodSignature1",
+                            "bodyChecksum": "$testMethod1Checksum",
                             "testId": "$testTestId",
                             "probes": [true, false, true]
                         },
                         {                         
                             "signature": "$testMethodSignature2",
+                            "bodyChecksum": "$testMethod2Checksum",
                             "testId": "$testTestId",
                             "probes": [false, true, false]
                         }
@@ -86,6 +90,7 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
             .filter { it[MethodCoverageTable.signature] == testMethodSignature1 }
+            .filter { it[MethodCoverageTable.bodyChecksum] == testMethod1Checksum }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
         assertEquals(1, savedCoverageMethod1.size)
@@ -99,6 +104,7 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
             .filter { it[MethodCoverageTable.signature] == testMethodSignature2 }
+            .filter { it[MethodCoverageTable.bodyChecksum] == testMethod2Checksum }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
         assertEquals(1, savedCoverageMethod2.size)

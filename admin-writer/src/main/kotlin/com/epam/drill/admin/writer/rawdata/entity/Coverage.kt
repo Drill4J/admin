@@ -21,6 +21,7 @@ class Coverage(
     val instanceId: String,
     val buildId: String,
     val signature: String,
+    val bodyChecksum: String,
     val testId: String?,
     val testSessionId: String?,
     val probes: BooleanArray

@@ -166,7 +166,8 @@ class RawDataServiceImpl(
                 signature = coverage.signature,
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,
-                probes = coverage.probes
+                probes = coverage.probes,
+                bodyChecksum = coverage.bodyChecksum
             )
         }
             .chunked(EXEC_DATA_BATCH_SIZE)
