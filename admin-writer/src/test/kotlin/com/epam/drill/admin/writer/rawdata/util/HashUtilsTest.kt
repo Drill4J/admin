@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.entity
+package com.epam.drill.admin.writer.rawdata.util
 
-class Coverage(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val buildId: String,
-    val methodId: String,
-    val testId: String?,
-    val testSessionId: String?,
-    val probes: BooleanArray
-)
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class HashUtilsTest {
+
+    @Test
+    fun `md5 must return lowercase hex digest`() {
+        val hash = "hello".md5()
+        assertEquals("5d41402abc4b2a76b9719d911017c592", hash)
+        assertTrue(hash.matches(Regex("[0-9a-f]{32}")))
+    }
+}

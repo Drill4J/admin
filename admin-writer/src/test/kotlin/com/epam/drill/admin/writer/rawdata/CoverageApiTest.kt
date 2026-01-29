@@ -89,8 +89,6 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
-            .filter { it[MethodCoverageTable.signature] == testMethodSignature1 }
-            .filter { it[MethodCoverageTable.bodyChecksum] == testMethod1Checksum }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
         assertEquals(1, savedCoverageMethod1.size)
@@ -103,8 +101,6 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
-            .filter { it[MethodCoverageTable.signature] == testMethodSignature2 }
-            .filter { it[MethodCoverageTable.bodyChecksum] == testMethod2Checksum }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
         assertEquals(1, savedCoverageMethod2.size)

@@ -15,20 +15,18 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
-import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
-object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
+object BuildMethodTable : Table("raw_data.build_methods") {
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
-    val instanceId = varchar("instance_id", SHORT_TEXT_LENGTH).references(InstanceTable.id)
-    val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val methodId = varchar("method_id", MEDIUM_TEXT_LENGTH).references(MethodTable.methodId).nullable()
-    val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
-    val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
-    val probes = registerColumn("probes", ProbesColumnType())
-    val probesCount = integer("probes_count")
+    val buildId = varchar("build_id", MEDIUM_TEXT_LENGTH)
+    val probesStartPos = integer("probe_start_pos")
+    val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
+    val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    override val primaryKey = PrimaryKey(buildId, methodId, appId, groupId)
 }
