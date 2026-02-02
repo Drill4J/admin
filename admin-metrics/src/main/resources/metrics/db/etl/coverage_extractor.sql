@@ -6,6 +6,7 @@ SELECT
     CASE WHEN c.test_session_id = 'GLOBAL' THEN NULL ELSE c.test_session_id END AS test_session_id,
     CASE WHEN c.test_id = 'TEST_CONTEXT_NONE' THEN NULL ELSE test_id END AS test_launch_id,
     c.method_id,
+    m.signature,
     b.branch,
     tl.test_definition_id,
     test_tag,
@@ -29,5 +30,5 @@ LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
 WHERE c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
     AND c.group_id = :group_id
-ORDER BY c.created_at, c.signature
+ORDER BY c.created_at, c.method_id
 LIMIT :limit

@@ -5,13 +5,13 @@ SELECT
     m.signature,
     m.body_checksum,
     m.probes_count,
-    bm.method_id,
+    m.method_id,
     m.method_name,
     m.class_name,
     m.method_params,
     m.return_type,
     bm.created_at,
-    DATE_TRUNC('day', m.created_at) AS created_at_day
+    DATE_TRUNC('day',bm.created_at) AS created_at_day
 FROM raw_data.build_methods bm
 JOIN raw_data.methods m ON m.method_id = bm.method_id AND m.app_id = bm.app_id AND m.group_id = bm.group_id
 WHERE bm.group_id = :group_id
