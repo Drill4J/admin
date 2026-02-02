@@ -209,7 +209,7 @@ class RecommendedTestsApiTest : DatabaseTests({
 
     @AfterEach
     fun clearAll() = withTransaction {
-        CoverageTable.deleteAll()
+        MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()
         BuildTable.deleteAll()

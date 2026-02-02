@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlStatus
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -158,8 +159,9 @@ class EtlMetadataRepositoryImpl(
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
                 (metadataTable.groupId eq groupId) and
-                (metadataTable.pipelineName eq pipelineName) and
-                (metadataTable.extractorName eq extractorName)
+                        (metadataTable.pipelineName eq pipelineName) and
+                        (metadataTable.extractorName eq extractorName) and
+                        (status?.let { metadataTable.status neq EtlStatus.FAILED.name } ?: Op.TRUE)
             }) {
                 if (errorMessage != null) {
                     it[metadataTable.errorMessage] = errorMessage

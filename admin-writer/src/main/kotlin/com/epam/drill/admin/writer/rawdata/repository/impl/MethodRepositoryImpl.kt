@@ -25,9 +25,13 @@ import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.deleteWhere
 import java.time.LocalDate
 
-class MethodRepositoryImpl: MethodRepository {
+class MethodRepositoryImpl : MethodRepository {
     override suspend fun createMany(data: List<Method>) {
-        MethodTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
+        MethodTable.batchUpsert(
+            data,
+            shouldReturnGeneratedValues = false,
+            onUpdateExclude = listOf(MethodTable.probesStartPos, MethodTable.bodyChecksum, MethodTable.probesCount)
+        ) {
             this[MethodTable.id] = it.id
             this[MethodTable.groupId] = it.groupId
             this[MethodTable.appId] = it.appId
@@ -38,7 +42,7 @@ class MethodRepositoryImpl: MethodRepository {
             this[MethodTable.returnType] = it.returnType
             this[MethodTable.probesStartPos] = it.probesStartPos
             this[MethodTable.bodyChecksum] = it.bodyChecksum
-            this[MethodTable.signature] = it .signature
+            this[MethodTable.signature] = it.signature
             this[MethodTable.probesCount] = it.probesCount
             it.annotations?.let { annotations ->
                 this[MethodTable.annotations] = annotations.takeIf { it.isNotEmpty() }?.toString()
@@ -56,8 +60,8 @@ class MethodRepositoryImpl: MethodRepository {
     override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
         MethodTable.deleteWhere {
             (MethodTable.groupId eq groupId) and
-            (MethodTable.appId eq appId) and
-            (MethodTable.buildId eq buildId)
+                    (MethodTable.appId eq appId) and
+                    (MethodTable.buildId eq buildId)
         }
     }
 }

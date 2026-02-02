@@ -29,6 +29,7 @@ val EtlConfig.testSessionsExtractor
         database = MetricsDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
     )
 
@@ -38,13 +39,14 @@ val EtlConfig.testSessionsLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_sessions_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
 val EtlConfig.testSessionsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_sessions",
         extractor = testSessionsExtractor,
-        loaders = listOf(testSessionsLoader),
+        loader = testSessionsLoader,
         bufferSize = bufferSize
     )

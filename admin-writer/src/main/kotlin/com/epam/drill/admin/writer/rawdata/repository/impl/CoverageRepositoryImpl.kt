@@ -17,8 +17,8 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.Coverage
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
-import com.epam.drill.admin.writer.rawdata.table.CoverageTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
+import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -29,26 +29,28 @@ import java.time.LocalDate
 
 class CoverageRepositoryImpl : CoverageRepository {
     override suspend fun createMany(data: List<Coverage>) {
-        CoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
-            this[CoverageTable.groupId] = it.groupId
-            this[CoverageTable.appId] = it.appId
-            this[CoverageTable.instanceId] = it.instanceId
-            this[CoverageTable.classname] = it.classname
-            this[CoverageTable.testId] = it.testId
-            this[CoverageTable.testSessionId] = it.testSessionId
-            this[CoverageTable.probes] = it.probes
+        MethodCoverageTable.batchInsert(data, shouldReturnGeneratedValues = false) {
+            this[MethodCoverageTable.groupId] = it.groupId
+            this[MethodCoverageTable.appId] = it.appId
+            this[MethodCoverageTable.instanceId] = it.instanceId
+            this[MethodCoverageTable.buildId] = it.buildId
+            this[MethodCoverageTable.signature] = it.signature
+            this[MethodCoverageTable.testId] = it.testId
+            this[MethodCoverageTable.testSessionId] = it.testSessionId
+            this[MethodCoverageTable.probes] = it.probes
+            this[MethodCoverageTable.probesCount] = it.probes.size
         }
     }
 
     override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        CoverageTable.deleteWhere { (CoverageTable.groupId eq groupId) and (CoverageTable.createdAt less createdBefore.atStartOfDay()) }
+        MethodCoverageTable.deleteWhere { (MethodCoverageTable.groupId eq groupId) and (MethodCoverageTable.createdAt less createdBefore.atStartOfDay()) }
     }
 
     override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
-        CoverageTable.deleteWhere {
-            (CoverageTable.groupId eq groupId) and
-            (CoverageTable.appId eq appId) and
-            (CoverageTable.instanceId inSubQuery InstanceTable
+        MethodCoverageTable.deleteWhere {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.appId eq appId) and
+            (MethodCoverageTable.instanceId inSubQuery InstanceTable
                     .select(InstanceTable.id)
                     .where {
                         (InstanceTable.groupId eq groupId) and
@@ -59,9 +61,9 @@ class CoverageRepositoryImpl : CoverageRepository {
     }
 
     override suspend fun deleteAllByTestSessionId(groupId: String, testSessionId: String) {
-        CoverageTable.deleteWhere {
-            (CoverageTable.groupId eq groupId) and
-            (CoverageTable.testSessionId eq testSessionId)
+        MethodCoverageTable.deleteWhere {
+            (MethodCoverageTable.groupId eq groupId) and
+            (MethodCoverageTable.testSessionId eq testSessionId)
         }
     }
 }

@@ -20,7 +20,7 @@ import com.epam.drill.admin.test.DatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
-import com.epam.drill.admin.writer.rawdata.table.CoverageTable
+import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
@@ -104,7 +104,7 @@ class TestImpactAnalysisTest : DatabaseTests({
 
     @AfterTest
     fun clearAll() = withTransaction {
-        CoverageTable.deleteAll()
+        MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()
         BuildTable.deleteAll()
