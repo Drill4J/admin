@@ -25,10 +25,13 @@ import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Duration.Companion.seconds
 
-abstract class BatchDataLoader<T: EtlRow>(
+abstract class BatchDataLoader<T : EtlRow>(
     override val name: String,
-    open val batchSize: Int = 1000
+    open val batchSize: Int = 1000,
+    open val loggingFrequency: Int = 10,
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -50,10 +53,12 @@ abstract class BatchDataLoader<T: EtlRow>(
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
+        val loadedRows = AtomicLong(0)
+        val skippedRows = AtomicLong(0)
         val buffer = mutableListOf<T>()
+        var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
-        var firstRow = true
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
             stop()
             result += EtlLoadingResult(
@@ -64,41 +69,36 @@ abstract class BatchDataLoader<T: EtlRow>(
             }
         }
 
-        flow.collect { row ->
-            if (firstRow) {
-                logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
-                onStatusChanged(EtlStatus.LOADING)
-            }
-            firstRow = false
-            val currentTimestamp = row.timestamp
-            if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
-                flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
-                return@collect
-            }
+        trackProgressOf {
+            flow.collect { row ->
+                if (loadedRows.get() == 0L && skippedRows.get() == 0L) {
+                    logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
+                    onStatusChanged(EtlStatus.LOADING)
+                }
+                val currentTimestamp = row.timestamp
+                if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
+                    flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                    return@collect
+                }
 
-            // Skip rows that are already processed
-            if (currentTimestamp <= sinceTimestamp) {
-                previousTimestamp = currentTimestamp
-                return@collect
-            }
+                // Skip rows that are already processed
+                if (currentTimestamp <= sinceTimestamp) {
+                    previousTimestamp = currentTimestamp
+                    skippedRows.incrementAndGet()
+                    return@collect
+                }
 
-            if (currentTimestamp > untilTimestamp) {
-                flow.stop()
-                return@collect
-            }
+                if (currentTimestamp > untilTimestamp) {
+                    flow.stop()
+                    return@collect
+                }
 
-            // Skip rows that are not processable
-            if (!isProcessable(row)) {
-                previousTimestamp = currentTimestamp
-                return@collect
-            }
-
-            // If timestamp changed and buffer is full, flush the buffer
-            if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
-                if (buffer.size >= batchSize) {
+                // If timestamp changed and buffer is full, flush the buffer
+                if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
                     result += flushBuffer(groupId, buffer, batchNo) { batch ->
                         if (batch.success) {
-                            lastLoadedTimestamp = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                            lastLoadedTimestamp =
+                                previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
                         }
                         EtlLoadingResult(
                             errorMessage = if (!batch.success) result.errorMessage else null,
@@ -110,15 +110,43 @@ abstract class BatchDataLoader<T: EtlRow>(
                         }
                     }
                 }
+
+                if (result.isFailed) {
+                    flow.stop()
+                    return@collect
+                }
+
+                // Skip rows that are not processable
+                if (!isProcessable(row)) {
+                    previousTimestamp = currentTimestamp
+                    skippedRows.incrementAndGet()
+                    skippedRowsForUpdate++
+                    // If timestamp changed and there are a lot of skipped rows, update progress
+                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRowsForUpdate >= batchSize) {
+                        onLoadingProgress(
+                            EtlLoadingResult(
+                                lastProcessedAt = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null"),
+                                processedRows = 0,
+                            )
+                        )
+                        skippedRowsForUpdate = 0
+                    }
+                    return@collect
+                }
+
+                buffer += row
+                previousTimestamp = currentTimestamp
+                loadedRows.incrementAndGet()
+            }
+        }.every(loggingFrequency.seconds) {
+            if (loadedRows.get() > 0L || skippedRows.get() > 0L) {
+                logger.debug {
+                    "ETL loader [$name] for group [$groupId] loaded ${loadedRows.get()} rows" +
+                            ", batch: ${batchNo.get()}" +
+                            ", skipped rows: ${skippedRows.get()}"
+                }
             }
 
-            if (result.isFailed) {
-                flow.stop()
-                return@collect
-            }
-
-            buffer += row
-            previousTimestamp = currentTimestamp
         }
 
         if (!result.isFailed) {

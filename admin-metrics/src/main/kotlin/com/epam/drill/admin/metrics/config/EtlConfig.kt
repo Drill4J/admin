@@ -50,4 +50,10 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val transformationBufferSize : Int
         get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
+
+    /**
+     * Defines how often the ETL process logs its progress (in seconds).
+     */
+    val loggingFrequency : Int
+        get() = config.propertyOrNull("loggingFrequency")?.getString()?.toIntOrNull() ?: 10
 }

@@ -26,7 +26,6 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.NopTransformer
 import com.epam.drill.admin.etl.flow.CompletableSharedFlow
-import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -192,7 +191,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         flow: Flow<T>,
-        onLoadingProgress: suspend (loaderNmae: String, result: EtlLoadingResult) -> Unit,
+        onLoadingProgress: suspend (loaderName: String, result: EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlLoadingResult = try {
         transformer.transform(groupId, flow).let { flow ->

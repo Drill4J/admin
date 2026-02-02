@@ -34,7 +34,8 @@ abstract class SqlDataExtractor<T : EtlRow>(
     open val sqlQuery: String,
     open val database: Database,
     open val fetchSize: Int,
-) : PageDataExtractor<T>(name, extractionLimit) {
+    open val loggingFrequency: Int,
+) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency) {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extractPage(
