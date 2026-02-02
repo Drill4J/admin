@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -84,28 +85,17 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             )
         }
 
-        val savedCoverageMethod1 = MethodCoverageTable.selectAll().asSequence()
+        val savedCoverageMethods = MethodCoverageTable.selectAll().asSequence()
             .filter { it[MethodCoverageTable.groupId] == testGroup }
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
-        assertEquals(1, savedCoverageMethod1.size)
-        savedCoverageMethod1.forEach {
+        assertEquals(2, savedCoverageMethods.size)
+        savedCoverageMethods.forEach {
             assertTrue(it[MethodCoverageTable.createdAt] >= timeBeforeTest)
-        }
-
-        val savedCoverageMethod2 = MethodCoverageTable.selectAll().asSequence()
-            .filter { it[MethodCoverageTable.groupId] == testGroup }
-            .filter { it[MethodCoverageTable.appId] == testApp }
-            .filter { it[MethodCoverageTable.instanceId] == testInstance }
-            .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
-            .filter { it[MethodCoverageTable.testId] == testTestId }
-            .toList()
-        assertEquals(1, savedCoverageMethod2.size)
-        savedCoverageMethod2.forEach {
-            assertTrue(it[MethodCoverageTable.createdAt] >= timeBeforeTest)
+            assertTrue(it[MethodCoverageTable.methodId] != null)
         }
     }
 }

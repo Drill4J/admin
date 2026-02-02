@@ -212,6 +212,7 @@ class RecommendedTestsApiTest : DatabaseTests({
         MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()
+        BuildMethodTable.deleteAll()
         BuildTable.deleteAll()
         TestLaunchTable.deleteAll()
         TestSessionTable.deleteAll()
