@@ -103,13 +103,6 @@ open class EtlOrchestratorImpl(
         val loaderNames = pipeline.loaders.map { it.second.name }.toSet()
         val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
 
-        val loggingJob = launch {
-            while (isActive) {
-                delay(10_000) // Log every 10 seconds
-
-            }
-        }
-
         try {
             for (loader in loaderNames) {
                 metadataRepository.saveMetadata(
@@ -173,9 +166,6 @@ open class EtlOrchestratorImpl(
                 status = EtlStatus.FAILED,
                 errorMessage = e.message
             )
-        }
-        finally {
-            loggingJob.cancel()
         }
     }
 
