@@ -56,6 +56,7 @@ abstract class BatchDataLoader<T : EtlRow>(
         val loadedRows = AtomicLong(0)
         val skippedRows = AtomicLong(0)
         val buffer = mutableListOf<T>()
+        var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
         suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
@@ -92,35 +93,44 @@ abstract class BatchDataLoader<T : EtlRow>(
                     return@collect
                 }
 
-                // Skip rows that are not processable
-                if (!isProcessable(row)) {
-                    previousTimestamp = currentTimestamp
-                    skippedRows.incrementAndGet()
-                    return@collect
-                }
-
                 // If timestamp changed and buffer is full, flush the buffer
-                if (previousTimestamp != null && currentTimestamp != previousTimestamp) {
-                    if (buffer.size >= batchSize) {
-                        result += flushBuffer(groupId, buffer, batchNo) { batch ->
-                            if (batch.success) {
-                                lastLoadedTimestamp =
-                                    previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
-                            }
-                            EtlLoadingResult(
-                                errorMessage = if (!batch.success) result.errorMessage else null,
-                                lastProcessedAt = lastLoadedTimestamp,
-                                processedRows = if (batch.success) batch.rowsLoaded else 0L,
-                                duration = batch.duration
-                            ).also {
-                                onLoadingProgress(it)
-                            }
+                if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
+                    result += flushBuffer(groupId, buffer, batchNo) { batch ->
+                        if (batch.success) {
+                            lastLoadedTimestamp =
+                                previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                        }
+                        EtlLoadingResult(
+                            errorMessage = if (!batch.success) result.errorMessage else null,
+                            lastProcessedAt = lastLoadedTimestamp,
+                            processedRows = if (batch.success) batch.rowsLoaded else 0L,
+                            duration = batch.duration
+                        ).also {
+                            onLoadingProgress(it)
                         }
                     }
                 }
 
                 if (result.isFailed) {
                     flow.stop()
+                    return@collect
+                }
+
+                // Skip rows that are not processable
+                if (!isProcessable(row)) {
+                    previousTimestamp = currentTimestamp
+                    skippedRows.incrementAndGet()
+                    skippedRowsForUpdate++
+                    // If timestamp changed and there are a lot of skipped rows, update progress
+                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRowsForUpdate >= batchSize) {
+                        onLoadingProgress(
+                            EtlLoadingResult(
+                                lastProcessedAt = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null"),
+                                processedRows = 0,
+                            )
+                        )
+                        skippedRowsForUpdate = 0
+                    }
                     return@collect
                 }
 
