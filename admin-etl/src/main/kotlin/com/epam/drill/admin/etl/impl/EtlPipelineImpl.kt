@@ -17,12 +17,14 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
+import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.NopTransformer
 import com.epam.drill.admin.etl.flow.CompletableSharedFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -35,13 +37,52 @@ import mu.KotlinLogging
 import java.time.Instant
 import kotlin.system.measureTimeMillis
 
-class EtlPipelineImpl<T: EtlRow>(
+class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     override val name: String,
     override val extractor: DataExtractor<T>,
-    override val loaders: List<DataLoader<T>>,
+    override val loaders: List<Pair<DataTransformer<T, R>, DataLoader<R>>>,
     private val bufferSize: Int = 2000
-) : EtlPipeline<T> {
+) : EtlPipeline<T, R> {
     private val logger = KotlinLogging.logger {}
+
+    companion object {
+        fun <T: EtlRow> singleLoader(
+            name: String,
+            extractor: DataExtractor<T>,
+            loader: DataLoader<T>,
+            bufferSize: Int = 2000
+        ) = EtlPipelineImpl(
+            name = name,
+            extractor = extractor,
+            loaders = listOf(NopTransformer<T>() to loader),
+            bufferSize = bufferSize
+        )
+
+        fun <T: EtlRow, R: EtlRow> singleLoader(
+            name: String,
+            extractor: DataExtractor<T>,
+            transformer: DataTransformer<T, R>,
+            loader: DataLoader<R>,
+            bufferSize: Int = 2000
+        ) = EtlPipelineImpl(
+            name = name,
+            extractor = extractor,
+            loaders = listOf(transformer to loader),
+            bufferSize = bufferSize
+        )
+
+        fun <T: EtlRow> multiLoaders(
+            name: String,
+            extractor: DataExtractor<T>,
+            loaders: List<DataLoader<T>>,
+            bufferSize: Int = 2000
+        ) = EtlPipelineImpl(
+            name = name,
+            extractor = extractor,
+            loaders = loaders.map { NopTransformer<T>() to it },
+            bufferSize = bufferSize
+        )
+    }
 
     override suspend fun execute(
         groupId: String,
@@ -84,7 +125,7 @@ class EtlPipelineImpl<T: EtlRow>(
     }
 
     override suspend fun cleanUp(groupId: String) {
-        loaders.forEach { it.deleteAll(groupId) }
+        loaders.forEach { it.second.deleteAll(groupId) }
     }
 
     private suspend fun CoroutineScope.processEtl(
@@ -104,8 +145,9 @@ class EtlPipelineImpl<T: EtlRow>(
             async {
                 loadData(
                     groupId,
-                    loader,
-                    sinceTimestampPerLoader[loader.name] ?: extractorSinceTimestamp,
+                    loader.first,
+                    loader.second,
+                    sinceTimestampPerLoader[loader.second.name] ?: extractorSinceTimestamp,
                     untilTimestamp,
                     flow,
                     onLoadingProgress,
@@ -144,17 +186,21 @@ class EtlPipelineImpl<T: EtlRow>(
 
     private suspend fun loadData(
         groupId: String,
-        loader: DataLoader<T>,
+        transformer: DataTransformer<T, R>,
+        loader: DataLoader<R>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         flow: Flow<T>,
-        onLoadingProgress: suspend (loaderNmae: String, result: EtlLoadingResult) -> Unit,
+        onLoadingProgress: suspend (loaderName: String, result: EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlLoadingResult = try {
-        loader.load(groupId, sinceTimestamp, untilTimestamp, flow,
-            onLoadingProgress =  { onLoadingProgress(loader.name, it) },
-            onStatusChanged = { onStatusChanged(loader.name, it) }
-        )
+        transformer.transform(groupId, flow).let { flow ->
+            loader.load(
+                groupId, sinceTimestamp, untilTimestamp, flow,
+                onLoadingProgress = { onLoadingProgress(loader.name, it) },
+                onStatusChanged = { onStatusChanged(loader.name, it) }
+            )
+        }
     } catch (e: Throwable) {
         logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(

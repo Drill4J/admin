@@ -15,12 +15,16 @@
  */
 package com.epam.drill.admin.metrics.etl
 
+import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
+import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
+import org.postgresql.util.PGobject
 
 
 val EtlConfig.coverageExtractor
@@ -30,6 +34,7 @@ val EtlConfig.coverageExtractor
         database = MetricsDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
     )
 
@@ -40,6 +45,7 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
         processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
     )
 
@@ -50,8 +56,33 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
         processable = { it["test_session_id"] != null }
     )
+
+
+val EtlConfig.buildMethodCoverageTransformer
+    get() = UntypedAggregationTransformer(
+        name = "build_method_coverage",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "build_id",
+            "method_id",
+            "app_env_id",
+            "test_result",
+            "test_tag",
+            "test_task_id",
+        )
+    ) { current, next ->
+        val map = HashMap<String, Any?>(current)
+        map["probes"] = mergeProbes(current["probes"], next["probes"])
+        map["created_at_day"] = next["created_at_day"]
+        UntypedRow(next.timestamp, map)
+    }
+
 
 val EtlConfig.buildMethodCoverageLoader
     get() = UntypedSqlDataLoader(
@@ -59,17 +90,61 @@ val EtlConfig.buildMethodCoverageLoader
         sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
-val EtlConfig.methodCoverageLoader
+val EtlConfig.methodDailyCoverageTransformer
+    get() = UntypedAggregationTransformer(
+        name = "method_daily_coverage",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "method_id",
+            "created_at_day",
+            "branch",
+            "app_env_id",
+            "test_result",
+            "test_tag",
+            "test_task_id"
+        )
+    ) { current, next ->
+        val map = HashMap<String, Any?>(current)
+        map["probes"] = mergeProbes(current["probes"], next["probes"])
+        UntypedRow(next.timestamp, map)
+    }
+
+val EtlConfig.methodDailyCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "method_daily_coverage",
         sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
+
+val EtlConfig.test2CodeMappingTransformer
+    get() = UntypedAggregationTransformer(
+        name = "test_to_code_mapping",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "signature",
+            "test_definition_id",
+            "branch",
+            "app_env_id",
+            "test_task_id",
+        )
+    ) { current, next ->
+        val map = HashMap<String, Any?>(current)
+        map["updated_at_day"] = next["created_at_day"]
+        UntypedRow(next.timestamp, map)
+    }
 
 val EtlConfig.test2CodeMappingLoader
     get() = UntypedSqlDataLoader(
@@ -78,6 +153,7 @@ val EtlConfig.test2CodeMappingLoader
         sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
         processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
     )
 
@@ -86,12 +162,36 @@ val EtlConfig.coveragePipeline
         name = "coverage",
         extractor = coverageExtractor,
         loaders = listOf(
-            buildMethodTestDefinitionCoverageLoader,
-            buildMethodTestSessionCoverageLoader,
-            buildMethodCoverageLoader,
-            methodCoverageLoader,
-            test2CodeMappingLoader,
-            testSessionBuildsLoader
+            untypedNopTransformer to buildMethodTestDefinitionCoverageLoader,
+            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodCoverageTransformer to buildMethodCoverageLoader,
+            methodDailyCoverageTransformer to methodDailyCoverageLoader,
+            test2CodeMappingTransformer to test2CodeMappingLoader,
+            untypedNopTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
     )
+
+internal fun mergeProbes(current: Any?, next: Any?): PGobject {
+    if (current == null || next == null) {
+        throw IllegalArgumentException("Cannot merge null probes: current=$current, next=$next")
+    }
+    if (current !is PGobject || next !is PGobject) {
+        throw IllegalArgumentException("Probes must be of type PGobject: current=${current.javaClass.name}, next=${next.javaClass.name}")
+    }
+    val nextProbes = next.value ?: ""
+    val currentProbes = current.value ?: ""
+    if (currentProbes.length != nextProbes.length)
+        throw IllegalArgumentException("Cannot merge probes of different lengths: current=${currentProbes.length}, next=${nextProbes.length}")
+    val mergedProbes = buildString(currentProbes.length) {
+        for (i in 0 until currentProbes.length) {
+            val currentBit = currentProbes[i]
+            val nextBit = nextProbes[i]
+            append(if (currentBit == '1' || nextBit == '1') '1' else '0')
+        }
+    }
+    return PGobject().apply {
+        type = "varbit"
+        value = mergedProbes
+    }
+}

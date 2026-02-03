@@ -53,7 +53,9 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
             metricsRoutes()
             metricsManagementRoutes()
         }.drillClient().apply {
-            testsData(TestDataDsl(this))
+            val testDataDsl = TestDataDsl(this)
+            testsData(testDataDsl)
+            testDataDsl.build()
             refreshMetrics()
         }
     }
@@ -86,12 +88,17 @@ data class ImpactedMethods(
 )
 
 class TestDataDsl(val client: HttpClient) {
-    private val builds = mutableMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
+    private val builds = linkedMapOf<InstancePayload, MutableList<SingleMethodPayload>>()
+
+    suspend fun build() {
+        builds.forEach { (b, m) ->
+            client.deployInstance(b, m.toTypedArray())
+        }
+    }
 
     suspend infix fun InstancePayload.has(methods: List<SingleMethodPayload>) {
         val newMethods = methods.recalcProbesStartPos()
         builds.put(this, ArrayList(newMethods))
-        client.deployInstance(this, newMethods.toTypedArray())
     }
 
     suspend infix fun InstancePayload.hasModified(method: SingleMethodPayload) =
@@ -134,7 +141,6 @@ class TestDataDsl(val client: HttpClient) {
         }
         val newTargetMethods = targetMethods.recalcProbesStartPos()
         builds.put(this.build, newTargetMethods)
-        client.deployInstance(this.build, newTargetMethods.toTypedArray())
     }
 
     private fun List<SingleMethodPayload>.recalcProbesStartPos(): MutableList<SingleMethodPayload> {
@@ -154,7 +160,6 @@ class TestDataDsl(val client: HttpClient) {
     ) {
         val otherMethods = builds.getOrDefault(baseline, ArrayList())
         builds.put(this, ArrayList(otherMethods))
-        client.deployInstance(this, otherMethods.toTypedArray())
     }
 
     private fun isSignatureEqual(one: SingleMethodPayload, other: SingleMethodPayload) =

@@ -30,10 +30,11 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 abstract class SqlDataLoader<T: EtlRow>(
     override val name: String,
     override val batchSize: Int,
+    override val loggingFrequency: Int,
     open val sqlUpsert: String,
     open val sqlDelete: String,
     open val database: Database
-) : BatchDataLoader<T>(name, batchSize) {
+) : BatchDataLoader<T>(name, batchSize, loggingFrequency) {
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>

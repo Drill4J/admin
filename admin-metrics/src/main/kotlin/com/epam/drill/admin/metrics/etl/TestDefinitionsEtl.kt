@@ -29,6 +29,7 @@ val EtlConfig.testDefinitionsExtractor
         database = MetricsDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "updated_at",
     )
 
@@ -38,13 +39,14 @@ val EtlConfig.testDefinitionsLoader
         sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
 val EtlConfig.testDefinitionsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_definitions",
         extractor = testDefinitionsExtractor,
-        loaders = listOf(testDefinitionsLoader),
+        loader = testDefinitionsLoader,
         bufferSize = bufferSize
     )
