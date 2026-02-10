@@ -18,5 +18,13 @@ WHERE bm.group_id = :group_id
     AND bm.created_at > :since_timestamp
     AND bm.created_at <= :until_timestamp
     AND m.probes_count > 0
+    AND NOT EXISTS (
+        SELECT 1
+        FROM raw_data.method_ignore_rules r
+        WHERE r.group_id = m.group_id
+            AND r.app_id = m.app_id
+            AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
+                OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
+    )
 ORDER BY bm.created_at ASC, bm.group_id, bm.method_id
 LIMIT :limit

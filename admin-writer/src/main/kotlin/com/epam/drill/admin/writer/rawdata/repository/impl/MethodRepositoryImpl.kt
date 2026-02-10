@@ -60,12 +60,6 @@ class MethodRepositoryImpl : MethodRepository {
             this[BuildMethodTable.buildId] = it.buildId
             this[BuildMethodTable.methodId] = it.methodId
             this[BuildMethodTable.probesStartPos] = it.probesStartPos
-            it.annotations?.let { annotations ->
-                this[BuildMethodTable.annotations] = annotations.takeIf { it.isNotEmpty() }?.toString()
-            }
-            it.classAnnotations?.let { classAnnotations ->
-                this[BuildMethodTable.classAnnotations] = classAnnotations.takeIf { it.isNotEmpty() }?.toString()
-            }
         }
     }
 

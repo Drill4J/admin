@@ -16,3 +16,17 @@ ALTER TABLE raw_data.build_methods
 DROP COLUMN IF EXISTS params CASCADE;
 ALTER TABLE raw_data.build_methods
 DROP COLUMN IF EXISTS return_type CASCADE;
+ALTER TABLE raw_data.build_methods
+DROP COLUMN IF EXISTS signature CASCADE;
+ALTER TABLE raw_data.build_methods
+DROP COLUMN IF EXISTS probes_count CASCADE;
+ALTER TABLE raw_data.build_methods
+DROP COLUMN IF EXISTS body_checksum CASCADE;
+ALTER TABLE raw_data.build_methods
+DROP COLUMN IF EXISTS annotations CASCADE;
+ALTER TABLE raw_data.build_methods
+DROP COLUMN IF EXISTS class_annotations CASCADE;
+
+-- Drop redundant columns from method_coverage
+ALTER TABLE raw_data.method_coverage
+DROP COLUMN IF EXISTS signature CASCADE;

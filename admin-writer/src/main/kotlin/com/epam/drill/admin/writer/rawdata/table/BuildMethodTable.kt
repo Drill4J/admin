@@ -25,8 +25,6 @@ object BuildMethodTable : Table("raw_data.build_methods") {
     val methodId = varchar("method_id", MEDIUM_TEXT_LENGTH).references(MethodTable.methodId).nullable()
     val buildId = varchar("build_id", MEDIUM_TEXT_LENGTH)
     val probesStartPos = integer("probe_start_pos")
-    val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
-    val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     override val primaryKey = PrimaryKey(buildId, methodId, appId, groupId)
 }

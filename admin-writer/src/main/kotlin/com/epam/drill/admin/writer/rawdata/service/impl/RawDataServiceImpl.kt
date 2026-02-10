@@ -139,8 +139,6 @@ class RawDataServiceImpl(
                 probesStartPos = method.probesStartPos,
                 bodyChecksum = method.bodyChecksum,
                 signature = signature,
-                annotations = method.annotations,
-                classAnnotations = method.classAnnotations
             )
         }
             .let { dataToInsert ->
@@ -238,8 +236,6 @@ class RawDataServiceImpl(
             appId = rulePayload.appId,
             namePattern = rulePayload.namePattern,
             classnamePattern = rulePayload.classnamePattern,
-            annotationsPattern = rulePayload.annotationsPattern,
-            classAnnotationsPattern = rulePayload.classAnnotationsPattern
         )
         transaction {
             methodIgnoreRuleRepository.create(rule)
