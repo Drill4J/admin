@@ -15,22 +15,22 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
 
-object MethodTable : StringIdTable("raw_data.methods") {
+object MethodTable : Table("raw_data.methods") {
+    val methodId = varchar("method_id", MEDIUM_TEXT_LENGTH)
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
-    val classname = varchar("classname",  LONG_TEXT_LENGTH)
-    val buildId = varchar("build_id", MEDIUM_TEXT_LENGTH)
-    val name = varchar("name",  LONG_TEXT_LENGTH)
-    val params = varchar("params",  LONG_TEXT_LENGTH) // logically, it could be longer
+    val classname = varchar("class_name",  LONG_TEXT_LENGTH)
+    val name = varchar("method_name",  LONG_TEXT_LENGTH)
+    val params = varchar("method_params",  LONG_TEXT_LENGTH) // logically, it could be longer
     val returnType = varchar("return_type",  LONG_TEXT_LENGTH)
     val bodyChecksum = varchar("body_checksum",  SHORT_TEXT_LENGTH) // crc64 stringified hash
     var signature = varchar("signature", LONG_TEXT_LENGTH)
     val probesCount = integer("probes_count")
-    val probesStartPos = integer("probe_start_pos")
-    val annotations = varchar("annotations", LONG_TEXT_LENGTH).nullable()
-    val classAnnotations = varchar("class_annotations", LONG_TEXT_LENGTH).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
+    override val primaryKey = PrimaryKey(methodId, appId, groupId)
 }

@@ -31,8 +31,6 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
             it[appId] = rule.appId
             it[namePattern] = rule.namePattern
             it[classnamePattern] = rule.classnamePattern
-            it[annotationsPattern] = rule.annotationsPattern
-            it[classAnnotationsPattern] = rule.classAnnotationsPattern
         }
     }
 
@@ -44,8 +42,6 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
                 appId = it[MethodIgnoreRulesTable.appId],
                 namePattern = it[MethodIgnoreRulesTable.namePattern],
                 classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
-                annotationsPattern = it[MethodIgnoreRulesTable.annotationsPattern],
-                classAnnotationsPattern = it[MethodIgnoreRulesTable.classAnnotationsPattern]
             )
         }
     }

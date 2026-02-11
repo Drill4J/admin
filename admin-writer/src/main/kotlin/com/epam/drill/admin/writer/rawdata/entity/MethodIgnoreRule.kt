@@ -24,8 +24,6 @@ class MethodIgnoreRule(
     val appId: String,
     val namePattern: String? = null,
     val classnamePattern: String? = null,
-    val annotationsPattern: String? = null,
-    val classAnnotationsPattern: String? = null
 ) {
     init {
         validate()
@@ -40,19 +38,14 @@ class MethodIgnoreRule(
             throw InvalidParameters("Field 'appId' is required and must contain non-empty string")
         }
 
-        if (namePattern.isNullOrEmpty() && classnamePattern.isNullOrEmpty() &&
-            annotationsPattern.isNullOrEmpty() && classAnnotationsPattern.isNullOrEmpty()) {
+        if (namePattern.isNullOrEmpty() && classnamePattern.isNullOrEmpty()) {
             throw InvalidParameters("You must specify at least one of the following fields containing valid regex: " +
                     "'namePattern', " +
-                    "'classnamePattern', " +
-                    "'annotationsPattern', " +
-                    "'classAnnotationsPattern'")
+                    "'classnamePattern'")
         }
 
         namePattern?.let { validateRegex(it, "namePattern") }
         classnamePattern?.let { validateRegex(it, "classnamePattern") }
-        annotationsPattern?.let { validateRegex(it, "annotationsPattern") }
-        classAnnotationsPattern?.let { validateRegex(it, "classAnnotationsPattern") }
     }
 
     private fun validateRegex(pattern: String, patternName: String) {

@@ -30,7 +30,8 @@ class CoveragePayload(
 @Serializable
 class SingleMethodCoveragePayload(
     val signature: String,
+    val bodyChecksum: String,
     val testId: String?,
     val testSessionId: String?,
-    val probes: BooleanArray
+    val probes: BooleanArray,
 )

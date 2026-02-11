@@ -18,8 +18,8 @@ package com.epam.drill.admin.writer.rawdata.entity
 class Method(
     val groupId: String,
     val appId: String,
-    val id: String,
     val buildId: String,
+    val methodId: String,
     val classname: String,
     val name: String,
     val params: String,
@@ -28,6 +28,4 @@ class Method(
     val probesStartPos: Int,
     val bodyChecksum: String,
     val signature: String,
-    val annotations: Map<String, List<String>>?,
-    val classAnnotations: Map<String, List<String>>?
 )

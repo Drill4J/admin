@@ -40,7 +40,7 @@ class MetricsDataRetentionPolicyJob(
                     if (groupId != null) mapOf(groupId to (it[groupId] ?: Instant.EPOCH)) else it
                 }.map { (groupId, initTimestamp) ->
                     async {
-                        logger.info { "Deleting all metrics data for groupId $groupId older than $initTimestamp..." }
+                        logger.info { "Deleting all metrics data for groupId [$groupId] older than $initTimestamp..." }
                         metricsRepository.deleteAllBuildDataCreatedBefore(groupId, initTimestamp)
                         metricsRepository.deleteAllTestDataCreatedBefore(groupId, initTimestamp)
                         metricsRepository.deleteAllDailyDataCreatedBefore(groupId, initTimestamp)

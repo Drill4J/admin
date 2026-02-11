@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.entity
+package com.epam.drill.admin.writer.rawdata.util
 
-class Coverage(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val buildId: String,
-    val methodId: String,
-    val testId: String?,
-    val testSessionId: String?,
-    val probes: BooleanArray
-)
+import java.security.MessageDigest
+
+/**
+ * Calculates MD5 hash for the string and returns it as a lowercase hex string.
+ */
+fun String.md5(): String {
+    val digest = MessageDigest.getInstance("MD5").digest(toByteArray(Charsets.UTF_8))
+    return digest.joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+}
