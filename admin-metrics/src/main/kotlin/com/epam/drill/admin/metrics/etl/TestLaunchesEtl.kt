@@ -27,7 +27,10 @@ val EtlConfig.testLaunchesExtractor
         name = "test_launches",
         sqlQuery = fromResource("/metrics/db/etl/test_launches_extractor.sql"),
         database = MetricsDatabaseConfig.database,
-        fetchSize = fetchSize
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "created_at",
     )
 
 val EtlConfig.testLaunchesLoader
@@ -35,15 +38,15 @@ val EtlConfig.testLaunchesLoader
         name = "test_launches",
         sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_launches_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
 val EtlConfig.testLaunchesPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_launches",
         extractor = testLaunchesExtractor,
-        loaders = listOf(testLaunchesLoader),
+        loader = testLaunchesLoader,
         bufferSize = bufferSize
     )

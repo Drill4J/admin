@@ -15,10 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.DataExtractor
-import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.UntypedRow
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.TextColumnType
@@ -29,33 +28,45 @@ import java.time.Instant
 import kotlin.system.measureTimeMillis
 import kotlin.use
 
-abstract class SqlDataExtractor<T>(
+abstract class SqlDataExtractor<T : EtlRow>(
     override val name: String,
+    override val extractionLimit: Int,
     open val sqlQuery: String,
     open val database: Database,
     open val fetchSize: Int,
-) : DataExtractor<T> {
+    open val loggingFrequency: Int,
+) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency) {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun extract(
+    override suspend fun extractPage(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        emitter: FlowCollector<T>,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit
+        limit: Int,
+        onExtractionExecuted: suspend (Long) -> Unit,
+        rowsExtractor: suspend (T) -> Unit
     ) {
         val preparedSql = prepareSql(sqlQuery)
-        val params = mapOf(
-            "group_id" to groupId,
-            "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
-            "until_timestamp" to java.sql.Timestamp.from(untilTimestamp)
-        )
+
         execSuspend(
             sql = preparedSql.getSql(),
-            args = preparedSql.getArgs(params),
+            args = preparedSql.getArgs(
+                UntypedRow(sinceTimestamp, mapOf(
+                    "group_id" to groupId,
+                    "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
+                    "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
+                    "limit" to limit,
+                ))
+            ),
         ) { rs, duration ->
-            onExtractCompleted(EtlExtractingResult(success = true, duration = duration))
-            collectInFlow(rs, emitter)
+            val meta = rs.metaData
+            val columnCount = meta.columnCount
+
+            onExtractionExecuted(duration)
+            while (rs.next()) {
+                val row = parseRow(rs, meta, columnCount)
+                rowsExtractor(row)
+            }
         }
     }
 
@@ -81,11 +92,9 @@ abstract class SqlDataExtractor<T>(
                 }
 
                 val resultSet: ResultSet
-                logger.debug { "ETL extractor [$name] extracting rows..." }
                 val duration = measureTimeMillis {
                     resultSet = stmt.executeQuery()
                 }
-                logger.debug { "ETL extractor [$name] extracted rows in ${duration}ms" }
                 resultSet.use { rs ->
                     collect(rs, duration)
                 }
@@ -95,16 +104,8 @@ abstract class SqlDataExtractor<T>(
         }
     }
 
-    private suspend fun collectInFlow(rs: ResultSet, emitter: FlowCollector<T>) {
-        val meta = rs.metaData
-        val columnCount = rs.metaData.columnCount
-        while (rs.next()) {
-            emitter.emit(parseRow(rs, meta, columnCount))
-        }
-    }
-
     abstract fun parseRow(rs: ResultSet, meta: ResultSetMetaData, columnCount: Int): T
-    abstract fun prepareSql(sql: String): PreparedSql<Map<String, Any?>>
+    abstract fun prepareSql(sql: String): PreparedSql<UntypedRow>
 }
 
 

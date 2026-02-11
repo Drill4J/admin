@@ -1,0 +1,154 @@
+/**
+ * Copyright 2020 - 2022 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.epam.drill.admin.etl.impl
+
+import com.epam.drill.admin.etl.DataExtractor
+import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlRow
+import kotlinx.coroutines.flow.FlowCollector
+import mu.KotlinLogging
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Duration.Companion.seconds
+
+abstract class PageDataExtractor<T : EtlRow>(
+    override val name: String,
+    open val extractionLimit: Int,
+    private val loggingFrequency: Int = 10,
+) : DataExtractor<T> {
+    private val logger = KotlinLogging.logger {}
+
+    override suspend fun extract(
+        groupId: String,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        emitter: FlowCollector<T>,
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit
+    ) {
+        var currentSince = sinceTimestamp
+        val page = AtomicInteger(0)
+        val rowsFetched = AtomicLong(0)
+        var hasMore = true
+        val buffer: MutableList<T> = mutableListOf()
+        val isExecutingQuery = AtomicBoolean(true)
+
+        trackProgressOf {
+            try {
+                while (hasMore && currentSince < untilTimestamp) {
+                    page.incrementAndGet()
+                    logger.debug { "ETL extractor [$name] for group [$groupId] is executing query for page ${page.get()} since $currentSince ..." }
+
+                    var previousTimestamp: Instant? = null
+                    var previousEmittedTimestamp: Instant? = null
+                    var pageRows = 0L
+
+                    isExecutingQuery.set(true)
+                    extractPage(
+                        groupId = groupId,
+                        sinceTimestamp = currentSince,
+                        untilTimestamp = untilTimestamp,
+                        limit = extractionLimit,
+                        onExtractionExecuted = { duration ->
+                            logger.debug { "ETL extractor [$name] for group [$groupId] executed query for page ${page.get()} in ${duration}ms " }
+                            onExtractingProgress(
+                                EtlExtractingResult(
+                                    duration = duration
+                                )
+                            )
+                            isExecutingQuery.set(false)
+                        },
+                        rowsExtractor = { row ->
+                            pageRows++
+                            val currentTimestamp = row.timestamp
+
+                            if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
+                                throw IllegalStateException("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                            }
+
+                            if (buffer.isNotEmpty() && previousTimestamp != null && currentTimestamp != previousTimestamp) {
+                                // Emit buffered rows when timestamp changes
+                                emitBuffer(buffer, emitter)
+                                previousEmittedTimestamp = previousTimestamp
+                            }
+
+                            buffer.add(row)
+
+                            previousTimestamp = currentTimestamp
+                            rowsFetched.incrementAndGet()
+                        }
+                    )
+                    if (pageRows == 0L || pageRows < extractionLimit) {
+                        hasMore = false
+                        emitBuffer(buffer, emitter)
+                        logger.debug { "ETL extractor [$name] for group [$groupId] completed fetching" +
+                                ", rows fetched: ${rowsFetched.get()}" +
+                                ", total pages: ${page.get()}" +
+                                ", last extracted at $currentSince" }
+                    } else {
+                        currentSince = previousEmittedTimestamp ?: throw IllegalStateException(
+                            "No rows were emitted on page $page because all fetched records had the same timestamp. Please increase the extraction limit. Current is $extractionLimit."
+                        )
+                        // Remove rows from buffer that have timestamp greater than currentSince to avoid re-emission on the next page
+                        buffer.removeIf { it.timestamp > currentSince }
+                        hasMore = true
+                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page ${page.get()}, last extracted at $currentSince" }
+                    }
+                }
+            } catch (e: Exception) {
+                logger.error {
+                    "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
+                }
+                onExtractingProgress(
+                    EtlExtractingResult(
+                        errorMessage = e.message
+                    )
+                )
+            }
+        }.every(loggingFrequency.seconds) {
+            if (isExecutingQuery.get()) {
+                logger.debug {
+                    "ETL extractor [$name] for group [$groupId] is still executing query for page ${page.get()} ..."
+                }
+            } else {
+                logger.debug {
+                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.get()} rows" +
+                            ", page: ${page.get()}"
+                }
+            }
+        }
+    }
+
+    private suspend fun emitBuffer(
+        buffer: MutableList<T>, emitter: FlowCollector<T>
+    ) {
+        if (buffer.isEmpty()) return
+        for (bufferedRow in buffer) {
+            emitter.emit(bufferedRow)
+        }
+        buffer.clear()
+    }
+
+    abstract suspend fun extractPage(
+        groupId: String,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        limit: Int,
+        onExtractionExecuted: suspend (duration: Long) -> Unit,
+        rowsExtractor: suspend (row: T) -> Unit
+    )
+}

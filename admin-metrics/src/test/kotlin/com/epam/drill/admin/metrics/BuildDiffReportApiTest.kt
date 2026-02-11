@@ -20,11 +20,8 @@ import com.epam.drill.admin.test.DatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.table.*
-import com.jayway.jsonpath.JsonPath
-import io.ktor.client.call.body
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
@@ -155,7 +152,7 @@ class BuildDiffReportApiTest : DatabaseTests({
 
     @AfterEach
     fun clearAll() = withTransaction {
-        CoverageTable.deleteAll()
+        MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()
         BuildTable.deleteAll()

@@ -27,7 +27,10 @@ val EtlConfig.buildsExtractor
         name = "builds",
         sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
         database = MetricsDatabaseConfig.database,
-        fetchSize = fetchSize
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "updated_at",
     )
 
 val EtlConfig.buildsLoader
@@ -35,15 +38,15 @@ val EtlConfig.buildsLoader
         name = "builds",
         sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
-        lastExtractedAtColumnName = "updated_at",
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
     )
 
 val EtlConfig.buildsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "builds",
         extractor = buildsExtractor,
-        loaders = listOf(buildsLoader),
+        loader = buildsLoader,
         bufferSize = bufferSize
     )

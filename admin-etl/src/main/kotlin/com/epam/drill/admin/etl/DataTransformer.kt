@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.route.payload
+package com.epam.drill.admin.etl
 
-import kotlinx.serialization.Serializable
+import kotlinx.coroutines.flow.Flow
 
-@Serializable
-class CoveragePayload(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val coverage: List<SingleMethodCoveragePayload>
-)
+interface DataTransformer<in T: EtlRow, out R: EtlRow> {
+    val name: String
+    suspend fun transform(
+        groupId: String,
+        collector: Flow<T>,
+    ): Flow<R>
+}
 
-@Serializable
-class SingleMethodCoveragePayload(
-    val signature: String,
-    val testId: String?,
-    val testSessionId: String?,
-    val probes: BooleanArray
-)
+class NopTransformer<T: EtlRow> : DataTransformer<T, T> {
+    override val name: String = "nop-transformer"
+    override suspend fun transform(
+        groupId: String,
+        collector: Flow<T>,
+    ): Flow<T> = collector
+}
+
+val untypedNopTransformer = NopTransformer<UntypedRow>()

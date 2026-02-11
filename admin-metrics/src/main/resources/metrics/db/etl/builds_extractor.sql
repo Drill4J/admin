@@ -19,3 +19,4 @@ WHERE b.group_id = :group_id
     AND b.updated_at > :since_timestamp
     AND b.updated_at <= :until_timestamp
 ORDER BY b.updated_at ASC
+LIMIT :limit

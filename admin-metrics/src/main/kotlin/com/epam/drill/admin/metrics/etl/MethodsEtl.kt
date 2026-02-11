@@ -15,9 +15,12 @@
  */
 package com.epam.drill.admin.metrics.etl
 
+import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
+import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
+import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.metrics.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
@@ -27,7 +30,9 @@ val EtlConfig.buildMethodsExtractor
         name = "build_methods",
         sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
         database = MetricsDatabaseConfig.database,
-        fetchSize = fetchSize
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        lastExtractedAtColumnName = "created_at",
     )
 
 val EtlConfig.buildMethodsLoader
@@ -35,17 +40,28 @@ val EtlConfig.buildMethodsLoader
         name = "build_methods",
         sqlUpsert = fromResource("/metrics/db/etl/build_methods_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/build_methods_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
+
+val EtlConfig.methodLoaderTransformer
+    get() = UntypedAggregationTransformer(
+        name = "methods",
+        bufferSize = transformationBufferSize,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "method_id"
+        )
+    ) { current, next ->
+        UntypedRow(next.timestamp, next)
+    }
 
 val EtlConfig.methodsLoader
     get() = UntypedSqlDataLoader(
         name = "methods",
         sqlUpsert = fromResource("/metrics/db/etl/methods_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/methods_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
@@ -54,6 +70,6 @@ val EtlConfig.methodsPipeline
     get() = EtlPipelineImpl(
         name = "methods",
         extractor = buildMethodsExtractor,
-        loaders = listOf(buildMethodsLoader, methodsLoader),
+        loaders = listOf(untypedNopTransformer to buildMethodsLoader, methodLoaderTransformer to methodsLoader),
         bufferSize = bufferSize
     )

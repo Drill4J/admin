@@ -29,14 +29,15 @@ import java.time.Instant
  * - Uses `batchSize` to control transaction size and DB pressure.
  * - Is resilient to partial failures
  */
-interface DataLoader<T> {
+interface DataLoader<T: EtlRow> {
     val name: String
     suspend fun load(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<T>,
-        onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+        onLoadingProgress: suspend (EtlLoadingResult) -> Unit = {},
+        onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlLoadingResult
 
     suspend fun deleteAll(groupId: String)

@@ -13,24 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.route.payload
+package com.epam.drill.admin.etl
 
-import kotlinx.serialization.Serializable
+import java.time.Instant
 
-@Serializable
-class CoveragePayload(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val coverage: List<SingleMethodCoveragePayload>
-)
-
-@Serializable
-class SingleMethodCoveragePayload(
-    val signature: String,
-    val testId: String?,
-    val testSessionId: String?,
-    val probes: BooleanArray
-)
+class UntypedRow(
+    timestamp: Instant,
+    map: Map<String, Any?>
+): EtlRow(timestamp), Map<String, Any?> by HashMap(map)

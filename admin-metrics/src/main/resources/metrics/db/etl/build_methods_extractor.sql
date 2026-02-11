@@ -26,3 +26,4 @@ WHERE m.group_id = :group_id
                 OR r.annotations_pattern IS NOT NULL AND m.annotations::text ~ r.annotations_pattern::text
                 OR r.class_annotations_pattern IS NOT NULL AND m.class_annotations::text ~ r.class_annotations_pattern::text))
 ORDER BY m.created_at ASC, m.signature
+LIMIT :limit

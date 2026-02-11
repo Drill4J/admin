@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
-import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -25,7 +25,7 @@ import kotlin.test.assertEquals
 
 class BatchDataLoaderTest {
 
-    private class TestItem(val timestamp: Instant, val data: String, val processable: Boolean = true)
+    private class TestItem(timestamp: Instant, val data: String, val processable: Boolean = true) : EtlRow(timestamp)
 
     private class TestBatchDataLoader(
         batchSize: Int,
@@ -35,12 +35,6 @@ class BatchDataLoaderTest {
     ) : BatchDataLoader<TestItem>("test-loader", batchSize) {
 
         val loadedBatches = mutableListOf<List<TestItem>>()
-
-        override fun getLastExtractedTimestamp(args: TestItem): Instant? {
-            if (failOnTimestamp) return null
-            if (outOfOrder && loadedBatches.isNotEmpty()) return args.timestamp.minusSeconds(1)
-            return args.timestamp
-        }
 
         override fun isProcessable(args: TestItem): Boolean = args.processable
 
@@ -60,7 +54,7 @@ class BatchDataLoaderTest {
     fun `load should handle empty flow`() = runBlocking {
         val loader = TestBatchDataLoader(batchSize = 10)
         val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf()) { }
-        assertEquals(EtlStatus.SUCCESS, result.status)
+        assertEquals(false, result.isFailed)
         assertEquals(0, result.processedRows)
         assertEquals(0, loader.loadedBatches.size)
     }
@@ -71,7 +65,7 @@ class BatchDataLoaderTest {
         val loader = TestBatchDataLoader(batchSize = 10)
         val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
 
-        assertEquals(EtlStatus.SUCCESS, result.status)
+        assertEquals(false, result.isFailed)
         assertEquals(5, result.processedRows)
         assertEquals(1, loader.loadedBatches.size)
         assertEquals(5, loader.loadedBatches[0].size)
@@ -81,20 +75,27 @@ class BatchDataLoaderTest {
     fun `load should process multiple batches`() = runBlocking {
         val items = (1..25).map { TestItem(Instant.ofEpochSecond(it.toLong()), "item$it") }
         val loader = TestBatchDataLoader(batchSize = 10)
-        val results = mutableListOf<EtlLoadingResult>()
-        val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { results.add(it) }
+        val results = mutableListOf<EtlStatus>()
+        val result = loader.load(
+            "test-group", Instant.EPOCH, Instant.now(),
+            collector = flowOf(*items.toTypedArray()),
+            onLoadingProgress = { result ->
+                if (result.isFailed)
+                    results.add(EtlStatus.FAILED)
+            },
+            onStatusChanged = {
+                results.add(it)
+            }
+        )
 
-        assertEquals(EtlStatus.SUCCESS, result.status)
+        assertEquals(false, result.isFailed)
         assertEquals(25, result.processedRows)
         assertEquals(3, loader.loadedBatches.size)
         assertEquals(10, loader.loadedBatches[0].size)
         assertEquals(10, loader.loadedBatches[1].size)
         assertEquals(5, loader.loadedBatches[2].size)
 
-        assertEquals(3, results.size)
-        assertEquals(EtlStatus.LOADING, results[0].status)
-        assertEquals(EtlStatus.LOADING, results[1].status)
-        assertEquals(EtlStatus.SUCCESS, results[2].status)
+        assertEquals(EtlStatus.SUCCESS, results.last())
     }
 
     @Test
@@ -107,7 +108,7 @@ class BatchDataLoaderTest {
         val loader = TestBatchDataLoader(batchSize = 10)
         val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
 
-        assertEquals(EtlStatus.SUCCESS, result.status)
+        assertEquals(false, result.isFailed)
         assertEquals(2, result.processedRows)
         assertEquals(1, loader.loadedBatches.size)
         assertEquals(2, loader.loadedBatches[0].size)
@@ -119,9 +120,9 @@ class BatchDataLoaderTest {
     fun `load should fail on batch processing error`() = runBlocking {
         val items = (1..15).map { TestItem(Instant.ofEpochSecond(it.toLong()), "item$it") }
         val loader = TestBatchDataLoader(batchSize = 10, failOnBatch = 2)
-        val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
+        val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray()))
 
-        assertEquals(EtlStatus.FAILED, result.status)
+        assertEquals(true, result.isFailed)
         assertEquals(10, result.processedRows) // First batch succeeds
         assertEquals(1, loader.loadedBatches.size)
         assertEquals(loader.loadedBatches[0].last().timestamp, result.lastProcessedAt)
@@ -136,7 +137,7 @@ class BatchDataLoaderTest {
         val loader = TestBatchDataLoader(batchSize = 10)
         val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
 
-        assertEquals(EtlStatus.FAILED, result.status)
+        assertEquals(true, result.isFailed)
     }
 
     @Test
@@ -146,7 +147,7 @@ class BatchDataLoaderTest {
         val loader = TestBatchDataLoader(batchSize = 10)
         val result = loader.load("test-group", since, Instant.now(), flowOf(*items.toTypedArray())) { }
 
-        assertEquals(EtlStatus.SUCCESS, result.status)
+        assertEquals(false, result.isFailed)
         assertEquals(5, result.processedRows)
         assertEquals(1, loader.loadedBatches.size)
         assertEquals(5, loader.loadedBatches[0].size)

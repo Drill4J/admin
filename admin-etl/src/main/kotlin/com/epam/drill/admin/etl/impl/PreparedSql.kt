@@ -15,7 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
-interface PreparedSql<T> {
+import com.epam.drill.admin.etl.EtlRow
+
+interface PreparedSql<T: EtlRow> {
     fun getSql(): String
     fun getArgs(row: T): List<Any?>
 }

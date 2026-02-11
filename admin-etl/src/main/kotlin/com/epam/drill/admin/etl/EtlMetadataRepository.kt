@@ -15,13 +15,35 @@
  */
 package com.epam.drill.admin.etl
 
+import java.time.Instant
+
 interface EtlMetadataRepository {
     suspend fun getAllMetadata(groupId: String): List<EtlMetadata>
-    suspend fun getAllMetadataByExtractor(groupId: String, pipelineName: String, extractorName: String): List<EtlMetadata>
-    suspend fun getMetadata(groupId: String, pipelineName: String, extractorName: String, loaderName: String): EtlMetadata?
+    suspend fun getAllMetadataByExtractor(
+        groupId: String,
+        pipelineName: String,
+        extractorName: String
+    ): List<EtlMetadata>
+
+    suspend fun getMetadata(
+        groupId: String,
+        pipelineName: String,
+        extractorName: String,
+        loaderName: String
+    ): EtlMetadata?
+
     suspend fun saveMetadata(metadata: EtlMetadata)
-    suspend fun accumulateMetadata(metadata: EtlMetadata)
+    suspend fun accumulateMetadataByLoader(
+        groupId: String, pipelineName: String, extractorName: String, loaderName: String,
+        lastProcessedAt: Instant? = null,
+        status: EtlStatus? = null, loadDuration: Long = 0L, rowsProcessed: Long = 0L,
+        errorMessage: String? = null
+    )
     suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String)
-    suspend fun accumulateMetadataDurationByExtractor(groupId: String, pipelineName: String, extractorName: String, duration: Long)
+    suspend fun accumulateMetadataByExtractor(
+        groupId: String, pipelineName: String, extractorName: String,
+        status: EtlStatus? = null, extractDuration: Long = 0L,
+        errorMessage: String? = null
+    )
 }
 

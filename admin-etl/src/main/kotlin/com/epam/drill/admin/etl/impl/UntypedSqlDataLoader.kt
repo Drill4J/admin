@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.UntypedRow
 import org.jetbrains.exposed.sql.Database
 import java.time.Instant
 import java.util.Date
@@ -24,26 +25,16 @@ class UntypedSqlDataLoader(
     sqlUpsert: String,
     sqlDelete: String,
     database: Database,
-    private val lastExtractedAtColumnName: String,
     batchSize: Int = 1000,
-    val processable: (Map<String, Any?>) -> Boolean = { true }
-) : SqlDataLoader<Map<String, Any?>>(name, batchSize, sqlUpsert, sqlDelete, database) {
+    loggingFrequency: Int = 10,
+    val processable: (UntypedRow) -> Boolean = { true }
+) : SqlDataLoader<UntypedRow>(name, batchSize, loggingFrequency, sqlUpsert, sqlDelete, database) {
 
-    override fun prepareSql(sql: String): PreparedSql<Map<String, Any?>> {
+    override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)
     }
 
-    override fun getLastExtractedTimestamp(args: Map<String, Any?>): Instant? {
-        val timestamp = args[lastExtractedAtColumnName]
-        return when (timestamp) {
-            is Instant -> timestamp
-            is Date -> timestamp.toInstant()
-            is String -> Instant.parse(timestamp)
-            else -> null
-        }
-    }
-
-    override fun isProcessable(args: Map<String, Any?>): Boolean {
+    override fun isProcessable(args: UntypedRow): Boolean {
         return processable(args)
     }
 }

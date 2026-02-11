@@ -20,6 +20,8 @@ import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlPipeline
+import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.metrics.etl.methodsPipeline
 import com.epam.drill.admin.metrics.etl.buildsPipeline
 import com.epam.drill.admin.metrics.etl.coveragePipeline
