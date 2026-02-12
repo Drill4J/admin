@@ -21,6 +21,8 @@ import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.withRollback
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.route.postTestDefinitions
+import com.epam.drill.admin.writer.rawdata.route.postTestLaunches
 import com.epam.drill.admin.writer.rawdata.route.postTestMetadata
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
 import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
@@ -131,4 +133,131 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
         }
     }
+
+    @Test
+    fun `given test definitions payload, post test definitions should return OK and save definitions`() = withRollback {
+        val testGroup = "group-1"
+        val testDefinition1 = "def-1"
+        val testDefinition2 = "def-2"
+        val timeBeforeTest = LocalDateTime.now()
+
+        val app = drillApplication(rawDataServicesDIModule) {
+            postTestDefinitions()
+        }
+
+        app.client.post("/test-definitions") {
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            setBody(
+                """
+            {
+                "groupId": "$testGroup",
+                "definitions": [
+                    {
+                        "id": "$testDefinition1",
+                        "runner": "JUnit",
+                        "name": "test-1",
+                        "type": "UNIT",
+                        "path": "com.example.Test1",
+                        "tags": ["tag-1"],
+                        "metadata": { "k1": "v1" }
+                    },
+                    {
+                        "id": "$testDefinition2",
+                        "runner": "JUnit",
+                        "name": "test-2",
+                        "type": "UNIT",
+                        "path": "com.example.Test2",
+                        "tags": ["tag-2"],
+                        "metadata": { "k2": "v2" }
+                    }
+                ]
+            }
+            """.trimIndent()
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertJsonEquals(
+                """
+            {
+                "message": "Test definitions saved"
+            }
+            """.trimIndent(),
+                bodyAsText()
+            )
+        }
+
+        val saved = TestDefinitionTable.selectAll()
+            .filter { it[TestDefinitionTable.groupId] == testGroup }
+
+        assertEquals(2, saved.size)
+        saved.forEach {
+            assertNotNull(it[TestDefinitionTable.runner])
+            assertNotNull(it[TestDefinitionTable.name])
+            assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
+        }
+    }
+
+    @Test
+    fun `given test launches payload, post test launches should return OK and save launches`() = withRollback {
+        val testGroup = "group-1"
+        val testSession = "session-1"
+        val testDefinition = "def-1"
+        val launch1 = "launch-1"
+        val launch2 = "launch-2"
+        val timeBeforeTest = LocalDateTime.now()
+
+        val app = drillApplication(rawDataServicesDIModule) {
+            postTestLaunches()
+        }
+
+        app.client.post("/test-launches") {
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            setBody(
+                """
+            {
+                "groupId": "$testGroup",
+                "testSessionId": "$testSession",
+                "launches": [
+                    {
+                        "id": "$launch1",
+                        "testDefinitionId": "$testDefinition",
+                        "result": "PASSED",
+                        "duration": 100
+                    },
+                    {
+                        "id": "$launch2",
+                        "testDefinitionId": "$testDefinition",
+                        "result": "FAILED",
+                        "duration": 200
+                    }
+                ]
+            }
+            """.trimIndent()
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertJsonEquals(
+                """
+            {
+                "message": "Test launches saved"
+            }
+            """.trimIndent(),
+                bodyAsText()
+            )
+        }
+
+        val saved = TestLaunchTable.selectAll()
+            .filter { it[TestLaunchTable.groupId] == testGroup }
+            .filter { it[TestLaunchTable.testSessionId] == testSession }
+            .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
+
+        assertEquals(2, saved.size)
+        saved.forEach {
+            assertNotNull(it[TestLaunchTable.result])
+            assertNotNull(it[TestLaunchTable.duration])
+            assertTrue(it[TestLaunchTable.createdAt] >= timeBeforeTest)
+        }
+    }
+
+
 }
