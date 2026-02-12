@@ -208,7 +208,7 @@ class MetricsServiceImpl(
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
-            val buildRisksReportPath = metricsServiceUiLinksConfig.buildRisksReportPath
+            val buildRisksReportPath = metricsServiceUiLinksConfig.buildChangesReportPath
             val impactedTestsReportPath = metricsServiceUiLinksConfig.impactedTestsReportPath
             mapOf(
                 "inputParameters" to mapOf(

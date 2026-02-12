@@ -26,8 +26,8 @@ class MetricsServiceUiLinksConfig(private val config: ApplicationConfig) {
     val buildTestingReportPath : String?
         get() = config.propertyOrNull("buildTestingReportPath")?.getString()
 
-    val buildRisksReportPath : String?
-        get() = config.propertyOrNull("buildRisksReportPath")?.getString()
+    val buildChangesReportPath : String?
+        get() = config.propertyOrNull("buildChangesReportPath")?.getString()
 
     val impactedTestsReportPath : String?
         get() = config.propertyOrNull("impactedTestsReportPath")?.getString()

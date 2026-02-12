@@ -272,6 +272,21 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             append(
                 """
+                    TestedChanges AS (
+                        SELECT
+                            change_type,
+                            COUNT(*) AS tested_methods                                                                                    
+                        FROM metrics.get_changes_with_coverage(
+                            input_build_id => ?,
+                            input_baseline_build_id => ?
+                        )
+                        WHERE aggregated_covered_probes > 0
+                        GROUP BY change_type
+                    ),
+            """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """
                     Coverage AS (
                         SELECT
                             isolated_probes_coverage_ratio,
@@ -304,8 +319,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                         (SELECT added FROM Changes) as changes_new_methods,
                         (SELECT modified FROM Changes) as changes_modified_methods,
                         (SELECT deleted FROM Changes) as changes_deleted_methods,
-                        (SELECT aggregated_tested_methods FROM Coverage) as tested_changes,
-                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
+                        COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'new'), 0) as tested_new_methods,
+                        COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'modified'), 0) as tested_modified_methods,
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
                         (SELECT impacted_tests FROM ImpactedTests) as impacted_tests                                         
                 """.trimIndent()
             )

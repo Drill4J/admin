@@ -56,6 +56,29 @@ class BuildDiffReportApiTest : DatabaseTests({
     }
 
     @Test
+    fun `given tested changes, build-diff-report service should calculate total tested changes by change type`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            build2 hasModified method2 comparedTo build1
+            build2 hasNew method3 comparedTo build1
+            build2 hasNew method4 comparedTo build1
+            test1 covers method1 with probesOf(1, 1) on build2
+            test2 covers method2 with probesOf(1, 1, 1) on build2
+            test3 covers method3 with probesOf(1) on build2
+        }.expectThat {
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+            }.returnsSingle("$.data.metrics") { metrics ->
+                assertEquals(1, metrics["tested_new_methods"])
+                assertEquals(1, metrics["tested_modified_methods"])
+            }
+        }
+    }
+
+    @Test
     fun `given tests on target build, build-diff-report service should calculate isolated coverage`() = havingData {
         build1 has listOf(method1, method2)
         build2 hasModified method2 comparedTo build1
