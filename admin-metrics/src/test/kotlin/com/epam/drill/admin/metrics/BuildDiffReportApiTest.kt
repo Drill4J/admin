@@ -50,7 +50,7 @@ class BuildDiffReportApiTest : DatabaseTests({
             }.returnsSingle("$.data.metrics") { metrics ->
                 assertEquals(1, metrics["changes_new_methods"])
                 assertEquals(1, metrics["changes_modified_methods"])
-                assertEquals(2, metrics["total_changes"])
+                assertEquals(1, metrics["changes_deleted_methods"])
             }
         }
     }
@@ -109,30 +109,25 @@ class BuildDiffReportApiTest : DatabaseTests({
         }
 
     @Test
-    fun `given tests on different builds, build-diff-report service should calculate recommended tests to run`() {
+    fun `given tests which cover changed methods, build-diff-report service should calculate impacted tests`() {
         havingData {
-            build1 has listOf(method1)
+            build1 has listOf(method1, method2)
             test1 covers method1 with probesOf(1, 1) on build1
+            test2 covers method2 with probesOf(1, 1, 1) on build1
 
-            build2 has listOf(method1, method2, method3)
-            test2 covers method2 with probesOf(1, 0, 0) on build2
-            test2 covers method3 with probesOf(1) on build2
-
-            build3 hasModified method3 comparedTo build2
-            test3 covers method3 with probesOf(1) on build3
+            build2 hasModified method1 comparedTo build1
         }.expectThat {
             client.get("/metrics/build-diff-report") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
-                parameter("buildVersion", build3.buildVersion)
+                parameter("buildVersion", build2.buildVersion)
                 parameter("baselineBuildVersion", build1.buildVersion)
             }.returnsSingle("$.data.metrics") { metrics ->
-                // coverage in method1 is not considered because method1 was not changed,
-                // test1 is not recommended to run because it covers only method1,
-                // test2 is recommended to run because it covers method3, but method3 was changed in build3,
-                // test3 is not recommended to run because it has already been run on build3,
-                // so total recommended tests is 1
-                assertEquals(1, metrics["recommended_tests"])
+                // coverage in method2 is not considered because method2 was not changed,
+                // test2 is not impacted because method2 was not changed in build2,
+                // test1 is impacted because it covers method1, but method1 was changed in build2,
+                // so total number of impacted tests is 1
+                assertEquals(1, metrics["impacted_tests"])
             }
         }
     }

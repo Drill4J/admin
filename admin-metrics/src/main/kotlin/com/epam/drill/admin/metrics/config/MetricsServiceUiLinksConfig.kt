@@ -18,12 +18,17 @@ package com.epam.drill.admin.metrics.config
 
 import io.ktor.server.config.*
 
-class MetricsServiceUiLinksConfig(
-    val baseUrl: String?,
-    val buildTestingReportPath: String?
-) {
-    constructor(config: ApplicationConfig) : this(
-        baseUrl = config.propertyOrNull("baseUrl")?.getString(),
-        buildTestingReportPath = config.propertyOrNull("buildTestingReportPath")?.getString()
-    )
+class MetricsServiceUiLinksConfig(private val config: ApplicationConfig) {
+
+    val baseUrl : String?
+        get() = config.propertyOrNull("baseUrl")?.getString()
+
+    val buildTestingReportPath : String?
+        get() = config.propertyOrNull("buildTestingReportPath")?.getString()
+
+    val buildRisksReportPath : String?
+        get() = config.propertyOrNull("buildRisksReportPath")?.getString()
+
+    val impactedTestsReportPath : String?
+        get() = config.propertyOrNull("impactedTestsReportPath")?.getString()
 }

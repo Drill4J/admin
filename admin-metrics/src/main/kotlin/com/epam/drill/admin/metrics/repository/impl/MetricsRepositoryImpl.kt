@@ -250,9 +250,10 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String
-    ) = transaction {
-        executeQueryReturnMap(
-            """
+    ): Map<String, Any?> = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
                     WITH 
                     Changes AS (
                         SELECT 
@@ -266,7 +267,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                             include_deleted => true,  
                             include_equal => true
                         ) m   
-                    ),   
+                    ),
+                    """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """
                     Coverage AS (
                         SELECT
                             isolated_probes_coverage_ratio,
@@ -280,28 +285,32 @@ class MetricsRepositoryImpl : MetricsRepository {
                             input_baseline_build_id => ?                            
                         )
                     ),
-                    RecommendedTests AS (
-                        SELECT count(*) AS tests_to_run
-                        FROM metrics.get_recommended_tests_v2(
+            """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """
+                    ImpactedTests AS (
+                        SELECT count(*) AS impacted_tests
+                        FROM metrics.get_impacted_tests_v2(
                             input_build_id => ?, 
-                            input_test_impact_statuses => '{IMPACTED}'                            
+                            input_baseline_build_id => ?          
                         )
                     )	
-                    SELECT 
+            """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """                    
+                   SELECT 
                         (SELECT added FROM Changes) as changes_new_methods,
                         (SELECT modified FROM Changes) as changes_modified_methods,
                         (SELECT deleted FROM Changes) as changes_deleted_methods,
-                        (SELECT added + modified FROM Changes) as total_changes,
                         (SELECT aggregated_tested_methods FROM Coverage) as tested_changes,
                         (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
-                        (SELECT tests_to_run FROM RecommendedTests) as recommended_tests
-                """.trimIndent(),
-            buildId,
-            baselineBuildId,
-            buildId,
-            baselineBuildId,
-            buildId
-        ).first() as Map<String, String>
+                        (SELECT impacted_tests FROM ImpactedTests) as impacted_tests                                         
+                """.trimIndent()
+            )
+        }
+        result.firstOrNull() ?: emptyMap()
     }
 
 
