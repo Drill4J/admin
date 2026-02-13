@@ -24,6 +24,7 @@ val microutilsLoggingVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
+val junitJupiterVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
 
@@ -67,7 +68,7 @@ dependencies {
     implementation(project(":admin-metrics"))
 
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("org.testcontainers:testcontainers:$testContainersVersion")

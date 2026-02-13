@@ -20,6 +20,7 @@ val mockitoKotlinVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val testContainersVersion: String by parent!!.extra
+val junitJupiterVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
@@ -61,6 +62,7 @@ dependencies {
     implementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
     implementation("org.testcontainers:testcontainers:$testContainersVersion")
     implementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+    implementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     implementation("org.testcontainers:postgresql:$testContainersVersion")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
