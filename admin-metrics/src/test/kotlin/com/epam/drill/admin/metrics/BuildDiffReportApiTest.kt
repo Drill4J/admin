@@ -102,7 +102,7 @@ class BuildDiffReportApiTest : DatabaseTests({
     }
 
     @Test
-    fun `given tests on different builds, build-diff-report service should calculate aggregated coverage`() =
+    fun `given tests on different builds, build-diff-report service should calculate coverage`() =
         havingData {
             build1 has listOf(method1)
             test1 covers method1 with probesOf(1, 1) on build1
@@ -126,8 +126,9 @@ class BuildDiffReportApiTest : DatabaseTests({
                 // test3 covers method2 by 1 of 3 probes but different probes compared to test2,
                 // coverage in method1 is not considered because method1 was not changed,
                 // coverage collected by test2 in method3 is not considered because method3 was changed,
-                // so total coverage is 2 of 4 probes
-                assertEquals(0.5, metrics["coverage"])
+                // so total aggregated coverage is 2 of 4 probes
+                assertEquals(0.5, metrics["aggregated_coverage"])
+                assertEquals(0.25, metrics["coverage"])
             }
         }
 

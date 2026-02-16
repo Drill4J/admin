@@ -203,7 +203,8 @@ class MetricsServiceImpl(
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
-                baselineBuildId
+                baselineBuildId,
+                coverageThreshold
             )
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
