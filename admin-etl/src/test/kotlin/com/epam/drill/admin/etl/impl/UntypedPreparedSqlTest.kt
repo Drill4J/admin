@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.UntypedRow
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -27,7 +29,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("SELECT * FROM users WHERE id = ?", result.getSql())
-        assertEquals(listOf(1), result.getArgs(mapOf("userId" to 1)))
+        assertEquals(listOf(1), result.getArgs(rowOf("userId" to 1)))
     }
 
     @Test
@@ -37,7 +39,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("SELECT * FROM users WHERE name = ? AND age = ?", result.getSql())
-        assertEquals(listOf("testUser", 25), result.getArgs(mapOf("userAge" to 25, "userName" to "testUser")))
+        assertEquals(listOf("testUser", 25), result.getArgs(rowOf("userAge" to 25, "userName" to "testUser")))
     }
 
     @Test
@@ -47,7 +49,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("SELECT * FROM users WHERE id = ? OR parent_id = ?", result.getSql())
-        assertEquals(listOf(1, 1), result.getArgs(mapOf("id" to 1)))
+        assertEquals(listOf(1, 1), result.getArgs(rowOf("id" to 1)))
     }
 
     @Test
@@ -57,7 +59,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("SELECT * FROM users WHERE data::jsonb @> ?", result.getSql())
-        assertEquals(listOf("testFilter"), result.getArgs(mapOf("filter" to "testFilter")))
+        assertEquals(listOf("testFilter"), result.getArgs(rowOf("filter" to "testFilter")))
     }
 
     @Test
@@ -67,7 +69,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("SELECT * FROM users WHERE id = 1", result.getSql())
-        assertEquals(emptyList(), result.getArgs(mapOf("id" to 1)))
+        assertEquals(emptyList(), result.getArgs(rowOf("id" to 1)))
     }
 
     @Test
@@ -77,7 +79,7 @@ class UntypedPreparedSqlTest {
         val result = UntypedPreparedSql.prepareSql(sql)
 
         assertEquals("INSERT INTO table (col1, col2) VALUES (?, ?)", result.getSql())
-        assertEquals(listOf(1, 2), result.getArgs(mapOf("param_1" to 1, "param2_test" to 2)))
+        assertEquals(listOf(1, 2), result.getArgs(rowOf("param_1" to 1, "param2_test" to 2)))
     }
 
 
@@ -106,7 +108,7 @@ class UntypedPreparedSqlTest {
         assertEquals(expectedSql, result.getSql())
         assertEquals(
             listOf("SUCCESS", "2025-01-01", "2025-12-10"), result.getArgs(
-                mapOf("endDate" to "2025-12-10", "status" to "SUCCESS", "startDate" to "2025-01-01")
+                rowOf("endDate" to "2025-12-10", "status" to "SUCCESS", "startDate" to "2025-01-01")
             )
         )
     }
@@ -116,7 +118,7 @@ class UntypedPreparedSqlTest {
         val sql = "INSERT INTO users (name, email) VALUES (:name, :email)"
         val result = UntypedPreparedSql.prepareSql(sql)
 
-        val row = mapOf("name" to "John", "email" to null)
+        val row = rowOf("name" to "John", "email" to null)
         val args = result.getArgs(row)
 
         assertEquals(listOf("John", null), args)
@@ -127,11 +129,13 @@ class UntypedPreparedSqlTest {
         val sql = "SELECT * FROM users WHERE name = :userName AND age = :userAge"
         val result = UntypedPreparedSql.prepareSql(sql)
 
-        val row = mapOf("userName" to "John")
+        val row = rowOf("userName" to "John")
         val args = result.getArgs(row)
 
         assertEquals(listOf("John", null), args)
     }
+
+    private fun rowOf(vararg entry: Pair<String, Any?>) = UntypedRow(Instant.EPOCH, mapOf(*entry))
 
 }
 

@@ -11,4 +11,4 @@ WHERE b.group_id = :group_id
     AND b.created_at > :since_timestamp
     AND b.created_at <= :until_timestamp
 ORDER BY tsb.created_at ASC, tsb.test_session_id ASC, tsb.build_id ASC
-
+LIMIT :limit

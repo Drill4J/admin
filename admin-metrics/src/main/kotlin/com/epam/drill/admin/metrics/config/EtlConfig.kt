@@ -38,4 +38,22 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val batchSize : Int
         get() = config.propertyOrNull("batchSize")?.getString()?.toIntOrNull() ?: 1000
+
+    /**
+     * Sets a limit on the total number of records to be extracted by the ETL process in a single query.
+     */
+    val extractionLimit : Int
+        get() = config.propertyOrNull("extractionLimit")?.getString()?.toIntOrNull() ?: 1_000_000
+
+    /**
+     * Controls the in-memory buffer capacity used for the shared flow between the transformer and loaders.
+     */
+    val transformationBufferSize : Int
+        get() = config.propertyOrNull("transformationBufferSize")?.getString()?.toIntOrNull() ?: 2000
+
+    /**
+     * Defines how often the ETL process logs its progress (in seconds).
+     */
+    val loggingFrequency : Int
+        get() = config.propertyOrNull("loggingFrequency")?.getString()?.toIntOrNull() ?: 10
 }

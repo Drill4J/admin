@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-data class SimpleClass(val id: Int, val createdAt: Instant)
+data class SimpleClass(val id: Int, val createdAt: Instant): EtlRow(createdAt)
 
 private const val SIMPLE_PIPELINE = "simple-pipeline"
 private const val SIMPLE_EXTRACTOR = "simple-extractor"
@@ -50,7 +50,7 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             emitter: FlowCollector<SimpleClass>,
-            onExtractCompleted: suspend (EtlExtractingResult) -> Unit
+            onExtractingProgress: suspend (EtlExtractingResult) -> Unit
         ) {
             return dataStore.filter { it.createdAt > sinceTimestamp }.forEach { emitter.emit(it) }
         }
@@ -63,7 +63,8 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
-            onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+            onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+            onStatusChanged: suspend (EtlStatus) -> Unit
         ): EtlLoadingResult {
             var lastExtracted: SimpleClass? = null
             var rowsProcessed = 0L
@@ -72,11 +73,11 @@ class ETLSimpleTest {
                 rowsProcessed++
             }
             return EtlLoadingResult(
-                status = EtlStatus.SUCCESS,
                 lastProcessedAt = lastExtracted?.createdAt ?: sinceTimestamp,
                 processedRows = rowsProcessed
             ).also {
-                onLoadCompleted(it)
+                onLoadingProgress(it)
+                onStatusChanged(EtlStatus.SUCCESS)
             }
         }
 
@@ -92,13 +93,13 @@ class ETLSimpleTest {
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
-            onLoadCompleted: suspend (EtlLoadingResult) -> Unit
+            onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+            onStatusChanged: suspend (EtlStatus) -> Unit
         ): EtlLoadingResult {
             collector.collect {
                 throw RuntimeException("Simulated loader failure")
             }
             return EtlLoadingResult(
-                status = EtlStatus.FAILED,
                 errorMessage = "This should never be returned",
                 lastProcessedAt = sinceTimestamp)
         }
@@ -114,10 +115,7 @@ class ETLSimpleTest {
             pipelineName = SIMPLE_PIPELINE,
             lastProcessedAt = Instant.EPOCH,
             lastRunAt = Instant.EPOCH,
-            lastDuration = 0,
-            lastRowsProcessed = 0,
             status = EtlStatus.SUCCESS,
-            errorMessage = null,
             extractorName = SIMPLE_EXTRACTOR,
             loaderName = SIMPLE_LOADER
         )
@@ -145,10 +143,7 @@ class ETLSimpleTest {
                     pipelineName = pipelineName,
                     lastProcessedAt = Instant.EPOCH,
                     lastRunAt = Instant.EPOCH,
-                    lastDuration = 0,
-                    lastRowsProcessed = 0,
                     status = EtlStatus.SUCCESS,
-                    errorMessage = null,
                     extractorName = SIMPLE_EXTRACTOR,
                     loaderName = SIMPLE_LOADER
                 )
@@ -166,34 +161,49 @@ class ETLSimpleTest {
             return listOf(metadata).filter { it.groupId == groupId }
         }
 
-        override suspend fun accumulateMetadata(metadata: EtlMetadata) {
-            this.metadata = this.metadata.copy(
-                lastProcessedAt = metadata.lastProcessedAt,
-                lastRunAt = metadata.lastRunAt,
-                lastDuration = this.metadata.lastDuration + metadata.lastDuration,
-                lastRowsProcessed = this.metadata.lastRowsProcessed + metadata.lastRowsProcessed,
-                status = metadata.status,
-                errorMessage = metadata.errorMessage
-            )
-        }
-
-        override suspend fun accumulateMetadataDurationByExtractor(
+        override suspend fun accumulateMetadataByLoader(
             groupId: String,
             pipelineName: String,
             extractorName: String,
-            duration: Long
+            loaderName: String,
+            lastProcessedAt: Instant?,
+            status: EtlStatus?,
+            loadDuration: Long,
+            rowsProcessed: Long,
+            errorMessage: String?
         ) {
+            this.metadata = this.metadata.copy(
+                lastProcessedAt = lastProcessedAt ?: this.metadata.lastProcessedAt,
+                lastLoadDuration = this.metadata.lastLoadDuration + loadDuration,
+                lastRowsProcessed = this.metadata.lastRowsProcessed + rowsProcessed,
+                status = status ?: (if (errorMessage != null) EtlStatus.FAILED else this.metadata.status),
+                errorMessage = errorMessage
+            )
+        }
 
+        override suspend fun accumulateMetadataByExtractor(
+            groupId: String,
+            pipelineName: String,
+            extractorName: String,
+            status: EtlStatus?,
+            extractDuration: Long,
+            errorMessage: String?
+        ) {
+            this.metadata = this.metadata.copy(
+                lastExtractDuration = this.metadata.lastExtractDuration + extractDuration,
+                status = if (errorMessage != null) EtlStatus.FAILED else this.metadata.status,
+                errorMessage = errorMessage
+            )
         }
     }
 
     val simpleOrchestrator = EtlOrchestratorImpl(
         "simple-etl",
         listOf(
-            EtlPipelineImpl(
+            EtlPipelineImpl.singleLoader(
                 "simple-pipeline",
                 extractor = SimpleExtractor(),
-                loaders = listOf(SimpleLoader())
+                loader = SimpleLoader()
             )
         ),
         metadataRepository = SimpleMetadataRepository()
@@ -240,10 +250,10 @@ class ETLSimpleTest {
         val orchestrator = EtlOrchestratorImpl(
             "failed-etl",
             listOf(
-                EtlPipelineImpl(
+                EtlPipelineImpl.singleLoader(
                     "failed-pipeline",
                     extractor = SimpleExtractor(),
-                    loaders = listOf(FailingLoader())
+                    loader = FailingLoader()
                 )
             ),
             metadataRepository = SimpleMetadataRepository()

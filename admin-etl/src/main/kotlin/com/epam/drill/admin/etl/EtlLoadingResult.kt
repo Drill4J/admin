@@ -20,17 +20,15 @@ import java.time.Instant
 data class EtlLoadingResult(
     val lastProcessedAt: Instant,
     val processedRows: Long = 0L,
-    val status: EtlStatus,
     val duration: Long? = null,
     val errorMessage: String? = null
 ) : Comparable<EtlLoadingResult> {
     val isFailed
-        get() = status == EtlStatus.FAILED
+        get() = errorMessage != null
 
     operator fun plus(other: EtlLoadingResult): EtlLoadingResult {
         val failed = this.isFailed || other.isFailed
         return EtlLoadingResult(
-            status = if (!failed) other.status else EtlStatus.FAILED,
             lastProcessedAt = if (!failed) other.lastProcessedAt else this.lastProcessedAt,
             processedRows = this.processedRows + other.processedRows,
             duration = listOfNotNull(this.duration, other.duration).sum(),

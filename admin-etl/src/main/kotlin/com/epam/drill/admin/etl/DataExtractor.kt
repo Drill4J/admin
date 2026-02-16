@@ -30,14 +30,14 @@ import java.time.Instant
  *     - how data will be transformed,
  *     - how metrics will be stored.
  */
-interface DataExtractor<T> {
+interface DataExtractor<T: EtlRow> {
     val name: String
     suspend fun extract(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<T>,
-        onExtractCompleted: suspend (EtlExtractingResult) -> Unit
+        onExtractingProgress: suspend (EtlExtractingResult) -> Unit
     )
 }
 

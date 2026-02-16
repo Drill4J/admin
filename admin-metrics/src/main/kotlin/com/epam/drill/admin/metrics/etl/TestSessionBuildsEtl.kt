@@ -27,7 +27,10 @@ val EtlConfig.testSessionBuildsExtractor
         name = "test_session_builds",
         sqlQuery = fromResource("/metrics/db/etl/test_session_builds_extractor.sql"),
         database = MetricsDatabaseConfig.database,
-        fetchSize = fetchSize
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "created_at",
     )
 
 val EtlConfig.testSessionBuildsLoader
@@ -35,16 +38,16 @@ val EtlConfig.testSessionBuildsLoader
         name = "test_session_builds",
         sqlUpsert = fromResource("/metrics/db/etl/test_session_builds_loader.sql"),
         sqlDelete = fromResource("/metrics/db/etl/test_session_builds_delete.sql"),
-        lastExtractedAtColumnName = "created_at",
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
         processable = { it["test_session_id"] != null }
     )
 
 val EtlConfig.testSessionBuildsPipeline
-    get() = EtlPipelineImpl(
+    get() = EtlPipelineImpl.singleLoader(
         name = "test_session_builds",
         extractor = testSessionBuildsExtractor,
-        loaders = listOf(testSessionBuildsLoader),
+        loader = testSessionBuildsLoader,
         bufferSize = bufferSize
     )
