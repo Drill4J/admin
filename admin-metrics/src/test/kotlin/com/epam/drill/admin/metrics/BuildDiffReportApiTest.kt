@@ -152,6 +152,7 @@ class BuildDiffReportApiTest : DatabaseTests({
                 // test1 is impacted because it covers method1, but method1 was changed in build2,
                 // so total number of impacted tests is 1
                 assertEquals(1, metrics["impacted_tests"])
+                assertEquals(0, metrics["passed_impacted_tests"])
             }
         }
     }

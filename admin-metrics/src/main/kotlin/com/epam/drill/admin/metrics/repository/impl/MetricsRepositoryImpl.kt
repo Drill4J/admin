@@ -300,15 +300,42 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             append(
                 """
+                    TestLaunches AS (
+                        SELECT 
+                            tl.test_definition_id,
+                            MIN(tl.test_result) AS test_result
+                        FROM metrics.test_launches tl
+                        JOIN metrics.test_sessions ts ON ts.test_session_id = tl.test_session_id AND ts.group_id = tl.group_id
+                        JOIN metrics.test_session_builds tsb ON tsb.test_session_id = ts.test_session_id AND tsb.group_id = ts.group_id
+                        WHERE tsb.build_id = ?
+                            AND tl.test_result IN ('PASSED', 'FAILED')	
+                        GROUP BY tl.test_definition_id		
+                    ),
+            """.trimIndent(), buildId
+            )
+            append(
+                """
                     ImpactedTests AS (
-                        SELECT count(*) AS impacted_tests
+                        SELECT 
+                            test_definition_id, 
+                            group_id
                         FROM metrics.get_impacted_tests_v2(
-                            input_build_id => ?, 
-                            input_baseline_build_id => ?          
+                            input_build_id => ?,
+                            input_baseline_build_id => ?
                         )
-                    )	
+                    ),  
             """.trimIndent(), buildId, baselineBuildId
             )
+            append("""
+                    ImpactedTestsWithResults AS (
+                        SELECT  
+                            COUNT(*) AS impacted_tests,
+		                    SUM(CASE WHEN test_result = 'PASSED' THEN 1 ELSE 0 END) AS passed_impacted_tests,
+		                    SUM(CASE WHEN test_result = 'FAILED' THEN 1 ELSE 0 END) AS failed_impacted_tests
+                        FROM ImpactedTests it	
+                        LEFT JOIN TestLaunches tl ON tl.test_definition_id = it.test_definition_id	
+                    ) 
+            """.trimIndent())
             append(
                 """                    
                    SELECT 
@@ -319,7 +346,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                         COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'modified'), 0) as tested_modified_methods,
                         (SELECT isolated_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
                         (SELECT aggregated_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
-                        (SELECT impacted_tests FROM ImpactedTests) as impacted_tests                                         
+                        (SELECT impacted_tests FROM ImpactedTestsWithResults) AS impacted_tests,
+                    	(SELECT passed_impacted_tests FROM ImpactedTestsWithResults) AS passed_impacted_tests,
+                    	(SELECT failed_impacted_tests FROM ImpactedTestsWithResults) AS failed_impacted_tests
                 """.trimIndent()
             )
         }
