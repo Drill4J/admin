@@ -28,8 +28,10 @@ import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
+import com.epam.drill.admin.writer.rawdata.route.payload.TestResult
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.coroutines.runBlocking
@@ -61,8 +63,15 @@ fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     }
 }
 
+class TestSessionMap(
+    val test: TestDetails,
+    val session: SessionPayload,
+)
+
 class TestCoverageMap(
     val test: TestDetails,
+    val session: SessionPayload,
+    val result: TestResult,
     val method: SingleMethodPayload,
     val probes: IntArray
 )
@@ -110,12 +119,28 @@ class TestDataDsl(val client: HttpClient) {
     suspend infix fun InstancePayload.hasDeleted(method: SingleMethodPayload) =
         MethodComparison(this, method, ChangeType.DELETED)
 
+    suspend infix fun TestDetails.of(session: SessionPayload): TestSessionMap {
+        return TestSessionMap(this, session = session)
+    }
+
+    suspend infix fun TestSessionMap.covers(method: SingleMethodPayload): TestCoverageMap {
+        return TestCoverageMap(this.test, this.session, TestResult.PASSED, method, IntArray(method.probesCount) { 1 })
+    }
+
+    suspend infix fun TestSessionMap.failsOn(method: SingleMethodPayload): TestCoverageMap {
+        return TestCoverageMap(this.test, this.session, TestResult.FAILED, method, IntArray(method.probesCount) { 1 })
+    }
+
     suspend infix fun TestDetails.covers(method: SingleMethodPayload): TestCoverageMap {
-        return TestCoverageMap(this, method, IntArray(method.probesCount) { 1 })
+        return TestCoverageMap(this, session1, TestResult.PASSED, method, IntArray(method.probesCount) { 1 })
+    }
+
+    suspend infix fun TestDetails.failsOn(method: SingleMethodPayload): TestCoverageMap {
+        return TestCoverageMap(this, session1, TestResult.FAILED, method, IntArray(method.probesCount) { 1 })
     }
 
     suspend infix fun TestCoverageMap.with(probes: IntArray): TestCoverageMap {
-        return TestCoverageMap(this.test, this.method, probes)
+        return TestCoverageMap(this.test, this.session, this.result, this.method, probes)
     }
 
     suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
@@ -178,7 +203,7 @@ class TestDataDsl(val client: HttpClient) {
             this.method to this.probes
         )
         client.launchTest(
-            session1, this.test, build, methods
+            this.session, this.test, build, methods, this.result
         )
     }
 }

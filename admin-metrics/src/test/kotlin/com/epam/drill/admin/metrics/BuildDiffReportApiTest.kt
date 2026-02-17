@@ -155,6 +155,31 @@ class BuildDiffReportApiTest : DatabaseTests({
     }
 
     @Test
+    fun `given tests in current build, build-diff-report service should correlate passed and failed tests with impacted tests`() {
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session1 covers method2 with probesOf(1, 1, 1) on build1
+
+            build2 hasModified method1 comparedTo build1
+            build2 hasModified method2 comparedTo build1
+            test1 of session2 covers method1 with probesOf(1, 1) on build2
+            test2 of session2 failsOn method2 with probesOf(1, 0, 0) on build2
+        }.expectThat {
+            client.get("/metrics/build-diff-report") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", build2.buildVersion)
+                parameter("baselineBuildVersion", build1.buildVersion)
+            }.returnsSingle("$.data.metrics") { metrics ->
+                assertEquals(2, metrics["impacted_tests"])
+                assertEquals(1, metrics["passed_impacted_tests"])
+                assertEquals(1, metrics["failed_impacted_tests"])
+            }
+        }
+    }
+
+    @Test
     fun `given non-existent baseline, build-diff-report service should return 422 status`() {
         havingData {
             build2 has listOf(method2, method3)
