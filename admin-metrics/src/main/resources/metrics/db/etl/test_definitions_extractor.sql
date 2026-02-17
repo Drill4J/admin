@@ -15,3 +15,4 @@ WHERE td.group_id = :group_id
     AND td.updated_at > :since_timestamp
     AND td.updated_at <= :until_timestamp
 ORDER BY td.updated_at ASC, td.id ASC
+LIMIT :limit

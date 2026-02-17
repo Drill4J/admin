@@ -189,6 +189,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/test-definitions:
+    post:
+      summary: Save test definitions
+      operationId: postTestDefinitions
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTestDefinitionsPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/AddTestDefinitionsPayload'
+      responses:
+        '200':
+          description: Test definitions saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/test-launches:
+    post:
+      summary: Save test launches
+      operationId: postTestLaunches
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTestLaunchesPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/AddTestLaunchesPayload'
+      responses:
+        '200':
+          description: Test launches saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/sessions:
     put:
       summary: Save test sessions
@@ -1644,6 +1692,78 @@ components:
         - SKIPPED
         - SMART_SKIPPED
         - UNKNOWN
+    AddTestDefinitionsPayload:
+      type: object
+      required:
+        - groupId
+        - definitions
+      properties:
+        groupId:
+          type: string
+        definitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestDefinitionPayload'
+    TestDefinitionPayload:
+      type: object
+      required:
+        - id
+        - runner
+        - name
+      properties:
+        id:
+          type: string
+        runner:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          nullable: true
+        path:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          default: [ ]
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+    AddTestLaunchesPayload:
+      type: object
+      required:
+        - groupId
+        - testSessionId
+        - launches
+      properties:
+        groupId:
+          type: string
+        testSessionId:
+          type: string
+        launches:
+          type: array
+          items:
+            $ref: '#/components/schemas/TestLaunchPayload'
+    TestLaunchPayload:
+      type: object
+      required:
+        - id
+        - testDefinitionId
+      properties:
+        id:
+          type: string
+        testDefinitionId:
+          type: string
+        result:
+          type: string
+          nullable: true
+        duration:
+          type: integer
+          format: int32
+          nullable: true
     SessionPayload:
       type: object
       properties:

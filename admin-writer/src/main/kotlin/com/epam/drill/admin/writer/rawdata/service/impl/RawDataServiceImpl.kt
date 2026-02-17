@@ -150,12 +150,20 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveCoverage(coveragePayload: CoveragePayload) {
-        coveragePayload.coverage.map { coverage ->
+        val buildId = generateBuildId(
+            coveragePayload.groupId,
+            coveragePayload.appId,
+            coveragePayload.instanceId,
+            coveragePayload.commitSha,
+            coveragePayload.buildVersion
+        )
+        coveragePayload.coverage.filter { probes -> probes.probes.any { it } }.map { coverage ->
             Coverage(
                 groupId = coveragePayload.groupId,
                 appId = coveragePayload.appId,
                 instanceId = coveragePayload.instanceId,
-                classname = coverage.classname,
+                buildId = buildId,
+                signature = coverage.signature,
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,
                 probes = coverage.probes
@@ -169,6 +177,7 @@ class RawDataServiceImpl(
             }
     }
 
+    // WARNING: keep this method for backward compatibility with existing adoptions
     override suspend fun saveTestMetadata(testsPayload: AddTestsPayload) = transaction {
         testsPayload.tests.map { test ->
             TestLaunch(
@@ -193,6 +202,34 @@ class RawDataServiceImpl(
                 metadata = test.details.metadata
             )
         }.let { testDefinitionRepository.createMany(it) }
+    }
+
+    override suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload) = transaction {
+        testDefinitionsPayload.definitions.map { definition ->
+            TestDefinition(
+                groupId = testDefinitionsPayload.groupId,
+                id = definition.id,
+                type = definition.type,
+                runner = definition.runner,
+                name = definition.name,
+                path = definition.path,
+                tags = definition.tags,
+                metadata = definition.metadata
+            )
+        }.let { testDefinitionRepository.createMany(it) }
+    }
+
+    override suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload) = transaction {
+        testLaunchesPayload.launches.map { launch ->
+            TestLaunch(
+                groupId = testLaunchesPayload.groupId,
+                id = launch.id,
+                testDefinitionId = launch.testDefinitionId,
+                testSessionId = testLaunchesPayload.testSessionId,
+                result = launch.result.toString(),
+                duration = launch.duration
+            )
+        }.let { testLaunchRepository.createMany(it) }
     }
 
     override suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?) {

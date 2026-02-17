@@ -19,7 +19,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-// TODO rework alongside with Java Autotest Agent
+// TODO update test agent
 @Serializable
 class AddTestsPayload(
     val groupId: String,
@@ -70,4 +70,41 @@ class SessionPayload(
     val testTaskId: String,
     val startedAt: Instant,
     val builds: List<SingleSessionBuildPayload> = emptyList(),
+)
+
+@Serializable
+class AddTestLaunchesPayload(
+    val groupId: String,
+    val testSessionId: String,
+    val launches: List<TestLaunchPayload>,
+)
+
+@Serializable
+class TestLaunchPayload (
+    val id: String,
+    val testDefinitionId: String,
+    val result: String?,
+    val duration: Int? = null,
+)
+
+
+@Serializable
+class AddTestDefinitionsPayload(
+    val groupId: String,
+    val definitions: List<TestDefinitionPayload>
+)
+
+// TODO: update test agent
+//  Order of fields, and field definitions changed compared to original TestDefinition class:
+//       - name and runner are no longer nullable
+//       - type field is moved and became nullable
+@Serializable
+class TestDefinitionPayload(
+    val id: String,
+    val runner: String,
+    val name: String,
+    val type: String?,
+    val path: String?,
+    val tags: List<String> = emptyList(),
+    val metadata: JsonElement? = null,
 )

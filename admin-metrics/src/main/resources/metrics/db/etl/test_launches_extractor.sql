@@ -17,4 +17,4 @@ WHERE tl.group_id = :group_id
     AND tl.created_at > :since_timestamp
     AND tl.created_at <= :until_timestamp
 ORDER BY tl.created_at ASC, tl.id ASC
-
+LIMIT :limit

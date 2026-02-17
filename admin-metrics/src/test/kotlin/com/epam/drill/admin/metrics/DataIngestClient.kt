@@ -72,14 +72,21 @@ suspend fun HttpClient.launchTest(
             groupId = instance.groupId,
             appId = instance.appId,
             instanceId = instance.instanceId,
-            coverage = arrayOf(
-                SingleClassCoveragePayload(
-                    classname = testClass,
+            buildVersion = instance.buildVersion,
+            commitSha = instance.commitSha,
+            coverage = coverage.filter { c -> c.second.any { it != 0 } }.map {
+                SingleMethodCoveragePayload(
+                    signature = listOf(
+                        it.first.classname,
+                        it.first.name,
+                        it.first.params,
+                        it.first.returnType
+                    ).joinToString(":"),
                     testId = testLaunchId,
                     testSessionId = session.id,
-                    probes = coverage.toClassProbes()
+                    probes = it.second.map { probe -> probe != 0 }.toBooleanArray()
                 )
-            )
+            }
         )
     )
 }
@@ -132,11 +139,19 @@ suspend fun HttpClient.refreshMetrics() {
 }
 
 suspend fun HttpResponse.assertSuccessStatus() = also {
-    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+    assertEquals(
+        HttpStatusCode.OK,
+        status,
+        "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'"
+    )
 }
 
 suspend fun HttpResponse.returns(path: String = "$.data", body: (List<Map<String, Any?>>) -> Unit) = also {
-    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+    assertEquals(
+        HttpStatusCode.OK,
+        status,
+        "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'"
+    )
 }.apply {
     val json = JsonPath.parse(bodyAsText())
     val data = json.read<List<Map<String, Any>>>(path)
@@ -144,18 +159,13 @@ suspend fun HttpResponse.returns(path: String = "$.data", body: (List<Map<String
 }
 
 suspend fun HttpResponse.returnsSingle(path: String = "$.data", body: (Map<String, Any?>) -> Unit) = also {
-    assertEquals(HttpStatusCode.OK, status, "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'")
+    assertEquals(
+        HttpStatusCode.OK,
+        status,
+        "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'"
+    )
 }.apply {
     val json = JsonPath.parse(bodyAsText())
     val data = json.read<Map<String, Any>>(path)
     body(data)
-}
-
-private fun Array<Pair<SingleMethodPayload, IntArray>>.toClassProbes(): BooleanArray {
-    val classProbesCount = this.sumOf { it.first.probesCount }
-    val classProbes = BooleanArray(classProbesCount)
-    this.forEach { (method, probes) ->
-        probes.forEachIndexed { index, probe -> classProbes[method.probesStartPos + index] = probe != 0 }
-    }
-    return classProbes
 }

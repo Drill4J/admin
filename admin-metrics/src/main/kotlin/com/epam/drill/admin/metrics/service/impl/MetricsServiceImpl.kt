@@ -622,7 +622,7 @@ class MetricsServiceImpl(
         val maxLastProcessedAt = metadata.maxOfOrNull { it.lastProcessedAt.toTimestamp() }
         val maxLastRunAt = metadata.maxOfOrNull { it.lastRunAt.toTimestamp() }
         val errorMessages = metadata.mapNotNull { it.errorMessage }
-        val sumDuration = metadata.sumOf { it.lastDuration }
+        val sumDuration = metadata.sumOf { it.lastLoadDuration + it.lastExtractDuration }
         val sumRowsProcessed = metadata.sumOf { it.lastRowsProcessed }
 
         return buildMap {
