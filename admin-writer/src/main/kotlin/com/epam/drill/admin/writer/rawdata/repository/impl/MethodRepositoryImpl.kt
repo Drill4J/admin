@@ -17,6 +17,7 @@ package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.Method
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
+import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
 import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
@@ -28,40 +29,49 @@ import java.time.LocalDate
 class MethodRepositoryImpl : MethodRepository {
     override suspend fun createMany(data: List<Method>) {
         MethodTable.batchUpsert(
-            data,
-            shouldReturnGeneratedValues = false,
-            onUpdateExclude = listOf(MethodTable.probesStartPos, MethodTable.bodyChecksum, MethodTable.probesCount)
+            data, shouldReturnGeneratedValues = false,
+            onUpdateExclude = listOf(
+                MethodTable.classname,
+                MethodTable.name,
+                MethodTable.params,
+                MethodTable.returnType,
+                MethodTable.bodyChecksum,
+                MethodTable.signature,
+                MethodTable.probesCount,
+                MethodTable.createdAt
+            )
         ) {
-            this[MethodTable.id] = it.id
+            this[MethodTable.methodId] = it.methodId
             this[MethodTable.groupId] = it.groupId
             this[MethodTable.appId] = it.appId
-            this[MethodTable.buildId] = it.buildId
             this[MethodTable.classname] = it.classname
             this[MethodTable.name] = it.name
             this[MethodTable.params] = it.params
             this[MethodTable.returnType] = it.returnType
-            this[MethodTable.probesStartPos] = it.probesStartPos
             this[MethodTable.bodyChecksum] = it.bodyChecksum
             this[MethodTable.signature] = it.signature
             this[MethodTable.probesCount] = it.probesCount
-            it.annotations?.let { annotations ->
-                this[MethodTable.annotations] = annotations.takeIf { it.isNotEmpty() }?.toString()
-            }
-            it.classAnnotations?.let { classAnnotations ->
-                this[MethodTable.classAnnotations] = classAnnotations.takeIf { it.isNotEmpty() }?.toString()
-            }
+            this[MethodTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+        }
+
+        BuildMethodTable.batchUpsert(data, shouldReturnGeneratedValues = false) {
+            this[BuildMethodTable.groupId] = it.groupId
+            this[BuildMethodTable.appId] = it.appId
+            this[BuildMethodTable.buildId] = it.buildId
+            this[BuildMethodTable.methodId] = it.methodId
+            this[BuildMethodTable.probesStartPos] = it.probesStartPos
         }
     }
 
     override suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate) {
-        MethodTable.deleteWhere { (MethodTable.groupId eq groupId) and (MethodTable.createdAt less createdBefore.atStartOfDay()) }
+        BuildMethodTable.deleteWhere { (BuildMethodTable.groupId eq groupId) and (BuildMethodTable.createdAt less createdBefore.atStartOfDay()) }
     }
 
     override suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String) {
-        MethodTable.deleteWhere {
-            (MethodTable.groupId eq groupId) and
-                    (MethodTable.appId eq appId) and
-                    (MethodTable.buildId eq buildId)
+        BuildMethodTable.deleteWhere {
+            (BuildMethodTable.groupId eq groupId) and
+                    (BuildMethodTable.appId eq appId) and
+                    (BuildMethodTable.buildId eq buildId)
         }
     }
 }

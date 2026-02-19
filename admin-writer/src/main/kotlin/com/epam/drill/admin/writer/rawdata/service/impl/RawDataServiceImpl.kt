@@ -22,6 +22,7 @@ import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.util.md5
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
@@ -113,18 +114,23 @@ class RawDataServiceImpl(
                 methodsPayload.commitSha,
                 methodsPayload.buildVersion
             )
+            val signature = listOf(
+                method.classname,
+                method.name,
+                method.params,
+                method.returnType
+            ).joinToString(":")
+            val methodId = listOf(
+                signature,
+                method.bodyChecksum,
+                method.probesCount
+            ).joinToString(":").md5()
             // TODO add validation for fields (we had issues with body_checksum)
             Method(
-                id = listOf(
-                    buildId,
-                    method.classname,
-                    method.name,
-                    method.params,
-                    method.returnType
-                ).joinToString(":"),
                 groupId = methodsPayload.groupId,
                 appId = methodsPayload.appId,
                 buildId = buildId,
+                methodId = methodId,
                 classname = method.classname,
                 name = method.name,
                 params = method.params,
@@ -132,14 +138,7 @@ class RawDataServiceImpl(
                 probesCount = method.probesCount,
                 probesStartPos = method.probesStartPos,
                 bodyChecksum = method.bodyChecksum,
-                signature = listOf(
-                    method.classname,
-                    method.name,
-                    method.params,
-                    method.returnType
-                ).joinToString(":"),
-                annotations = method.annotations,
-                classAnnotations = method.classAnnotations
+                signature = signature,
             )
         }
             .let { dataToInsert ->
@@ -163,7 +162,11 @@ class RawDataServiceImpl(
                 appId = coveragePayload.appId,
                 instanceId = coveragePayload.instanceId,
                 buildId = buildId,
-                signature = coverage.signature,
+                methodId = listOf(
+                    coverage.signature,
+                    coverage.bodyChecksum,
+                    coverage.probes.size
+                ).joinToString(":").md5(),
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,
                 probes = coverage.probes
@@ -262,8 +265,6 @@ class RawDataServiceImpl(
             appId = rulePayload.appId,
             namePattern = rulePayload.namePattern,
             classnamePattern = rulePayload.classnamePattern,
-            annotationsPattern = rulePayload.annotationsPattern,
-            classAnnotationsPattern = rulePayload.classAnnotationsPattern
         )
         transaction {
             methodIgnoreRuleRepository.create(rule)

@@ -20,6 +20,7 @@ import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -38,7 +39,9 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
         val testInstance = "test-instance"
         val testBuildVersion = "0.0.1"
         val testMethodSignature1 = "com.example.TestClass:myMethod:myParam:void"
+        val testMethod1Checksum = "AAA"
         val testMethodSignature2 = "com.example.TestClass:myMethod2:myParam:void"
+        val testMethod2Checksum = "BBB"
         val testTestId = "test-id"
         val timeBeforeTest = LocalDateTime.now()
         val app = drillApplication(rawDataServicesDIModule) {
@@ -57,11 +60,13 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
                     "coverage": [
                         {                            
                             "signature": "$testMethodSignature1",
+                            "bodyChecksum": "$testMethod1Checksum",
                             "testId": "$testTestId",
                             "probes": [true, false, true]
                         },
                         {                         
                             "signature": "$testMethodSignature2",
+                            "bodyChecksum": "$testMethod2Checksum",
                             "testId": "$testTestId",
                             "probes": [false, true, false]
                         }
@@ -80,30 +85,17 @@ class CoverageApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) 
             )
         }
 
-        val savedCoverageMethod1 = MethodCoverageTable.selectAll().asSequence()
+        val savedCoverageMethods = MethodCoverageTable.selectAll().asSequence()
             .filter { it[MethodCoverageTable.groupId] == testGroup }
             .filter { it[MethodCoverageTable.appId] == testApp }
             .filter { it[MethodCoverageTable.instanceId] == testInstance }
             .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
-            .filter { it[MethodCoverageTable.signature] == testMethodSignature1 }
             .filter { it[MethodCoverageTable.testId] == testTestId }
             .toList()
-        assertEquals(1, savedCoverageMethod1.size)
-        savedCoverageMethod1.forEach {
+        assertEquals(2, savedCoverageMethods.size)
+        savedCoverageMethods.forEach {
             assertTrue(it[MethodCoverageTable.createdAt] >= timeBeforeTest)
-        }
-
-        val savedCoverageMethod2 = MethodCoverageTable.selectAll().asSequence()
-            .filter { it[MethodCoverageTable.groupId] == testGroup }
-            .filter { it[MethodCoverageTable.appId] == testApp }
-            .filter { it[MethodCoverageTable.instanceId] == testInstance }
-            .filter { it[MethodCoverageTable.buildId] == "$testGroup:$testApp:$testBuildVersion" }
-            .filter { it[MethodCoverageTable.signature] == testMethodSignature2 }
-            .filter { it[MethodCoverageTable.testId] == testTestId }
-            .toList()
-        assertEquals(1, savedCoverageMethod2.size)
-        savedCoverageMethod2.forEach {
-            assertTrue(it[MethodCoverageTable.createdAt] >= timeBeforeTest)
+            assertTrue(it[MethodCoverageTable.methodId] != null)
         }
     }
 }

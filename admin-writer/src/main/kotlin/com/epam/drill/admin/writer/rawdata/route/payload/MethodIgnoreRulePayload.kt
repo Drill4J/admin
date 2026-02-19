@@ -23,6 +23,4 @@ class MethodIgnoreRulePayload(
     val appId: String,
     val namePattern: String? = null,
     val classnamePattern: String? = null,
-    val annotationsPattern: String? = null,
-    val classAnnotationsPattern: String? = null
 )

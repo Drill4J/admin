@@ -22,6 +22,4 @@ object MethodIgnoreRulesTable : IntIdTable("raw_data.method_ignore_rules") {
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val namePattern = varchar("name_pattern", MEDIUM_TEXT_LENGTH).nullable()
     val classnamePattern = varchar("classname_pattern", MEDIUM_TEXT_LENGTH).nullable()
-    val annotationsPattern = varchar("annotations_pattern", MEDIUM_TEXT_LENGTH).nullable()
-    val classAnnotationsPattern = varchar("class_annotations_pattern", MEDIUM_TEXT_LENGTH).nullable()
 }

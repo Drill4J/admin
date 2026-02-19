@@ -100,6 +100,6 @@ abstract class SqlDataLoader<T: EtlRow>(
             logger.error(e) { "Error during deleting data with loader $name for groupId $groupId: ${e.message ?: e.javaClass.simpleName}" }
             throw e
         }
-        logger.debug { "Loader [$name] deleted data for groupId $groupId in ${duration}ms" }
+        logger.debug { "Loader [$name] deleted data for groupId [$groupId] in ${duration}ms" }
     }
 }

@@ -20,6 +20,7 @@ import com.epam.drill.admin.test.DatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
+import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
 import com.epam.drill.admin.writer.rawdata.table.MethodCoverageTable
 import com.epam.drill.admin.writer.rawdata.table.InstanceTable
@@ -114,6 +115,7 @@ class CoverageApiTest : DatabaseTests({
         MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()
+        BuildMethodTable.deleteAll()
         BuildTable.deleteAll()
         TestLaunchTable.deleteAll()
         TestSessionTable.deleteAll()
