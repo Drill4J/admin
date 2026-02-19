@@ -74,8 +74,9 @@ interface MetricsRepository {
 
     suspend fun getBuildDiffReport(
         buildId: String,
-        baselineBuildId: String
-    ): Map<String, String?>
+        baselineBuildId: String,
+        coverageThreshold: Double,
+    ): Map<String, Any?>
 
     suspend fun getRecommendedTests(
         targetBuildId: String,

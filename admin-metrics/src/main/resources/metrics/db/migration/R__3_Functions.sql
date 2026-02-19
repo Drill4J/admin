@@ -71,6 +71,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_branches: Array of branches to filter coverage
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
+-- @param input_coverage_test_results: Array of test results to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing methods with coverage information
@@ -89,6 +90,7 @@ CREATE OR REPLACE FUNCTION metrics.get_methods_with_coverage(
     input_coverage_branches VARCHAR[] DEFAULT NULL,
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_test_results VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -145,6 +147,7 @@ BEGIN
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR ic.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR ic.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
+		  	AND (input_coverage_test_results IS NULL OR ic.test_result = ANY(input_coverage_test_results::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR ic.created_at_day >= input_coverage_period_from)
 		LEFT JOIN metrics.method_daily_coverage sc ON include_smart_coverage IS true AND sc.group_id = bm.group_id AND sc.app_id = bm.app_id AND sc.method_id = bm.method_id
 			-- Filters by smart coverage
@@ -153,6 +156,7 @@ BEGIN
 		  	AND (input_coverage_app_env_ids IS NULL OR sc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
 		  	AND (input_coverage_test_task_ids IS NULL OR sc.test_task_id = ANY(input_coverage_test_task_ids::VARCHAR[]))
 		  	AND (input_coverage_test_tags IS NULL OR sc.test_tag = ANY(input_coverage_test_tags::VARCHAR[]))
+		  	AND (input_coverage_test_results IS NULL OR sc.test_result = ANY(input_coverage_test_results::VARCHAR[]))
 		  	AND (input_coverage_period_from IS NULL OR sc.created_at_day >= input_coverage_period_from)
 		WHERE bm.group_id = _group_id
 			AND bm.app_id = _app_id
@@ -420,6 +424,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_branches: Array of branches to filter coverage
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
+-- @param input_coverage_test_results: Array of test results to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing changes in methods with coverage information between the two builds
@@ -437,6 +442,7 @@ CREATE OR REPLACE FUNCTION metrics.get_changes_with_coverage(
     input_coverage_branches VARCHAR[] DEFAULT NULL,
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_test_results VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -503,6 +509,7 @@ BEGIN
         input_coverage_branches => input_coverage_branches,
         input_coverage_test_tags => input_coverage_test_tags,
         input_coverage_test_task_ids => input_coverage_test_task_ids,
+        input_coverage_test_results => input_coverage_test_results,
         input_coverage_period_from => input_coverage_period_from,
 
         include_smart_coverage => include_smart_coverage,

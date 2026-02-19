@@ -203,11 +203,14 @@ class MetricsServiceImpl(
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
-                baselineBuildId
+                baselineBuildId,
+                coverageThreshold
             )
 
             val baseUrl = metricsServiceUiLinksConfig.baseUrl
             val buildTestingReportPath = metricsServiceUiLinksConfig.buildTestingReportPath
+            val buildRisksReportPath = metricsServiceUiLinksConfig.buildChangesReportPath
+            val impactedTestsReportPath = metricsServiceUiLinksConfig.impactedTestsReportPath
             mapOf(
                 "inputParameters" to mapOf(
                     "groupId" to groupId,
@@ -226,12 +229,30 @@ class MetricsServiceImpl(
                 "metrics" to metrics,
                 "links" to baseUrl?.run {
                     mapOf(
-                        "changes" to null,
-                        "recommended_tests" to null,
+                        "changes" to buildRisksReportPath?.run {
+                            getUriString(
+                                baseUrl = baseUrl,
+                                path = buildRisksReportPath,
+                                queryParams = mapOf(
+                                    "build" to buildId,
+                                    "baseline_build" to baselineBuildId,
+                                )
+                            )
+                        },
+                        "impacted_tests" to impactedTestsReportPath?.run {
+                            getUriString(
+                                baseUrl = baseUrl,
+                                path = this,
+                                queryParams = mapOf(
+                                    "build" to buildId,
+                                    "baseline_build" to baselineBuildId,
+                                )
+                            )
+                        },
                         "build" to buildTestingReportPath?.run {
                             getUriString(
                                 baseUrl = baseUrl,
-                                path = buildTestingReportPath,
+                                path = this,
                                 queryParams = mapOf(
                                     "build" to buildId,
                                 )
@@ -240,7 +261,7 @@ class MetricsServiceImpl(
                         "baseline_build" to buildTestingReportPath?.run {
                             getUriString(
                                 baseUrl = baseUrl,
-                                path = buildTestingReportPath,
+                                path = this,
                                 queryParams = mapOf(
                                     "build" to baselineBuildId,
                                 )
@@ -249,7 +270,7 @@ class MetricsServiceImpl(
                         "full_report" to buildTestingReportPath?.run {
                             getUriString(
                                 baseUrl = baseUrl,
-                                path = buildTestingReportPath,
+                                path = this,
                                 queryParams = mapOf(
                                     "build" to buildId,
                                     "baseline_build" to baselineBuildId

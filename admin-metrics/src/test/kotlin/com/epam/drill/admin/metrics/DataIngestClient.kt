@@ -45,7 +45,9 @@ suspend fun HttpClient.launchTest(
     session: SessionPayload,
     test: TestDetails,
     instance: InstancePayload,
-    coverage: Array<Pair<SingleMethodPayload, IntArray>>
+    coverage: Array<Pair<SingleMethodPayload, IntArray>>,
+    result: TestResult = TestResult.PASSED,
+    duration: Int = 10,
 ) {
     val testLaunchId = "test-launch-${counter.incrementAndGet()}"
     putTestSession(session)
@@ -57,8 +59,8 @@ suspend fun HttpClient.launchTest(
                 TestLaunchInfo(
                     testLaunchId = testLaunchId,
                     testDefinitionId = test.definitionId,
-                    result = TestResult.PASSED,
-                    duration = 10,
+                    result = result,
+                    duration = duration,
                     details = test
                 )
             )

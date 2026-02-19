@@ -249,59 +249,110 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuildDiffReport(
         buildId: String,
-        baselineBuildId: String
-    ) = transaction {
-        executeQueryReturnMap(
-            """
+        baselineBuildId: String,
+        coverageThreshold: Double,
+    ): Map<String, Any?> = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
                     WITH 
                     Changes AS (
-                        SELECT 
-                            COUNT(CASE WHEN change_type = 'equal' THEN 1 END) AS equal,
+                        SELECT                             
                             COUNT(CASE WHEN change_type = 'modified' THEN 1 END) AS modified,                            
                             COUNT(CASE WHEN change_type = 'new' THEN 1 END) AS added,
                             COUNT(CASE WHEN change_type = 'deleted' THEN 1 END) AS deleted
                         FROM metrics.get_changes(
 			                input_build_id => ?,
 			                input_baseline_build_id => ?,
-                            include_deleted => true,  
-                            include_equal => true
+                            include_deleted => true
                         ) m   
-                    ),   
+                    ),
+                    """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """
+                    TestedChanges AS (
+                        SELECT
+                            change_type,
+                            COUNT(*) AS tested_methods                                                                                    
+                        FROM metrics.get_changes_with_coverage(
+                            input_build_id => ?,
+                            input_baseline_build_id => ?,
+                            input_coverage_test_results => array['PASSED']
+                        )
+                        WHERE aggregated_covered_probes > ?
+                        GROUP BY change_type
+                    ),
+            """.trimIndent(), buildId, baselineBuildId, coverageThreshold
+            )
+            append(
+                """
                     Coverage AS (
                         SELECT
                             isolated_probes_coverage_ratio,
-                            aggregated_probes_coverage_ratio,
-                            isolated_tested_methods,
-                            isolated_missed_methods,
-                            aggregated_tested_methods,
-                            aggregated_missed_methods
+                            aggregated_probes_coverage_ratio                            
                         FROM metrics.get_builds_with_coverage(
                             input_build_id => ?,
                             input_baseline_build_id => ?                            
                         )
                     ),
-                    RecommendedTests AS (
-                        SELECT count(*) AS tests_to_run
-                        FROM metrics.get_recommended_tests_v2(
-                            input_build_id => ?, 
-                            input_test_impact_statuses => '{IMPACTED}'                            
+            """.trimIndent(), buildId, baselineBuildId
+            )
+            append(
+                """
+                    TestLaunches AS (
+                        SELECT 
+                            tl.test_definition_id,
+                            MIN(tl.test_result) AS test_result
+                        FROM metrics.test_launches tl
+                        JOIN metrics.test_sessions ts ON ts.test_session_id = tl.test_session_id AND ts.group_id = tl.group_id
+                        JOIN metrics.test_session_builds tsb ON tsb.test_session_id = ts.test_session_id AND tsb.group_id = ts.group_id
+                        WHERE tsb.build_id = ?
+                            AND tl.test_result IN ('PASSED', 'FAILED')	
+                        GROUP BY tl.test_definition_id		
+                    ),
+            """.trimIndent(), buildId
+            )
+            append(
+                """
+                    ImpactedTests AS (
+                        SELECT 
+                            test_definition_id, 
+                            group_id
+                        FROM metrics.get_impacted_tests_v2(
+                            input_build_id => ?,
+                            input_baseline_build_id => ?
                         )
-                    )	
-                    SELECT 
+                    ),  
+            """.trimIndent(), buildId, baselineBuildId
+            )
+            append("""
+                    ImpactedTestsWithResults AS (
+                        SELECT  
+                            COUNT(*) AS impacted_tests,
+		                    SUM(CASE WHEN test_result = 'PASSED' THEN 1 ELSE 0 END) AS passed_impacted_tests,
+		                    SUM(CASE WHEN test_result = 'FAILED' THEN 1 ELSE 0 END) AS failed_impacted_tests
+                        FROM ImpactedTests it	
+                        LEFT JOIN TestLaunches tl ON tl.test_definition_id = it.test_definition_id	
+                    ) 
+            """.trimIndent())
+            append(
+                """                    
+                   SELECT 
                         (SELECT added FROM Changes) as changes_new_methods,
                         (SELECT modified FROM Changes) as changes_modified_methods,
                         (SELECT deleted FROM Changes) as changes_deleted_methods,
-                        (SELECT added + modified FROM Changes) as total_changes,
-                        (SELECT aggregated_tested_methods FROM Coverage) as tested_changes,
-                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as coverage,
-                        (SELECT tests_to_run FROM RecommendedTests) as recommended_tests
-                """.trimIndent(),
-            buildId,
-            baselineBuildId,
-            buildId,
-            baselineBuildId,
-            buildId
-        ).first() as Map<String, String>
+                        COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'new'), 0) as tested_new_methods,
+                        COALESCE((SELECT tested_methods FROM TestedChanges WHERE change_type = 'modified'), 0) as tested_modified_methods,
+                        (SELECT isolated_probes_coverage_ratio FROM Coverage) as coverage,                                                                        
+                        (SELECT aggregated_probes_coverage_ratio FROM Coverage) as aggregated_coverage,
+                        (SELECT impacted_tests FROM ImpactedTestsWithResults) AS impacted_tests,
+                    	(SELECT passed_impacted_tests FROM ImpactedTestsWithResults) AS passed_impacted_tests,
+                    	(SELECT failed_impacted_tests FROM ImpactedTestsWithResults) AS failed_impacted_tests
+                """.trimIndent()
+            )
+        }
+        result.firstOrNull() ?: emptyMap()
     }
 
 
