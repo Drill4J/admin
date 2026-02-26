@@ -65,7 +65,9 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, preset: linuxX64}
-          - {os: windows-latest, preset: mingwX64}
+# TODO windows container build fails with the error:
+# failed to connect to the docker API at npipe:////./pipe/docker_engine; check if the path is correct and if the daemon is running: open //./pipe/docker_engine: The system cannot find the file specified.
+#          - {os: windows-latest, preset: mingwX64}
     runs-on: ${{ matrix.config.os }}
     outputs:
       tag: ${{ needs.release.outputs.tag }}
