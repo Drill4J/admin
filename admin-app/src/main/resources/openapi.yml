@@ -71,7 +71,12 @@ paths:
   # Data Ingest Endpoints
   /api/data-ingest/builds:
     put:
-      summary: Save build data
+      summary: Persist application build metadata
+      description: |
+        Saves application build information, including build version and associated Git commit metadata. 
+        This endpoint captures critical build data required for change tracking, impact analysis, risk assessment, and 
+        correlation with test coverage metrics. The service ingests build metadata from instrumented applications to enable 
+        detailed analysis of code changes, test recommendations, and coverage reports across different application versions.
       operationId: putBuild
       tags:
         - data-ingest
@@ -95,7 +100,12 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/instances:
     put:
-      summary: Save instance data
+      summary: Persist application instance metadata
+      description: |
+        Saves information about a running instance of the application deployed in a specific environment. 
+        An instance represents a concrete deployment of an application build in a particular environment (e.g., development, staging, production).
+        This endpoint captures the association between a specific build version deployed on an instance and the environment where it runs, 
+        enabling tracking of code changes and test execution across different deployment environments.
       operationId: putInstance
       tags:
         - data-ingest
@@ -119,7 +129,11 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/coverage:
     post:
-      summary: Save coverage data
+      summary: Persist code coverage data
+      description: |
+        Saves detailed code coverage data collected from test executions. The endpoint ingests execution probes (bytecode instrumentation data)
+        that track which methods and code paths were executed during testing. Coverage data is associated with a specific test session, test launch
+        and application instance to enable measurement of test effectiveness and identification of untested code changes.
       operationId: postCoverage
       tags:
         - data-ingest
@@ -143,7 +157,11 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/methods:
     put:
-      summary: Save methods data
+      summary: Persist application methods metadata
+      description: |
+        Saves detailed metadata for all methods/functions in an application build, including method signatures,
+        bytecode instrumentation information (probes), and checksums. This endpoint captures the structural information
+        required to understand which code locations can be instrumented for coverage analysis.
       operationId: putMethods
       tags:
         - data-ingest
@@ -167,7 +185,12 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/tests-metadata:
     post:
-      summary: Save test metadata
+      summary: Persist test definitions and launches in a single operation
+      description: |
+        Saves test metadata (test definitions and test launches) in a single consolidated API call.
+        This endpoint is an alternative to the separate two-step process of first calling /api/data-ingest/test-definitions
+        and then /api/data-ingest/test-launches. Use this endpoint when you have both test definition metadata and execution results
+        available at the same time and want to persist them together.
       operationId: postTestsMetadata
       tags:
         - data-ingest
@@ -191,7 +214,10 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/test-definitions:
     post:
-      summary: Save test definitions
+      summary: Persist test definition metadata
+      description: |
+        Saves metadata for all test definitions in the system. A test definition is the specification or blueprint
+        for a test, including its unique identifier, runner type (JUnit, TestNG, etc.), name, location, and any custom metadata or tags.
       operationId: postTestDefinitions
       tags:
         - data-ingest
@@ -215,7 +241,15 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/test-launches:
     post:
-      summary: Save test launches
+      summary: Persist test execution records
+      description: |
+        A test launch is a concrete instance of executing a specific test,
+        with associated execution result and timing information. Multiple test launches are grouped into a single test session
+        to represent a cohesive test run (e.g., all tests executed in a single CI/CD pipeline build).
+        
+        Test launches establish the relationship between test definitions (blueprint of what to test) and coverage data (what code was executed),
+        enabling analysis of test effectiveness and identification of which tests exercise which code changes. Each launch references a previously
+        saved test definition by id and belongs to a test session that contextualizes the execution.
       operationId: postTestLaunches
       tags:
         - data-ingest
@@ -239,7 +273,11 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-ingest/sessions:
     put:
-      summary: Save test sessions
+      summary: Persist test session metadata
+      description: |
+        Saves a test session that groups multiple test launches to represent a cohesive test run (e.g., all tests executed in a single CI/CD pipeline build).        
+        The session metadata also establishes the relationship between test launches (individual test executions) and the application builds
+        being tested.
       operationId: putTestSession
       tags:
         - data-ingest
@@ -1520,159 +1558,273 @@ components:
     # Data Ingest Schemas
     BuildPayload:
       type: object
+      description: |
+        Application build metadata payload. Captures build version information and associated Git commit metadata 
+        for change tracking and impact analysis. The buildVersion or commitSha must be provided to identify the build.
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group in Drill4J.
         appId:
           type: string
+          description: Unique identifier for the application in Drill4J.
         commitSha:
           type: string
           nullable: true
+          description: Git commit SHA (full hash) that uniquely identifies the commit associated with this build. Either commitSha or buildVersion must be provided to create a build. If both are provided, buildVersion takes priority and becomes part of the buildId.
         buildVersion:
           type: string
           nullable: true
+          description: Semantic version or build identifier for this application build. Either buildVersion or commitSha must be provided to create a build. When both are specified, buildVersion is prioritized and becomes part of the buildId for identification.
         branch:
           type: string
           nullable: true
+          description: Git branch name where this build was created.
         commitDate:
           type: string
           nullable: true
+          description: Timestamp of the Git commit associated with this build.
         commitMessage:
           type: string
           nullable: true
+          description: Commit message describing the changes included in this build.
         commitAuthor:
           type: string
           nullable: true
+          description: Name or identifier of the commit author.
+      required:
+        - groupId
+        - appId
     InstancePayload:
       type: object
+      description: |
+        Application instance metadata payload. Represents a specific deployment of an application build in a particular environment.
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group in Drill4J.
         appId:
           type: string
+          description: Unique identifier for the application in Drill4J.
         instanceId:
           type: string
+          description: Unique identifier for this specific instance (deployment) of the application. Can be a UUID or any other unique identifier that distinguishes this deployment.
         commitSha:
           type: string
           nullable: true
+          description: Git commit SHA (hash) of the application build running on this instance. Either commitSha or buildVersion should be provided to identify the deployed build.
         buildVersion:
           type: string
           nullable: true
+          description: Semantic version or build identifier of the application build running on this instance. Either buildVersion or commitSha should be provided to identify the deployed build.
         envId:
           type: string
           nullable: true
+          description: Environment identifier where this application instance is deployed (e.g., 'dev', 'staging', 'production'). Specifies the deployment environment context.
+      required:
+        - groupId
+        - appId
+        - instanceId
     CoveragePayload:
       type: object
+      description: |
+        Code coverage execution data payload. Contains bytecode execution probes collected during test execution that indicate
+        which code instructions (probes) were executed by tests.
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group in Drill4J.
         appId:
           type: string
+          description: Unique identifier for the application in Drill4J.
         instanceId:
           type: string
         commitSha:
           type: string
         buildVersion:
           type: string
+          description: Unique identifier of the application instance where the tests were executed.
         coverage:
           type: array
+          description: Array of code coverage data per method/function.
           items:
             $ref: '#/components/schemas/SingleMethodCoveragePayload'
     SingleMethodCoveragePayload:
       type: object
+      description: |
+        Code coverage execution data for a single method/function under a specific test. Contains the method signature for identification and 
+        an array of boolean probes representing bytecode instructions. Each probe corresponds to a specific location in the method bytecode - 
+        true if the instruction was executed during the test, false if it was not executed. The bodyChecksum ensures consistency and 
+        helps detect method modifications between builds.
       properties:
         signature:
           type: string
+          description: Fully qualified method signature uniquely identifying the method for which coverage data is provided. Format is '<class_name>:<method_name>:<method_argument_classes_comma_separated>:<method_return_type>' (e.g., method `void myMethod(String param)` will be represented as 'com.example.MyClass:myMethod:java.lang.String:'.
         bodyChecksum:
           type: string
+          description: Checksum (hash) of the method body bytecode. Used to verify method consistency and ensure that coverage data corresponds to the exact method implementation.
         testId:
           type: string
+          nullable: true
+          description: Unique identifier of the individual test that was executed and produced this coverage data for this method. When present, the coverage is associated with a specific test and testSessionId must also be provided. If testId is absent but testSessionId is provided, the coverage is associated only with the test session, not with a specific test.
         testSessionId:
           type: string
+          nullable: true
+          description: Unique identifier of the test session during which the coverage was recorded. When absent, indicates global coverage data collected outside of any specific test session context.
         probes:
           type: array
+          description: Array of boolean values representing the execution state of each bytecode probe (instruction) in the method. Index position corresponds to probe position in bytecode. True indicates the probe was executed; false indicates it was not executed during the test.
           items:
             type: boolean
+      required:
+        - signature
+        - bodyChecksum
+        - probes
     MethodsPayload:
       type: object
+      description: |
+        Application methods metadata payload. Contains structural information for all methods in a specific build,
+        including method signatures, bytecode instrumentation details, and checksums. Used to map coverage data
+        to actual code methods.
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group in Drill4J.
         appId:
           type: string
+          description: Unique identifier for the application in Drill4J.
         commitSha:
           type: string
           nullable: true
+          description: Git commit SHA of the build containing these methods. Either commitSha or buildVersion should be provided to identify the build.
         buildVersion:
           type: string
           nullable: true
-        instanceId:
-          type: string
-          nullable: true
+          description: Build version or semantic version identifier containing these methods. Either buildVersion or commitSha should be provided to identify the build.
         methods:
           type: array
+          description: Array of method metadata. Each element represents a method found in the application build.
           items:
             $ref: '#/components/schemas/SingleMethodPayload'
+      required:
+        - groupId
+        - appId
     SingleMethodPayload:
       type: object
+      description: |
+        Metadata for a single method/function in an application. Contains the method signature (fully qualified name with parameters),
+        bytecode instrumentation information (probes and their positions), and checksums for consistency verification.
+        The bodyChecksum is critical for detecting method modifications between builds - if a method's bytecode changes,
+        the checksum changes.
       properties:
         classname:
           type: string
+          description: Fully qualified class name (e.g., 'com.example.MyClass') containing this method.
         name:
           type: string
+          description: Method name (e.g., 'myMethod'). Does not include package or class name.
         params:
           type: string
+          description: Method parameter types (e.g., '' if no parameters, 'java.lang.String,java.lang.Integer' for String and Integer parameters). 
         returnType:
           type: string
+          description: Return type (e.g., '' if void, 'java.lang.Boolean' for boolean).
         probesCount:
           type: integer
+          description: Total number of bytecode probes (instrumentation points) inserted into this method. Coverage data consists of boolean arrays matching this count.
         probesStartPos:
           type: integer
+          description: The bytecode position (offset) where probes for this method begin within the class file where this method is defined. Used to correlate probe indices in coverage data with actual bytecode locations in the class.
         bodyChecksum:
           type: string
+          description: Checksum (hash) of the method body bytecode. Used to detect method modifications between builds. If method implementation changes, this checksum changes.
+      required:
+        - classname
+        - name
+        - params
+        - returnType
+        - probesCount
+        - bodyChecksum
     AddTestsPayload:
       type: object
+      description: |
+        Consolidated test metadata payload combining test definitions and test launch execution records in a single request.
+        This provides an alternative to separate API calls for test-definitions and test-launches when both data is available together.
+        Each test entry contains its definition metadata (what test exists) and launch information (how it executed).
+      required:
+        - groupId
+        - sessionId
+        - tests
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group.
         sessionId:
           type: string
+          description: Unique identifier for the test session that groups these test executions. 
         tests:
           type: array
+          description: Array of test entries, each combining definition metadata and execution result. One entry per test execution.
           items:
             $ref: '#/components/schemas/TestInfo'
     TestInfo:
       type: object
+      description: |
+        Combined test definition and test launch information in a single entry. Contains both the test metadata (what the test is)
+        and the execution result (how it performed). Equivalent to providing test-definitions and test-launches data together.
+      required:
+        - testLaunchId
+        - testDefinitionId
+        - result
       properties:
         testLaunchId:
           type: string
+          description: Unique identifier for this test execution (launch). Distinguishes this particular test run from other runs.
         testDefinitionId:
           type: string
+          description: Unique identifier for the test definition. Reused across multiple executions of the same test.
         result:
           $ref: '#/components/schemas/TestResult'
+          description: Execution outcome of the test (PASSED, FAILED, SKIPPED, etc.).
         duration:
           type: integer
+          description: Execution duration in milliseconds.
         details:
           $ref: '#/components/schemas/TestDetails'
+          description: Test definition metadata (test framework, location, tags) combined with execution details.
     TestDetails:
       type: object
+      description: |
+        Test definition metadata (test framework, source location, name, tags, custom properties). Combined with TestInfo to provide
+        complete test context in a single payload entry.
+      required:
+        - runner
+        - path
+        - testName
       properties:
         runner:
           type: string
+          description: Test runner framework identifier (e.g., 'JUnit4', 'JUnit5', 'TestNG', 'pytest'). Identifies the testing framework.
         path:
           type: string
+          nullable: true
+          description: File path or class path to the test source code (e.g., 'src/test/java/com/example/UserTest.java').
         testName:
           type: string
+          description: Human-readable test name (e.g., 'testUserRegistration', 'should_calculate_sum_correctly').
         testParams:
           type: array
+          description: Test method parameters (for parameterized tests). Optional list of parameter values.
           items:
             type: string
         metadata:
           type: object
+          description: Optional arbitrary key-value pairs for custom test attributes (e.g., author, priority, component).
           additionalProperties:
             type: string
         tags:
           type: array
+          description: Optional array of test tags for organizing and filtering tests (e.g., 'smoke', 'regression', 'slow').
           items:
             type: string
     TestResult:
@@ -1686,18 +1838,28 @@ components:
         - UNKNOWN
     AddTestDefinitionsPayload:
       type: object
+      description: |
+        Test definitions metadata payload. Contains the blueprint or specification for multiple test cases in the system.
+        Test definitions are distinct from test launches - a definition represents "what test exists" while a launch represents
+        "when and how the test was executed". Definitions are typically static and reused across multiple test executions.
       required:
         - groupId
         - definitions
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group in Drill4J. 
         definitions:
           type: array
+          description: Array of test definition metadata. Each element describes a unique test that can be executed.
           items:
             $ref: '#/components/schemas/TestDefinitionPayload'
     TestDefinitionPayload:
       type: object
+      description: |
+        Metadata for a single test definition. Represents the blueprint or specification of a test case, independent of when or how it is executed.
+        The test definition provides context for understanding test execution results and associating coverage data with specific tests.
+        Definitions serve as the static reference point, while test launches (executions) are the dynamic instances of running a test.
       required:
         - id
         - runner
@@ -1705,27 +1867,35 @@ components:
       properties:
         id:
           type: string
+          description: Unique identifier for this test definition. Used to reference this test in test launches and coverage data. Must be globally unique within the groupId.
         runner:
           type: string
+          description: Test runner framework (e.g., 'JUnit4', 'JUnit5', 'TestNG', 'pytest', 'mocha'). Identifies which test framework/platform this test belongs to.
         name:
           type: string
+          description: Human-readable test name (e.g., 'testUserRegistration', 'should calculate sum correctly'). Typically the method name or test case name in the source code.
         type:
           type: string
           nullable: true
+          description: Optional test type classification (e.g., 'unit', 'integration', 'smoke', 'regression', 'e2e'). Used to categorize tests by their scope and purpose.
         path:
           type: string
           nullable: true
+          description: File path or class path where the test is defined (e.g., 'src/test/java/com/example/UserTest.java' or 'tests/user_test.py'). Helps locate the test in source code.
         tags:
           type: array
+          description: Optional array of tags for categorizing and filtering tests (e.g., ['slow', 'database', 'critical'], ['@tag.one', '@tag.two']). Used for test selection and organization.
           items:
             type: string
           default: [ ]
         metadata:
           type: object
+          description: Optional json object for storing custom test metadata. Framework or project-specific information.
           nullable: true
           additionalProperties: true
     AddTestLaunchesPayload:
       type: object
+      description: Batch payload for persisting test execution records within a single test session. Contains all launches of test cases that occurred within a cohesive test run context.
       required:
         - groupId
         - testSessionId
@@ -1733,56 +1903,83 @@ components:
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group.
         testSessionId:
           type: string
+          description: Unique identifier for the test session that groups these test launches together. A session represents a cohesive test execution context (e.g., a single CI/CD pipeline run).
         launches:
           type: array
+          description: Array of individual test execution records. Each element is a single test execution with its result and timing information.
           items:
             $ref: '#/components/schemas/TestLaunchPayload'
     TestLaunchPayload:
       type: object
+      description: Metadata for a single test execution (launch). Records the concrete instance of running a test case, including execution outcome and timing.
       required:
         - id
         - testDefinitionId
       properties:
         id:
           type: string
+          description: Unique identifier for this test launch (execution record). Can be a UUID or any other unique identifier that distinguishes this test launch.
         testDefinitionId:
           type: string
+          description: Reference to a test definition (previously saved via /api/data-ingest/test-definitions). Links this execution to the metadata of the test being run.
         result:
           type: string
           nullable: true
+          description: Execution result of the test (e.g., 'SUCCESS', 'FAILURE', 'SKIPPED', 'ERROR'). Indicates whether the test passed, failed, or was skipped.
         duration:
           type: integer
           format: int32
           nullable: true
+          description: Execution duration in milliseconds. Time taken to run the test from start to finish.
     SessionPayload:
       type: object
+      description: |
+        Test session metadata that groups multiple application builds into a unified testing context. A test session represents
+        a cohesive test execution effort and records which builds and application versions were tested together.
+      required:
+        - id
+        - groupId
+        - startedAt
       properties:
-        id:
-          type: string
         groupId:
           type: string
+          description: Unique identifier for the application group. All builds and test launches associated with this session belong to this group.
+        id:
+          type: string
+          description: Unique identifier for this test session. Must be unique within groupId.        
         testTaskId:
           type: string
+          nullable: true
+          description: Optional identifier for a test task or campaign that triggered this session (e.g., CI/CD pipeline ID, scheduled test job ID). Provides additional context for organizing sessions.
         startedAt:
           type: string
           format: date-time
+          description: Timestamp when the test session was initiated.
         builds:
           type: array
+          description: Array of application builds tested within this session.
           items:
             $ref: '#/components/schemas/SingleSessionBuildPayload'
     SingleSessionBuildPayload:
       type: object
+      description: Reference to a specific application build that was tested within the session. Identifies the exact application, deployment instance, and code version tested.
+      required:
+        - appId
+        - commitSha
+        - buildVersion
       properties:
         appId:
           type: string
-        instanceId:
-          type: string
+          description: Application identifier within the group. Enables testing of multiple applications within a single session.
         commitSha:
           type: string
+          description: Git commit SHA of the tested code version. Either commitSha or buildVersion must be provided to identify a build.
         buildVersion:
           type: string
+          description: Application build version identifier. Either commitSha or buildVersion must be provided to identify a build.
     MethodIgnoreRulePayload:
       type: object
       properties:
