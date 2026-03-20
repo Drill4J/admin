@@ -1639,16 +1639,25 @@ components:
           description: Unique identifier for the application in Drill4J.
         instanceId:
           type: string
+          description: Unique identifier for the application instance (previously saved via /api/data-ingest/instances).
         commitSha:
           type: string
+          nullable: true
+          description: Git commit SHA of the build associated with the application instance where the tests were executed. Either commitSha or buildVersion should be provided to identify the build.
         buildVersion:
           type: string
-          description: Unique identifier of the application instance where the tests were executed.
+          nullable: true
+          description: Unique identifier of the build associated with the application instance where the tests were executed. Either buildVersion or commitSha should be provided to identify the build.
         coverage:
           type: array
           description: Array of code coverage data per method/function.
           items:
             $ref: '#/components/schemas/SingleMethodCoveragePayload'
+      required:
+        - groupId
+        - appId
+        - instanceId
+        - coverage
     SingleMethodCoveragePayload:
       type: object
       description: |
@@ -1662,15 +1671,15 @@ components:
           description: Fully qualified method signature uniquely identifying the method for which coverage data is provided. Format is '<class_name>:<method_name>:<method_argument_classes_comma_separated>:<method_return_type>' (e.g., method `void myMethod(String param)` will be represented as 'com.example.MyClass:myMethod:java.lang.String:'.
         bodyChecksum:
           type: string
-          description: Checksum (hash) of the method body bytecode. Used to verify method consistency and ensure that coverage data corresponds to the exact method implementation.
+          description: Checksum (hash) of the method body bytecode (saved via /api/data-ingest/methods). Used to verify method consistency and ensure that coverage data corresponds to the exact method implementation.
         testId:
           type: string
           nullable: true
-          description: Unique identifier of the individual test that was executed and produced this coverage data for this method. When present, the coverage is associated with a specific test and testSessionId must also be provided. If testId is absent but testSessionId is provided, the coverage is associated only with the test session, not with a specific test.
+          description: Unique identifier of the individual test that was executed and produced this coverage data for this method. Reference to the test launch id (saved via /api/data-ingest/test-launches). When present, the coverage is associated with a specific test and testSessionId must also be provided. If testId is absent but testSessionId is provided, the coverage is associated only with the test session, not with a specific test.
         testSessionId:
           type: string
           nullable: true
-          description: Unique identifier of the test session during which the coverage was recorded. When absent, indicates global coverage data collected outside of any specific test session context.
+          description: Unique identifier of the test session during which the coverage was recorded. Reference to the test session id (saved via /api/data-ingest/test-session). When absent, indicates global coverage data collected outside of any specific test session context.
         probes:
           type: array
           description: Array of boolean values representing the execution state of each bytecode probe (instruction) in the method. Index position corresponds to probe position in bytecode. True indicates the probe was executed; false indicates it was not executed during the test.
@@ -1709,6 +1718,7 @@ components:
       required:
         - groupId
         - appId
+        - methods
     SingleMethodPayload:
       type: object
       description: |
@@ -1761,7 +1771,7 @@ components:
           description: Unique identifier for the application group.
         sessionId:
           type: string
-          description: Unique identifier for the test session that groups these test executions. 
+          description: Unique identifier for the test session that groups these test executions. Reference to the test session id (saved via /api/data-ingest/test-session).
         tests:
           type: array
           description: Array of test entries, each combining definition metadata and execution result. One entry per test execution.
@@ -1863,11 +1873,12 @@ components:
       required:
         - id
         - runner
+        - path
         - name
       properties:
         id:
           type: string
-          description: Unique identifier for this test definition. Used to reference this test in test launches and coverage data. Must be globally unique within the groupId.
+          description: Unique identifier for this test definition. Used to reference this test in test launches. Must be globally unique within the groupId. If test path or test name changes, a new test definition with a new id should be created to reflect the change.
         runner:
           type: string
           description: Test runner framework (e.g., 'JUnit4', 'JUnit5', 'TestNG', 'pytest', 'mocha'). Identifies which test framework/platform this test belongs to.
@@ -1906,7 +1917,7 @@ components:
           description: Unique identifier for the application group.
         testSessionId:
           type: string
-          description: Unique identifier for the test session that groups these test launches together. A session represents a cohesive test execution context (e.g., a single CI/CD pipeline run).
+          description: Unique identifier for the test session that groups these test launches together. Reference to the test session id (saved via /api/data-ingest/test-session).
         launches:
           type: array
           description: Array of individual test execution records. Each element is a single test execution with its result and timing information.
@@ -1924,7 +1935,7 @@ components:
           description: Unique identifier for this test launch (execution record). Can be a UUID or any other unique identifier that distinguishes this test launch.
         testDefinitionId:
           type: string
-          description: Reference to a test definition (previously saved via /api/data-ingest/test-definitions). Links this execution to the metadata of the test being run.
+          description: Reference to a test definition id (previously saved via /api/data-ingest/test-definitions). Links this execution to the metadata of the test being run.
         result:
           type: string
           nullable: true
@@ -1949,7 +1960,7 @@ components:
           description: Unique identifier for the application group. All builds and test launches associated with this session belong to this group.
         id:
           type: string
-          description: Unique identifier for this test session. Must be unique within groupId.        
+          description: Unique identifier for this test session. Can be a UUID or any other unique identifier. Must be unique within groupId.
         testTaskId:
           type: string
           nullable: true
