@@ -71,12 +71,11 @@ paths:
   # Data Ingest Endpoints
   /api/data-ingest/builds:
     put:
-      summary: Persist application build metadata
+      summary: Persist application build identity
       description: |
-        Saves application build information, including build version and associated Git commit metadata. 
-        This endpoint captures critical build data required for change tracking, impact analysis, risk assessment, and 
-        correlation with test coverage metrics. The service ingests build metadata from instrumented applications to enable 
-        detailed analysis of code changes, test recommendations, and coverage reports across different application versions.
+        Saves application build identity information, including groupId, appId, commitSha, and buildVersion.
+        This endpoint only persists the build identity fields. To save additional Git metadata (branch, commitDate,
+        commitMessage, commitAuthor), use the PUT /api/data-ingest/builds/info endpoint.
       operationId: putBuild
       tags:
         - data-ingest
@@ -94,6 +93,35 @@ paths:
       responses:
         '200':
           description: Build saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/data-ingest/builds/info:
+    put:
+      summary: Persist application build Git metadata
+      description: |
+        Saves Git metadata (branch, commitDate, commitMessage, commitAuthor) for an application build.
+        The build is identified by groupId, appId, commitSha, and buildVersion. If a build with the given
+        identity does not exist, a new build is created. If it already exists, only the Git metadata fields
+        are updated while preserving the existing identity and instance data.
+      operationId: putBuildInfo
+      tags:
+        - data-ingest
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildPayload'
+          application/protobuf:
+            schema:
+              $ref: '#/components/schemas/BuildPayload'
+      responses:
+        '200':
+          description: Build info saved
           content:
             application/json:
               schema:

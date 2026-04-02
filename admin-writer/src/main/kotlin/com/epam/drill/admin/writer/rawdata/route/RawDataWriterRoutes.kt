@@ -49,6 +49,9 @@ private val logger = KotlinLogging.logger {}
 @Resource("builds")
 class BuildsRoute()
 
+@Resource("builds/info")
+class BuildsInfoRoute()
+
 @Resource("instances")
 class InstancesRoute()
 
@@ -81,6 +84,7 @@ class MethodIgnoreRulesRoute() {
 fun Route.dataIngestRoutes() {
     route("/data-ingest") {
         putBuilds()
+        putBuildsInfo()
         putInstances()
         postCoverage()
         putMethods()
@@ -101,6 +105,15 @@ fun Route.putBuilds() {
     put<BuildsRoute> {
         rawDataWriter.saveBuild(call.decompressAndReceive())
         call.ok("Build saved")
+    }
+}
+
+fun Route.putBuildsInfo() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    put<BuildsInfoRoute> {
+        rawDataWriter.saveBuildInfo(call.decompressAndReceive())
+        call.ok("Build info saved")
     }
 }
 

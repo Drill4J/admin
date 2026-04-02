@@ -23,9 +23,9 @@ class Build(
     val appId: String,
     val commitSha: String?,
     val buildVersion: String?,
-    val branch: String?,
     val instanceId: String?,
-    val commitDate: LocalDateTime?,
-    val commitMessage: String?,
-    val commitAuthor: String?
+    val branch: String? = null,
+    val commitDate: LocalDateTime? = null,
+    val commitMessage: String? = null,
+    val commitAuthor: String? = null
 )
