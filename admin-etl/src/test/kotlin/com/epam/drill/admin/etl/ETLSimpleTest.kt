@@ -304,4 +304,36 @@ class ETLSimpleTest {
         assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result2.first().rowsProcessed)
     }
+
+    @Test
+    fun `given consistencyWindow, ETL orchestrator should re-process records within the lookback window`() = runBlocking {
+        val groupId = "test-group"
+        val orchestrator = EtlOrchestratorImpl(
+            name = "lookback-etl",
+            pipelines = listOf(
+                EtlPipelineImpl.singleLoader(
+                    "simple-pipeline",
+                    extractor = SimpleExtractor(),
+                    loader = SimpleLoader()
+                )
+            ),
+            metadataRepository = SimpleMetadataRepository(),
+            consistencyWindow = 60
+        )
+
+        // Add initial data
+        addNewRecords(5)
+        // First run ETL — should process all initial data
+        val result1 = orchestrator.run(groupId)
+        assertTrue(result1.first().status == EtlStatus.SUCCESS)
+        assertEquals(5, result1.first().rowsProcessed)
+
+        // Add new data after last processed timestamp
+        addNewRecords(3)
+        // Second run ETL — lookback of 60s should re-process all 8 records (5 original + 3 new)
+        // because all records were created within the last 60 seconds
+        val result2 = orchestrator.run(groupId)
+        assertTrue(result2.first().status == EtlStatus.SUCCESS)
+        assertEquals(8, result2.first().rowsProcessed)
+    }
 }

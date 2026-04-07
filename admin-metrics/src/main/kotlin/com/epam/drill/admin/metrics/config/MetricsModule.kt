@@ -65,7 +65,8 @@ val metricsDIModule
                         testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
                         coveragePipeline, testSessionBuildsPipeline
                     ),
-                    metadataRepository = instance()
+                    metadataRepository = instance(),
+                    consistencyWindow = etlConfig.consistencyWindow
                 )
             }
         }

@@ -56,4 +56,12 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val loggingFrequency : Int
         get() = config.propertyOrNull("loggingFrequency")?.getString()?.toIntOrNull() ?: 10
+
+    /**
+     * Number of seconds to subtract from the last processed timestamp when starting an ETL run.
+     * This allows re-processing records that arrived in the source database with a delay
+     * or were inconsistent at the time of the previous ETL run.
+     */
+    val consistencyWindow : Long
+        get() = config.propertyOrNull("consistencyWindow")?.getString()?.toLongOrNull() ?: 0L
 }
