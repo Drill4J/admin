@@ -7,6 +7,11 @@ paths:
   /api/group-settings/{groupId}:
     get:
       summary: Get group settings
+      description: |
+        Retrieves the configuration settings for a specific application group. Group settings control
+        data retention policies and metrics computation periods. Returns the current settings values,
+        including retentionPeriodDays (how long raw data is kept before automatic cleanup) and
+        metricsPeriodDays (the time window used for metrics aggregation). Requires ADMIN role.
       operationId: getGroupSettingsById
       tags:
         - settings
@@ -16,6 +21,7 @@ paths:
         - name: groupId
           in: path
           required: true
+          description: Unique identifier for the application group whose settings are being retrieved.
           schema:
             type: string
       responses:
@@ -27,6 +33,11 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     put:
       summary: Save group settings
+      description: |
+        Creates or updates configuration settings for a specific application group. Group settings define
+        data retention policies (retentionPeriodDays) that control automatic cleanup of old raw data,
+        and metrics computation periods (metricsPeriodDays) that define the time window for metrics aggregation.
+        If settings already exist for the group, they are overwritten with the new values. Requires ADMIN role.
       operationId: updateGroupSettingsById
       tags:
         - settings
@@ -36,6 +47,7 @@ paths:
         - name: groupId
           in: path
           required: true
+          description: Unique identifier for the application group whose settings are being saved.
           schema:
             type: string
       requestBody:
@@ -53,6 +65,10 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
     delete:
       summary: Delete group settings
+      description: |
+        Removes all configuration settings for a specific application group, resetting them to system defaults.
+        After deletion, the group will use the global default values for data retention and metrics periods.
+        Requires ADMIN role.
       operationId: deleteGroupSettingsById
       tags:
         - settings
@@ -62,6 +78,7 @@ paths:
         - name: groupId
           in: path
           required: true
+          description: Unique identifier for the application group whose settings are being deleted.
           schema:
             type: string
       responses:
@@ -330,6 +347,9 @@ paths:
   /api/data-ingest/method-ignore-rules:
     post:
       summary: Save method ignore rule
+      description: |
+        Creates a new rule for excluding methods from coverage analysis and metrics computation.
+        Rules are matched by name pattern and/or class name pattern using glob-style matching.
       operationId: postMethodIgnoreRules
       tags:
         - data-ingest
@@ -353,6 +373,10 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
     get:
       summary: Get all method ignore rules
+      description: |
+        Retrieves the complete list of method ignore rules configured in the system.
+        Each rule defines patterns (name and/or class name) used to exclude matching methods
+        from coverage analysis and metrics computation.
       operationId: getAllMethodIgnoreRules
       tags:
         - data-ingest
@@ -368,6 +392,8 @@ paths:
   /api/data-ingest/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
+      description: |
+        Removes a specific method ignore rule by its unique identifier.
       operationId: deleteMethodIgnoreRuleById
       tags:
         - data-ingest
@@ -377,6 +403,7 @@ paths:
         - name: id
           in: path
           required: true
+          description: Unique numeric identifier of the method ignore rule to delete.
           schema:
             type: integer
       responses:
@@ -390,6 +417,9 @@ paths:
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
     delete:
       summary: Delete build data with all associated data (coverage, methods, instances)
+      description: |
+        Permanently deletes a specific application build and all its associated data, including code coverage records,
+        method metadata, and instance deployments. Use this endpoint to clean up obsolete builds or free storage.
       operationId: deleteBuild
       tags:
         - data-management
@@ -399,16 +429,19 @@ paths:
         - name: groupId
           in: path
           required: true
+          description: Unique identifier for the application group containing the build.
           schema:
             type: string
         - name: appId
           in: path
           required: true
+          description: Unique identifier for the application containing the build.
           schema:
             type: string
         - name: buildId
           in: path
           required: true
+          description: Unique identifier of the build to delete. This is the internal build ID assigned by the system.
           schema:
             type: string
       responses:
@@ -421,6 +454,10 @@ paths:
   /api/data-management/groups/{groupId}/tests/sessions/{testSessionId}:
     delete:
       summary: Delete test session data with all associated data (coverage, test launches)
+      description: |
+        Permanently deletes a specific test session and all its associated data, including test launch records
+        and code coverage data collected during the session. Use this endpoint to clean up
+        invalid or obsolete test sessions.
       operationId: deleteTestSession
       tags:
         - data-management
@@ -430,11 +467,13 @@ paths:
         - name: groupId
           in: path
           required: true
+          description: Unique identifier for the application group containing the test session.
           schema:
             type: string
         - name: testSessionId
           in: path
           required: true
+          description: Unique identifier of the test session to delete.
           schema:
             type: string
       responses:
@@ -448,6 +487,8 @@ paths:
   /api/metrics/applications:
     get:
       summary: Get applications
+      description: |
+        Retrieves a list of all registered applications in Drill4J.
       operationId: getApplications
       tags:
         - metrics
@@ -457,6 +498,7 @@ paths:
         - name: groupId
           in: query
           required: false
+          description: Optional filter to retrieve applications belonging to a specific group only.
           schema:
             type: string
       responses:
@@ -469,6 +511,10 @@ paths:
   /api/metrics/builds:
     get:
       summary: Get builds
+      description: |
+        Retrieves a paginated list of application builds for a specific application. Each build entry includes
+        build identity (commitSha, buildVersion), Git metadata (branch, commitDate, commitMessage, commitAuthor),
+        and associated deployment information.
       operationId: getBuilds
       tags:
         - metrics
@@ -478,27 +524,33 @@ paths:
         - name: groupId
           in: query
           required: true
+          description: Unique identifier for the application group.
           schema:
             type: string
         - name: appId
           in: query
           required: true
+          description: Unique identifier for the application.
           schema:
             type: string
         - name: branch
           in: query
+          description: Optional Git branch name filter. When specified, only builds from this branch are returned.
           schema:
             type: string
         - name: envId
           in: query
+          description: Optional environment identifier filter. When specified, only builds deployed in this environment are returned.
           schema:
             type: string
         - name: page
           in: query
+          description: Page number for pagination (1-based). Defaults to 1 if not specified.
           schema:
             type: integer
         - name: pageSize
           in: query
+          description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
       responses:
@@ -511,6 +563,12 @@ paths:
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report
+      description: |
+        Generates a comprehensive diff report comparing a target build against a baseline build. The report includes
+        summary statistics on code changes (new, modified, deleted methods), overall and per-change-type coverage percentages,
+        risk assessment based on uncovered changes. The target build is identified by
+        instanceId, commitSha, or buildVersion; the baseline build is identified by baselineInstanceId, baselineCommitSha,
+        or baselineBuildVersion.
       operationId: getBuildDiffReport
       tags:
         - metrics
@@ -520,39 +578,48 @@ paths:
         - name: groupId
           in: query
           required: true
+          description: Unique identifier for the application group.
           schema:
             type: string
         - name: appId
           in: query
           required: true
+          description: Unique identifier for the application.
           schema:
             type: string
         - name: instanceId
           in: query
+          description: Instance ID of the target build deployment. One of instanceId, commitSha, or buildVersion should be provided to identify the target build.
           schema:
             type: string
         - name: commitSha
           in: query
+          description: Git commit SHA of the target build. One of instanceId, commitSha, or buildVersion should be provided to identify the target build.
           schema:
             type: string
         - name: buildVersion
           in: query
+          description: Build version of the target build. One of instanceId, commitSha, or buildVersion should be provided to identify the target build.
           schema:
             type: string
         - name: baselineInstanceId
           in: query
+          description: Instance ID of the baseline build deployment. If not specified, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: baselineCommitSha
           in: query
+          description: Git commit SHA of the baseline build. If not specified, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: baselineBuildVersion
           in: query
+          description: Build version of the baseline build. If not specified, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: coverageThreshold
           in: query
+          description: Minimum required coverage percentage (0.0–1.0) for the diff report quality gate. The report includes a pass/fail indicator based on this threshold. Defaults to 1.0 (100%).
           schema:
             type: number
             format: float
@@ -567,6 +634,14 @@ paths:
   /api/metrics/recommended-tests:
     get:
       summary: Get recommended tests
+      description: |
+        Analyzes code changes between a target build and a baseline build and returns a list of tests recommended
+        for execution based on impact analysis. The endpoint identifies which methods have changed and finds tests
+        that previously covered those methods, recommending them for re-execution to validate the changes.
+        When testsToSkip is true, the endpoint inverts the result — returning tests that can be safely skipped
+        because they do not cover any changed code. The target build is identified by
+        targetInstanceId, targetCommitSha, or targetBuildVersion. The baseline build is identified by
+        baselineInstanceId, baselineCommitSha, baselineBuildVersion, or baselineBuildBranches.
       operationId: getRecommendedTests
       tags:
         - metrics
@@ -576,55 +651,66 @@ paths:
         - name: groupId
           in: query
           required: true
+          description: Unique identifier for the application group.
           schema:
             type: string
         - name: appId
           in: query
           required: true
+          description: Unique identifier for the application.
           schema:
             type: string
         - name: testsToSkip
           in: query
+          description: When true, returns tests that can be safely skipped (not impacted by changes). When false (default), returns tests that should be executed because they cover changed code.
           schema:
             type: boolean
             default: false
         - name: testTaskId
           in: query
+          description: Optional test task ID filter. When specified, only considers test launches associated with this task ID for recommendations.
           schema:
             type: string
         - name: targetInstanceId
           in: query
+          description: Instance ID of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
           schema:
             type: string
         - name: targetCommitSha
           in: query
+          description: Git commit SHA of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
           schema:
             type: string
         - name: targetBuildVersion
           in: query
+          description: Build version of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
           schema:
             type: string
         - name: baselineInstanceId
           in: query
+          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: baselineCommitSha
           in: query
+          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: baselineBuildVersion
           in: query
+          description: Build version of the baseline build. If not provided, the system automatically selects the previous build as baseline.
           schema:
             type: string
         - name: baselineBuildBranches
           in: query
-          description: List of baseline build branches to consider.
+          description: List of Git branch names to consider when selecting the baseline build. Useful when the baseline should be chosen from specific branches (e.g., main, develop).
           schema:
             type: array
             items:
               type: string
         - name: coveragePeriodDays
           in: query
+          description: Number of days to look back for coverage data when determining test recommendations. Limits the scope of historical coverage data used for analysis.
           schema:
             type: integer
       responses:
@@ -637,6 +723,9 @@ paths:
   /api/metrics/coverage-treemap:
     get:
       summary: Get coverage treemap
+      description: |
+        Retrieves a hierarchical treemap representation of code coverage data for a specific build. The treemap
+        organizes methods into a package/class hierarchy, where each node contains aggregated coverage statistics.
       operationId: getCoverageTreemap
       tags:
         - metrics
@@ -646,30 +735,37 @@ paths:
         - name: buildId
           in: query
           required: true
+          description: Internal build identifier for which to retrieve coverage treemap data.
           schema:
             type: string
         - name: testTag
           in: query
+          description: Optional test tag filter. When specified, only coverage data from tests with this tag is included.
           schema:
             type: string
         - name: envId
           in: query
+          description: Optional environment identifier filter. When specified, only coverage data from this environment is included.
           schema:
             type: string
         - name: branch
           in: query
+          description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
         - name: packageNamePattern
           in: query
+          description: Optional package name pattern filter for narrowing results to specific packages.
           schema:
             type: string
         - name: classNamePattern
           in: query
+          description: Optional class name pattern filter for narrowing results to specific classes.
           schema:
             type: string
         - name: rootId
           in: query
+          description: Optional root node identifier to retrieve a specific subtree of the treemap hierarchy. Used for drill-down navigation.
           schema:
             type: string
       responses:
@@ -682,6 +778,9 @@ paths:
   /api/metrics/changes-coverage-treemap:
     get:
       summary: Get changes coverage treemap
+      description: |
+        Retrieves a hierarchical treemap representation of code coverage focused only on changed methods
+        between a target build and a baseline build.
       operationId: getChangesCoverageTreemap
       tags:
         - metrics
@@ -691,51 +790,63 @@ paths:
         - name: buildId
           in: query
           required: true
+          description: Internal build identifier of the target (newer) build.
           schema:
             type: string
         - name: baselineBuildId
           in: query
           required: true
+          description: Internal build identifier of the baseline (older) build to compare against.
           schema:
             type: string
         - name: testTag
           in: query
+          description: Optional test tag filter. When specified, only coverage data from tests with this tag is included.
           schema:
             type: string
         - name: envId
           in: query
+          description: Optional environment identifier filter. When specified, only coverage data from this environment is included.
           schema:
             type: string
         - name: branch
           in: query
+          description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
         - name: packageNamePattern
           in: query
+          description: Optional package name pattern filter for narrowing results to specific packages.
           schema:
             type: string
         - name: classNamePattern
           in: query
+          description: Optional class name pattern filter for narrowing results to specific classes.
           schema:
             type: string
         - name: rootId
           in: query
+          description: Optional root node identifier to retrieve a specific subtree of the treemap hierarchy.
           schema:
             type: string
         - name: page
           in: query
+          description: Page number for pagination (1-based). Defaults to 1 if not specified.
           schema:
             type: integer
         - name: pageSize
           in: query
+          description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
         - name: includeDeleted
           in: query
+          description: Whether to include methods that were deleted in the target build (present in baseline but absent in target). Defaults to false.
           schema:
             type: boolean
         - name: includeEqual
           in: query
+          description: Whether to include methods that are unchanged between builds. Defaults to false.
           schema:
             type: boolean
       responses:
@@ -1294,6 +1405,8 @@ paths:
   /api/users:
     get:
       summary: Get users
+      description: |
+        Retrieves a list of all registered users in the system.
       operationId: getAllUsers
       tags:
         - auth
@@ -1311,6 +1424,8 @@ paths:
   /api/users/{userId}:
     get:
       summary: Get user by ID
+      description: |
+        Retrieves detailed information for a specific user by their unique numeric identifier.
       operationId: getUserById
       tags:
         - auth
@@ -1320,6 +1435,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user to retrieve.
           schema:
             type: integer
       responses:
@@ -1331,6 +1447,8 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     put:
       summary: Edit user
+      description: |
+        Updates the role of a specific user. Administrators can change a user's role between ADMIN and USER.
       operationId: editUserById
       tags:
         - auth
@@ -1340,6 +1458,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user to edit.
           schema:
             type: integer
       requestBody:
@@ -1357,6 +1476,8 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
     delete:
       summary: Delete user
+      description: |
+        Permanently deletes a specific user account from the system.
       operationId: deleteUserById
       tags:
         - auth
@@ -1366,6 +1487,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user to delete.
           schema:
             type: integer
       responses:
@@ -1378,6 +1500,8 @@ paths:
   /api/users/{userId}/block:
     patch:
       summary: Block user
+      description: |
+        Blocks a specific user account, preventing them from authenticating and accessing the system.
       operationId: blockUserById
       tags:
         - auth
@@ -1387,6 +1511,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user to block.
           schema:
             type: integer
       responses:
@@ -1399,6 +1524,8 @@ paths:
   /api/users/{userId}/unblock:
     patch:
       summary: Unblock user
+      description: |
+        Unblocks a previously blocked user account, restoring their ability to authenticate and access the system.
       operationId: unblockUserById
       tags:
         - auth
@@ -1408,6 +1535,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user to unblock.
           schema:
             type: integer
       responses:
@@ -1420,6 +1548,8 @@ paths:
   /api/users/{userId}/reset-password:
     patch:
       summary: Reset user password
+      description: |
+        Resets the password for a specific user to a new auto-generated password.
       operationId: resetUserPasswordById
       tags:
         - auth
@@ -1429,6 +1559,7 @@ paths:
         - name: userId
           in: path
           required: true
+          description: Unique numeric identifier of the user whose password is being reset.
           schema:
             type: integer
       responses:
@@ -1442,6 +1573,8 @@ paths:
   /api/user-keys:
     get:
       summary: Get user API keys
+      description: |
+        Retrieves all API keys owned by the currently authenticated user.
       operationId: getUserApiKeys
       tags:
         - auth
@@ -1458,6 +1591,9 @@ paths:
                   $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate user API key
+      description: |
+        Generates a new API key for the currently authenticated user. The API key value is returned only once in the response — it cannot be
+        retrieved again after creation, so it must be stored securely by the client.
       operationId: generateUserApiKey
       tags:
         - auth
@@ -1479,6 +1615,8 @@ paths:
   /api/user-keys/{id}:
     delete:
       summary: Delete user API key
+      description: |
+        Deletes a specific API key owned by the currently authenticated user.
       operationId: deleteUserApiKeyById
       tags:
         - auth
@@ -1488,6 +1626,7 @@ paths:
         - name: id
           in: path
           required: true
+          description: Unique numeric identifier of the API key to delete.
           schema:
             type: integer
       responses:
@@ -1501,6 +1640,8 @@ paths:
   /api/api-keys:
     get:
       summary: Get API keys
+      description: |
+        Retrieves a list of all API keys across all users in the system.
       operationId: getApiKeys
       tags:
         - auth
@@ -1517,6 +1658,8 @@ paths:
                   $ref: '#/components/schemas/ListDataResponse'
     post:
       summary: Generate API key
+      description: |
+        Generates a new API key on behalf of any user.
       operationId: generateApiKey
       tags:
         - auth
@@ -1538,6 +1681,8 @@ paths:
   /api/api-keys/{id}:
     delete:
       summary: Delete API key
+      description: |
+        Deletes any API key by its ID.
       operationId: deleteApiKeyById
       tags:
         - auth
@@ -1547,6 +1692,7 @@ paths:
         - name: id
           in: path
           required: true
+          description: Unique numeric identifier of the API key to delete.
           schema:
             type: integer
       responses:
@@ -2021,130 +2167,194 @@ components:
           description: Application build version identifier. Either commitSha or buildVersion must be provided to identify a build.
     MethodIgnoreRulePayload:
       type: object
+      description: |
+        Rule definition for excluding methods from coverage analysis and metrics computation.
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group this rule applies to.
         appId:
           type: string
+          description: Unique identifier for the application this rule applies to.
         namePattern:
           type: string
           nullable: true
+          description: Glob-style pattern for matching method names to exclude (e.g., 'get*', 'set*', 'toString'). Methods with names matching this pattern will be excluded from analysis.
         classnamePattern:
           type: string
           nullable: true
+          description: Glob-style pattern for matching fully qualified class names to exclude (e.g., 'com.example.generated.*'). All methods in classes matching this pattern will be excluded.
     # Auth Schemas
     LoginPayload:
       type: object
+      description: |
+        User authentication credentials for signing in to the system.
+      required:
+        - username
+        - password
       properties:
         username:
           type: string
+          description: The username of the account to authenticate.
         password:
           type: string
+          description: The password for the account.
     SignUpPayload:
       type: object
+      description: |
+        New user registration payload. Creates a user account that requires administrator approval before activation.
+      required:
+        - username
+        - password
       properties:
         username:
           type: string
+          description: Desired username for the new account. Must be unique in the system.
         password:
           type: string
+          description: Password for the new account.
         email:
           type: string
+          description: Optional email address for the new user.
     UpdatePasswordPayload:
       type: object
+      description: |
+        Password change request payload. The old password is verified before the new password is set.
+      required:
+        - oldPassword
+        - newPassword
       properties:
         oldPassword:
           type: string
+          description: The current password of the user. Must match the existing password for verification.
         newPassword:
           type: string
+          description: The new password to set for the user.
     EditUserPayload:
       type: object
+      description: |
+        Payload for editing user properties. Currently supports changing the user's role.
+      required:
+        - role
       properties:
         username:
           type: string
+          description: Updated username (currently not used for modification).
         email:
           type: string
+          description: Updated email address (currently not used for modification).
         role:
           type: string
+          description: New role for the user. Supported values are 'ADMIN' and 'USER'.
+          enum:
+            - ADMIN
+            - USER
     GenerateApiKeyPayload:
       type: object
+      description: |
+        Payload for generating a new API key.
+      required:
+        - name
       properties:
         name:
           type: string
+          description: Human-readable description or name for the API key (e.g., 'CI/CD pipeline key', 'Agent key for staging').
     # Settings Schemas
     GroupSettingsPayload:
       type: object
+      description: |
+        Configuration settings for an application group. Controls data lifecycle policies and metrics computation scope.
       properties:
         retentionPeriodDays:
           type: integer
           nullable: true
+          description: Number of days to retain raw ingested data (builds, coverage, methods, test sessions) before automatic cleanup. Set to null to use the system default.
         metricsPeriodDays:
           type: integer
           nullable: true
+          description: Number of days of historical data to include when computing metrics and coverage aggregations. Set to null to use the system default.
     # Metrics Request Schemas
     ImpactedTestsRequest:
       type: object
+      description: |
+        Request body for the POST variant of the impacted tests endpoint.
       required:
         - groupId
         - appId
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group.
         appId:
           type: string
+          description: Unique identifier for the application.
         instanceId:
           type: string
           nullable: true
+          description: Instance ID of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         commitSha:
           type: string
           nullable: true
+          description: Git commit SHA of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         buildVersion:
           type: string
           nullable: true
+          description: Build version of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         baselineInstanceId:
           type: string
           nullable: true
+          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build.
         baselineCommitSha:
           type: string
           nullable: true
+          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build.
         baselineBuildVersion:
           type: string
           nullable: true
+          description: Build version of the baseline build. If not provided, the system automatically selects the previous build.
         packageName:
           type: string
           nullable: true
+          description: Optional filter to only consider methods in this package when determining impacted tests.
         className:
           type: string
           nullable: true
+          description: Optional filter to only consider methods in this class when determining impacted tests.
         methodName:
           type: string
           nullable: true
+          description: Optional filter to only consider methods with this name when determining impacted tests.
         excludeMethodSignatures:
           type: array
           items:
             type: string
-          description: List of method signatures to exclude from impact analysis. Signature format is "className:methodName:params:returnType".
+          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType".
         testTaskId:
           type: string
           nullable: true
+          description: Optional filter by test task ID. When specified, only tests from launches associated with this task ID are considered.
         testTag:
           type: string
           nullable: true
+          description: Optional filter by test tag. When specified, only tests with this tag are included.
         testPath:
           type: string
           nullable: true
+          description: Optional filter by test source path. When specified, only tests at this path are included.
         testName:
           type: string
           nullable: true
+          description: Optional filter by test name. When specified, only tests with this name are included.
         coverageBranches:
           type: array
           items:
             type: string
-          description: List of coverage branches to consider.
+          description: List of Git branch names to consider when selecting coverage data for impact analysis.
         coverageAppEnvIds:
           type: array
           items:
             type: string
-          description: List of coverage app env IDs to consider.
+          description: List of application environment IDs to consider when selecting coverage data for impact analysis.
         sortBy:
           type: string
           enum:
@@ -2169,63 +2379,80 @@ components:
           nullable: true
     ImpactedMethodsRequest:
       type: object
+      description: |
+        Request body for the POST variant of the impacted methods endpoint.
       required:
         - groupId
         - appId
       properties:
         groupId:
           type: string
+          description: Unique identifier for the application group.
         appId:
           type: string
+          description: Unique identifier for the application.
         instanceId:
           type: string
           nullable: true
+          description: Instance ID of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         commitSha:
           type: string
           nullable: true
+          description: Git commit SHA of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         buildVersion:
           type: string
           nullable: true
+          description: Build version of the target build. One of instanceId, commitSha, or buildVersion should be provided.
         baselineInstanceId:
           type: string
           nullable: true
+          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build.
         baselineCommitSha:
           type: string
           nullable: true
+          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build.
         baselineBuildVersion:
           type: string
           nullable: true
+          description: Build version of the baseline build. If not provided, the system automatically selects the previous build.
         packageName:
           type: string
           nullable: true
+          description: Optional filter by package name to narrow results to methods in a specific package.
         className:
           type: string
           nullable: true
+          description: Optional filter by class name to narrow results to methods in a specific class.
         methodName:
           type: string
           nullable: true
+          description: Optional filter by method name to narrow results to a specific method.
         testTaskId:
           type: string
           nullable: true
+          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
         testTag:
           type: string
           nullable: true
+          description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
         testPath:
           type: string
           nullable: true
+          description: Optional filter by test source path. When specified, only tests at this path are considered for impact counting.
         testName:
           type: string
           nullable: true
+          description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
         coverageBranches:
           type: array
           items:
             type: string
-          description: List of coverage branches to consider.
+          description: List of Git branch names to consider when selecting coverage data for impact analysis.
         coverageAppEnvIds:
           type: array
           items:
             type: string
-          description: List of coverage app env IDs to consider.
+          description: List of application environment IDs to consider when selecting coverage data for impact analysis.
         sortBy:
           type: string
           enum:
