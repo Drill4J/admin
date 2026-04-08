@@ -94,9 +94,9 @@ val settingsServicesDIModule
         bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
     }
 
-val dataRetentionPolicyJob: JobDetail
+val rawDataRetentionPolicyJob: JobDetail
     get() = JobBuilder.newJob(DataRetentionPolicyJob::class.java)
         .storeDurably()
         .withDescription("Job for deleting raw data older than the retention period.")
-        .withIdentity("rawDataRetentionPolicyJob", "retentionPolicies")
+        .withIdentity("rawDataRetentionPolicyJob", "drill")
         .build()

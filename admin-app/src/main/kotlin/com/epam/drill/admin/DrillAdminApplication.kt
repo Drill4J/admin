@@ -30,7 +30,7 @@ import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
-import com.epam.drill.admin.writer.rawdata.config.dataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.config.rawDataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
@@ -211,8 +211,8 @@ private fun Application.initScheduler() {
     }
     scheduler.start()
     scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
-    scheduler.scheduleJob(dataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
-    scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.retentionPoliciesTrigger)
+    scheduler.scheduleJob(rawDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("rawDataRetentionPolicyTrigger"))
+    scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("metricsRetentionPolicyTrigger"))
     scheduler.addJob(deleteMetricsDataJob)
 }
 
