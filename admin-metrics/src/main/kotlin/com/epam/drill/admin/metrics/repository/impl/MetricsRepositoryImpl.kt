@@ -745,39 +745,49 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
-    override suspend fun deleteAllOrphanReferences() = transaction {
+    override suspend fun deleteAllOrphanReferences(groupId: String, timestamp: Instant) = transaction {
+        val timestamp = Timestamp.from(timestamp)
         executeUpdate(
             """
                 DELETE FROM metrics.methods m
-                WHERE NOT EXISTS (SELECT 1 
+                WHERE m.group_id = ?
+                    AND m.created_at_day < ?
+                    AND NOT EXISTS (SELECT 1 
                     FROM metrics.build_methods bm 
                     WHERE bm.group_id = m.group_id 
                         AND bm.app_id = m.app_id
                         AND bm.method_id = m.method_id
                 )
-                """.trimIndent()
+                """.trimIndent(),
+            groupId, timestamp
         )
         executeUpdate(
             """
                 DELETE FROM metrics.method_daily_coverage c
-                WHERE NOT EXISTS (SELECT 1
+                WHERE c.group_id = ?
+                    AND c.created_at_day < ?
+                    AND NOT EXISTS (SELECT 1
                     FROM metrics.methods m
                     WHERE m.group_id = c.group_id
                         AND m.app_id = c.app_id
                         AND m.method_id = c.method_id
                 )
-                """.trimIndent()
+                """.trimIndent(),
+            groupId, timestamp
         )
         executeUpdate(
             """
                 DELETE FROM metrics.test_to_code_mapping tcm
-                WHERE NOT EXISTS (SELECT 1
+                WHERE tcm.group_id = ?
+                    AND tcm.created_at_day < ?
+                    AND NOT EXISTS (SELECT 1
                     FROM metrics.methods m
                     WHERE m.group_id = tcm.group_id
                         AND m.app_id = tcm.app_id
                         AND m.signature = tcm.signature
                 )
-                """.trimIndent()
+                """.trimIndent(),
+            groupId, timestamp
         )
     }
 }

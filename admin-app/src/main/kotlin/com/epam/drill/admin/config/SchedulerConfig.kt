@@ -34,16 +34,15 @@ class SchedulerConfig(private val config: ApplicationConfig) {
 
     val etlTrigger: CronTrigger
         get() = TriggerBuilder.newTrigger()
-            .withIdentity("etlTrigger", "refreshViews")
+            .withIdentity("etlTrigger", "drill")
             .startNow()
             .withSchedule(
                 CronScheduleBuilder.cronSchedule(etlJobCron)
             )
             .build()
 
-    val retentionPoliciesTrigger: CronTrigger
-        get() = TriggerBuilder.newTrigger()
-            .withIdentity("retentionPolicyTrigger", "retentionPolicies")
+    fun getRetentionPoliciesTrigger(triggerName: String): CronTrigger = TriggerBuilder.newTrigger()
+            .withIdentity(triggerName, "drill")
             .startNow()
             .withSchedule(
                 CronScheduleBuilder.cronSchedule(dataRetentionJobCron)

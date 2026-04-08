@@ -36,22 +36,18 @@ class MetricsDataRetentionPolicyJob(
         val groupId: String? = context.mergedJobDataMap.getString("groupId")
         runBlocking {
             transaction {
-                metricsRepository.getMetricsPeriodDays().let {
-                    if (groupId != null) mapOf(groupId to (it[groupId] ?: Instant.EPOCH)) else it
-                }.map { (groupId, initTimestamp) ->
+                metricsRepository.getMetricsPeriodDays().let { periodDays ->
+                    if (groupId != null) mapOf(groupId to (periodDays[groupId] ?: Instant.EPOCH)) else periodDays
+                }.filterValues { it > Instant.EPOCH }.map { (groupId, initTimestamp) ->
                     async {
                         logger.info { "Deleting all metrics data for groupId $groupId older than $initTimestamp..." }
                         metricsRepository.deleteAllBuildDataCreatedBefore(groupId, initTimestamp)
                         metricsRepository.deleteAllTestDataCreatedBefore(groupId, initTimestamp)
                         metricsRepository.deleteAllDailyDataCreatedBefore(groupId, initTimestamp)
+                        metricsRepository.deleteAllOrphanReferences(groupId, initTimestamp)
                         logger.info { "Metrics data for groupId $groupId older than $initTimestamp deleted successfully." }
                     }
                 }.awaitAll()
-            }
-            transaction {
-                logger.info { "Deleting orphan references..." }
-                metricsRepository.deleteAllOrphanReferences()
-                logger.info { "Orphan references deleted successfully." }
             }
         }
     }
