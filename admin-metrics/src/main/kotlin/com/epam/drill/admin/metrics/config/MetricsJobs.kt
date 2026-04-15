@@ -26,7 +26,7 @@ fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().
     put("reset", reset)
 }
 val updateMetricsEtlJobKey: JobKey
-    get() = JobKey.jobKey("metricsEtl", "metricsJobs")
+    get() = JobKey.jobKey("metricsEtl", "drill")
 val updateMetricsEtlJob: JobDetail
     get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
         .storeDurably()
@@ -38,7 +38,7 @@ val metricsDataRetentionPolicyJob: JobDetail
     get() = JobBuilder.newJob(MetricsDataRetentionPolicyJob::class.java)
         .storeDurably()
         .withDescription("Job for deleting metrics data older than the retention period.")
-        .withIdentity("metricsRetentionPolicyJob", "metricsJobs")
+        .withIdentity("metricsRetentionPolicyJob", "drill")
         .build()
 val deleteMetricsDataJob: JobDetail
     get() = JobBuilder.newJob(DeleteMetricsDataJob::class.java)

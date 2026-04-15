@@ -47,14 +47,14 @@ class DataRetentionPolicyJob(
                 val retentionPeriodDays = settings.retentionPeriodDays ?: return@forEach
                 val createdBefore: LocalDate = LocalDate.now(ZoneId.systemDefault()).minusDays(retentionPeriodDays.toLong())
                 transaction {
-                    logger.debug { "Deleting all data of $groupId older than $createdBefore..." }
+                    logger.info { "Deleting all data for group [$groupId] older than $createdBefore..." }
                     coverageRepository.deleteAllCreatedBefore(groupId, createdBefore)
                     instanceRepository.deleteAllCreatedBefore(groupId, createdBefore)
                     testLaunchRepository.deleteAllCreatedBefore(groupId, createdBefore)
                     testSessionRepository.deleteAllCreatedBefore(groupId, createdBefore)
                     methodRepository.deleteAllCreatedBefore(groupId, createdBefore)
                     buildRepository.deleteAllCreatedBefore(groupId, createdBefore)
-                    logger.debug { "Data of $groupId older than $createdBefore deleted successfully." }
+                    logger.info { "Data for group [$groupId] older than $createdBefore deleted successfully." }
                 }
             }
         }
