@@ -43,6 +43,7 @@ open class EtlOrchestratorImpl(
     override val name: String,
     open val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
+    open val consistencyWindow: Long = 0,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
@@ -101,7 +102,14 @@ open class EtlOrchestratorImpl(
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.second.name }.toSet()
-        val timestampPerLoader = loaderNames.associateWith { (metadata[it]?.lastProcessedAt ?: initTimestamp) }
+        val timestampPerLoader = loaderNames.associateWith {
+            val lastProcessedAt = metadata[it]?.lastProcessedAt
+            if (lastProcessedAt != null) {
+                lastProcessedAt.minusSeconds(consistencyWindow)
+            } else {
+                initTimestamp
+            }
+        }
 
         try {
             for (loader in loaderNames) {

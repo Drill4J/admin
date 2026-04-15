@@ -32,4 +32,4 @@ fun getTestDataDeletionDataMap(groupId: String, testSessionId: String) = JobData
 }
 
 val deleteMetricsDataJobKey: JobKey
-    get() = JobKey.jobKey("deleteMetricsData", "metricsJobs")
+    get() = JobKey.jobKey("metricsDeletionDataJob", "drill")

@@ -43,6 +43,9 @@ class DatabaseConfig(private val config: ApplicationConfig) {
 
     val maxPoolSize: Int
         get() = config.propertyOrNull("maximumPoolSize")?.getString()?.toInt() ?: 50
+
+    val ssl: Boolean
+        get() = config.propertyOrNull("ssl")?.getString()?.toBooleanStrictOrNull() ?: false
 }
 
 val dataSourceDIModule = DI.Module("dataSource") {
@@ -69,6 +72,10 @@ val dataSourceDIModule = DI.Module("dataSource") {
             this.transactionIsolation = "TRANSACTION_READ_UNCOMMITTED"
             this.addDataSourceProperty("rewriteBatchedInserts", true)
             this.addDataSourceProperty("rewriteBatchedStatements", true)
+            if (databaseConfig.ssl) {
+                this.addDataSourceProperty("ssl", true)
+                this.addDataSourceProperty("sslmode", "require")
+            }
             this.validate()
         }
     }

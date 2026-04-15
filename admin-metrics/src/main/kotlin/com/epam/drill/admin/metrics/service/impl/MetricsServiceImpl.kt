@@ -484,10 +484,10 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?
     ): PagedList<TestView> = transaction {
-        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
-        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         // Map response field names to database column names
@@ -549,10 +549,10 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
-        val baselineBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
-        val targetBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
         // Map response field names to database column names
