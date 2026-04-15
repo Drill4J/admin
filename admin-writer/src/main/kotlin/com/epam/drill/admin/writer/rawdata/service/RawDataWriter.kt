@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
+    suspend fun saveBuildInfo(buildPayload: BuildPayload)
     suspend fun saveInstance(instancePayload: InstancePayload)
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)

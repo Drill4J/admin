@@ -60,13 +60,33 @@ class RawDataServiceImpl(
             instanceId = null,
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
+        )
+        transaction {
+            buildRepository.saveBuildId(build)
+        }
+    }
+
+    override suspend fun saveBuildInfo(buildPayload: BuildPayload) {
+        val build = Build(
+            id = generateBuildId(
+                buildPayload.groupId,
+                buildPayload.appId,
+                "",
+                buildPayload.commitSha,
+                buildPayload.buildVersion
+            ),
+            groupId = buildPayload.groupId,
+            appId = buildPayload.appId,
+            instanceId = null,
+            commitSha = buildPayload.commitSha,
+            buildVersion = buildPayload.buildVersion,
             branch = buildPayload.branch,
             commitDate = buildPayload.commitDate?.takeIf { it.isNotEmpty() }?.let { convertGitDefaultDateTime(it) },
             commitMessage = buildPayload.commitMessage,
             commitAuthor = buildPayload.commitAuthor
         )
         transaction {
-            buildRepository.create(build)
+            buildRepository.saveBuildInfo(build)
         }
     }
 
@@ -94,12 +114,8 @@ class RawDataServiceImpl(
                     instanceId = instancePayload.instanceId,
                     commitSha = instancePayload.commitSha,
                     buildVersion = instancePayload.buildVersion,
-                    branch = null,
-                    commitDate = null,
-                    commitMessage = null,
-                    commitAuthor = null
                 )
-                buildRepository.create(build)
+                buildRepository.saveBuildId(build)
             }
             instanceRepository.create(instance)
         }

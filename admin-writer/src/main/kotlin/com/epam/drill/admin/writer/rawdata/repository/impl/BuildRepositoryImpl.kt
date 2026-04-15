@@ -27,9 +27,11 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
 class BuildRepositoryImpl: BuildRepository {
-    override suspend fun create(build: Build) {
+    override suspend fun saveBuildInfo(build: Build) {
         BuildTable.upsert(
-            onUpdateExclude = listOf(BuildTable.createdAt),
+            onUpdateExclude = listOf(
+                BuildTable.createdAt,
+            ),
         ) {
             it[id] = build.id
             it[groupId] = build.groupId
@@ -44,6 +46,27 @@ class BuildRepositoryImpl: BuildRepository {
             it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }
+
+    override suspend fun saveBuildId(build: Build) {
+        BuildTable.upsert(
+            onUpdateExclude = listOf(
+                BuildTable.createdAt,
+                BuildTable.branch,
+                BuildTable.committedAt,
+                BuildTable.commitAuthor,
+                BuildTable.commitMessage
+            ),
+        ) {
+            it[id] = build.id
+            it[groupId] = build.groupId
+            it[appId] = build.appId
+            it[commitSha] = build.commitSha
+            it[buildVersion] = build.buildVersion
+            it[instanceId] = build.instanceId
+            it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+        }
+    }
+
     override suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean {
         return BuildTable.selectAll().where {
             (BuildTable.groupId eq groupId) and

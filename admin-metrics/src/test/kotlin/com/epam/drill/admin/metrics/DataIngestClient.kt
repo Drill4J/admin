@@ -98,7 +98,7 @@ val TestDetails.definitionId: String
     }
 
 suspend fun HttpClient.putBuild(payload: BuildPayload): HttpResponse {
-    return put("/data-ingest/builds") {
+    return put("/data-ingest/builds/info") {
         setBody(payload)
     }.assertSuccessStatus()
 }
