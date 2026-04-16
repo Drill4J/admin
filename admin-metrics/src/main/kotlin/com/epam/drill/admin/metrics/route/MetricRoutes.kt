@@ -77,7 +77,9 @@ class Metrics {
         val branch: String? = null,
         val packageNamePattern: String? = null,
         val classNamePattern: String? = null,
-        val rootId: String? = null
+        val rootId: String? = null,
+        val testSessionId: String? = null,
+        val testDefinitionId: String? = null
     )
 
     @Resource("/changes-coverage-treemap")
@@ -327,7 +329,9 @@ fun Route.getCoverageTreemap() {
             params.branch,
             params.packageNamePattern,
             params.classNamePattern,
-            params.rootId
+            params.rootId,
+            params.testSessionId,
+            params.testDefinitionId
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }

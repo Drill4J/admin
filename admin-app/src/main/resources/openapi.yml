@@ -644,6 +644,16 @@ paths:
           in: query
           schema:
             type: string
+        - name: testSessionId
+          in: query
+          description: Filter coverage by test session ID. When specified, only coverage data from the given test session is included.
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          description: Filter coverage by test definition ID. Requires testSessionId to be specified. When provided, only coverage data from the specific test definition is included.
+          schema:
+            type: string
       responses:
         '200':
           description: Coverage treemap data
