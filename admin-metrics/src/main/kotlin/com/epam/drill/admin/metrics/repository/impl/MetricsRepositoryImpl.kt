@@ -147,10 +147,10 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getMethodsWithCoverageByTestSession(
         buildId: String,
         testSessionId: String,
-        packageName: String?,
-        className: String?,
-        coverageEnvId: String?,
-        coverageTestTag: String?,
+        testTags: List<String>,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -171,9 +171,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_test_session_id => ?
                 """.trimIndent(), buildId, testSessionId
             )
-            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
-            appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { listOf(it) }
+            appendOptional(", input_coverage_test_tags => ?", testTags)
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
             append(
                 """
                 ) 
@@ -187,9 +188,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         buildId: String,
         testSessionId: String,
         testDefinitionId: String,
-        packageName: String?,
-        className: String?,
-        coverageEnvId: String?,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -211,8 +212,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                     input_test_definition_id => ?
                 """.trimIndent(), buildId, testSessionId, testDefinitionId
             )
-            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
             append(
                 """
                 ) 

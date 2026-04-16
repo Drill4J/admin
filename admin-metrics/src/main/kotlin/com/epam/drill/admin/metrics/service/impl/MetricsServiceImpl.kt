@@ -121,6 +121,10 @@ class MetricsServiceImpl(
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
+        val methodCriteria = MethodCriteria(
+            packageName = packageNamePattern,
+            className = classNamePattern
+        )
 
         val data = when {
             testDefinitionId != null -> {
@@ -130,19 +134,19 @@ class MetricsServiceImpl(
                     buildId = buildId,
                     testSessionId = resolvedTestSessionId,
                     testDefinitionId = testDefinitionId,
-                    packageName = packageNamePattern?.takeIf { it.isNotBlank() },
-                    className = classNamePattern?.takeIf { it.isNotBlank() },
-                    coverageEnvId = envId?.takeIf { it.isNotBlank() },
+                    packageNamePattern = methodCriteria.packageNamePattern,
+                    methodSignaturePattern = methodCriteria.signaturePattern,
+                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
                 )
             }
             testSessionId != null -> {
                 metricsRepository.getMethodsWithCoverageByTestSession(
                     buildId = buildId,
                     testSessionId = testSessionId,
-                    packageName = packageNamePattern?.takeIf { it.isNotBlank() },
-                    className = classNamePattern?.takeIf { it.isNotBlank() },
-                    coverageEnvId = envId?.takeIf { it.isNotBlank() },
-                    coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+                    packageNamePattern = methodCriteria.packageNamePattern,
+                    methodSignaturePattern = methodCriteria.signaturePattern,
+                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                    testTags = testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
                 )
             }
             else -> {

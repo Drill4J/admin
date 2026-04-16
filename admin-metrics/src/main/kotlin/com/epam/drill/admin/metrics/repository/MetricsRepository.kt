@@ -49,19 +49,19 @@ interface MetricsRepository {
     suspend fun getMethodsWithCoverageByTestSession(
         buildId: String,
         testSessionId: String,
-        packageName: String? = null,
-        className: String? = null,
-        coverageEnvId: String? = null,
-        coverageTestTag: String? = null,
+        testTags: List<String> = emptyList(),
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
     suspend fun getMethodsWithCoverageByTestDefinition(
         buildId: String,
         testSessionId: String,
         testDefinitionId: String,
-        packageName: String? = null,
-        className: String? = null,
-        coverageEnvId: String? = null,
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
 

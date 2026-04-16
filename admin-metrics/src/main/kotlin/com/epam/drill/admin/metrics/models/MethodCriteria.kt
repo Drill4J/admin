@@ -29,13 +29,13 @@ open class MethodCriteria(
     object NONE : MethodCriteria()
 
     open val packageNamePattern: String?
-        get() = packageName?.let { it.removeSuffix("/") + "/" + "%" }
+        get() = packageName?.let { "$it%" }
 
     open val signaturePattern: String?
         get() = listOf(
-            className ?: "%",
-            methodName ?: "%",
-            methodParams ?: "%",
-            returnType ?: "%"
+            className?.takeIf { it.isNotEmpty() } ?: "%",
+            methodName?.takeIf { it.isNotEmpty() } ?: "%",
+            methodParams?.takeIf { it.isNotEmpty() } ?: "%",
+            returnType?.takeIf { it.isNotEmpty() } ?: "%"
         ).joinToString(":").takeIf { it != "%:%:%:%" }
 }
