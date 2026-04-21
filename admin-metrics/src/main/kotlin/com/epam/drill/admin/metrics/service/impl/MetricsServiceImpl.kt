@@ -114,20 +114,52 @@ class MetricsServiceImpl(
         branch: String?,
         packageNamePattern: String?,
         classNamePattern: String?,
-        rootId: String?
+        rootId: String?,
+        testSessionId: String?,
+        testDefinitionId: String?,
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
-
-        val data = metricsRepository.getMethodsWithCoverage(
-            buildId = buildId,
-            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-            coverageEnvId = envId?.takeIf { it.isNotBlank() },
-            coverageBranch = branch?.takeIf { it.isNotBlank() },
-            packageName = packageNamePattern?.takeIf { it.isNotBlank() },
-            className = classNamePattern?.takeIf { it.isNotBlank() }
+        val methodCriteria = MethodCriteria(
+            packageName = packageNamePattern,
+            className = classNamePattern
         )
+
+        val data = when {
+            testDefinitionId != null -> {
+                val resolvedTestSessionId = testSessionId
+                    ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                metricsRepository.getMethodsWithCoverageByTestDefinition(
+                    buildId = buildId,
+                    testSessionId = resolvedTestSessionId,
+                    testDefinitionId = testDefinitionId,
+                    packageNamePattern = methodCriteria.packageNamePattern,
+                    methodSignaturePattern = methodCriteria.signaturePattern,
+                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                )
+            }
+            testSessionId != null -> {
+                metricsRepository.getMethodsWithCoverageByTestSession(
+                    buildId = buildId,
+                    testSessionId = testSessionId,
+                    packageNamePattern = methodCriteria.packageNamePattern,
+                    methodSignaturePattern = methodCriteria.signaturePattern,
+                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                    testTags = testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                )
+            }
+            else -> {
+                metricsRepository.getMethodsWithCoverage(
+                    buildId = buildId,
+                    coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+                    coverageEnvId = envId?.takeIf { it.isNotBlank() },
+                    coverageBranch = branch?.takeIf { it.isNotBlank() },
+                    packageName = packageNamePattern?.takeIf { it.isNotBlank() },
+                    className = classNamePattern?.takeIf { it.isNotBlank() }
+                )
+            }
+        }
 
         return buildTree(data, rootId)
     }

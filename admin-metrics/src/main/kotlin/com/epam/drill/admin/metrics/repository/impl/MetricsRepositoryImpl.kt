@@ -144,6 +144,87 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getMethodsWithCoverageByTestSession(
+        buildId: String,
+        testSessionId: String,
+        testTags: List<String>,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    signature,
+                    class_name,
+                    method_name,
+                    method_params,
+                    return_type,                    
+                    probes_count,                    
+                    covered_probes AS isolated_covered_probes,
+                    covered_probes AS aggregated_covered_probes,                    
+                    probes_coverage_ratio AS isolated_probes_coverage_ratio,
+                    probes_coverage_ratio AS aggregated_probes_coverage_ratio                    
+                FROM metrics.get_methods_with_coverage_by_test_session(
+                    input_build_id => ?,
+                    input_test_session_id => ?
+                """.trimIndent(), buildId, testSessionId
+            )
+            appendOptional(", input_coverage_test_tags => ?", testTags)
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                ) 
+                ORDER BY signature    
+                """.trimIndent()
+            )
+        }
+    }
+
+    override suspend fun getMethodsWithCoverageByTestDefinition(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    signature,
+                    class_name,
+                    method_name,
+                    method_params,
+                    return_type,                    
+                    probes_count,                    
+                    covered_probes AS isolated_covered_probes,
+                    covered_probes AS aggregated_covered_probes,                    
+                    probes_coverage_ratio AS isolated_probes_coverage_ratio,
+                    probes_coverage_ratio AS aggregated_probes_coverage_ratio                    
+                FROM metrics.get_methods_with_coverage_by_test_definition(
+                    input_build_id => ?,
+                    input_test_session_id => ?,
+                    input_test_definition_id => ?
+                """.trimIndent(), buildId, testSessionId, testDefinitionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                ) 
+                ORDER BY signature    
+                """.trimIndent()
+            )
+        }
+    }
+
+
     override suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String?,
