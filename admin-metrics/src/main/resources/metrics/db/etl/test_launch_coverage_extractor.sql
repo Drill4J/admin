@@ -34,8 +34,8 @@ JOIN raw_data.methods m ON m.method_id = c.method_id AND m.app_id = c.app_id AND
 JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
 JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id
 LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
-WHERE tl.created_at > :since_timestamp
+WHERE tl.group_id = :group_id
+    AND tl.created_at > :since_timestamp
     AND tl.created_at <= :until_timestamp
-    AND tl.group_id = :group_id
-ORDER BY tl.created_at, tl.id, m.method_id
+ORDER BY tl.created_at, c.created_at, c.method_id
 LIMIT :limit
