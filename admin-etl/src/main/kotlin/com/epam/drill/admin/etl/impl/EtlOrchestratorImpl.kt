@@ -49,7 +49,7 @@ open class EtlOrchestratorImpl(
 
     override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
-            logger.info("ETL [$name] for group [$groupId] is starting with init timestamp $initTimestamp...")
+            logger.info("ETL [$name] for group [$groupId] is starting...")
             val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
             val duration = measureTimeMillis {
                 trackProgressOf {
