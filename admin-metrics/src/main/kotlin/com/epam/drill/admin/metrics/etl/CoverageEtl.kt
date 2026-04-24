@@ -173,11 +173,9 @@ val EtlConfig.coveragePipeline
         name = "coverage",
         extractor = coverageExtractor,
         loaders = listOf(
-            untypedNopTransformer to buildMethodTestDefinitionCoverageLoader,
             untypedNopTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
-            test2CodeMappingTransformer to test2CodeMappingLoader,
             untypedNopTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
