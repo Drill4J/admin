@@ -26,6 +26,7 @@ import com.epam.drill.admin.metrics.etl.methodsPipeline
 import com.epam.drill.admin.metrics.etl.buildsPipeline
 import com.epam.drill.admin.metrics.etl.coveragePipeline
 import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
+import com.epam.drill.admin.metrics.etl.testLaunchCoveragePipeline
 import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
 import com.epam.drill.admin.metrics.etl.testSessionBuildsPipeline
 import com.epam.drill.admin.metrics.etl.testSessionsPipeline
@@ -63,10 +64,11 @@ val metricsDIModule
                     pipelines = listOf(
                         buildsPipeline, methodsPipeline,
                         testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
-                        coveragePipeline, testSessionBuildsPipeline
+                        coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
                     ),
                     metadataRepository = instance(),
-                    consistencyWindow = etlConfig.consistencyWindow
+                    consistencyWindow = etlConfig.consistencyWindow,
+                    processingDelay = etlConfig.processingDelay
                 )
             }
         }

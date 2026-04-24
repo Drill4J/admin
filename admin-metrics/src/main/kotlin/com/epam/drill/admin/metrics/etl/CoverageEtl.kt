@@ -38,6 +38,17 @@ val EtlConfig.coverageExtractor
         lastExtractedAtColumnName = "created_at",
     )
 
+val EtlConfig.testLaunchCoverageExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "test_launch_coverage",
+        sqlQuery = fromResource("/metrics/db/etl/test_launch_coverage_extractor.sql"),
+        database = MetricsDatabaseConfig.database,
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "test_completed_at",
+    )
+
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_definition_coverage",
@@ -161,6 +172,19 @@ val EtlConfig.coveragePipeline
     get() = EtlPipelineImpl(
         name = "coverage",
         extractor = coverageExtractor,
+        loaders = listOf(
+            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodCoverageTransformer to buildMethodCoverageLoader,
+            methodDailyCoverageTransformer to methodDailyCoverageLoader,
+            untypedNopTransformer to testSessionBuildsLoader
+        ),
+        bufferSize = bufferSize
+    )
+
+val EtlConfig.testLaunchCoveragePipeline
+    get() = EtlPipelineImpl(
+        name = "test_launch_coverage",
+        extractor = testLaunchCoverageExtractor,
         loaders = listOf(
             untypedNopTransformer to buildMethodTestDefinitionCoverageLoader,
             untypedNopTransformer to buildMethodTestSessionCoverageLoader,

@@ -125,7 +125,8 @@ abstract class BatchDataLoader<T : EtlRow>(
                     if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRowsForUpdate >= batchSize) {
                         onLoadingProgress(
                             EtlLoadingResult(
-                                lastProcessedAt = previousTimestamp ?: throw IllegalStateException("Previous timestamp is null"),
+                                lastProcessedAt = previousTimestamp
+                                    ?: throw IllegalStateException("Previous timestamp is null"),
                                 processedRows = 0,
                             )
                         )
@@ -154,7 +155,8 @@ abstract class BatchDataLoader<T : EtlRow>(
                 // Commit any remaining rows in the buffer
                 result += flushBuffer(groupId, buffer, batchNo) { batch ->
                     if (batch.success) {
-                        lastLoadedTimestamp = untilTimestamp
+                        lastLoadedTimestamp = previousTimestamp
+                            ?: throw IllegalStateException("Previous timestamp is null")
                     }
                     EtlLoadingResult(
                         errorMessage = if (!batch.success) batch.errorMessage else null,
@@ -166,11 +168,13 @@ abstract class BatchDataLoader<T : EtlRow>(
                     }
                 }
             } else {
-                // Update last processed timestamp even if no rows were left in the buffer
-                result += EtlLoadingResult(
-                    lastProcessedAt = untilTimestamp
-                ).also {
-                    onLoadingProgress(it)
+                // Update last processed timestamp even if no rows were loaded
+                if (lastLoadedTimestamp == sinceTimestamp) {
+                    result += EtlLoadingResult(
+                        lastProcessedAt = untilTimestamp
+                    ).also {
+                        onLoadingProgress(it)
+                    }
                 }
             }
             onStatusChanged(EtlStatus.SUCCESS)
