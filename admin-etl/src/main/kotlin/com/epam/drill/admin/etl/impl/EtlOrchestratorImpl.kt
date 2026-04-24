@@ -44,6 +44,7 @@ open class EtlOrchestratorImpl(
     open val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
     open val consistencyWindow: Long = 0,
+    open val processingDelay: Long = 0,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
@@ -98,7 +99,7 @@ open class EtlOrchestratorImpl(
         pipeline: EtlPipeline<*, *>,
         initTimestamp: Instant
     ): EtlProcessingResult = coroutineScope {
-        val snapshotTime = Instant.now()
+        val snapshotTime = Instant.now().minusSeconds(processingDelay)
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.second.name }.toSet()

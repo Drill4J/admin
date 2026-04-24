@@ -67,7 +67,8 @@ val metricsDIModule
                         coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
                     ),
                     metadataRepository = instance(),
-                    consistencyWindow = etlConfig.consistencyWindow
+                    consistencyWindow = etlConfig.consistencyWindow,
+                    processingDelay = etlConfig.processingDelay
                 )
             }
         }
