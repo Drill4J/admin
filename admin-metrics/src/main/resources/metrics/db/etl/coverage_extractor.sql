@@ -33,6 +33,6 @@ LEFT JOIN raw_data.test_sessions ts ON ts.id = c.test_session_id AND ts.group_id
 WHERE c.created_at > :since_timestamp
     AND c.created_at <= :until_timestamp
     AND c.group_id = :group_id
-    AND (c.test_id IS NULL OR c.test_id = 'TEST_CONTEXT_NONE')
+    AND c.test_id IS NULL
 ORDER BY c.created_at, c.method_id
 LIMIT :limit
