@@ -38,7 +38,7 @@ class CoverageRepositoryImpl : CoverageRepository {
             this[MethodCoverageTable.testId] = it.testId
             this[MethodCoverageTable.testSessionId] = it.testSessionId
             this[MethodCoverageTable.probes] = it.probes
-            this[MethodCoverageTable.probesCount] = it.probes.size
+            this[MethodCoverageTable.probesCount] = it.probes.length
         }
     }
 

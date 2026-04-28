@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics
 
+import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
@@ -74,18 +75,19 @@ suspend fun HttpClient.launchTest(
             instanceId = instance.instanceId,
             buildVersion = instance.buildVersion,
             commitSha = instance.commitSha,
-            coverage = coverage.filter { c -> c.second.any { it != 0 } }.map {
+            coverage = coverage.filter { c -> c.second.any { it != 0 } }.map { (method, probes) ->
                 SingleMethodCoveragePayload(
                     signature = listOf(
-                        it.first.classname,
-                        it.first.name,
-                        it.first.params,
-                        it.first.returnType
+                        method.classname,
+                        method.name,
+                        method.params,
+                        method.returnType
                     ).joinToString(":"),
-                    bodyChecksum = it.first.bodyChecksum,
+                    bodyChecksum = method.bodyChecksum,
                     testId = testLaunchId,
                     testSessionId = session.id,
-                    probes = it.second.map { probe -> probe != 0 }.toBooleanArray()
+                    probes = null,
+                    stringProbes = probes.joinToString(separator = "") { if (it != 0) "1" else "0" }
                 )
             }
         )
