@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.config.toBitString
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils.create
 import org.jetbrains.exposed.sql.insert
@@ -31,24 +32,24 @@ class ProbesColumnTypeTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it
     @BeforeEach
     fun initSchema() {
         withRollback {
-            create(BoolArrays)
+            create(CoverageTable)
         }
     }
 
     @Test
     fun `test storing and retrieving Probes`() = withRollback {
-        val originalProbes = booleanArrayOf(true, false, true, false, false, true)
+        val originalProbes = booleanArrayOf(true, false, true, false, false, true).toBitString()
 
-        BoolArrays.insert {
-            it[boolArrays] = originalProbes
+        CoverageTable.insert {
+            it[probes] = originalProbes
         }
-        val retrievedProbes = BoolArrays.selectAll().single()[BoolArrays.boolArrays]
+        val retrievedProbes = CoverageTable.selectAll().single()[CoverageTable.probes]
 
         assertTrue(originalProbes.contentEquals(retrievedProbes))
     }
 
 }
 
-object BoolArrays : IntIdTable() {
-    val boolArrays = registerColumn<BooleanArray>("bool_arrays", ProbesColumnType())
+object CoverageTable : IntIdTable() {
+    val probes = registerColumn("probes", ProbesColumnType())
 }

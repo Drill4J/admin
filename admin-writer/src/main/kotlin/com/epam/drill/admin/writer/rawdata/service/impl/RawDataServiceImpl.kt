@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.service.impl
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
@@ -172,7 +173,10 @@ class RawDataServiceImpl(
             coveragePayload.commitSha,
             coveragePayload.buildVersion
         )
-        coveragePayload.coverage.filter { probes -> probes.probes.any { it } }.map { coverage ->
+        val hasProbes: (SingleMethodCoveragePayload) -> Boolean = { coverage ->
+            coverage.probes?.any { it } ?: coverage.stringProbes?.contains('1') ?: false
+        }
+        coveragePayload.coverage.filter(hasProbes).map { coverage ->
             Coverage(
                 groupId = coveragePayload.groupId,
                 appId = coveragePayload.appId,
@@ -181,11 +185,11 @@ class RawDataServiceImpl(
                 methodId = listOf(
                     coverage.signature,
                     coverage.bodyChecksum,
-                    coverage.probes.size
+                    coverage.probes?.size ?: coverage.stringProbes?.length ?: 0
                 ).joinToString(":").md5(),
                 testId = coverage.testId,
                 testSessionId = coverage.testSessionId,
-                probes = coverage.probes
+                probes = coverage.probes?.toBitString() ?: coverage.stringProbes ?: ""
             )
         }
             .chunked(EXEC_DATA_BATCH_SIZE)
