@@ -33,6 +33,7 @@ class SingleMethodCoveragePayload(
     val bodyChecksum: String,
     val testId: String?,
     val testSessionId: String?,
+    @Deprecated ("Use stringProbes instead")
     val probes: BooleanArray?,
     val stringProbes: String?
 )
