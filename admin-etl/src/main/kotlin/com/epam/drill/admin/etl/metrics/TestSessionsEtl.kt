@@ -26,7 +26,7 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 val EtlConfig.testSessionsExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_sessions",
-        sqlQuery = fromResource("/metrics/db/etl/test_sessions_extractor.sql"),
+        sqlQuery = fromResource("/etl/db/metrics/test_sessions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -37,8 +37,8 @@ val EtlConfig.testSessionsExtractor
 val EtlConfig.testSessionsLoader
     get() = UntypedSqlDataLoader(
         name = "test_sessions",
-        sqlUpsert = fromResource("/metrics/db/etl/test_sessions_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/test_sessions_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,

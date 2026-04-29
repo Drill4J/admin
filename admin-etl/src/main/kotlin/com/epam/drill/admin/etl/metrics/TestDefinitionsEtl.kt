@@ -26,7 +26,7 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 val EtlConfig.testDefinitionsExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_definitions",
-        sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
+        sqlQuery = fromResource("/etl/db/metrics/test_definitions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -37,8 +37,8 @@ val EtlConfig.testDefinitionsExtractor
 val EtlConfig.testDefinitionsLoader
     get() = UntypedSqlDataLoader(
         name = "test_definitions",
-        sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/test_definitions_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/test_definitions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,

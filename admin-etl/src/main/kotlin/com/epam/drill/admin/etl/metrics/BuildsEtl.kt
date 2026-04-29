@@ -26,7 +26,7 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 val EtlConfig.buildsExtractor
     get() = UntypedSqlDataExtractor(
         name = "builds",
-        sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
+        sqlQuery = fromResource("/etl/db/metrics/builds_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -37,8 +37,8 @@ val EtlConfig.buildsExtractor
 val EtlConfig.buildsLoader
     get() = UntypedSqlDataLoader(
         name = "builds",
-        sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/builds_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,

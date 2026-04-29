@@ -29,7 +29,7 @@ import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 val EtlConfig.buildMethodsExtractor
     get() = UntypedSqlDataExtractor(
         name = "build_methods",
-        sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
+        sqlQuery = fromResource("/etl/db/metrics/build_methods_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -39,8 +39,8 @@ val EtlConfig.buildMethodsExtractor
 val EtlConfig.buildMethodsLoader
     get() = UntypedSqlDataLoader(
         name = "build_methods",
-        sqlUpsert = fromResource("/metrics/db/etl/build_methods_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/build_methods_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/build_methods_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/build_methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
@@ -61,8 +61,8 @@ val EtlConfig.methodLoaderTransformer
 val EtlConfig.methodsLoader
     get() = UntypedSqlDataLoader(
         name = "methods",
-        sqlUpsert = fromResource("/metrics/db/etl/methods_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/methods_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/methods_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize
     )
