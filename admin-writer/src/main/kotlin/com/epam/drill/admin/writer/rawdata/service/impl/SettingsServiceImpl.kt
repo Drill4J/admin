@@ -17,13 +17,15 @@ package com.epam.drill.admin.writer.rawdata.service.impl
 
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.entity.GroupSettings
+import com.epam.drill.admin.writer.rawdata.repository.GroupRepository
 import com.epam.drill.admin.writer.rawdata.repository.GroupSettingsRepository
 import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
 
 class SettingsServiceImpl(
-    private val groupSettingsRepository: GroupSettingsRepository
+    private val groupSettingsRepository: GroupSettingsRepository,
+    private val groupRepository: GroupRepository
 ) : SettingsService {
 
     override suspend fun getGroupSettings(groupId: String) = transaction {
@@ -47,5 +49,18 @@ class SettingsServiceImpl(
 
     override suspend fun clearGroupSettings(groupId: String) = transaction {
         groupSettingsRepository.deleteByGroupId(groupId)
+    }
+
+    override suspend fun getAllGroupSettings(): Map<String, GroupSettingsView> = transaction {
+        val settings = groupSettingsRepository.getAll()
+            .associateBy { it.groupId }
+            .mapValues { (_, settings) ->
+                GroupSettingsView(
+                    retentionPeriodDays = settings.retentionPeriodDays,
+                    metricsPeriodDays = settings.metricsPeriodDays
+                )
+            }.toMutableMap()
+        val defaults = groupRepository.getAll().associate { it.groupId to GroupSettingsView() }
+        return@transaction defaults + settings
     }
 }

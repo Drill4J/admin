@@ -33,7 +33,7 @@ class DatabaseConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("port")?.getString()?.toInt() ?: 5432
 
     val databaseName: String
-        get() = config.propertyOrNull("dbName")?.getString() ?: "drill"
+        get() = config.propertyOrNull("dbName")?.getString() ?: "postgres"
 
     val username: String
         get() = config.propertyOrNull("userName")?.getString() ?: "postgres"
@@ -48,38 +48,45 @@ class DatabaseConfig(private val config: ApplicationConfig) {
         get() = config.propertyOrNull("ssl")?.getString()?.toBooleanStrictOrNull() ?: false
 }
 
+private fun DatabaseConfig.toHikariConfig(): HikariConfig = HikariConfig().apply {
+    this.driverClassName = "org.postgresql.Driver"
+    this.jdbcUrl = "jdbc:postgresql://${host}:${port}/${databaseName}"
+    this.username = this@toHikariConfig.username
+    this.password = this@toHikariConfig.password
+    this.maximumPoolSize = maxPoolSize
+    this.isAutoCommit = true
+    this.transactionIsolation = "TRANSACTION_READ_UNCOMMITTED"
+    this.addDataSourceProperty("rewriteBatchedInserts", true)
+    this.addDataSourceProperty("rewriteBatchedStatements", true)
+    if (ssl) {
+        this.addDataSourceProperty("ssl", true)
+        this.addDataSourceProperty("sslmode", "require")
+    }
+    this.validate()
+}
+
 val dataSourceDIModule = DI.Module("dataSource") {
     bind<DatabaseConfig>() with singleton {
         DatabaseConfig(instance<Application>().environment.config.config("drill.database"))
     }
-    bind<HikariConfig>() with singleton {
-        val databaseConfig = instance<DatabaseConfig>()
-
-        val host = databaseConfig.host
-        val port = databaseConfig.port
-        val dbName = databaseConfig.databaseName
-        val userName = databaseConfig.username
-        val password = databaseConfig.password
-        val maxPoolSize = databaseConfig.maxPoolSize
-
-        HikariConfig().apply {
-            this.driverClassName = "org.postgresql.Driver"
-            this.jdbcUrl = "jdbc:postgresql://$host:$port/$dbName"
-            this.username = userName
-            this.password = password
-            this.maximumPoolSize = maxPoolSize
-            this.isAutoCommit = true
-            this.transactionIsolation = "TRANSACTION_READ_UNCOMMITTED"
-            this.addDataSourceProperty("rewriteBatchedInserts", true)
-            this.addDataSourceProperty("rewriteBatchedStatements", true)
-            if (databaseConfig.ssl) {
-                this.addDataSourceProperty("ssl", true)
-                this.addDataSourceProperty("sslmode", "require")
-            }
-            this.validate()
-        }
+    bind<DatabaseConfig>(tag = "metrics") with singleton {
+        DatabaseConfig(instance<Application>().environment.config.config("drill.metrics.database"))
     }
     bind<DataSource>() with singleton {
-        HikariDataSource(instance())
+        HikariDataSource(instance<DatabaseConfig>().toHikariConfig())
+    }
+    bind<DataSource>(tag = "metrics") with singleton {
+        val mainConfig = instance<DatabaseConfig>()
+        val metricsConfig = instance<DatabaseConfig>(tag = "metrics")
+        if (metricsConfig.host == mainConfig.host
+            && metricsConfig.port == mainConfig.port
+            && metricsConfig.databaseName == mainConfig.databaseName
+            && metricsConfig.username == mainConfig.username
+            && metricsConfig.password == mainConfig.password
+        ) {
+            instance<DataSource>()
+        } else {
+            HikariDataSource(metricsConfig.toHikariConfig())
+        }
     }
 }

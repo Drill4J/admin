@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.etl
+package com.epam.drill.admin.etl.metrics
 
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
@@ -21,15 +21,16 @@ import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.untypedNopTransformer
-import com.epam.drill.admin.metrics.config.EtlConfig
+import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
 val EtlConfig.buildMethodsExtractor
     get() = UntypedSqlDataExtractor(
         name = "build_methods",
         sqlQuery = fromResource("/metrics/db/etl/build_methods_extractor.sql"),
-        database = MetricsDatabaseConfig.database,
+        database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         lastExtractedAtColumnName = "created_at",

@@ -15,24 +15,8 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import com.epam.drill.admin.common.scheduler.DrillScheduler
-import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
-import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
-import com.epam.drill.admin.etl.EtlMetadataRepository
-import com.epam.drill.admin.etl.EtlOrchestrator
-import com.epam.drill.admin.etl.EtlPipeline
-import com.epam.drill.admin.etl.UntypedRow
-import com.epam.drill.admin.metrics.etl.methodsPipeline
-import com.epam.drill.admin.metrics.etl.buildsPipeline
-import com.epam.drill.admin.metrics.etl.coveragePipeline
-import com.epam.drill.admin.metrics.etl.testDefinitionsPipeline
-import com.epam.drill.admin.metrics.etl.testLaunchCoveragePipeline
-import com.epam.drill.admin.metrics.etl.testLaunchesPipeline
-import com.epam.drill.admin.metrics.etl.testSessionBuildsPipeline
-import com.epam.drill.admin.metrics.etl.testSessionsPipeline
 import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
 import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
-import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.repository.impl.MetricsRepositoryImpl
 import com.epam.drill.admin.metrics.service.MetricsService
@@ -49,44 +33,13 @@ val metricsDIModule
         bind<MetricsRepository>() with singleton {
             MetricsRepositoryImpl()
         }
-        bind<EtlMetadataRepository>() with singleton {
-            EtlMetadataRepositoryImpl(
-                database = MetricsDatabaseConfig.database,
-                dbSchema = MetricsDatabaseConfig.dbSchema
-            )
-        }
-        bind<EtlOrchestrator>() with singleton {
-            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"))
-            with(etlConfig) {
-                EtlOrchestratorImpl(
-                    name = "metrics",
-                    pipelines = listOf(
-                        buildsPipeline, methodsPipeline,
-                        testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
-                        coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
-                    ),
-                    metadataRepository = instance(),
-                    consistencyWindow = etlConfig.consistencyWindow,
-                    processingDelay = etlConfig.processingDelay
-                )
-            }
-        }
         bind<MetricsService>() with singleton {
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
             MetricsServiceImpl(
                 metricsRepository = instance(),
-                scheduler = instance<DrillScheduler>(),
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
                 testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
-                etlRepository = instance()
-            )
-        }
-        bind<UpdateMetricsEtlJob>() with singleton {
-            UpdateMetricsEtlJob(
-                metricsRepository = instance(),
-                etl = instance()
             )
         }
         bind<MetricsDataRetentionPolicyJob>() with singleton {

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.etl
+package com.epam.drill.admin.etl.metrics
 
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
@@ -21,9 +21,10 @@ import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.untypedNopTransformer
-import com.epam.drill.admin.metrics.config.EtlConfig
+import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import org.postgresql.util.PGobject
 
 
@@ -31,7 +32,7 @@ val EtlConfig.coverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "coverage",
         sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
-        database = MetricsDatabaseConfig.database,
+        database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
@@ -42,7 +43,7 @@ val EtlConfig.testLaunchCoverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_launch_coverage",
         sqlQuery = fromResource("/metrics/db/etl/test_launch_coverage_extractor.sql"),
-        database = MetricsDatabaseConfig.database,
+        database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,

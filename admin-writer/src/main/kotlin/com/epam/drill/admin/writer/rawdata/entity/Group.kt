@@ -13,14 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.writer.rawdata.entity
 
-import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
-import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
+class Group(
+    val groupId: String
+)
 
-interface SettingsService {
-    suspend fun getGroupSettings(groupId: String): GroupSettingsView
-    suspend fun saveGroupSettings(groupId: String, payload: GroupSettingsPayload)
-    suspend fun clearGroupSettings(groupId: String)
-    suspend fun getAllGroupSettings(): Map<String, GroupSettingsView>
-}

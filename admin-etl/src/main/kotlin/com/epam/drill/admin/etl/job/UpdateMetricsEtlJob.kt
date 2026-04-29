@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.job
+package com.epam.drill.admin.etl.job
 
 import com.epam.drill.admin.etl.EtlOrchestrator
-import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -24,10 +24,11 @@ import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 import java.time.Instant
+import java.time.ZoneOffset.UTC
 
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
-    private val metricsRepository: MetricsRepository,
+    private val settingsService: SettingsService,
     private val etl: EtlOrchestrator,
 ) : Job {
 
@@ -36,8 +37,13 @@ class UpdateMetricsEtlJob(
         val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
 
         runBlocking {
-            val results = metricsRepository.getMetricsPeriodDays().let {
-                if (groupId != null) mapOf(groupId to (it[groupId] ?: Instant.EPOCH)) else it
+            val results = settingsService.getAllGroupSettings().let {
+                if (groupId != null) mapOf(groupId to (it[groupId])) else it
+            }.map { (groupId, groupSettings) ->
+                val initTimestamp = groupSettings?.metricsPeriodDays?.let {
+                    Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
+                } ?: Instant.EPOCH
+                groupId to initTimestamp
             }.map { (groupId, initTimestamp) ->
                 async {
                     if (reset)

@@ -142,9 +142,4 @@ interface MetricsService {
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView>
-
-    suspend fun refresh(groupId: String? = null, reset: Boolean = false)
-
-    suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
-
 }
