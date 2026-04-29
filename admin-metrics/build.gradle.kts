@@ -42,6 +42,7 @@ kotlin.sourceSets {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":admin-common"))
+    implementation(project(":admin-writer"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")

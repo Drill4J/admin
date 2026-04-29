@@ -45,6 +45,7 @@ val metricsDIModule
         bind<MetricsDataRetentionPolicyJob>() with singleton {
             MetricsDataRetentionPolicyJob(
                 metricsRepository = instance(),
+                settingsService = instance(),
             )
         }
         bind<DeleteMetricsDataJob>() with singleton {
