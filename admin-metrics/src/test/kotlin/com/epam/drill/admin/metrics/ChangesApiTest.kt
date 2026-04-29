@@ -37,9 +37,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ChangesApiTest : DatabaseTests({
-    RawDataWriterDatabaseConfig.init(it)
-    MetricsDatabaseConfig.init(it)
+class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
 }) {
     private suspend fun TestDataDsl.initBuildsAndMethodsData() {
         build1 has listOf(method1, method2, method4)
@@ -176,7 +176,7 @@ class ChangesApiTest : DatabaseTests({
         }
 
     @AfterEach
-    fun clearAll() = withTransaction {
+    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()

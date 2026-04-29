@@ -29,6 +29,8 @@ import org.kodein.di.DI
 import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
 import com.epam.drill.admin.common.route.commonStatusPages
+import org.jetbrains.exposed.sql.Database
+import javax.sql.DataSource
 
 
 fun withRollback(test: suspend () -> Unit) {
@@ -43,9 +45,9 @@ fun withRollback(test: suspend () -> Unit) {
     }
 }
 
-fun withTransaction(test: suspend () -> Unit) {
+fun withTransaction(db: Database? = null, test: suspend () -> Unit) {
     runBlocking {
-        newSuspendedTransaction {
+        newSuspendedTransaction(db = db) {
             test()
         }
     }

@@ -16,7 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.DatabaseTests
+import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
@@ -35,9 +35,9 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class ImpactedMethodsApiTest : DatabaseTests({
-    RawDataWriterDatabaseConfig.init(it)
-    MetricsDatabaseConfig.init(it)
+class ImpactedMethodsApiTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
 }) {
     @Test
     fun `given a build with changes, impacted methods service should return a list of impacted methods`() =
@@ -108,7 +108,7 @@ class ImpactedMethodsApiTest : DatabaseTests({
         }
 
     @AfterTest
-    fun clearAll() = withTransaction {
+    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()

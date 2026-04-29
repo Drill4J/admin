@@ -16,7 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.DatabaseTests
+import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
@@ -28,9 +28,9 @@ import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ApplicationsApiTest : DatabaseTests({
-    RawDataWriterDatabaseConfig.init(it)
-    MetricsDatabaseConfig.init(it)
+class ApplicationsApiTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
 }) {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuild(BuildPayload(groupId = testGroup, appId = "app-1", buildVersion = "1.0.0"))
@@ -62,7 +62,7 @@ class ApplicationsApiTest : DatabaseTests({
     }
 
     @AfterEach
-    fun clearAll() = withTransaction {
+    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         BuildTable.deleteAll()
     }
 
