@@ -46,6 +46,25 @@ interface MetricsRepository {
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
+    suspend fun getMethodsWithCoverageByTestSession(
+        buildId: String,
+        testSessionId: String,
+        testTags: List<String> = emptyList(),
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): List<Map<String, Any?>>
+
+    suspend fun getMethodsWithCoverageByTestDefinition(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): List<Map<String, Any?>>
+
+
     suspend fun getMethodsCount(
         buildId: String,
         packageNamePattern: String? = null,

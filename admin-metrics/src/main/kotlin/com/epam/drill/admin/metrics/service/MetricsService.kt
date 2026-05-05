@@ -45,6 +45,8 @@ interface MetricsService {
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
+        testSessionId: String? = null,
+        testDefinitionId: String? = null,
     ): List<Any>
 
     suspend fun getChangesCoverageTreemap(

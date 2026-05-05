@@ -26,5 +26,5 @@ WHERE bm.group_id = :group_id
             AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
                 OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
     )
-ORDER BY bm.created_at ASC, bm.group_id, bm.method_id
+ORDER BY bm.created_at ASC, bm.method_id
 LIMIT :limit

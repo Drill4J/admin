@@ -64,4 +64,11 @@ class EtlConfig(private val config: ApplicationConfig) {
      */
     val consistencyWindow : Long
         get() = config.propertyOrNull("consistencyWindow")?.getString()?.toLongOrNull() ?: 0L
+
+    /**
+     * Number of seconds to subtract from the current time when calculating the upper bound of the ETL processing window.
+     * This delays ETL process to allow current transactions in the data source to complete.
+     */
+    val processingDelay : Long
+        get() = config.propertyOrNull("processingDelay")?.getString()?.toLongOrNull() ?: 0L
 }

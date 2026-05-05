@@ -131,3 +131,34 @@ SELECT
 FROM metrics.test_definitions td
 LEFT JOIN metrics.test_launches tl ON tl.group_id = td.group_id AND tl.test_definition_id = td.test_definition_id
 GROUP BY td.group_id, td.test_path, tl.test_session_id;
+
+-------------------------------------------------------------------
+-- Create a view of test session definitions with information about
+-- the number of test launches, total duration, and overall results
+-------------------------------------------------------------------
+DROP VIEW IF EXISTS metrics.test_session_definitions CASCADE;
+CREATE OR REPLACE VIEW metrics.test_session_definitions AS
+SELECT
+    ts.test_session_id,
+    td.test_definition_id,
+    COUNT(*) AS test_launches,
+    SUM(tl.test_duration) AS test_duration_sum,
+    raw_data.format_duration(SUM(tl.test_duration)::bigint) AS test_duration_sum_formatted,
+    CASE
+        WHEN SUM(tl.failed) > 0 THEN 'FAILED'
+        WHEN SUM(tl.passed) > 0 THEN 'PASSED'
+        WHEN SUM(tl.smart_skipped) > 0 THEN 'SMART_SKIPPED'
+        WHEN SUM(tl.skipped) > 0 THEN 'SKIPPED'
+        ELSE 'UNKNOWN'
+    END AS test_result,
+    MIN(td.test_name) AS test_name,
+    MIN(td.test_path) AS test_path,
+    MIN(td.test_runner) AS test_runner,
+    MIN(td.test_tags) AS test_tags,
+    array_to_string(MIN(td.test_tags), ', ') AS test_tags_formatted
+FROM metrics.test_sessions ts
+JOIN metrics.test_launches tl ON tl.test_session_id = ts.test_session_id AND tl.group_id = ts.group_id
+JOIN metrics.test_definitions td ON td.group_id = tl.group_id AND td.test_definition_id = tl.test_definition_id
+GROUP BY
+    ts.test_session_id,
+    td.test_definition_id;
