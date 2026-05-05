@@ -51,7 +51,7 @@ abstract class PageDataExtractor<T : EtlRow>(
             try {
                 while (hasMore && currentSince < untilTimestamp) {
                     page.incrementAndGet()
-                    logger.debug { "ETL extractor [$name] for group [$groupId] is executing query for page ${page.get()} since $currentSince ..." }
+                    logger.debug { "ETL extractor [$name] for group [$groupId] is executing query for page ${page.get()} since $currentSince until $untilTimestamp ..." }
 
                     var previousTimestamp: Instant? = null
                     var previousEmittedTimestamp: Instant? = null
@@ -95,10 +95,13 @@ abstract class PageDataExtractor<T : EtlRow>(
                     if (pageRows == 0L || pageRows < extractionLimit) {
                         hasMore = false
                         emitBuffer(buffer, emitter)
-                        logger.debug { "ETL extractor [$name] for group [$groupId] completed fetching" +
-                                ", rows fetched: ${rowsFetched.get()}" +
-                                ", total pages: ${page.get()}" +
-                                ", last extracted at $currentSince" }
+                        previousEmittedTimestamp = previousTimestamp
+                        logger.debug {
+                            "ETL extractor [$name] for group [$groupId] completed fetching" +
+                                    ", rows fetched: ${rowsFetched.get()}" +
+                                    ", total pages: ${page.get()}" +
+                                    (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
+                        }
                     } else {
                         currentSince = previousEmittedTimestamp ?: throw IllegalStateException(
                             "No rows were emitted on page $page because all fetched records had the same timestamp. Please increase the extraction limit. Current is $extractionLimit."
@@ -106,7 +109,8 @@ abstract class PageDataExtractor<T : EtlRow>(
                         // Remove rows from buffer that have timestamp greater than currentSince to avoid re-emission on the next page
                         buffer.removeIf { it.timestamp > currentSince }
                         hasMore = true
-                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page ${page.get()}, last extracted at $currentSince" }
+                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page ${page.get()}" +
+                                ", last extracted at $previousEmittedTimestamp" }
                     }
                 }
             } catch (e: Exception) {

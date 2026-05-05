@@ -32,7 +32,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-private const val EXEC_DATA_BATCH_SIZE = 100
+private const val EXEC_DATA_BATCH_SIZE = 1000
 
 class RawDataServiceImpl(
     private val instanceRepository: InstanceRepository,
@@ -183,8 +183,8 @@ class RawDataServiceImpl(
                     coverage.bodyChecksum,
                     coverage.probes.size
                 ).joinToString(":").md5(),
-                testId = coverage.testId,
-                testSessionId = coverage.testSessionId,
+                testId = coverage.testId?.takeIf { it != "TEST_CONTEXT_NONE"  },
+                testSessionId = coverage.testSessionId?.takeIf { it != "GLOBAL" },
                 probes = coverage.probes
             )
         }

@@ -44,12 +44,13 @@ open class EtlOrchestratorImpl(
     open val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
     open val consistencyWindow: Long = 0,
+    open val processingDelay: Long = 0,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun run(groupId: String, initTimestamp: Instant): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
-            logger.info("ETL [$name] for group [$groupId] is starting with init timestamp $initTimestamp...")
+            logger.info("ETL [$name] for group [$groupId] is starting...")
             val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
             val duration = measureTimeMillis {
                 trackProgressOf {
@@ -98,7 +99,7 @@ open class EtlOrchestratorImpl(
         pipeline: EtlPipeline<*, *>,
         initTimestamp: Instant
     ): EtlProcessingResult = coroutineScope {
-        val snapshotTime = Instant.now()
+        val snapshotTime = Instant.now().minusSeconds(processingDelay)
         val metadata = metadataRepository.getAllMetadataByExtractor(groupId, pipeline.name, pipeline.extractor.name)
             .associateBy { it.loaderName }
         val loaderNames = pipeline.loaders.map { it.second.name }.toSet()
