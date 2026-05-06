@@ -18,31 +18,27 @@ package com.epam.drill.admin.writer.rawdata.config
 import org.jetbrains.exposed.sql.IColumnType
 import org.postgresql.util.PGobject
 
-class ProbesColumnType(override var nullable: Boolean = false) : IColumnType<BooleanArray> {
+typealias BitString = String
+
+class ProbesColumnType(override var nullable: Boolean = false) : IColumnType<BitString> {
     override fun sqlType(): String = "VARBIT"
 
-    override fun valueFromDB(value: Any): BooleanArray =
+    override fun valueFromDB(value: Any): BitString =
         when (value) {
-            is String -> stringToBooleanArray(value)
-            is PGobject -> stringToBooleanArray(value.value ?: "")
+            is String -> value
+            is PGobject -> value.value ?: ""
             else -> throw IllegalStateException("Unsupported value type: ${value::class}")
         }
 
-    override fun notNullValueToDB(value: BooleanArray): Any {
+    override fun notNullValueToDB(value: BitString): Any {
         return PGobject().apply {
             this.type = "VARBIT"
-            this.value = booleanArrayToString(value)
+            this.value = value
         }
     }
 
 }
 
-internal fun stringToBooleanArray(str: String): BooleanArray {
-    return BooleanArray(str.length) { index ->
-        str[index] == '1'
-    }
-}
-
-internal fun booleanArrayToString(arr: BooleanArray): String {
-    return arr.joinToString("") { if (it) "1" else "0" }
+fun BooleanArray.toBitString(): BitString {
+    return joinToString(separator = "") { if (it) "1" else "0" }
 }

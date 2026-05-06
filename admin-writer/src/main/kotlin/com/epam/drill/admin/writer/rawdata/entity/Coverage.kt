@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import com.epam.drill.admin.writer.rawdata.config.BitString
+
 class Coverage(
     val groupId: String,
     val appId: String,
@@ -23,5 +25,5 @@ class Coverage(
     val methodId: String,
     val testId: String?,
     val testSessionId: String?,
-    val probes: BooleanArray
+    val probes: BitString
 )

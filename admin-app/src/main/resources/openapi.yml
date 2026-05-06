@@ -1946,13 +1946,19 @@ components:
           description: Unique identifier of the test session during which the coverage was recorded. Reference to the test session id (saved via /api/data-ingest/test-session). When absent, indicates global coverage data collected outside of any specific test session context.
         probes:
           type: array
-          description: Array of boolean values representing the execution state of each bytecode probe (instruction) in the method. Index position corresponds to probe position in bytecode. True indicates the probe was executed; false indicates it was not executed during the test.
+          deprecated: true
+          description: |
+            Array of boolean values representing the execution state of each bytecode probe (instruction) in the method.
+            Index position corresponds to probe position in bytecode. True indicates the probe was executed; false indicates it was not executed during the test.
+            Deprecated: use "stringProbes" instead.
           items:
             type: boolean
+        stringProbes:
+          type: string
+          description: Representing the execution state of each bytecode probe (instruction) in the method as a string of '1's and '0's, where '1' represents true (executed) and '0' represents false (not executed).
       required:
         - signature
         - bodyChecksum
-        - probes
     MethodsPayload:
       type: object
       description: |
