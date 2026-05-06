@@ -16,7 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
-import com.epam.drill.admin.test.DatabaseTests
+import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.table.BuildMethodTable
@@ -31,9 +31,9 @@ import org.jetbrains.exposed.sql.deleteAll
 import kotlin.test.AfterTest
 import kotlin.test.Test
 
-class TestImpactAnalysisTest : DatabaseTests({
-    RawDataWriterDatabaseConfig.init(it)
-    MetricsDatabaseConfig.init(it)
+class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
 }) {
 
     @Test
@@ -104,7 +104,7 @@ class TestImpactAnalysisTest : DatabaseTests({
         }
 
     @AfterTest
-    fun clearAll() = withTransaction {
+    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()
         InstanceTable.deleteAll()
         MethodTable.deleteAll()

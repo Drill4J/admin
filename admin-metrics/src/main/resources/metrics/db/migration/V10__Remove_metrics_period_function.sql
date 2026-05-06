@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS metrics.get_metrics_period CASCADE;

@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.etl
+package com.epam.drill.admin.etl.metrics
 
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
-import com.epam.drill.admin.metrics.config.EtlConfig
+import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
 val EtlConfig.buildsExtractor
     get() = UntypedSqlDataExtractor(
         name = "builds",
-        sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
-        database = MetricsDatabaseConfig.database,
+        sqlQuery = fromResource("/etl/db/metrics/builds_extractor.sql"),
+        database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
@@ -36,8 +37,8 @@ val EtlConfig.buildsExtractor
 val EtlConfig.buildsLoader
     get() = UntypedSqlDataLoader(
         name = "builds",
-        sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
-        sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
+        sqlUpsert = fromResource("/etl/db/metrics/builds_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,

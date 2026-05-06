@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.writer.rawdata.repository.impl
 
-import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
-import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
+import com.epam.drill.admin.writer.rawdata.entity.Group
+import com.epam.drill.admin.writer.rawdata.repository.GroupRepository
+import com.epam.drill.admin.writer.rawdata.table.BuildTable
 
-interface SettingsService {
-    suspend fun getGroupSettings(groupId: String): GroupSettingsView
-    suspend fun saveGroupSettings(groupId: String, payload: GroupSettingsPayload)
-    suspend fun clearGroupSettings(groupId: String)
-    suspend fun getAllGroupSettings(): Map<String, GroupSettingsView>
+class GroupRepositoryImpl : GroupRepository {
+    override suspend fun getAll(): List<Group> {
+        return BuildTable
+            .select(BuildTable.groupId)
+            .withDistinct()
+            .map { row -> Group(groupId = row[BuildTable.groupId]) }
+    }
 }
+

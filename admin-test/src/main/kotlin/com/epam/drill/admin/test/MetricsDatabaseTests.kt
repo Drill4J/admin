@@ -25,31 +25,37 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import javax.sql.DataSource
 
 @Testcontainers
-open class DatabaseTests(private val initialization: (DataSource) -> Unit) {
+open class MetricsDatabaseTests(private val initialization: (default: DataSource, metrics: DataSource) -> Unit) {
 
     companion object {
-        private lateinit var dataSource: DataSource
+        private const val METRICS_DB_NAME = "metrics_db"
+
+        private lateinit var defaultDataSource: DataSource
+        private lateinit var metricsDataSource: DataSource
 
         @Container
-        private val postgresqlContainer: PostgreSQLContainer<Nothing> = newPostgresContainer()
+        private val postgresqlContainer: PostgreSQLContainer<Nothing> =
+            newPostgresContainer(initScript = "metrics_db_init.sql")
 
         @JvmStatic
         @BeforeAll
         fun setup() {
             postgresqlContainer.start()
-            dataSource = postgresqlContainer.newHikariDataSource()
+            defaultDataSource = postgresqlContainer.newHikariDataSource()
+            metricsDataSource = postgresqlContainer.newHikariDataSource(databaseName = METRICS_DB_NAME)
         }
 
         @JvmStatic
         @AfterAll
         fun finish() {
-            (dataSource as HikariDataSource).close()
+            (defaultDataSource as HikariDataSource).close()
+            (metricsDataSource as HikariDataSource).close()
             postgresqlContainer.stop()
         }
     }
 
     @BeforeEach
     fun initDatabase() {
-        initialization(dataSource)
+        initialization(defaultDataSource, metricsDataSource)
     }
 }

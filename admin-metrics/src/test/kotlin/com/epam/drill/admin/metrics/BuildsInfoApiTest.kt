@@ -31,9 +31,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class BuildsInfoApiTest : DatabaseTests({
-    RawDataWriterDatabaseConfig.init(it)
-    MetricsDatabaseConfig.init(it)
+class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
+    RawDataWriterDatabaseConfig.init(default)
+    MetricsDatabaseConfig.init(metrics)
 }) {
     private suspend fun TestDataDsl.initTestData() {
         client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = testBranch))
@@ -174,7 +174,7 @@ class BuildsInfoApiTest : DatabaseTests({
         }
 
     @AfterEach
-    fun clearAll() = withTransaction {
+    fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         BuildTable.deleteAll()
     }
 

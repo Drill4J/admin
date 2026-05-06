@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.job
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -25,10 +26,12 @@ import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 import java.time.Instant
+import java.time.ZoneOffset.UTC
 
 @DisallowConcurrentExecution
 class MetricsDataRetentionPolicyJob(
     private val metricsRepository: MetricsRepository,
+    private val settingsService: SettingsService,
 ) : Job {
     private val logger = KotlinLogging.logger {}
 
@@ -36,9 +39,15 @@ class MetricsDataRetentionPolicyJob(
         val groupId: String? = context.mergedJobDataMap.getString("groupId")
         runBlocking {
             transaction {
-                metricsRepository.getMetricsPeriodDays().let { periodDays ->
-                    if (groupId != null) mapOf(groupId to (periodDays[groupId] ?: Instant.EPOCH)) else periodDays
-                }.filterValues { it > Instant.EPOCH }.map { (groupId, initTimestamp) ->
+                settingsService.getAllGroupSettings().let {
+                    if (groupId != null) mapOf(groupId to (it[groupId])) else it
+                }.filterValues { groupSettings ->
+                    groupSettings?.metricsPeriodDays != null
+                }.mapValues { (_, groupSettings) ->
+                    groupSettings?.metricsPeriodDays?.let {
+                        Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
+                    } ?: Instant.EPOCH
+                }.map { (groupId, initTimestamp) ->
                     async {
                         logger.info { "Deleting all metrics data for groupId [$groupId] older than $initTimestamp..." }
                         metricsRepository.deleteAllBuildDataCreatedBefore(groupId, initTimestamp)

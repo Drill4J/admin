@@ -250,19 +250,6 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null,
     )
-
-    @Resource("/refresh")
-    class Refresh(
-        val parent: Metrics,
-        val groupId: String? = null,
-        val reset: Boolean = false
-    )
-
-    @Resource("/refresh-status")
-    class RefreshStatus(
-        val parent: Metrics,
-        val groupId: String
-    )
 }
 
 fun Route.metricsRoutes() {
@@ -278,11 +265,6 @@ fun Route.metricsRoutes() {
     postImpactedTests()
     getImpactedMethods()
     postImpactedMethods()
-}
-
-fun Route.metricsManagementRoutes() {
-    postRefreshMetrics()
-    getRefreshStatus()
 }
 
 fun Route.getApplications() {
@@ -511,24 +493,6 @@ fun Route.postImpactedMethods() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
-    }
-}
-
-fun Route.postRefreshMetrics() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    postWithParams<Metrics.Refresh> { params ->
-        metricsService.refresh(params.groupId, params.reset)
-        call.ok("Metrics were refreshed.")
-    }
-}
-
-fun Route.getRefreshStatus() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.RefreshStatus> { params ->
-        val status = metricsService.getRefreshStatus(params.groupId)
-        this.call.respond(HttpStatusCode.OK, ApiResponse(status))
     }
 }
 

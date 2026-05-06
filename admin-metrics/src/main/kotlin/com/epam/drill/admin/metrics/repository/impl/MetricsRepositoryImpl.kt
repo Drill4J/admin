@@ -642,20 +642,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun getMetricsPeriodDays(): Map<String, Instant> = transaction {
-        executeQueryReturnMap(
-            """             
-                SELECT 
-                    group_id, 
-                    metrics.get_metrics_period(group_id) AS metrics_period
-                FROM raw_data.builds
-                GROUP BY group_id
-                 """.trimIndent()
-        ).associate {
-            it["group_id"] as String to (it["metrics_period"] as LocalDateTime).toInstant(UTC)
-        }
-    }
-
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(

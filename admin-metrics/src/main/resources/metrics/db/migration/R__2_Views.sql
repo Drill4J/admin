@@ -143,7 +143,7 @@ SELECT
     td.test_definition_id,
     COUNT(*) AS test_launches,
     SUM(tl.test_duration) AS test_duration_sum,
-    raw_data.format_duration(SUM(tl.test_duration)::bigint) AS test_duration_sum_formatted,
+    metrics.format_duration(SUM(tl.test_duration)::bigint) AS test_duration_sum_formatted,
     CASE
         WHEN SUM(tl.failed) > 0 THEN 'FAILED'
         WHEN SUM(tl.passed) > 0 THEN 'PASSED'

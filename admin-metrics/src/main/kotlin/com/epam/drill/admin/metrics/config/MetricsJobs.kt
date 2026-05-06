@@ -18,22 +18,8 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
 import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
 import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
-import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
 import org.quartz.*
 
-fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().apply {
-    groupId?.let { put("groupId", it) }
-    put("reset", reset)
-}
-val updateMetricsEtlJobKey: JobKey
-    get() = JobKey.jobKey("metricsEtl", "drill")
-val updateMetricsEtlJob: JobDetail
-    get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
-        .storeDurably()
-        .withDescription("Job for updating metrics using ETL processing.")
-        .withIdentity(updateMetricsEtlJobKey)
-        .usingJobData(getUpdateMetricsEtlDataMap(null, false))
-        .build()
 val metricsDataRetentionPolicyJob: JobDetail
     get() = JobBuilder.newJob(MetricsDataRetentionPolicyJob::class.java)
         .storeDurably()

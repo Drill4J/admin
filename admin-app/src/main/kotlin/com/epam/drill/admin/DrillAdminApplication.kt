@@ -25,8 +25,10 @@ import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.schedulerDIModule
+import com.epam.drill.admin.etl.config.etlDIModule
+import com.epam.drill.admin.etl.config.updateMetricsEtlJob
+import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.config.*
-import com.epam.drill.admin.metrics.route.metricsManagementRoutes
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -72,6 +74,7 @@ fun Application.module() {
         import(authConfigDIModule)
         import(rawDataDIModule)
         import(metricsDIModule)
+        import(etlDIModule)
     }
     initDB()
     initScheduler()
@@ -126,7 +129,9 @@ fun Application.module() {
             authenticate("jwt", "api-key") {
                 metricsRoutes()
                 withRole(Role.ADMIN) {
-                    metricsManagementRoutes()
+                    route("/metrics") {
+                        etlManagementRoutes()
+                    }
                 }
             }
 
@@ -194,10 +199,11 @@ private fun StatusPagesConfig.defaultStatusPages() {
 
 private fun Application.initDB() {
     val dataSource by closestDI().instance<DataSource>()
+    val metricsDataSource by closestDI().instance<DataSource>(tag = "metrics")
 
     AuthDatabaseConfig.init(dataSource)
     RawDataWriterDatabaseConfig.init(dataSource)
-    MetricsDatabaseConfig.init(dataSource, defaultMaxAttempts = 1)
+    MetricsDatabaseConfig.init(metricsDataSource, defaultMaxAttempts = 1)
 }
 
 private fun Application.initScheduler() {

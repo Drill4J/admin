@@ -16,9 +16,10 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
+import com.epam.drill.admin.etl.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.metrics.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.metrics.route.metricsManagementRoutes
+import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
+import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.metrics.views.TestImpactStatus
@@ -34,6 +35,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.route.payload.TestResult
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.server.routing.route
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
 import org.kodein.di.bind
@@ -50,10 +52,12 @@ val scheduler = DI.Module("testModule") {
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(scheduler, rawDataServicesDIModule, metricsDIModule) {
+        drillApplication(scheduler, rawDataServicesDIModule, metricsDIModule, etlDIModule) {
             dataIngestRoutes()
             metricsRoutes()
-            metricsManagementRoutes()
+            route("/metrics") {
+                etlManagementRoutes()
+            }
         }.drillClient().apply {
             val testDataDsl = TestDataDsl(this)
             testsData(testDataDsl)

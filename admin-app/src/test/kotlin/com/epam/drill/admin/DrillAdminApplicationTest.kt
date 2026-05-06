@@ -61,14 +61,16 @@ class DrillAdminApplicationTest: DatabaseTests() {
     }
 
     private fun dbSetup() = MapApplicationConfig().apply {
-        put("drill.database.host", postgresqlContainer.host)
-        put(
-            "drill.database.port",
-            postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT).toString()
-        )
-        put("drill.database.dbName", postgresqlContainer.databaseName)
-        put("drill.database.userName", postgresqlContainer.username)
-        put("drill.database.password", postgresqlContainer.password)
+        putDatabaseConfig("drill.database")
+        putDatabaseConfig("drill.metrics.database")
+    }
+
+    private fun MapApplicationConfig.putDatabaseConfig(prefix: String) {
+        put("$prefix.host", postgresqlContainer.host)
+        put("$prefix.port", postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT).toString())
+        put("$prefix.dbName", postgresqlContainer.databaseName)
+        put("$prefix.userName", postgresqlContainer.username)
+        put("$prefix.password", postgresqlContainer.password)
     }
 }
 

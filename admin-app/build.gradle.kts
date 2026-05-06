@@ -66,6 +66,7 @@ dependencies {
     implementation(project(":admin-auth"))
     implementation(project(":admin-writer"))
     implementation(project(":admin-metrics"))
+    implementation(project(":admin-etl"))
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")

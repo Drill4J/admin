@@ -34,7 +34,7 @@ import org.quartz.JobDetail
 val rawDataDIModule
     get() = DI.Module("rawDataServices") {
         import(rawDataServicesDIModule)
-        import(settingsServicesDIModule)
+        importOnce(settingsServicesDIModule)
 
         bind<DataRetentionPolicyJob>() with singleton {
             DataRetentionPolicyJob(
@@ -90,8 +90,14 @@ val rawDataServicesDIModule
 
 val settingsServicesDIModule
     get() = DI.Module("settingsServices") {
+        bind<GroupRepository>() with singleton { GroupRepositoryImpl() }
         bind<GroupSettingsRepository>() with singleton { GroupSettingsRepositoryImpl() }
-        bind<SettingsService>() with singleton { SettingsServiceImpl(groupSettingsRepository = instance()) }
+        bind<SettingsService>() with singleton {
+            SettingsServiceImpl(
+                groupSettingsRepository = instance(),
+                groupRepository = instance()
+            )
+        }
     }
 
 val rawDataRetentionPolicyJob: JobDetail

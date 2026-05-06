@@ -13,14 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.service
+package com.epam.drill.admin.etl.service
 
-import com.epam.drill.admin.writer.rawdata.route.payload.GroupSettingsPayload
-import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
-
-interface SettingsService {
-    suspend fun getGroupSettings(groupId: String): GroupSettingsView
-    suspend fun saveGroupSettings(groupId: String, payload: GroupSettingsPayload)
-    suspend fun clearGroupSettings(groupId: String)
-    suspend fun getAllGroupSettings(): Map<String, GroupSettingsView>
+interface EtlService {
+    suspend fun refresh(groupId: String? = null, reset: Boolean = false)
+    suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
 }

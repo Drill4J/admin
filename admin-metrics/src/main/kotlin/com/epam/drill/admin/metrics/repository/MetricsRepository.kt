@@ -166,8 +166,6 @@ interface MetricsRepository {
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
-    suspend fun getMetricsPeriodDays(): Map<String, Instant>
-
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllDailyDataCreatedBefore(groupId: String, timestamp: Instant)
