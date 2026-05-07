@@ -17,6 +17,7 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -43,6 +44,7 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
@@ -181,28 +183,28 @@ fun Route.postTestLaunches() {
 }
 
 fun Route.postMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     post<MethodIgnoreRulesRoute> {
-        rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
+        dataManagementService.saveMethodIgnoreRule(call.decompressAndReceive())
         call.ok("Method ignore rule saved")
     }
 }
 
 fun Route.getMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     get<MethodIgnoreRulesRoute> {
-        call.ok(rawDataWriter.getAllMethodIgnoreRules())
+        call.ok(dataManagementService.getAllMethodIgnoreRules())
     }
 }
 
 fun Route.deleteMethodIgnoreRule() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     delete<MethodIgnoreRulesRoute.Id> { params ->
         val id = params.id
-        rawDataWriter.deleteMethodIgnoreRuleById(id)
+        dataManagementService.deleteMethodIgnoreRuleById(id)
         call.ok("Method ignore rule deleted")
     }
 }

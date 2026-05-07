@@ -71,7 +71,6 @@ val rawDataServicesDIModule
                 buildRepository = instance(),
                 testSessionRepository = instance(),
                 testSessionBuildRepository = instance(),
-                methodIgnoreRuleRepository = instance()
             )
         }
         bind<DataManagementService>() with singleton {
@@ -83,6 +82,7 @@ val rawDataServicesDIModule
                 testSessionRepository = instance(),
                 testLaunchRepository = instance(),
                 testSessionBuildRepository = instance(),
+                methodIgnoreRuleRepository = instance(),
                 scheduler = instance(),
             )
         }

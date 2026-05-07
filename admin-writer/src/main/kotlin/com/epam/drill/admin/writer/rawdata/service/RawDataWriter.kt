@@ -29,7 +29,4 @@ interface RawDataWriter {
     suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload)
     suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload)
     suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?)
-    suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
-    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
-    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
 }
