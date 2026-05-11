@@ -17,6 +17,9 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
+import com.epam.drill.admin.writer.rawdata.queue.DataQueue
+import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
@@ -129,19 +132,19 @@ fun Route.putInstances() {
 }
 
 fun Route.postCoverage() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueue by closestDI().instance<DataQueue<CoveragePayload>>()
 
     post<CoverageRoute> {
-        rawDataWriter.saveCoverage(call.decompressAndReceive())
+        rawDataQueue.enqueue(call.decompressAndReceive())
         call.ok("Coverage saved")
     }
 }
 
 fun Route.putMethods() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueue by closestDI().instance<DataQueue<MethodsPayload>>()
 
     put<MethodsRoute> {
-        rawDataWriter.saveMethods(call.decompressAndReceive())
+        rawDataQueue.enqueue(call.decompressAndReceive())
         call.ok("Methods saved")
     }
 }
@@ -270,4 +273,11 @@ internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
         GZIPInputStream(inputStream).readBytes()
     }
     return decompressedBytes
+}
+
+internal suspend inline fun <reified T : Any> ApplicationCall.decompress(): ByteArray {
+    return when (request.headers[HttpHeaders.ContentEncoding]) {
+        "gzip" -> decompressGZip(receiveStream())
+        else -> receive<ByteArray>()
+    }
 }

@@ -67,18 +67,20 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
             )
         }
 
-        val savedBuilds = BuildTable.selectAll()
-            .filter { it[BuildTable.groupId] == testGroup }
-            .filter { it[BuildTable.appId] == testApp }
-            .filter { it[BuildTable.buildVersion] == testBuildVersion }
-        assertEquals(1, savedBuilds.size)
-        savedBuilds.forEach {
-            assertNull(it[BuildTable.branch])
-            assertNotNull(it[BuildTable.commitSha])
-            assertNull(it[BuildTable.commitAuthor])
-            assertNull(it[BuildTable.commitMessage])
-            assertNull(it[BuildTable.committedAt])
-            assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+        waitUntilInTransaction {
+            val savedBuilds = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testGroup }
+                .filter { it[BuildTable.appId] == testApp }
+                .filter { it[BuildTable.buildVersion] == testBuildVersion }
+            assertEquals(1, savedBuilds.size)
+            savedBuilds.forEach {
+                assertNull(it[BuildTable.branch])
+                assertNotNull(it[BuildTable.commitSha])
+                assertNull(it[BuildTable.commitAuthor])
+                assertNull(it[BuildTable.commitMessage])
+                assertNull(it[BuildTable.committedAt])
+                assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 
@@ -119,18 +121,20 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
             )
         }
 
-        val savedBuilds = BuildTable.selectAll()
-            .filter { it[BuildTable.groupId] == testGroup }
-            .filter { it[BuildTable.appId] == testApp }
-            .filter { it[BuildTable.buildVersion] == testBuildVersion }
-        assertEquals(1, savedBuilds.size)
-        savedBuilds.forEach {
-            assertEquals("main", it[BuildTable.branch])
-            assertNotNull(it[BuildTable.commitSha])
-            assertEquals("John Doe", it[BuildTable.commitAuthor])
-            assertEquals("Initial commit", it[BuildTable.commitMessage])
-            assertNotNull(it[BuildTable.committedAt])
-            assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+        waitUntilInTransaction {
+            val savedBuilds = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testGroup }
+                .filter { it[BuildTable.appId] == testApp }
+                .filter { it[BuildTable.buildVersion] == testBuildVersion }
+            assertEquals(1, savedBuilds.size)
+            savedBuilds.forEach {
+                assertEquals("main", it[BuildTable.branch])
+                assertNotNull(it[BuildTable.commitSha])
+                assertEquals("John Doe", it[BuildTable.commitAuthor])
+                assertEquals("Initial commit", it[BuildTable.commitMessage])
+                assertNotNull(it[BuildTable.committedAt])
+                assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 
@@ -160,6 +164,22 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
                 }
                 """.trimIndent()
             )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+
+        waitUntilInTransaction {
+            val savedBuilds = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testGroup }
+                .filter { it[BuildTable.appId] == testApp }
+                .filter { it[BuildTable.buildVersion] == testBuildVersion }
+            assertEquals(1, savedBuilds.size)
+            savedBuilds.forEach {
+                assertNotNull(it[BuildTable.branch])
+                assertNotNull(it[BuildTable.commitAuthor])
+                assertNotNull(it[BuildTable.commitMessage])
+                assertNotNull(it[BuildTable.committedAt])
+            }
         }
 
         app.client.put("/builds") {
@@ -178,16 +198,18 @@ class BuildsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
             assertEquals(HttpStatusCode.OK, status)
         }
 
-        val buildsBeforeInfo = BuildTable.selectAll()
-            .filter { it[BuildTable.groupId] == testGroup }
-            .filter { it[BuildTable.appId] == testApp }
-            .filter { it[BuildTable.buildVersion] == testBuildVersion }
-        assertEquals(1, buildsBeforeInfo.size)
-        buildsBeforeInfo.forEach {
-            assertNotNull(it[BuildTable.branch])
-            assertNotNull(it[BuildTable.commitAuthor])
-            assertNotNull(it[BuildTable.commitMessage])
-            assertNotNull(it[BuildTable.committedAt])
+        waitUntilInTransaction {
+            val buildsBeforeInfo = BuildTable.selectAll()
+                .filter { it[BuildTable.groupId] == testGroup }
+                .filter { it[BuildTable.appId] == testApp }
+                .filter { it[BuildTable.buildVersion] == testBuildVersion }
+            assertEquals(1, buildsBeforeInfo.size)
+            buildsBeforeInfo.forEach {
+                assertNotNull(it[BuildTable.branch])
+                assertNotNull(it[BuildTable.commitAuthor])
+                assertNotNull(it[BuildTable.commitMessage])
+                assertNotNull(it[BuildTable.committedAt])
+            }
         }
     }
 

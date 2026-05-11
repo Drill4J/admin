@@ -66,14 +66,16 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
                 )
             }
 
-            val savedTestSessions = TestSessionTable.selectAll()
-                .filter { it[TestSessionTable.groupId] == testGroup }
-                .filter { it[TestSessionTable.id].value == testSession }
-            assertEquals(1, savedTestSessions.size)
-            savedTestSessions.forEach {
-                assertNotNull(it[TestSessionTable.testTaskId])
-                assertNotNull(it[TestSessionTable.startedAt])
-                assertTrue(it[TestSessionTable.createdAt] >= timeBeforeTest)
+            waitUntilInTransaction {
+                val savedTestSessions = TestSessionTable.selectAll()
+                    .filter { it[TestSessionTable.groupId] == testGroup }
+                    .filter { it[TestSessionTable.id].value == testSession }
+                assertEquals(1, savedTestSessions.size)
+                savedTestSessions.forEach {
+                    assertNotNull(it[TestSessionTable.testTaskId])
+                    assertNotNull(it[TestSessionTable.startedAt])
+                    assertTrue(it[TestSessionTable.createdAt] >= timeBeforeTest)
+                }
             }
         }
 
@@ -119,13 +121,15 @@ class TestSessionsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             )
         }
 
-        val savedSessionBuilds = TestSessionBuildTable.selectAll()
-            .filter { it[TestSessionBuildTable.testSessionId] == testSession }
-        assertEquals(2, savedSessionBuilds.size)
-        savedSessionBuilds.forEach {
-            assertNotNull(it[TestSessionBuildTable.buildId])
-            assertNotNull(it[TestSessionBuildTable.groupId])
-            assertTrue(it[TestSessionBuildTable.createdAt] >= timeBeforeTest)
+        waitUntilInTransaction {
+            val savedSessionBuilds = TestSessionBuildTable.selectAll()
+                .filter { it[TestSessionBuildTable.testSessionId] == testSession }
+            assertEquals(2, savedSessionBuilds.size)
+            savedSessionBuilds.forEach {
+                assertNotNull(it[TestSessionBuildTable.buildId])
+                assertNotNull(it[TestSessionBuildTable.groupId])
+                assertTrue(it[TestSessionBuildTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 }

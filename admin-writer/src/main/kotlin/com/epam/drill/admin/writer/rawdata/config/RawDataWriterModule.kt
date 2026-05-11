@@ -16,25 +16,38 @@
 package com.epam.drill.admin.writer.rawdata.config
 
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.queue.DataQueue
+import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
+import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
+import io.ktor.server.application.ApplicationStopping
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
+import org.kodein.di.LazyDI
 import org.kodein.di.bind
 import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
 import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
+val logger = mu.KotlinLogging.logger {}
+
 val rawDataDIModule
     get() = DI.Module("rawDataServices") {
-        import(rawDataServicesDIModule)
+        importOnce(rawDataServicesDIModule)
         importOnce(settingsServicesDIModule)
+        importOnce(dataManagementServicesDIModule)
 
         bind<DataRetentionPolicyJob>() with singleton {
             DataRetentionPolicyJob(
@@ -59,7 +72,6 @@ val rawDataServicesDIModule
         bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
         bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
         bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
-        bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
 
         bind<RawDataWriter>() with singleton {
             RawDataServiceImpl(
@@ -73,17 +85,18 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
-        bind<DataManagementService>() with singleton {
-            DataManagementServiceImpl(
-                instanceRepository = instance(),
-                buildRepository = instance(),
-                methodRepository = instance(),
-                coverageRepository = instance(),
-                testSessionRepository = instance(),
-                testLaunchRepository = instance(),
-                testSessionBuildRepository = instance(),
-                methodIgnoreRuleRepository = instance(),
-                scheduler = instance(),
+        bind<DataQueue<CoveragePayload>>() with singleton {
+            val writer = instance<RawDataWriter>()
+            ChannelDataQueue(
+                consumer = writer::saveCoverage,
+                onError = { i, e -> logger.error(e) { "Error while saving coverage: $i" } }
+            )
+        }
+        bind<DataQueue<MethodsPayload>>() with singleton {
+            val writer = instance<RawDataWriter>()
+            ChannelDataQueue(
+                consumer = writer::saveMethods,
+                onError = { i, e -> logger.error(e) { "Error while saving methods: $i" } }
             )
         }
     }
@@ -96,6 +109,24 @@ val settingsServicesDIModule
             SettingsServiceImpl(
                 groupSettingsRepository = instance(),
                 groupRepository = instance()
+            )
+        }
+    }
+
+val dataManagementServicesDIModule
+    get() = DI.Module("dataManagementServices") {
+        bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+        bind<DataManagementService>() with singleton {
+            DataManagementServiceImpl(
+                instanceRepository = instance(),
+                buildRepository = instance(),
+                methodRepository = instance(),
+                coverageRepository = instance(),
+                testSessionRepository = instance(),
+                testLaunchRepository = instance(),
+                testSessionBuildRepository = instance(),
+                methodIgnoreRuleRepository = instance(),
+                scheduler = instance(),
             )
         }
     }

@@ -16,7 +16,6 @@
 package com.epam.drill.admin.test
 
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.resources.*
@@ -29,8 +28,13 @@ import org.kodein.di.DI
 import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
 import com.epam.drill.admin.common.route.commonStatusPages
+import io.ktor.server.application.ApplicationStopping
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import org.jetbrains.exposed.sql.Database
-import javax.sql.DataSource
+import org.kodein.di.allInstances
+import org.kodein.di.ktor.closestDI
+import kotlin.getValue
 
 
 fun withRollback(test: suspend () -> Unit) {
@@ -67,6 +71,16 @@ fun drillApplication(
     application {
         di {
             diModules.forEach { import(it) }
+        }
+        environment.monitor.subscribe(ApplicationStopping) {
+            val closableComponents: List<AutoCloseable> by closestDI().allInstances()
+            runBlocking {
+                closableComponents.map {
+                    async {
+                        it.close()
+                    }
+                }.awaitAll()
+            }
         }
     }
     routing {
