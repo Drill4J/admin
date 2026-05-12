@@ -18,8 +18,6 @@ package com.epam.drill.admin.writer.rawdata.route
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.RawDataQueuedWriter
-import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
@@ -105,10 +103,10 @@ fun Route.dataIngestRoutes() {
 }
 
 fun Route.putBuilds() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<BuildsRoute> {
-        rawDataWriter.saveBuild(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueBuild(call.decompress())
         call.ok("Build saved")
     }
 }
@@ -123,10 +121,10 @@ fun Route.putBuildsInfo() {
 }
 
 fun Route.putInstances() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<InstancesRoute> {
-        rawDataWriter.saveInstance(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueInstance(call.decompress())
         call.ok("Instance saved")
     }
 }
@@ -135,7 +133,7 @@ fun Route.postCoverage() {
     val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     post<CoverageRoute> {
-        rawDataQueuedWriter.enqueue(CoveragePayload::class, call.decompress())
+        rawDataQueuedWriter.enqueueCoverage(call.decompress())
         call.ok("Coverage saved")
     }
 }
@@ -144,16 +142,16 @@ fun Route.putMethods() {
     val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<MethodsRoute> {
-        rawDataQueuedWriter.enqueue(MethodsPayload::class, call.decompress())
+        rawDataQueuedWriter.enqueueMethods(call.decompress())
         call.ok("Methods saved")
     }
 }
 
 fun Route.postTestMetadata() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     post<TestMetadataRoute> {
-        rawDataWriter.saveTestMetadata(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueTestMetadata(call.decompress())
         call.ok("Test metadata saved")
     }
 }
@@ -168,19 +166,19 @@ fun Route.putTestSessions() {
 }
 
 fun Route.postTestDefinitions() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     post<TestDefinitionsRoute> {
-        rawDataWriter.saveTestDefinitions(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueTestDefinitions(call.decompress())
         call.ok("Test definitions saved")
     }
 }
 
 fun Route.postTestLaunches() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     post<TestLaunchesRoute> {
-        rawDataWriter.saveTestLaunches(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueTestLaunches(call.decompress())
         call.ok("Test launches saved")
     }
 }
@@ -245,7 +243,7 @@ internal suspend fun sendPostRequest(url: String, data: Any) {
     }
 }
 
-internal val json = Json {
+internal val jsonConfig = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
 }
@@ -254,7 +252,7 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
     val body: ByteArray = decompress()
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
-        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
+        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(T::class.serializer(), String(body))
         else -> throw request.headers[HttpHeaders.ContentType]?.let {
             UnsupportedMediaTypeException(ContentType.parse(it))
         } ?: BadRequestException("Content-Type header is missing")

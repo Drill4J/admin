@@ -17,10 +17,16 @@ package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueProcessor
+import com.epam.drill.admin.writer.rawdata.route.payload.AddTestDefinitionsPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.AddTestLaunchesPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.TestDefinitionPayload
 import mu.KotlinLogging
 import kotlin.reflect.KClass
 
@@ -36,6 +42,11 @@ class RawDataQueuedWriter(
                 is CoveragePayload -> handler.saveCoverage(payload)
                 is MethodsPayload -> handler.saveMethods(payload)
                 is BuildPayload -> handler.saveBuild(payload)
+                is AddTestDefinitionsPayload -> handler.saveTestDefinitions(payload)
+                is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
+                is AddTestsPayload -> handler.saveTestMetadata(payload)
+                is InstancePayload -> handler.saveInstance(payload)
+                is SessionPayload -> handler.saveTestSession(payload, null)
             }
         },
         onError = { payload, e ->
@@ -50,7 +61,31 @@ class RawDataQueuedWriter(
         queueProcessor.run(queue, workers)
     }
 
-    suspend fun <T: RawDataPayload> enqueue(type: KClass<out T>, data: ByteArray) {
-        queue.enqueue(type, data)
+    suspend fun enqueueBuild(data: ByteArray) {
+        queue.enqueue(BuildPayload::class, data)
+    }
+
+    suspend fun enqueueMethods(data: ByteArray) {
+        queue.enqueue(MethodsPayload::class, data)
+    }
+
+    suspend fun enqueueInstance(data: ByteArray) {
+        queue.enqueue(InstancePayload::class, data)
+    }
+
+    suspend fun enqueueCoverage(data: ByteArray) {
+        queue.enqueue(CoveragePayload::class, data)
+    }
+
+    suspend fun enqueueTestDefinitions(data: ByteArray) {
+        queue.enqueue(AddTestDefinitionsPayload::class, data)
+    }
+
+    suspend fun enqueueTestLaunches(data: ByteArray) {
+        queue.enqueue(AddTestLaunchesPayload::class, data)
+    }
+
+    suspend fun enqueueTestMetadata(data: ByteArray) {
+        queue.enqueue(AddTestsPayload::class, data)
     }
 }

@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
+import com.epam.drill.admin.writer.rawdata.route.jsonConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -23,10 +24,7 @@ import kotlin.reflect.KClass
 
 class JsonDeserializer<out T>(
     private val serializer: KSerializer<T>,
-    private val json: Json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
+    private val json: Json = jsonConfig
 ) {
     fun deserialize(bytes: ByteArray): T {
         val decoded = bytes.toString(Charsets.UTF_8)
