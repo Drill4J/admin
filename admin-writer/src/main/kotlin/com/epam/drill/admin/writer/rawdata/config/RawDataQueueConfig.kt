@@ -18,21 +18,21 @@ package com.epam.drill.admin.writer.rawdata.config
 import io.ktor.server.config.ApplicationConfig
 
 /**
- * Configuration for the raw data writer module.
+ * Configuration for the raw data queue.
  *
  * @property config The application configuration.
  */
-class RawDataConfig(private val config: ApplicationConfig) {
+class RawDataQueueConfig(private val config: ApplicationConfig) {
     /**
      * Defines the capacity of the queue used for processing incoming raw data.
      * If the queue reaches its capacity, processing of new data will be suspended until there is space available.
      */
-    val queueCapacity: Int
-        get() = config.propertyOrNull("queueCapacity")?.getString()?.toIntOrNull() ?: 1000
+    val capacity: Int
+        get() = config.propertyOrNull("capacity")?.getString()?.toIntOrNull() ?: 1000
 
     /**
      * Defines the number of concurrent workers that will process the raw data from the queue.
      */
-    val queueWorkers: Int
-        get() = config.propertyOrNull("queueWorkers")?.getString()?.toIntOrNull() ?: 10
+    val workers: Int
+        get() = config.propertyOrNull("workers")?.getString()?.toIntOrNull() ?: 10
 }

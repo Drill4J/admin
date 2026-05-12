@@ -57,9 +57,9 @@ val rawDataDIModule
 
 val rawDataServicesDIModule
     get() = DI.Module("rawDataWriterServices") {
-        bind<RawDataConfig>() with singleton {
+        bind<RawDataQueueConfig>() with singleton {
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            RawDataConfig(drillConfig.config("rawData"))
+            RawDataQueueConfig(drillConfig.config("rawData.queue"))
         }
         bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
         bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
@@ -83,14 +83,14 @@ val rawDataServicesDIModule
             )
         }
         bind<RawDataQueuedWriter>() with singleton {
-            val config = instance<RawDataConfig>()
+            val config = instance<RawDataQueueConfig>()
             val writer = instance<RawDataWriter>()
             RawDataQueuedWriter(
                 handler = writer,
-                workers = config.queueWorkers,
+                workers = config.workers,
                 queue = ChannelDataQueue(
                     deserializer = ::json,
-                    capacity = config.queueCapacity
+                    capacity = config.capacity
                 )
             )
         }
