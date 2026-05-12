@@ -17,7 +17,7 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
-import com.epam.drill.admin.writer.rawdata.queue.DataQueue
+import com.epam.drill.admin.writer.rawdata.service.RawDataQueuedWriter
 import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
@@ -132,19 +132,19 @@ fun Route.putInstances() {
 }
 
 fun Route.postCoverage() {
-    val rawDataQueue by closestDI().instance<DataQueue<CoveragePayload>>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     post<CoverageRoute> {
-        rawDataQueue.enqueue(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueue(CoveragePayload::class, call.decompress())
         call.ok("Coverage saved")
     }
 }
 
 fun Route.putMethods() {
-    val rawDataQueue by closestDI().instance<DataQueue<MethodsPayload>>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<MethodsRoute> {
-        rawDataQueue.enqueue(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueue(MethodsPayload::class, call.decompress())
         call.ok("Methods saved")
     }
 }
@@ -250,15 +250,8 @@ internal val json = Json {
     explicitNulls = false
 }
 
-/**
- * Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
- * https://github.com/ktorio/ktor/issues/3845
- */
 internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
-    val body: ByteArray = when (request.headers[HttpHeaders.ContentEncoding]) {
-        "gzip" -> decompressGZip(receiveStream())
-        else -> receive<ByteArray>()
-    }
+    val body: ByteArray = decompress()
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
         ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
@@ -268,6 +261,7 @@ internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndRecei
     }
 }
 
+
 internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
     val decompressedBytes = withContext(Dispatchers.IO) {
         GZIPInputStream(inputStream).readBytes()
@@ -275,7 +269,11 @@ internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
     return decompressedBytes
 }
 
-internal suspend inline fun <reified T : Any> ApplicationCall.decompress(): ByteArray {
+/**
+ * TODO: Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
+ * https://github.com/ktorio/ktor/issues/3845
+ */
+internal suspend inline fun ApplicationCall.decompress(): ByteArray {
     return when (request.headers[HttpHeaders.ContentEncoding]) {
         "gzip" -> decompressGZip(receiveStream())
         else -> receive<ByteArray>()

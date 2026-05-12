@@ -13,13 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.queue
+package com.epam.drill.admin.writer.rawdata.queue.impl
 
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
-import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 
-interface DataQueue<T: RawDataPayload> : ReceiveChannel<T> {
-    suspend fun enqueue(type: KClass<out T>, data: ByteArray)
-    suspend fun dequeue(): T
+class JsonDeserializer<out T>(
+    private val serializer: KSerializer<T>,
+    private val json: Json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
+) {
+    fun deserialize(bytes: ByteArray): T {
+        val decoded = bytes.toString(Charsets.UTF_8)
+        return json.decodeFromString(serializer, decoded)
+    }
 }
+
+fun <T: RawDataPayload> json(type: KClass<out T>, bytes: ByteArray): T = JsonDeserializer(type.serializer()).deserialize(bytes)

@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.writer.rawdata.route.payload
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,4 +27,4 @@ class BuildPayload(
     val commitDate: String? = null,
     val commitMessage: String? = null,
     val commitAuthor: String? = null
-)
+): RawDataPayload

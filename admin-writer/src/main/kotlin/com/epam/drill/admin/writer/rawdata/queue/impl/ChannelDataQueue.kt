@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
+import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,39 +26,45 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.time.withTimeout
+import mu.KotlinLogging
+import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class ChannelDataQueue<T>(
-    private val consumer: suspend (T) -> Unit,
-    private val onError: (T, Throwable) -> Unit = { _, _ -> },
-    private val onSuccess: (T) -> Unit = { _, -> },
-    capacity: Int = Channel.RENDEZVOUS,
-    concurrency: Int = 1,
-    private val shutdownTimeout: Duration = 5.seconds
-) : DataQueue<T> {
-    private val channel = Channel<T>(capacity)
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+class ChannelDataQueue<T: RawDataPayload>(
+    private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
+    capacity: Int = Channel.BUFFERED,
+    private val shutdownTimeout: Duration = 5.seconds,
+) : DataQueue<T>, Channel<T> by Channel(capacity), AutoCloseable {
+    private val logger = KotlinLogging.logger {}
+    private val producerChannel = Channel<Pair<KClass<out T>, ByteArray>>(Channel.RENDEZVOUS)
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
-        repeat(concurrency) {
-            scope.launch {
-                for (item in channel) {
-                    runCatching { consumer(item) }
-                        .onFailure { onError(item, it) }
-                        .onSuccess { onSuccess(item)  }
-                }
+        scope.launch {
+            for ((type, bytes) in producerChannel) {
+                runCatching { deserializer(type, bytes) }
+                    .onFailure { e ->
+                        logger.error(e) { "Error while deserialization queue for [$type]" }
+                    }.getOrNull()?.let { i ->
+                        this@ChannelDataQueue.send(i)
+                    } ?: continue
             }
         }
     }
 
-    override suspend fun enqueue(data: T) {
-        channel.send(data)
+    override suspend fun enqueue(type: KClass<out T>, data: ByteArray) {
+        producerChannel.send(type to data)
+    }
+
+    override suspend fun dequeue(): T {
+        return this.receive()
     }
 
     override fun close() {
-        channel.close()
+        producerChannel.close()
+        this.close()
         runBlocking {
             withTimeout(shutdownTimeout.toJavaDuration()) {
                 scope.coroutineContext[Job]?.children?.forEach { it.join() }
