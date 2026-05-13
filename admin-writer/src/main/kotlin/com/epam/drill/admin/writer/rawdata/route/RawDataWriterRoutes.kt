@@ -17,9 +17,8 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
-import com.epam.drill.admin.writer.rawdata.service.RawDataQueuedWriter
+import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
-import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -49,32 +48,34 @@ import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
+sealed interface DataIngestRoute
+
 @Resource("builds")
-class BuildsRoute()
+class BuildsRoute(): DataIngestRoute
 
 @Resource("builds/info")
-class BuildsInfoRoute()
+class BuildsInfoRoute(): DataIngestRoute
 
 @Resource("instances")
-class InstancesRoute()
+class InstancesRoute(): DataIngestRoute
 
 @Resource("coverage")
-class CoverageRoute()
+class CoverageRoute(): DataIngestRoute
 
 @Resource("methods")
-class MethodsRoute()
+class MethodsRoute(): DataIngestRoute
 
 @Resource("tests-metadata")
-class TestMetadataRoute()
+class TestMetadataRoute(): DataIngestRoute
 
 @Resource("sessions")
-class TestSessionRoute()
+class TestSessionRoute(): DataIngestRoute
 
 @Resource("test-definitions")
-class TestDefinitionsRoute()
+class TestDefinitionsRoute(): DataIngestRoute
 
 @Resource("test-launches")
-class TestLaunchesRoute()
+class TestLaunchesRoute(): DataIngestRoute
 
 @Resource("method-ignore-rules")
 class MethodIgnoreRulesRoute() {
@@ -103,82 +104,82 @@ fun Route.dataIngestRoutes() {
 }
 
 fun Route.putBuilds() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<BuildsRoute> {
-        rawDataQueuedWriter.enqueueBuild(call.decompress())
+    put<BuildsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Build saved")
     }
 }
 
 fun Route.putBuildsInfo() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<BuildsInfoRoute> {
-        rawDataQueuedWriter.enqueueBuildInfo(call.decompress())
+    put<BuildsInfoRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Build info saved")
     }
 }
 
 fun Route.putInstances() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<InstancesRoute> {
-        rawDataQueuedWriter.enqueueInstance(call.decompress())
+    put<InstancesRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Instance saved")
     }
 }
 
 fun Route.postCoverage() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<CoverageRoute> {
-        rawDataQueuedWriter.enqueueCoverage(call.decompress())
+    post<CoverageRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Coverage saved")
     }
 }
 
 fun Route.putMethods() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<MethodsRoute> {
-        rawDataQueuedWriter.enqueueMethods(call.decompress())
+    put<MethodsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Methods saved")
     }
 }
 
 fun Route.postTestMetadata() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestMetadataRoute> {
-        rawDataQueuedWriter.enqueueTestMetadata(call.decompress())
+    post<TestMetadataRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test metadata saved")
     }
 }
 
 fun Route.putTestSessions() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<TestSessionRoute> {
-        rawDataQueuedWriter.enqueueTestSession(call.decompress(), call.principal<User>()?.username)
+    put<TestSessionRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress(), call.principal<User>()?.username)
         call.ok("Test sessions saved")
     }
 }
 
 fun Route.postTestDefinitions() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestDefinitionsRoute> {
-        rawDataQueuedWriter.enqueueTestDefinitions(call.decompress())
+    post<TestDefinitionsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test definitions saved")
     }
 }
 
 fun Route.postTestLaunches() {
-    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestLaunchesRoute> {
-        rawDataQueuedWriter.enqueueTestLaunches(call.decompress())
+    post<TestLaunchesRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test launches saved")
     }
 }

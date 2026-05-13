@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.service
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.queue.QueueProcessor
+import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestDefinitionsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestLaunchesPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
@@ -30,17 +31,16 @@ import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import mu.KotlinLogging
 
-const val USERNAME_KEY = "username"
-
-class RawDataQueuedWriter(
+class QueuedRawDataWriter(
     handler: RawDataWriter,
     workers: Int = 10,
-    private val queue: DataQueue<RawDataPayload>
+    private val queue: DataQueue<DataIngestRoute, RawDataPayload>
 ) {
     private val logger = KotlinLogging.logger {}
-    private val queueProcessor = QueueProcessor<RawDataPayload>(
+    private val usernameKey = "username"
+    private val queueProcessor = QueueProcessor<DataIngestRoute, RawDataPayload>(
         handler = { output ->
-            val payload = output.data
+            val payload = output.payload
             val metadata = output.metadata
             when (payload) {
                 is CoveragePayload -> handler.saveCoverage(payload)
@@ -51,11 +51,11 @@ class RawDataQueuedWriter(
                 is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
                 is AddTestsPayload -> handler.saveTestMetadata(payload)
                 is InstancePayload -> handler.saveInstance(payload)
-                is SessionPayload -> handler.saveTestSession(payload, metadata[USERNAME_KEY])
+                is SessionPayload -> handler.saveTestSession(payload, metadata[usernameKey])
             }
         },
         onError = { output, e ->
-            logger.error(e) { "Error while saving [${output.data::class.simpleName}]: ${e.message}" }
+            logger.error(e) { "Error while saving [${output.payload::class.simpleName}]: ${e.message}" }
         },
         onSuccess = { payload ->
             logger.debug { "Successfully saved [${payload::class.simpleName}]" }
@@ -66,40 +66,8 @@ class RawDataQueuedWriter(
         queueProcessor.run(queue, workers)
     }
 
-    suspend fun enqueueBuild(data: ByteArray) {
-        queue.enqueue(QueueInput(BuildPayload::class, data))
-    }
-
-    suspend fun enqueueBuildInfo(data: ByteArray) {
-        queue.enqueue(QueueInput(BuildInfoPayload::class, data))
-    }
-
-    suspend fun enqueueMethods(data: ByteArray) {
-        queue.enqueue(QueueInput(MethodsPayload::class, data))
-    }
-
-    suspend fun enqueueInstance(data: ByteArray) {
-        queue.enqueue(QueueInput(InstancePayload::class, data))
-    }
-
-    suspend fun enqueueCoverage(data: ByteArray) {
-        queue.enqueue(QueueInput(CoveragePayload::class, data))
-    }
-
-    suspend fun enqueueTestDefinitions(data: ByteArray) {
-        queue.enqueue(QueueInput(AddTestDefinitionsPayload::class, data))
-    }
-
-    suspend fun enqueueTestLaunches(data: ByteArray) {
-        queue.enqueue(QueueInput(AddTestLaunchesPayload::class, data))
-    }
-
-    suspend fun enqueueTestMetadata(data: ByteArray) {
-        queue.enqueue(QueueInput(AddTestsPayload::class, data))
-    }
-
-    suspend fun enqueueTestSession(data: ByteArray, username: String?) {
-        val metadata = username?.let { mapOf(USERNAME_KEY to username) } ?: emptyMap()
-        queue.enqueue(QueueInput(SessionPayload::class, data, metadata))
+    suspend fun enqueue(route: DataIngestRoute, payload: ByteArray, username: String? = null) {
+        val metadata = username?.let { mapOf(usernameKey to it) } ?: emptyMap()
+        queue.enqueue(QueueInput(route, payload, metadata))
     }
 }

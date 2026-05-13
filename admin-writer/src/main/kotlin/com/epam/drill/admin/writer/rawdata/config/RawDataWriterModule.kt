@@ -17,8 +17,9 @@ package com.epam.drill.admin.writer.rawdata.config
 
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
 import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
-import com.epam.drill.admin.writer.rawdata.service.RawDataQueuedWriter
-import com.epam.drill.admin.writer.rawdata.queue.impl.json
+import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
+import com.epam.drill.admin.writer.rawdata.queue.impl.deserializeJson
+import com.epam.drill.admin.writer.rawdata.queue.impl.toPayloadType
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
@@ -82,14 +83,14 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
-        bind<RawDataQueuedWriter>() with singleton {
+        bind<QueuedRawDataWriter>() with singleton {
             val config = instance<RawDataQueueConfig>()
             val writer = instance<RawDataWriter>()
-            RawDataQueuedWriter(
+            QueuedRawDataWriter(
                 handler = writer,
                 workers = config.workers,
                 queue = ChannelDataQueue(
-                    deserializer = ::json,
+                    deserializer = { route, bytes -> bytes.deserializeJson(route.toPayloadType()) },
                     capacity = config.capacity
                 )
             )

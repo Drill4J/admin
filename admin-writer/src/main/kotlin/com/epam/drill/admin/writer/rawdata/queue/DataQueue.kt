@@ -15,22 +15,22 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue
 
+import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlin.reflect.KClass
 
-interface DataQueue<T: RawDataPayload> : ReceiveChannel<QueueOutput<T>> {
-    suspend fun enqueue(input: QueueInput<T>)
+interface DataQueue<R : DataIngestRoute, T : RawDataPayload> : ReceiveChannel<QueueOutput<T>> {
+    suspend fun enqueue(input: QueueInput<R>)
     suspend fun dequeue(): QueueOutput<T>
 }
 
-class QueueInput<T : RawDataPayload>(
-    val type: KClass<out T>,
-    val data: ByteArray,
+class QueueInput<R : DataIngestRoute>(
+    val route: R,
+    val payload: ByteArray,
     val metadata: Map<String, String> = emptyMap()
 )
 
 class QueueOutput<T : RawDataPayload>(
-    val data: T,
+    val payload: T,
     val metadata: Map<String, String> = emptyMap()
 )

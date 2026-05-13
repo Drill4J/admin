@@ -15,20 +15,21 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue
 
+import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-class QueueProcessor<T: RawDataPayload>(
+class QueueProcessor<R : DataIngestRoute, T : RawDataPayload>(
     private val handler: suspend (QueueOutput<T>) -> Unit,
     private val onError: suspend (QueueOutput<T>, Throwable) -> Unit = { _, _ -> },
     private val onSuccess: suspend (QueueOutput<T>) -> Unit = {},
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    fun run(queue: DataQueue<T>, workers: Int = 1) {
+    fun run(queue: DataQueue<R, T>, workers: Int = 1) {
         repeat(workers) { worker ->
             scope.launch {
                 for (output in queue) {

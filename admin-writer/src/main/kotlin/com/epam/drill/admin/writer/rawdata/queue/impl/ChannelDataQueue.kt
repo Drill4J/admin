@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata.queue.impl
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.queue.QueueOutput
+import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,35 +30,34 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.time.withTimeout
 import mu.KotlinLogging
-import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class ChannelDataQueue<T : RawDataPayload>(
-    private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
+class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
+    private val deserializer: suspend (R, ByteArray) -> T,
     capacity: Int = Channel.BUFFERED,
     private val shutdownTimeout: Duration = 5.seconds,
-) : DataQueue<T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
+) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
     private val logger = KotlinLogging.logger {}
-    private val inputChannel = Channel<QueueInput<T>>(Channel.RENDEZVOUS)
+    private val inputChannel = Channel<QueueInput<R>>(Channel.RENDEZVOUS)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
         scope.launch {
             for (input in inputChannel) {
                 runCatching {
-                    deserializer(input.type, input.data)
+                    deserializer(input.route, input.payload)
                 }.onFailure { e ->
-                    logger.error(e) { "Error while deserialization queue for [${input.type}]: ${e.message}" }
-                }.getOrNull()?.let { data ->
-                    this@ChannelDataQueue.send(QueueOutput(data, input.metadata))
+                    logger.error(e) { "Error while deserialization queue for [${input.route::class.simpleName}]: ${e.message}" }
+                }.getOrNull()?.let { payload ->
+                    this@ChannelDataQueue.send(QueueOutput(payload, input.metadata))
                 } ?: continue
             }
         }
     }
 
-    override suspend fun enqueue(input: QueueInput<T>) {
+    override suspend fun enqueue(input: QueueInput<R>) {
         inputChannel.send(input)
     }
 
