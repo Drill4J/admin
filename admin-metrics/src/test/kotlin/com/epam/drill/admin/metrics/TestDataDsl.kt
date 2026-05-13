@@ -26,6 +26,7 @@ import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.test.StubDrillScheduler
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
+import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
@@ -43,12 +44,14 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 
 val scheduler = DI.Module("testModule") {
-        bind<DrillScheduler>() with singleton {
-            StubDrillScheduler(UpdateMetricsEtlJob(
+    bind<DrillScheduler>() with singleton {
+        StubDrillScheduler(
+            UpdateMetricsEtlJob(
                 instance(), instance()
-            ))
-        }
+            )
+        )
     }
+}
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
@@ -214,7 +217,9 @@ class TestDataDsl(val client: HttpClient) {
 
 fun HttpClient.expectThat(checks: suspend ExpectationDsl.(HttpClient) -> Unit) {
     val client = this
-    return runBlocking {
+    return waitUntilInBlocking(
+        onAssertionFailed = { refreshMetrics() }
+    ) {
         checks(ExpectationDsl(client), client)
     }
 }

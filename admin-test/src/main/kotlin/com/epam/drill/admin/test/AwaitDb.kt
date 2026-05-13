@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.test
 
+import kotlinx.coroutines.runBlocking
 import org.awaitility.Awaitility.await
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Duration
@@ -33,3 +34,27 @@ fun waitUntilInTransaction(assertion: () -> Unit) {
         }
 }
 
+fun waitUntilInBlocking(
+    onAssertionFailed: suspend (AssertionError) -> Unit = {},
+    assertion: suspend () -> Unit
+) {
+    await()
+        .atMost(DEFAULT_DB_WAIT_TIMEOUT)
+        .pollInterval(DEFAULT_DB_POLL_INTERVAL)
+        .untilAsserted {
+            runCatching {
+                runBlocking {
+                    assertion()
+                }
+            }.onFailure { e ->
+                if (e is AssertionError) {
+                    runCatching {
+                        runBlocking {
+                            onAssertionFailed(e)
+                        }
+                    }
+                }
+                throw e
+            }
+        }
+}

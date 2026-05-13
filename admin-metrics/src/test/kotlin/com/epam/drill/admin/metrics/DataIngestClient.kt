@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
