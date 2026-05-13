@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.queue.QueueProcessor
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestDefinitionsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestLaunchesPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
@@ -45,6 +46,7 @@ class RawDataQueuedWriter(
                 is CoveragePayload -> handler.saveCoverage(payload)
                 is MethodsPayload -> handler.saveMethods(payload)
                 is BuildPayload -> handler.saveBuild(payload)
+                is BuildInfoPayload -> handler.saveBuildInfo(payload)
                 is AddTestDefinitionsPayload -> handler.saveTestDefinitions(payload)
                 is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
                 is AddTestsPayload -> handler.saveTestMetadata(payload)
@@ -66,6 +68,10 @@ class RawDataQueuedWriter(
 
     suspend fun enqueueBuild(data: ByteArray) {
         queue.enqueue(QueueInput(BuildPayload::class, data))
+    }
+
+    suspend fun enqueueBuildInfo(data: ByteArray) {
+        queue.enqueue(QueueInput(BuildInfoPayload::class, data))
     }
 
     suspend fun enqueueMethods(data: ByteArray) {

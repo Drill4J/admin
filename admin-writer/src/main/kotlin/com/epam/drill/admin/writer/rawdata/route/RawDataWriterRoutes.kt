@@ -112,10 +112,10 @@ fun Route.putBuilds() {
 }
 
 fun Route.putBuildsInfo() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<BuildsInfoRoute> {
-        rawDataWriter.saveBuildInfo(call.decompressAndReceive())
+        rawDataQueuedWriter.enqueueBuildInfo(call.decompress())
         call.ok("Build info saved")
     }
 }

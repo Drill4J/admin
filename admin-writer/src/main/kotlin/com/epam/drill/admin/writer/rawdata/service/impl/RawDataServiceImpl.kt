@@ -65,7 +65,7 @@ class RawDataServiceImpl(
         }
     }
 
-    override suspend fun saveBuildInfo(buildPayload: BuildPayload) {
+    override suspend fun saveBuildInfo(buildPayload: BuildInfoPayload) {
         val build = Build(
             id = generateBuildId(
                 buildPayload.groupId,

@@ -18,9 +18,13 @@ package com.epam.drill.admin.writer.rawdata.route.payload
 import kotlinx.serialization.Serializable
 
 @Serializable
-class BuildPayload(
+class BuildInfoPayload(
     val groupId: String,
     val appId: String,
     val commitSha: String? = null,
     val buildVersion: String? = null,
+    val branch: String? = null,
+    val commitDate: String? = null,
+    val commitMessage: String? = null,
+    val commitAuthor: String? = null
 ): RawDataPayload
