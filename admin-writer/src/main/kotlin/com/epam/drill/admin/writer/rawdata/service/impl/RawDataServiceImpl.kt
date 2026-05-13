@@ -253,13 +253,13 @@ class RawDataServiceImpl(
         }.let { testLaunchRepository.createMany(it) }
     }
 
-    override suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?) {
+    override suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?) {
         val testSession = TestSession(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
             testTaskId = sessionPayload.testTaskId,
             startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
-            createdBy = user?.username
+            createdBy = username
         )
         transaction {
             testSessionRepository.create(testSession)

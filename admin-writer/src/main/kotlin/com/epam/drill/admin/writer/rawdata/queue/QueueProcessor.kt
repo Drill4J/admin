@@ -22,22 +22,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class QueueProcessor<T: RawDataPayload>(
-    private val handler: suspend (T) -> Unit,
-    private val onError: suspend (T, Throwable) -> Unit = { _, _ -> },
-    private val onSuccess: suspend (T) -> Unit = {},
+    private val handler: suspend (QueueOutput<T>) -> Unit,
+    private val onError: suspend (QueueOutput<T>, Throwable) -> Unit = { _, _ -> },
+    private val onSuccess: suspend (QueueOutput<T>) -> Unit = {},
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun run(queue: DataQueue<T>, workers: Int = 1) {
         repeat(workers) { worker ->
             scope.launch {
-                for (item in queue) {
+                for (output in queue) {
                     runCatching {
-                        handler(item)
+                        handler(output)
                     }.onFailure { e ->
-                        onError(item, e)
+                        onError(output, e)
                     }.onSuccess {
-                        onSuccess(item)
+                        onSuccess(output)
                     }
                 }
             }

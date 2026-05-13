@@ -16,6 +16,8 @@
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
+import com.epam.drill.admin.writer.rawdata.queue.QueueInput
+import com.epam.drill.admin.writer.rawdata.queue.QueueOutput
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,38 +34,39 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class ChannelDataQueue<T: RawDataPayload>(
+class ChannelDataQueue<T : RawDataPayload>(
     private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
     capacity: Int = Channel.BUFFERED,
     private val shutdownTimeout: Duration = 5.seconds,
-) : DataQueue<T>, Channel<T> by Channel(capacity), AutoCloseable {
+) : DataQueue<T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
     private val logger = KotlinLogging.logger {}
-    private val producerChannel = Channel<Pair<KClass<out T>, ByteArray>>(Channel.RENDEZVOUS)
+    private val inputChannel = Channel<QueueInput<T>>(Channel.RENDEZVOUS)
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
         scope.launch {
-            for ((type, bytes) in producerChannel) {
-                runCatching { deserializer(type, bytes) }
-                    .onFailure { e ->
-                        logger.error(e) { "Error while deserialization queue for [$type]" }
-                    }.getOrNull()?.let { i ->
-                        this@ChannelDataQueue.send(i)
-                    } ?: continue
+            for (input in inputChannel) {
+                runCatching {
+                    deserializer(input.type, input.data)
+                }.onFailure { e ->
+                    logger.error(e) { "Error while deserialization queue for [${input.type}]: ${e.message}" }
+                }.getOrNull()?.let { data ->
+                    this@ChannelDataQueue.send(QueueOutput(data, input.metadata))
+                } ?: continue
             }
         }
     }
 
-    override suspend fun enqueue(type: KClass<out T>, data: ByteArray) {
-        producerChannel.send(type to data)
+    override suspend fun enqueue(input: QueueInput<T>) {
+        inputChannel.send(input)
     }
 
-    override suspend fun dequeue(): T {
+    override suspend fun dequeue(): QueueOutput<T> {
         return this.receive()
     }
 
     override fun close() {
-        producerChannel.close()
+        inputChannel.close()
         this.close()
         runBlocking {
             withTimeout(shutdownTimeout.toJavaDuration()) {

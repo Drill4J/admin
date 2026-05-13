@@ -157,10 +157,10 @@ fun Route.postTestMetadata() {
 }
 
 fun Route.putTestSessions() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val rawDataQueuedWriter by closestDI().instance<RawDataQueuedWriter>()
 
     put<TestSessionRoute> {
-        rawDataWriter.saveTestSession(call.decompressAndReceive(), call.principal<User>())
+        rawDataQueuedWriter.enqueueTestSession(call.decompress(), call.principal<User>()?.username)
         call.ok("Test sessions saved")
     }
 }
