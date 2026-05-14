@@ -21,8 +21,6 @@ import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.KafkaDataQueue
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.queue.impl.json
-import com.epam.drill.admin.writer.rawdata.queue.impl.toKey
-import com.epam.drill.admin.writer.rawdata.queue.impl.toPayloadType
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
@@ -33,14 +31,20 @@ import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
+import com.epam.drill.admin.writer.rawdata.service.impl.toKey
+import com.epam.drill.admin.writer.rawdata.service.impl.toPayloadType
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
 import org.kodein.di.DI
 import org.kodein.di.bind
+import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
+import kotlin.time.Duration.Companion.milliseconds
+
+private val logger = mu.KotlinLogging.logger {}
 
 val rawDataDIModule
     get() = DI.Module("rawDataServices") {
@@ -88,7 +92,7 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
-        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "channel") with singleton {
+        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.CHANNEL) with singleton {
             val config = instance<RawDataQueueConfig>()
             ChannelDataQueue(
                 deserializer = ::json,
@@ -98,31 +102,39 @@ val rawDataServicesDIModule
                 capacity = config.capacity
             )
         }
-        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "kafka") with singleton {
+        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.KAFKA) with singleton {
             val config = instance<RawDataQueueConfig>()
+            val kafkaConfig = config.kafka
             KafkaDataQueue.create(
-                bootstrapServers = "http://localhost:9092",
-                topic = "drill-raw-data",
-                consumerGroupId = "drill-writer",
+                bootstrapServers = kafkaConfig.bootstrapServers,
+                topic = kafkaConfig.topic,
+                consumerGroupId = kafkaConfig.consumerGroupId,
                 deserializer = ::json,
-                keyToPayloadType = { key ->
+                recordKeyToPayloadType = { key ->
                     key.toPayloadType()
                 },
-                routeToKey = { route ->
+                routeToRecordKey = { route ->
                     route.toKey()
                 },
-                capacity = config.capacity
+                producerProps = kafkaConfig.producerProperties,
+                consumerProps = kafkaConfig.consumerProperties,
+                capacity = config.capacity,
+                pollTimeout = kafkaConfig.pollTimeoutMs.milliseconds,
+                shutdownTimeout = kafkaConfig.shutdownTimeoutMs.milliseconds,
             )
         }
-        bind<QueuedRawDataWriter>() with singleton {
+        bind<QueuedRawDataWriter>() with eagerSingleton {
             val config = instance<RawDataQueueConfig>()
             val writer = instance<RawDataWriter>()
-            val queue = instance<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "channel")
+            val queue = instance<DataQueue<DataIngestRoute, RawDataPayload>>(tag = config.type)
+
             QueuedRawDataWriter(
                 handler = writer,
                 workers = config.workers,
                 queue = queue
-            )
+            ).also {
+                logger.info { "${config.type} queue is configured for raw data writing with ${config.workers} workers." }
+            }
         }
     }
 

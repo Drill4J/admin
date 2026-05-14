@@ -62,9 +62,9 @@ import java.time.Duration as JavaDuration
  * @param consumer pre-configured Kafka [Consumer]; subscribed to [topic] and closed by [close].
  * @param topic single Kafka topic used for both publishing and consuming raw payloads.
  * @param deserializer converts a route + payload bytes into a typed [RawDataPayload].
- * @param keyToPayloadType maps the route key (extracted from the record header) back to the corresponding payload type for deserialization.
- * @param routeToKey extracts the key for a given route instance (defaults to its class simple name).
- * @param routeHeaderKey Kafka header name used to carry the route key.
+ * @param recordKeyToPayloadType maps the route key (extracted from the record header) back to the corresponding payload type for deserialization.
+ * @param routeToRecordKey extracts the key for a given route instance (defaults to its class simple name).
+ * @param RECORD_KEY_HEADER Kafka header name used to carry the route key.
  * @param capacity capacity of the internal channel exposed to consumers of this queue.
  * @param pollTimeout per-poll timeout used by the consumer loop.
  * @param shutdownTimeout maximum time to wait for the background coroutines to finish on [close].
@@ -74,9 +74,8 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     private val consumer: Consumer<String, ByteArray>,
     private val topic: String,
     private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
-    private val keyToPayloadType: (String) -> KClass<out T>,
-    private val routeToKey: (R) -> String,
-    private val routeHeaderKey: String = ROUTE_HEADER,
+    private val recordKeyToPayloadType: (String) -> KClass<out T>,
+    private val routeToRecordKey: (R) -> String,
     capacity: Int = Channel.BUFFERED,
     private val pollTimeout: Duration = 500.milliseconds,
     private val shutdownTimeout: Duration = 5.seconds,
@@ -92,9 +91,9 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     }
 
     override suspend fun enqueue(input: QueueInput<R>) {
-        val key = routeToKey(input.route)
-        val record = ProducerRecord<String, ByteArray>(topic, null, key, input.payload).apply {
-            headers().add(RecordHeader(routeHeaderKey, key.toByteArray(Charsets.UTF_8)))
+        val recordKey = routeToRecordKey(input.route)
+        val record = ProducerRecord(topic, null, recordKey, input.payload).apply {
+            headers().add(RecordHeader(RECORD_KEY_HEADER, recordKey.toByteArray(Charsets.UTF_8)))
             input.metadata.forEach { (k, v) ->
                 headers().add(RecordHeader(k, v.toByteArray(Charsets.UTF_8)))
             }
@@ -136,18 +135,14 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                 } ?: continue
 
                 for (record in records) {
-                    val key = record.headers().lastHeader(routeHeaderKey)
-                        ?.value()
-                        ?.toString(Charsets.UTF_8)
-                        ?: record.key()
-
+                    val key = record.key()
                     if (key == null) {
-                        logger.warn { "Skipping Kafka record without route header on topic [$topic]" }
+                        logger.warn { "Skipping Kafka record without record key on topic [$topic]" }
                         continue
                     }
 
                     val payloadType = runCatching {
-                        keyToPayloadType(key)
+                        recordKeyToPayloadType(key)
                     }.onFailure { e ->
                         logger.error(e) { "Error while determining payload type for [$key]: ${e.message}" }
                     }.getOrNull() ?: continue
@@ -159,7 +154,6 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                     }.getOrNull() ?: continue
 
                     val metadata = record.headers()
-                        .filter { it.key() != routeHeaderKey }
                         .associate { it.key() to it.value().toString(Charsets.UTF_8) }
 
                     this@KafkaDataQueue.send(QueueOutput(payload, metadata))
@@ -179,7 +173,7 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     }
 
     companion object {
-        const val ROUTE_HEADER: String = "drill-route"
+        const val RECORD_KEY_HEADER = "drill-record-key"
 
         /**
          * Convenience factory that builds Kafka producer/consumer from raw [Properties].
@@ -190,8 +184,8 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
             topic: String,
             consumerGroupId: String,
             deserializer: suspend (KClass<out T>, ByteArray) -> T,
-            keyToPayloadType: (String) -> KClass<out T>,
-            routeToKey: (R) -> String,
+            recordKeyToPayloadType: (String) -> KClass<out T>,
+            routeToRecordKey: (R) -> String,
             producerProps: Properties = Properties(),
             consumerProps: Properties = Properties(),
             capacity: Int = Channel.BUFFERED,
@@ -218,8 +212,8 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                 consumer = KafkaConsumer(cProps),
                 topic = topic,
                 deserializer = deserializer,
-                keyToPayloadType = keyToPayloadType,
-                routeToKey = routeToKey,
+                recordKeyToPayloadType = recordKeyToPayloadType,
+                routeToRecordKey = routeToRecordKey,
                 capacity = capacity,
                 pollTimeout = pollTimeout,
                 shutdownTimeout = shutdownTimeout,

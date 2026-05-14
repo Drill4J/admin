@@ -43,6 +43,7 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
 ) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
     private val logger = KotlinLogging.logger {}
     private val inputChannel = Channel<QueueInput<R>>(Channel.RENDEZVOUS)
+    private val outputChannel: Channel<QueueOutput<T>> get() = this
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
@@ -54,7 +55,7 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                 }.onFailure { e ->
                     logger.error(e) { "Error while deserialization queue for [${input.route::class.simpleName}]: ${e.message}" }
                 }.getOrNull()?.let { payload ->
-                    this@ChannelDataQueue.send(QueueOutput(payload, input.metadata))
+                    outputChannel.send(QueueOutput(payload, input.metadata))
                 } ?: continue
             }
         }
@@ -65,12 +66,12 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     }
 
     override suspend fun dequeue(): QueueOutput<T> {
-        return this.receive()
+        return outputChannel.receive()
     }
 
     override fun close() {
         inputChannel.close()
-        this.close()
+        outputChannel.close()
         runBlocking {
             withTimeout(shutdownTimeout.toJavaDuration()) {
                 scope.coroutineContext[Job]?.children?.forEach { it.join() }

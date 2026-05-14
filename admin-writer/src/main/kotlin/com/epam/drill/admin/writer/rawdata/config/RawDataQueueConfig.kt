@@ -24,6 +24,12 @@ import io.ktor.server.config.ApplicationConfig
  */
 class RawDataQueueConfig(private val config: ApplicationConfig) {
     /**
+     * Defines the raw data queue implementation.
+     */
+    val type: RawDataQueueType
+        get() = config.propertyOrNull("type")?.getString()?.let { RawDataQueueType.valueOf(it) } ?: RawDataQueueType.CHANNEL
+
+    /**
      * Defines the capacity of the queue used for processing incoming raw data.
      * If the queue reaches its capacity, processing of new data will be suspended until there is space available.
      */
@@ -35,4 +41,15 @@ class RawDataQueueConfig(private val config: ApplicationConfig) {
      */
     val workers: Int
         get() = config.propertyOrNull("workers")?.getString()?.toIntOrNull() ?: 10
+
+    /**
+     * Kafka-specific queue configuration.
+     */
+    val kafka: RawDataKafkaQueueConfig
+        get() = RawDataKafkaQueueConfig(config)
+}
+
+enum class RawDataQueueType {
+    CHANNEL,
+    KAFKA
 }

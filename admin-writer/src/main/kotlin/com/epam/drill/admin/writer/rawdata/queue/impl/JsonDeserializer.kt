@@ -15,32 +15,12 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
-import com.epam.drill.admin.writer.rawdata.route.BuildsInfoRoute
-import com.epam.drill.admin.writer.rawdata.route.BuildsRoute
-import com.epam.drill.admin.writer.rawdata.route.CoverageRoute
-import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
-import com.epam.drill.admin.writer.rawdata.route.InstancesRoute
-import com.epam.drill.admin.writer.rawdata.route.MethodsRoute
-import com.epam.drill.admin.writer.rawdata.route.TestDefinitionsRoute
-import com.epam.drill.admin.writer.rawdata.route.TestLaunchesRoute
-import com.epam.drill.admin.writer.rawdata.route.TestMetadataRoute
-import com.epam.drill.admin.writer.rawdata.route.TestSessionRoute
 import com.epam.drill.admin.writer.rawdata.route.jsonConfig
-import com.epam.drill.admin.writer.rawdata.route.payload.AddTestDefinitionsPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.AddTestLaunchesPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.AddTestsPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.CoveragePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
-import com.epam.drill.admin.writer.rawdata.route.payload.MethodsPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
-import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
-import kotlin.reflect.full.findAnnotation
 
 class JsonDeserializer<out T>(
     private val serializer: KSerializer<T>,
@@ -52,50 +32,5 @@ class JsonDeserializer<out T>(
     }
 }
 
-fun <T: RawDataPayload> json(type: KClass<out T>, bytes: ByteArray): T = JsonDeserializer(type.serializer()).deserialize(bytes)
-
-fun <T : RawDataPayload> ByteArray.deserializeJson(type: KClass<out T>): T =
-    JsonDeserializer(type.serializer()).deserialize(this)
-
-fun DataIngestRoute.toPayloadType(): KClass<out RawDataPayload> {
-    return when (this) {
-        is CoverageRoute -> CoveragePayload::class
-        is BuildsInfoRoute -> BuildInfoPayload::class
-        is BuildsRoute -> BuildPayload::class
-        is InstancesRoute -> InstancePayload::class
-        is MethodsRoute -> MethodsPayload::class
-        is TestDefinitionsRoute -> AddTestDefinitionsPayload::class
-        is TestLaunchesRoute -> AddTestLaunchesPayload::class
-        is TestMetadataRoute -> AddTestsPayload::class
-        is TestSessionRoute -> SessionPayload::class
-    }
-}
-
-fun DataIngestRoute.toKey(): String {
-    return when (this) {
-        is CoverageRoute -> "coverage"
-        is BuildsInfoRoute -> "builds-info"
-        is BuildsRoute -> "builds"
-        is InstancesRoute -> "instances"
-        is MethodsRoute -> "methods"
-        is TestDefinitionsRoute -> "test-definitions"
-        is TestLaunchesRoute -> "test-launches"
-        is TestMetadataRoute -> "test-metadata"
-        is TestSessionRoute -> "test-sessions"
-    }
-}
-
-fun String.toPayloadType(): KClass<out RawDataPayload> {
-    return when (this) {
-        "coverage" -> CoveragePayload::class
-        "builds-info" -> BuildInfoPayload::class
-        "builds" -> BuildPayload::class
-        "instances" -> InstancePayload::class
-        "methods" -> MethodsPayload::class
-        "test-definitions" -> AddTestDefinitionsPayload::class
-        "test-launches" -> AddTestLaunchesPayload::class
-        "test-metadata" -> AddTestsPayload::class
-        "test-session" -> SessionPayload::class
-        else -> throw IllegalArgumentException("Unknown route type: $this")
-    }
-}
+fun <T : RawDataPayload> json(type: KClass<out T>, bytes: ByteArray): T =
+    JsonDeserializer(type.serializer()).deserialize(bytes)
