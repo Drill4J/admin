@@ -20,9 +20,13 @@ import io.ktor.server.config.ApplicationConfig
 /**
  * Configuration for the raw data queue.
  *
- * @property config The application configuration.
+ * @param config Application config scoped to `drill.rawData.queue`.
+ * @param kafkaConfig Shared Kafka cluster and connection configuration from `drill.kafka`.
  */
-class RawDataQueueConfig(private val config: ApplicationConfig) {
+class RawDataQueueConfig(
+    private val config: ApplicationConfig,
+    private val kafkaConfig: KafkaConfig,
+) {
     /**
      * Defines the raw data queue implementation.
      */
@@ -38,15 +42,17 @@ class RawDataQueueConfig(private val config: ApplicationConfig) {
 
     /**
      * Defines the number of concurrent workers that will process the raw data from the queue.
+     * Should be less than database connection pool size.
      */
     val workers: Int
         get() = config.propertyOrNull("workers")?.getString()?.toIntOrNull() ?: 10
 
     /**
-     * Kafka-specific queue configuration.
+     * Kafka-specific queue configuration (topic, consumer group, poll/shutdown timeouts,
+     * producer/consumer tuning). Cluster connection settings are delegated to [kafkaConfig].
      */
     val kafka: RawDataKafkaQueueConfig
-        get() = RawDataKafkaQueueConfig(config)
+        get() = RawDataKafkaQueueConfig(config.config("kafka"), kafkaConfig)
 }
 
 enum class RawDataQueueType {

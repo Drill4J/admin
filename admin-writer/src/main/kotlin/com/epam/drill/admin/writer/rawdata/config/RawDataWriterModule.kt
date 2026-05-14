@@ -67,10 +67,6 @@ val rawDataDIModule
 
 val rawDataServicesDIModule
     get() = DI.Module("rawDataWriterServices") {
-        bind<RawDataQueueConfig>() with singleton {
-            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            RawDataQueueConfig(drillConfig.config("rawData.queue"))
-        }
         bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
         bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
         bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
@@ -92,6 +88,15 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
+
+        bind<KafkaConfig>() with singleton {
+            val env = instance<Application>().environment.config
+            KafkaConfig(env.config("kafka"))
+        }
+        bind<RawDataQueueConfig>() with singleton {
+            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
+            RawDataQueueConfig(drillConfig.config("rawData.queue"), instance())
+        }
         bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.IN_MEMORY) with singleton {
             val config = instance<RawDataQueueConfig>()
             ChannelDataQueue(
@@ -104,11 +109,12 @@ val rawDataServicesDIModule
         }
         bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.KAFKA) with singleton {
             val config = instance<RawDataQueueConfig>()
-            val kafkaConfig = config.kafka
+            val kafkaQueueConfig = config.kafka
+            val kafkaClusterConfig = instance<KafkaConfig>()
             KafkaDataQueue.create(
-                bootstrapServers = kafkaConfig.bootstrapServers,
-                topic = kafkaConfig.topic,
-                consumerGroupId = kafkaConfig.consumerGroupId,
+                bootstrapServers = kafkaClusterConfig.bootstrapServers,
+                topic = kafkaQueueConfig.topic,
+                consumerGroupId = kafkaQueueConfig.consumerGroupId,
                 deserializer = ::json,
                 recordKeyToPayloadType = { key ->
                     key.toPayloadType()
@@ -116,11 +122,11 @@ val rawDataServicesDIModule
                 routeToRecordKey = { route ->
                     route.toKey()
                 },
-                producerProps = kafkaConfig.producerProperties,
-                consumerProps = kafkaConfig.consumerProperties,
+                producerProps = kafkaQueueConfig.producerProperties,
+                consumerProps = kafkaQueueConfig.consumerProperties,
                 capacity = config.capacity,
-                pollTimeout = kafkaConfig.pollTimeoutMs.milliseconds,
-                shutdownTimeout = kafkaConfig.shutdownTimeoutMs.milliseconds,
+                pollTimeout = kafkaQueueConfig.pollTimeoutMs.milliseconds,
+                shutdownTimeout = kafkaQueueConfig.shutdownTimeoutMs.milliseconds,
             )
         }
         bind<QueuedRawDataWriter>() with eagerSingleton {
