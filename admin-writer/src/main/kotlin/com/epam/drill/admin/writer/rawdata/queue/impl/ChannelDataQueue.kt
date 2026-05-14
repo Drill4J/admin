@@ -30,12 +30,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.time.withTimeout
 import mu.KotlinLogging
+import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
-    private val deserializer: suspend (R, ByteArray) -> T,
+    private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
+    private val routeToPayloadType: (R) -> KClass<out T>,
     capacity: Int = Channel.BUFFERED,
     private val shutdownTimeout: Duration = 5.seconds,
 ) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
@@ -46,8 +48,9 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     init {
         scope.launch {
             for (input in inputChannel) {
+                val payloadType = routeToPayloadType(input.route)
                 runCatching {
-                    deserializer(input.route, input.payload)
+                    deserializer(payloadType, input.payload)
                 }.onFailure { e ->
                     logger.error(e) { "Error while deserialization queue for [${input.route::class.simpleName}]: ${e.message}" }
                 }.getOrNull()?.let { payload ->

@@ -23,6 +23,7 @@ val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
+val kafkaClientsVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -61,6 +62,8 @@ dependencies {
     implementation("org.quartz-scheduler:quartz:$quartzVersion")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
+
+    implementation("org.apache.kafka:kafka-clients:$kafkaClientsVersion")
 
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-apache:$ktorVersion")

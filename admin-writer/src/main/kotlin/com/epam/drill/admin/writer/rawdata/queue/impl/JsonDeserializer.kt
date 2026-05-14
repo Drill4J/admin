@@ -40,6 +40,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
 
 class JsonDeserializer<out T>(
     private val serializer: KSerializer<T>,
@@ -50,6 +51,8 @@ class JsonDeserializer<out T>(
         return json.decodeFromString(serializer, decoded)
     }
 }
+
+fun <T: RawDataPayload> json(type: KClass<out T>, bytes: ByteArray): T = JsonDeserializer(type.serializer()).deserialize(bytes)
 
 fun <T : RawDataPayload> ByteArray.deserializeJson(type: KClass<out T>): T =
     JsonDeserializer(type.serializer()).deserialize(this)
@@ -65,5 +68,34 @@ fun DataIngestRoute.toPayloadType(): KClass<out RawDataPayload> {
         is TestLaunchesRoute -> AddTestLaunchesPayload::class
         is TestMetadataRoute -> AddTestsPayload::class
         is TestSessionRoute -> SessionPayload::class
+    }
+}
+
+fun DataIngestRoute.toKey(): String {
+    return when (this) {
+        is CoverageRoute -> "coverage"
+        is BuildsInfoRoute -> "builds-info"
+        is BuildsRoute -> "builds"
+        is InstancesRoute -> "instances"
+        is MethodsRoute -> "methods"
+        is TestDefinitionsRoute -> "test-definitions"
+        is TestLaunchesRoute -> "test-launches"
+        is TestMetadataRoute -> "test-metadata"
+        is TestSessionRoute -> "test-sessions"
+    }
+}
+
+fun String.toPayloadType(): KClass<out RawDataPayload> {
+    return when (this) {
+        "coverage" -> CoveragePayload::class
+        "builds-info" -> BuildInfoPayload::class
+        "builds" -> BuildPayload::class
+        "instances" -> InstancePayload::class
+        "methods" -> MethodsPayload::class
+        "test-definitions" -> AddTestDefinitionsPayload::class
+        "test-launches" -> AddTestLaunchesPayload::class
+        "test-metadata" -> AddTestsPayload::class
+        "test-session" -> SessionPayload::class
+        else -> throw IllegalArgumentException("Unknown route type: $this")
     }
 }

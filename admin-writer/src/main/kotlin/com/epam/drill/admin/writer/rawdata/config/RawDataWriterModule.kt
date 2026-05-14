@@ -16,12 +16,17 @@
 package com.epam.drill.admin.writer.rawdata.config
 
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
+import com.epam.drill.admin.writer.rawdata.queue.impl.KafkaDataQueue
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
-import com.epam.drill.admin.writer.rawdata.queue.impl.deserializeJson
+import com.epam.drill.admin.writer.rawdata.queue.impl.json
+import com.epam.drill.admin.writer.rawdata.queue.impl.toKey
 import com.epam.drill.admin.writer.rawdata.queue.impl.toPayloadType
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
+import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
+import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
@@ -83,16 +88,40 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
+        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "channel") with singleton {
+            val config = instance<RawDataQueueConfig>()
+            ChannelDataQueue(
+                deserializer = ::json,
+                routeToPayloadType = { route ->
+                    route.toPayloadType()
+                },
+                capacity = config.capacity
+            )
+        }
+        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "kafka") with singleton {
+            val config = instance<RawDataQueueConfig>()
+            KafkaDataQueue.create(
+                bootstrapServers = "http://localhost:9092",
+                topic = "drill-raw-data",
+                consumerGroupId = "drill-writer",
+                deserializer = ::json,
+                keyToPayloadType = { key ->
+                    key.toPayloadType()
+                },
+                routeToKey = { route ->
+                    route.toKey()
+                },
+                capacity = config.capacity
+            )
+        }
         bind<QueuedRawDataWriter>() with singleton {
             val config = instance<RawDataQueueConfig>()
             val writer = instance<RawDataWriter>()
+            val queue = instance<DataQueue<DataIngestRoute, RawDataPayload>>(tag = "channel")
             QueuedRawDataWriter(
                 handler = writer,
                 workers = config.workers,
-                queue = ChannelDataQueue(
-                    deserializer = { route, bytes -> bytes.deserializeJson(route.toPayloadType()) },
-                    capacity = config.capacity
-                )
+                queue = queue
             )
         }
     }
