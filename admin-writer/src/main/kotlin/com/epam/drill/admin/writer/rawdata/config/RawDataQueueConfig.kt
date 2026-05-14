@@ -27,7 +27,7 @@ class RawDataQueueConfig(private val config: ApplicationConfig) {
      * Defines the raw data queue implementation.
      */
     val type: RawDataQueueType
-        get() = config.propertyOrNull("type")?.getString()?.let { RawDataQueueType.valueOf(it) } ?: RawDataQueueType.CHANNEL
+        get() = config.propertyOrNull("type")?.getString()?.let { RawDataQueueType.valueOf(it) } ?: RawDataQueueType.IN_MEMORY
 
     /**
      * Defines the capacity of the queue used for processing incoming raw data.
@@ -50,6 +50,6 @@ class RawDataQueueConfig(private val config: ApplicationConfig) {
 }
 
 enum class RawDataQueueType {
-    CHANNEL,
+    IN_MEMORY,
     KAFKA
 }

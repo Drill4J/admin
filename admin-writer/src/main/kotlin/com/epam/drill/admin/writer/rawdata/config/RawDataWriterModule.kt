@@ -92,7 +92,7 @@ val rawDataServicesDIModule
                 testSessionBuildRepository = instance(),
             )
         }
-        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.CHANNEL) with singleton {
+        bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.IN_MEMORY) with singleton {
             val config = instance<RawDataQueueConfig>()
             ChannelDataQueue(
                 deserializer = ::json,
