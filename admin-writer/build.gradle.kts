@@ -24,6 +24,7 @@ val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
 val kafkaClientsVersion: String by parent!!.extra
+val junitJupiterVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -77,6 +78,11 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("ch.qos.logback:logback-classic:$logbackVersion")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
+    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+    testImplementation("org.testcontainers:kafka:$testContainersVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testImplementation(project(":admin-test"))
 }
 
