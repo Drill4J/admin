@@ -1024,7 +1024,6 @@ BEGIN
             c.group_id,
             c.app_id,
             c.build_id,
-            c.test_session_id,
 
             COALESCE(SUM(c.probes_count), 0) AS total_probes,
             COALESCE(SUM(c.covered_probes), 0) AS covered_probes,
@@ -1041,13 +1040,13 @@ BEGIN
             input_coverage_app_env_ids => input_coverage_app_env_ids,
             input_coverage_test_tags => input_coverage_test_tags
         ) c
-        GROUP BY c.group_id, c.app_id, c.build_id, c.test_session_id
+        GROUP BY c.group_id, c.app_id, c.build_id
     )
 	SELECT
 		c.group_id::VARCHAR,
 		c.app_id::VARCHAR,
 		c.build_id::VARCHAR,
-		c.test_session_id::VARCHAR,
+		input_test_session_id::VARCHAR,
 
 		c.total_probes::INT,
 		c.covered_probes::INT,
@@ -1106,7 +1105,6 @@ BEGIN
 			bm.app_id,
 			bm.build_id,
 			bm.method_id,
-			ic.test_session_id,
 			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
 		FROM metrics.build_methods bm
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
@@ -1121,13 +1119,13 @@ BEGIN
 			-- Filters by methods
 			AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
 			AND (input_signature_pattern IS NULL OR m.signature LIKE input_signature_pattern)
-		GROUP BY bm.group_id, bm.app_id, bm.build_id, ic.test_session_id, bm.method_id
+		GROUP BY bm.group_id, bm.app_id, bm.build_id, bm.method_id
 	)
     SELECT
         c.group_id::VARCHAR,
         c.app_id::VARCHAR,
         c.build_id::VARCHAR,
-        c.test_session_id::VARCHAR,
+        input_test_session_id::VARCHAR,
         c.method_id::VARCHAR,
     	m.signature::VARCHAR,
         m.class_name::VARCHAR,
@@ -1183,8 +1181,8 @@ BEGIN
             c.group_id,
             c.app_id,
             c.build_id,
-            c.test_session_id,
-            c.test_definition_id,
+            input_test_session_id AS test_session_id,
+            input_test_definition_id AS test_definition_id,
 
             COALESCE(SUM(c.probes_count), 0) AS total_probes,
             COALESCE(SUM(c.covered_probes), 0) AS covered_probes,
@@ -1201,7 +1199,7 @@ BEGIN
 
             input_coverage_app_env_ids => input_coverage_app_env_ids
         ) c
-        GROUP BY c.group_id, c.app_id, c.build_id, c.test_session_id, c.test_definition_id
+        GROUP BY c.group_id, c.app_id, c.build_id
     )
 	SELECT
 		c.group_id::VARCHAR,
@@ -1268,13 +1266,14 @@ BEGIN
 			bm.app_id,
 			bm.build_id,
 			bm.method_id,
-			ic.test_session_id,
-			ic.test_definition_id,
 			BIT_COUNT(BIT_OR(ic.probes)) AS covered_probes
 		FROM metrics.build_methods bm
 		JOIN metrics.builds b ON b.group_id = bm.group_id AND b.app_id = bm.app_id AND b.build_id = bm.build_id
 		JOIN metrics.methods m ON m.group_id = bm.group_id AND m.app_id = bm.app_id AND m.method_id = bm.method_id
-		LEFT JOIN metrics.build_method_test_definition_coverage ic ON ic.group_id = bm.group_id AND ic.app_id = bm.app_id AND ic.build_id = bm.build_id AND ic.method_id = bm.method_id
+		LEFT JOIN metrics.build_method_test_definition_coverage ic ON ic.group_id = bm.group_id
+		    AND ic.app_id = bm.app_id
+		    AND ic.build_id = bm.build_id
+		    AND ic.method_id = bm.method_id
 		    AND ic.test_session_id = input_test_session_id AND ic.test_definition_id = input_test_definition_id
 			-- Filters by isolated coverage
 		  	AND (input_coverage_app_env_ids IS NULL OR ic.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
@@ -1284,14 +1283,14 @@ BEGIN
 			-- Filters by methods
 			AND (input_package_name_pattern IS NULL OR m.class_name LIKE input_package_name_pattern)
 			AND (input_signature_pattern IS NULL OR m.signature LIKE input_signature_pattern)
-		GROUP BY bm.group_id, bm.app_id, bm.build_id, ic.test_session_id, ic.test_definition_id, bm.method_id
+		GROUP BY bm.group_id, bm.app_id, bm.build_id, bm.method_id
 	)
     SELECT
         c.group_id::VARCHAR,
         c.app_id::VARCHAR,
         c.build_id::VARCHAR,
-        c.test_session_id::VARCHAR,
-        c.test_definition_id::VARCHAR,
+        input_test_session_id::VARCHAR,
+        input_test_definition_id::VARCHAR,
         c.method_id::VARCHAR,
     	m.signature::VARCHAR,
         m.class_name::VARCHAR,
