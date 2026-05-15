@@ -23,6 +23,8 @@ val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
+val kafkaClientsVersion: String by parent!!.extra
+val junitJupiterVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -62,6 +64,8 @@ dependencies {
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 
+    implementation("org.apache.kafka:kafka-clients:$kafkaClientsVersion")
+
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-apache:$ktorVersion")
     implementation("io.ktor:ktor-client-json:$ktorVersion")
@@ -74,6 +78,11 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("ch.qos.logback:logback-classic:$logbackVersion")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
+    testImplementation("org.testcontainers:testcontainers:$testContainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
+    testImplementation("org.testcontainers:kafka:$testContainersVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testImplementation(project(":admin-test"))
 }
 

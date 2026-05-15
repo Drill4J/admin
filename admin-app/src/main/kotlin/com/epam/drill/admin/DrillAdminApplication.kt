@@ -52,8 +52,12 @@ import io.ktor.server.request.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import org.kodein.di.allInstances
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
@@ -92,6 +96,7 @@ fun Application.module() {
         if (oauth2Enabled) configureOAuthAuthentication(di)
         roleBasedAuthentication()
     }
+    shutdownQueues()
     routing {
         rootRoute()
         swaggerUI(path = "swagger", swaggerFile = "openapi.yml")
@@ -236,3 +241,17 @@ val Application.jsCoverageConverterAddress: String
         ?.getString()
         ?.takeIf { it.isNotBlank() }
         ?: "http://localhost:8092" // TODO think of default
+
+private fun Application.shutdownQueues() {
+    val closableComponents: List<AutoCloseable> by closestDI().allInstances()
+
+    environment.monitor.subscribe(ApplicationStopping) {
+        runBlocking {
+            closableComponents.map {
+                async {
+                    it.close()
+                }
+            }.awaitAll()
+        }
+    }
+}

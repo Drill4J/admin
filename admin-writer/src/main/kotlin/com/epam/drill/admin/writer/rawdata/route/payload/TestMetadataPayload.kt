@@ -25,7 +25,7 @@ class AddTestsPayload(
     val groupId: String,
     val sessionId: String,
     val tests: List<TestLaunchInfo> = emptyList(),
-)
+): RawDataPayload
 
 @Serializable
 class TestLaunchInfo(
@@ -70,14 +70,14 @@ class SessionPayload(
     val testTaskId: String,
     val startedAt: Instant,
     val builds: List<SingleSessionBuildPayload> = emptyList(),
-)
+): RawDataPayload
 
 @Serializable
 class AddTestLaunchesPayload(
     val groupId: String,
     val testSessionId: String,
     val launches: List<TestLaunchPayload>,
-)
+): RawDataPayload
 
 @Serializable
 class TestLaunchPayload (
@@ -92,7 +92,7 @@ class TestLaunchPayload (
 class AddTestDefinitionsPayload(
     val groupId: String,
     val definitions: List<TestDefinitionPayload>
-)
+): RawDataPayload
 
 // TODO: update test agent
 //  Order of fields, and field definitions changed compared to original TestDefinition class:

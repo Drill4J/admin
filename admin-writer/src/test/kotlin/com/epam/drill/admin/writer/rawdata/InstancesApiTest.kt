@@ -95,24 +95,26 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
                 )
             }
 
-            val savedBuilds = BuildTable.selectAll()
-                .filter { it[BuildTable.groupId] == testGroup }
-                .filter { it[BuildTable.appId] == testApp }
-                .filter { it[BuildTable.instanceId] == testInstance }
-            assertEquals(1, savedBuilds.size)
-            savedBuilds.forEach {
-                assertNotNull(it[BuildTable.commitSha])
-                assertNotNull(it[BuildTable.buildVersion])
-                assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
-            }
-            val savedInstances = InstanceTable.selectAll()
-                .filter { it[InstanceTable.groupId] == testGroup }
-                .filter { it[InstanceTable.appId] == testApp }
-                .filter { it[InstanceTable.id].value == testInstance }
-            assertEquals(1, savedInstances.size)
-            savedInstances.forEach {
-                assertNotNull(it[InstanceTable.envId])
-                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+            waitUntilInTransaction {
+                val savedBuilds = BuildTable.selectAll()
+                    .filter { it[BuildTable.groupId] == testGroup }
+                    .filter { it[BuildTable.appId] == testApp }
+                    .filter { it[BuildTable.instanceId] == testInstance }
+                assertEquals(1, savedBuilds.size)
+                savedBuilds.forEach {
+                    assertNotNull(it[BuildTable.commitSha])
+                    assertNotNull(it[BuildTable.buildVersion])
+                    assertTrue(it[BuildTable.createdAt] >= timeBeforeTest)
+                }
+                val savedInstances = InstanceTable.selectAll()
+                    .filter { it[InstanceTable.groupId] == testGroup }
+                    .filter { it[InstanceTable.appId] == testApp }
+                    .filter { it[InstanceTable.id].value == testInstance }
+                assertEquals(1, savedInstances.size)
+                savedInstances.forEach {
+                    assertNotNull(it[InstanceTable.envId])
+                    assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+                }
             }
         }
 
@@ -149,19 +151,21 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
                 )
             }
 
-            val savedInstances = InstanceTable.selectAll()
-                .filter { it[InstanceTable.groupId] == testExistingGroup }
-                .filter { it[InstanceTable.appId] == testExistingApp }
-                .filter { it[InstanceTable.id].value == testInstance }
-            assertEquals(1, savedInstances.size)
-            savedInstances.forEach {
-                assertNotNull(it[InstanceTable.envId])
-                assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+            waitUntilInTransaction {
+                val savedInstances = InstanceTable.selectAll()
+                    .filter { it[InstanceTable.groupId] == testExistingGroup }
+                    .filter { it[InstanceTable.appId] == testExistingApp }
+                    .filter { it[InstanceTable.id].value == testInstance }
+                assertEquals(1, savedInstances.size)
+                savedInstances.forEach {
+                    assertNotNull(it[InstanceTable.envId])
+                    assertTrue(it[InstanceTable.createdAt] >= timeBeforeTest)
+                }
+                val savedBuilds = BuildTable.selectAll()
+                    .filter { it[BuildTable.groupId] == testExistingGroup }
+                    .filter { it[BuildTable.appId] == testExistingApp }
+                    .filter { it[BuildTable.buildVersion] == testExistingBuildVersion }
+                assertEquals(1, savedBuilds.size)
             }
-            val savedBuilds = BuildTable.selectAll()
-                .filter { it[BuildTable.groupId] == testExistingGroup }
-                .filter { it[BuildTable.appId] == testExistingApp }
-                .filter { it[BuildTable.buildVersion] == testExistingBuildVersion }
-            assertEquals(1, savedBuilds.size)
         }
 }

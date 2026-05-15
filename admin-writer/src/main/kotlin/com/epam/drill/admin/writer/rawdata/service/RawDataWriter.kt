@@ -21,15 +21,12 @@ import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
-    suspend fun saveBuildInfo(buildPayload: BuildPayload)
+    suspend fun saveBuildInfo(buildPayload: BuildInfoPayload)
     suspend fun saveInstance(instancePayload: InstancePayload)
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)
     suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload)
     suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload)
-    suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?)
-    suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
-    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
-    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
+    suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?)
 }

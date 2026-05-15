@@ -25,4 +25,4 @@ class InstancePayload(
     val commitSha: String? = null,
     val buildVersion: String? = null,
     val envId: String? = null,
-)
+): RawDataPayload

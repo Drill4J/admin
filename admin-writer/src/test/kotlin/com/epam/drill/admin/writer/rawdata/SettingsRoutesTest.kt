@@ -66,7 +66,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
         }
-        transaction {
+        waitUntilInTransaction {
             val savedSettings = GroupSettingsTable.selectAll().where { GroupSettingsTable.id eq testGroup }.single()
             assertEquals(30, savedSettings[GroupSettingsTable.retentionPeriodDays])
             assertEquals(10, savedSettings[GroupSettingsTable.metricsPeriodDays])
@@ -112,7 +112,7 @@ class SettingsRoutesTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) 
         client.delete("group-settings/$testGroup").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
-        transaction {
+        waitUntilInTransaction {
             assertTrue(GroupSettingsTable.selectAll().where { GroupSettingsTable.id eq testGroup }.empty())
         }
     }
