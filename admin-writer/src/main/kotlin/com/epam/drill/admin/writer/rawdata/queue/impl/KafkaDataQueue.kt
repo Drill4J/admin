@@ -76,7 +76,7 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
     private val recordKeyToPayloadType: (String) -> KClass<out T>,
     private val routeToRecordKey: (R) -> String,
-    capacity: Int = Channel.BUFFERED,
+    capacity: Int = Channel.RENDEZVOUS,
     private val pollTimeout: Duration = 500.milliseconds,
     private val shutdownTimeout: Duration = 5.seconds,
 ) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
@@ -156,7 +156,7 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                     val metadata = record.headers()
                         .associate { it.key() to it.value().toString(Charsets.UTF_8) }
 
-                    this@KafkaDataQueue.send(QueueOutput(payload, metadata))
+                    outputChannel.send(QueueOutput(payload, metadata))
                 }
 
                 runCatching {
@@ -221,8 +221,3 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
         }
     }
 }
-
-
-
-
-

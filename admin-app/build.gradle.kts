@@ -27,6 +27,7 @@ val testContainersVersion: String by parent!!.extra
 val junitJupiterVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -53,12 +54,15 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktorVersion")
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
     implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+    implementation("io.ktor:ktor-server-metrics-micrometer:$ktorVersion")
     implementation("io.ktor:ktor-server-compression:$ktorVersion")
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-server-swagger:$ktorVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("io.micrometer:micrometer-core:$micrometerVersion")
+    implementation("io.micrometer:micrometer-registry-prometheus:$micrometerVersion")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
     implementation("org.quartz-scheduler:quartz:$quartzVersion")
