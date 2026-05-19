@@ -15,10 +15,12 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.route.BuildsRoute
 import com.epam.drill.admin.writer.rawdata.route.jsonConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -66,6 +68,7 @@ class KafkaDataQueueTest {
         capacity = Channel.UNLIMITED,
         pollTimeout = 500.milliseconds,
         shutdownTimeout = 5.seconds,
+        metrics = RawDataMeter(SimpleMeterRegistry()),
     )
 
 

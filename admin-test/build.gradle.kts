@@ -25,6 +25,7 @@ val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
 val awaitilityVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -69,6 +70,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
     implementation("org.awaitility:awaitility:${awaitilityVersion}")
+    implementation("io.micrometer:micrometer-core:${micrometerVersion}")
 }
 
 tasks {

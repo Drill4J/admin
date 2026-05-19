@@ -29,11 +29,15 @@ import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
 import com.epam.drill.admin.common.route.commonStatusPages
 import io.ktor.server.application.ApplicationStopping
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import org.jetbrains.exposed.sql.Database
 import org.kodein.di.allInstances
+import org.kodein.di.bind
 import org.kodein.di.ktor.closestDI
+import org.kodein.di.singleton
 import kotlin.getValue
 
 
@@ -70,6 +74,7 @@ fun drillApplication(
     }
     application {
         di {
+            import(meterModule)
             diModules.forEach { import(it) }
         }
         environment.monitor.subscribe(ApplicationStopping) {
@@ -104,4 +109,10 @@ fun assertJsonEquals(json1: String, json2: String) {
     val obj1: JsonElement = removeNulls(json.parseToJsonElement(json1))
     val obj2: JsonElement = removeNulls(json.parseToJsonElement(json2))
     assertEquals(obj1, obj2)
+}
+
+private val meterModule = DI.Module("meterModule") {
+    bind<MeterRegistry>() with singleton {
+        SimpleMeterRegistry()
+    }
 }
