@@ -67,6 +67,7 @@ val rawDataDIModule
 
 val rawDataServicesDIModule
     get() = DI.Module("rawDataWriterServices") {
+        bind<RawDataMeter>() with singleton { RawDataMeter(instance()) }
         bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
         bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
         bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
@@ -104,7 +105,8 @@ val rawDataServicesDIModule
                 routeToPayloadType = { route ->
                     route.toPayloadType()
                 },
-                capacity = config.capacity
+                capacity = config.capacity,
+                metrics = instance(),
             )
         }
         bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.KAFKA) with singleton {
@@ -127,6 +129,7 @@ val rawDataServicesDIModule
                 capacity = config.capacity,
                 pollTimeout = kafkaQueueConfig.pollTimeoutMs.milliseconds,
                 shutdownTimeout = kafkaQueueConfig.shutdownTimeoutMs.milliseconds,
+                metrics = instance(),
             )
         }
         bind<QueuedRawDataWriter>() with eagerSingleton {
@@ -137,7 +140,8 @@ val rawDataServicesDIModule
             QueuedRawDataWriter(
                 handler = writer,
                 workers = config.workers,
-                queue = queue
+                queue = queue,
+                metrics = instance(),
             ).also {
                 logger.info { "${config.type} queue is configured for raw data writing with ${config.workers} workers." }
             }

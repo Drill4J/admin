@@ -15,10 +15,10 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.common.config.recordInline
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
-import com.epam.drill.admin.etl.config.recordDuration
 import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
@@ -102,7 +102,7 @@ abstract class SqlDataExtractor<T : EtlRow>(
                         stmt.setNull(index + 1, TextColumnType())
                 }
 
-                timer.recordDuration {
+                timer.recordInline {
                     stmt.executeQuery()
                 }.use { rs ->
                     collect(rs, duration)

@@ -15,9 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.common.config.recordInline
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
-import com.epam.drill.admin.etl.config.recordDuration
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -73,7 +73,7 @@ abstract class SqlDataLoader<T: EtlRow>(
                             }
                             addBatch()
                         }
-                        timer.recordDuration {
+                        timer.recordInline {
                             executeBatch()
                         }
                     }

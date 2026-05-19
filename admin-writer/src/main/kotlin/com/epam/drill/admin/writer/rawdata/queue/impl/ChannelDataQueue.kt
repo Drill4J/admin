@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.queue.QueueOutput
@@ -40,6 +41,7 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     private val routeToPayloadType: (R) -> KClass<out T>,
     capacity: Int = Channel.BUFFERED,
     private val shutdownTimeout: Duration = 5.seconds,
+    private val metrics: RawDataMeter,
 ) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
     private val logger = KotlinLogging.logger {}
     private val inputChannel = Channel<QueueInput<R>>(Channel.RENDEZVOUS)
@@ -54,6 +56,7 @@ class ChannelDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                     deserializer(payloadType, input.payload)
                 }.onFailure { e ->
                     logger.error(e) { "Error while deserialization queue for [${input.route::class.simpleName}]: ${e.message}" }
+                    metrics.deserializeFailures.increment()
                 }.getOrNull()?.let { payload ->
                     outputChannel.send(QueueOutput(payload, input.metadata))
                 } ?: continue

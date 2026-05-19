@@ -25,6 +25,7 @@ val zaxxerHikaricpVersion: String by parent!!.extra
 val logbackVersion: String by parent!!.extra
 val kafkaClientsVersion: String by parent!!.extra
 val junitJupiterVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -73,6 +74,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.micrometer:micrometer-core:${micrometerVersion}")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
