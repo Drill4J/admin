@@ -16,6 +16,8 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.metric.recordDuration
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -33,8 +35,9 @@ abstract class SqlDataLoader<T: EtlRow>(
     override val loggingFrequency: Int,
     open val sqlUpsert: String,
     open val sqlDelete: String,
-    open val database: Database
-) : BatchDataLoader<T>(name, batchSize, loggingFrequency) {
+    open val database: Database,
+    override val metrics: EtlMetrics
+) : BatchDataLoader<T>(name, batchSize, loggingFrequency, metrics) {
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>
@@ -44,6 +47,16 @@ abstract class SqlDataLoader<T: EtlRow>(
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
+        val timer = metrics.registerTimer(
+            metricName = "etl_loading_duration",
+            jobName = name,
+            groupId = groupId
+        )
+        val failures = metrics.registerCounter(
+            metricName = "etl_loading_failures",
+            jobName = name,
+            groupId = groupId
+        )
         val preparedSql = prepareSql(sqlUpsert)
         val duration = try {
             newSuspendedTransaction(db = database) {
@@ -60,7 +73,9 @@ abstract class SqlDataLoader<T: EtlRow>(
                             }
                             addBatch()
                         }
-                        executeBatch()
+                        timer.recordDuration {
+                            executeBatch()
+                        }
                     }
                     override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()
                     override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
@@ -72,7 +87,9 @@ abstract class SqlDataLoader<T: EtlRow>(
                 success = false,
                 rowsLoaded = 0,
                 errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
-            )
+            ).also {
+                failures.increment()
+            }
         }
         return BatchResult(
             success = true,

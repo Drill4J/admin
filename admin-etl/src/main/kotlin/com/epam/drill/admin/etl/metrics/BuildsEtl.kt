@@ -32,6 +32,7 @@ val EtlConfig.buildsExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "updated_at",
+        metrics = metrics,
     )
 
 val EtlConfig.buildsLoader
@@ -42,6 +43,7 @@ val EtlConfig.buildsLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.buildsPipeline

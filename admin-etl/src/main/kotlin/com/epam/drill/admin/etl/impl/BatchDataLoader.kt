@@ -21,17 +21,18 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.StoppableFlow
 import com.epam.drill.admin.etl.flow.stoppable
+import com.epam.drill.admin.etl.metric.EtlMetrics
 import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.seconds
 
 abstract class BatchDataLoader<T : EtlRow>(
     override val name: String,
     open val batchSize: Int = 1000,
     open val loggingFrequency: Int = 10,
+    open val metrics: EtlMetrics
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -53,8 +54,16 @@ abstract class BatchDataLoader<T : EtlRow>(
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
-        val loadedRows = AtomicLong(0)
-        val skippedRows = AtomicLong(0)
+        val loadedRows = metrics.registerLongGauge(
+            metricName = "etl_rows_loaded",
+            jobName = name,
+            groupId = groupId
+        )
+        val skippedRows = metrics.registerLongGauge(
+            metricName = "etl_rows_skipped",
+            jobName = name,
+            groupId = groupId
+        )
         val buffer = mutableListOf<T>()
         var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp

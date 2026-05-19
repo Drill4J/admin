@@ -17,6 +17,9 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
+import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.metric.recordDuration
+import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -25,7 +28,6 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.time.Instant
-import kotlin.system.measureTimeMillis
 import kotlin.use
 
 abstract class SqlDataExtractor<T : EtlRow>(
@@ -35,7 +37,8 @@ abstract class SqlDataExtractor<T : EtlRow>(
     open val database: Database,
     open val fetchSize: Int,
     open val loggingFrequency: Int,
-) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency) {
+    override val metrics: EtlMetrics
+) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency, metrics) {
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extractPage(
@@ -46,18 +49,25 @@ abstract class SqlDataExtractor<T : EtlRow>(
         onExtractionExecuted: suspend (Long) -> Unit,
         rowsExtractor: suspend (T) -> Unit
     ) {
+        val timer = metrics.registerTimer(
+            metricName = "etl_extraction_duration",
+            jobName = name,
+            groupId = groupId
+        )
         val preparedSql = prepareSql(sqlQuery)
-
         execSuspend(
             sql = preparedSql.getSql(),
             args = preparedSql.getArgs(
-                UntypedRow(sinceTimestamp, mapOf(
-                    "group_id" to groupId,
-                    "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
-                    "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
-                    "limit" to limit,
-                ))
+                UntypedRow(
+                    sinceTimestamp, mapOf(
+                        "group_id" to groupId,
+                        "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
+                        "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
+                        "limit" to limit,
+                    )
+                )
             ),
+            timer = timer,
         ) { rs, duration ->
             val meta = rs.metaData
             val columnCount = meta.columnCount
@@ -73,6 +83,7 @@ abstract class SqlDataExtractor<T : EtlRow>(
     private suspend fun execSuspend(
         sql: String,
         args: List<Any?>,
+        timer: Timer,
         collect: suspend (ResultSet, Long) -> Unit
     ) {
         newSuspendedTransaction(context = Dispatchers.IO, db = database) {
@@ -91,11 +102,9 @@ abstract class SqlDataExtractor<T : EtlRow>(
                         stmt.setNull(index + 1, TextColumnType())
                 }
 
-                val resultSet: ResultSet
-                val duration = measureTimeMillis {
-                    resultSet = stmt.executeQuery()
-                }
-                resultSet.use { rs ->
+                timer.recordDuration {
+                    stmt.executeQuery()
+                }.use { rs ->
                     collect(rs, duration)
                 }
             } finally {

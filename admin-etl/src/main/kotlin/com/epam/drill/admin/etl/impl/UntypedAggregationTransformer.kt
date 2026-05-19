@@ -18,6 +18,7 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.flow.LruMap
+import com.epam.drill.admin.etl.metric.EtlMetrics
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ class UntypedAggregationTransformer(
     override val name: String,
     private val bufferSize: Int,
     private val loggingFrequency: Int = 10,
+    private val metrics: EtlMetrics,
     private val groupKeys: List<String>,
     private val aggregate: (current: UntypedRow, next: UntypedRow) -> UntypedRow
 ) : DataTransformer<UntypedRow, UntypedRow> {
@@ -39,8 +41,16 @@ class UntypedAggregationTransformer(
         groupId: String,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
-        val transformedRows = AtomicLong(0)
-        val emittedRows = AtomicLong(0)
+        val transformedRows = metrics.registerLongGauge(
+            metricName = "etl_rows_transformed",
+            jobName = name,
+            groupId = groupId
+        )
+        val emittedRows = metrics.registerLongGauge(
+            metricName = "etl_rows_emitted",
+            jobName = name,
+            groupId = groupId
+        )
         fun getAggregationRatio(): Double =
             if (transformedRows.get() == 0L) 0.0
             else (1 - emittedRows.toDouble() / transformedRows.get())

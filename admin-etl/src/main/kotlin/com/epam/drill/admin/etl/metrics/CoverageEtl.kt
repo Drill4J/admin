@@ -36,6 +36,7 @@ val EtlConfig.coverageExtractor
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
 
@@ -48,6 +49,7 @@ val EtlConfig.testLaunchCoverageExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "test_completed_at",
+        metrics = metrics,
     )
 
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
@@ -58,6 +60,7 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
     )
 
@@ -69,6 +72,7 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_session_id"] != null }
     )
 
@@ -78,6 +82,7 @@ val EtlConfig.buildMethodCoverageTransformer
         name = "build_method_coverage",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -104,6 +109,7 @@ val EtlConfig.buildMethodCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.methodDailyCoverageTransformer
@@ -111,6 +117,7 @@ val EtlConfig.methodDailyCoverageTransformer
         name = "method_daily_coverage",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -136,6 +143,7 @@ val EtlConfig.methodDailyCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.test2CodeMappingTransformer
@@ -143,6 +151,7 @@ val EtlConfig.test2CodeMappingTransformer
         name = "test_to_code_mapping",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -166,6 +175,7 @@ val EtlConfig.test2CodeMappingLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
     )
 

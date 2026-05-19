@@ -21,6 +21,7 @@ import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
+import com.epam.drill.admin.etl.metric.EtlMetrics
 import com.epam.drill.admin.etl.metrics.buildsPipeline
 import com.epam.drill.admin.etl.metrics.coveragePipeline
 import com.epam.drill.admin.etl.metrics.methodsPipeline
@@ -54,8 +55,10 @@ val etlDIModule
             )
         }
         bind<EtlOrchestrator>() with singleton {
+            val metrics = EtlMetrics(instance())
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"))
+            val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
+
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = "metrics",
@@ -65,8 +68,8 @@ val etlDIModule
                         coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
                     ),
                     metadataRepository = instance(),
-                    consistencyWindow = etlConfig.consistencyWindow,
-                    processingDelay = etlConfig.processingDelay
+                    consistencyWindow = consistencyWindow,
+                    processingDelay = processingDelay
                 )
             }
         }

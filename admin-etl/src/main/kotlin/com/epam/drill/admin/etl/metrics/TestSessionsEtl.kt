@@ -32,6 +32,7 @@ val EtlConfig.testSessionsExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
     )
 
 val EtlConfig.testSessionsLoader
@@ -42,6 +43,7 @@ val EtlConfig.testSessionsLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.testSessionsPipeline

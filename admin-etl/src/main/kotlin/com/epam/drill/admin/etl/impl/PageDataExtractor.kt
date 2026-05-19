@@ -18,6 +18,7 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.metric.EtlMetrics
 import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
 import java.time.Instant
@@ -30,6 +31,7 @@ abstract class PageDataExtractor<T : EtlRow>(
     override val name: String,
     open val extractionLimit: Int,
     private val loggingFrequency: Int = 10,
+    open val metrics: EtlMetrics
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -42,7 +44,16 @@ abstract class PageDataExtractor<T : EtlRow>(
     ) {
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = AtomicLong(0)
+        val rowsFetched = metrics.registerLongGauge(
+            metricName = "etl_rows_fetched",
+            jobName = name,
+            groupId = groupId
+        )
+        val failures = metrics.registerCounter(
+            metricName = "etl_extraction_failures",
+            jobName = name,
+            groupId = groupId
+        )
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
@@ -117,6 +128,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                 logger.error {
                     "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
                 }
+                failures.increment()
                 onExtractingProgress(
                     EtlExtractingResult(
                         errorMessage = e.message

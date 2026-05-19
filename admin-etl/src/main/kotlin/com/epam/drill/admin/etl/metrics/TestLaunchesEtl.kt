@@ -32,6 +32,7 @@ val EtlConfig.testLaunchesExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
     )
 
 val EtlConfig.testLaunchesLoader
@@ -42,6 +43,7 @@ val EtlConfig.testLaunchesLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.testLaunchesPipeline

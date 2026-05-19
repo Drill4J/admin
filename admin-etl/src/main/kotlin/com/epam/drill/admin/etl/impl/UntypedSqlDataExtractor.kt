@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.UntypedRow
+import com.epam.drill.admin.etl.metric.EtlMetrics
 import org.jetbrains.exposed.sql.Database
 import org.postgresql.util.PGobject
 import java.sql.ResultSet
@@ -30,8 +31,9 @@ class UntypedSqlDataExtractor(
     fetchSize: Int = 2000,
     extractionLimit: Int = 1_000_000,
     loggingFrequency: Int = 10,
+    metrics: EtlMetrics,
     private val lastExtractedAtColumnName: String,
-) : SqlDataExtractor<UntypedRow>(name, extractionLimit, sqlQuery, database, fetchSize, loggingFrequency) {
+) : SqlDataExtractor<UntypedRow>(name, extractionLimit, sqlQuery, database, fetchSize, loggingFrequency, metrics) {
 
     override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)
