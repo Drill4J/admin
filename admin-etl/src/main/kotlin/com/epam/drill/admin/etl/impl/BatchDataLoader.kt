@@ -21,7 +21,7 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.StoppableFlow
 import com.epam.drill.admin.etl.flow.stoppable
-import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
 import java.time.Instant
@@ -32,7 +32,7 @@ abstract class BatchDataLoader<T : EtlRow>(
     override val name: String,
     open val batchSize: Int = 1000,
     open val loggingFrequency: Int = 10,
-    open val metrics: EtlMetrics
+    open val metrics: EtlMeter
 ) : DataLoader<T> {
     private val logger = KotlinLogging.logger {}
 

@@ -1,4 +1,4 @@
-package com.epam.drill.admin.etl.metric
+package com.epam.drill.admin.etl.config
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.Timer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-class EtlMetrics(val registry: MeterRegistry) {
+class EtlMeter(val registry: MeterRegistry) {
     private val longGauges = ConcurrentHashMap<String, AtomicLong>()
     private val counters = ConcurrentHashMap<String, Counter>()
     private val timers = ConcurrentHashMap<String, Timer>()

@@ -18,20 +18,19 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlRow
-import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.seconds
 
 abstract class PageDataExtractor<T : EtlRow>(
     override val name: String,
     open val extractionLimit: Int,
     private val loggingFrequency: Int = 10,
-    open val metrics: EtlMetrics
+    open val metrics: EtlMeter
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 

@@ -15,13 +15,12 @@
  */
 package com.epam.drill.admin.etl.config
 
-import com.epam.drill.admin.etl.metric.EtlMetrics
 import io.ktor.server.config.ApplicationConfig
 
 /**
  * Configuration parameters for ETL processing.
  */
-class EtlConfig(private val config: ApplicationConfig, internal val metrics: EtlMetrics) {
+class EtlConfig(private val config: ApplicationConfig, internal val metrics: EtlMeter) {
     /**
      * Controls the in-memory buffer capacity used for the shared flow between the extractor and loaders.
      */

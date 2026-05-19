@@ -17,8 +17,8 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
-import com.epam.drill.admin.etl.metric.EtlMetrics
-import com.epam.drill.admin.etl.metric.recordDuration
+import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.config.recordDuration
 import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
@@ -37,7 +37,7 @@ abstract class SqlDataExtractor<T : EtlRow>(
     open val database: Database,
     open val fetchSize: Int,
     open val loggingFrequency: Int,
-    override val metrics: EtlMetrics
+    override val metrics: EtlMeter
 ) : PageDataExtractor<T>(name, extractionLimit, loggingFrequency, metrics) {
     private val logger = KotlinLogging.logger {}
 

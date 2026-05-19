@@ -16,10 +16,8 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.UntypedRow
-import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.config.EtlMeter
 import org.jetbrains.exposed.sql.Database
-import java.time.Instant
-import java.util.Date
 
 class UntypedSqlDataLoader(
     name: String,
@@ -28,7 +26,7 @@ class UntypedSqlDataLoader(
     database: Database,
     batchSize: Int = 1000,
     loggingFrequency: Int = 10,
-    metrics: EtlMetrics,
+    metrics: EtlMeter,
     val processable: (UntypedRow) -> Boolean = { true }
 ) : SqlDataLoader<UntypedRow>(name, batchSize, loggingFrequency, sqlUpsert, sqlDelete, database, metrics) {
 

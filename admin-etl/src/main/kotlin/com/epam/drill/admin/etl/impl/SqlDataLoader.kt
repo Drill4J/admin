@@ -16,8 +16,8 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlRow
-import com.epam.drill.admin.etl.metric.EtlMetrics
-import com.epam.drill.admin.etl.metric.recordDuration
+import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.config.recordDuration
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -36,7 +36,7 @@ abstract class SqlDataLoader<T: EtlRow>(
     open val sqlUpsert: String,
     open val sqlDelete: String,
     open val database: Database,
-    override val metrics: EtlMetrics
+    override val metrics: EtlMeter
 ) : BatchDataLoader<T>(name, batchSize, loggingFrequency, metrics) {
     private val logger = KotlinLogging.logger {}
 

@@ -18,20 +18,19 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.flow.LruMap
-import com.epam.drill.admin.etl.metric.EtlMetrics
+import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.seconds
 
 class UntypedAggregationTransformer(
     override val name: String,
     private val bufferSize: Int,
     private val loggingFrequency: Int = 10,
-    private val metrics: EtlMetrics,
+    private val metrics: EtlMeter,
     private val groupKeys: List<String>,
     private val aggregate: (current: UntypedRow, next: UntypedRow) -> UntypedRow
 ) : DataTransformer<UntypedRow, UntypedRow> {
