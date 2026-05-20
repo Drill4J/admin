@@ -54,16 +54,9 @@ abstract class BatchDataLoader<T : EtlRow>(
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
-        val loadedRows = metrics.registerLongGauge(
-            metricName = "etl_rows_loaded",
-            jobName = name,
-            groupId = groupId
-        )
-        val skippedRows = metrics.registerLongGauge(
-            metricName = "etl_rows_skipped",
-            jobName = name,
-            groupId = groupId
-        )
+        val processedRows = metrics.rowsProcessed(name, groupId)
+        val loadedRows = metrics.rowsLoaded(name, groupId)
+        val skippedRows = metrics.rowsSkipped(name, groupId)
         val buffer = mutableListOf<T>()
         var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp
@@ -80,10 +73,11 @@ abstract class BatchDataLoader<T : EtlRow>(
 
         trackProgressOf {
             flow.collect { row ->
-                if (loadedRows.get() == 0L && skippedRows.get() == 0L) {
+                if (processedRows.get() == 0L) {
                     logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
                     onStatusChanged(EtlStatus.LOADING)
                 }
+                processedRows.incrementAndGet()
                 val currentTimestamp = row.timestamp
                 if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                     flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
@@ -108,6 +102,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                         if (batch.success) {
                             lastLoadedTimestamp =
                                 previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                            loadedRows.addAndGet(batch.rowsLoaded)
                         }
                         EtlLoadingResult(
                             errorMessage = if (!batch.success) result.errorMessage else null,
@@ -146,7 +141,6 @@ abstract class BatchDataLoader<T : EtlRow>(
 
                 buffer += row
                 previousTimestamp = currentTimestamp
-                loadedRows.incrementAndGet()
             }
         }.every(loggingFrequency.seconds) {
             if (loadedRows.get() > 0L || skippedRows.get() > 0L) {
@@ -166,6 +160,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                     if (batch.success) {
                         lastLoadedTimestamp = previousTimestamp
                             ?: throw IllegalStateException("Previous timestamp is null")
+                        loadedRows.addAndGet(batch.rowsLoaded)
                     }
                     EtlLoadingResult(
                         errorMessage = if (!batch.success) batch.errorMessage else null,
@@ -192,6 +187,9 @@ abstract class BatchDataLoader<T : EtlRow>(
             val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
             "ETL loader [$name] for group [$groupId] complete loading for ${result.processedRows} rows" + errors
         }
+        processedRows.set(0L)
+        loadedRows.set(0L)
+        skippedRows.set(0L)
         return result
     }
 

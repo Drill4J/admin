@@ -46,17 +46,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     private val logger = KotlinLogging.logger {}
 
     companion object {
-        fun <T: EtlRow> singleLoader(
-            name: String,
-            extractor: DataExtractor<T>,
-            loader: DataLoader<T>,
-            bufferSize: Int = 2000
-        ) = EtlPipelineImpl(
-            name = name,
-            extractor = extractor,
-            loaders = listOf(NopTransformer<T>() to loader),
-            bufferSize = bufferSize
-        )
 
         fun <T: EtlRow, R: EtlRow> singleLoader(
             name: String,

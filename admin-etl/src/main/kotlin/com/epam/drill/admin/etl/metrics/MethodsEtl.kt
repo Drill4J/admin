@@ -20,8 +20,8 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
-import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -46,6 +46,14 @@ val EtlConfig.buildMethodsLoader
         batchSize = batchSize,
         metrics = metrics,
     )
+
+val EtlConfig.buildMethodTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_methods",
+        metrics = metrics,
+        predicate = { true },
+    )
+
 
 val EtlConfig.methodLoaderTransformer
     get() = UntypedAggregationTransformer(
@@ -75,6 +83,6 @@ val EtlConfig.methodsPipeline
     get() = EtlPipelineImpl(
         name = "methods",
         extractor = buildMethodsExtractor,
-        loaders = listOf(untypedNopTransformer to buildMethodsLoader, methodLoaderTransformer to methodsLoader),
+        loaders = listOf(buildMethodTransformer to buildMethodsLoader, methodLoaderTransformer to methodsLoader),
         bufferSize = bufferSize
     )

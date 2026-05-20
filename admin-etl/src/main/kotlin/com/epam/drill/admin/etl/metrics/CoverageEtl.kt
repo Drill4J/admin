@@ -20,8 +20,8 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
-import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -74,6 +74,20 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         loggingFrequency = loggingFrequency,
         metrics = metrics,
         processable = { it["test_session_id"] != null }
+    )
+
+val EtlConfig.buildMethodTestSessionCoverageTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_method_test_session_coverage",
+        metrics = metrics,
+        predicate = { true },
+    )
+
+val EtlConfig.buildMethodTestDefinitionCoverageTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_method_test_definition_coverage",
+        metrics = metrics,
+        predicate = { true },
     )
 
 
@@ -184,10 +198,10 @@ val EtlConfig.coveragePipeline
         name = "coverage",
         extractor = coverageExtractor,
         loaders = listOf(
-            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodTestSessionCoverageTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
-            untypedNopTransformer to testSessionBuildsLoader
+            testSessionBuildsTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
     )
@@ -197,12 +211,12 @@ val EtlConfig.testLaunchCoveragePipeline
         name = "test_launch_coverage",
         extractor = testLaunchCoverageExtractor,
         loaders = listOf(
-            untypedNopTransformer to buildMethodTestDefinitionCoverageLoader,
-            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodTestDefinitionCoverageTransformer to buildMethodTestDefinitionCoverageLoader,
+            buildMethodTestSessionCoverageTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
             test2CodeMappingTransformer to test2CodeMappingLoader,
-            untypedNopTransformer to testSessionBuildsLoader
+            testSessionBuildsTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
     )

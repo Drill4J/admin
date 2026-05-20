@@ -43,16 +43,8 @@ abstract class PageDataExtractor<T : EtlRow>(
     ) {
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = metrics.registerLongGauge(
-            metricName = "etl_rows_fetched",
-            jobName = name,
-            groupId = groupId
-        )
-        val failures = metrics.registerCounter(
-            metricName = "etl_extraction_failures",
-            jobName = name,
-            groupId = groupId
-        )
+        val rowsFetched = metrics.rowsFetched(name, groupId)
+        val failures = metrics.extractionFailures(name, groupId)
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
@@ -146,6 +138,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                 }
             }
         }
+        rowsFetched.set(0L)
     }
 
     private suspend fun emitBuffer(

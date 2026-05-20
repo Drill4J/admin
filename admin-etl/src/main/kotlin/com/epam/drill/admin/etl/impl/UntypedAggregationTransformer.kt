@@ -40,16 +40,8 @@ class UntypedAggregationTransformer(
         groupId: String,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
-        val transformedRows = metrics.registerLongGauge(
-            metricName = "etl_rows_transformed",
-            jobName = name,
-            groupId = groupId
-        )
-        val emittedRows = metrics.registerLongGauge(
-            metricName = "etl_rows_emitted",
-            jobName = name,
-            groupId = groupId
-        )
+        val transformedRows = metrics.rowsTransformed(name, groupId)
+        val emittedRows = metrics.rowsEmitted(name, groupId)
         fun getAggregationRatio(): Double =
             if (transformedRows.get() == 0L) 0.0
             else (1 - emittedRows.toDouble() / transformedRows.get())
@@ -107,5 +99,7 @@ class UntypedAggregationTransformer(
                         "aggregation ratio: ${getAggregationRatio()}"
             }
         }
+        transformedRows.set(0L)
+        emittedRows.set(0L)
     }
 }

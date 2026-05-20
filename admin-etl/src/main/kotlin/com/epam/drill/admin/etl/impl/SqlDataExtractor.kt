@@ -49,11 +49,7 @@ abstract class SqlDataExtractor<T : EtlRow>(
         onExtractionExecuted: suspend (Long) -> Unit,
         rowsExtractor: suspend (T) -> Unit
     ) {
-        val timer = metrics.registerTimer(
-            metricName = "etl_extraction_duration",
-            jobName = name,
-            groupId = groupId
-        )
+        val timer = metrics.extractionDuration(name, groupId)
         val preparedSql = prepareSql(sqlQuery)
         execSuspend(
             sql = preparedSql.getSql(),

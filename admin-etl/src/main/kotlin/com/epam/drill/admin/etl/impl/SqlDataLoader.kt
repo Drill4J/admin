@@ -47,16 +47,8 @@ abstract class SqlDataLoader<T: EtlRow>(
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
-        val timer = metrics.registerTimer(
-            metricName = "etl_loading_duration",
-            jobName = name,
-            groupId = groupId
-        )
-        val failures = metrics.registerCounter(
-            metricName = "etl_loading_failures",
-            jobName = name,
-            groupId = groupId
-        )
+        val timer = metrics.loadingDuration(name, groupId)
+        val failures = metrics.loadingFailures(name, groupId)
         val preparedSql = prepareSql(sqlUpsert)
         val duration = try {
             newSuspendedTransaction(db = database) {

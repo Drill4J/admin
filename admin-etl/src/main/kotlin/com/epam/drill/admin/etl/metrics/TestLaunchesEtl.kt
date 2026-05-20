@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -33,6 +34,13 @@ val EtlConfig.testLaunchesExtractor
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
+    )
+
+val EtlConfig.testLaunchesTransformer
+    get() = UntypedFilterTransformer(
+        name = "test_launches",
+        metrics = metrics,
+        predicate = { true },
     )
 
 val EtlConfig.testLaunchesLoader
@@ -50,6 +58,7 @@ val EtlConfig.testLaunchesPipeline
     get() = EtlPipelineImpl.singleLoader(
         name = "test_launches",
         extractor = testLaunchesExtractor,
+        transformer = testLaunchesTransformer,
         loader = testLaunchesLoader,
         bufferSize = bufferSize
     )

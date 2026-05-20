@@ -22,7 +22,48 @@ import io.micrometer.core.instrument.Timer
 import java.util.concurrent.atomic.AtomicLong
 
 class EtlMeter(val registry: MeterRegistry) {
-    fun registerLongGauge(metricName: String, jobName: String, groupId: String): AtomicLong {
+
+    fun rowsFetched(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_fetched", jobName, groupId)
+    }
+
+    fun rowsTransformed(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_transformed", jobName, groupId)
+    }
+
+    fun rowsEmitted(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_emitted", jobName, groupId)
+    }
+
+    fun rowsProcessed(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_processed", jobName, groupId)
+    }
+
+    fun rowsLoaded(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_loaded", jobName, groupId)
+    }
+
+    fun rowsSkipped(jobName: String, groupId: String): AtomicLong {
+        return registerLongGauge("etl_rows_skipped", jobName, groupId)
+    }
+
+    fun loadingFailures(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_loading_failures", jobName, groupId)
+    }
+
+    fun extractionFailures(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_extraction_failures", jobName, groupId)
+    }
+
+    fun loadingDuration(jobName: String, groupId: String): Timer {
+        return registerTimer("etl_loading_duration", jobName, groupId)
+    }
+
+    fun extractionDuration(jobName: String, groupId: String): Timer {
+        return registerTimer("etl_extraction_duration", jobName, groupId)
+    }
+
+    private fun registerLongGauge(metricName: String, jobName: String, groupId: String): AtomicLong {
         val value = AtomicLong(0)
         Gauge.builder(metricName) { value.get() }
             .tag("jobName", jobName)
@@ -31,7 +72,7 @@ class EtlMeter(val registry: MeterRegistry) {
         return value
     }
 
-    fun registerCounter(metricName: String, jobName: String, groupId: String): Counter {
+    private fun registerCounter(metricName: String, jobName: String, groupId: String): Counter {
         return Counter.builder(metricName)
             .tag("jobName", jobName)
             .tag("groupId", groupId)
@@ -39,7 +80,7 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
 
-    fun registerTimer(metricName: String, jobName: String, groupId: String): Timer {
+    private fun registerTimer(metricName: String, jobName: String, groupId: String): Timer {
         return Timer.builder(metricName)
             .tag("jobName", jobName)
             .tag("groupId", groupId)
