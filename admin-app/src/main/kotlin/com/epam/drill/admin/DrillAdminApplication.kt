@@ -68,6 +68,7 @@ import org.kodein.di.ktor.di
 import javax.sql.DataSource
 
 private val logger = KotlinLogging.logger {}
+private val loggingIgnorePaths = setOf("/metrics", "/swagger")
 
 fun Application.module() {
     val oauth2Enabled = oauth2Enabled
@@ -162,6 +163,10 @@ fun Application.module() {
 
 private fun Application.installPlugins() {
     install(CallLogging) {
+        filter { call ->
+            val path = call.request.path()
+            loggingIgnorePaths.none { path.startsWith(it) }
+        }
         format { call ->
             val status = call.response.status()
             val httpMethod = call.request.httpMethod.value
