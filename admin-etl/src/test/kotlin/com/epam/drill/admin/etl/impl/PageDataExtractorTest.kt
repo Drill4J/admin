@@ -17,7 +17,9 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.PageDataExtractorTest.TestPageDataExtractor.ExtractedPageInfo
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
@@ -32,7 +34,8 @@ class PageDataExtractorTest {
     private class TestPageDataExtractor(
         extractionLimit: Int,
         private val data: List<TestItem> = emptyList(),
-    ) : PageDataExtractor<TestItem>("test-extractor", extractionLimit) {
+    ) : PageDataExtractor<TestItem>("test-extractor", extractionLimit,
+        metrics = EtlMeter(SimpleMeterRegistry())) {
 
         val extractedPages = mutableListOf<ExtractedPageInfo>()
 

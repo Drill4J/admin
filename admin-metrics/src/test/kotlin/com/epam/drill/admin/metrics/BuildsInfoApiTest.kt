@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
@@ -36,11 +37,11 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
     MetricsDatabaseConfig.init(metrics)
 }) {
     private suspend fun TestDataDsl.initTestData() {
-        client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = testBranch))
-        client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "2.0.0", branch = testBranch))
-        client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "3.0.0", branch = "develop"))
-        client.putBuild(BuildPayload(groupId = testGroup, appId = "app-2", buildVersion = "1.0.0", branch = testBranch))
-        client.putBuild(BuildPayload(groupId = "group-2", appId = testApp, buildVersion = "1.0.0", branch = testBranch))
+        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = testBranch))
+        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "2.0.0", branch = testBranch))
+        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "3.0.0", branch = "develop"))
+        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = "app-2", buildVersion = "1.0.0", branch = testBranch))
+        client.putBuildInfo(BuildInfoPayload(groupId = "group-2", appId = testApp, buildVersion = "1.0.0", branch = testBranch))
     }
 
     private suspend fun TestDataDsl.initEnvironmentData() {

@@ -25,7 +25,7 @@ class CoveragePayload(
     val commitSha: String?,
     val buildVersion: String?,
     val coverage: List<SingleMethodCoveragePayload>
-)
+): RawDataPayload
 
 @Serializable
 class SingleMethodCoveragePayload(

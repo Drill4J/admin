@@ -18,6 +18,7 @@ package com.epam.drill.admin.writer.rawdata
 import com.epam.drill.admin.test.DatabaseTests
 import com.epam.drill.admin.test.assertJsonEquals
 import com.epam.drill.admin.test.drillApplication
+import com.epam.drill.admin.test.waitUntilInTransaction
 import com.epam.drill.admin.test.withRollback
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
@@ -109,28 +110,30 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             )
         }
 
-        val savedTestLaunches = TestLaunchTable.selectAll()
-            .filter { it[TestLaunchTable.groupId] == testGroup }
-            .filter { it[TestLaunchTable.testSessionId] == testSession }
-            .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
-        assertEquals(2, savedTestLaunches.size)
-        savedTestLaunches.forEach {
-            assertNotNull(it[TestLaunchTable.duration])
-            assertNotNull(it[TestLaunchTable.result])
-            assertTrue(it[TestLaunchTable.createdAt] >= timeBeforeTest)
-        }
+        waitUntilInTransaction {
+            val savedTestLaunches = TestLaunchTable.selectAll()
+                .filter { it[TestLaunchTable.groupId] == testGroup }
+                .filter { it[TestLaunchTable.testSessionId] == testSession }
+                .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
+            assertEquals(2, savedTestLaunches.size)
+            savedTestLaunches.forEach {
+                assertNotNull(it[TestLaunchTable.duration])
+                assertNotNull(it[TestLaunchTable.result])
+                assertTrue(it[TestLaunchTable.createdAt] >= timeBeforeTest)
+            }
 
-        val savedTestDefinitions = TestDefinitionTable.selectAll()
-            .filter { it[TestDefinitionTable.groupId] == testGroup }
-            .filter { it[TestDefinitionTable.id].value == testDefinition }
-        assertEquals(1, savedTestDefinitions.size)
-        savedTestDefinitions.forEach {
-            assertNotNull(it[TestDefinitionTable.runner])
-            assertNotNull(it[TestDefinitionTable.name])
-            assertNotNull(it[TestDefinitionTable.path])
-            assertEquals(2, it[TestDefinitionTable.tags]?.size)
-            assertEquals(2, it[TestDefinitionTable.metadata]?.jsonObject?.size)
-            assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
+            val savedTestDefinitions = TestDefinitionTable.selectAll()
+                .filter { it[TestDefinitionTable.groupId] == testGroup }
+                .filter { it[TestDefinitionTable.id].value == testDefinition }
+            assertEquals(1, savedTestDefinitions.size)
+            savedTestDefinitions.forEach {
+                assertNotNull(it[TestDefinitionTable.runner])
+                assertNotNull(it[TestDefinitionTable.name])
+                assertNotNull(it[TestDefinitionTable.path])
+                assertEquals(2, it[TestDefinitionTable.tags]?.size)
+                assertEquals(2, it[TestDefinitionTable.metadata]?.jsonObject?.size)
+                assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 
@@ -186,14 +189,16 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             )
         }
 
-        val saved = TestDefinitionTable.selectAll()
-            .filter { it[TestDefinitionTable.groupId] == testGroup }
+        waitUntilInTransaction {
+            val saved = TestDefinitionTable.selectAll()
+                .filter { it[TestDefinitionTable.groupId] == testGroup }
 
-        assertEquals(2, saved.size)
-        saved.forEach {
-            assertNotNull(it[TestDefinitionTable.runner])
-            assertNotNull(it[TestDefinitionTable.name])
-            assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
+            assertEquals(2, saved.size)
+            saved.forEach {
+                assertNotNull(it[TestDefinitionTable.runner])
+                assertNotNull(it[TestDefinitionTable.name])
+                assertTrue(it[TestDefinitionTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 
@@ -246,16 +251,18 @@ class TestMetadataApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it)
             )
         }
 
-        val saved = TestLaunchTable.selectAll()
-            .filter { it[TestLaunchTable.groupId] == testGroup }
-            .filter { it[TestLaunchTable.testSessionId] == testSession }
-            .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
+        waitUntilInTransaction {
+            val saved = TestLaunchTable.selectAll()
+                .filter { it[TestLaunchTable.groupId] == testGroup }
+                .filter { it[TestLaunchTable.testSessionId] == testSession }
+                .filter { it[TestLaunchTable.testDefinitionId] == testDefinition }
 
-        assertEquals(2, saved.size)
-        saved.forEach {
-            assertNotNull(it[TestLaunchTable.result])
-            assertNotNull(it[TestLaunchTable.duration])
-            assertTrue(it[TestLaunchTable.createdAt] >= timeBeforeTest)
+            assertEquals(2, saved.size)
+            saved.forEach {
+                assertNotNull(it[TestLaunchTable.result])
+                assertNotNull(it[TestLaunchTable.duration])
+                assertTrue(it[TestLaunchTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 

@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
@@ -100,6 +99,12 @@ val TestDetails.definitionId: String
     }
 
 suspend fun HttpClient.putBuild(payload: BuildPayload): HttpResponse {
+    return put("/data-ingest/builds") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.putBuildInfo(payload: BuildInfoPayload): HttpResponse {
     return put("/data-ingest/builds/info") {
         setBody(payload)
     }.assertSuccessStatus()

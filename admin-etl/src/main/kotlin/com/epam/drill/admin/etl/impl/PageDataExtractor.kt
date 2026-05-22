@@ -18,18 +18,19 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.FlowCollector
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.seconds
 
 abstract class PageDataExtractor<T : EtlRow>(
     override val name: String,
     open val extractionLimit: Int,
     private val loggingFrequency: Int = 10,
+    open val metrics: EtlMeter
 ) : DataExtractor<T> {
     private val logger = KotlinLogging.logger {}
 
@@ -42,7 +43,8 @@ abstract class PageDataExtractor<T : EtlRow>(
     ) {
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = AtomicLong(0)
+        val rowsFetched = metrics.rowsFetched(name, groupId)
+        val failures = metrics.extractionFailures(name, groupId)
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
@@ -89,7 +91,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                             buffer.add(row)
 
                             previousTimestamp = currentTimestamp
-                            rowsFetched.incrementAndGet()
+                            rowsFetched.increment()
                         }
                     )
                     if (pageRows == 0L || pageRows < extractionLimit) {
@@ -98,7 +100,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                         previousEmittedTimestamp = previousTimestamp
                         logger.debug {
                             "ETL extractor [$name] for group [$groupId] completed fetching" +
-                                    ", rows fetched: ${rowsFetched.get()}" +
+                                    ", rows fetched: ${rowsFetched.count()}" +
                                     ", total pages: ${page.get()}" +
                                     (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
                         }
@@ -117,6 +119,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                 logger.error {
                     "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
                 }
+                failures.increment()
                 onExtractingProgress(
                     EtlExtractingResult(
                         errorMessage = e.message
@@ -130,7 +133,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                 }
             } else {
                 logger.debug {
-                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.get()} rows" +
+                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.count()} rows" +
                             ", page: ${page.get()}"
                 }
             }

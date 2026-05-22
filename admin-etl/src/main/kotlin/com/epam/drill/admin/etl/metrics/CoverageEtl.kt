@@ -20,8 +20,8 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
-import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -36,6 +36,7 @@ val EtlConfig.coverageExtractor
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         lastExtractedAtColumnName = "created_at",
     )
 
@@ -48,6 +49,7 @@ val EtlConfig.testLaunchCoverageExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "test_completed_at",
+        metrics = metrics,
     )
 
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
@@ -58,6 +60,7 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
     )
 
@@ -69,7 +72,22 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_session_id"] != null }
+    )
+
+val EtlConfig.buildMethodTestSessionCoverageTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_method_test_session_coverage",
+        metrics = metrics,
+        predicate = { true },
+    )
+
+val EtlConfig.buildMethodTestDefinitionCoverageTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_method_test_definition_coverage",
+        metrics = metrics,
+        predicate = { true },
     )
 
 
@@ -78,6 +96,7 @@ val EtlConfig.buildMethodCoverageTransformer
         name = "build_method_coverage",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -104,6 +123,7 @@ val EtlConfig.buildMethodCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.methodDailyCoverageTransformer
@@ -111,6 +131,7 @@ val EtlConfig.methodDailyCoverageTransformer
         name = "method_daily_coverage",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -136,6 +157,7 @@ val EtlConfig.methodDailyCoverageLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.test2CodeMappingTransformer
@@ -143,6 +165,7 @@ val EtlConfig.test2CodeMappingTransformer
         name = "test_to_code_mapping",
         bufferSize = transformationBufferSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -166,6 +189,7 @@ val EtlConfig.test2CodeMappingLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
     )
 
@@ -174,10 +198,10 @@ val EtlConfig.coveragePipeline
         name = "coverage",
         extractor = coverageExtractor,
         loaders = listOf(
-            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodTestSessionCoverageTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
-            untypedNopTransformer to testSessionBuildsLoader
+            testSessionBuildsTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
     )
@@ -187,12 +211,12 @@ val EtlConfig.testLaunchCoveragePipeline
         name = "test_launch_coverage",
         extractor = testLaunchCoverageExtractor,
         loaders = listOf(
-            untypedNopTransformer to buildMethodTestDefinitionCoverageLoader,
-            untypedNopTransformer to buildMethodTestSessionCoverageLoader,
+            buildMethodTestDefinitionCoverageTransformer to buildMethodTestDefinitionCoverageLoader,
+            buildMethodTestSessionCoverageTransformer to buildMethodTestSessionCoverageLoader,
             buildMethodCoverageTransformer to buildMethodCoverageLoader,
             methodDailyCoverageTransformer to methodDailyCoverageLoader,
             test2CodeMappingTransformer to test2CodeMappingLoader,
-            untypedNopTransformer to testSessionBuildsLoader
+            testSessionBuildsTransformer to testSessionBuildsLoader
         ),
         bufferSize = bufferSize
     )

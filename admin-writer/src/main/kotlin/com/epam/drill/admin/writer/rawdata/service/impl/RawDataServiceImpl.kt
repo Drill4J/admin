@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
-import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.config.toBitString
@@ -24,7 +23,6 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.util.md5
-import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -44,7 +42,6 @@ class RawDataServiceImpl(
     private val buildRepository: BuildRepository,
     private val testSessionRepository: TestSessionRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
-    private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository
 ) : RawDataWriter {
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
@@ -67,7 +64,7 @@ class RawDataServiceImpl(
         }
     }
 
-    override suspend fun saveBuildInfo(buildPayload: BuildPayload) {
+    override suspend fun saveBuildInfo(buildPayload: BuildInfoPayload) {
         val build = Build(
             id = generateBuildId(
                 buildPayload.groupId,
@@ -255,13 +252,13 @@ class RawDataServiceImpl(
         }.let { testLaunchRepository.createMany(it) }
     }
 
-    override suspend fun saveTestSession(sessionPayload: SessionPayload, user: User?) {
+    override suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?) {
         val testSession = TestSession(
             id = sessionPayload.id,
             groupId = sessionPayload.groupId,
             testTaskId = sessionPayload.testTaskId,
             startedAt = sessionPayload.startedAt.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime(),
-            createdBy = user?.username
+            createdBy = username
         )
         transaction {
             testSessionRepository.create(testSession)
@@ -276,30 +273,6 @@ class RawDataServiceImpl(
                 )
                 testSessionBuildRepository.create(sessionPayload.id, buildId, sessionPayload.groupId)
             }
-        }
-    }
-
-    override suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload) {
-        val rule = MethodIgnoreRule(
-            groupId = rulePayload.groupId,
-            appId = rulePayload.appId,
-            namePattern = rulePayload.namePattern,
-            classnamePattern = rulePayload.classnamePattern,
-        )
-        transaction {
-            methodIgnoreRuleRepository.create(rule)
-        }
-    }
-
-    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView> {
-        return transaction {
-            methodIgnoreRuleRepository.getAll()
-        }
-    }
-
-    override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {
-        transaction {
-            methodIgnoreRuleRepository.deleteById(ruleId)
         }
     }
 

@@ -20,7 +20,7 @@ import io.ktor.server.config.ApplicationConfig
 /**
  * Configuration parameters for ETL processing.
  */
-class EtlConfig(private val config: ApplicationConfig) {
+class EtlConfig(private val config: ApplicationConfig, internal val metrics: EtlMeter) {
     /**
      * Controls the in-memory buffer capacity used for the shared flow between the extractor and loaders.
      */

@@ -17,6 +17,8 @@ package com.epam.drill.admin.common.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import io.micrometer.core.instrument.Metrics
+import io.micrometer.core.instrument.Timer
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -49,6 +51,20 @@ open class DatabaseConfig(
             .migrate()
     }
 
-    suspend fun <T> transaction(block: suspend Transaction.() -> T): T =
-        newSuspendedTransaction(dispatcher, database) { block() }
+    suspend fun <T> transaction(block: suspend Transaction.() -> T): T {
+        val sample = Timer.start(Metrics.globalRegistry)
+        return runCatching {
+            newSuspendedTransaction(dispatcher, database) { block() }.also {
+                sample.stop(transactionTimer("success"))
+            }
+        }.onFailure {
+            sample.stop(transactionTimer("failure"))
+        }.getOrThrow()
+    }
+
+    private fun transactionTimer(status: String) = Metrics.timer(
+        "drill_db_exposed_transaction_duration",
+        "schema", dbSchema,
+        "status", status
+    )
 }

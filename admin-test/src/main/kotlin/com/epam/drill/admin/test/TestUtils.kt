@@ -16,7 +16,6 @@
 package com.epam.drill.admin.test
 
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.resources.*
@@ -29,8 +28,17 @@ import org.kodein.di.DI
 import org.kodein.di.ktor.di
 import kotlin.test.assertEquals
 import com.epam.drill.admin.common.route.commonStatusPages
+import io.ktor.server.application.ApplicationStopping
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import org.jetbrains.exposed.sql.Database
-import javax.sql.DataSource
+import org.kodein.di.allInstances
+import org.kodein.di.bind
+import org.kodein.di.ktor.closestDI
+import org.kodein.di.singleton
+import kotlin.getValue
 
 
 fun withRollback(test: suspend () -> Unit) {
@@ -66,7 +74,18 @@ fun drillApplication(
     }
     application {
         di {
+            import(meterModule)
             diModules.forEach { import(it) }
+        }
+        environment.monitor.subscribe(ApplicationStopping) {
+            val closableComponents: List<AutoCloseable> by closestDI().allInstances()
+            runBlocking {
+                closableComponents.map {
+                    async {
+                        it.close()
+                    }
+                }.awaitAll()
+            }
         }
     }
     routing {
@@ -90,4 +109,10 @@ fun assertJsonEquals(json1: String, json2: String) {
     val obj1: JsonElement = removeNulls(json.parseToJsonElement(json1))
     val obj2: JsonElement = removeNulls(json.parseToJsonElement(json2))
     assertEquals(obj1, obj2)
+}
+
+private val meterModule = DI.Module("meterModule") {
+    bind<MeterRegistry>() with singleton {
+        SimpleMeterRegistry()
+    }
 }

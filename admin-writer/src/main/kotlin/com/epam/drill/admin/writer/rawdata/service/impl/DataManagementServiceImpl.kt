@@ -22,14 +22,18 @@ import com.epam.drill.admin.common.scheduler.deleteMetricsDataJobKey
 import com.epam.drill.admin.common.scheduler.getBuildDataDeletionDataMap
 import com.epam.drill.admin.common.scheduler.getTestDataDeletionDataMap
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
+import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 class DataManagementServiceImpl(
     private val buildRepository: BuildRepository,
@@ -39,6 +43,7 @@ class DataManagementServiceImpl(
     private val methodRepository: MethodRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
     private val testLaunchRepository: TestLaunchRepository,
+    private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository,
     private val scheduler: DrillScheduler,
 ) : DataManagementService {
 
@@ -66,6 +71,30 @@ class DataManagementServiceImpl(
             testSessionBuildRepository.deleteAllByTestSessionId(groupId, testSessionId)
             testSessionRepository.deleteByTestSessionId(groupId, testSessionId)
             scheduler.triggerJob(deleteMetricsDataJobKey, getTestDataDeletionDataMap(groupId, testSessionId))
+        }
+    }
+
+    override suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload) {
+        val rule = MethodIgnoreRule(
+            groupId = rulePayload.groupId,
+            appId = rulePayload.appId,
+            namePattern = rulePayload.namePattern,
+            classnamePattern = rulePayload.classnamePattern,
+        )
+        transaction {
+            methodIgnoreRuleRepository.create(rule)
+        }
+    }
+
+    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView> {
+        return transaction {
+            methodIgnoreRuleRepository.getAll()
+        }
+    }
+
+    override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {
+        transaction {
+            methodIgnoreRuleRepository.deleteById(ruleId)
         }
     }
 }

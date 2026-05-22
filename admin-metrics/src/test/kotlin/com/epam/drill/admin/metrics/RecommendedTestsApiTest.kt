@@ -19,6 +19,7 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.table.*
 import io.ktor.client.request.*
@@ -140,8 +141,8 @@ class RecommendedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
     @Test
     fun `given baselineBuildBranches parameter, recommended test service should suggest skipping tests if they are not impacted in baselines from specified branch`() {
         havingData {
-            client.putBuild(BuildPayload(groupId = build1.groupId, appId = build1.appId, buildVersion = build1.buildVersion, branch = "main"))
-            client.putBuild(BuildPayload(groupId = build2.groupId, appId = build2.appId, buildVersion = build2.buildVersion, branch = "feature"))
+            client.putBuildInfo(BuildInfoPayload(groupId = build1.groupId, appId = build1.appId, buildVersion = build1.buildVersion, branch = "main"))
+            client.putBuildInfo(BuildInfoPayload(groupId = build2.groupId, appId = build2.appId, buildVersion = build2.buildVersion, branch = "feature"))
             //build1 on main branch, test1 covers method2
             client.deployInstance(build1, arrayOf(method1, method2))
             client.launchTest(

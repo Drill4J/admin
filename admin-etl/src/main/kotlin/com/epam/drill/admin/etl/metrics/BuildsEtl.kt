@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -32,6 +33,14 @@ val EtlConfig.buildsExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "updated_at",
+        metrics = metrics,
+    )
+
+val EtlConfig.buildsTransformer
+    get() = UntypedFilterTransformer(
+        name = "builds",
+        metrics = metrics,
+        predicate = { true },
     )
 
 val EtlConfig.buildsLoader
@@ -42,12 +51,14 @@ val EtlConfig.buildsLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
 val EtlConfig.buildsPipeline
     get() = EtlPipelineImpl.singleLoader(
         name = "builds",
         extractor = buildsExtractor,
+        transformer = buildsTransformer,
         loader = buildsLoader,
         bufferSize = bufferSize
     )

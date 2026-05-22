@@ -20,8 +20,8 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
-import com.epam.drill.admin.etl.untypedNopTransformer
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -34,6 +34,7 @@ val EtlConfig.buildMethodsExtractor
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
     )
 
 val EtlConfig.buildMethodsLoader
@@ -42,13 +43,23 @@ val EtlConfig.buildMethodsLoader
         sqlUpsert = fromResource("/etl/db/metrics/build_methods_loader.sql"),
         sqlDelete = fromResource("/etl/db/metrics/build_methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        metrics = metrics,
     )
+
+val EtlConfig.buildMethodTransformer
+    get() = UntypedFilterTransformer(
+        name = "build_methods",
+        metrics = metrics,
+        predicate = { true },
+    )
+
 
 val EtlConfig.methodLoaderTransformer
     get() = UntypedAggregationTransformer(
         name = "methods",
         bufferSize = transformationBufferSize,
+        metrics = metrics,
         groupKeys = listOf(
             "group_id",
             "app_id",
@@ -64,13 +75,14 @@ val EtlConfig.methodsLoader
         sqlUpsert = fromResource("/etl/db/metrics/methods_loader.sql"),
         sqlDelete = fromResource("/etl/db/metrics/methods_delete.sql"),
         database = MetricsDatabaseConfig.database,
-        batchSize = batchSize
+        batchSize = batchSize,
+        metrics = metrics,
     )
 
 val EtlConfig.methodsPipeline
     get() = EtlPipelineImpl(
         name = "methods",
         extractor = buildMethodsExtractor,
-        loaders = listOf(untypedNopTransformer to buildMethodsLoader, methodLoaderTransformer to methodsLoader),
+        loaders = listOf(buildMethodTransformer to buildMethodsLoader, methodLoaderTransformer to methodsLoader),
         bufferSize = bufferSize
     )
