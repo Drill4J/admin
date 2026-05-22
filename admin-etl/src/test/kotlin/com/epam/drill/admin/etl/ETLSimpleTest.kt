@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,6 +33,7 @@ data class SimpleClass(val id: Int, val createdAt: Instant): EtlRow(createdAt)
 private const val SIMPLE_PIPELINE = "simple-pipeline"
 private const val SIMPLE_EXTRACTOR = "simple-extractor"
 private const val SIMPLE_LOADER = "simple-loader"
+private const val SIMPLE_TRANSFORMER = "simple-transformer"
 private const val FAILING_LOADER = "failing-loader"
 
 class ETLSimpleTest {
@@ -83,6 +85,18 @@ class ETLSimpleTest {
 
         override suspend fun deleteAll(groupId: String) {
             dataStore.clear()
+        }
+    }
+
+    inner class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
+        override val name = SIMPLE_TRANSFORMER
+        override suspend fun transform(
+            groupId: String,
+            collector: Flow<SimpleClass>
+        ): Flow<SimpleClass> = flow {
+            collector.collect {
+                emit(it)
+            }
         }
     }
 
@@ -203,6 +217,7 @@ class ETLSimpleTest {
             EtlPipelineImpl.singleLoader(
                 "simple-pipeline",
                 extractor = SimpleExtractor(),
+                transformer = SimpleTransformer(),
                 loader = SimpleLoader()
             )
         ),
@@ -253,6 +268,7 @@ class ETLSimpleTest {
                 EtlPipelineImpl.singleLoader(
                     "failed-pipeline",
                     extractor = SimpleExtractor(),
+                    transformer = SimpleTransformer(),
                     loader = FailingLoader()
                 )
             ),
@@ -314,6 +330,7 @@ class ETLSimpleTest {
                 EtlPipelineImpl.singleLoader(
                     "simple-pipeline",
                     extractor = SimpleExtractor(),
+                    transformer = SimpleTransformer(),
                     loader = SimpleLoader()
                 )
             ),
