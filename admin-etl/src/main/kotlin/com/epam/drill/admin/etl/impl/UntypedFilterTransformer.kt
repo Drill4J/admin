@@ -21,14 +21,12 @@ class UntypedFilterTransformer(
         return flow {
             collector.filter {
                 predicate(it).also {
-                    rowsTransformed.incrementAndGet()
+                    rowsTransformed.increment()
                 }
             }.collect { row ->
-                rowsEmitted.incrementAndGet()
+                rowsEmitted.increment()
                 emit(row)
             }
-            rowsTransformed.set(0L)
-            rowsEmitted.set(0L)
         }
     }
 }

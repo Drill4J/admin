@@ -24,7 +24,7 @@ import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.NopTransformer
+import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.flow.CompletableSharedFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -60,17 +60,6 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             bufferSize = bufferSize
         )
 
-        fun <T: EtlRow> multiLoaders(
-            name: String,
-            extractor: DataExtractor<T>,
-            loaders: List<DataLoader<T>>,
-            bufferSize: Int = 2000
-        ) = EtlPipelineImpl(
-            name = name,
-            extractor = extractor,
-            loaders = loaders.map { NopTransformer<T>() to it },
-            bufferSize = bufferSize
-        )
     }
 
     override suspend fun execute(

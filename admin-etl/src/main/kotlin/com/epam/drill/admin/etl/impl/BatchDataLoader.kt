@@ -57,6 +57,7 @@ abstract class BatchDataLoader<T : EtlRow>(
         val processedRows = metrics.rowsProcessed(name, groupId)
         val loadedRows = metrics.rowsLoaded(name, groupId)
         val skippedRows = metrics.rowsSkipped(name, groupId)
+        var isLoadingStarted = false
         val buffer = mutableListOf<T>()
         var skippedRowsForUpdate = 0L
         var lastLoadedTimestamp: Instant = sinceTimestamp
@@ -73,11 +74,12 @@ abstract class BatchDataLoader<T : EtlRow>(
 
         trackProgressOf {
             flow.collect { row ->
-                if (processedRows.get() == 0L) {
+                if (!isLoadingStarted) {
                     logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
                     onStatusChanged(EtlStatus.LOADING)
+                    isLoadingStarted = true
                 }
-                processedRows.incrementAndGet()
+                processedRows.increment()
                 val currentTimestamp = row.timestamp
                 if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
                     flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
@@ -87,7 +89,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                 // Skip rows that are already processed
                 if (currentTimestamp <= sinceTimestamp) {
                     previousTimestamp = currentTimestamp
-                    skippedRows.incrementAndGet()
+                    skippedRows.increment()
                     return@collect
                 }
 
@@ -102,7 +104,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                         if (batch.success) {
                             lastLoadedTimestamp =
                                 previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
-                            loadedRows.addAndGet(batch.rowsLoaded)
+                            loadedRows.increment(batch.rowsLoaded.toDouble())
                         }
                         EtlLoadingResult(
                             errorMessage = if (!batch.success) result.errorMessage else null,
@@ -123,7 +125,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                 // Skip rows that are not processable
                 if (!isProcessable(row)) {
                     previousTimestamp = currentTimestamp
-                    skippedRows.incrementAndGet()
+                    skippedRows.increment()
                     skippedRowsForUpdate++
                     // If timestamp changed and there are a lot of skipped rows, update progress
                     if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.isEmpty() && skippedRowsForUpdate >= batchSize) {
@@ -143,11 +145,11 @@ abstract class BatchDataLoader<T : EtlRow>(
                 previousTimestamp = currentTimestamp
             }
         }.every(loggingFrequency.seconds) {
-            if (loadedRows.get() > 0L || skippedRows.get() > 0L) {
+            if (isLoadingStarted) {
                 logger.debug {
-                    "ETL loader [$name] for group [$groupId] loaded ${loadedRows.get()} rows" +
+                    "ETL loader [$name] for group [$groupId] loaded ${loadedRows.count().toLong()} rows" +
                             ", batch: ${batchNo.get()}" +
-                            ", skipped rows: ${skippedRows.get()}"
+                            ", skipped rows: ${skippedRows.count().toLong()}"
                 }
             }
 
@@ -160,7 +162,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                     if (batch.success) {
                         lastLoadedTimestamp = previousTimestamp
                             ?: throw IllegalStateException("Previous timestamp is null")
-                        loadedRows.addAndGet(batch.rowsLoaded)
+                        loadedRows.increment(batch.rowsLoaded.toDouble())
                     }
                     EtlLoadingResult(
                         errorMessage = if (!batch.success) batch.errorMessage else null,
@@ -187,9 +189,6 @@ abstract class BatchDataLoader<T : EtlRow>(
             val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
             "ETL loader [$name] for group [$groupId] complete loading for ${result.processedRows} rows" + errors
         }
-        processedRows.set(0L)
-        loadedRows.set(0L)
-        skippedRows.set(0L)
         return result
     }
 

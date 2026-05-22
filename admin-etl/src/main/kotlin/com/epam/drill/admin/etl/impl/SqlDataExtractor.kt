@@ -28,6 +28,8 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.toJavaDuration
 import kotlin.use
 
 abstract class SqlDataExtractor<T : EtlRow>(
@@ -62,14 +64,13 @@ abstract class SqlDataExtractor<T : EtlRow>(
                         "limit" to limit,
                     )
                 )
-            ),
-            timer = timer,
+            )
         ) { rs, duration ->
+            timer.record(duration.milliseconds.toJavaDuration())
+            onExtractionExecuted(duration)
             val meta = rs.metaData
             val columnCount = meta.columnCount
-
-            onExtractionExecuted(duration)
-            while (rs.next()) {
+            while (timer.recordInline { rs.next() }) {
                 val row = parseRow(rs, meta, columnCount)
                 rowsExtractor(row)
             }
@@ -79,7 +80,6 @@ abstract class SqlDataExtractor<T : EtlRow>(
     private suspend fun execSuspend(
         sql: String,
         args: List<Any?>,
-        timer: Timer,
         collect: suspend (ResultSet, Long) -> Unit
     ) {
         newSuspendedTransaction(context = Dispatchers.IO, db = database) {
@@ -98,9 +98,7 @@ abstract class SqlDataExtractor<T : EtlRow>(
                         stmt.setNull(index + 1, TextColumnType())
                 }
 
-                timer.recordInline {
-                    stmt.executeQuery()
-                }.use { rs ->
+                stmt.executeQuery().use { rs ->
                     collect(rs, duration)
                 }
             } finally {

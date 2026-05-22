@@ -91,7 +91,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                             buffer.add(row)
 
                             previousTimestamp = currentTimestamp
-                            rowsFetched.incrementAndGet()
+                            rowsFetched.increment()
                         }
                     )
                     if (pageRows == 0L || pageRows < extractionLimit) {
@@ -100,7 +100,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                         previousEmittedTimestamp = previousTimestamp
                         logger.debug {
                             "ETL extractor [$name] for group [$groupId] completed fetching" +
-                                    ", rows fetched: ${rowsFetched.get()}" +
+                                    ", rows fetched: ${rowsFetched.count()}" +
                                     ", total pages: ${page.get()}" +
                                     (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
                         }
@@ -133,12 +133,11 @@ abstract class PageDataExtractor<T : EtlRow>(
                 }
             } else {
                 logger.debug {
-                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.get()} rows" +
+                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.count()} rows" +
                             ", page: ${page.get()}"
                 }
             }
         }
-        rowsFetched.set(0L)
     }
 
     private suspend fun emitBuffer(

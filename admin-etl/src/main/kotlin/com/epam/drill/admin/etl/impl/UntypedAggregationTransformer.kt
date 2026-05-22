@@ -19,8 +19,6 @@ import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.config.EtlMeter
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
@@ -40,66 +38,64 @@ class UntypedAggregationTransformer(
         groupId: String,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
+        var isTransformationStarted = false
         val transformedRows = metrics.rowsTransformed(name, groupId)
+        val aggregatedRows = metrics.rowsAggregated(name, groupId)
         val emittedRows = metrics.rowsEmitted(name, groupId)
+        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, groupId)
+        val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
+
         fun getAggregationRatio(): Double =
-            if (transformedRows.get() == 0L) 0.0
-            else (1 - emittedRows.toDouble() / transformedRows.get())
-
-        val emittingChannel = Channel<UntypedRow>(capacity = bufferSize)
-        suspend fun drainChannel() {
-            var next = emittingChannel.tryReceive().getOrNull()
-            while (next != null) {
-                if (emittedRows.get() == 0L)
-                    logger.debug { "ETL transformer [$name] for group [$groupId] started emitting aggregated rows..." }
-                emittedRows.incrementAndGet()
-                emit(next)
-                next = emittingChannel.tryReceive().getOrNull()
-            }
-        }
-
-        val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize) { _, value ->
-            emittingChannel.trySendBlocking(value)
-        }
+            if (transformedRows.count() < 1) 0.0
+            else (1 - aggregatedRows.count() / transformedRows.count())
 
         trackProgressOf {
             try {
                 collector.collect { row ->
-                    if (transformedRows.get() == 0L)
+                    if (!isTransformationStarted) {
                         logger.debug { "ETL transformer [$name] for group [$groupId] started transformation..." }
+                        isTransformationStarted = true
+                    }
 
                     val groupKey = groupKeys.map { row[it] }
-                    buffer.compute(groupKey) { value ->
+                    val evicted = buffer.compute(groupKey) { value ->
                         if (value == null) {
                             row
                         } else {
+                            aggregatedRows.increment()
                             aggregate(value, row)
                         }
                     }
-                    drainChannel()
-                    transformedRows.incrementAndGet()
+                    transformedRows.increment()
+                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
+                    if (evicted != null) {
+                        emittedRows.increment()
+                        emit(evicted)
+                    }
                 }
 
                 // Emit remaining aggregated rows
-                buffer.evictAll()
-                drainChannel()
-            } finally {
-                emittingChannel.close()
+                buffer.evictAll { _, evicted ->
+                    emittedRows.increment()
+                    emit(evicted)
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "ETL transformer [$name] for group [$groupId] failed during transformation: ${e.message}" }
+                throw e
             }
         }.every(loggingFrequency.seconds) {
-            if (transformedRows.get() > 0L)
+            if (isTransformationStarted)
                 logger.debug {
-                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.get()} rows" +
+                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.count()} rows" +
                             ", aggregation ratio: ${getAggregationRatio()}"
                 }
         }
-        if (transformedRows.get() > 0L) {
+        if (isTransformationStarted) {
             logger.debug {
                 "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows, " +
                         "aggregation ratio: ${getAggregationRatio()}"
             }
         }
-        transformedRows.set(0L)
-        emittedRows.set(0L)
+        bufferOccupancy.set(0.0)
     }
 }

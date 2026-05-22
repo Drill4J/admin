@@ -19,32 +19,45 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 class EtlMeter(val registry: MeterRegistry) {
 
-    fun rowsFetched(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_fetched", jobName, groupId)
+    fun rowsFetched(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_fetched", jobName, groupId)
     }
 
-    fun rowsTransformed(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_transformed", jobName, groupId)
+    fun rowsTransformed(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_transformed", jobName, groupId)
     }
 
-    fun rowsEmitted(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_emitted", jobName, groupId)
+    fun rowsAggregated(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_aggregated", jobName, groupId)
     }
 
-    fun rowsProcessed(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_processed", jobName, groupId)
+    fun aggregationBufferOccupancyRatio(jobName: String, groupId: String): AtomicReference<Double> {
+        return registerDoubleGauge("etl_aggregation_buffer_occupancy_ratio", jobName, groupId)
     }
 
-    fun rowsLoaded(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_loaded", jobName, groupId)
+    fun extractionBufferOccupancyRatio(jobName: String, groupId: String): AtomicInteger {
+        return registerIntegerGauge("etl_extraction_buffer_occupancy_ratio", jobName, groupId)
     }
 
-    fun rowsSkipped(jobName: String, groupId: String): AtomicLong {
-        return registerLongGauge("etl_rows_skipped", jobName, groupId)
+    fun rowsEmitted(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_emitted", jobName, groupId)
+    }
+
+    fun rowsProcessed(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_processed", jobName, groupId)
+    }
+
+    fun rowsLoaded(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_loaded", jobName, groupId)
+    }
+
+    fun rowsSkipped(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_skipped", jobName, groupId)
     }
 
     fun loadingFailures(jobName: String, groupId: String): Counter {
@@ -63,8 +76,17 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerTimer("etl_extraction_duration", jobName, groupId)
     }
 
-    private fun registerLongGauge(metricName: String, jobName: String, groupId: String): AtomicLong {
-        val value = AtomicLong(0)
+    private fun registerIntegerGauge(metricName: String, jobName: String, groupId: String): AtomicInteger {
+        val value = AtomicInteger(0)
+        Gauge.builder(metricName) { value.get() }
+            .tag("jobName", jobName)
+            .tag("groupId", groupId)
+            .register(registry)
+        return value
+    }
+
+    private fun registerDoubleGauge(metricName: String, jobName: String, groupId: String): AtomicReference<Double> {
+        val value = AtomicReference(0.0)
         Gauge.builder(metricName) { value.get() }
             .tag("jobName", jobName)
             .tag("groupId", groupId)
