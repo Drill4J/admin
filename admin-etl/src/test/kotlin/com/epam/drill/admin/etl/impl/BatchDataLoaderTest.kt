@@ -40,8 +40,6 @@ class BatchDataLoaderTest {
 
         val loadedBatches = mutableListOf<List<TestItem>>()
 
-        override fun isProcessable(args: TestItem): Boolean = args.processable
-
         override suspend fun loadBatch(groupId: String, batch: List<TestItem>, batchNo: Int): BatchResult {
             if (failOnBatch == batchNo) {
                 return BatchResult(success = false, rowsLoaded = 0, errorMessage = "Batch $batchNo failed")
@@ -100,24 +98,6 @@ class BatchDataLoaderTest {
         assertEquals(5, loader.loadedBatches[2].size)
 
         assertEquals(EtlStatus.SUCCESS, results.last())
-    }
-
-    @Test
-    fun `load should skip non-processable items`() = runBlocking {
-        val items = listOf(
-            TestItem(Instant.ofEpochSecond(1), "item1"),
-            TestItem(Instant.ofEpochSecond(2), "item2", processable = false),
-            TestItem(Instant.ofEpochSecond(3), "item3")
-        )
-        val loader = TestBatchDataLoader(batchSize = 10)
-        val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
-
-        assertEquals(false, result.isFailed)
-        assertEquals(2, result.processedRows)
-        assertEquals(1, loader.loadedBatches.size)
-        assertEquals(2, loader.loadedBatches[0].size)
-        assertEquals("item1", loader.loadedBatches[0][0].data)
-        assertEquals("item3", loader.loadedBatches[0][1].data)
     }
 
     @Test

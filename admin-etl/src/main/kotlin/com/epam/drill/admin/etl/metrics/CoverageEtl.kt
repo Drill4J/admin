@@ -21,6 +21,7 @@ import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.SequencedTransformer
 import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
@@ -61,7 +62,6 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
-        processable = { it["test_session_id"] != null && it["test_definition_id"] != null }
     )
 
 val EtlConfig.buildMethodTestSessionCoverageLoader
@@ -73,21 +73,20 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
-        processable = { it["test_session_id"] != null }
     )
 
 val EtlConfig.buildMethodTestSessionCoverageTransformer
     get() = UntypedFilterTransformer(
         name = "build_method_test_session_coverage",
         metrics = metrics,
-        predicate = { true },
+        predicate = { it["test_session_id"] != null },
     )
 
 val EtlConfig.buildMethodTestDefinitionCoverageTransformer
     get() = UntypedFilterTransformer(
         name = "build_method_test_definition_coverage",
         metrics = metrics,
-        predicate = { true },
+        predicate = { it["test_session_id"] != null && it["test_definition_id"] != null },
     )
 
 
@@ -161,6 +160,19 @@ val EtlConfig.methodDailyCoverageLoader
     )
 
 val EtlConfig.test2CodeMappingTransformer
+    get() = SequencedTransformer(
+        first = test2CodeMappingFilterTransformer,
+        second = test2CodeMappingAggregationTransformer
+    )
+
+val EtlConfig.test2CodeMappingFilterTransformer
+    get() = UntypedFilterTransformer(
+        name = "test_to_code_mapping_filter",
+        metrics = metrics,
+        predicate = { it["test_definition_id"] != null && it["test_result"] == "PASSED" },
+    )
+
+val EtlConfig.test2CodeMappingAggregationTransformer
     get() = UntypedAggregationTransformer(
         name = "test_to_code_mapping",
         bufferSize = transformationBufferSize,
@@ -189,8 +201,7 @@ val EtlConfig.test2CodeMappingLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
-        metrics = metrics,
-        processable = { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
+        metrics = metrics
     )
 
 val EtlConfig.coveragePipeline

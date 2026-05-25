@@ -40,7 +40,7 @@ val EtlConfig.testSessionBuildsTransformer
     get() = UntypedFilterTransformer(
         name = "test_session_builds",
         metrics = metrics,
-        predicate = { true },
+        predicate = { it["test_session_id"] != null },
     )
 
 val EtlConfig.testSessionBuildsLoader
@@ -52,7 +52,6 @@ val EtlConfig.testSessionBuildsLoader
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
-        processable = { it["test_session_id"] != null }
     )
 
 val EtlConfig.testSessionBuildsPipeline
