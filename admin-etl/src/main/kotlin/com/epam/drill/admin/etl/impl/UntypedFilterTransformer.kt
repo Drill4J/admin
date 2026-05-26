@@ -31,15 +31,15 @@ class UntypedFilterTransformer(
         groupId: String,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> {
-        val rowsTransformed = metrics.rowsTransformed(name, groupId)
-        val rowsEmitted = metrics.rowsEmitted(name, groupId)
+        val rowsFiltered = metrics.rowsFiltered(name, groupId)
         return flow {
             collector.filter {
-                predicate(it).also {
-                    rowsTransformed.increment()
+                predicate(it).also { passed ->
+                    if (!passed) {
+                        rowsFiltered.increment()
+                    }
                 }
             }.collect { row ->
-                rowsEmitted.increment()
                 emit(row)
             }
         }

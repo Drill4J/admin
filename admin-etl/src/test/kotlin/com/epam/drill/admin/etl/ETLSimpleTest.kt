@@ -15,8 +15,10 @@
  */
 package com.epam.drill.admin.etl
 
+import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
@@ -39,6 +41,7 @@ private const val FAILING_LOADER = "failing-loader"
 class ETLSimpleTest {
     private val dataStore = mutableListOf<SimpleClass>()
     private val idSequence = AtomicInteger()
+    private val metrics: EtlMeter = EtlMeter(SimpleMeterRegistry())
     private fun addNewRecords(count: Int) {
         repeat(count) { i ->
             dataStore.add(SimpleClass(idSequence.incrementAndGet(), Instant.now()))
@@ -218,7 +221,8 @@ class ETLSimpleTest {
                 "simple-pipeline",
                 extractor = SimpleExtractor(),
                 transformer = SimpleTransformer(),
-                loader = SimpleLoader()
+                loader = SimpleLoader(),
+                metrics =  metrics
             )
         ),
         metadataRepository = SimpleMetadataRepository()
@@ -269,7 +273,8 @@ class ETLSimpleTest {
                     "failed-pipeline",
                     extractor = SimpleExtractor(),
                     transformer = SimpleTransformer(),
-                    loader = FailingLoader()
+                    loader = FailingLoader(),
+                    metrics =  metrics
                 )
             ),
             metadataRepository = SimpleMetadataRepository()
@@ -331,7 +336,8 @@ class ETLSimpleTest {
                     "simple-pipeline",
                     extractor = SimpleExtractor(),
                     transformer = SimpleTransformer(),
-                    loader = SimpleLoader()
+                    loader = SimpleLoader(),
+                    metrics =  metrics
                 )
             ),
             metadataRepository = SimpleMetadataRepository(),

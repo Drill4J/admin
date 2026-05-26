@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -41,7 +42,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     override val name: String,
     override val extractor: DataExtractor<T>,
     override val loaders: List<Pair<DataTransformer<T, R>, DataLoader<R>>>,
-    private val bufferSize: Int = 2000
+    private val bufferSize: Int = 2000,
+    private val metrics: EtlMeter,
 ) : EtlPipeline<T, R> {
     private val logger = KotlinLogging.logger {}
 
@@ -52,12 +54,14 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             extractor: DataExtractor<T>,
             transformer: DataTransformer<T, R>,
             loader: DataLoader<R>,
-            bufferSize: Int = 2000
+            bufferSize: Int = 2000,
+            metrics: EtlMeter,
         ) = EtlPipelineImpl(
             name = name,
             extractor = extractor,
             loaders = listOf(transformer to loader),
-            bufferSize = bufferSize
+            bufferSize = bufferSize,
+            metrics = metrics
         )
 
     }
@@ -172,7 +176,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         onLoadingProgress: suspend (loaderName: String, result: EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit
     ): EtlLoadingResult = try {
-        transformer.transform(groupId, flow).let { flow ->
+        val extractionFlow = getExtractionFlow(groupId, flow)
+        transformer.transform(groupId, extractionFlow).let { flow ->
             loader.load(
                 groupId, sinceTimestamp, untilTimestamp, flow,
                 onLoadingProgress = { onLoadingProgress(loader.name, it) },
@@ -185,5 +190,16 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
             lastProcessedAt = sinceTimestamp
         ).also { onLoadingProgress(loader.name, it) }
+    }
+
+    private fun getExtractionFlow(groupId: String, flow: Flow<T>): Flow<T> {
+        val rowsExtracted = metrics.rowsExtracted(name, groupId)
+        val extractionFlow = flow {
+            flow.collect { row ->
+                rowsExtracted.increment()
+                emit(row)
+            }
+        }
+        return extractionFlow
     }
 }

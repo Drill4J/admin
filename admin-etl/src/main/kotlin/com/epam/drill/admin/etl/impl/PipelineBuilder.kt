@@ -103,6 +103,7 @@ class ExtractStep internal constructor(
             extractor = extractor,
             loaders = listOf(NoOpTransformer to loader),
             bufferSize = bufferSize,
+            metrics = etlConfig.metrics,
         )
 
     /**
@@ -123,6 +124,7 @@ class ExtractStep internal constructor(
             extractor = extractor,
             loaders = builder.branches.toList(),
             bufferSize = bufferSize,
+            metrics = etlConfig.metrics,
         )
     }
 }
@@ -179,6 +181,7 @@ class TransformStep internal constructor(
             extractor = extractor,
             loaders = listOf(transformer to loader),
             bufferSize = bufferSize,
+            metrics = etlConfig.metrics,
         )
 
     private fun append(next: DataTransformer<UntypedRow, UntypedRow>): TransformStep =

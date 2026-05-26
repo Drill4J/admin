@@ -28,8 +28,8 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerCounter("etl_rows_fetched", jobName, groupId)
     }
 
-    fun rowsTransformed(jobName: String, groupId: String): Counter {
-        return registerCounter("etl_rows_transformed", jobName, groupId)
+    fun rowsExtracted(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_extracted", jobName, groupId)
     }
 
     fun rowsAggregated(jobName: String, groupId: String): Counter {
@@ -44,8 +44,8 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerIntegerGauge("etl_extraction_buffer_occupancy_ratio", jobName, groupId)
     }
 
-    fun rowsEmitted(jobName: String, groupId: String): Counter {
-        return registerCounter("etl_rows_emitted", jobName, groupId)
+    fun rowsFiltered(jobName: String, groupId: String): Counter {
+        return registerCounter("etl_rows_filtered", jobName, groupId)
     }
 
     fun rowsProcessed(jobName: String, groupId: String): Counter {
