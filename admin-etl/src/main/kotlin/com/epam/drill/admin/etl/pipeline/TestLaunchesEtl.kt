@@ -13,52 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.metrics
+package com.epam.drill.admin.etl.pipeline
 
-import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
-import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
+import com.epam.drill.admin.etl.impl.pipeline
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.buildsExtractor
+val EtlConfig.testLaunchesExtractor
     get() = UntypedSqlDataExtractor(
-        name = "builds",
-        sqlQuery = fromResource("/etl/db/metrics/builds_extractor.sql"),
+        name = "test_launches",
+        sqlQuery = fromResource("/etl/db/metrics/test_launches_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
-        lastExtractedAtColumnName = "updated_at",
+        lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
 
-val EtlConfig.buildsTransformer
-    get() = UntypedFilterTransformer(
-        name = "builds",
-        metrics = metrics,
-        predicate = { true },
-    )
-
-val EtlConfig.buildsLoader
+val EtlConfig.testLaunchesLoader
     get() = UntypedSqlDataLoader(
-        name = "builds",
-        sqlUpsert = fromResource("/etl/db/metrics/builds_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/builds_delete.sql"),
+        name = "test_launches",
+        sqlUpsert = fromResource("/etl/db/metrics/test_launches_loader.sql"),
+        sqlDelete = fromResource("/etl/db/metrics/test_launches_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.buildsPipeline
-    get() = EtlPipelineImpl.singleLoader(
-        name = "builds",
-        extractor = buildsExtractor,
-        transformer = buildsTransformer,
-        loader = buildsLoader,
-        bufferSize = bufferSize
-    )
+val EtlConfig.testLaunchesPipeline
+    get() = pipeline("test_launches")
+        .extractWith(testLaunchesExtractor)
+        .loadWith(testLaunchesLoader)

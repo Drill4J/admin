@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.metrics
+package com.epam.drill.admin.etl.pipeline
 
-import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
-import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
+import com.epam.drill.admin.etl.impl.pipeline
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -36,13 +35,6 @@ val EtlConfig.testSessionBuildsExtractor
         metrics = metrics,
     )
 
-val EtlConfig.testSessionBuildsTransformer
-    get() = UntypedFilterTransformer(
-        name = "test_session_builds",
-        metrics = metrics,
-        predicate = { it["test_session_id"] != null },
-    )
-
 val EtlConfig.testSessionBuildsLoader
     get() = UntypedSqlDataLoader(
         name = "test_session_builds",
@@ -55,10 +47,7 @@ val EtlConfig.testSessionBuildsLoader
     )
 
 val EtlConfig.testSessionBuildsPipeline
-    get() = EtlPipelineImpl.singleLoader(
-        name = "test_session_builds",
-        extractor = testSessionBuildsExtractor,
-        transformer = testSessionBuildsTransformer,
-        loader = testSessionBuildsLoader,
-        bufferSize = bufferSize
-    )
+    get() = pipeline("test_session_builds")
+        .extractWith(testSessionBuildsExtractor)
+        .transformWith(hasTestSessionFilter)
+        .loadWith(testSessionBuildsLoader)

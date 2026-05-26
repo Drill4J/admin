@@ -21,14 +21,14 @@ import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.etl.metrics.buildsPipeline
-import com.epam.drill.admin.etl.metrics.coveragePipeline
-import com.epam.drill.admin.etl.metrics.methodsPipeline
-import com.epam.drill.admin.etl.metrics.testDefinitionsPipeline
-import com.epam.drill.admin.etl.metrics.testLaunchCoveragePipeline
-import com.epam.drill.admin.etl.metrics.testLaunchesPipeline
-import com.epam.drill.admin.etl.metrics.testSessionBuildsPipeline
-import com.epam.drill.admin.etl.metrics.testSessionsPipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodsPipeline
+import com.epam.drill.admin.etl.pipeline.buildsPipeline
+import com.epam.drill.admin.etl.pipeline.coveragePipeline
+import com.epam.drill.admin.etl.pipeline.testDefinitionsPipeline
+import com.epam.drill.admin.etl.pipeline.testLaunchCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.testLaunchesPipeline
+import com.epam.drill.admin.etl.pipeline.testSessionBuildsPipeline
+import com.epam.drill.admin.etl.pipeline.testSessionsPipeline
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.etl.service.impl.EtlServiceImpl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
@@ -62,9 +62,17 @@ val etlDIModule
                 EtlOrchestratorImpl(
                     name = "metrics",
                     pipelines = listOf(
-                        buildsPipeline, methodsPipeline,
-                        testLaunchesPipeline, testDefinitionsPipeline, testSessionsPipeline,
-                        coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
+                        // Reference data
+                        buildsPipeline,
+                        buildMethodsPipeline,
+                        testLaunchesPipeline,
+                        testDefinitionsPipeline,
+                        testSessionsPipeline,
+                        testSessionBuildsPipeline,
+                        // Coverage (from coverage extractor)
+                        coveragePipeline,
+                        // Coverage (from test-launch extractor)
+                        testLaunchCoveragePipeline,
                     ),
                     metadataRepository = instance(),
                     consistencyWindow = consistencyWindow,
