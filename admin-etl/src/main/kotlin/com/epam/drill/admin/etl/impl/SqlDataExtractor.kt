@@ -19,7 +19,6 @@ import com.epam.drill.admin.common.config.recordInline
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
-import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -28,6 +27,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
 import java.time.Instant
+import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
 import kotlin.use
@@ -97,10 +97,11 @@ abstract class SqlDataExtractor<T : EtlRow>(
                     } else
                         stmt.setNull(index + 1, TextColumnType())
                 }
-
-                stmt.executeQuery().use { rs ->
-                    collect(rs, duration)
+                val rs: ResultSet
+                val duration = measureTimeMillis {
+                    rs = stmt.executeQuery()
                 }
+                collect(rs, duration)
             } finally {
                 stmt.closeIfPossible()
             }
