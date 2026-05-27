@@ -45,10 +45,6 @@ class UntypedAggregationTransformer(
         val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, groupId)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
 
-        fun getAggregationRatio(): Double =
-            if (transformedRows.get() < 1) 0.0
-            else (1 - aggregatedRows.count() / transformedRows.get())
-
         trackProgressOf {
             try {
                 collector.collect { row ->
@@ -86,13 +82,13 @@ class UntypedAggregationTransformer(
             if (isTransformationStarted)
                 logger.debug {
                     "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.get()} rows" +
-                            ", aggregation ratio: ${getAggregationRatio()}"
+                            ", buffer occupancy: ${buffer.size}" +
+                            ", buffer occupancy ratio: ${bufferOccupancy.get()}"
                 }
         }
         if (isTransformationStarted) {
             logger.debug {
-                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows, " +
-                        "aggregation ratio: ${getAggregationRatio()}"
+                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows"
             }
         }
         bufferOccupancy.set(0.0)
