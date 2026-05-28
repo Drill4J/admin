@@ -23,9 +23,18 @@ import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.etl.pipeline.buildMethodsPipeline
 import com.epam.drill.admin.etl.pipeline.buildsPipeline
-import com.epam.drill.admin.etl.pipeline.coveragePipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodTestSessionCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.methodDailyCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.testSessionBuildsFromCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.methodsPipeline
 import com.epam.drill.admin.etl.pipeline.testDefinitionsPipeline
-import com.epam.drill.admin.etl.pipeline.testLaunchCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodCoverageFromTestLaunchesPipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodTestDefinitionCoveragePipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodTestSessionCoverageFromTestLaunchesPipeline
+import com.epam.drill.admin.etl.pipeline.methodDailyCoverageFromTestLaunchesPipeline
+import com.epam.drill.admin.etl.pipeline.test2CodeMappingPipeline
+import com.epam.drill.admin.etl.pipeline.testSessionBuildsFromTestLaunchesPipeline
 import com.epam.drill.admin.etl.pipeline.testLaunchesPipeline
 import com.epam.drill.admin.etl.pipeline.testSessionBuildsPipeline
 import com.epam.drill.admin.etl.pipeline.testSessionsPipeline
@@ -64,19 +73,30 @@ val etlDIModule
                     pipelines = listOf(
                         // Reference data
                         buildsPipeline,
+                        // build_methods extractor group
                         buildMethodsPipeline,
+                        methodsPipeline,
                         testLaunchesPipeline,
                         testDefinitionsPipeline,
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
-                        // Coverage (from coverage extractor)
-                        coveragePipeline,
-                        // Coverage (from test-launch extractor)
-                        testLaunchCoveragePipeline,
+                        // Coverage extractor group
+                        buildMethodTestSessionCoveragePipeline,
+                        buildMethodCoveragePipeline,
+                        methodDailyCoveragePipeline,
+                        testSessionBuildsFromCoveragePipeline,
+                        // Test-launch coverage extractor group
+                        buildMethodTestDefinitionCoveragePipeline,
+                        buildMethodTestSessionCoverageFromTestLaunchesPipeline,
+                        buildMethodCoverageFromTestLaunchesPipeline,
+                        methodDailyCoverageFromTestLaunchesPipeline,
+                        test2CodeMappingPipeline,
+                        testSessionBuildsFromTestLaunchesPipeline,
                     ),
                     metadataRepository = instance(),
                     consistencyWindow = consistencyWindow,
-                    processingDelay = processingDelay
+                    processingDelay = processingDelay,
+                    bufferSize = bufferSize,
                 )
             }
         }

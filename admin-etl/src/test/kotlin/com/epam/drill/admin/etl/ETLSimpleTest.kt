@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ class ETLSimpleTest {
     private val idSequence = AtomicInteger()
     private val metrics: EtlMeter = EtlMeter(SimpleMeterRegistry())
     private fun addNewRecords(count: Int) {
-        repeat(count) { i ->
+        repeat(count) {
             dataStore.add(SimpleClass(idSequence.incrementAndGet(), Instant.now()))
         }
     }
@@ -57,7 +57,7 @@ class ETLSimpleTest {
             emitter: FlowCollector<SimpleClass>,
             onExtractingProgress: suspend (EtlExtractingResult) -> Unit
         ) {
-            return dataStore.filter { it.createdAt > sinceTimestamp }.forEach { emitter.emit(it) }
+            dataStore.filter { it.createdAt > sinceTimestamp }.forEach { emitter.emit(it) }
         }
     }
 
@@ -97,9 +97,7 @@ class ETLSimpleTest {
             groupId: String,
             collector: Flow<SimpleClass>
         ): Flow<SimpleClass> = flow {
-            collector.collect {
-                emit(it)
-            }
+            collector.collect { emit(it) }
         }
     }
 
@@ -127,44 +125,24 @@ class ETLSimpleTest {
     }
 
     inner class SimpleMetadataRepository : EtlMetadataRepository {
-        private var metadata = EtlMetadata(
-            groupId = "test-group",
-            pipelineName = SIMPLE_PIPELINE,
-            lastProcessedAt = Instant.EPOCH,
-            lastRunAt = Instant.EPOCH,
-            status = EtlStatus.SUCCESS,
-            extractorName = SIMPLE_EXTRACTOR,
-            loaderName = SIMPLE_LOADER
-        )
+        private val store = mutableMapOf<String, EtlMetadata>()
+
+        private fun key(groupId: String, pipelineName: String, extractorName: String, loaderName: String) =
+            "$groupId|$pipelineName|$extractorName|$loaderName"
 
         override suspend fun getMetadata(
             groupId: String,
             pipelineName: String,
             extractorName: String,
             loaderName: String
-        ): EtlMetadata? = metadata.copy(
-            groupId = groupId,
-            pipelineName = pipelineName,
-            extractorName = extractorName,
-            loaderName = loaderName
-        )
+        ): EtlMetadata? = store[key(groupId, pipelineName, extractorName, loaderName)]
 
         override suspend fun saveMetadata(metadata: EtlMetadata) {
-            this@SimpleMetadataRepository.metadata = metadata
+            store[key(metadata.groupId, metadata.pipelineName, metadata.extractorName, metadata.loaderName)] = metadata
         }
 
         override suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String) {
-            if (metadata.pipelineName == pipelineName && metadata.groupId == groupId) {
-                metadata = EtlMetadata(
-                    groupId = groupId,
-                    pipelineName = pipelineName,
-                    lastProcessedAt = Instant.EPOCH,
-                    lastRunAt = Instant.EPOCH,
-                    status = EtlStatus.SUCCESS,
-                    extractorName = SIMPLE_EXTRACTOR,
-                    loaderName = SIMPLE_LOADER
-                )
-            }
+            store.keys.removeAll { it.startsWith("$groupId|$pipelineName|") }
         }
 
         override suspend fun getAllMetadataByExtractor(
@@ -172,11 +150,12 @@ class ETLSimpleTest {
             pipelineName: String,
             extractorName: String
         ): List<EtlMetadata> =
-            listOf(metadata).filter { it.groupId == groupId && it.extractorName == extractorName && it.pipelineName == pipelineName }
+            store.values.filter {
+                it.groupId == groupId && it.extractorName == extractorName && it.pipelineName == pipelineName
+            }
 
-        override suspend fun getAllMetadata(groupId: String): List<EtlMetadata> {
-            return listOf(metadata).filter { it.groupId == groupId }
-        }
+        override suspend fun getAllMetadata(groupId: String): List<EtlMetadata> =
+            store.values.filter { it.groupId == groupId }
 
         override suspend fun accumulateMetadataByLoader(
             groupId: String,
@@ -189,11 +168,17 @@ class ETLSimpleTest {
             rowsProcessed: Long,
             errorMessage: String?
         ) {
-            this.metadata = this.metadata.copy(
-                lastProcessedAt = lastProcessedAt ?: this.metadata.lastProcessedAt,
-                lastLoadDuration = this.metadata.lastLoadDuration + loadDuration,
-                lastRowsProcessed = this.metadata.lastRowsProcessed + rowsProcessed,
-                status = status ?: (if (errorMessage != null) EtlStatus.FAILED else this.metadata.status),
+            val k = key(groupId, pipelineName, extractorName, loaderName)
+            val existing = store[k] ?: EtlMetadata(
+                groupId = groupId, pipelineName = pipelineName, extractorName = extractorName,
+                loaderName = loaderName, lastProcessedAt = Instant.EPOCH, lastRunAt = Instant.EPOCH,
+                status = EtlStatus.SUCCESS
+            )
+            store[k] = existing.copy(
+                lastProcessedAt = lastProcessedAt ?: existing.lastProcessedAt,
+                lastLoadDuration = existing.lastLoadDuration + loadDuration,
+                lastRowsProcessed = existing.lastRowsProcessed + rowsProcessed,
+                status = status ?: (if (errorMessage != null) EtlStatus.FAILED else existing.status),
                 errorMessage = errorMessage
             )
         }
@@ -206,27 +191,32 @@ class ETLSimpleTest {
             extractDuration: Long,
             errorMessage: String?
         ) {
-            this.metadata = this.metadata.copy(
-                lastExtractDuration = this.metadata.lastExtractDuration + extractDuration,
-                status = if (errorMessage != null) EtlStatus.FAILED else this.metadata.status,
-                errorMessage = errorMessage
-            )
+            store.entries
+                .filter { (k, _) -> k.startsWith("$groupId|$pipelineName|$extractorName|") }
+                .forEach { (k, existing) ->
+                    store[k] = existing.copy(
+                        lastExtractDuration = existing.lastExtractDuration + extractDuration,
+                        status = if (errorMessage != null) EtlStatus.FAILED else existing.status,
+                        errorMessage = errorMessage
+                    )
+                }
         }
     }
 
-    val simpleOrchestrator = EtlOrchestratorImpl(
-        "simple-etl",
-        listOf(
-            EtlPipelineImpl.singleLoader(
-                "simple-pipeline",
-                extractor = SimpleExtractor(),
-                transformer = SimpleTransformer(),
-                loader = SimpleLoader(),
-                metrics =  metrics
-            )
-        ),
-        metadataRepository = SimpleMetadataRepository()
-    )
+    private fun buildOrchestrator(metadataRepository: EtlMetadataRepository = SimpleMetadataRepository()) =
+        EtlOrchestratorImpl(
+            name = "simple-etl",
+            pipelines = listOf(
+                EtlPipelineImpl(
+                    name = SIMPLE_PIPELINE,
+                    extractor = SimpleExtractor(),
+                    transformer = SimpleTransformer(),
+                    loader = SimpleLoader(),
+                    metrics = metrics,
+                )
+            ),
+            metadataRepository = metadataRepository,
+        )
 
     @BeforeEach
     fun setUp() {
@@ -236,92 +226,74 @@ class ETLSimpleTest {
 
     @Test
     fun `given success loading, ETL orchestrator should move lastProcessedAt forward`() = runBlocking {
-        val orchestrator = simpleOrchestrator
+        val repo = SimpleMetadataRepository()
+        val orchestrator = buildOrchestrator(repo)
         val groupId = "test-group"
 
-        // Get initial lastProcessedAt timestamp
-        val initialMetadata =
-            orchestrator.metadataRepository.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
-        val initialLastProcessedAt = initialMetadata.lastProcessedAt
+        val initialLastProcessedAt = repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+            ?.lastProcessedAt ?: Instant.EPOCH
 
-        // Add some data
         addNewRecords(3)
-
-        // Run ETL
         val result = orchestrator.run(groupId)
 
-        // Verify ETL was successful
         assertTrue(result.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result.first().rowsProcessed)
 
-        // Get updated metadata and verify lastProcessedAt moved forward
-        val updatedMetadata =
-            orchestrator.metadataRepository.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)!!
-        val updatedLastProcessedAt = updatedMetadata.lastProcessedAt
+        val updatedLastProcessedAt = repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+            ?.lastProcessedAt ?: Instant.EPOCH
 
         assertTrue(updatedLastProcessedAt > initialLastProcessedAt)
-        assertEquals(EtlStatus.SUCCESS, updatedMetadata.status)
+        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)?.status)
     }
 
     @Test
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
         val groupId = "test-group"
+        val repo = SimpleMetadataRepository()
         val orchestrator = EtlOrchestratorImpl(
-            "failed-etl",
-            listOf(
-                EtlPipelineImpl.singleLoader(
-                    "failed-pipeline",
+            name = "failed-etl",
+            pipelines = listOf(
+                EtlPipelineImpl(
+                    name = "failed-pipeline",
                     extractor = SimpleExtractor(),
                     transformer = SimpleTransformer(),
                     loader = FailingLoader(),
-                    metrics =  metrics
+                    metrics = metrics,
                 )
             ),
-            metadataRepository = SimpleMetadataRepository()
+            metadataRepository = repo,
         )
 
-        // Get initial lastProcessedAt timestamp (should be EPOCH)
-        val initialMetadata =
-            orchestrator.metadataRepository.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
-        val initialLastProcessedAt = initialMetadata.lastProcessedAt
+        val initialLastProcessedAt = repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+            ?.lastProcessedAt ?: Instant.EPOCH
 
-        // Add some data
         addNewRecords(3)
-
-        // Run ETL - should fail
         val result = orchestrator.run(groupId)
 
-        // Verify ETL failed
         assertTrue(result.first().status == EtlStatus.FAILED)
         assertEquals(0, result.first().rowsProcessed)
 
-        // Get updated metadata and verify lastProcessedAt remained unchanged
-        val updatedMetadata =
-            orchestrator.metadataRepository.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, FAILING_LOADER)!!
-        val updatedLastProcessedAt = updatedMetadata.lastProcessedAt
+        val updatedLastProcessedAt = repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+            ?.lastProcessedAt ?: Instant.EPOCH
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)
-        assertEquals(EtlStatus.FAILED, updatedMetadata.status)
+        assertEquals(EtlStatus.FAILED, repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)?.status)
     }
 
     @Test
     fun `given several launches, ETL orchestrator should process only new data`() = runBlocking {
-        val orchestrator = simpleOrchestrator
+        val repo = SimpleMetadataRepository()
+        val orchestrator = buildOrchestrator(repo)
         val groupId = "test-group"
 
-        // Add initial data
         addNewRecords(5)
-        // First run ETL — should process all initial data
         val result1 = orchestrator.run(groupId)
         assertTrue(result1.first().status == EtlStatus.SUCCESS)
         assertEquals(5, result1.first().rowsProcessed)
 
         Thread.sleep(10)
-        // Add new data after last processed timestamp
         addNewRecords(3)
-        // Second run ETL — should process only new data
         val result2 = orchestrator.run(groupId)
-        println(result2.first().errorMessage)
         assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result2.first().rowsProcessed)
     }
@@ -329,34 +301,33 @@ class ETLSimpleTest {
     @Test
     fun `given consistencyWindow, ETL orchestrator should re-process records within the lookback window`() = runBlocking {
         val groupId = "test-group"
+        val repo = SimpleMetadataRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "lookback-etl",
             pipelines = listOf(
-                EtlPipelineImpl.singleLoader(
-                    "simple-pipeline",
+                EtlPipelineImpl(
+                    name = SIMPLE_PIPELINE,
                     extractor = SimpleExtractor(),
                     transformer = SimpleTransformer(),
                     loader = SimpleLoader(),
-                    metrics =  metrics
+                    metrics = metrics,
                 )
             ),
-            metadataRepository = SimpleMetadataRepository(),
-            consistencyWindow = 60
+            metadataRepository = repo,
+            consistencyWindow = 60,
         )
 
-        // Add initial data
         addNewRecords(5)
-        // First run ETL — should process all initial data
         val result1 = orchestrator.run(groupId)
         assertTrue(result1.first().status == EtlStatus.SUCCESS)
         assertEquals(5, result1.first().rowsProcessed)
 
-        // Add new data after last processed timestamp
         addNewRecords(3)
-        // Second run ETL — lookback of 60s should re-process all 8 records (5 original + 3 new)
-        // because all records were created within the last 60 seconds
+        // lookback of 60s should re-process all 8 records (5 original + 3 new)
         val result2 = orchestrator.run(groupId)
         assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(8, result2.first().rowsProcessed)
     }
 }
+
+

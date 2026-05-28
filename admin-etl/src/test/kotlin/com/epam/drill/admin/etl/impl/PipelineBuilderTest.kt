@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 
@@ -47,7 +48,7 @@ class ExtractStepTest {
             .extractWith(PbFixedExtractor(rows))
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(3, loader.received.size)
     }
@@ -62,7 +63,7 @@ class ExtractStepTest {
             .filter { (it["value"] as Int) % 2 == 0 }
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(2, loader.received.size)
         assertTrue(loader.received.all { (it["value"] as Int) % 2 == 0 })
@@ -78,7 +79,7 @@ class ExtractStepTest {
             .transformWith(PbPassThroughTransformer())
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(2, loader.received.size)
         assertEquals(listOf(10, 20), loader.received.map { it["value"] })
@@ -103,7 +104,7 @@ class ExtractStepTest {
             }
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(2, loader.received.size)
         val sumA = loader.received.first { it["k"] == "A" }["v"] as Int
@@ -124,7 +125,7 @@ class TransformStepTest {
             .filter { (it["value"] as Int) > 3 }
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(2, loader.received.size)
         assertTrue(loader.received.all { (it["value"] as Int) > 3 })
@@ -141,7 +142,7 @@ class TransformStepTest {
             .filter { (it["value"] as Int) < 5 }
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(2, loader.received.size)
         assertTrue(loader.received.all { (it["value"] as Int) in 3..4 })
@@ -158,7 +159,7 @@ class TransformStepTest {
             .transformWith(PbPassThroughTransformer("t2"))
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(3, loader.received.size)
     }
@@ -182,201 +183,28 @@ class TransformStepTest {
             }
             .loadWith(loader)
 
-        pbExecute(pipeline, loader.name)
+        pbExecute(pipeline)
 
         assertEquals(1, loader.received.size)
         assertEquals(30, loader.received[0]["v"] as Int)
     }
 
     @Test
-    fun `loadWith on TransformStep produces a pipeline with one loader`() {
+    fun `loadWith on TransformStep produces a pipeline with a single loader`() {
         val loader = PbCapturingLoader("loader")
         val pipeline = pbCfg.pipeline("t")
             .extractWith(PbFixedExtractor(emptyList()))
             .transformWith(PbPassThroughTransformer())
             .loadWith(loader)
 
-        assertEquals(1, pipeline.loaders.size)
+        assertNotNull(pipeline.loader)
+        assertEquals(loader.name, pipeline.loader.name)
     }
 }
 
-class FanOutBuilderTest {
-
-    @Test
-    fun `filter branch keeps only matching rows`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(pbRow(1), pbRow(2), pbRow(3), pbRow(4))
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                filter { (it["value"] as Int) % 2 == 0 }
-                    .loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(2, loader.received.size)
-        assertTrue(loader.received.all { (it["value"] as Int) % 2 == 0 })
-    }
-
-    @Test
-    fun `aggregateBy branch aggregates rows`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(
-            UntypedRow(Instant.now(), mapOf("k" to "A", "v" to 1)),
-            UntypedRow(Instant.now(), mapOf("k" to "A", "v" to 2)),
-            UntypedRow(Instant.now(), mapOf("k" to "B", "v" to 7)),
-        )
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                aggregateBy("k") { cur, nxt ->
-                    UntypedRow(
-                        nxt.timestamp,
-                        mapOf("k" to cur["k"], "v" to (cur["v"] as Int) + (nxt["v"] as Int))
-                    )
-                }.loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(2, loader.received.size)
-        val sumA = loader.received.first { it["k"] == "A" }["v"] as Int
-        assertEquals(3, sumA)
-    }
-
-    @Test
-    fun `loadWith adds a pass-through branch`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(pbRow(10), pbRow(20), pbRow(30))
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(3, loader.received.size)
-    }
-}
-
-class FanOutTransformStepTest {
-
-    @Test
-    fun `filter chains filtering inside fan-out branch`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(pbRow(1), pbRow(2), pbRow(3), pbRow(4), pbRow(5), pbRow(6))
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                transformWith(PbPassThroughTransformer("t1"))
-                    .filter { (it["value"] as Int) % 2 == 0 }
-                    .loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(3, loader.received.size)
-        assertTrue(loader.received.all { (it["value"] as Int) % 2 == 0 })
-    }
-
-    @Test
-    fun `chained filters compose with AND semantics`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = (1..10).map { pbRow(it) }
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                filter { (it["value"] as Int) > 3 }
-                    .filter { (it["value"] as Int) <= 7 }
-                    .loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(4, loader.received.size)
-        assertTrue(loader.received.all { (it["value"] as Int) in 4..7 })
-    }
-
-    @Test
-    fun `aggregateBy inside fan-out aggregates rows`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(
-            UntypedRow(Instant.now(), mapOf("k" to "Z", "v" to 5)),
-            UntypedRow(Instant.now(), mapOf("k" to "Z", "v" to 5)),
-        )
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                transformWith(PbPassThroughTransformer())
-                    .aggregateBy("k") { cur, nxt ->
-                        UntypedRow(
-                            nxt.timestamp,
-                            mapOf("k" to cur["k"], "v" to (cur["v"] as Int) + (nxt["v"] as Int))
-                        )
-                    }
-                    .loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(1, loader.received.size)
-        assertEquals(10, loader.received[0]["v"] as Int)
-    }
-
-    @Test
-    fun `transformWith chains transformers in fan-out`() = runBlocking {
-        val loader = PbCapturingLoader("loader")
-        val rows = listOf(pbRow("a"), pbRow("b"), pbRow("c"))
-
-        val pipeline = pbCfg.pipeline("t")
-            .extractWith(PbFixedExtractor(rows))
-            .fanOut {
-                transformWith(PbPassThroughTransformer("t1"))
-                    .transformWith(PbPassThroughTransformer("t2"))
-                    .loadWith(loader)
-            }
-
-        pipeline.execute(
-            groupId = "g1",
-            sinceTimestampPerLoader = mapOf(loader.name to Instant.EPOCH),
-            untilTimestamp = Instant.now(),
-        )
-
-        assertEquals(3, loader.received.size)
-    }
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 private val pbCfg = EtlConfig(
     config = MapApplicationConfig(),
@@ -388,12 +216,18 @@ private fun pbRow(value: Any?, key: String = "value", ts: Instant = Instant.now(
 
 private fun pbExecute(
     pipeline: com.epam.drill.admin.etl.EtlPipeline<UntypedRow, UntypedRow>,
-    vararg loaderNames: String,
 ) = runBlocking {
+    // Use an empty flow â€” tests only verify pipeline structure and transformation logic via pbExecute
+    // through the orchestrator in integration tests; here we call execute with a pre-built extractor flow.
+    val rows = mutableListOf<UntypedRow>()
+    // Re-extract via the pipeline's extractor into a simple list, then replay as flow
+    pipeline.extractor.extract("g1", Instant.EPOCH, Instant.now(), { rows.add(it) }, {})
+    val extractedFlow = kotlinx.coroutines.flow.flow<UntypedRow> { rows.forEach { emit(it) } }
     pipeline.execute(
         groupId = "g1",
-        sinceTimestampPerLoader = loaderNames.associateWith { Instant.EPOCH },
+        sinceTimestamp = Instant.EPOCH,
         untilTimestamp = Instant.now(),
+        extractedFlow = extractedFlow,
     )
 }
 
@@ -434,3 +268,5 @@ private class PbPassThroughTransformer(override val name: String = "pass") :
         collector.collect { emit(it) }
     }
 }
+
+

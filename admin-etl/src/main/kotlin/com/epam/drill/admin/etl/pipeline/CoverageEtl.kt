@@ -168,52 +168,78 @@ val EtlConfig.methodDailyCoverageAggregator
         },
     )
 
-val EtlConfig.coveragePipeline
-    get() = pipeline("coverage")
+val EtlConfig.buildMethodTestSessionCoveragePipeline
+    get() = pipeline("build_method_test_session_coverage")
         .extractWith(coverageExtractor)
-        .fanOut {
-            transformWith(hasTestSessionFilter)
-                .loadWith(buildMethodTestSessionCoverageLoader)
-            transformWith(buildMethodCoverageAggregator)
-                .loadWith(buildMethodCoverageLoader)
-            transformWith(methodDailyCoverageAggregator)
-                .loadWith(methodDailyCoverageLoader)
-            transformWith(hasTestSessionFilter)
-                .loadWith(testSessionBuildsLoader)
-        }
+        .transformWith(hasTestSessionFilter)
+        .loadWith(buildMethodTestSessionCoverageLoader)
 
-val EtlConfig.testLaunchCoveragePipeline
-    get() = pipeline("test_launch_coverage")
+val EtlConfig.buildMethodCoveragePipeline
+    get() = pipeline("build_method_coverage")
+        .extractWith(coverageExtractor)
+        .transformWith(buildMethodCoverageAggregator)
+        .loadWith(buildMethodCoverageLoader)
+
+val EtlConfig.methodDailyCoveragePipeline
+    get() = pipeline("method_daily_coverage")
+        .extractWith(coverageExtractor)
+        .transformWith(methodDailyCoverageAggregator)
+        .loadWith(methodDailyCoverageLoader)
+
+val EtlConfig.testSessionBuildsFromCoveragePipeline
+    get() = pipeline("test_session_builds_from_coverage")
+        .extractWith(coverageExtractor)
+        .transformWith(hasTestSessionFilter)
+        .loadWith(testSessionBuildsLoader)
+
+val EtlConfig.buildMethodTestDefinitionCoveragePipeline
+    get() = pipeline("build_method_test_definition_coverage")
         .extractWith(testLaunchCoverageExtractor)
-        .fanOut {
-            transformWith(hasTestSessionAndDefinitionFilter)
-                .loadWith(buildMethodTestDefinitionCoverageLoader)
-            transformWith(hasTestSessionFilter)
-                .loadWith(buildMethodTestSessionCoverageLoader)
-            transformWith(buildMethodCoverageAggregator)
-                .loadWith(buildMethodCoverageLoader)
-            transformWith(methodDailyCoverageAggregator)
-                .loadWith(methodDailyCoverageLoader)
-            filter {
-                it["test_definition_id"] != null && it["test_result"] == "PASSED"
-            }
-                .aggregateBy(
-                    "group_id",
-                    "app_id",
-                    "signature",
-                    "test_definition_id",
-                    "branch",
-                    "app_env_id",
-                    "test_task_id"
-                ) { current, next ->
-                    val map = HashMap<String, Any?>(current)
-                    map["updated_at_day"] = next["created_at_day"]
-                    UntypedRow(next.timestamp, map)
-                }
-                .loadWith(test2CodeMappingLoader)
-            transformWith(hasTestSessionFilter)
-                .loadWith(testSessionBuildsLoader)
+        .transformWith(hasTestSessionAndDefinitionFilter)
+        .loadWith(buildMethodTestDefinitionCoverageLoader)
+
+val EtlConfig.buildMethodTestSessionCoverageFromTestLaunchesPipeline
+    get() = pipeline("build_method_test_session_coverage_from_test_launches")
+        .extractWith(testLaunchCoverageExtractor)
+        .transformWith(hasTestSessionFilter)
+        .loadWith(buildMethodTestSessionCoverageLoader)
+
+val EtlConfig.buildMethodCoverageFromTestLaunchesPipeline
+    get() = pipeline("build_method_coverage_from_test_launches")
+        .extractWith(testLaunchCoverageExtractor)
+        .transformWith(buildMethodCoverageAggregator)
+        .loadWith(buildMethodCoverageLoader)
+
+val EtlConfig.methodDailyCoverageFromTestLaunchesPipeline
+    get() = pipeline("method_daily_coverage_from_test_launches")
+        .extractWith(testLaunchCoverageExtractor)
+        .transformWith(methodDailyCoverageAggregator)
+        .loadWith(methodDailyCoverageLoader)
+
+val EtlConfig.test2CodeMappingPipeline
+    get() = pipeline("test_to_code_mapping")
+        .extractWith(testLaunchCoverageExtractor)
+        .filter { it["test_definition_id"] != null && it["test_result"] == "PASSED" }
+        .aggregateBy(
+            "group_id",
+            "app_id",
+            "signature",
+            "test_definition_id",
+            "branch",
+            "app_env_id",
+            "test_task_id"
+        ) { current, next ->
+            val map = HashMap<String, Any?>(current)
+            map["updated_at_day"] = next["created_at_day"]
+            UntypedRow(next.timestamp, map)
         }
+        .loadWith(test2CodeMappingLoader)
+
+val EtlConfig.testSessionBuildsFromTestLaunchesPipeline
+    get() = pipeline("test_session_builds_from_test_launches")
+        .extractWith(testLaunchCoverageExtractor)
+        .transformWith(hasTestSessionFilter)
+        .loadWith(testSessionBuildsLoader)
 
 internal fun mergeProbes(current: Any?, next: Any?): PGobject {
     if (current == null || next == null) {
