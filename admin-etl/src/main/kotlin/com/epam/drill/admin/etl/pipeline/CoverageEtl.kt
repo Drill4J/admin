@@ -51,6 +51,18 @@ val EtlConfig.testLaunchCoverageExtractor
         metrics = metrics,
     )
 
+val EtlConfig.testLaunchCoverageRequestsExtractor
+    get() = UntypedSqlDataExtractor(
+        name = "test_launch_coverage_requests",
+        sqlQuery = fromResource("/etl/db/metrics/test_launch_coverage_requests_extractor.sql"),
+        database = RawDataWriterDatabaseConfig.database,
+        fetchSize = fetchSize,
+        extractionLimit = extractionLimit,
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "req_created_at",
+        metrics = metrics,
+    )
+
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_definition_coverage",
@@ -215,6 +227,11 @@ val EtlConfig.methodDailyCoverageFromTestLaunchesPipeline
         .extractWith(testLaunchCoverageExtractor)
         .transformWith(methodDailyCoverageAggregator)
         .loadWith(methodDailyCoverageLoader)
+
+val EtlConfig.buildMethodTestDefinitionCoverageByRequestPipeline
+    get() = pipeline("build_method_test_definition_coverage_by_request")
+        .extractWith(testLaunchCoverageRequestsExtractor)
+        .loadWith(buildMethodTestDefinitionCoverageLoader)
 
 val EtlConfig.test2CodeMappingPipeline
     get() = pipeline("test_to_code_mapping")

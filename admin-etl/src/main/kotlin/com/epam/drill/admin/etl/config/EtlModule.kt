@@ -30,6 +30,7 @@ import com.epam.drill.admin.etl.pipeline.testSessionBuildsFromCoveragePipeline
 import com.epam.drill.admin.etl.pipeline.methodsPipeline
 import com.epam.drill.admin.etl.pipeline.testDefinitionsPipeline
 import com.epam.drill.admin.etl.pipeline.buildMethodCoverageFromTestLaunchesPipeline
+import com.epam.drill.admin.etl.pipeline.buildMethodTestDefinitionCoverageByRequestPipeline
 import com.epam.drill.admin.etl.pipeline.buildMethodTestDefinitionCoveragePipeline
 import com.epam.drill.admin.etl.pipeline.buildMethodTestSessionCoverageFromTestLaunchesPipeline
 import com.epam.drill.admin.etl.pipeline.methodDailyCoverageFromTestLaunchesPipeline
@@ -86,12 +87,17 @@ val etlDIModule
                         methodDailyCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
+
+                        //TODO replace it with buildMethodTestDefinitionCoverageByRequestPipeline
                         buildMethodTestDefinitionCoveragePipeline,
+
                         buildMethodTestSessionCoverageFromTestLaunchesPipeline,
                         buildMethodCoverageFromTestLaunchesPipeline,
                         methodDailyCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
+                        // Coverage by request extractor group
+                        buildMethodTestDefinitionCoverageByRequestPipeline
                     ),
                     metadataRepository = instance(),
                     consistencyWindow = consistencyWindow,

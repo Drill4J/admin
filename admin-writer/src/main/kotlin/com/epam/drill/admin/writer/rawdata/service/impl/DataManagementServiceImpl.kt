@@ -28,6 +28,7 @@ import com.epam.drill.admin.writer.rawdata.repository.CoverageRepository
 import com.epam.drill.admin.writer.rawdata.repository.InstanceRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.repository.MethodRepository
+import com.epam.drill.admin.writer.rawdata.repository.TestLaunchCoverageRequestRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestLaunchRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
@@ -44,6 +45,7 @@ class DataManagementServiceImpl(
     private val testSessionBuildRepository: TestSessionBuildRepository,
     private val testLaunchRepository: TestLaunchRepository,
     private val methodIgnoreRuleRepository: MethodIgnoreRuleRepository,
+    private val testLaunchCoverageRequestRepository: TestLaunchCoverageRequestRepository,
     private val scheduler: DrillScheduler,
 ) : DataManagementService {
 
@@ -95,6 +97,18 @@ class DataManagementServiceImpl(
     override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {
         transaction {
             methodIgnoreRuleRepository.deleteById(ruleId)
+        }
+    }
+
+    override suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?) {
+        transaction {
+            testLaunchCoverageRequestRepository.upsert(groupId, testSessionId, testDefinitionId)
+        }
+    }
+
+    override suspend fun deleteTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?) {
+        transaction {
+            testLaunchCoverageRequestRepository.delete(groupId, testSessionId, testDefinitionId)
         }
     }
 }

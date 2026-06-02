@@ -39,4 +39,7 @@ interface DataManagementService {
     suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
     suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
     suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
+
+    suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
+    suspend fun deleteTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
 }
