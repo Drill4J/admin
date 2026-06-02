@@ -91,6 +91,7 @@ suspend fun HttpClient.launchTest(
             }
         )
     )
+    putTestLaunchCoverageRequest(session)
 }
 
 val TestDetails.definitionId: String
@@ -136,6 +137,12 @@ suspend fun HttpClient.postTestMetadata(payload: AddTestsPayload): HttpResponse 
 
 suspend fun HttpClient.putTestSession(payload: SessionPayload): HttpResponse {
     return put("/data-ingest/sessions") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.putTestLaunchCoverageRequest(payload: SessionPayload): HttpResponse {
+    return put("/data-management/groups/${payload.groupId}/tests/sessions/${payload.id}/requests") {
         setBody(payload)
     }.assertSuccessStatus()
 }

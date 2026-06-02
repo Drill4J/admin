@@ -27,8 +27,10 @@ import com.epam.drill.admin.test.StubDrillScheduler
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.test.waitUntilInBlocking
+import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
+import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -55,8 +57,9 @@ val scheduler = DI.Module("testModule") {
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(scheduler, rawDataServicesDIModule, metricsDIModule, etlDIModule) {
+        drillApplication(scheduler, rawDataServicesDIModule, dataManagementServicesDIModule, metricsDIModule, etlDIModule) {
             dataIngestRoutes()
+            dataManagementRoutes()
             metricsRoutes()
             route("/metrics") {
                 etlManagementRoutes()

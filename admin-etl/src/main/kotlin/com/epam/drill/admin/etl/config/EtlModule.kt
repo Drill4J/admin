@@ -87,10 +87,7 @@ val etlDIModule
                         methodDailyCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
-
-                        //TODO replace it with buildMethodTestDefinitionCoverageByRequestPipeline
-                        buildMethodTestDefinitionCoveragePipeline,
-
+                        //buildMethodTestDefinitionCoveragePipeline replaced with buildMethodTestDefinitionCoverageByRequestPipeline to optimize processing time by calculating coverage on demand
                         buildMethodTestSessionCoverageFromTestLaunchesPipeline,
                         buildMethodCoverageFromTestLaunchesPipeline,
                         methodDailyCoverageFromTestLaunchesPipeline,
