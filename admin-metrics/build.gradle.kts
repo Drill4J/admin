@@ -16,6 +16,7 @@ val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
+val kotlinxCoroutinesVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
@@ -65,7 +66,7 @@ dependencies {
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-resources:$ktorVersion")
     testImplementation("com.jayway.jsonpath:json-path:2.9.0")

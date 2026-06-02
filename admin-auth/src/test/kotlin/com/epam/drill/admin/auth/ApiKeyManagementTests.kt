@@ -32,6 +32,7 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.builtins.ListSerializer
+import io.ktor.client.request.*
 import org.kodein.di.bind
 import org.kodein.di.ktor.di
 import org.kodein.di.provider
@@ -70,30 +71,30 @@ class ApiKeyManagementTests {
             )
         )
 
-        withTestApplication(withRoute { getAllApiKeysRoute() }) {
-            with(handleRequest(HttpMethod.Get, "/keys") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: List<ApiKeyView> = assertResponseNotNull(ListSerializer(ApiKeyView.serializer()))
-                assertEquals(2, response.size)
+        testApplication {
+            application(withRoute { getAllApiKeysRoute() })
+            val response = client.get("/keys") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: List<ApiKeyView> = response.assertResponseNotNull(ListSerializer(ApiKeyView.serializer()))
+            assertEquals(2, body.size)
         }
     }
 
     @Test
     fun `given api key identifier, 'DELETE keys {id}' must delete that api key from repository`() {
-        withTestApplication(withRoute { deleteApiKeyRoute() }) {
-            with(handleRequest(HttpMethod.Delete, "/keys/1") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(apiKeyRepository) { deleteById(1) }
+        testApplication {
+            application(withRoute { deleteApiKeyRoute() })
+            val response = client.delete("/keys/1") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(apiKeyRepository) { deleteById(1) }
         }
     }
 
-    private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
+    private fun withRoute(route: Route.() -> Unit): Application.() -> Unit = {
         install(Resources)
         install(ContentNegotiation) {
             json()

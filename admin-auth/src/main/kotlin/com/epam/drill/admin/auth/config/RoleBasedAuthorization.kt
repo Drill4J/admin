@@ -27,7 +27,7 @@ class RoleBasedAuthConfiguration {
 }
 
 class AuthorizedRouteSelector(private val description: String) : RouteSelector() {
-    override fun evaluate(context: RoutingResolveContext, segmentIndex: Int) = RouteSelectorEvaluation.Constant
+    override suspend fun evaluate(context: RoutingResolveContext, segmentIndex: Int) = RouteSelectorEvaluation.Constant
 
     override fun toString(): String = "(authorize ${description})"
 }

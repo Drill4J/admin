@@ -42,7 +42,7 @@ import io.ktor.serialization.kotlinx.protobuf.*
 import io.ktor.server.application.*
 import io.ktor.server.application.call
 import io.ktor.server.auth.*
-import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
@@ -233,7 +233,7 @@ private fun Application.initScheduler() {
     val scheduler by closestDI().instance<DrillScheduler>()
 
     scheduler.init(KodeinJobFactory(closestDI()), dataSource)
-    environment.monitor.subscribe(ApplicationStopped) {
+    monitor.subscribe(ApplicationStopped) {
         scheduler.shutdown()
     }
     scheduler.start()
@@ -261,7 +261,7 @@ val Application.jsCoverageConverterAddress: String
 private fun Application.shutdownCloseableServices() {
     val closableComponents: List<AutoCloseable> by closestDI().allInstances()
 
-    environment.monitor.subscribe(ApplicationStopping) {
+    monitor.subscribe(ApplicationStopping) {
         runBlocking {
             closableComponents.map {
                 async {
