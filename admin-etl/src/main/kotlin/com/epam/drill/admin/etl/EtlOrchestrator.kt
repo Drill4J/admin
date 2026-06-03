@@ -25,6 +25,7 @@ import java.time.Instant
  */
 interface EtlOrchestrator {
     val name: String
+    val pipelines: List<EtlPipeline<*, *>>
     suspend fun run(groupId: String, initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
     suspend fun rerun(groupId: String, initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
 }

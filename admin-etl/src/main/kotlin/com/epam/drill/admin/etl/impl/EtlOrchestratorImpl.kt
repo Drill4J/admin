@@ -40,7 +40,7 @@ import kotlin.time.Duration.Companion.minutes
 
 open class EtlOrchestratorImpl(
     override val name: String,
-    open val pipelines: List<EtlPipeline<*, *>>,
+    override val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
     open val consistencyWindow: Long = 0,
     open val processingDelay: Long = 0,
