@@ -24,6 +24,7 @@ import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.flow.ClosableFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -45,14 +46,21 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        extractedFlow: Flow<T>,
+        extractedFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         logger.debug { "ETL pipeline [$name] for group [$groupId] loading since $sinceTimestamp..." }
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val duration = measureTimeMillis {
-            result = loadData(groupId, sinceTimestamp, untilTimestamp, extractedFlow, onLoadingProgress, onStatusChanged)
+            result = loadData(
+                groupId,
+                sinceTimestamp,
+                untilTimestamp,
+                extractedFlow,
+                onLoadingProgress,
+                onStatusChanged
+            )
         }
         logger.debug {
             if (result.processedRows == 0L && !result.isFailed) {
@@ -80,12 +88,24 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        extractedFlow: Flow<T>,
+        extractedFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
-        val metered = getExtractionFlow(groupId, extractedFlow)
-        transformer.transform(groupId, metered).let { transformed ->
+        val flow = getPreparedFlow(
+            groupId,
+            sinceTimestamp,
+            untilTimestamp,
+            extractedFlow
+        ) { errorMessage, lastProcessedAt ->
+            onLoadingProgress(
+                EtlLoadingResult(
+                    errorMessage = errorMessage,
+                    lastProcessedAt = lastProcessedAt
+                )
+            )
+        }
+        transformer.transform(groupId, flow).let { transformed ->
             loader.load(
                 groupId, sinceTimestamp, untilTimestamp, transformed,
                 onLoadingProgress = onLoadingProgress,
@@ -100,12 +120,40 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         ).also { onLoadingProgress(it) }
     }
 
-    private fun getExtractionFlow(groupId: String, flow: Flow<T>): Flow<T> {
+    private fun getPreparedFlow(
+        groupId: String,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: ClosableFlow<T>,
+        onLoadingError: suspend (String, Instant) -> Unit
+    ): Flow<T> {
+        var previousTimestamp: Instant? = null
         val rowsExtracted = metrics.rowsExtracted(name, groupId)
+        val skippedRows = metrics.rowsSkipped(name, groupId)
+        suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
+            close()
+            onLoadingError(message, previousTimestamp ?: sinceTimestamp)
+        }
         return flow {
-            flow.collect { row ->
+            collector.collect { row ->
+                val currentTimestamp = row.timestamp
                 rowsExtracted.increment()
+                if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
+                    collector.closeWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                    return@collect
+                }
+                if (currentTimestamp > untilTimestamp) {
+                    collector.close()
+                    return@collect
+                }
+                // Skip rows that are already processed
+                if (currentTimestamp <= sinceTimestamp) {
+                    previousTimestamp = currentTimestamp
+                    skippedRows.increment()
+                    return@collect
+                }
                 emit(row)
+                previousTimestamp = currentTimestamp
             }
         }
     }

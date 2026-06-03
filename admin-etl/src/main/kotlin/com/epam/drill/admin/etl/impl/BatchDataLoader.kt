@@ -19,8 +19,6 @@ import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.flow.StoppableFlow
-import com.epam.drill.admin.etl.flow.stoppable
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import mu.KotlinLogging
@@ -52,27 +50,16 @@ abstract class BatchDataLoader<T : EtlRow>(
         onStatusChanged: suspend (EtlStatus) -> Unit
     ): EtlLoadingResult {
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
-        val flow = collector.stoppable()
         val batchNo = AtomicInteger(0)
         val processedRows = metrics.rowsProcessed(name, groupId)
         val loadedRows = metrics.rowsLoaded(name, groupId)
-        val skippedRows = metrics.rowsSkipped(name, groupId)
         var isLoadingStarted = false
         val buffer = mutableListOf<T>()
         var lastLoadedTimestamp: Instant = sinceTimestamp
         var previousTimestamp: Instant? = null
-        suspend fun <T> StoppableFlow<T>.stopWithMessage(message: String) {
-            stop()
-            result += EtlLoadingResult(
-                errorMessage = message,
-                lastProcessedAt = lastLoadedTimestamp
-            ).also {
-                onLoadingProgress(it)
-            }
-        }
 
         trackProgressOf {
-            flow.collect { row ->
+            collector.collect { row ->
                 if (!isLoadingStarted) {
                     logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
                     onStatusChanged(EtlStatus.LOADING)
@@ -80,22 +67,6 @@ abstract class BatchDataLoader<T : EtlRow>(
                 }
                 processedRows.increment()
                 val currentTimestamp = row.timestamp
-                if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
-                    flow.stopWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
-                    return@collect
-                }
-
-                // Skip rows that are already processed
-                if (currentTimestamp <= sinceTimestamp) {
-                    previousTimestamp = currentTimestamp
-                    skippedRows.increment()
-                    return@collect
-                }
-
-                if (currentTimestamp > untilTimestamp) {
-                    flow.stop()
-                    return@collect
-                }
 
                 // If timestamp changed and buffer is full, flush the buffer
                 if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
@@ -117,8 +88,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                 }
 
                 if (result.isFailed) {
-                    flow.stop()
-                    return@collect
+                    throw IllegalStateException("ETL loading failed for [$groupId]: ${result.errorMessage}")
                 }
 
                 buffer += row
@@ -128,8 +98,7 @@ abstract class BatchDataLoader<T : EtlRow>(
             if (isLoadingStarted) {
                 logger.debug {
                     "ETL loader [$name] for group [$groupId] loaded ${loadedRows.count().toLong()} rows" +
-                            ", batch: ${batchNo.get()}" +
-                            ", skipped rows: ${skippedRows.count().toLong()}"
+                            ", batch: ${batchNo.get()}"
                 }
             }
 

@@ -25,12 +25,12 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.flow.CompletableSharedFlow
+import com.epam.drill.admin.etl.flow.ClosableFlow
+import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
@@ -148,7 +148,7 @@ open class EtlOrchestratorImpl(
         }
 
         val minLastProcessedAt = sinceTimestamps.values.min()
-        val sharedFlow = CompletableSharedFlow<T>(replay = 0, extraBufferCapacity = bufferSize)
+        val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
         val jobs = groupedPipelines.map { pipeline ->
             async {
                 runPipelineWithExtractionFlow(
@@ -156,7 +156,7 @@ open class EtlOrchestratorImpl(
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = snapshotTime,
-                    sharedFlow = sharedFlow,
+                    sharedFlow = sharedFlow.subscribe(),
                 )
             }
         }
@@ -182,7 +182,7 @@ open class EtlOrchestratorImpl(
                 progressExtracting(groupId, pipeline.name, extractor.name, errorResult)
             }
         } finally {
-            sharedFlow.complete()
+            sharedFlow.close()
         }
 
         jobs.awaitAll()
@@ -196,7 +196,7 @@ open class EtlOrchestratorImpl(
         pipeline: EtlPipeline<T, R>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        sharedFlow: Flow<T>,
+        sharedFlow: ClosableFlow<T>,
     ): EtlProcessingResult = try {
         pipeline.execute(
             groupId = groupId,

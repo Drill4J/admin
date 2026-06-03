@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.etl
 
+import com.epam.drill.admin.etl.flow.ClosableFlow
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -31,7 +32,7 @@ interface EtlPipeline<T : EtlRow, R : EtlRow> {
         groupId: String,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        extractedFlow: Flow<T>,
+        extractedFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit = {},
         onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlProcessingResult

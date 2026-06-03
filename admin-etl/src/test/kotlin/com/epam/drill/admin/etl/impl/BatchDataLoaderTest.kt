@@ -111,31 +111,5 @@ class BatchDataLoaderTest {
         assertEquals(1, loader.loadedBatches.size)
         assertEquals(loader.loadedBatches[0].last().timestamp, result.lastProcessedAt)
     }
-
-    @Test
-    fun `load should fail on out-of-order timestamps`() = runBlocking {
-        val items = listOf(
-            TestItem(Instant.ofEpochSecond(2), "item2"),
-            TestItem(Instant.ofEpochSecond(1), "item1")
-        )
-        val loader = TestBatchDataLoader(batchSize = 10)
-        val result = loader.load("test-group", Instant.EPOCH, Instant.now(), flowOf(*items.toTypedArray())) { }
-
-        assertEquals(true, result.isFailed)
-    }
-
-    @Test
-    fun `load should skip already processed rows`() = runBlocking {
-        val since = Instant.ofEpochSecond(5)
-        val items = (1..10).map { TestItem(Instant.ofEpochSecond(it.toLong()), "item$it") }
-        val loader = TestBatchDataLoader(batchSize = 10)
-        val result = loader.load("test-group", since, Instant.now(), flowOf(*items.toTypedArray())) { }
-
-        assertEquals(false, result.isFailed)
-        assertEquals(5, result.processedRows)
-        assertEquals(1, loader.loadedBatches.size)
-        assertEquals(5, loader.loadedBatches[0].size)
-        assertEquals("item6", loader.loadedBatches[0][0].data)
-    }
 }
 

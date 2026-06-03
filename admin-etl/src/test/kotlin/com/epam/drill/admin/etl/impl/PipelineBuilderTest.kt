@@ -20,10 +20,12 @@ import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.flow.asClosableFlow
 import io.ktor.server.config.MapApplicationConfig
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.Flow
@@ -215,19 +217,15 @@ private fun pbRow(value: Any?, key: String = "value", ts: Instant = Instant.now(
     UntypedRow(ts, mapOf(key to value))
 
 private fun pbExecute(
-    pipeline: com.epam.drill.admin.etl.EtlPipeline<UntypedRow, UntypedRow>,
+    pipeline: EtlPipeline<UntypedRow, UntypedRow>,
 ) = runBlocking {
-    // Use an empty flow â€” tests only verify pipeline structure and transformation logic via pbExecute
-    // through the orchestrator in integration tests; here we call execute with a pre-built extractor flow.
     val rows = mutableListOf<UntypedRow>()
-    // Re-extract via the pipeline's extractor into a simple list, then replay as flow
     pipeline.extractor.extract("g1", Instant.EPOCH, Instant.now(), { rows.add(it) }, {})
-    val extractedFlow = kotlinx.coroutines.flow.flow<UntypedRow> { rows.forEach { emit(it) } }
     pipeline.execute(
         groupId = "g1",
         sinceTimestamp = Instant.EPOCH,
         untilTimestamp = Instant.now(),
-        extractedFlow = extractedFlow,
+        extractedFlow = rows.asClosableFlow(),
     )
 }
 
