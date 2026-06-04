@@ -120,9 +120,7 @@ open class EtlOrchestratorImpl(
 
         // Compute per-pipeline sinceTimestamp from metadata
         val sinceTimestamps: Map<String, Instant> = groupedPipelines.associate { pipeline ->
-            val metadata = metadataRepository.getMetadata(
-                context, pipeline.name, extractor.name, pipeline.loader.name
-            )
+            val metadata = metadataRepository.getMetadata(context, pipeline.name)
             val sinceTimestamp = if (metadata?.lastProcessedAt != null)
                 metadata.lastProcessedAt.minusSeconds(consistencyWindow)
             else
@@ -133,8 +131,8 @@ open class EtlOrchestratorImpl(
         for (pipeline in groupedPipelines) {
             try {
                 metadataRepository.saveMetadata(
+                    context,
                     EtlMetadata(
-                        context = context,
                         pipelineName = pipeline.name,
                         extractorName = extractor.name,
                         loaderName = pipeline.loader.name,
@@ -217,8 +215,6 @@ open class EtlOrchestratorImpl(
                         metadataRepository.accumulateMetadataByLoader(
                             context = context,
                             pipelineName = pipeline.name,
-                            extractorName = pipeline.extractor.name,
-                            loaderName = pipeline.loader.name,
                             status = status,
                         )
                     } catch (e: Throwable) {
@@ -252,7 +248,6 @@ open class EtlOrchestratorImpl(
             metadataRepository.accumulateMetadataByExtractor(
                 context = context,
                 pipelineName = pipelineName,
-                extractorName = extractorName,
                 errorMessage = result.errorMessage,
                 extractDuration = result.duration,
             )
@@ -275,8 +270,6 @@ open class EtlOrchestratorImpl(
             metadataRepository.accumulateMetadataByLoader(
                 context = context,
                 pipelineName = pipelineName,
-                extractorName = extractorName,
-                loaderName = loaderName,
                 errorMessage = result.errorMessage,
                 lastProcessedAt = result.lastProcessedAt,
                 loadDuration = result.duration ?: 0L,

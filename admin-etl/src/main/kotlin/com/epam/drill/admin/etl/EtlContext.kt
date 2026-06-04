@@ -15,7 +15,7 @@
  */
 package com.epam.drill.admin.etl
 
-open class EtlContext(
+data class EtlContext(
     val groupId: String,
     val appId: String? = null,
     val buildId: String? = null,

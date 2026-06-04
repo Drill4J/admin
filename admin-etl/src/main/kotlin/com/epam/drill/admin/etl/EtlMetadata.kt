@@ -18,7 +18,6 @@ package com.epam.drill.admin.etl
 import java.time.Instant
 
 data class EtlMetadata(
-    val context: EtlContext,
     val pipelineName: String,
     val extractorName: String,
     val loaderName: String,

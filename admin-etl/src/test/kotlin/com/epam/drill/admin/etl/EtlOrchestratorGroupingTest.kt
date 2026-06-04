@@ -83,28 +83,6 @@ class EtlOrchestratorGroupingTest {
         override suspend fun deleteAll(context: EtlContext) = received.clear()
     }
 
-    private fun inMemoryRepo() = object : EtlMetadataRepository {
-        private val store = mutableMapOf<String, EtlMetadata>()
-        private fun key(context: EtlContext, p: String, e: String, l: String) = "$context|$p|$e|$l"
-
-        override suspend fun getMetadata(context: EtlContext, p: String, e: String, l: String) = store[key(context, p, e, l)]
-        override suspend fun saveMetadata(m: EtlMetadata) { store[key(m.context, m.pipelineName, m.extractorName, m.loaderName)] = m }
-        override suspend fun deleteMetadataByPipeline(context: EtlContext, p: String) { store.keys.removeAll { it.startsWith("$context|$p|") } }
-        override suspend fun getAllMetadata(context: EtlContext) = store.values.filter { it.context.groupId == context.groupId }
-        override suspend fun accumulateMetadataByLoader(context: EtlContext, p: String, e: String, l: String,
-                                                        lastProcessedAt: Instant?, status: EtlStatus?, loadDuration: Long, rowsProcessed: Long, errorMessage: String?) {
-            val k = key(context, p, e, l)
-            val ex = store[k] ?: return
-            store[k] = ex.copy(
-                lastProcessedAt = lastProcessedAt ?: ex.lastProcessedAt,
-                status = status ?: ex.status,
-                errorMessage = errorMessage,
-            )
-        }
-        override suspend fun accumulateMetadataByExtractor(context: EtlContext, p: String, e: String,
-                                                           status: EtlStatus?, extractDuration: Long, errorMessage: String?) { /* no-op for these tests */ }
-    }
-
     @BeforeEach
     fun reset() {
         extractCallCount.set(0)
@@ -136,7 +114,7 @@ class EtlOrchestratorGroupingTest {
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(pipeline1, pipeline2),
-            metadataRepository = inMemoryRepo(),
+            metadataRepository = SimpleMetadataRepository(),
         )
 
         val results = orchestrator.run(EtlContext(groupId = "g1"))
@@ -175,7 +153,7 @@ class EtlOrchestratorGroupingTest {
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(pipelineA, pipelineB),
-            metadataRepository = inMemoryRepo(),
+            metadataRepository = SimpleMetadataRepository(),
         )
 
         orchestrator.run(EtlContext(groupId = "g1"))
@@ -205,7 +183,7 @@ class EtlOrchestratorGroupingTest {
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = pipelines,
-            metadataRepository = inMemoryRepo(),
+            metadataRepository = SimpleMetadataRepository(),
         )
 
         val results = orchestrator.run(EtlContext(groupId = "g1"))
@@ -244,10 +222,11 @@ class EtlOrchestratorGroupingTest {
             metrics = metrics,
         )
 
-        val repo = inMemoryRepo()
+        val repo = SimpleMetadataRepository()
         // Seed metadata so pipelineNew has a more recent watermark
-        repo.saveMetadata(EtlMetadata(
-            context = EtlContext(groupId = "g1"), pipelineName = "pipeline-new", extractorName = "shared",
+        repo.saveMetadata(EtlContext(groupId = "g1"),
+            EtlMetadata(
+            pipelineName = "pipeline-new", extractorName = "shared",
             loaderName = "loader-new", lastProcessedAt = t1, lastRunAt = t1, status = EtlStatus.SUCCESS
         ))
 

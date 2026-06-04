@@ -19,17 +19,12 @@ import java.time.Instant
 
 interface EtlMetadataRepository {
     suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata>
-    suspend fun getMetadata(
-        context: EtlContext,
-        pipelineName: String,
-        extractorName: String,
-        loaderName: String
-    ): EtlMetadata?
+    suspend fun getMetadata(context: EtlContext, pipelineName: String): EtlMetadata?
 
-    suspend fun saveMetadata(metadata: EtlMetadata)
+    suspend fun saveMetadata(context: EtlContext, metadata: EtlMetadata)
     suspend fun accumulateMetadataByLoader(
         context: EtlContext,
-        pipelineName: String, extractorName: String, loaderName: String,
+        pipelineName: String,
         lastProcessedAt: Instant? = null,
         status: EtlStatus? = null, loadDuration: Long = 0L, rowsProcessed: Long = 0L,
         errorMessage: String? = null
@@ -38,7 +33,7 @@ interface EtlMetadataRepository {
     suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String)
     suspend fun accumulateMetadataByExtractor(
         context: EtlContext,
-        pipelineName: String, extractorName: String,
+        pipelineName: String,
         status: EtlStatus? = null, extractDuration: Long = 0L,
         errorMessage: String? = null
     )

@@ -124,75 +124,7 @@ class ETLSimpleTest {
         }
     }
 
-    inner class SimpleMetadataRepository : EtlMetadataRepository {
-        private val store = mutableMapOf<String, EtlMetadata>()
 
-        private fun key(groupId: String, pipelineName: String, extractorName: String, loaderName: String) =
-            "$groupId|$pipelineName|$extractorName|$loaderName"
-
-        override suspend fun getMetadata(
-            context: EtlContext,
-            pipelineName: String,
-            extractorName: String,
-            loaderName: String
-        ): EtlMetadata? = store[key(context.groupId, pipelineName, extractorName, loaderName)]
-
-        override suspend fun saveMetadata(metadata: EtlMetadata) {
-            store[key(metadata.context.groupId, metadata.pipelineName, metadata.extractorName, metadata.loaderName)] = metadata
-        }
-
-        override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String) {
-            store.keys.removeAll { it.startsWith("${context.groupId}|$pipelineName|") }
-        }
-
-        override suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata> =
-            store.values.filter { it.context.groupId == context.groupId }
-
-        override suspend fun accumulateMetadataByLoader(
-            context: EtlContext,
-            pipelineName: String,
-            extractorName: String,
-            loaderName: String,
-            lastProcessedAt: Instant?,
-            status: EtlStatus?,
-            loadDuration: Long,
-            rowsProcessed: Long,
-            errorMessage: String?
-        ) {
-            val k = key(context.groupId, pipelineName, extractorName, loaderName)
-            val existing = store[k] ?: EtlMetadata(
-                context = context, pipelineName = pipelineName, extractorName = extractorName,
-                loaderName = loaderName, lastProcessedAt = Instant.EPOCH, lastRunAt = Instant.EPOCH,
-                status = EtlStatus.SUCCESS
-            )
-            store[k] = existing.copy(
-                lastProcessedAt = lastProcessedAt ?: existing.lastProcessedAt,
-                lastLoadDuration = existing.lastLoadDuration + loadDuration,
-                lastRowsProcessed = existing.lastRowsProcessed + rowsProcessed,
-                status = status ?: (if (errorMessage != null) EtlStatus.FAILED else existing.status),
-                errorMessage = errorMessage
-            )
-        }
-
-        override suspend fun accumulateMetadataByExtractor(
-            context: EtlContext,
-            pipelineName: String,
-            extractorName: String,
-            status: EtlStatus?,
-            extractDuration: Long,
-            errorMessage: String?
-        ) {
-            store.entries
-                .filter { (k, _) -> k.startsWith("${context.groupId}|$pipelineName|$extractorName|") }
-                .forEach { (k, existing) ->
-                    store[k] = existing.copy(
-                        lastExtractDuration = existing.lastExtractDuration + extractDuration,
-                        status = if (errorMessage != null) EtlStatus.FAILED else existing.status,
-                        errorMessage = errorMessage
-                    )
-                }
-        }
-    }
 
     private fun buildOrchestrator(metadataRepository: EtlMetadataRepository = SimpleMetadataRepository()) =
         EtlOrchestratorImpl(
@@ -221,7 +153,7 @@ class ETLSimpleTest {
         val orchestrator = buildOrchestrator(repo)
         val context = EtlContext(groupId = "test-group")
 
-        val initialLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+        val initialLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
@@ -230,11 +162,11 @@ class ETLSimpleTest {
         assertTrue(result.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result.first().rowsProcessed)
 
-        val updatedLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+        val updatedLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         assertTrue(updatedLastProcessedAt > initialLastProcessedAt)
-        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)?.status)
+        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(context, SIMPLE_PIPELINE)?.status)
     }
 
     @Test
@@ -255,7 +187,7 @@ class ETLSimpleTest {
             metadataRepository = repo,
         )
 
-        val initialLastProcessedAt = repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+        val initialLastProcessedAt = repo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
@@ -264,11 +196,11 @@ class ETLSimpleTest {
         assertTrue(result.first().status == EtlStatus.FAILED)
         assertEquals(0, result.first().rowsProcessed)
 
-        val updatedLastProcessedAt = repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+        val updatedLastProcessedAt = repo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)
-        assertEquals(EtlStatus.FAILED, repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)?.status)
+        assertEquals(EtlStatus.FAILED, repo.getMetadata(context, "failed-pipeline")?.status)
     }
 
     @Test

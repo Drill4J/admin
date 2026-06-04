@@ -52,20 +52,16 @@ class EtlMetadataRepositoryImpl(
 
     override suspend fun getMetadata(
         context: EtlContext,
-        pipelineName: String,
-        extractorName: String,
-        loaderName: String
+        pipelineName: String
     ): EtlMetadata? = newSuspendedTransaction(db = database) {
         metadataTable.selectAll()
             .andWhere { metadataTableHas(context) }
             .andWhere { metadataTable.pipelineName eq pipelineName }
-            .andWhere { metadataTable.extractorName eq extractorName }
-            .andWhere { metadataTable.loaderName eq loaderName }
             .map(::mapMetadata)
             .singleOrNull()
     }
 
-    override suspend fun saveMetadata(metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
+    override suspend fun saveMetadata(context: EtlContext, metadata: EtlMetadata): Unit = newSuspendedTransaction(db = database) {
         metadataTable.upsert(
             onUpdateExclude = listOf(
                 metadataTable.loadDuration,
@@ -87,13 +83,13 @@ class EtlMetadataRepositoryImpl(
             it[lastRowsProcessed] = metadata.lastRowsProcessed
             it[errorMessage] = metadata.errorMessage
 
-            it[groupId] = metadata.context.groupId
-            it[appId] = metadata.context.appId
-            it[buildId] = metadata.context.buildId
-            it[instanceId] = metadata.context.instanceId
-            it[testSessionId] = metadata.context.testSessionId
-            it[testDefinitionId] = metadata.context.testDefinitionId
-            it[testLaunchId] = metadata.context.testLaunchId
+            it[groupId] = context.groupId
+            it[appId] = context.appId
+            it[buildId] = context.buildId
+            it[instanceId] = context.instanceId
+            it[testSessionId] = context.testSessionId
+            it[testDefinitionId] = context.testDefinitionId
+            it[testLaunchId] = context.testLaunchId
 
             it[updatedAt] = CurrentDateTime
         }
@@ -102,8 +98,6 @@ class EtlMetadataRepositoryImpl(
     override suspend fun accumulateMetadataByLoader(
         context: EtlContext,
         pipelineName: String,
-        extractorName: String,
-        loaderName: String,
         lastProcessedAt: Instant?,
         status: EtlStatus?,
         loadDuration: Long,
@@ -112,10 +106,8 @@ class EtlMetadataRepositoryImpl(
     ) {
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
-                metadataTableHas(context) and
-                        (metadataTable.pipelineName eq pipelineName) and
-                        (metadataTable.extractorName eq extractorName) and
-                        (metadataTable.loaderName eq loaderName)
+                metadataTableHas(context) and (metadataTable.pipelineName eq pipelineName)
+
             }) {
                 if (errorMessage != null) {
                     it[metadataTable.errorMessage] = errorMessage
@@ -147,7 +139,6 @@ class EtlMetadataRepositoryImpl(
     override suspend fun accumulateMetadataByExtractor(
         context: EtlContext,
         pipelineName: String,
-        extractorName: String,
         status: EtlStatus?,
         extractDuration: Long,
         errorMessage: String?
@@ -156,7 +147,6 @@ class EtlMetadataRepositoryImpl(
             metadataTable.update(where = {
                 metadataTableHas(context) and
                         (metadataTable.pipelineName eq pipelineName) and
-                        (metadataTable.extractorName eq extractorName) and
                         (status?.let { metadataTable.status neq EtlStatus.FAILED.name } ?: Op.TRUE)
             }) {
                 if (errorMessage != null) {
@@ -184,15 +174,6 @@ class EtlMetadataRepositoryImpl(
         lastRowsProcessed = row[metadataTable.lastRowsProcessed],
         status = EtlStatus.valueOf(row[metadataTable.status]),
         errorMessage = row[metadataTable.errorMessage],
-        context = EtlContext(
-            groupId = row[metadataTable.groupId],
-            appId = row[metadataTable.appId],
-            buildId = row[metadataTable.buildId],
-            instanceId = row[metadataTable.instanceId],
-            testSessionId = row[metadataTable.testSessionId],
-            testDefinitionId = row[metadataTable.testDefinitionId],
-            testLaunchId = row[metadataTable.testLaunchId]
-        )
     )
     
     private fun metadataTableHas(context: EtlContext): Op<Boolean> {
