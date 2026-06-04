@@ -15,12 +15,22 @@
  */
 package com.epam.drill.admin.etl
 
-import kotlinx.coroutines.flow.Flow
+open class EtlContext(
+    val groupId: String,
+    val appId: String? = null,
+    val buildId: String? = null,
+    val instanceId: String? = null,
+    val testSessionId: String? = null,
+    val testDefinitionId: String? = null,
+    val testLaunchId: String? = null,
+)
 
-interface DataTransformer<in T: EtlRow, out R: EtlRow> {
-    val name: String
-    suspend fun transform(
-        context: EtlContext,
-        collector: Flow<T>,
-    ): Flow<R>
-}
+fun EtlContext.toMap(): Map<String, String?> = mapOf(
+    "group_id" to groupId,
+    "app_id" to appId,
+    "build_id" to buildId,
+    "instance_id" to instanceId,
+    "test_session_id" to testSessionId,
+    "test_definition_id" to testDefinitionId,
+    "test_launch_id" to testLaunchId,
+)

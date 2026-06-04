@@ -21,6 +21,7 @@ import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
@@ -43,18 +44,19 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun execute(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractedFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
+        val groupId = context.groupId
         logger.debug { "ETL pipeline [$name] for group [$groupId] loading since $sinceTimestamp..." }
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val duration = measureTimeMillis {
             result = loadData(
-                groupId,
+                context,
                 sinceTimestamp,
                 untilTimestamp,
                 extractedFlow,
@@ -71,7 +73,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             }
         }
         EtlProcessingResult(
-            groupId = groupId,
+            context = context,
             pipelineName = name,
             lastProcessedAt = result.lastProcessedAt,
             rowsProcessed = result.processedRows,
@@ -80,20 +82,21 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         )
     }
 
-    override suspend fun cleanUp(groupId: String) {
-        loader.deleteAll(groupId)
+    override suspend fun cleanUp(context: EtlContext) {
+        loader.deleteAll(context)
     }
 
     private suspend fun loadData(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractedFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
+        val groupId = context.groupId
         val flow = getPreparedFlow(
-            groupId,
+            context,
             sinceTimestamp,
             untilTimestamp,
             extractedFlow
@@ -105,14 +108,15 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 )
             )
         }
-        transformer.transform(groupId, flow).let { transformed ->
+        transformer.transform(context, flow).let { transformed ->
             loader.load(
-                groupId, sinceTimestamp, untilTimestamp, transformed,
+                context, sinceTimestamp, untilTimestamp, transformed,
                 onLoadingProgress = onLoadingProgress,
                 onStatusChanged = onStatusChanged,
             )
         }
     } catch (e: Throwable) {
+        val groupId = context.groupId
         logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
@@ -121,12 +125,13 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
     }
 
     private fun getPreparedFlow(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: ClosableFlow<T>,
         onLoadingError: suspend (String, Instant) -> Unit
     ): Flow<T> {
+        val groupId = context.groupId
         var previousTimestamp: Instant? = null
         val rowsExtracted = metrics.rowsExtracted(name, groupId)
         val skippedRows = metrics.rowsSkipped(name, groupId)

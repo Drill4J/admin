@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.common.config.recordInline
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.Dispatchers
@@ -43,10 +44,11 @@ abstract class SqlDataLoader<T: EtlRow>(
     abstract fun prepareSql(sql: String): PreparedSql<T>
 
     override suspend fun loadBatch(
-        groupId: String,
+        context: EtlContext,
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
+        val groupId = context.groupId
         val timer = metrics.loadingDuration(name, groupId)
         val failures = metrics.loadingFailures(name, groupId)
         val preparedSql = prepareSql(sqlUpsert)
@@ -90,7 +92,8 @@ abstract class SqlDataLoader<T: EtlRow>(
         )
     }
 
-    override suspend fun deleteAll(groupId: String) {
+    override suspend fun deleteAll(context: EtlContext) {
+        val groupId = context.groupId
         logger.debug { "Loader [$name] deleting data for group [$groupId]" }
         val preparedSql = prepareSql(sqlDelete)
         val duration = try {

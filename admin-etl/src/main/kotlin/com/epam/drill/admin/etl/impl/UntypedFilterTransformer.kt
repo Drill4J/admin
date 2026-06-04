@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataTransformer
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
@@ -28,9 +29,10 @@ class UntypedFilterTransformer(
     private val predicate: (UntypedRow) -> Boolean
 ) : DataTransformer<UntypedRow, UntypedRow> {
     override suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> {
+        val groupId = context.groupId
         val rowsFiltered = metrics.rowsFiltered(name, groupId)
         return flow {
             collector.filter {

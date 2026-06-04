@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.service.impl
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.EtlMetadataRepository
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.getUpdateMetricsEtlDataMap
@@ -53,7 +54,7 @@ class EtlServiceImpl(
     }
 
     override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {
-        val metadata = etlRepository.getAllMetadata(groupId)
+        val metadata = etlRepository.getAllMetadata(EtlContext(groupId = groupId))
         if (metadata.isEmpty()) return emptyMap()
 
         val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)

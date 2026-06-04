@@ -18,6 +18,7 @@ package com.epam.drill.admin.etl.impl
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlConfig
@@ -176,8 +177,8 @@ internal class SequencedTransformer<T : EtlRow, M : EtlRow, R : EtlRow>(
     private val second: DataTransformer<M, R>
 ) : DataTransformer<T, R> {
     override val name: String = "${first.name}+${second.name}"
-    override suspend fun transform(groupId: String, collector: Flow<T>): Flow<R> =
-        second.transform(groupId, first.transform(groupId, collector))
+    override suspend fun transform(context: EtlContext, collector: Flow<T>): Flow<R> =
+        second.transform(context, first.transform(context, collector))
 }
 
 /**
@@ -186,7 +187,7 @@ internal class SequencedTransformer<T : EtlRow, M : EtlRow, R : EtlRow>(
 internal object NoOpTransformer : DataTransformer<UntypedRow, UntypedRow> {
     override val name: String = "identity"
     override suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> = collector
 }

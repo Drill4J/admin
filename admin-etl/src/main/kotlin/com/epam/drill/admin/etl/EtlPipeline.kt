@@ -16,7 +16,6 @@
 package com.epam.drill.admin.etl
 
 import com.epam.drill.admin.etl.flow.ClosableFlow
-import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 /**
@@ -29,7 +28,7 @@ interface EtlPipeline<T : EtlRow, R : EtlRow> {
     val transformer: DataTransformer<T, R>
     val loader: DataLoader<R>
     suspend fun execute(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractedFlow: ClosableFlow<T>,
@@ -37,5 +36,5 @@ interface EtlPipeline<T : EtlRow, R : EtlRow> {
         onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlProcessingResult
 
-    suspend fun cleanUp(groupId: String)
+    suspend fun cleanUp(context: EtlContext)
 }

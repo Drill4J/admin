@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
@@ -47,7 +48,7 @@ class EtlPipelineImplTest {
         val progressResults = mutableListOf<EtlLoadingResult>()
 
         pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
             extractedFlow = items.asClosableFlow(),
@@ -71,7 +72,7 @@ class EtlPipelineImplTest {
         val pipeline = buildPipeline(loader)
 
         val result = pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = since,
             untilTimestamp = Instant.now(),
             extractedFlow = items.asClosableFlow()
@@ -91,7 +92,7 @@ class EtlPipelineImplTest {
         val pipeline = buildPipeline(loader)
 
         val result = pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = until,
             extractedFlow = items.asClosableFlow()
@@ -110,7 +111,7 @@ class EtlPipelineImplTest {
         val progressResults = mutableListOf<EtlLoadingResult>()
 
         val result = pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
             extractedFlow = items.asClosableFlow(),
@@ -130,7 +131,7 @@ class EtlPipelineImplTest {
         val pipeline = buildPipelineWithMappingTransformer(loader)
 
         val result = pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
             extractedFlow = items.asClosableFlow()
@@ -148,7 +149,7 @@ class EtlPipelineImplTest {
         val pipeline = buildPipeline(loader)
 
         val result = pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
             extractedFlow = emptyList<TestItem>().asClosableFlow()
@@ -167,7 +168,7 @@ class EtlPipelineImplTest {
         val statusChanges = mutableListOf<EtlStatus>()
 
         pipeline.execute(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
             extractedFlow = items.asClosableFlow(),
@@ -186,7 +187,7 @@ class EtlPipelineImplTest {
     private class NoOpExtractor : DataExtractor<TestItem> {
         override val name = "noop-extractor"
         override suspend fun extract(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             emitter: FlowCollector<TestItem>,
@@ -196,14 +197,14 @@ class EtlPipelineImplTest {
 
     private class PassthroughTransformer : DataTransformer<TestItem, TestItem> {
         override val name = "passthrough-transformer"
-        override suspend fun transform(groupId: String, collector: Flow<TestItem>): Flow<TestItem> = flow {
+        override suspend fun transform(context: EtlContext, collector: Flow<TestItem>): Flow<TestItem> = flow {
             collector.collect { emit(it) }
         }
     }
 
     private class PrefixingTransformer : DataTransformer<TestItem, TransformedItem> {
         override val name = "prefixing-transformer"
-        override suspend fun transform(groupId: String, collector: Flow<TestItem>): Flow<TransformedItem> = flow {
+        override suspend fun transform(context: EtlContext, collector: Flow<TestItem>): Flow<TransformedItem> = flow {
             collector.collect { emit(TransformedItem(it.timestamp, "transformed-${it.data}")) }
         }
     }
@@ -213,7 +214,7 @@ class EtlPipelineImplTest {
         val loadedItems = mutableListOf<TestItem>()
 
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<TestItem>,
@@ -236,7 +237,7 @@ class EtlPipelineImplTest {
             }
         }
 
-        override suspend fun deleteAll(groupId: String) {
+        override suspend fun deleteAll(context: EtlContext) {
             loadedItems.clear()
         }
     }
@@ -246,7 +247,7 @@ class EtlPipelineImplTest {
         val loadedItems = mutableListOf<TransformedItem>()
 
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<TransformedItem>,
@@ -269,7 +270,7 @@ class EtlPipelineImplTest {
             }
         }
 
-        override suspend fun deleteAll(groupId: String) {
+        override suspend fun deleteAll(context: EtlContext) {
             loadedItems.clear()
         }
     }
@@ -278,7 +279,7 @@ class EtlPipelineImplTest {
         override val name = "throwing-loader"
 
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<TestItem>,
@@ -289,7 +290,7 @@ class EtlPipelineImplTest {
             return EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         }
 
-        override suspend fun deleteAll(groupId: String) {}
+        override suspend fun deleteAll(context: EtlContext) {}
     }
 
     private fun buildPipeline(loader: CapturingLoader) = EtlPipelineImpl(

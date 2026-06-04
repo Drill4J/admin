@@ -42,7 +42,7 @@ class EtlOrchestratorGroupingTest {
 
     private val gRowIdentity: DataTransformer<GRow, GRow> = object : DataTransformer<GRow, GRow> {
         override val name = "identity"
-        override suspend fun transform(groupId: String, collector: Flow<GRow>): Flow<GRow> = collector
+        override suspend fun transform(context: EtlContext, collector: Flow<GRow>): Flow<GRow> = collector
     }
 
     inner class CountingExtractor(
@@ -50,7 +50,7 @@ class EtlOrchestratorGroupingTest {
         private val rows: List<GRow>,
     ) : DataExtractor<GRow> {
         override suspend fun extract(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             emitter: FlowCollector<GRow>,
@@ -65,7 +65,7 @@ class EtlOrchestratorGroupingTest {
         val received = mutableListOf<GRow>()
 
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<GRow>,
@@ -80,22 +80,20 @@ class EtlOrchestratorGroupingTest {
             return result
         }
 
-        override suspend fun deleteAll(groupId: String) = received.clear()
+        override suspend fun deleteAll(context: EtlContext) = received.clear()
     }
 
     private fun inMemoryRepo() = object : EtlMetadataRepository {
         private val store = mutableMapOf<String, EtlMetadata>()
-        private fun key(g: String, p: String, e: String, l: String) = "$g|$p|$e|$l"
+        private fun key(context: EtlContext, p: String, e: String, l: String) = "$context|$p|$e|$l"
 
-        override suspend fun getMetadata(g: String, p: String, e: String, l: String) = store[key(g, p, e, l)]
-        override suspend fun saveMetadata(m: EtlMetadata) { store[key(m.groupId, m.pipelineName, m.extractorName, m.loaderName)] = m }
-        override suspend fun deleteMetadataByPipeline(g: String, p: String) { store.keys.removeAll { it.startsWith("$g|$p|") } }
-        override suspend fun getAllMetadataByExtractor(g: String, p: String, e: String) =
-            store.values.filter { it.groupId == g && it.pipelineName == p && it.extractorName == e }
-        override suspend fun getAllMetadata(g: String) = store.values.filter { it.groupId == g }
-        override suspend fun accumulateMetadataByLoader(g: String, p: String, e: String, l: String,
-            lastProcessedAt: Instant?, status: EtlStatus?, loadDuration: Long, rowsProcessed: Long, errorMessage: String?) {
-            val k = key(g, p, e, l)
+        override suspend fun getMetadata(context: EtlContext, p: String, e: String, l: String) = store[key(context, p, e, l)]
+        override suspend fun saveMetadata(m: EtlMetadata) { store[key(m.context, m.pipelineName, m.extractorName, m.loaderName)] = m }
+        override suspend fun deleteMetadataByPipeline(context: EtlContext, p: String) { store.keys.removeAll { it.startsWith("$context|$p|") } }
+        override suspend fun getAllMetadata(context: EtlContext) = store.values.filter { it.context.groupId == context.groupId }
+        override suspend fun accumulateMetadataByLoader(context: EtlContext, p: String, e: String, l: String,
+                                                        lastProcessedAt: Instant?, status: EtlStatus?, loadDuration: Long, rowsProcessed: Long, errorMessage: String?) {
+            val k = key(context, p, e, l)
             val ex = store[k] ?: return
             store[k] = ex.copy(
                 lastProcessedAt = lastProcessedAt ?: ex.lastProcessedAt,
@@ -103,8 +101,8 @@ class EtlOrchestratorGroupingTest {
                 errorMessage = errorMessage,
             )
         }
-        override suspend fun accumulateMetadataByExtractor(g: String, p: String, e: String,
-            status: EtlStatus?, extractDuration: Long, errorMessage: String?) { /* no-op for these tests */ }
+        override suspend fun accumulateMetadataByExtractor(context: EtlContext, p: String, e: String,
+                                                           status: EtlStatus?, extractDuration: Long, errorMessage: String?) { /* no-op for these tests */ }
     }
 
     @BeforeEach
@@ -141,7 +139,7 @@ class EtlOrchestratorGroupingTest {
             metadataRepository = inMemoryRepo(),
         )
 
-        val results = orchestrator.run("g1")
+        val results = orchestrator.run(EtlContext(groupId = "g1"))
 
         assertEquals(1, extractCallCount.get(), "Extractor must be called exactly once for the group")
         assertEquals(2, results.size)
@@ -180,7 +178,7 @@ class EtlOrchestratorGroupingTest {
             metadataRepository = inMemoryRepo(),
         )
 
-        orchestrator.run("g1")
+        orchestrator.run(EtlContext(groupId = "g1"))
 
         assertEquals(2, extractCallCount.get(), "Each extractor must be called once independently")
         assertEquals(2, loaderA.received.size)
@@ -210,7 +208,7 @@ class EtlOrchestratorGroupingTest {
             metadataRepository = inMemoryRepo(),
         )
 
-        val results = orchestrator.run("g1")
+        val results = orchestrator.run(EtlContext(groupId = "g1"))
 
         assertEquals(1, extractCallCount.get(), "Extractor must be called exactly once")
         assertEquals(3, results.size)
@@ -249,7 +247,7 @@ class EtlOrchestratorGroupingTest {
         val repo = inMemoryRepo()
         // Seed metadata so pipelineNew has a more recent watermark
         repo.saveMetadata(EtlMetadata(
-            groupId = "g1", pipelineName = "pipeline-new", extractorName = "shared",
+            context = EtlContext(groupId = "g1"), pipelineName = "pipeline-new", extractorName = "shared",
             loaderName = "loader-new", lastProcessedAt = t1, lastRunAt = t1, status = EtlStatus.SUCCESS
         ))
 
@@ -259,7 +257,7 @@ class EtlOrchestratorGroupingTest {
             metadataRepository = repo,
         )
 
-        orchestrator.run("g1")
+        orchestrator.run(EtlContext(groupId = "g1"))
 
         // Extractor runs from min(watermark) = EPOCH (pipelineOld has no metadata), so all rows are extracted.
         // Both loaders receive all extracted rows; BatchDataLoader's internal skip handles per-loader filtering
@@ -270,6 +268,6 @@ class EtlOrchestratorGroupingTest {
         // pipelineNew: watermark = t1, loader skipping handled by loader impl; CollectingLoader gets what pipeline passes
         // In this test CollectingLoader doesn't filter by sinceTimestamp â€” that's BatchDataLoader's job.
         // We just verify the row count is consistent with what was broadcast.
-        assertTrue(loaderNew.received.size >= 1, "loader-new must receive at least the row after its watermark")
+        assertTrue(loaderNew.received.isNotEmpty(), "loader-new must receive at least the row after its watermark")
     }
 }

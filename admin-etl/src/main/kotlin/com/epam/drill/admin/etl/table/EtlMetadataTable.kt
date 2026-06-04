@@ -38,6 +38,13 @@ class EtlMetadataTable(tableName: String) : Table(tableName) {
     val rowsProcessed = long("rows_processed").default(0L)
     val errorMessage = text("error_message").nullable()
 
+    val appId = varchar("app_id", 225).nullable()
+    val buildId = varchar("build_id", 225).nullable()
+    val instanceId = varchar("instance_id", 225).nullable()
+    val testSessionId = varchar("test_session_id", 225).nullable()
+    val testDefinitionId = varchar("test_definition_id", 225).nullable()
+    val testLaunchId = varchar("test_launch_id", 225).nullable()
+
 
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)

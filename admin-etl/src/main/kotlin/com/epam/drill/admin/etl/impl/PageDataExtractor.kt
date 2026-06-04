@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.FlowCollector
@@ -35,12 +36,13 @@ abstract class PageDataExtractor<T : EtlRow>(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extract(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<T>,
         onExtractingProgress: suspend (EtlExtractingResult) -> Unit
     ) {
+        val groupId = context.groupId
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
         val rowsFetched = metrics.rowsFetched(name, groupId)
@@ -61,7 +63,7 @@ abstract class PageDataExtractor<T : EtlRow>(
 
                     isExecutingQuery.set(true)
                     extractPage(
-                        groupId = groupId,
+                        context = context,
                         sinceTimestamp = currentSince,
                         untilTimestamp = untilTimestamp,
                         limit = extractionLimit,
@@ -151,7 +153,7 @@ abstract class PageDataExtractor<T : EtlRow>(
     }
 
     abstract suspend fun extractPage(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         limit: Int,

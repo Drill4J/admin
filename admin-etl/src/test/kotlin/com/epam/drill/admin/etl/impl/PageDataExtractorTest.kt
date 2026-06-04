@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.PageDataExtractorTest.TestPageDataExtractor.ExtractedPageInfo
@@ -48,7 +49,7 @@ class PageDataExtractorTest {
         )
 
         override suspend fun extractPage(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             limit: Int,
@@ -56,7 +57,7 @@ class PageDataExtractorTest {
             rowsExtractor: suspend (row: TestItem) -> Unit
         ) {
             val info = ExtractedPageInfo(
-                groupId = groupId,
+                groupId = context.groupId,
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
                 limit = limit,
@@ -82,7 +83,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -105,7 +106,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -136,7 +137,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -171,7 +172,7 @@ class PageDataExtractorTest {
         }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -209,7 +210,7 @@ class PageDataExtractorTest {
 
         val progressResults = mutableListOf<EtlExtractingResult>()
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -238,7 +239,7 @@ class PageDataExtractorTest {
 
         val progressResults = mutableListOf<EtlExtractingResult>()
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,

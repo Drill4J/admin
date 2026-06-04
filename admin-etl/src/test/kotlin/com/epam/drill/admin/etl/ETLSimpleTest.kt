@@ -51,7 +51,7 @@ class ETLSimpleTest {
     inner class SimpleExtractor : DataExtractor<SimpleClass> {
         override val name = SIMPLE_EXTRACTOR
         override suspend fun extract(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             emitter: FlowCollector<SimpleClass>,
@@ -64,7 +64,7 @@ class ETLSimpleTest {
     inner class SimpleLoader : DataLoader<SimpleClass> {
         override val name = SIMPLE_LOADER
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
@@ -86,7 +86,7 @@ class ETLSimpleTest {
             }
         }
 
-        override suspend fun deleteAll(groupId: String) {
+        override suspend fun deleteAll(context: EtlContext) {
             dataStore.clear()
         }
     }
@@ -94,7 +94,7 @@ class ETLSimpleTest {
     inner class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
         override val name = SIMPLE_TRANSFORMER
         override suspend fun transform(
-            groupId: String,
+            context: EtlContext,
             collector: Flow<SimpleClass>
         ): Flow<SimpleClass> = flow {
             collector.collect { emit(it) }
@@ -104,7 +104,7 @@ class ETLSimpleTest {
     inner class FailingLoader : DataLoader<SimpleClass> {
         override val name = FAILING_LOADER
         override suspend fun load(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             collector: Flow<SimpleClass>,
@@ -119,7 +119,7 @@ class ETLSimpleTest {
                 lastProcessedAt = sinceTimestamp)
         }
 
-        override suspend fun deleteAll(groupId: String) {
+        override suspend fun deleteAll(context: EtlContext) {
             dataStore.clear()
         }
     }
@@ -131,34 +131,25 @@ class ETLSimpleTest {
             "$groupId|$pipelineName|$extractorName|$loaderName"
 
         override suspend fun getMetadata(
-            groupId: String,
+            context: EtlContext,
             pipelineName: String,
             extractorName: String,
             loaderName: String
-        ): EtlMetadata? = store[key(groupId, pipelineName, extractorName, loaderName)]
+        ): EtlMetadata? = store[key(context.groupId, pipelineName, extractorName, loaderName)]
 
         override suspend fun saveMetadata(metadata: EtlMetadata) {
-            store[key(metadata.groupId, metadata.pipelineName, metadata.extractorName, metadata.loaderName)] = metadata
+            store[key(metadata.context.groupId, metadata.pipelineName, metadata.extractorName, metadata.loaderName)] = metadata
         }
 
-        override suspend fun deleteMetadataByPipeline(groupId: String, pipelineName: String) {
-            store.keys.removeAll { it.startsWith("$groupId|$pipelineName|") }
+        override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String) {
+            store.keys.removeAll { it.startsWith("${context.groupId}|$pipelineName|") }
         }
 
-        override suspend fun getAllMetadataByExtractor(
-            groupId: String,
-            pipelineName: String,
-            extractorName: String
-        ): List<EtlMetadata> =
-            store.values.filter {
-                it.groupId == groupId && it.extractorName == extractorName && it.pipelineName == pipelineName
-            }
-
-        override suspend fun getAllMetadata(groupId: String): List<EtlMetadata> =
-            store.values.filter { it.groupId == groupId }
+        override suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata> =
+            store.values.filter { it.context.groupId == context.groupId }
 
         override suspend fun accumulateMetadataByLoader(
-            groupId: String,
+            context: EtlContext,
             pipelineName: String,
             extractorName: String,
             loaderName: String,
@@ -168,9 +159,9 @@ class ETLSimpleTest {
             rowsProcessed: Long,
             errorMessage: String?
         ) {
-            val k = key(groupId, pipelineName, extractorName, loaderName)
+            val k = key(context.groupId, pipelineName, extractorName, loaderName)
             val existing = store[k] ?: EtlMetadata(
-                groupId = groupId, pipelineName = pipelineName, extractorName = extractorName,
+                context = context, pipelineName = pipelineName, extractorName = extractorName,
                 loaderName = loaderName, lastProcessedAt = Instant.EPOCH, lastRunAt = Instant.EPOCH,
                 status = EtlStatus.SUCCESS
             )
@@ -184,7 +175,7 @@ class ETLSimpleTest {
         }
 
         override suspend fun accumulateMetadataByExtractor(
-            groupId: String,
+            context: EtlContext,
             pipelineName: String,
             extractorName: String,
             status: EtlStatus?,
@@ -192,7 +183,7 @@ class ETLSimpleTest {
             errorMessage: String?
         ) {
             store.entries
-                .filter { (k, _) -> k.startsWith("$groupId|$pipelineName|$extractorName|") }
+                .filter { (k, _) -> k.startsWith("${context.groupId}|$pipelineName|$extractorName|") }
                 .forEach { (k, existing) ->
                     store[k] = existing.copy(
                         lastExtractDuration = existing.lastExtractDuration + extractDuration,
@@ -228,27 +219,27 @@ class ETLSimpleTest {
     fun `given success loading, ETL orchestrator should move lastProcessedAt forward`() = runBlocking {
         val repo = SimpleMetadataRepository()
         val orchestrator = buildOrchestrator(repo)
-        val groupId = "test-group"
+        val context = EtlContext(groupId = "test-group")
 
-        val initialLastProcessedAt = repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+        val initialLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
-        val result = orchestrator.run(groupId)
+        val result = orchestrator.run(context)
 
         assertTrue(result.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result.first().rowsProcessed)
 
-        val updatedLastProcessedAt = repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
+        val updatedLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         assertTrue(updatedLastProcessedAt > initialLastProcessedAt)
-        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(groupId, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)?.status)
+        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(context, SIMPLE_PIPELINE, SIMPLE_EXTRACTOR, SIMPLE_LOADER)?.status)
     }
 
     @Test
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
-        val groupId = "test-group"
+        val context = EtlContext(groupId = "test-group")
         val repo = SimpleMetadataRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "failed-etl",
@@ -264,20 +255,20 @@ class ETLSimpleTest {
             metadataRepository = repo,
         )
 
-        val initialLastProcessedAt = repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+        val initialLastProcessedAt = repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
-        val result = orchestrator.run(groupId)
+        val result = orchestrator.run(context)
 
         assertTrue(result.first().status == EtlStatus.FAILED)
         assertEquals(0, result.first().rowsProcessed)
 
-        val updatedLastProcessedAt = repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
+        val updatedLastProcessedAt = repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)
-        assertEquals(EtlStatus.FAILED, repo.getMetadata(groupId, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)?.status)
+        assertEquals(EtlStatus.FAILED, repo.getMetadata(context, "failed-pipeline", SIMPLE_EXTRACTOR, FAILING_LOADER)?.status)
     }
 
     @Test
@@ -287,13 +278,13 @@ class ETLSimpleTest {
         val groupId = "test-group"
 
         addNewRecords(5)
-        val result1 = orchestrator.run(groupId)
+        val result1 = orchestrator.run(EtlContext(groupId = groupId))
         assertTrue(result1.first().status == EtlStatus.SUCCESS)
         assertEquals(5, result1.first().rowsProcessed)
 
         Thread.sleep(10)
         addNewRecords(3)
-        val result2 = orchestrator.run(groupId)
+        val result2 = orchestrator.run(EtlContext(groupId = groupId))
         assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(3, result2.first().rowsProcessed)
     }
@@ -318,13 +309,13 @@ class ETLSimpleTest {
         )
 
         addNewRecords(5)
-        val result1 = orchestrator.run(groupId)
+        val result1 = orchestrator.run(EtlContext(groupId = groupId))
         assertTrue(result1.first().status == EtlStatus.SUCCESS)
         assertEquals(5, result1.first().rowsProcessed)
 
         addNewRecords(3)
         // lookback of 60s should re-process all 8 records (5 original + 3 new)
-        val result2 = orchestrator.run(groupId)
+        val result2 = orchestrator.run(EtlContext(groupId = groupId))
         assertTrue(result2.first().status == EtlStatus.SUCCESS)
         assertEquals(8, result2.first().rowsProcessed)
     }

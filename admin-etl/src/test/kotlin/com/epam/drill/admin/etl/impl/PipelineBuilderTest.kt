@@ -20,6 +20,7 @@ import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlExtractingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.UntypedRow
@@ -220,9 +221,9 @@ private fun pbExecute(
     pipeline: EtlPipeline<UntypedRow, UntypedRow>,
 ) = runBlocking {
     val rows = mutableListOf<UntypedRow>()
-    pipeline.extractor.extract("g1", Instant.EPOCH, Instant.now(), { rows.add(it) }, {})
+    pipeline.extractor.extract(EtlContext(groupId = "g1"), Instant.EPOCH, Instant.now(), { rows.add(it) }, {})
     pipeline.execute(
-        groupId = "g1",
+        context = EtlContext(groupId = "g1"),
         sinceTimestamp = Instant.EPOCH,
         untilTimestamp = Instant.now(),
         extractedFlow = rows.asClosableFlow(),
@@ -234,7 +235,7 @@ private class PbFixedExtractor(
     override val name: String = "fixed",
 ) : DataExtractor<UntypedRow> {
     override suspend fun extract(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<UntypedRow>,
@@ -246,7 +247,7 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
     val received = mutableListOf<UntypedRow>()
 
     override suspend fun load(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
@@ -257,14 +258,12 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
         return EtlLoadingResult(lastProcessedAt = untilTimestamp, processedRows = received.size.toLong())
     }
 
-    override suspend fun deleteAll(groupId: String) = received.clear()
+    override suspend fun deleteAll(context: EtlContext) = received.clear()
 }
 
 private class PbPassThroughTransformer(override val name: String = "pass") :
     DataTransformer<UntypedRow, UntypedRow> {
-    override suspend fun transform(groupId: String, collector: Flow<UntypedRow>): Flow<UntypedRow> = flow {
+    override suspend fun transform(context: EtlContext, collector: Flow<UntypedRow>): Flow<UntypedRow> = flow {
         collector.collect { emit(it) }
     }
 }
-
-

@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.job
 
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -46,10 +47,11 @@ class UpdateMetricsEtlJob(
                 groupId to initTimestamp
             }.map { (groupId, initTimestamp) ->
                 async {
+                    val context = EtlContext(groupId = groupId)
                     if (reset)
-                        etl.rerun(groupId, initTimestamp, withDataDeletion = true)
+                        etl.rerun(context, initTimestamp, withDataDeletion = true)
                     else
-                        etl.run(groupId, initTimestamp)
+                        etl.run(context, initTimestamp)
                 }
             }.awaitAll().flatten()
             context.result = results

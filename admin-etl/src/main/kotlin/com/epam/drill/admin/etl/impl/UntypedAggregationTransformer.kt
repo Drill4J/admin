@@ -16,6 +16,7 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataTransformer
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.config.EtlMeter
@@ -36,9 +37,10 @@ class UntypedAggregationTransformer(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
+        val groupId = context.groupId
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
         val aggregatedRows = metrics.rowsAggregated(name, groupId)
