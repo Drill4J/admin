@@ -20,7 +20,6 @@ import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
-import com.epam.drill.admin.etl.toMap
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -52,13 +51,13 @@ abstract class SqlDataExtractor<T : EtlRow>(
         onExtractionExecuted: suspend (Long) -> Unit,
         rowsExtractor: suspend (T) -> Unit
     ) {
-        val timer = metrics.extractionDuration(name, context.groupId)
+        val timer = metrics.extractionDuration(name, context)
         val preparedSql = prepareSql(sqlQuery)
         execSuspend(
             sql = preparedSql.getSql(),
             args = preparedSql.getArgs(
                 UntypedRow(
-                    sinceTimestamp, context.toMap() + mapOf(
+                    sinceTimestamp, context.toMap(NamingConvention.UNDERSCORE) + mapOf(
                         "since_timestamp" to java.sql.Timestamp.from(sinceTimestamp),
                         "until_timestamp" to java.sql.Timestamp.from(untilTimestamp),
                         "limit" to limit,

@@ -32,8 +32,7 @@ class UntypedFilterTransformer(
         context: EtlContext,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> {
-        val groupId = context.groupId
-        val rowsFiltered = metrics.rowsFiltered(name, groupId)
+        val rowsFiltered = metrics.rowsFiltered(name, context)
         return flow {
             collector.filter {
                 predicate(it).also { passed ->

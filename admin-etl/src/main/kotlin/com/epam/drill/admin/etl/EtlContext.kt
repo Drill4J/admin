@@ -24,13 +24,3 @@ data class EtlContext(
     val testDefinitionId: String? = null,
     val testLaunchId: String? = null,
 )
-
-fun EtlContext.toMap(): Map<String, String?> = mapOf(
-    "group_id" to groupId,
-    "app_id" to appId,
-    "build_id" to buildId,
-    "instance_id" to instanceId,
-    "test_session_id" to testSessionId,
-    "test_definition_id" to testDefinitionId,
-    "test_launch_id" to testLaunchId,
-)

@@ -43,8 +43,8 @@ class UntypedAggregationTransformer(
         val groupId = context.groupId
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
-        val aggregatedRows = metrics.rowsAggregated(name, groupId)
-        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, groupId)
+        val aggregatedRows = metrics.rowsAggregated(name, context)
+        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
 
         trackProgressOf {

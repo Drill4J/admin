@@ -53,8 +53,8 @@ abstract class BatchDataLoader<T : EtlRow>(
         val groupId = context.groupId
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val batchNo = AtomicInteger(0)
-        val processedRows = metrics.rowsProcessed(name, groupId)
-        val loadedRows = metrics.rowsLoaded(name, groupId)
+        val processedRows = metrics.rowsProcessed(name, context)
+        val loadedRows = metrics.rowsLoaded(name, context)
         var isLoadingStarted = false
         val buffer = mutableListOf<T>()
         var lastLoadedTimestamp: Instant = sinceTimestamp
