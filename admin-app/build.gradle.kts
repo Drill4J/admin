@@ -129,7 +129,7 @@ val gitUsername = System.getenv("GH_USERNAME") ?: ""
 val gitPassword = System.getenv("GH_TOKEN") ?: ""
 jib {
     from {
-        image = "eclipse-temurin:21-jre"
+        image = "eclipse-temurin:17-jre"
     }
     to {
         image = fullImageTag
