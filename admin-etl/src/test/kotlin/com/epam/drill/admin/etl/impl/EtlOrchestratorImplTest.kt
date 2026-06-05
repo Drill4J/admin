@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl
+package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.DataExtractor
+import com.epam.drill.admin.etl.DataLoader
+import com.epam.drill.admin.etl.DataTransformer
+import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlLoadingResult
+import com.epam.drill.admin.etl.EtlMetadata
+import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.SimpleMetadataRepository
 import com.epam.drill.admin.etl.config.EtlMeter
-import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
-import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -29,11 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * Tests that verify the orchestrator correctly groups pipelines by extractor,
- * running the extractor exactly once per group and broadcasting results to all pipelines.
- */
-class EtlOrchestratorGroupingTest {
+class EtlOrchestratorImplTest {
 
     private val metrics = EtlMeter(SimpleMeterRegistry())
     private val extractCallCount = AtomicInteger(0)
@@ -196,57 +200,105 @@ class EtlOrchestratorGroupingTest {
     }
 
     @Test
-    fun `orchestrator uses per-pipeline sinceTimestamp so pipelines with different watermarks receive correct rows`() = runBlocking {
-        val t0 = Instant.now().minusSeconds(100)
-        val t1 = Instant.now().minusSeconds(50)
-        val t2 = Instant.now()
+    fun `orchestrator uses per-pipeline sinceTimestamp so pipelines with different watermarks receive correct rows`() =
+        runBlocking {
+            val t0 = Instant.now().minusSeconds(100)
+            val t1 = Instant.now().minusSeconds(50)
+            val t2 = Instant.now()
 
-        val allRows = listOf(GRow(1, t0), GRow(2, t1), GRow(3, t2))
-        val sharedExtractor = CountingExtractor(name = "shared", rows = allRows)
+            val allRows = listOf(GRow(1, t0), GRow(2, t1), GRow(3, t2))
+            val sharedExtractor = CountingExtractor(name = "shared", rows = allRows)
 
-        val loaderOld = CollectingLoader("loader-old")  // watermark at t0 â†’ receives rows > t0
-        val loaderNew = CollectingLoader("loader-new")  // watermark at t1 â†’ receives rows > t1
+            val loaderOld = CollectingLoader("loader-old")  // watermark at t0 â†’ receives rows > t0
+            val loaderNew = CollectingLoader("loader-new")  // watermark at t1 â†’ receives rows > t1
 
-        val pipelineOld = EtlPipelineImpl(
-            name = "pipeline-old",
-            extractor = sharedExtractor,
+            val pipelineOld = EtlPipelineImpl(
+                name = "pipeline-old",
+                extractor = sharedExtractor,
+                transformer = gRowIdentity,
+                loader = loaderOld,
+                metrics = metrics,
+            )
+            val pipelineNew = EtlPipelineImpl(
+                name = "pipeline-new",
+                extractor = sharedExtractor,
+                transformer = gRowIdentity,
+                loader = loaderNew,
+                metrics = metrics,
+            )
+
+            val repo = SimpleMetadataRepository()
+            // Seed metadata so pipelineNew has a more recent watermark
+            repo.saveMetadata(
+                EtlContext(groupId = "g1"),
+                EtlMetadata(
+                    pipelineName = "pipeline-new", extractorName = "shared",
+                    loaderName = "loader-new", lastProcessedAt = t1, lastRunAt = t1, status = EtlStatus.SUCCESS
+                )
+            )
+
+            val orchestrator = EtlOrchestratorImpl(
+                name = "test",
+                pipelines = listOf(pipelineOld, pipelineNew),
+                metadataRepository = repo,
+            )
+
+            orchestrator.run(EtlContext(groupId = "g1"))
+
+            // Extractor runs from min(watermark) = EPOCH (pipelineOld has no metadata), so all rows are extracted.
+            // Both loaders receive all extracted rows; BatchDataLoader's internal skip handles per-loader filtering
+            // in real SQL loaders. Here CollectingLoader collects everything passed to it.
+            assertEquals(1, extractCallCount.get())
+            // pipelineOld: no metadata â†’ sinceTimestamp = EPOCH â†’ all 3 rows extracted
+            assertEquals(3, loaderOld.received.size)
+            // pipelineNew: watermark = t1, loader skipping handled by loader impl; CollectingLoader gets what pipeline passes
+            // In this test CollectingLoader doesn't filter by sinceTimestamp â€” that's BatchDataLoader's job.
+            // We just verify the row count is consistent with what was broadcast.
+            assertTrue(loaderNew.received.isNotEmpty(), "loader-new must receive at least the row after its watermark")
+        }
+
+    @Test
+    fun `orchestrator skips pipeline that is already up-to-date and does not invoke extractor for it`() = runBlocking {
+        val rows = listOf(GRow(1, Instant.now()), GRow(2, Instant.now()))
+        val extractor = CountingExtractor(name = "shared", rows = rows)
+
+        val loader = CollectingLoader("loader-fresh")
+
+        val pipeline = EtlPipelineImpl(
+            name = "pipeline-fresh",
+            extractor = extractor,
             transformer = gRowIdentity,
-            loader = loaderOld,
-            metrics = metrics,
-        )
-        val pipelineNew = EtlPipelineImpl(
-            name = "pipeline-new",
-            extractor = sharedExtractor,
-            transformer = gRowIdentity,
-            loader = loaderNew,
+            loader = loader,
             metrics = metrics,
         )
 
         val repo = SimpleMetadataRepository()
-        // Seed metadata so pipelineNew has a more recent watermark
-        repo.saveMetadata(EtlContext(groupId = "g1"),
+        // Seed metadata with lastProcessedAt in the future so that sinceTimestamp >= snapshotTime
+        // and the pipeline is considered already up-to-date (SKIPPED)
+        repo.saveMetadata(
+            EtlContext(groupId = "g1"),
             EtlMetadata(
-            pipelineName = "pipeline-new", extractorName = "shared",
-            loaderName = "loader-new", lastProcessedAt = t1, lastRunAt = t1, status = EtlStatus.SUCCESS
-        ))
+                pipelineName = "pipeline-fresh",
+                extractorName = "shared",
+                loaderName = "loader-fresh",
+                lastProcessedAt = Instant.now().plusSeconds(60),
+                lastRunAt = Instant.now().plusSeconds(60),
+                status = EtlStatus.SUCCESS,
+            )
+        )
 
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
-            pipelines = listOf(pipelineOld, pipelineNew),
+            pipelines = listOf(pipeline),
             metadataRepository = repo,
         )
 
-        orchestrator.run(EtlContext(groupId = "g1"))
+        val results = orchestrator.run(EtlContext(groupId = "g1"))
 
-        // Extractor runs from min(watermark) = EPOCH (pipelineOld has no metadata), so all rows are extracted.
-        // Both loaders receive all extracted rows; BatchDataLoader's internal skip handles per-loader filtering
-        // in real SQL loaders. Here CollectingLoader collects everything passed to it.
-        assertEquals(1, extractCallCount.get())
-        // pipelineOld: no metadata â†’ sinceTimestamp = EPOCH â†’ all 3 rows extracted
-        assertEquals(3, loaderOld.received.size)
-        // pipelineNew: watermark = t1, loader skipping handled by loader impl; CollectingLoader gets what pipeline passes
-        // In this test CollectingLoader doesn't filter by sinceTimestamp â€” that's BatchDataLoader's job.
-        // We just verify the row count is consistent with what was broadcast.
-        assertTrue(loaderNew.received.isNotEmpty(), "loader-new must receive at least the row after its watermark")
+        assertEquals(1, results.size, "Must return exactly one result")
+        assertEquals(EtlStatus.SKIPPED, results.first().status, "Pipeline must be reported as SKIPPED")
+        assertEquals(0L, results.first().rowsProcessed, "No rows must be processed for a skipped pipeline")
+        assertEquals(0, extractCallCount.get(), "Extractor must NOT be called for an already up-to-date pipeline")
+        assertTrue(loader.received.isEmpty(), "Loader must not receive any rows for a skipped pipeline")
     }
 }

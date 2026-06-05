@@ -52,6 +52,7 @@ open class EtlOrchestratorImpl(
     override suspend fun run(context: EtlContext, initTimestamp: Instant): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
             val groupId = context.groupId
+            val snapshotTime = Instant.now().minusSeconds(processingDelay)
             logger.info("ETL [$name] for group [$groupId] is starting...")
             val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
             val duration = measureTimeMillis {
@@ -66,7 +67,8 @@ open class EtlOrchestratorImpl(
                                 context = context,
                                 groupedPipelines = typedPipelines,
                                 extractor = typedPipelines.first().extractor,
-                                initTimestamp = initTimestamp
+                                initTimestamp = initTimestamp,
+                                snapshotTime = snapshotTime,
                             )
                         }
                     }.awaitAll()
@@ -114,9 +116,9 @@ open class EtlOrchestratorImpl(
         groupedPipelines: List<EtlPipeline<T, *>>,
         extractor: DataExtractor<T> = groupedPipelines.first().extractor,
         initTimestamp: Instant,
+        snapshotTime: Instant,
     ): List<EtlProcessingResult> = coroutineScope {
         val groupId = context.groupId
-        val snapshotTime = Instant.now().minusSeconds(processingDelay)
 
         // Compute per-pipeline sinceTimestamp from metadata
         val sinceTimestamps: Map<String, Instant> = groupedPipelines.associate { pipeline ->
@@ -128,7 +130,26 @@ open class EtlOrchestratorImpl(
             pipeline.name to sinceTimestamp
         }
 
-        for (pipeline in groupedPipelines) {
+        val (skippedPipelines, activePipelines) = groupedPipelines.partition { pipeline ->
+            (sinceTimestamps[pipeline.name] ?: initTimestamp) >= snapshotTime
+        }
+
+        val skippedResults = skippedPipelines.map { pipeline ->
+            EtlProcessingResult(
+                context = context,
+                pipelineName = pipeline.name,
+                lastProcessedAt = sinceTimestamps[pipeline.name] ?: initTimestamp,
+                rowsProcessed = 0,
+                status = EtlStatus.SKIPPED,
+                errorMessage = null,
+            ).also {
+                logger.info { "ETL pipeline [${pipeline.name}] for group [$groupId] is already up-to-date." }
+            }
+        }
+
+        if (activePipelines.isEmpty()) return@coroutineScope skippedResults
+
+        for (pipeline in activePipelines) {
             try {
                 metadataRepository.saveMetadata(
                     context,
@@ -149,9 +170,9 @@ open class EtlOrchestratorImpl(
             }
         }
 
-        val minLastProcessedAt = sinceTimestamps.values.min()
+        val minLastProcessedAt = activePipelines.mapNotNull { sinceTimestamps[it.name] }.min()
         val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
-        val jobs = groupedPipelines.map { pipeline ->
+        val jobs = activePipelines.map { pipeline ->
             async {
                 runPipelineWithExtractionFlow(
                     context = context,
@@ -170,7 +191,7 @@ open class EtlOrchestratorImpl(
                 untilTimestamp = snapshotTime,
                 emitter = sharedFlow,
                 onExtractingProgress = { result ->
-                    groupedPipelines.forEach { pipeline ->
+                    activePipelines.forEach { pipeline ->
                         progressExtracting(context, pipeline.name, extractor.name, result)
                     }
                 }
@@ -180,14 +201,14 @@ open class EtlOrchestratorImpl(
             val errorResult = EtlExtractingResult(
                 errorMessage = "Error during extracting data with extractor ${extractor.name}: ${e.message ?: e.javaClass.simpleName}"
             )
-            groupedPipelines.forEach { pipeline ->
+            activePipelines.forEach { pipeline ->
                 progressExtracting(context, pipeline.name, extractor.name, errorResult)
             }
         } finally {
             sharedFlow.close()
         }
 
-        jobs.awaitAll()
+        skippedResults + jobs.awaitAll()
     }
 
     /**
