@@ -49,10 +49,10 @@ open class EtlOrchestratorImpl(
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun run(context: EtlContext, initTimestamp: Instant): List<EtlProcessingResult> =
+    override suspend fun run(context: EtlContext, initTimestamp: Instant, finalTimestamp: Instant?): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
             val groupId = context.groupId
-            val snapshotTime = Instant.now().minusSeconds(processingDelay)
+            val snapshotTime = finalTimestamp ?: Instant.now().minusSeconds(processingDelay)
             logger.info("ETL [$name] for group [$groupId] is starting...")
             val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
             val duration = measureTimeMillis {
@@ -90,7 +90,8 @@ open class EtlOrchestratorImpl(
     override suspend fun rerun(
         context: EtlContext,
         initTimestamp: Instant,
-        withDataDeletion: Boolean,
+        finalTimestamp: Instant?,
+        withDataDeletion: Boolean
     ): List<EtlProcessingResult> =
         withContext(Dispatchers.IO) {
             val groupId = context.groupId
@@ -104,7 +105,7 @@ open class EtlOrchestratorImpl(
                 pipelines.forEach { it.cleanUp(context) }
                 logger.info { "ETL [$name] for group [$groupId] deleted all data for rerun." }
             }
-            return@withContext run(context, initTimestamp)
+            return@withContext run(context, initTimestamp, finalTimestamp)
         }
 
     /**
