@@ -84,12 +84,12 @@ class EtlMetadataRepositoryImpl(
             it[errorMessage] = metadata.errorMessage
 
             it[groupId] = context.groupId
-            it[appId] = context.appId
-            it[buildId] = context.buildId
-            it[instanceId] = context.instanceId
-            it[testSessionId] = context.testSessionId
-            it[testDefinitionId] = context.testDefinitionId
-            it[testLaunchId] = context.testLaunchId
+            it[appId] = context.appId ?: ""
+            it[buildId] = context.buildId ?: ""
+            it[instanceId] = context.instanceId ?: ""
+            it[testSessionId] = context.testSessionId ?: ""
+            it[testDefinitionId] = context.testDefinitionId ?: ""
+            it[testLaunchId] = context.testLaunchId ?: ""
 
             it[updatedAt] = CurrentDateTime
         }
@@ -178,11 +178,11 @@ class EtlMetadataRepositoryImpl(
     
     private fun metadataTableHas(context: EtlContext): Op<Boolean> {
         return (metadataTable.groupId eq context.groupId) and
-                (metadataTable.appId eq context.appId) and
-                (metadataTable.buildId eq context.buildId) and
-                (metadataTable.instanceId eq context.instanceId) and
-                (metadataTable.testSessionId eq context.testSessionId) and
-                (metadataTable.testDefinitionId eq context.testDefinitionId) and
-                (metadataTable.testLaunchId eq context.testLaunchId)
+                (metadataTable.appId eq (context.appId ?: "")) and
+                (metadataTable.buildId eq (context.buildId ?: "")) and
+                (metadataTable.instanceId eq (context.instanceId ?: "")) and
+                (metadataTable.testSessionId eq (context.testSessionId ?: "")) and
+                (metadataTable.testDefinitionId eq (context.testDefinitionId ?: "")) and
+                (metadataTable.testLaunchId eq (context.testLaunchId ?: ""))
     }
 }
