@@ -44,10 +44,9 @@ class UpdateMetricsEtlJob(
                 val initTimestamp = groupSettings?.metricsPeriodDays?.let {
                     Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
                 } ?: Instant.EPOCH
-                groupId to initTimestamp
-            }.map { (groupId, initTimestamp) ->
+                EtlContext(groupId) to initTimestamp
+            }.map { (context, initTimestamp) ->
                 async {
-                    val context = EtlContext(groupId = groupId)
                     if (reset)
                         etl.rerun(context, initTimestamp, withDataDeletion = true)
                     else
