@@ -146,7 +146,6 @@ jib {
         jvmFlags = defaultJvmArgs
     }
     extraDirectories {
-        setPaths("/config/ssl")
         permissions = mapOf("/config" to "775","/config/ssl" to "775")
         paths {
             path{
