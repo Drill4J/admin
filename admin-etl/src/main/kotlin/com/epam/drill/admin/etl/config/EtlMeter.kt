@@ -113,7 +113,8 @@ class EtlMeter(val registry: MeterRegistry) {
 
     private fun tagContext(context: EtlContext, tag: (String, String) -> Unit) {
         context.toMap()
-            .mapNotNull { (k, v) -> k to v.toString() }
+            .filterValues { v -> v != null }
+            .map { (k, v) -> k to v.toString() }
             .forEach { (k, v) -> tag(k, v) }
     }
     private fun <T> Gauge.Builder<T>.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
