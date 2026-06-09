@@ -16,6 +16,8 @@
 package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.common.principal.User
+import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface DataManagementService {
     /**
@@ -33,4 +35,8 @@ interface DataManagementService {
      * @param user The user performing the deletion (optional).
      */
     suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?)
+
+    suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
+    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
+    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
 }

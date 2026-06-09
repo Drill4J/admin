@@ -89,13 +89,15 @@ class MethodsApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) }) {
             )
         }
 
-        val savedMethods = MethodTable.selectAll()
-            .filter { it[MethodTable.groupId] == testGroup }
-            .filter { it[MethodTable.appId] == testApp }
-            .filter { it[MethodTable.classname] == testClassname }
-        assertEquals(2, savedMethods.size)
-        savedMethods.forEach {
-            assertTrue(it[MethodTable.createdAt] >= timeBeforeTest)
+        waitUntilInTransaction {
+            val savedMethods = MethodTable.selectAll()
+                .filter { it[MethodTable.groupId] == testGroup }
+                .filter { it[MethodTable.appId] == testApp }
+                .filter { it[MethodTable.classname] == testClassname }
+            assertEquals(2, savedMethods.size)
+            savedMethods.forEach {
+                assertTrue(it[MethodTable.createdAt] >= timeBeforeTest)
+            }
         }
     }
 }

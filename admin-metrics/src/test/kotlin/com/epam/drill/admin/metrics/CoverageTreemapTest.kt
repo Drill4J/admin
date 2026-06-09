@@ -19,6 +19,7 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.test.MetricsDatabaseTests
 import com.epam.drill.admin.test.withTransaction
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
+import com.epam.drill.admin.writer.rawdata.route.payload.BuildInfoPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -35,7 +36,7 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
 }) {
     @Test
     fun `given build with no methods no coverage, coverage-treemap should return empty list`() = havingData {
-        client.putBuild(BuildPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
+        client.putBuildInfo(BuildInfoPayload(groupId = testGroup, appId = testApp, buildVersion = "1.0.0", branch = "main"))
     }.expectThat {
         client.get("/metrics/coverage-treemap") {
             parameter("buildId", "${testGroup}:${testApp}:1.0.0")

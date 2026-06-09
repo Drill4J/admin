@@ -15,25 +15,4 @@
  */
 package com.epam.drill.admin.writer.rawdata.route.payload
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-class CoveragePayload(
-    val groupId: String,
-    val appId: String,
-    val instanceId: String,
-    val commitSha: String?,
-    val buildVersion: String?,
-    val coverage: List<SingleMethodCoveragePayload>
-): RawDataPayload
-
-@Serializable
-class SingleMethodCoveragePayload(
-    val signature: String,
-    val bodyChecksum: String,
-    val testId: String?,
-    val testSessionId: String?,
-    @Deprecated ("Use stringProbes instead")
-    val probes: BooleanArray?,
-    val stringProbes: String?
-)
+sealed interface RawDataPayload

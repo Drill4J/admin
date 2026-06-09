@@ -25,7 +25,7 @@ class MethodsPayload(
     val buildVersion: String? = null,
     val instanceId: String? = null,
     val methods: Array<SingleMethodPayload>
-)
+) : RawDataPayload
 
 @Serializable
 class SingleMethodPayload(

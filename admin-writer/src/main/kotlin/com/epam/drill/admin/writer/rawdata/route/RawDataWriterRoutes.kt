@@ -17,7 +17,8 @@ package com.epam.drill.admin.writer.rawdata.route
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
-import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
+import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -43,35 +44,38 @@ import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
+import kotlin.getValue
 
 private val logger = KotlinLogging.logger {}
 
+sealed interface DataIngestRoute
+
 @Resource("builds")
-class BuildsRoute()
+class BuildsRoute(): DataIngestRoute
 
 @Resource("builds/info")
-class BuildsInfoRoute()
+class BuildsInfoRoute(): DataIngestRoute
 
 @Resource("instances")
-class InstancesRoute()
+class InstancesRoute(): DataIngestRoute
 
 @Resource("coverage")
-class CoverageRoute()
+class CoverageRoute(): DataIngestRoute
 
 @Resource("methods")
-class MethodsRoute()
+class MethodsRoute(): DataIngestRoute
 
 @Resource("tests-metadata")
-class TestMetadataRoute()
+class TestMetadataRoute(): DataIngestRoute
 
 @Resource("sessions")
-class TestSessionRoute()
+class TestSessionRoute(): DataIngestRoute
 
 @Resource("test-definitions")
-class TestDefinitionsRoute()
+class TestDefinitionsRoute(): DataIngestRoute
 
 @Resource("test-launches")
-class TestLaunchesRoute()
+class TestLaunchesRoute(): DataIngestRoute
 
 @Resource("method-ignore-rules")
 class MethodIgnoreRulesRoute() {
@@ -100,109 +104,109 @@ fun Route.dataIngestRoutes() {
 }
 
 fun Route.putBuilds() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<BuildsRoute> {
-        rawDataWriter.saveBuild(call.decompressAndReceive())
+    put<BuildsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Build saved")
     }
 }
 
 fun Route.putBuildsInfo() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<BuildsInfoRoute> {
-        rawDataWriter.saveBuildInfo(call.decompressAndReceive())
+    put<BuildsInfoRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Build info saved")
     }
 }
 
 fun Route.putInstances() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<InstancesRoute> {
-        rawDataWriter.saveInstance(call.decompressAndReceive())
+    put<InstancesRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Instance saved")
     }
 }
 
 fun Route.postCoverage() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<CoverageRoute> {
-        rawDataWriter.saveCoverage(call.decompressAndReceive())
+    post<CoverageRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Coverage saved")
     }
 }
 
 fun Route.putMethods() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<MethodsRoute> {
-        rawDataWriter.saveMethods(call.decompressAndReceive())
+    put<MethodsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Methods saved")
     }
 }
 
 fun Route.postTestMetadata() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestMetadataRoute> {
-        rawDataWriter.saveTestMetadata(call.decompressAndReceive())
+    post<TestMetadataRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test metadata saved")
     }
 }
 
 fun Route.putTestSessions() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    put<TestSessionRoute> {
-        rawDataWriter.saveTestSession(call.decompressAndReceive(), call.principal<User>())
+    put<TestSessionRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress(), call.principal<User>()?.username)
         call.ok("Test sessions saved")
     }
 }
 
 fun Route.postTestDefinitions() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestDefinitionsRoute> {
-        rawDataWriter.saveTestDefinitions(call.decompressAndReceive())
+    post<TestDefinitionsRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test definitions saved")
     }
 }
 
 fun Route.postTestLaunches() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
 
-    post<TestLaunchesRoute> {
-        rawDataWriter.saveTestLaunches(call.decompressAndReceive())
+    post<TestLaunchesRoute> { params ->
+        queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test launches saved")
     }
 }
 
 fun Route.postMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     post<MethodIgnoreRulesRoute> {
-        rawDataWriter.saveMethodIgnoreRule(call.decompressAndReceive())
+        dataManagementService.saveMethodIgnoreRule(call.decompressAndReceive())
         call.ok("Method ignore rule saved")
     }
 }
 
 fun Route.getMethodIgnoreRules() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     get<MethodIgnoreRulesRoute> {
-        call.ok(rawDataWriter.getAllMethodIgnoreRules())
+        call.ok(dataManagementService.getAllMethodIgnoreRules())
     }
 }
 
 fun Route.deleteMethodIgnoreRule() {
-    val rawDataWriter by closestDI().instance<RawDataWriter>()
+    val dataManagementService by closestDI().instance<DataManagementService>()
 
     delete<MethodIgnoreRulesRoute.Id> { params ->
         val id = params.id
-        rawDataWriter.deleteMethodIgnoreRuleById(id)
+        dataManagementService.deleteMethodIgnoreRuleById(id)
         call.ok("Method ignore rule deleted")
     }
 }
@@ -240,32 +244,37 @@ internal suspend fun sendPostRequest(url: String, data: Any) {
     }
 }
 
-internal val json = Json {
+internal val jsonConfig = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
 }
 
-/**
- * Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
- * https://github.com/ktorio/ktor/issues/3845
- */
 internal suspend inline fun <reified T : Any> ApplicationCall.decompressAndReceive(): T {
-    val body: ByteArray = when (request.headers[HttpHeaders.ContentEncoding]) {
-        "gzip" -> decompressGZip(receiveStream())
-        else -> receive<ByteArray>()
-    }
+    val body: ByteArray = decompress()
     return when (request.headers[HttpHeaders.ContentType]) {
         ContentType.Application.ProtoBuf.toString() -> ProtoBuf.decodeFromByteArray(T::class.serializer(), body)
-        ContentType.Application.Json.toString() -> json.decodeFromString(T::class.serializer(), String(body))
+        ContentType.Application.Json.toString() -> jsonConfig.decodeFromString(T::class.serializer(), String(body))
         else -> throw request.headers[HttpHeaders.ContentType]?.let {
             UnsupportedMediaTypeException(ContentType.parse(it))
         } ?: BadRequestException("Content-Type header is missing")
     }
 }
 
+
 internal suspend fun decompressGZip(inputStream: InputStream): ByteArray {
     val decompressedBytes = withContext(Dispatchers.IO) {
         GZIPInputStream(inputStream).readBytes()
     }
     return decompressedBytes
+}
+
+/**
+ * TODO: Workaround for decompressing the request body before upgrading to Ktor 3.0.0, where this feature works out of the box
+ * https://github.com/ktorio/ktor/issues/3845
+ */
+internal suspend inline fun ApplicationCall.decompress(): ByteArray {
+    return when (request.headers[HttpHeaders.ContentEncoding]) {
+        "gzip" -> decompressGZip(receiveStream())
+        else -> receive<ByteArray>()
+    }
 }
