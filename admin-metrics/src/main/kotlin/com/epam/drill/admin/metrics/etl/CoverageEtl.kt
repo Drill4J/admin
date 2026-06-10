@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
@@ -30,7 +30,7 @@ import org.postgresql.util.PGobject
 val EtlConfig.coverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "coverage",
-        sqlQuery = fromResource("/etl/db/metrics/coverage_extractor.sql"),
+        sqlQuery = fromResource("/metrics/db/etl/coverage_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -42,7 +42,7 @@ val EtlConfig.coverageExtractor
 val EtlConfig.testLaunchCoverageExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_launch_coverage",
-        sqlQuery = fromResource("/etl/db/metrics/test_launch_coverage_extractor.sql"),
+        sqlQuery = fromResource("/metrics/db/etl/test_launch_coverage_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -54,7 +54,7 @@ val EtlConfig.testLaunchCoverageExtractor
 val EtlConfig.testLaunchCoverageRequestsExtractor
     get() = UntypedSqlDataExtractor(
         name = "test_launch_coverage_requests",
-        sqlQuery = fromResource("/etl/db/metrics/test_launch_coverage_requests_extractor.sql"),
+        sqlQuery = fromResource("/metrics/db/etl/test_launch_coverage_requests_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -66,8 +66,8 @@ val EtlConfig.testLaunchCoverageRequestsExtractor
 val EtlConfig.buildMethodTestDefinitionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_definition_coverage",
-        sqlUpsert = fromResource("/etl/db/metrics/build_method_test_definition_coverage_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/build_method_test_definition_coverage_delete.sql"),
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_test_definition_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_test_definition_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
@@ -77,8 +77,8 @@ val EtlConfig.buildMethodTestDefinitionCoverageLoader
 val EtlConfig.buildMethodTestSessionCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_test_session_coverage",
-        sqlUpsert = fromResource("/etl/db/metrics/build_method_test_session_coverage_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/build_method_test_session_coverage_delete.sql"),
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_test_session_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_test_session_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
@@ -88,8 +88,8 @@ val EtlConfig.buildMethodTestSessionCoverageLoader
 val EtlConfig.buildMethodCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "build_method_coverage",
-        sqlUpsert = fromResource("/etl/db/metrics/build_method_coverage_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/build_method_coverage_delete.sql"),
+        sqlUpsert = fromResource("/metrics/db/etl/build_method_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/build_method_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
@@ -99,8 +99,8 @@ val EtlConfig.buildMethodCoverageLoader
 val EtlConfig.methodDailyCoverageLoader
     get() = UntypedSqlDataLoader(
         name = "method_daily_coverage",
-        sqlUpsert = fromResource("/etl/db/metrics/method_daily_coverage_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/method_daily_coverage_delete.sql"),
+        sqlUpsert = fromResource("/metrics/db/etl/method_daily_coverage_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/method_daily_coverage_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
@@ -110,8 +110,8 @@ val EtlConfig.methodDailyCoverageLoader
 val EtlConfig.test2CodeMappingLoader
     get() = UntypedSqlDataLoader(
         name = "test_to_code_mapping",
-        sqlUpsert = fromResource("/etl/db/metrics/test_to_code_mapping_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/test_to_code_mapping_delete.sql"),
+        sqlUpsert = fromResource("/metrics/db/etl/test_to_code_mapping_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_to_code_mapping_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,

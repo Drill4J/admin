@@ -15,26 +15,23 @@
  */
 package com.epam.drill.admin.metrics.route
 
-import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
-import com.epam.drill.admin.metrics.repository.impl.ApiResponse
-import com.epam.drill.admin.metrics.repository.impl.PagedDataResponse
-import com.epam.drill.admin.metrics.repository.impl.Paging
+import com.epam.drill.admin.common.config.ApiResponse
+import com.epam.drill.admin.common.config.PagedDataResponse
+import com.epam.drill.admin.common.config.Paging
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.TestView
 import io.ktor.http.*
 import io.ktor.resources.*
-import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.resources.*
-import io.ktor.server.resources.post as postWithParams
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.post

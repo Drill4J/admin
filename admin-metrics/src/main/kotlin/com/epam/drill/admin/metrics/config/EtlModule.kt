@@ -13,35 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.config
+package com.epam.drill.admin.metrics.config
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.etl.pipeline.buildMethodsPipeline
-import com.epam.drill.admin.etl.pipeline.buildsPipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodCoveragePipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodTestSessionCoveragePipeline
-import com.epam.drill.admin.etl.pipeline.methodDailyCoveragePipeline
-import com.epam.drill.admin.etl.pipeline.testSessionBuildsFromCoveragePipeline
-import com.epam.drill.admin.etl.pipeline.methodsPipeline
-import com.epam.drill.admin.etl.pipeline.testDefinitionsPipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodCoverageFromTestLaunchesPipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodTestDefinitionCoverageByRequestPipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodTestDefinitionCoveragePipeline
-import com.epam.drill.admin.etl.pipeline.buildMethodTestSessionCoverageFromTestLaunchesPipeline
-import com.epam.drill.admin.etl.pipeline.methodDailyCoverageFromTestLaunchesPipeline
-import com.epam.drill.admin.etl.pipeline.test2CodeMappingPipeline
-import com.epam.drill.admin.etl.pipeline.testSessionBuildsFromTestLaunchesPipeline
-import com.epam.drill.admin.etl.pipeline.testLaunchesPipeline
-import com.epam.drill.admin.etl.pipeline.testSessionBuildsPipeline
-import com.epam.drill.admin.etl.pipeline.testSessionsPipeline
+import com.epam.drill.admin.etl.job.getUpdateMetricsEtlDataMap
+import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
+import com.epam.drill.admin.metrics.etl.*
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.etl.service.impl.EtlServiceImpl
-import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.settingsServicesDIModule
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
@@ -50,9 +36,7 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import org.quartz.JobBuilder
-import org.quartz.JobDataMap
 import org.quartz.JobDetail
-import org.quartz.JobKey
 
 val etlDIModule
     get() = DI.Module("etlServices") {
@@ -116,14 +100,6 @@ val etlDIModule
             )
         }
     }
-
-val updateMetricsEtlJobKey: JobKey
-    get() = JobKey.jobKey("metricsEtl", "drill")
-
-fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().apply {
-    groupId?.let { put("groupId", it) }
-    put("reset", reset)
-}
 
 val updateMetricsEtlJob: JobDetail
     get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)

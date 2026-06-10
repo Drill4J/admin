@@ -26,8 +26,8 @@ import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.monitoringDIModule
 import com.epam.drill.admin.config.schedulerDIModule
-import com.epam.drill.admin.etl.config.etlDIModule
-import com.epam.drill.admin.etl.config.updateMetricsEtlJob
+import com.epam.drill.admin.metrics.config.etlDIModule
+import com.epam.drill.admin.metrics.config.updateMetricsEtlJob
 import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.route.rootRoute

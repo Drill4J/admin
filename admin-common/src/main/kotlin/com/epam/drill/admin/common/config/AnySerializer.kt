@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.repository.impl
+package com.epam.drill.admin.common.config
 
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer

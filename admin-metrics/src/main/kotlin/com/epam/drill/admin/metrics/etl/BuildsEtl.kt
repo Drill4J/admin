@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
@@ -23,10 +23,10 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.testDefinitionsExtractor
+val EtlConfig.buildsExtractor
     get() = UntypedSqlDataExtractor(
-        name = "test_definitions",
-        sqlQuery = fromResource("/etl/db/metrics/test_definitions_extractor.sql"),
+        name = "builds",
+        sqlQuery = fromResource("/metrics/db/etl/builds_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -35,18 +35,18 @@ val EtlConfig.testDefinitionsExtractor
         metrics = metrics,
     )
 
-val EtlConfig.testDefinitionsLoader
+val EtlConfig.buildsLoader
     get() = UntypedSqlDataLoader(
-        name = "test_definitions",
-        sqlUpsert = fromResource("/etl/db/metrics/test_definitions_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/test_definitions_delete.sql"),
+        name = "builds",
+        sqlUpsert = fromResource("/metrics/db/etl/builds_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.testDefinitionsPipeline
-    get() = pipeline("test_definitions")
-        .extractWith(testDefinitionsExtractor)
-        .loadWith(testDefinitionsLoader)
+val EtlConfig.buildsPipeline
+    get() = pipeline("builds")
+        .extractWith(buildsExtractor)
+        .loadWith(buildsLoader)

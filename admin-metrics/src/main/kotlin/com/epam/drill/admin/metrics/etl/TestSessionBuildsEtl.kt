@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
@@ -23,10 +23,10 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.testLaunchesExtractor
+val EtlConfig.testSessionBuildsExtractor
     get() = UntypedSqlDataExtractor(
-        name = "test_launches",
-        sqlQuery = fromResource("/etl/db/metrics/test_launches_extractor.sql"),
+        name = "test_session_builds",
+        sqlQuery = fromResource("/metrics/db/etl/test_session_builds_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -35,18 +35,19 @@ val EtlConfig.testLaunchesExtractor
         metrics = metrics,
     )
 
-val EtlConfig.testLaunchesLoader
+val EtlConfig.testSessionBuildsLoader
     get() = UntypedSqlDataLoader(
-        name = "test_launches",
-        sqlUpsert = fromResource("/etl/db/metrics/test_launches_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/test_launches_delete.sql"),
+        name = "test_session_builds",
+        sqlUpsert = fromResource("/metrics/db/etl/test_session_builds_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_session_builds_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.testLaunchesPipeline
-    get() = pipeline("test_launches")
-        .extractWith(testLaunchesExtractor)
-        .loadWith(testLaunchesLoader)
+val EtlConfig.testSessionBuildsPipeline
+    get() = pipeline("test_session_builds")
+        .extractWith(testSessionBuildsExtractor)
+        .transformWith(hasTestSessionFilter)
+        .loadWith(testSessionBuildsLoader)

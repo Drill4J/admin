@@ -43,7 +43,6 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":admin-common"))
     implementation(project(":admin-writer"))
-    implementation(project(":admin-metrics"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${kotlinxSerializationVersion}")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")

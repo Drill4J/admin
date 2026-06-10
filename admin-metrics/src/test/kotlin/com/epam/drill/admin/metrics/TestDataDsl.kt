@@ -16,7 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
-import com.epam.drill.admin.etl.config.etlDIModule
+import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.etl.route.etlManagementRoutes

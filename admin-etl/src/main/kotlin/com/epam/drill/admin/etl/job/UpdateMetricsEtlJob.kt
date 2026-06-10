@@ -23,7 +23,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
+import org.quartz.JobDataMap
 import org.quartz.JobExecutionContext
+import org.quartz.JobKey
 import java.time.Instant
 import java.time.ZoneOffset.UTC
 
@@ -56,4 +58,12 @@ class UpdateMetricsEtlJob(
             context.result = results
         }
     }
+}
+
+val updateMetricsEtlJobKey: JobKey
+    get() = JobKey.jobKey("metricsEtl", "drill")
+
+fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().apply {
+    groupId?.let { put("groupId", it) }
+    put("reset", reset)
 }

@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
-import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
@@ -24,46 +23,30 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.buildMethodsExtractor
+val EtlConfig.testDefinitionsExtractor
     get() = UntypedSqlDataExtractor(
-        name = "build_methods",
-        sqlQuery = fromResource("/etl/db/metrics/build_methods_extractor.sql"),
+        name = "test_definitions",
+        sqlQuery = fromResource("/metrics/db/etl/test_definitions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
-        lastExtractedAtColumnName = "created_at",
+        loggingFrequency = loggingFrequency,
+        lastExtractedAtColumnName = "updated_at",
         metrics = metrics,
     )
 
-val EtlConfig.buildMethodsLoader
+val EtlConfig.testDefinitionsLoader
     get() = UntypedSqlDataLoader(
-        name = "build_methods",
-        sqlUpsert = fromResource("/etl/db/metrics/build_methods_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/build_methods_delete.sql"),
+        name = "test_definitions",
+        sqlUpsert = fromResource("/metrics/db/etl/test_definitions_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_definitions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
+        loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.methodsLoader
-    get() = UntypedSqlDataLoader(
-        name = "methods",
-        sqlUpsert = fromResource("/etl/db/metrics/methods_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/methods_delete.sql"),
-        database = MetricsDatabaseConfig.database,
-        batchSize = batchSize,
-        metrics = metrics,
-    )
-
-val EtlConfig.buildMethodsPipeline
-    get() = pipeline("build_methods")
-        .extractWith(buildMethodsExtractor)
-        .loadWith(buildMethodsLoader)
-
-val EtlConfig.methodsPipeline
-    get() = pipeline("methods")
-        .extractWith(buildMethodsExtractor)
-        .aggregateBy("group_id", "app_id", "method_id") { _, next ->
-            UntypedRow(next.timestamp, next)
-        }
-        .loadWith(methodsLoader)
+val EtlConfig.testDefinitionsPipeline
+    get() = pipeline("test_definitions")
+        .extractWith(testDefinitionsExtractor)
+        .loadWith(testDefinitionsLoader)

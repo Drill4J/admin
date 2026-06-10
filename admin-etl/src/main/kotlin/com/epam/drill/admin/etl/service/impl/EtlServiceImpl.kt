@@ -20,8 +20,8 @@ import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.config.getUpdateMetricsEtlDataMap
-import com.epam.drill.admin.etl.config.updateMetricsEtlJobKey
+import com.epam.drill.admin.etl.job.getUpdateMetricsEtlDataMap
+import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
 import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant

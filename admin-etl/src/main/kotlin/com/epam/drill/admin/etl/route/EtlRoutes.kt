@@ -17,7 +17,7 @@ package com.epam.drill.admin.etl.route
 
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.etl.service.EtlService
-import com.epam.drill.admin.metrics.repository.impl.ApiResponse
+import com.epam.drill.admin.common.config.ApiResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.application.call

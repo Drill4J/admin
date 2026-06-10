@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
@@ -23,30 +23,30 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.buildsExtractor
+val EtlConfig.testSessionsExtractor
     get() = UntypedSqlDataExtractor(
-        name = "builds",
-        sqlQuery = fromResource("/etl/db/metrics/builds_extractor.sql"),
+        name = "test_sessions",
+        sqlQuery = fromResource("/metrics/db/etl/test_sessions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
-        lastExtractedAtColumnName = "updated_at",
+        lastExtractedAtColumnName = "created_at",
         metrics = metrics,
     )
 
-val EtlConfig.buildsLoader
+val EtlConfig.testSessionsLoader
     get() = UntypedSqlDataLoader(
-        name = "builds",
-        sqlUpsert = fromResource("/etl/db/metrics/builds_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/builds_delete.sql"),
+        name = "test_sessions",
+        sqlUpsert = fromResource("/metrics/db/etl/test_sessions_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.buildsPipeline
-    get() = pipeline("builds")
-        .extractWith(buildsExtractor)
-        .loadWith(buildsLoader)
+val EtlConfig.testSessionsPipeline
+    get() = pipeline("test_sessions")
+        .extractWith(testSessionsExtractor)
+        .loadWith(testSessionsLoader)

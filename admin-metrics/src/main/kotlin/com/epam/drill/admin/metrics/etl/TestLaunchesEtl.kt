@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.pipeline
+package com.epam.drill.admin.metrics.etl
 
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
@@ -23,10 +23,10 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.testSessionsExtractor
+val EtlConfig.testLaunchesExtractor
     get() = UntypedSqlDataExtractor(
-        name = "test_sessions",
-        sqlQuery = fromResource("/etl/db/metrics/test_sessions_extractor.sql"),
+        name = "test_launches",
+        sqlQuery = fromResource("/metrics/db/etl/test_launches_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
@@ -35,18 +35,18 @@ val EtlConfig.testSessionsExtractor
         metrics = metrics,
     )
 
-val EtlConfig.testSessionsLoader
+val EtlConfig.testLaunchesLoader
     get() = UntypedSqlDataLoader(
-        name = "test_sessions",
-        sqlUpsert = fromResource("/etl/db/metrics/test_sessions_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/test_sessions_delete.sql"),
+        name = "test_launches",
+        sqlUpsert = fromResource("/metrics/db/etl/test_launches_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_launches_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
         metrics = metrics,
     )
 
-val EtlConfig.testSessionsPipeline
-    get() = pipeline("test_sessions")
-        .extractWith(testSessionsExtractor)
-        .loadWith(testSessionsLoader)
+val EtlConfig.testLaunchesPipeline
+    get() = pipeline("test_launches")
+        .extractWith(testLaunchesExtractor)
+        .loadWith(testLaunchesLoader)
