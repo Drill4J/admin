@@ -15,7 +15,9 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.EtlContext
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
 
 enum class NamingConvention {
     CAMELCASE,
@@ -27,7 +29,7 @@ private fun camelToUnderscore(name: String): String =
         "${match.groupValues[1]}_${match.groupValues[2].lowercase()}"
     }
 
-fun Any.toMap(namingConvention: NamingConvention = NamingConvention.CAMELCASE): Map<String, Any?> {
+fun EtlContext.toMap(namingConvention: NamingConvention = NamingConvention.CAMELCASE): Map<String, Any?> {
     val kClass = this::class
     return kClass.memberProperties.associate { prop ->
         val rawName = prop.name
@@ -37,4 +39,19 @@ fun Any.toMap(namingConvention: NamingConvention = NamingConvention.CAMELCASE): 
         }
         key to prop.getter.call(this)
     }
+}
+
+fun Map<String, Any?>.toEtlContext(namingConvention: NamingConvention = NamingConvention.CAMELCASE): EtlContext {
+    val kClass = EtlContext::class
+    val constructor = kClass.primaryConstructor
+        ?: error("Class ${kClass.simpleName} has no primary constructor")
+
+    val args = constructor.parameters.associateWith { param ->
+        val key = when (namingConvention) {
+            NamingConvention.CAMELCASE -> param.name
+            NamingConvention.UNDERSCORE -> param.name?.let { camelToUnderscore(it) }
+        }
+        this[key]
+    }
+    return constructor.callBy(args)
 }
