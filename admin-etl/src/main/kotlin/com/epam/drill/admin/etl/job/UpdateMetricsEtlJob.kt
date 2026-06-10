@@ -97,9 +97,14 @@ fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().
     put("reset", reset)
 }
 
-fun EtlContext.toJobDataMap(reset: Boolean = false, initTimestamp: Instant?, finalTimestamp: Instant?): JobDataMap {
+fun getJobDataMap(
+    context: EtlContext? = null,
+    reset: Boolean = false,
+    initTimestamp: Instant? = null,
+    finalTimestamp: Instant? = null,
+): JobDataMap {
     val jobData = JobDataMap()
-    this.toMap().filterValues { it != null }.forEach { (key, value) -> jobData.put(key, value) }
+    context?.toMap()?.filterValues { it != null }?.forEach { (key, value) -> jobData.put(key, value) }
     jobData.put("reset", reset)
     initTimestamp?.let { jobData.put("initTimestamp", it) }
     finalTimestamp?.let { jobData.put("finalTimestamp", it) }

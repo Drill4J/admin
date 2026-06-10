@@ -20,7 +20,7 @@ import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.job.toJobDataMap
+import com.epam.drill.admin.etl.job.getJobDataMap
 import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
 import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -41,7 +41,7 @@ class EtlServiceImpl(
         initTimestamp: Instant?,
         finalTimestamp: Instant?
     ) {
-        val params = context?.toJobDataMap(reset, initTimestamp, finalTimestamp)
+        val params = getJobDataMap(context, reset, initTimestamp, finalTimestamp)
         val results = suspendCancellableCoroutine { continuation ->
             scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
                 if (exception != null)
