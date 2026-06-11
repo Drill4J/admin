@@ -144,7 +144,7 @@ open class EtlOrchestratorImpl(
                 status = EtlStatus.SKIPPED,
                 errorMessage = null,
             ).also {
-                logger.info { "ETL pipeline [${pipeline.name}] for group [$groupId] is already up-to-date." }
+                logger.debug { "ETL pipeline [${pipeline.name}] for group [$groupId] is already up-to-date." }
             }
         }
 
