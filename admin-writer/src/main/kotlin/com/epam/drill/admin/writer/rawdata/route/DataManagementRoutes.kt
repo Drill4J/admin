@@ -52,18 +52,7 @@ class Groups() {
             @Resource("/sessions")
             class Sessions(val parent: Tests) {
                 @Resource("/{testSessionId}")
-                class Id(val parent: Sessions, val testSessionId: String) {
-                    @Resource("/requests")
-                    class Requests(val parent: Id)
-                    @Resource("/definitions")
-                    class Definitions(val parent: Id) {
-                        @Resource("/{testDefinitionId}")
-                        class DefinitionId(val parent: Definitions, val testDefinitionId: String) {
-                            @Resource("/requests")
-                            class Requests(val parent: DefinitionId)
-                        }
-                    }
-                }
+                class Id(val parent: Sessions, val testSessionId: String)
             }
         }
     }
@@ -73,10 +62,6 @@ fun Route.dataManagementRoutes() {
     route("/data-management") {
         deleteBuildData()
         deleteTestSessionData()
-        putTestLaunchCoverageRequest()
-        deleteTestLaunchCoverageRequest()
-        putTestSessionCoverageRequest()
-        deleteTestSessionCoverageRequest()
     }
 }
 
@@ -106,61 +91,3 @@ fun Route.deleteTestSessionData() {
         call.ok("Test session data deleted successfully")
     }
 }
-
-fun Route.putTestLaunchCoverageRequest() {
-    val service by closestDI().instance<DataManagementService>()
-
-    put<Groups.Id.Tests.Sessions.Id.Definitions.DefinitionId.Requests> { params ->
-        val groupId = params.parent.parent.parent.parent.parent.parent.groupId
-        val testSessionId = params.parent.parent.parent.testSessionId
-        val testDefinitionId = params.parent.testDefinitionId
-        service.saveTestLaunchCoverageRequest(
-            groupId = groupId,
-            testSessionId = testSessionId,
-            testDefinitionId = testDefinitionId
-        )
-        call.ok("Coverage request saved successfully")
-    }
-}
-
-fun Route.deleteTestLaunchCoverageRequest() {
-    val service by closestDI().instance<DataManagementService>()
-
-    delete<Groups.Id.Tests.Sessions.Id.Definitions.DefinitionId.Requests> { params ->
-        service.deleteTestLaunchCoverageRequest(
-            groupId = params.parent.parent.parent.parent.parent.parent.groupId,
-            testSessionId = params.parent.parent.parent.testSessionId,
-            testDefinitionId = params.parent.testDefinitionId
-        )
-        call.ok("Coverage request deleted successfully")
-    }
-}
-
-fun Route.putTestSessionCoverageRequest() {
-    val service by closestDI().instance<DataManagementService>()
-
-    put<Groups.Id.Tests.Sessions.Id.Requests> { params ->
-        val groupId = params.parent.parent.parent.parent.groupId
-        val testSessionId = params.parent.testSessionId
-        service.saveTestLaunchCoverageRequest(
-            groupId = groupId,
-            testSessionId = testSessionId,
-            testDefinitionId = null
-        )
-        call.ok("Coverage request saved successfully")
-    }
-}
-
-fun Route.deleteTestSessionCoverageRequest() {
-    val service by closestDI().instance<DataManagementService>()
-
-    delete<Groups.Id.Tests.Sessions.Id.Requests> { params ->
-        service.deleteTestLaunchCoverageRequest(
-            groupId = params.parent.parent.parent.parent.groupId,
-            testSessionId = params.parent.testSessionId,
-            testDefinitionId = null
-        )
-        call.ok("Coverage request deleted successfully")
-    }
-}
-

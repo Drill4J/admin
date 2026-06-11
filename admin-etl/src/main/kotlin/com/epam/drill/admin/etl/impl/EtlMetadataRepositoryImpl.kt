@@ -107,7 +107,6 @@ class EtlMetadataRepositoryImpl(
         newSuspendedTransaction(db = database) {
             metadataTable.update(where = {
                 metadataTableHas(context) and (metadataTable.pipelineName eq pipelineName)
-
             }) {
                 if (errorMessage != null) {
                     it[metadataTable.errorMessage] = errorMessage

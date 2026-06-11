@@ -22,6 +22,7 @@ import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.etl.job.getUpdateMetricsEtlDataMap
 import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
@@ -38,6 +39,8 @@ import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
+const val TEST_DEFINITION_COVERAGE_ETL = "testDefinitionCoverage"
+
 val etlDIModule
     get() = DI.Module("etlServices") {
         importOnce(settingsServicesDIModule)
@@ -47,18 +50,17 @@ val etlDIModule
                 dbSchema = MetricsDatabaseConfig.dbSchema
             )
         }
-        bind<EtlOrchestrator>() with singleton {
+        bind<EtlOrchestrator>(tag = DEFAULT_ETL) with singleton {
             val metrics = EtlMeter(instance())
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
             val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
 
             with(etlConfig) {
                 EtlOrchestratorImpl(
-                    name = "metrics",
+                    name = DEFAULT_ETL,
                     pipelines = listOf(
                         // Reference data
                         buildsPipeline,
-                        // build_methods extractor group
                         buildMethodsPipeline,
                         methodsPipeline,
                         testLaunchesPipeline,
@@ -71,19 +73,31 @@ val etlDIModule
                         methodDailyCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
-                        //buildMethodTestDefinitionCoveragePipeline replaced with buildMethodTestDefinitionCoverageByRequestPipeline to optimize processing time by calculating coverage on demand
                         buildMethodTestSessionCoverageFromTestLaunchesPipeline,
                         buildMethodCoverageFromTestLaunchesPipeline,
                         methodDailyCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
                         // Coverage by request extractor group
-                        buildMethodTestDefinitionCoverageByRequestPipeline
+//                        buildMethodTestDefinitionCoverageByRequestPipeline
                     ),
                     metadataRepository = instance(),
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
                     bufferSize = bufferSize,
+                )
+            }
+        }
+        bind<EtlOrchestrator>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
+            val metrics = EtlMeter(instance())
+            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
+            val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
+
+            with(etlConfig) {
+                EtlOrchestratorImpl(
+                    name = TEST_DEFINITION_COVERAGE_ETL,
+                    pipelines = listOf(buildMethodTestDefinitionCoveragePipeline),
+                    metadataRepository = instance(),
                 )
             }
         }
@@ -94,9 +108,13 @@ val etlDIModule
             )
         }
         bind<UpdateMetricsEtlJob>() with singleton {
+            val etlList: List<EtlOrchestrator> = listOf(
+                instance(tag = DEFAULT_ETL),
+                instance(tag = TEST_DEFINITION_COVERAGE_ETL)
+            )
             UpdateMetricsEtlJob(
                 settingsService = instance(),
-                etl = instance()
+                etls = etlList.associateBy { it.name },
             )
         }
     }

@@ -51,7 +51,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
-            extractedFlow = items.asClosableFlow(),
+            extractionFlow = items.asClosableFlow(),
             onLoadingProgress = { progressResults.add(it) }
         )
 
@@ -75,7 +75,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = since,
             untilTimestamp = Instant.now(),
-            extractedFlow = items.asClosableFlow()
+            extractionFlow = items.asClosableFlow()
         )
 
         assertEquals(EtlStatus.SUCCESS, result.status)
@@ -95,7 +95,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = until,
-            extractedFlow = items.asClosableFlow()
+            extractionFlow = items.asClosableFlow()
         )
 
         assertEquals(EtlStatus.SUCCESS, result.status)
@@ -114,7 +114,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
-            extractedFlow = items.asClosableFlow(),
+            extractionFlow = items.asClosableFlow(),
             onLoadingProgress = { progressResults.add(it) }
         )
 
@@ -134,7 +134,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
-            extractedFlow = items.asClosableFlow()
+            extractionFlow = items.asClosableFlow()
         )
 
         assertEquals(EtlStatus.SUCCESS, result.status)
@@ -152,7 +152,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
-            extractedFlow = emptyList<TestItem>().asClosableFlow()
+            extractionFlow = emptyList<TestItem>().asClosableFlow()
         )
 
         assertEquals(EtlStatus.SUCCESS, result.status)
@@ -171,7 +171,7 @@ class EtlPipelineImplTest {
             context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.now(),
-            extractedFlow = items.asClosableFlow(),
+            extractionFlow = items.asClosableFlow(),
             onStatusChanged = { statusChanges.add(it) }
         )
 

@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
+import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
@@ -41,6 +42,7 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.server.routing.route
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
+import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
@@ -48,16 +50,14 @@ import org.kodein.di.singleton
 val scheduler = DI.Module("testModule") {
     bind<DrillScheduler>() with singleton {
         StubDrillScheduler(
-            UpdateMetricsEtlJob(
-                instance(), instance()
-            )
+            instance<UpdateMetricsEtlJob>()
         )
     }
 }
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(scheduler, rawDataServicesDIModule, dataManagementServicesDIModule, metricsDIModule, etlDIModule) {
+        drillApplication(rawDataServicesDIModule, dataManagementServicesDIModule, metricsDIModule, etlDIModule, scheduler) {
             dataIngestRoutes()
             dataManagementRoutes()
             metricsRoutes()

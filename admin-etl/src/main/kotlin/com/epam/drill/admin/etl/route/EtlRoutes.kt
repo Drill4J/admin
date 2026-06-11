@@ -21,7 +21,6 @@ import com.epam.drill.admin.common.config.ApiResponse
 import com.epam.drill.admin.etl.EtlContext
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
-import io.ktor.server.application.call
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post as postWithParams
 import io.ktor.server.response.respond
@@ -50,10 +49,10 @@ fun Route.etlManagementRoutes() {
 }
 
 fun Route.postRefreshMetrics() {
-    val metricsService by closestDI().instance<EtlService>()
+    val etlService by closestDI().instance<EtlService>()
 
     postWithParams<Refresh> { params ->
-        metricsService.refresh(
+        etlService.refresh(
             context = params.groupId?.let { EtlContext(it) },
             reset = params.reset,
             initTimestamp = params.initTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
@@ -64,10 +63,10 @@ fun Route.postRefreshMetrics() {
 }
 
 fun Route.getRefreshStatus() {
-    val metricsService by closestDI().instance<EtlService>()
+    val etlService by closestDI().instance<EtlService>()
 
     get<RefreshStatus> { params ->
-        val status = metricsService.getRefreshStatus(params.groupId)
+        val status = etlService.getRefreshStatus(params.groupId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(status))
     }
 }

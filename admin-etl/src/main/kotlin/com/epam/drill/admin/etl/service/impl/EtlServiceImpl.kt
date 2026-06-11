@@ -37,11 +37,12 @@ class EtlServiceImpl(
     @Suppress("UNCHECKED_CAST")
     override suspend fun refresh(
         context: EtlContext?,
+        etl: String?,
         reset: Boolean,
         initTimestamp: Instant?,
         finalTimestamp: Instant?
     ) {
-        val params = getJobDataMap(context, reset, initTimestamp, finalTimestamp)
+        val params = getJobDataMap(context, etl, reset, initTimestamp, finalTimestamp)
         val results = suspendCancellableCoroutine { continuation ->
             scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
                 if (exception != null)

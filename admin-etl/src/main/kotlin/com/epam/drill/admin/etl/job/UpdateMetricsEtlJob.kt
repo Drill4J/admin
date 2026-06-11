@@ -33,13 +33,17 @@ import org.quartz.JobKey
 import java.time.Instant
 import java.time.ZoneOffset.UTC
 
+const val DEFAULT_ETL = "metrics"
+
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
     private val settingsService: SettingsService,
-    private val etl: EtlOrchestrator,
+    private val etls: Map<String, EtlOrchestrator>,
 ) : Job {
 
     override fun execute(context: JobExecutionContext) {
+        val etlName = context.mergedJobDataMap.getString("etl") ?: DEFAULT_ETL
+        val etl = etls[etlName] ?: throw IllegalArgumentException("Etl with name '$etlName' not found")
         val hasGroupId: Boolean = context.mergedJobDataMap.getString("groupId") != null
         val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
         val initTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("initTimestamp")
@@ -74,7 +78,7 @@ class UpdateMetricsEtlJob(
     )
 
 
-    private suspend fun resolveInitTimestamp(groupSettings: GroupSettingsView): Instant =
+    private fun resolveInitTimestamp(groupSettings: GroupSettingsView): Instant =
         groupSettings.metricsPeriodDays?.let {
             Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
         } ?: Instant.EPOCH
@@ -99,12 +103,14 @@ fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().
 
 fun getJobDataMap(
     context: EtlContext? = null,
+    etl: String? = null,
     reset: Boolean = false,
     initTimestamp: Instant? = null,
     finalTimestamp: Instant? = null,
 ): JobDataMap {
     val jobData = JobDataMap()
     context?.toMap()?.filterValues { it != null }?.forEach { (key, value) -> jobData.put(key, value) }
+    etl?.let { jobData.put("etl", it) }
     jobData.put("reset", reset)
     initTimestamp?.let { jobData.put("initTimestamp", it) }
     finalTimestamp?.let { jobData.put("finalTimestamp", it) }

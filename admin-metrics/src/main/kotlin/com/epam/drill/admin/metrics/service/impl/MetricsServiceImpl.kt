@@ -17,9 +17,13 @@ package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.common.service.parseBuildId
+import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
+import com.epam.drill.admin.metrics.config.TEST_DEFINITION_COVERAGE_ETL
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
@@ -43,6 +47,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
+    private val etlService: EtlService,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
@@ -117,6 +122,13 @@ class MetricsServiceImpl(
             testDefinitionId != null -> {
                 val resolvedTestSessionId = testSessionId
                     ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                etlService.refresh(
+                    EtlContext(
+                        groupId = parseBuildId(buildId).groupId,
+                        testSessionId = testSessionId,
+                        testDefinitionId = testDefinitionId
+                    ), etl = TEST_DEFINITION_COVERAGE_ETL
+                )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
                     testSessionId = resolvedTestSessionId,
@@ -126,6 +138,7 @@ class MetricsServiceImpl(
                     coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
                 )
             }
+
             testSessionId != null -> {
                 metricsRepository.getMethodsWithCoverageByTestSession(
                     buildId = buildId,
@@ -136,6 +149,7 @@ class MetricsServiceImpl(
                     testTags = testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
                 )
             }
+
             else -> {
                 metricsRepository.getMethodsWithCoverage(
                     buildId = buildId,

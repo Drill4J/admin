@@ -122,11 +122,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                     "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
                 }
                 failures.increment()
-                onExtractingProgress(
-                    EtlExtractingResult(
-                        errorMessage = e.message
-                    )
-                )
+                throw e
             }
         }.every(loggingFrequency.seconds) {
             if (isExecutingQuery.get()) {

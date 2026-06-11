@@ -61,40 +61,48 @@ abstract class BatchDataLoader<T : EtlRow>(
         var previousTimestamp: Instant? = null
 
         trackProgressOf {
-            collector.collect { row ->
-                if (!isLoadingStarted) {
-                    logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
-                    onStatusChanged(EtlStatus.LOADING)
-                    isLoadingStarted = true
-                }
-                processedRows.increment()
-                val currentTimestamp = row.timestamp
+            try {
+                collector.collect { row ->
+                    if (!isLoadingStarted) {
+                        logger.debug { "ETL loader [$name] for group [$groupId] loading rows..." }
+                        onStatusChanged(EtlStatus.LOADING)
+                        isLoadingStarted = true
+                    }
+                    processedRows.increment()
+                    val currentTimestamp = row.timestamp
 
-                // If timestamp changed and buffer is full, flush the buffer
-                if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
-                    result += flushBuffer(context, buffer, batchNo) { batch ->
-                        if (batch.success) {
-                            lastLoadedTimestamp =
-                                previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
-                            loadedRows.increment(batch.rowsLoaded.toDouble())
-                        }
-                        EtlLoadingResult(
-                            errorMessage = if (!batch.success) result.errorMessage else null,
-                            lastProcessedAt = lastLoadedTimestamp,
-                            processedRows = if (batch.success) batch.rowsLoaded else 0L,
-                            duration = batch.duration
-                        ).also {
-                            onLoadingProgress(it)
+                    // If timestamp changed and buffer is full, flush the buffer
+                    if (previousTimestamp != null && currentTimestamp != previousTimestamp && buffer.size >= batchSize) {
+                        result += flushBuffer(context, buffer, batchNo) { batch ->
+                            if (batch.success) {
+                                lastLoadedTimestamp =
+                                    previousTimestamp ?: throw IllegalStateException("Previous timestamp is null")
+                                loadedRows.increment(batch.rowsLoaded.toDouble())
+                            }
+                            EtlLoadingResult(
+                                errorMessage = if (!batch.success) result.errorMessage else null,
+                                lastProcessedAt = lastLoadedTimestamp,
+                                processedRows = if (batch.success) batch.rowsLoaded else 0L,
+                                duration = batch.duration
+                            ).also {
+                                onLoadingProgress(it)
+                            }
                         }
                     }
-                }
 
-                if (result.isFailed) {
-                    throw IllegalStateException("ETL loading failed for [$groupId]: ${result.errorMessage}")
-                }
+                    if (result.isFailed) {
+                        throw IllegalStateException("ETL loading failed for [$groupId]: ${result.errorMessage}")
+                    }
 
-                buffer += row
-                previousTimestamp = currentTimestamp
+                    buffer += row
+                    previousTimestamp = currentTimestamp
+                }
+            } catch (e: Throwable) {
+                logger.debug(e) { "ETL loader [$name] for group [$groupId] failed while loading: ${e.message}" }
+                result += EtlLoadingResult(
+                    errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}",
+                    lastProcessedAt = lastLoadedTimestamp
+                ).also { onLoadingProgress(it) }
             }
         }.every(loggingFrequency.seconds) {
             if (isLoadingStarted) {

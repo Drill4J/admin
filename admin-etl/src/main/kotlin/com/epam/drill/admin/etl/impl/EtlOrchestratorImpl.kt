@@ -185,11 +185,31 @@ open class EtlOrchestratorImpl(
             }
         }
         sharedFlow.waitForSubscribers(jobs.count { it.isActive })
+        extractRowsToExtractionFlow(
+            context = context,
+            extractor = extractor,
+            sinceTimestamp = minLastProcessedAt,
+            untilTimestamp = snapshotTime,
+            sharedFlow = sharedFlow,
+            activePipelines = activePipelines,
+        )
+
+        skippedResults + jobs.awaitAll()
+    }
+
+    private suspend fun <T : EtlRow> extractRowsToExtractionFlow(
+        context: EtlContext,
+        extractor: DataExtractor<T>,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        sharedFlow: SubscribableChannelFlow<T>,
+        activePipelines: List<EtlPipeline<T, *>>
+    ) {
         try {
             extractor.extract(
                 context = context,
-                sinceTimestamp = minLastProcessedAt,
-                untilTimestamp = snapshotTime,
+                sinceTimestamp = sinceTimestamp,
+                untilTimestamp = untilTimestamp,
                 emitter = sharedFlow,
                 onExtractingProgress = { result ->
                     activePipelines.forEach { pipeline ->
@@ -198,18 +218,11 @@ open class EtlOrchestratorImpl(
                 }
             )
         } catch (e: Throwable) {
-            logger.debug(e) { "ETL extractor [${extractor.name}] for group [$groupId] failed: ${e.message}" }
-            val errorResult = EtlExtractingResult(
-                errorMessage = "Error during extracting data with extractor ${extractor.name}: ${e.message ?: e.javaClass.simpleName}"
-            )
-            activePipelines.forEach { pipeline ->
-                progressExtracting(context, pipeline.name, extractor.name, errorResult)
-            }
+            logger.debug(e) { "ETL extractor [${extractor.name}] for group [${context.groupId}] failed: ${e.message}" }
+            sharedFlow.close(e)
         } finally {
             sharedFlow.close()
         }
-
-        skippedResults + jobs.awaitAll()
     }
 
     /**
@@ -228,9 +241,9 @@ open class EtlOrchestratorImpl(
                 context = context,
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
-                extractedFlow = sharedFlow,
+                extractionFlow = sharedFlow,
                 onLoadingProgress = { result ->
-                    progressLoading(context, pipeline.name, pipeline.extractor.name, pipeline.loader.name, result)
+                    progressLoading(context, pipeline.name, result)
                 },
                 onStatusChanged = { status ->
                     try {
@@ -284,8 +297,6 @@ open class EtlOrchestratorImpl(
     private suspend fun progressLoading(
         context: EtlContext,
         pipelineName: String,
-        extractorName: String,
-        loaderName: String,
         result: EtlLoadingResult,
     ) {
         try {

@@ -63,7 +63,7 @@ fun withTransaction(db: Database? = null, test: suspend () -> Unit) {
 
 fun drillApplication(
     vararg diModules: DI.Module = emptyArray(),
-    routes: Route.() -> Unit
+    routes: Route.() -> Unit = {}
 ) = TestApplication {
     install(Resources)
     install(ContentNegotiation) {

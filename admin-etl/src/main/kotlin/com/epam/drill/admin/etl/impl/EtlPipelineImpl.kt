@@ -47,7 +47,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        extractedFlow: ClosableFlow<T>,
+        extractionFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
@@ -59,7 +59,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 context,
                 sinceTimestamp,
                 untilTimestamp,
-                extractedFlow,
+                extractionFlow,
                 onLoadingProgress,
                 onStatusChanged
             )
@@ -90,16 +90,15 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        extractedFlow: ClosableFlow<T>,
+        extractionFlow: ClosableFlow<T>,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
-        val groupId = context.groupId
-        val flow = getPreparedFlow(
+        val transformationFlow = getTransformationFlow(
             context,
             sinceTimestamp,
             untilTimestamp,
-            extractedFlow
+            extractionFlow
         ) { errorMessage, lastProcessedAt ->
             onLoadingProgress(
                 EtlLoadingResult(
@@ -108,9 +107,9 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 )
             )
         }
-        transformer.transform(context, flow).let { transformed ->
+        transformer.transform(context, transformationFlow).let { loadingFlow ->
             loader.load(
-                context, sinceTimestamp, untilTimestamp, transformed,
+                context, sinceTimestamp, untilTimestamp, loadingFlow,
                 onLoadingProgress = onLoadingProgress,
                 onStatusChanged = onStatusChanged,
             )
@@ -124,14 +123,13 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         ).also { onLoadingProgress(it) }
     }
 
-    private fun getPreparedFlow(
+    private fun getTransformationFlow(
         context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        collector: ClosableFlow<T>,
+        extractionFlow: ClosableFlow<T>,
         onLoadingError: suspend (String, Instant) -> Unit
     ): Flow<T> {
-        val groupId = context.groupId
         var previousTimestamp: Instant? = null
         val rowsExtracted = metrics.rowsExtracted(name, context)
         val skippedRows = metrics.rowsSkipped(name, context)
@@ -140,15 +138,15 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             onLoadingError(message, previousTimestamp ?: sinceTimestamp)
         }
         return flow {
-            collector.collect { row ->
+            extractionFlow.collect { row ->
                 val currentTimestamp = row.timestamp
                 rowsExtracted.increment()
                 if (previousTimestamp != null && currentTimestamp < previousTimestamp) {
-                    collector.closeWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
+                    extractionFlow.closeWithMessage("Timestamps in the extracted data are not in ascending order: $currentTimestamp < $previousTimestamp")
                     return@collect
                 }
                 if (currentTimestamp > untilTimestamp) {
-                    collector.close()
+                    extractionFlow.close()
                     return@collect
                 }
                 // Skip rows that are already processed

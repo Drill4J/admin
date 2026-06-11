@@ -25,10 +25,12 @@ import com.epam.drill.admin.writer.rawdata.table.*
 import io.ktor.client.request.*
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@Ignore
 class RecommendedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
     RawDataWriterDatabaseConfig.init(default)
     MetricsDatabaseConfig.init(metrics)

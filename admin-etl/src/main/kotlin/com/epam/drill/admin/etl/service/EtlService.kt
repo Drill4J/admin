@@ -21,6 +21,7 @@ import java.time.Instant
 interface EtlService {
     suspend fun refresh(
         context: EtlContext? = null,
+        etl: String? = null,
         reset: Boolean = false,
         initTimestamp: Instant? = null,
         finalTimestamp: Instant? = null,

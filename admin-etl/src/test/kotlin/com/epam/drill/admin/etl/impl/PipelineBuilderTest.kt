@@ -226,7 +226,7 @@ private fun pbExecute(
         context = EtlContext(groupId = "g1"),
         sinceTimestamp = Instant.EPOCH,
         untilTimestamp = Instant.now(),
-        extractedFlow = rows.asClosableFlow(),
+        extractionFlow = rows.asClosableFlow(),
     )
 }
 
