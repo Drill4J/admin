@@ -76,8 +76,7 @@ class MetricsServiceImpl(
         pageSize: Int?,
         freshAfter: Instant?,
     ): PagedList<BuildView> {
-        refresh(groupId, freshAfter)
-        return pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branch, envId,
@@ -468,12 +467,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        refresh(groupId, freshAfter)
-
-        return pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getChangesWithCoverage(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
@@ -507,12 +501,7 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        refresh(groupId, freshAfter)
-
-        return pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = buildId,
                 coverageTestTag = testTag,
@@ -555,12 +544,7 @@ class MetricsServiceImpl(
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
-        refresh(build.groupId, freshAfter)
-
-        return pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getImpactedTests(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
@@ -623,12 +607,7 @@ class MetricsServiceImpl(
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
-        refresh(build.groupId, freshAfter)
-
-        return pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getImpactedMethods(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
@@ -678,9 +657,35 @@ class MetricsServiceImpl(
         return URI("$uri?$queryString").toString()
     }
 
-    private suspend fun refresh(groupId: String, freshAfter: Instant?) {
-        freshAfter?.let {
-            etl.run(EtlContext(groupId), finalTimestamp = it)
+    private suspend fun refresh(groupId: String, freshAfter: Instant?): Instant? {
+        return freshAfter?.let {
+            etl.run(EtlContext(groupId), finalTimestamp = it).minOfOrNull { result ->
+                result.lastProcessedAt
+            }
         }
+    }
+
+    /**
+     * Fetches paged list of items with optional freshness guarantee.
+     * If [freshAfter] is provided, it will trigger a refresh and wait for it to complete before fetching the items.
+     */
+    private suspend fun <T> pagedFreshListOf(
+        groupId: String,
+        page: Int?,
+        pageSize: Int?,
+        freshAfter: Instant?,
+        getItems: suspend (offset: Int, limit: Int) -> List<T>
+    ): PagedList<T> {
+        val page = page ?: 1
+        val pageSize = pageSize ?: metricsConfig.pageSize
+        val freshness = refresh(groupId, freshAfter)
+        val items = getItems((page - 1) * pageSize, pageSize)
+        return PagedList(
+            page, pageSize, items, when {
+                items.size < pageSize -> ((page - 1) * pageSize + items.size).toLong()
+                else -> null
+            },
+            refreshedAt = freshness
+        )
     }
 }

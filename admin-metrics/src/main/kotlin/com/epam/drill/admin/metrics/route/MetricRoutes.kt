@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.route
 
+import com.epam.drill.admin.common.config.AnySerializer
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
 import com.epam.drill.admin.metrics.models.CoverageCriteria
@@ -22,7 +23,6 @@ import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.common.config.ApiResponse
-import com.epam.drill.admin.common.config.PagedDataResponse
 import com.epam.drill.admin.common.config.Paging
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
@@ -252,6 +252,13 @@ class Metrics(
     )
 }
 
+@Serializable
+data class PagedDataWithFreshnessResponse(
+    @Serializable(with = AnySerializer::class) val data: Any?,
+    val paging: Paging,
+    val refreshedAt : Long?
+)
+
 fun Route.metricsRoutes() {
     getApplications()
     getBuilds()
@@ -294,9 +301,10 @@ fun Route.getBuilds() {
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -406,9 +414,10 @@ fun Route.getChanges() {
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -435,9 +444,10 @@ fun Route.getCoverage() {
         )
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -450,9 +460,10 @@ fun Route.getImpactedTests() {
         val data = getImpactedTests(params, metricsService)
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -465,9 +476,10 @@ fun Route.postImpactedTests() {
         val data = getImpactedTests(call.receive(), metricsService)
         call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -480,9 +492,10 @@ fun Route.getImpactedMethods() {
         val data = getImpactedMethods(params, metricsService)
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
@@ -495,9 +508,10 @@ fun Route.postImpactedMethods() {
         val data = getImpactedMethods(call.receive(), metricsService)
         this.call.respond(
             HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
+            PagedDataWithFreshnessResponse(
+                data = data.items,
+                paging = Paging(data.page, data.pageSize, data.total),
+                refreshedAt = data.refreshedAt?.toEpochMilli()
             )
         )
     }
