@@ -19,6 +19,7 @@ import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.parseBuildId
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
@@ -47,7 +48,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
-    private val etlService: EtlService,
+    private val testDefinitionCoverageEtl: EtlOrchestrator,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
@@ -122,12 +123,12 @@ class MetricsServiceImpl(
             testDefinitionId != null -> {
                 val resolvedTestSessionId = testSessionId
                     ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
-                etlService.refresh(
+                testDefinitionCoverageEtl.run(
                     EtlContext(
                         groupId = parseBuildId(buildId).groupId,
                         testSessionId = testSessionId,
                         testDefinitionId = testDefinitionId
-                    ), etl = TEST_DEFINITION_COVERAGE_ETL
+                    )
                 )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
