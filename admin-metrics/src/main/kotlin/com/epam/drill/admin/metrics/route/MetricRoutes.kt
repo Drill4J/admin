@@ -39,11 +39,14 @@ import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
+import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
 @Resource("/metrics")
-class Metrics {
+class Metrics(
+    val freshAfter: Long? = null
+) {
     @Resource("/applications")
     class Applications(
         val parent: Metrics,
@@ -269,7 +272,8 @@ fun Route.getApplications() {
 
     get<Metrics.Applications> { params ->
         val data = metricsService.getApplications(
-            params.groupId,
+            groupId = params.groupId,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -280,12 +284,13 @@ fun Route.getBuilds() {
 
     get<Metrics.Builds> { params ->
         val data = metricsService.getBuilds(
-            params.groupId,
-            params.appId,
-            params.branch,
-            params.envId,
-            params.page,
-            params.pageSize
+            groupId = params.groupId,
+            appId = params.appId,
+            branch = params.branch,
+            envId = params.envId,
+            page = params.page,
+            pageSize = params.pageSize,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
@@ -302,15 +307,16 @@ fun Route.getCoverageTreemap() {
 
     get<Metrics.CoverageTreemap> { params ->
         val treemap = metricsService.getCoverageTreemap(
-            params.buildId,
-            params.testTag,
-            params.envId,
-            params.branch,
-            params.packageNamePattern,
-            params.classNamePattern,
-            params.rootId,
-            params.testSessionId,
-            params.testDefinitionId
+            buildId = params.buildId,
+            testTag = params.testTag,
+            envId = params.envId,
+            branch = params.branch,
+            packageNamePattern = params.packageNamePattern,
+            classNamePattern = params.classNamePattern,
+            rootId = params.rootId,
+            testSessionId = params.testSessionId,
+            testDefinitionId = params.testDefinitionId,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
@@ -321,16 +327,17 @@ fun Route.getChangesCoverageTreemap() {
 
     get<Metrics.ChangesCoverageTreemap> { params ->
         val treemap = metricsService.getChangesCoverageTreemap(
-            params.buildId,
-            params.baselineBuildId,
-            params.testTag,
-            params.envId,
-            params.branch,
-            params.packageNamePattern,
-            params.classNamePattern,
-            params.rootId,
-            params.includeDeleted,
-            params.includeEqual
+            buildId = params.buildId,
+            baselineBuildId = params.baselineBuildId,
+            testTag = params.testTag,
+            envId = params.envId,
+            branch = params.branch,
+            packageNamePattern = params.packageNamePattern,
+            classNamePattern = params.classNamePattern,
+            rootId = params.rootId,
+            includeDeleted = params.includeDeleted,
+            includeEqual = params.includeEqual,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
@@ -341,15 +348,16 @@ fun Route.getBuildDiffReport() {
 
     get<Metrics.BuildDiffReport> { params ->
         val report = metricsService.getBuildDiffReport(
-            params.groupId,
-            params.appId,
-            params.instanceId,
-            params.commitSha,
-            params.buildVersion,
-            params.baselineInstanceId,
-            params.baselineCommitSha,
-            params.baselineBuildVersion,
-            params.coverageThreshold,
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            coverageThreshold = params.coverageThreshold,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -394,6 +402,7 @@ fun Route.getChanges() {
             includeEqual = params.includeEqual,
             page = params.page,
             pageSize = params.pageSize,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
@@ -422,6 +431,7 @@ fun Route.getCoverage() {
             classNamePattern = params.className,
             page = params.page,
             pageSize = params.pageSize,
+            freshAfter = params.parent.freshAfter.toInstant(),
         )
         this.call.respond(
             HttpStatusCode.OK,
@@ -535,6 +545,7 @@ private suspend fun getImpactedTests(
         sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
+        freshAfter = params.parent.freshAfter.toInstant(),
     )
 }
 
@@ -578,6 +589,9 @@ private suspend fun getImpactedMethods(
         sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
+        freshAfter = params.parent.freshAfter.toInstant(),
     )
     return data
 }
+
+private fun Long?.toInstant(): Instant? = this?.let { Instant.ofEpochMilli(it) }

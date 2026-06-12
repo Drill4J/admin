@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.config
 
+import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.metrics.job.DeleteMetricsDataJob
 import com.epam.drill.admin.metrics.job.MetricsDataRetentionPolicyJob
 import com.epam.drill.admin.metrics.repository.MetricsRepository
@@ -40,6 +41,7 @@ val metricsDIModule
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
                 testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
+                etl = instance(tag = DEFAULT_ETL),
                 testDefinitionCoverageEtl = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
             )
         }

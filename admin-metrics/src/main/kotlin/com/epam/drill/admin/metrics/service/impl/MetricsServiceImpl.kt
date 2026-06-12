@@ -20,11 +20,9 @@ import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.parseBuildId
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlOrchestrator
-import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
-import com.epam.drill.admin.metrics.config.TEST_DEFINITION_COVERAGE_ETL
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
@@ -41,6 +39,7 @@ import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDateTime
 
 class MetricsServiceImpl(
@@ -48,12 +47,16 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
+    private val etl: EtlOrchestrator,
     private val testDefinitionCoverageEtl: EtlOrchestrator,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun getApplications(groupId: String?): List<ApplicationView> {
+    override suspend fun getApplications(groupId: String?, freshAfter: Instant?): List<ApplicationView> {
+        //TODO refresh across all groups if groupId is not provided
+        if (groupId != null)
+            refresh(groupId, freshAfter)
         return transaction {
             metricsRepository.getApplications(groupId).map {
                 ApplicationView(
@@ -70,9 +73,11 @@ class MetricsServiceImpl(
         branch: String?,
         envId: String?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<BuildView> = transaction {
-        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<BuildView> {
+        refresh(groupId, freshAfter)
+        return pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branch, envId,
@@ -110,6 +115,7 @@ class MetricsServiceImpl(
         rootId: String?,
         testSessionId: String?,
         testDefinitionId: String?,
+        freshAfter: Instant?,
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -118,6 +124,8 @@ class MetricsServiceImpl(
             packageName = packageNamePattern,
             className = classNamePattern
         )
+
+        refresh(parseBuildId(buildId).groupId, freshAfter)
 
         val data = when {
             testDefinitionId != null -> {
@@ -128,7 +136,8 @@ class MetricsServiceImpl(
                         groupId = parseBuildId(buildId).groupId,
                         testSessionId = testSessionId,
                         testDefinitionId = testDefinitionId
-                    )
+                    ),
+                    finalTimestamp = freshAfter
                 )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
@@ -177,6 +186,7 @@ class MetricsServiceImpl(
         rootId: String?,
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
+        freshAfter: Instant?,
     ): List<Any> {
 
         if (!metricsRepository.buildExists(baselineBuildId)) {
@@ -186,6 +196,8 @@ class MetricsServiceImpl(
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
+
+        refresh(parseBuildId(buildId).groupId, freshAfter)
 
         val data = metricsRepository.getChangesWithCoverage(
             buildId = buildId,
@@ -212,6 +224,7 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
+        freshAfter: Instant?,
     ): Map<String, Any?> {
         return transaction {
 
@@ -234,6 +247,8 @@ class MetricsServiceImpl(
             if (!metricsRepository.buildExists(buildId)) {
                 throw BuildNotFound("Build info not found for $buildId")
             }
+
+            refresh(groupId, freshAfter)
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
@@ -430,8 +445,9 @@ class MetricsServiceImpl(
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<MethodView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<MethodView> {
         val baselineBuildId = generateBuildId(
             groupId,
             appId,
@@ -452,7 +468,9 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(
+        refresh(groupId, freshAfter)
+
+        return pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
@@ -481,14 +499,17 @@ class MetricsServiceImpl(
         packageNamePattern: String?,
         classNamePattern: String?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<MethodView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<MethodView> {
         val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
 
-        return@transaction pagedListOf(
+        refresh(groupId, freshAfter)
+
+        return pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
@@ -516,8 +537,9 @@ class MetricsServiceImpl(
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<TestView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<TestView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
@@ -533,7 +555,9 @@ class MetricsServiceImpl(
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
-        return@transaction pagedListOf(
+        refresh(build.groupId, freshAfter)
+
+        return pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
@@ -581,8 +605,9 @@ class MetricsServiceImpl(
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<MethodView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<MethodView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
@@ -598,7 +623,9 @@ class MetricsServiceImpl(
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
 
-        return@transaction pagedListOf(
+        refresh(build.groupId, freshAfter)
+
+        return pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
@@ -649,5 +676,11 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
+    }
+
+    private suspend fun refresh(groupId: String, freshAfter: Instant?) {
+        freshAfter?.let {
+            etl.run(EtlContext(groupId), finalTimestamp = it)
+        }
     }
 }

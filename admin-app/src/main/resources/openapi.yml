@@ -506,6 +506,13 @@ paths:
           description: Optional filter to retrieve applications belonging to a specific group only.
           schema:
             type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of applications
@@ -556,6 +563,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of builds
@@ -627,6 +641,13 @@ paths:
             type: number
             format: float
             default: 1.0
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Build diff report
@@ -781,6 +802,13 @@ paths:
           description: Filter coverage by test definition ID. Requires testSessionId to be specified. When provided, only coverage data from the specific test definition is included.
           schema:
             type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Coverage treemap data
@@ -862,6 +890,13 @@ paths:
           description: Whether to include methods that are unchanged between builds. Defaults to false.
           schema:
             type: boolean
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Changes coverage treemap data
@@ -944,6 +979,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of method changes between builds
@@ -1003,6 +1045,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Method list with coverage data
@@ -1154,6 +1203,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of impacted tests
@@ -1303,6 +1359,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of impacted methods
@@ -2472,6 +2535,11 @@ components:
         pageSize:
           type: integer
           nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
     ImpactedMethodsRequest:
       type: object
       description: |
@@ -2560,3 +2628,8 @@ components:
         pageSize:
           type: integer
           nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
