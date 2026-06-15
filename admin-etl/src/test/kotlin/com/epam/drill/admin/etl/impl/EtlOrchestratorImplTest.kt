@@ -24,6 +24,7 @@ import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.SimpleEtlRunsRepository
 import com.epam.drill.admin.etl.SimpleMetadataRepository
 import com.epam.drill.admin.etl.config.EtlMeter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -119,6 +120,7 @@ class EtlOrchestratorImplTest {
             name = "test",
             pipelines = listOf(pipeline1, pipeline2),
             metadataRepository = SimpleMetadataRepository(),
+            runsRepository = SimpleEtlRunsRepository(),
         )
 
         val results = orchestrator.run(EtlContext(groupId = "g1"))
@@ -158,6 +160,7 @@ class EtlOrchestratorImplTest {
             name = "test",
             pipelines = listOf(pipelineA, pipelineB),
             metadataRepository = SimpleMetadataRepository(),
+            runsRepository = SimpleEtlRunsRepository(),
         )
 
         orchestrator.run(EtlContext(groupId = "g1"))
@@ -188,6 +191,7 @@ class EtlOrchestratorImplTest {
             name = "test",
             pipelines = pipelines,
             metadataRepository = SimpleMetadataRepository(),
+            runsRepository = SimpleEtlRunsRepository(),
         )
 
         val results = orchestrator.run(EtlContext(groupId = "g1"))
@@ -241,6 +245,7 @@ class EtlOrchestratorImplTest {
                 name = "test",
                 pipelines = listOf(pipelineOld, pipelineNew),
                 metadataRepository = repo,
+                runsRepository = SimpleEtlRunsRepository(),
             )
 
             orchestrator.run(EtlContext(groupId = "g1"))
@@ -291,6 +296,7 @@ class EtlOrchestratorImplTest {
             name = "test",
             pipelines = listOf(pipeline),
             metadataRepository = repo,
+            runsRepository = SimpleEtlRunsRepository(),
         )
 
         val results = orchestrator.run(EtlContext(groupId = "g1"))

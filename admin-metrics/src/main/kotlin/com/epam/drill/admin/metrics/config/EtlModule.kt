@@ -18,10 +18,12 @@ package com.epam.drill.admin.metrics.config
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlRunsRepository
 import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import com.epam.drill.admin.etl.impl.EtlRunsRepositoryImpl
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.etl.job.getUpdateMetricsEtlDataMap
@@ -46,6 +48,12 @@ val etlDIModule
         importOnce(settingsServicesDIModule)
         bind<EtlMetadataRepository>() with singleton {
             EtlMetadataRepositoryImpl(
+                database = MetricsDatabaseConfig.database,
+                dbSchema = MetricsDatabaseConfig.dbSchema
+            )
+        }
+        bind<EtlRunsRepository>() with singleton {
+            EtlRunsRepositoryImpl(
                 database = MetricsDatabaseConfig.database,
                 dbSchema = MetricsDatabaseConfig.dbSchema
             )
@@ -82,9 +90,12 @@ val etlDIModule
 //                        buildMethodTestDefinitionCoverageByRequestPipeline
                     ),
                     metadataRepository = instance(),
+                    runsRepository = instance(),
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
                     bufferSize = bufferSize,
+                    lockLeaseSeconds = lockLeaseSeconds,
+                    lockPollDelaySeconds = lockPollDelaySeconds,
                 )
             }
         }
@@ -98,6 +109,9 @@ val etlDIModule
                     name = TEST_DEFINITION_COVERAGE_ETL,
                     pipelines = listOf(buildMethodTestDefinitionCoveragePipeline),
                     metadataRepository = instance(),
+                    runsRepository = instance(),
+                    lockLeaseSeconds = lockLeaseSeconds,
+                    lockPollDelaySeconds = lockPollDelaySeconds,
                 )
             }
         }

@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-data class SimpleClass(val id: Int, val createdAt: Instant): EtlRow(createdAt)
+data class SimpleClass(val id: Int, val createdAt: Instant) : EtlRow(createdAt)
 
 private const val SIMPLE_PIPELINE = "simple-pipeline"
 private const val SIMPLE_EXTRACTOR = "simple-extractor"
@@ -116,7 +116,8 @@ class ETLSimpleTest {
             }
             return EtlLoadingResult(
                 errorMessage = "This should never be returned",
-                lastProcessedAt = sinceTimestamp)
+                lastProcessedAt = sinceTimestamp
+            )
         }
 
         override suspend fun deleteAll(context: EtlContext) {
@@ -125,21 +126,23 @@ class ETLSimpleTest {
     }
 
 
-
-    private fun buildOrchestrator(metadataRepository: EtlMetadataRepository = SimpleMetadataRepository()) =
-        EtlOrchestratorImpl(
-            name = "simple-etl",
-            pipelines = listOf(
-                EtlPipelineImpl(
-                    name = SIMPLE_PIPELINE,
-                    extractor = SimpleExtractor(),
-                    transformer = SimpleTransformer(),
-                    loader = SimpleLoader(),
-                    metrics = metrics,
-                )
-            ),
-            metadataRepository = metadataRepository,
-        )
+    private fun buildOrchestrator(
+        metadataRepository: EtlMetadataRepository = SimpleMetadataRepository(),
+        runsRepository: EtlRunsRepository = SimpleEtlRunsRepository()
+    ) = EtlOrchestratorImpl(
+        name = "simple-etl",
+        pipelines = listOf(
+            EtlPipelineImpl(
+                name = SIMPLE_PIPELINE,
+                extractor = SimpleExtractor(),
+                transformer = SimpleTransformer(),
+                loader = SimpleLoader(),
+                metrics = metrics,
+            )
+        ),
+        metadataRepository = metadataRepository,
+        runsRepository = runsRepository
+    )
 
     @BeforeEach
     fun setUp() {
@@ -172,7 +175,8 @@ class ETLSimpleTest {
     @Test
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
         val context = EtlContext(groupId = "test-group")
-        val repo = SimpleMetadataRepository()
+        val metadataRepo = SimpleMetadataRepository()
+        val runsRepo = SimpleEtlRunsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "failed-etl",
             pipelines = listOf(
@@ -184,10 +188,11 @@ class ETLSimpleTest {
                     metrics = metrics,
                 )
             ),
-            metadataRepository = repo,
+            metadataRepository = metadataRepo,
+            runsRepository = runsRepo
         )
 
-        val initialLastProcessedAt = repo.getMetadata(context, "failed-pipeline")
+        val initialLastProcessedAt = metadataRepo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
@@ -196,11 +201,11 @@ class ETLSimpleTest {
         assertTrue(result.first().status == EtlStatus.FAILED)
         assertEquals(0, result.first().rowsProcessed)
 
-        val updatedLastProcessedAt = repo.getMetadata(context, "failed-pipeline")
+        val updatedLastProcessedAt = metadataRepo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
 
         assertEquals(initialLastProcessedAt, updatedLastProcessedAt)
-        assertEquals(EtlStatus.FAILED, repo.getMetadata(context, "failed-pipeline")?.status)
+        assertEquals(EtlStatus.FAILED, metadataRepo.getMetadata(context, "failed-pipeline")?.status)
     }
 
     @Test
@@ -222,35 +227,38 @@ class ETLSimpleTest {
     }
 
     @Test
-    fun `given consistencyWindow, ETL orchestrator should re-process records within the lookback window`() = runBlocking {
-        val groupId = "test-group"
-        val repo = SimpleMetadataRepository()
-        val orchestrator = EtlOrchestratorImpl(
-            name = "lookback-etl",
-            pipelines = listOf(
-                EtlPipelineImpl(
-                    name = SIMPLE_PIPELINE,
-                    extractor = SimpleExtractor(),
-                    transformer = SimpleTransformer(),
-                    loader = SimpleLoader(),
-                    metrics = metrics,
-                )
-            ),
-            metadataRepository = repo,
-            consistencyWindow = 60,
-        )
+    fun `given consistencyWindow, ETL orchestrator should re-process records within the lookback window`() =
+        runBlocking {
+            val groupId = "test-group"
+            val metadataRepo = SimpleMetadataRepository()
+            val runsRepo = SimpleEtlRunsRepository()
+            val orchestrator = EtlOrchestratorImpl(
+                name = "lookback-etl",
+                pipelines = listOf(
+                    EtlPipelineImpl(
+                        name = SIMPLE_PIPELINE,
+                        extractor = SimpleExtractor(),
+                        transformer = SimpleTransformer(),
+                        loader = SimpleLoader(),
+                        metrics = metrics,
+                    )
+                ),
+                metadataRepository = metadataRepo,
+                runsRepository = runsRepo,
+                consistencyWindow = 60,
+            )
 
-        addNewRecords(5)
-        val result1 = orchestrator.run(EtlContext(groupId = groupId))
-        assertTrue(result1.first().status == EtlStatus.SUCCESS)
-        assertEquals(5, result1.first().rowsProcessed)
+            addNewRecords(5)
+            val result1 = orchestrator.run(EtlContext(groupId = groupId))
+            assertTrue(result1.first().status == EtlStatus.SUCCESS)
+            assertEquals(5, result1.first().rowsProcessed)
 
-        addNewRecords(3)
-        // lookback of 60s should re-process all 8 records (5 original + 3 new)
-        val result2 = orchestrator.run(EtlContext(groupId = groupId))
-        assertTrue(result2.first().status == EtlStatus.SUCCESS)
-        assertEquals(8, result2.first().rowsProcessed)
-    }
+            addNewRecords(3)
+            // lookback of 60s should re-process all 8 records (5 original + 3 new)
+            val result2 = orchestrator.run(EtlContext(groupId = groupId))
+            assertTrue(result2.first().status == EtlStatus.SUCCESS)
+            assertEquals(8, result2.first().rowsProcessed)
+        }
 }
 
 

@@ -71,4 +71,18 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      */
     val processingDelay : Long
         get() = config.propertyOrNull("processingDelay")?.getString()?.toLongOrNull() ?: 0L
+
+    /**
+     * Lease duration (in seconds) for the distributed run-lock held in `etl_runs`.
+     * The lease is refreshed on each progress tick of an in-flight run; another instance
+     * may reclaim the lock once the lease expires.
+     */
+    val lockLeaseSeconds : Long
+        get() = config.propertyOrNull("lockLeaseSeconds")?.getString()?.toLongOrNull() ?: 180L
+
+    /**
+     * Polling interval (in seconds) used by the orchestrator while waiting for a busy lock to free.
+     */
+    val lockPollDelaySeconds : Long
+        get() = config.propertyOrNull("lockPollDelaySeconds")?.getString()?.toLongOrNull() ?: 5L
 }
