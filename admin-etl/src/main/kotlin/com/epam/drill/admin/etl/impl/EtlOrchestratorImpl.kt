@@ -61,8 +61,29 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         initTimestamp: Instant,
         finalTimestamp: Instant?,
-    ): List<EtlProcessingResult> = executeWithLock(context) { ownerId ->
-        runInternal(context, initTimestamp, finalTimestamp, ownerId)
+    ): List<EtlProcessingResult> {
+        if (finalTimestamp != null) {
+            val lastProcessedAt = runsRepository.getLastProcessedAt(name, context)
+            if (lastProcessedAt != null && !finalTimestamp.isAfter(lastProcessedAt)) {
+                logger.info {
+                    "ETL [$name] for group [${context.groupId}] skipped: finalTimestamp ($finalTimestamp) " +
+                            "<= lastProcessedAt ($lastProcessedAt)"
+                }
+                return pipelines.map { pipeline ->
+                    EtlProcessingResult(
+                        context = context,
+                        pipelineName = pipeline.name,
+                        lastProcessedAt = lastProcessedAt,
+                        rowsProcessed = 0,
+                        status = EtlStatus.SKIPPED,
+                        errorMessage = null,
+                    )
+                }
+            }
+        }
+        return executeWithLock(context) { ownerId ->
+            runInternal(context, initTimestamp, finalTimestamp, ownerId)
+        }
     }
 
     override suspend fun rerun(
@@ -100,11 +121,14 @@ open class EtlOrchestratorImpl(
             yield() // guarantees cooperation even when poll delay is 0
             if (lockPollDelaySeconds > 0) delay(lockPollDelaySeconds.seconds)
         }
+        var lastProcessedAt: Instant? = null
         try {
-            return block(ownerId)
+            val results = block(ownerId)
+            lastProcessedAt = results.takeIfAll { it.status != EtlStatus.FAILED }?.minOfOrNull { it.lastProcessedAt }
+            return results
         } finally {
             runCatching {
-                runsRepository.markFinishedAndRelease(name, context, ownerId)
+                runsRepository.markFinishedAndRelease(name, context, ownerId, lastProcessedAt)
             }.onFailure {
                 logger.warn(it) { "ETL [$name] for group [${context.groupId}] failed to release run-lock" }
             }
@@ -365,4 +389,8 @@ open class EtlOrchestratorImpl(
             )
         }
     }
+}
+
+private fun <T> List<T>.takeIfAll(predicate: (T) -> Boolean): List<T>? {
+    return if (all(predicate)) this else null
 }

@@ -31,6 +31,7 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
         var lastFinishedAt: Instant? = null,
         var lockOwner: String? = null,
         var lockExpiresAt: Instant? = null,
+        var lastProcessedAt: Instant? = null,
     )
 
     private val store = mutableMapOf<Pair<String, EtlContext>, RunState>()
@@ -71,10 +72,18 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
         }
     }
 
+    override suspend fun getLastProcessedAt(
+        orchestratorName: String,
+        context: EtlContext,
+    ): Instant? = mutex.withLock {
+        store[orchestratorName to context]?.lastProcessedAt
+    }
+
     override suspend fun markFinishedAndRelease(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
+        lastProcessedAt: Instant?
     ) = mutex.withLock {
         val state = store[orchestratorName to context] ?: return@withLock
         if (state.lockOwner == ownerId) {
@@ -82,6 +91,7 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
             state.lastFinishedAt = Instant.now()
             state.lockOwner = null
             state.lockExpiresAt = null
+            state.lastProcessedAt = lastProcessedAt
         }
     }
 }

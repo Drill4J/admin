@@ -43,11 +43,22 @@ interface EtlRunsRepository {
     )
 
     /**
+     * Returns the last successfully processed timestamp for the given orchestrator and context,
+     * or null if no completed run exists yet.
+     */
+    suspend fun getLastProcessedAt(
+        orchestratorName: String,
+        context: EtlContext,
+    ): java.time.Instant?
+
+    /**
      * Marks the run as finished and releases the lock.
+     * @param lastProcessedAt The minimum lastProcessedAt from all successfully completed pipelines, or null if none succeeded.
      */
     suspend fun markFinishedAndRelease(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
+        lastProcessedAt: java.time.Instant? = null,
     )
 }

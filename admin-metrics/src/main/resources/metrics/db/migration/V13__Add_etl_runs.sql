@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS metrics.etl_runs (
     status             VARCHAR(50)  NOT NULL,
     last_started_at    TIMESTAMP    NULL,
     last_finished_at   TIMESTAMP    NULL,
+    last_processed_at  TIMESTAMP    NULL,
     lock_owner         VARCHAR(255) NULL,
     lock_expires_at    TIMESTAMP    NULL,
     created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,

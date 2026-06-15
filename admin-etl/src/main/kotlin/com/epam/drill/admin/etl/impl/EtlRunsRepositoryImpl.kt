@@ -30,6 +30,7 @@ import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsertReturning
 import java.time.Instant
@@ -110,10 +111,22 @@ class EtlRunsRepositoryImpl(
         }
     }
 
+    override suspend fun getLastProcessedAt(
+        orchestratorName: String,
+        context: EtlContext,
+    ): Instant? = newSuspendedTransaction(db = database) {
+        runsTable
+            .selectAll()
+            .where { sameOrchestrator(orchestratorName) and sameContext(context) }
+            .singleOrNull()
+            ?.get(runsTable.lastProcessedAt)
+    }
+
     override suspend fun markFinishedAndRelease(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
+        lastProcessedAt: Instant?,
     ) {
         newSuspendedTransaction(db = database) {
             runsTable.update(where = {
@@ -122,7 +135,10 @@ class EtlRunsRepositoryImpl(
                         ownedBy(ownerId)
             }) {
                 it[status] = EtlRunStatus.IDLE.name
-                it[lastFinishedAt] = CurrentTimestamp
+                it[runsTable.lastFinishedAt] = CurrentTimestamp
+                if (lastProcessedAt != null) {
+                    it[runsTable.lastProcessedAt] = lastProcessedAt
+                }
                 it[lockOwner] = null
                 it[lockExpiresAt] = null
                 it[updatedAt] = CurrentDateTime

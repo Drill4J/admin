@@ -1,3 +1,18 @@
+/**
+ * Copyright 2020 - 2022 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
@@ -30,21 +45,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * Copyright 2020 - 2022 EPAM Systems
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 class EtlOrchestratorLockTest {
     private val metrics = EtlMeter(SimpleMeterRegistry())
 
@@ -72,6 +72,30 @@ class EtlOrchestratorLockTest {
                 delay(delayMillis)
             }
             val result = EtlLoadingResult(lastProcessedAt = lastTs, processedRows = processed.get().toLong())
+            onLoadingProgress(result)
+            onStatusChanged(EtlStatus.SUCCESS)
+            return result
+        }
+
+        override suspend fun deleteAll(context: EtlContext) {}
+    }
+
+    private inner class CapturingLoader : DataLoader<Row> {
+        override val name = "capturing-loader"
+        var callCount = 0
+
+        override suspend fun load(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<Row>,
+            onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+            onStatusChanged: suspend (EtlStatus) -> Unit,
+        ): EtlLoadingResult {
+            callCount++
+            var lastTs = sinceTimestamp
+            collector.collect { lastTs = it.ts }
+            val result = EtlLoadingResult(lastProcessedAt = lastTs, processedRows = 0)
             onLoadingProgress(result)
             onStatusChanged(EtlStatus.SUCCESS)
             return result
@@ -177,6 +201,68 @@ class EtlOrchestratorLockTest {
         assertEquals(1L, stateB.runsCount)
         assertEquals(EtlRunStatus.IDLE, stateA.status)
         assertEquals(EtlRunStatus.IDLE, stateB.status)
+    }
+
+    private suspend fun seedFinishedRun(
+        runsRepo: SimpleEtlRunsRepository,
+        context: EtlContext,
+        at: Instant,
+        orchestratorName: String = "test-etl",
+    ) {
+        runsRepo.tryAcquireLockAndStart(orchestratorName, context, "seed-owner", leaseSeconds = 60)
+        runsRepo.markFinishedAndRelease(orchestratorName, context, "seed-owner", lastProcessedAt = at)
+    }
+
+    @Test
+    fun `given finalTimestamp equal to lastProcessedAt, run returns SKIPPED without acquiring lock`() = runBlocking {
+        val context = EtlContext(groupId = "early-exit-eq")
+        val runsRepo = SimpleEtlRunsRepository()
+        val loader = CapturingLoader()
+
+        val processedAt = Instant.parse("2024-01-01T12:00:00Z")
+        seedFinishedRun(runsRepo, context, processedAt)
+        val runsCountAfterSeed = runsRepo.snapshot("test-etl", context)!!.runsCount
+
+        val orchestrator = newOrchestrator(runsRepo, loader, rows = emptyList())
+        val results = orchestrator.run(
+            context = context,
+            initTimestamp = Instant.EPOCH,
+            finalTimestamp = processedAt,
+        )
+
+        assertEquals(1, results.size)
+        assertEquals(EtlStatus.SKIPPED, results.first().status)
+        assertEquals(0L, results.first().rowsProcessed)
+        assertEquals(processedAt, results.first().lastProcessedAt)
+        assertEquals(runsCountAfterSeed, runsRepo.snapshot("test-etl", context)!!.runsCount,
+            "Lock must not be acquired on early exit")
+        assertEquals(0, loader.callCount)
+    }
+
+    @Test
+    fun `given finalTimestamp before lastProcessedAt, run returns SKIPPED without acquiring lock`() = runBlocking {
+        val context = EtlContext(groupId = "early-exit-lt")
+        val runsRepo = SimpleEtlRunsRepository()
+        val loader = CapturingLoader()
+
+        val processedAt = Instant.parse("2024-01-01T12:00:00Z")
+        val finalTimestamp = processedAt.minusSeconds(3600)
+        seedFinishedRun(runsRepo, context, processedAt)
+        val runsCountAfterSeed = runsRepo.snapshot("test-etl", context)!!.runsCount
+
+        val orchestrator = newOrchestrator(runsRepo, loader, rows = emptyList())
+        val results = orchestrator.run(
+            context = context,
+            initTimestamp = Instant.EPOCH,
+            finalTimestamp = finalTimestamp,
+        )
+
+        assertEquals(1, results.size)
+        assertEquals(EtlStatus.SKIPPED, results.first().status)
+        assertEquals(0L, results.first().rowsProcessed)
+        assertEquals(processedAt, results.first().lastProcessedAt)
+        assertEquals(runsCountAfterSeed, runsRepo.snapshot("test-etl", context)!!.runsCount)
+        assertEquals(0, loader.callCount)
     }
 
     @Test
