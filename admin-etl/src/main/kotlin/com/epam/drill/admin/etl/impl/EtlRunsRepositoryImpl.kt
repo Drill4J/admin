@@ -53,7 +53,7 @@ class EtlRunsRepositoryImpl(
         val result = runsTable.upsertReturning(
             onUpdate = {
                 it[runsTable.status] = EtlRunStatus.RUNNING.name
-                it[runsTable.runsCount] = insertValue(runsTable.runsCount) + 1
+                it[runsTable.runsCount] = runsTable.runsCount + 1
                 it[runsTable.lastStartedAt] = CurrentTimestamp
                 it[runsTable.lastFinishedAt] = null
 
