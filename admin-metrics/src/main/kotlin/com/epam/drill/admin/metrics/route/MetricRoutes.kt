@@ -196,7 +196,6 @@ class Metrics(
 
         val excludeMethodSignatures: List<String> = emptyList(),
 
-        val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
@@ -229,12 +228,7 @@ class Metrics(
         val packageName: String? = null,
         val className: String? = null,
         val methodName: String? = null,
-        @Deprecated("Use packageName instead")
-        val packageNamePattern: String? = null,
-        @Deprecated("Use className instead")
-        val classNamePattern: String? = null,
 
-        val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
@@ -541,7 +535,6 @@ private suspend fun getImpactedTests(
         baselineBuild = baselineBuild,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
-            testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName
         ),
@@ -586,14 +579,13 @@ private suspend fun getImpactedMethods(
         baselineBuild = baselineBuild,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
-            testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName
         ),
         methodCriteria = MethodCriteria(
-            packageName = params.packageName ?: params.packageNamePattern,
-            className = params.className ?: params.classNamePattern,
-            methodName = params.methodName
+            packageName = params.packageName,
+            className = params.className,
+            methodName = params.methodName,
         ),
         coverageCriteria = CoverageCriteria(
             branches = params.coverageBranches,

@@ -1137,11 +1137,6 @@ paths:
               type: string
           style: form
           explode: true
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only tests from launches associated with this task ID are considered.
-          schema:
-            type: string
         - name: testTag
           in: query
           description: Optional filter by test tag. When specified, only tests with this tag are included.
@@ -1169,6 +1164,18 @@ paths:
         - name: coverageAppEnvIds
           in: query
           description: List of application environment IDs to consider when selecting coverage data for impact analysis.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: impactStatuses
+          in: query
+          description: |
+            List of impact statuses to filter results by. Supported values are IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT. 
+            When specified, only tests with one of these impact statuses are returned.
+            Defaults to IMPACTED if not specified.
           schema:
             type: array
             items:
@@ -1309,11 +1316,6 @@ paths:
         - name: methodName
           in: query
           description: Optional filter by method name to narrow results to a specific method.
-          schema:
-            type: string
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
           schema:
             type: string
         - name: testTag

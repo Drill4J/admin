@@ -1,7 +1,5 @@
 -----------------------------------------------------------------
 -- Repeatable migration script to create functions for metrics
--- Migration version: v3
--- Compatible with: R__1_Data.sql v4.3
 -----------------------------------------------------------------
 
 -----------------------------------------------------------------
@@ -776,39 +774,41 @@ END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 
 -----------------------------------------------------------------
--- Function to get impacted tests based on test impact analysis (v2)
+-- Function to get tests with impact status based on test impact analysis
 -- @param input_build_id: The ID of the target build to analyze
 -- @param input_baseline_build_id: The ID of the baseline build for comparison
+
 -- @param input_package_name_pattern: Optional pattern to filter methods by package name
--- @param input_class_name_pattern: Optional pattern to filter methods by class name
--- @param input_method_name_pattern: Optional pattern to filter methods by method name
--- @param input_test_task_ids: Array of test task IDs to filter tests
+-- @param input_method_signature_pattern: Optional pattern to filter methods by signature
+-- @param input_exclude_method_signatures: Optional array of method signatures to exclude from analysis
+
 -- @param input_test_tags: Array of test tags to filter tests
 -- @param input_test_path_pattern: Optional pattern to filter tests by path
 -- @param input_test_name_pattern: Optional pattern to filter tests by name
+
+-- @param input_coverage_branches: Array of branch names to filter coverage
 -- @param input_coverage_app_env_ids: Array of app environment IDs to filter coverage
--- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
--- @param input_coverage_period_until: Optional timestamp to filter coverage by creation date
+
+-- @param input_impact_statuses: Array of impact statuses (IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT) to filter results
 -- @returns TABLE: A table containing impacted tests and their methods based on test impact analysis
 -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS metrics.get_impacted_tests_v2 CASCADE;
-CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
+DROP FUNCTION IF EXISTS metrics.get_impacted_tests_v3 CASCADE;
+CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v3(
     input_build_id VARCHAR,
 	input_baseline_build_id VARCHAR,
 
 	input_package_name_pattern VARCHAR DEFAULT NULL,
 	input_method_signature_pattern VARCHAR DEFAULT NULL,
 	input_exclude_method_signatures VARCHAR[] DEFAULT NULL,
-    input_class_name VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
-    input_method_signature VARCHAR DEFAULT NULL, -- Deprecated, use input_method_signature_pattern
 
-	input_test_task_id VARCHAR DEFAULT NULL, -- Deprecated
     input_test_tags VARCHAR[] DEFAULT NULL,
     input_test_path_pattern VARCHAR DEFAULT NULL,
     input_test_name_pattern VARCHAR DEFAULT NULL,
 
     input_coverage_branches VARCHAR[] DEFAULT NULL,
-    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL
+    input_coverage_app_env_ids VARCHAR[] DEFAULT NULL,
+
+    input_impact_statuses VARCHAR[] DEFAULT ARRAY['IMPACTED']::VARCHAR[]
 ) RETURNS TABLE(
     group_id VARCHAR,
     test_definition_id VARCHAR,
@@ -817,6 +817,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v2(
     test_tags VARCHAR[],
     test_metadata JSON,
     test_runner VARCHAR,
+    impact_status VARCHAR,
     impacted_methods NUMERIC
 ) AS $$
 DECLARE
@@ -826,62 +827,128 @@ BEGIN
 	_group_id = split_part(input_build_id, ':', 1);
 	_app_id = split_part(input_build_id, ':', 2);
 
-	RETURN QUERY
-    WITH
-	changes AS (
-	    SELECT
-	        m.group_id,
-            m.app_id,
-            m.signature,
-            m.class_name,
-            m.method_name,
-            m.method_params,
-            m.return_type,
-            m.change_type
-        FROM metrics.get_changes(
-            input_build_id => input_build_id,
-            input_baseline_build_id => input_baseline_build_id,
-            input_package_name_pattern => input_package_name_pattern,
-            input_method_signature_pattern => input_method_signature_pattern,
-            input_exclude_method_signatures => input_exclude_method_signatures,
-            input_class_name => input_class_name,
-            input_method_signature => input_method_signature,
-            include_deleted => true,
-            include_equal => false
-        ) m
-    ),
-    impacted_tests AS (
+	IF (input_impact_statuses = ARRAY['IMPACTED']::VARCHAR[]) THEN RETURN QUERY
+	    WITH
+        changes AS (
+            SELECT
+                m.group_id,
+                m.app_id,
+                m.signature,
+                m.class_name,
+                m.method_name,
+                m.method_params,
+                m.return_type,
+                m.change_type
+            FROM metrics.get_changes(
+                input_build_id => input_build_id,
+                input_baseline_build_id => input_baseline_build_id,
+                input_package_name_pattern => input_package_name_pattern,
+                input_method_signature_pattern => input_method_signature_pattern,
+                input_exclude_method_signatures => input_exclude_method_signatures,
+                include_deleted => true,
+                include_equal => false
+            ) m
+        ),
+        impacted_tests AS (
+            SELECT
+                tc.test_definition_id,
+                COUNT(DISTINCT tc.signature) AS impacted_methods
+            FROM metrics.test_to_code_mapping tc
+            JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
+            JOIN metrics.test_definitions td ON td.group_id = tc.group_id AND td.test_definition_id = tc.test_definition_id
+            WHERE tc.group_id = _group_id
+                AND tc.app_id = _app_id
+                -- Filters by coverage
+                AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
+                AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+                -- Filters by tests
+                AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+                AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+                AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+            GROUP BY tc.test_definition_id
+        )
         SELECT
-            tc.test_definition_id,
-            COUNT(DISTINCT tc.signature) AS impacted_methods
-        FROM metrics.test_to_code_mapping tc
-        JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
-        JOIN metrics.test_definitions td ON td.group_id = tc.group_id AND td.test_definition_id = tc.test_definition_id
-        WHERE tc.group_id = _group_id
-            AND tc.app_id = _app_id
-            -- Filters by coverage
-            AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
-            AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
-            -- Filters by tests
-            AND (input_test_task_id IS NULL OR tc.test_task_id = input_test_task_id)
-            AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
-            AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
-            AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
-        GROUP BY tc.test_definition_id
-    )
-    SELECT
-        td.group_id,
-        td.test_definition_id,
-        td.test_path,
-        td.test_name,
-        td.test_tags,
-        td.test_metadata::JSON,
-        td.test_runner,
-        it.impacted_methods::NUMERIC
-    FROM metrics.test_definitions td
-	JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
-    WHERE td.group_id = _group_id
-	;
+            td.group_id,
+            td.test_definition_id,
+            td.test_path,
+            td.test_name,
+            td.test_tags,
+            td.test_metadata::JSON,
+            td.test_runner,
+            'IMPACTED'::VARCHAR AS impact_status,
+            it.impacted_methods::NUMERIC
+        FROM metrics.test_definitions td
+        JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
+        WHERE td.group_id = _group_id
+        ;
+    ELSE RETURN QUERY
+        WITH
+        changes AS (
+            SELECT
+                m.group_id,
+                m.app_id,
+                m.signature,
+                m.class_name,
+                m.method_name,
+                m.method_params,
+                m.return_type,
+                m.change_type
+            FROM metrics.get_changes(
+                input_build_id => input_build_id,
+                input_baseline_build_id => input_baseline_build_id,
+                input_package_name_pattern => input_package_name_pattern,
+                input_method_signature_pattern => input_method_signature_pattern,
+                input_exclude_method_signatures => input_exclude_method_signatures,
+                include_deleted => true,
+                include_equal => false
+            ) m
+        ),
+        impacted_tests AS (
+            SELECT
+                td.test_definition_id,
+                BOOL_AND(CASE WHEN tc.test_definition_id IS NULL THEN TRUE ELSE FALSE END) AS unknown_impact,
+                BOOL_OR(CASE WHEN changed_m.signature IS NOT NULL THEN TRUE ELSE FALSE END) AS impacted,
+                COUNT(DISTINCT changed_m.signature) AS impacted_methods
+            FROM metrics.test_definitions td
+            LEFT JOIN metrics.test_to_code_mapping tc ON td.group_id = tc.group_id
+                AND td.test_definition_id = tc.test_definition_id
+                AND tc.app_id = _app_id
+                -- Filters by coverage
+                AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
+                AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+            LEFT JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
+            WHERE td.group_id = _group_id
+                -- Filters by tests
+                AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+                AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+                AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
+            GROUP BY td.test_definition_id
+        )
+        SELECT
+            td.group_id,
+            td.test_definition_id,
+            td.test_path,
+            td.test_name,
+            td.test_tags,
+            td.test_metadata::JSON,
+            td.test_runner,
+            (CASE
+                WHEN it.impacted IS TRUE THEN 'IMPACTED'
+                WHEN it.unknown_impact IS FALSE THEN 'NOT_IMPACTED'
+                ELSE 'UNKNOWN_IMPACT'
+            END)::VARCHAR AS impact_status,
+            it.impacted_methods::NUMERIC
+        FROM metrics.test_definitions td
+        JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
+        WHERE td.group_id = _group_id
+            -- Filters by test impact statuses
+            AND (input_impact_statuses IS NULL
+                OR (it.impacted IS TRUE AND 'IMPACTED' = ANY(input_impact_statuses))
+                OR (it.impacted IS FALSE AND it.unknown_impact IS FALSE AND 'NOT_IMPACTED' = ANY(input_impact_statuses))
+                OR (it.unknown_impact IS TRUE AND 'UNKNOWN_IMPACT' = ANY(input_impact_statuses))
+            )
+        ;
+    END IF;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 

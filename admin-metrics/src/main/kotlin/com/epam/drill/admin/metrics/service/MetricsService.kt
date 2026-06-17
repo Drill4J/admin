@@ -133,6 +133,7 @@ interface MetricsService {
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         page: Int?,

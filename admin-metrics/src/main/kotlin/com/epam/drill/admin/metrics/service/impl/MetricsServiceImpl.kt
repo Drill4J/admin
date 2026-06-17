@@ -523,11 +523,12 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        impactStatuses: List<TestImpactStatus>,
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?,
+        freshAfter: Instant?
     ): PagedList<TestView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
@@ -549,7 +550,6 @@ class MetricsServiceImpl(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
-                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
@@ -560,6 +560,8 @@ class MetricsServiceImpl(
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                impactStatuses = impactStatuses,
 
                 sortBy = mappedSortBy,
                 sortOrder = sortOrder,
@@ -574,6 +576,7 @@ class MetricsServiceImpl(
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
+                    impactStatus = (data["impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
@@ -612,7 +615,6 @@ class MetricsServiceImpl(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
-                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
