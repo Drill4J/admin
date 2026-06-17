@@ -36,6 +36,16 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).isNotEmpty()
     }
 
+    override suspend fun getGroups(): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT group_id
+            FROM metrics.builds
+            ORDER BY group_id
+            """.trimIndent()
+        ).map { it["group_id"] as String }
+    }
+
     override suspend fun getApplications(groupId: String?): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(

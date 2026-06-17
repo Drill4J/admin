@@ -24,6 +24,8 @@ import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
 
 interface MetricsService {
+    suspend fun getGroups(): List<String>
+
     suspend fun getApplications(
         groupId: String? = null,
     ): List<ApplicationView>

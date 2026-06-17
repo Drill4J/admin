@@ -47,6 +47,10 @@ class MetricsServiceImpl(
 
     private val logger = KotlinLogging.logger {}
 
+    override suspend fun getGroups(): List<String> = transaction {
+        metricsRepository.getGroups()
+    }
+
     override suspend fun getApplications(groupId: String?): List<ApplicationView> {
         return transaction {
             metricsRepository.getApplications(groupId).map {

@@ -489,6 +489,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
   # Metrics Endpoints
+  /api/metrics/groups:
+    get:
+      summary: Get groups
+      description: |
+        Retrieves distinct group IDs that have metrics build data.
+      operationId: getGroups
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of group IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/applications:
     get:
       summary: Get applications

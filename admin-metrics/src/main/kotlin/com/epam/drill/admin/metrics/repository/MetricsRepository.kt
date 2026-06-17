@@ -23,6 +23,8 @@ interface MetricsRepository {
 
     suspend fun buildExists(buildId: String): Boolean
 
+    suspend fun getGroups(): List<String>
+
     suspend fun getApplications(groupId: String? = null): List<Map<String, Any?>>
 
     suspend fun getBuilds(

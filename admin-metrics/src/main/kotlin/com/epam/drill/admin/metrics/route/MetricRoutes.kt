@@ -47,6 +47,11 @@ private val logger = KotlinLogging.logger {}
 
 @Resource("/metrics")
 class Metrics {
+    @Resource("/groups")
+    class Groups(
+        val parent: Metrics,
+    )
+
     @Resource("/applications")
     class Applications(
         val parent: Metrics,
@@ -253,6 +258,7 @@ class Metrics {
 }
 
 fun Route.metricsRoutes() {
+    getGroups()
     getApplications()
     getBuilds()
     getBuildDiffReport()
@@ -265,6 +271,15 @@ fun Route.metricsRoutes() {
     postImpactedTests()
     getImpactedMethods()
     postImpactedMethods()
+}
+
+fun Route.getGroups() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Groups> {
+        val data = metricsService.getGroups()
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
 }
 
 fun Route.getApplications() {
