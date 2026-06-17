@@ -115,24 +115,6 @@ class Metrics(
         val coverageThreshold: Double = 0.0,
     )
 
-    @Resource("/recommended-tests")
-    class RecommendedTests(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val testsToSkip: Boolean = false,
-        val testTaskId: String? = null,
-        val targetInstanceId: String? = null,
-        val targetCommitSha: String? = null,
-        val targetBuildVersion: String? = null,
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-        val baselineBuildBranches: List<String> = emptyList(),
-        val coveragePeriodDays: Int? = null,
-    )
-
     @Resource("/changes")
     class Changes(
         val parent: Metrics,
@@ -257,7 +239,6 @@ fun Route.metricsRoutes() {
     getApplications()
     getBuilds()
     getBuildDiffReport()
-    getRecommendedTests()
     getCoverageTreemap()
     getChangesCoverageTreemap()
     getChanges()
@@ -360,28 +341,6 @@ fun Route.getBuildDiffReport() {
             baselineBuildVersion = params.baselineBuildVersion,
             coverageThreshold = params.coverageThreshold,
             freshAfter = params.parent.freshAfter.toInstant(),
-        )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
-    }
-}
-
-fun Route.getRecommendedTests() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.RecommendedTests> { params ->
-        val report = metricsService.getRecommendedTests(
-            groupId = params.groupId,
-            appId = params.appId,
-            testsToSkip = params.testsToSkip,
-            testTaskId = params.testTaskId,
-            coveragePeriodDays = params.coveragePeriodDays,
-            targetInstanceId = params.targetInstanceId,
-            targetCommitSha = params.targetCommitSha,
-            targetBuildVersion = params.targetBuildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            baselineBuildBranches = params.baselineBuildBranches,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
