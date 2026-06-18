@@ -475,7 +475,7 @@ class MetricsServiceImpl(
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
-                    impactStatus = (data["impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
+                    impactStatus = (data["impact_status"] as String).let { TestImpactStatus.valueOf(it) },
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }

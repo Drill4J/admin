@@ -27,6 +27,7 @@ import com.epam.drill.admin.common.config.Paging
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.metrics.views.TestView
 import io.ktor.http.*
 import io.ktor.resources.*
@@ -184,6 +185,8 @@ class Metrics(
 
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
+
+        val impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
 
         val sortBy: String? = null,
         val sortOrder: SortOrder? = null,
@@ -507,6 +510,7 @@ private suspend fun getImpactedTests(
             branches = params.coverageBranches,
             appEnvIds = params.coverageAppEnvIds,
         ),
+        impactStatuses = params.impactStatuses,
         sortBy = params.sortBy,
         sortOrder = params.sortOrder,
         page = params.page,

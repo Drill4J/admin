@@ -468,6 +468,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_runner,
                     test_tags,
                     test_metadata,
+                    impact_status,
                     impacted_methods                 
                 FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
