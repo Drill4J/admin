@@ -174,6 +174,39 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
             }
         }
 
+    @Test
+    fun `given groupId and appId, get app branches should return distinct branches for the app`() =
+        havingData {
+            initTestData()
+        }.expectThat {
+            client.get("/metrics/apps/branches") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<String>>("$.data")
+                assertEquals(listOf("develop", testBranch), data)
+            }
+        }
+
+    @Test
+    fun `given groupId and appId, get app env ids should return distinct env ids for the app`() =
+        havingData {
+            initTestData()
+            initEnvironmentData()
+        }.expectThat {
+            client.get("/metrics/apps/env-ids") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                val json = JsonPath.parse(bodyAsText())
+                val data = json.read<List<String>>("$.data")
+                assertEquals(listOf(testEnv, "env-2"), data)
+            }
+        }
+
     @AfterEach
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         BuildTable.deleteAll()

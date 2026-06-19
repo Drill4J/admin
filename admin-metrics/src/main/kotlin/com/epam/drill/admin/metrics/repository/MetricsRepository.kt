@@ -38,6 +38,10 @@ interface MetricsRepository {
         branch: String? = null, envId: String? = null
     ): Long
 
+    suspend fun getAppBranches(groupId: String, appId: String): List<String>
+
+    suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
+
     suspend fun getMethodsWithCoverage(
         buildId: String,
         coverageTestTag: String? = null,

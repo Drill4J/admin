@@ -97,6 +97,14 @@ class MetricsServiceImpl(
         }
     }
 
+    override suspend fun getAppBranches(groupId: String, appId: String): List<String> = transaction {
+        metricsRepository.getAppBranches(groupId, appId)
+    }
+
+    override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
+        metricsRepository.getAppEnvIds(groupId, appId)
+    }
+
 
     override suspend fun getCoverageTreemap(
         buildId: String,

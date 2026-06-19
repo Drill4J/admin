@@ -93,6 +93,32 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getAppBranches(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT branch
+            FROM metrics.builds
+            WHERE group_id = ? AND app_id = ?
+              AND branch IS NOT NULL AND branch <> ''
+            ORDER BY branch
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["branch"] as String }
+    }
+
+    override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT env_id
+            FROM metrics.builds b
+            CROSS JOIN LATERAL unnest(b.app_env_ids) AS env_id
+            WHERE b.group_id = ? AND b.app_id = ?
+            ORDER BY env_id
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["env_id"] as String }
+    }
+
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
         branch: String?, envId: String?

@@ -72,6 +72,22 @@ class Metrics {
         val pageSize: Int? = null
     )
 
+    @Resource("/apps/branches")
+    class AppBranches(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+    )
+
+    @Resource("/apps/env-ids")
+    class AppEnvIds(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+    )
+
     @Resource("/coverage-treemap")
     class CoverageTreemap(
         val parent: Metrics,
@@ -260,6 +276,8 @@ class Metrics {
 fun Route.metricsRoutes() {
     getGroups()
     getApplications()
+    getAppBranches()
+    getAppEnvIds()
     getBuilds()
     getBuildDiffReport()
     getRecommendedTests()
@@ -289,6 +307,24 @@ fun Route.getApplications() {
         val data = metricsService.getApplications(
             params.groupId,
         )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getAppBranches() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.AppBranches> { params ->
+        val data = metricsService.getAppBranches(params.groupId, params.appId)
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getAppEnvIds() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.AppEnvIds> { params ->
+        val data = metricsService.getAppEnvIds(params.groupId, params.appId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }

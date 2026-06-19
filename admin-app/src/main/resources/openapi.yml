@@ -530,6 +530,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/branches:
+    get:
+      summary: Get app branches
+      description: |
+        Retrieves distinct Git branch names for builds of the specified application.
+      operationId: getAppBranches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of branch names
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/env-ids:
+    get:
+      summary: Get app environment IDs
+      description: |
+        Retrieves distinct environment IDs from builds of the specified application.
+      operationId: getAppEnvIds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of environment IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/builds:
     get:
       summary: Get builds
