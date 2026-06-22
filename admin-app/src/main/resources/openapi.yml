@@ -636,6 +636,169 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}:
+    get:
+      summary: Get build details
+      operationId: getBuildById
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Build details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-probes:
+    get:
+      summary: Get build code coverage by probes
+      operationId: getBuildCoverageByProbes
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Probe coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-methods:
+    get:
+      summary: Get build code coverage by methods
+      operationId: getBuildCoverageByMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Method coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/changes-summary:
+    get:
+      summary: Get build changes summary
+      operationId: getBuildChangesSummary
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Change type counts vs baseline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/similar-builds:
+    get:
+      summary: Get similar builds for baseline selection
+      operationId: getSimilarBuilds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Similar builds ranked by identity ratio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}/test-session-stats:
+    get:
+      summary: Get test session stats for a build
+      operationId: getBuildTestSessionStats
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session and launch counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report

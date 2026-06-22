@@ -105,6 +105,107 @@ class MetricsServiceImpl(
         metricsRepository.getAppEnvIds(groupId, appId)
     }
 
+    override suspend fun getBuildDetail(buildId: String): BuildDetailView = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        val row = metricsRepository.getBuildDetail(buildId)
+            ?: throw BuildNotFound("Build info not found for $buildId")
+        mapToBuildDetailView(row)
+    }
+
+    override suspend fun getBuildCoverageByProbes(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): CoverageUnitSummaryView = transaction {
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envId, branch, testTag, CoverageUnit.PROBES)
+    }
+
+    override suspend fun getBuildCoverageByMethods(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): CoverageUnitSummaryView = transaction {
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envId, branch, testTag, CoverageUnit.METHODS)
+    }
+
+    private suspend fun getBuildCoverageUnitSummary(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+        unit: CoverageUnit,
+    ): CoverageUnitSummaryView {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        baselineBuildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.buildExists(it)) {
+                throw BuildNotFound("Baseline build info not found for $it")
+            }
+        }
+        val row = metricsRepository.getBuildCoverageSummary(
+            buildId, baselineBuildId, envId, branch, testTag
+        )
+        return CoverageUnitSummaryView(slices = mapToCoverageUnitSlices(row, unit))
+    }
+
+    private enum class CoverageUnit { PROBES, METHODS }
+
+    override suspend fun getChangesSummary(
+        buildId: String,
+        baselineBuildId: String,
+    ): ChangesSummaryView = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+        val row = metricsRepository.getChangesSummary(buildId, baselineBuildId)
+        ChangesSummaryView(
+            modifiedMethods = (row["modified_methods"] as? Number)?.toInt() ?: 0,
+            newMethods = (row["new_methods"] as? Number)?.toInt() ?: 0,
+            deletedMethods = (row["deleted_methods"] as? Number)?.toInt() ?: 0,
+        )
+    }
+
+    override suspend fun getSimilarBuilds(buildId: String): List<SimilarBuildView> = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        metricsRepository.getSimilarBuilds(buildId).map { row ->
+            val equalMethods = (row["target_equal_methods"] as? Number)?.toLong() ?: 0
+            val totalMethods = (row["target_total_methods"] as? Number)?.toLong() ?: 0
+            val identityRatio = (row["identity_ratio"] as? Number)?.toDouble() ?: 0.0
+            SimilarBuildView(
+                buildId = row["build_id"] as String,
+                versionId = row["version_id"] as? String,
+                buildVersion = row["build_version"] as? String,
+                branch = row["branch"] as? String,
+                identityRatio = identityRatio,
+                changesDescription = "$equalMethods / $totalMethods methods (${(identityRatio * 100).toInt()}%)",
+            )
+        }
+    }
+
+    override suspend fun getBuildTestSessionStats(buildId: String): BuildTestSessionStatsView = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        val row = metricsRepository.getBuildTestSessionStats(buildId)
+        BuildTestSessionStatsView(
+            sessionCount = (row["session_count"] as? Number)?.toInt() ?: 0,
+            testRunCount = (row["test_run_count"] as? Number)?.toInt() ?: 0,
+        )
+    }
+
 
     override suspend fun getCoverageTreemap(
         buildId: String,
@@ -566,6 +667,8 @@ class MetricsServiceImpl(
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
+        } withTotal {
+            metricsRepository.getImpactedTestsCount(targetBuildId, baselineBuildId)
         }
     }
 
@@ -621,7 +724,61 @@ class MetricsServiceImpl(
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
+        } withTotal {
+            metricsRepository.getImpactedMethodsCount(targetBuildId, baselineBuildId)
         }
+    }
+
+    private fun mapToBuildDetailView(row: Map<String, Any?>): BuildDetailView = BuildDetailView(
+        groupId = row["group_id"] as String,
+        appId = row["app_id"] as String,
+        buildId = row["build_id"] as String,
+        versionId = row["version_id"] as? String,
+        buildVersion = row["build_version"] as? String,
+        branch = row["branch"] as? String,
+        commitSha = row["commit_sha"] as? String,
+        commitAuthor = row["commit_author"] as? String,
+        commitMessage = row["commit_message"] as? String,
+        committedAt = (row["committed_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+        appEnvIds = (row["app_env_ids"] as List<String>?) ?: emptyList(),
+        totalClasses = (row["total_classes"] as? Number)?.toInt() ?: 0,
+        totalMethods = (row["total_methods"] as? Number)?.toInt() ?: 0,
+        totalProbes = (row["total_probes"] as? Number)?.toInt() ?: 0,
+    )
+
+    private fun mapToCoverageUnitSlices(
+        row: Map<String, Any?>?,
+        unit: CoverageUnit,
+    ): List<CoverageUnitSliceView> {
+        if (row == null) {
+            return coverageUnitSlices(0, 0, 0)
+        }
+        return when (unit) {
+            CoverageUnit.PROBES -> coverageUnitSlices(
+                total = (row["total_probes"] as? Number)?.toInt() ?: 0,
+                isolatedCovered = (row["isolated_covered_probes"] as? Number)?.toInt() ?: 0,
+                aggregatedCovered = (row["aggregated_covered_probes"] as? Number)?.toInt() ?: 0,
+            )
+            CoverageUnit.METHODS -> coverageUnitSlices(
+                total = (row["total_methods"] as? Number)?.toInt() ?: 0,
+                isolatedCovered = (row["isolated_tested_methods"] as? Number)?.toInt() ?: 0,
+                aggregatedCovered = (row["aggregated_tested_methods"] as? Number)?.toInt() ?: 0,
+            )
+        }
+    }
+
+    private fun coverageUnitSlices(
+        total: Int,
+        isolatedCovered: Int,
+        aggregatedCovered: Int,
+    ): List<CoverageUnitSliceView> {
+        val coveredInOtherBuilds = (aggregatedCovered - isolatedCovered).coerceAtLeast(0)
+        val gaps = (total - aggregatedCovered).coerceAtLeast(0)
+        return listOf(
+            CoverageUnitSliceView(metric = "covered", value = isolatedCovered),
+            CoverageUnitSliceView(metric = "covered_in_other_builds", value = coveredInOtherBuilds),
+            CoverageUnitSliceView(metric = "gaps", value = gaps),
+        )
     }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(

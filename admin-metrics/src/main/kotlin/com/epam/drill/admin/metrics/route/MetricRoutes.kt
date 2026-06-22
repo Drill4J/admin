@@ -72,6 +72,46 @@ class Metrics {
         val pageSize: Int? = null
     )
 
+    @Resource("/builds/{buildId}")
+    class BuildById(
+        val parent: Metrics = Metrics(),
+        val buildId: String,
+    ) {
+        @Resource("coverage-by-probes")
+        class CoverageByProbes(
+            val parent: BuildById,
+            val baselineBuildId: String? = null,
+            val envId: String? = null,
+            val branch: String? = null,
+            val testTag: String? = null,
+        )
+
+        @Resource("coverage-by-methods")
+        class CoverageByMethods(
+            val parent: BuildById,
+            val baselineBuildId: String? = null,
+            val envId: String? = null,
+            val branch: String? = null,
+            val testTag: String? = null,
+        )
+
+        @Resource("changes-summary")
+        class ChangesSummary(
+            val parent: BuildById,
+            val baselineBuildId: String,
+        )
+
+        @Resource("similar-builds")
+        class SimilarBuilds(
+            val parent: BuildById,
+        )
+
+        @Resource("test-session-stats")
+        class TestSessionStats(
+            val parent: BuildById,
+        )
+    }
+
     @Resource("/apps/branches")
     class AppBranches(
         val parent: Metrics,
@@ -279,6 +319,12 @@ fun Route.metricsRoutes() {
     getAppBranches()
     getAppEnvIds()
     getBuilds()
+    getBuildById()
+    getBuildCoverageByProbes()
+    getBuildCoverageByMethods()
+    getBuildChangesSummary()
+    getSimilarBuilds()
+    getBuildTestSessionStats()
     getBuildDiffReport()
     getRecommendedTests()
     getCoverageTreemap()
@@ -348,6 +394,75 @@ fun Route.getBuilds() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
+    }
+}
+
+fun Route.getBuildById() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById> { params ->
+        val data = metricsService.getBuildDetail(params.buildId)
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getBuildCoverageByProbes() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.CoverageByProbes> { params ->
+        val data = metricsService.getBuildCoverageByProbes(
+            buildId = params.parent.buildId,
+            baselineBuildId = params.baselineBuildId,
+            envId = params.envId,
+            branch = params.branch,
+            testTag = params.testTag,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getBuildCoverageByMethods() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.CoverageByMethods> { params ->
+        val data = metricsService.getBuildCoverageByMethods(
+            buildId = params.parent.buildId,
+            baselineBuildId = params.baselineBuildId,
+            envId = params.envId,
+            branch = params.branch,
+            testTag = params.testTag,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getBuildChangesSummary() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.ChangesSummary> { params ->
+        val data = metricsService.getChangesSummary(
+            buildId = params.parent.buildId,
+            baselineBuildId = params.baselineBuildId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getSimilarBuilds() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.SimilarBuilds> { params ->
+        val data = metricsService.getSimilarBuilds(params.parent.buildId)
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getBuildTestSessionStats() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.TestSessionStats> { params ->
+        val data = metricsService.getBuildTestSessionStats(params.parent.buildId)
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 

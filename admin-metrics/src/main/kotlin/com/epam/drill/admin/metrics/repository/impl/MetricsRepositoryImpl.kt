@@ -119,6 +119,126 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).map { it["env_id"] as String }
     }
 
+    override suspend fun getBuildDetail(buildId: String): Map<String, Any?>? = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                group_id,
+                app_id,
+                build_id,
+                version_id,
+                build_version,
+                branch,
+                commit_sha,
+                commit_author,
+                commit_message,
+                committed_at,
+                app_env_ids,
+                total_classes,
+                total_methods,
+                total_probes
+            FROM metrics.builds_with_statistics
+            WHERE build_id = ?
+            """.trimIndent(),
+            buildId
+        ).firstOrNull()
+    }
+
+    override suspend fun getBuildCoverageSummary(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): Map<String, Any?>? = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT
+                    total_probes,
+                    isolated_covered_probes,
+                    aggregated_covered_probes,
+                    total_methods,
+                    isolated_tested_methods,
+                    aggregated_tested_methods
+                FROM metrics.get_builds_with_coverage(
+                    input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_baseline_build_id => ?", baselineBuildId)
+            appendOptional(", input_coverage_app_env_ids => ?", envId?.takeIf { it.isNotBlank() }?.let { listOf(it) })
+            appendOptional(", input_coverage_branches => ?", branch?.takeIf { it.isNotBlank() }?.let { listOf(it) })
+            appendOptional(", input_coverage_test_tags => ?", testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) })
+            append("\n)")
+        }.firstOrNull()
+    }
+
+    override suspend fun getChangesSummary(
+        buildId: String,
+        baselineBuildId: String,
+    ): Map<String, Any?> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                COUNT(CASE WHEN change_type = 'modified' THEN 1 END) AS modified_methods,
+                COUNT(CASE WHEN change_type = 'new' THEN 1 END) AS new_methods,
+                COUNT(CASE WHEN change_type = 'deleted' THEN 1 END) AS deleted_methods
+            FROM metrics.get_changes(
+                input_build_id => ?,
+                input_baseline_build_id => ?,
+                include_deleted => true
+            )
+            """.trimIndent(),
+            buildId,
+            baselineBuildId
+        ).firstOrNull() ?: mapOf(
+            "modified_methods" to 0,
+            "new_methods" to 0,
+            "deleted_methods" to 0
+        )
+    }
+
+    override suspend fun getSimilarBuilds(buildId: String): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                sb.build_id,
+                b.version_id,
+                b.build_version,
+                b.branch,
+                sb.identity_ratio,
+                sb.target_equal_methods,
+                sb.target_total_methods
+            FROM metrics.get_similar_builds(input_build_id => ?) sb
+            JOIN metrics.builds b
+                ON b.group_id = sb.group_id
+                AND b.app_id = sb.app_id
+                AND b.build_id = sb.build_id
+            ORDER BY sb.identity_ratio DESC, b.committed_at DESC NULLS LAST
+            """.trimIndent(),
+            buildId
+        )
+    }
+
+    override suspend fun getBuildTestSessionStats(buildId: String): Map<String, Any?> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                COUNT(DISTINCT tsb.test_session_id) AS session_count,
+                COUNT(tl.test_launch_id) AS test_run_count
+            FROM metrics.test_session_builds tsb
+            LEFT JOIN metrics.test_launches tl
+                ON tl.group_id = tsb.group_id
+                AND tl.test_session_id = tsb.test_session_id
+            WHERE tsb.build_id = ?
+            """.trimIndent(),
+            buildId
+        ).firstOrNull() ?: mapOf(
+            "session_count" to 0,
+            "test_run_count" to 0
+        )
+    }
+
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
         branch: String?, envId: String?
@@ -611,6 +731,24 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getImpactedTestsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long = transaction {
+        val result = executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_impacted_tests_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?
+            )
+            """.trimIndent(),
+            targetBuildId,
+            baselineBuildId
+        )
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+    }
+
     override suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
@@ -676,6 +814,24 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getImpactedMethodsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long = transaction {
+        val result = executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_impacted_methods_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?
+            )
+            """.trimIndent(),
+            targetBuildId,
+            baselineBuildId
+        )
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {

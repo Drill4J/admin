@@ -43,6 +43,33 @@ interface MetricsService {
 
     suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
 
+    suspend fun getBuildDetail(buildId: String): BuildDetailView
+
+    suspend fun getBuildCoverageByProbes(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): CoverageUnitSummaryView
+
+    suspend fun getBuildCoverageByMethods(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): CoverageUnitSummaryView
+
+    suspend fun getChangesSummary(
+        buildId: String,
+        baselineBuildId: String,
+    ): ChangesSummaryView
+
+    suspend fun getSimilarBuilds(buildId: String): List<SimilarBuildView>
+
+    suspend fun getBuildTestSessionStats(buildId: String): BuildTestSessionStatsView
+
     suspend fun getCoverageTreemap(
         buildId: String,
         testTag: String?,

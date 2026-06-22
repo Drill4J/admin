@@ -42,6 +42,25 @@ interface MetricsRepository {
 
     suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
 
+    suspend fun getBuildDetail(buildId: String): Map<String, Any?>?
+
+    suspend fun getBuildCoverageSummary(
+        buildId: String,
+        baselineBuildId: String?,
+        envId: String?,
+        branch: String?,
+        testTag: String?,
+    ): Map<String, Any?>?
+
+    suspend fun getChangesSummary(
+        buildId: String,
+        baselineBuildId: String,
+    ): Map<String, Any?>
+
+    suspend fun getSimilarBuilds(buildId: String): List<Map<String, Any?>>
+
+    suspend fun getBuildTestSessionStats(buildId: String): Map<String, Any?>
+
     suspend fun getMethodsWithCoverage(
         buildId: String,
         coverageTestTag: String? = null,
@@ -150,6 +169,11 @@ interface MetricsRepository {
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
+    suspend fun getImpactedTestsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long
+
     suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
@@ -171,6 +195,11 @@ interface MetricsRepository {
 
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
+
+    suspend fun getImpactedMethodsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long
 
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)
