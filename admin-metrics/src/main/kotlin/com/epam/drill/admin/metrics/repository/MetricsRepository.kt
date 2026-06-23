@@ -96,6 +96,21 @@ interface MetricsRepository {
         classNamePattern: String? = null,
     ): Long
 
+    suspend fun getPackageCoverage(
+        buildId: String,
+        coverageTestTag: String? = null,
+        coverageEnvId: String? = null,
+        coverageBranch: String? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getClassCoverage(
+        buildId: String,
+        packageName: String? = null,
+        coverageTestTag: String? = null,
+        coverageEnvId: String? = null,
+        coverageBranch: String? = null,
+    ): List<Map<String, Any?>>
+
     suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,

@@ -568,8 +568,9 @@ class MetricsServiceImpl(
     }
 
     override suspend fun getCoverage(
-        groupId: String,
-        appId: String,
+        buildId: String?,
+        groupId: String?,
+        appId: String?,
         instanceId: String?,
         commitSha: String?,
         buildVersion: String?,
@@ -581,28 +582,72 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
-        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
-        if (!metricsRepository.buildExists(buildId)) {
-            throw BuildNotFound("Build info not found for $buildId")
+        val resolvedBuildId = buildId?.takeIf { it.isNotBlank() }
+            ?: generateBuildId(groupId!!, appId!!, instanceId, commitSha, buildVersion)
+        if (!metricsRepository.buildExists(resolvedBuildId)) {
+            throw BuildNotFound("Build info not found for $resolvedBuildId")
         }
+
+        val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
+        val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
 
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
-                buildId = buildId,
-                coverageTestTag = testTag,
-                coverageEnvId = envId,
-                coverageBranch = branch,
-                packageName = packageNamePattern,
-                className = classNamePattern,
+                buildId = resolvedBuildId,
+                coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+                coverageEnvId = envId?.takeIf { it.isNotBlank() },
+                coverageBranch = branch?.takeIf { it.isNotBlank() },
+                packageName = packageFilter,
+                className = classFilter,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getMethodsCount(buildId = buildId)
+            metricsRepository.getMethodsCount(
+                buildId = resolvedBuildId,
+                packageNamePattern = packageFilter,
+                classNamePattern = classFilter,
+            )
         }
+    }
+
+    override suspend fun getCoverageByPackage(
+        buildId: String,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+    ): List<PackageCoverageView> = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        metricsRepository.getPackageCoverage(
+            buildId = buildId,
+            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId = envId?.takeIf { it.isNotBlank() },
+            coverageBranch = branch?.takeIf { it.isNotBlank() },
+        ).map(::mapToPackageCoverageView)
+    }
+
+    override suspend fun getCoverageByClass(
+        buildId: String,
+        packageName: String?,
+        testTag: String?,
+        envId: String?,
+        branch: String?,
+    ): List<ClassCoverageView> = transaction {
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+        metricsRepository.getClassCoverage(
+            buildId = buildId,
+            packageName = packageName?.takeIf { it.isNotBlank() },
+            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
+            coverageEnvId = envId?.takeIf { it.isNotBlank() },
+            coverageBranch = branch?.takeIf { it.isNotBlank() },
+        ).map(::mapToClassCoverageView)
     }
 
     override suspend fun getImpactedTests(
@@ -780,6 +825,45 @@ class MetricsServiceImpl(
             CoverageUnitSliceView(metric = "gaps", value = gaps),
         )
     }
+
+    private fun mapToPackageCoverageView(row: Map<String, Any?>): PackageCoverageView {
+        val methodsCount = (row["methods_count"] as? Number)?.toInt() ?: 0
+        val coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0
+        val probesCount = (row["probes_count"] as? Number)?.toInt() ?: 0
+        val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
+        return PackageCoverageView(
+            packageName = row["package_name"] as? String ?: "",
+            methodsCount = methodsCount,
+            coveredMethods = coveredMethods,
+            missedMethods = (row["missed_methods"] as? Number)?.toInt() ?: 0,
+            probesCount = probesCount,
+            coveredProbes = coveredProbes,
+            missedProbes = (row["missed_probes"] as? Number)?.toInt() ?: 0,
+            probesCoverageRatio = coverageRatio(coveredProbes, probesCount),
+            methodsCoverageRatio = coverageRatio(coveredMethods, methodsCount),
+        )
+    }
+
+    private fun mapToClassCoverageView(row: Map<String, Any?>): ClassCoverageView {
+        val methodsCount = (row["methods_count"] as? Number)?.toInt() ?: 0
+        val coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0
+        val probesCount = (row["probes_count"] as? Number)?.toInt() ?: 0
+        val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
+        return ClassCoverageView(
+            className = row["class_name"] as String,
+            methodsCount = methodsCount,
+            coveredMethods = coveredMethods,
+            missedMethods = (row["missed_methods"] as? Number)?.toInt() ?: 0,
+            probesCount = probesCount,
+            coveredProbes = coveredProbes,
+            missedProbes = (row["missed_probes"] as? Number)?.toInt() ?: 0,
+            probesCoverageRatio = coverageRatio(coveredProbes, probesCount),
+            methodsCoverageRatio = coverageRatio(coveredMethods, methodsCount),
+        )
+    }
+
+    private fun coverageRatio(covered: Int, total: Int): Double =
+        if (total > 0) covered.toDouble() / total else 0.0
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         signature = resultSet["signature"] as String,

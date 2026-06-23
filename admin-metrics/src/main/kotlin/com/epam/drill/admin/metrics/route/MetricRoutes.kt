@@ -217,8 +217,9 @@ class Metrics {
     class Coverage(
         val parent: Metrics,
 
-        val groupId: String,
-        val appId: String,
+        val buildId: String? = null,
+        val groupId: String? = null,
+        val appId: String? = null,
         val instanceId: String? = null,
         val commitSha: String? = null,
         val buildVersion: String? = null,
@@ -230,6 +231,27 @@ class Metrics {
 
         val page: Int? = null,
         val pageSize: Int? = null
+    )
+
+    @Resource("/coverage/by-package")
+    class CoverageByPackage(
+        val parent: Metrics,
+
+        val buildId: String,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
+    )
+
+    @Resource("/coverage/by-class")
+    class CoverageByClass(
+        val parent: Metrics,
+
+        val buildId: String,
+        val packageName: String? = null,
+        val testTag: String? = null,
+        val envId: String? = null,
+        val branch: String? = null,
     )
 
     @Resource("/impacted-tests")
@@ -331,6 +353,8 @@ fun Route.metricsRoutes() {
     getChangesCoverageTreemap()
     getChanges()
     getCoverage()
+    getCoverageByPackage()
+    getCoverageByClass()
     getImpactedTests()
     postImpactedTests()
     getImpactedMethods()
@@ -579,6 +603,7 @@ fun Route.getCoverage() {
 
     get<Metrics.Coverage> { params ->
         val data = metricsService.getCoverage(
+            buildId = params.buildId,
             groupId = params.groupId,
             appId = params.appId,
             instanceId = params.instanceId,
@@ -599,6 +624,35 @@ fun Route.getCoverage() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
+    }
+}
+
+fun Route.getCoverageByPackage() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.CoverageByPackage> { params ->
+        val data = metricsService.getCoverageByPackage(
+            buildId = params.buildId,
+            testTag = params.testTag,
+            envId = params.envId,
+            branch = params.branch,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getCoverageByClass() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.CoverageByClass> { params ->
+        val data = metricsService.getCoverageByClass(
+            buildId = params.buildId,
+            packageName = params.packageName,
+            testTag = params.testTag,
+            envId = params.envId,
+            branch = params.branch,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 

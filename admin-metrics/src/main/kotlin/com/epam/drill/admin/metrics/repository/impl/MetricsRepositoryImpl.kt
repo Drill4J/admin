@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.repository.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
+import com.epam.drill.admin.metrics.config.SqlBuilder
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.models.SortOrder
@@ -429,6 +430,78 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getPackageCoverage(
+        buildId: String,
+        coverageTestTag: String?,
+        coverageEnvId: String?,
+        coverageBranch: String?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT
+                    package_name,
+                    COUNT(*)::INT AS methods_count,
+                    COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                    (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
+                    COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                    COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                    (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
+                FROM (
+                    SELECT
+                        $PACKAGE_NAME_SQL AS package_name,
+                        probes_count,
+                        isolated_covered_probes
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendCoverageFilterParams(coverageTestTag, coverageEnvId, coverageBranch)
+            append(
+                """
+                    )
+                ) methods_with_package
+                GROUP BY package_name
+                ORDER BY package_name
+                """.trimIndent()
+            )
+        }
+    }
+
+    override suspend fun getClassCoverage(
+        buildId: String,
+        packageName: String?,
+        coverageTestTag: String?,
+        coverageEnvId: String?,
+        coverageBranch: String?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT
+                    class_name,
+                    COUNT(*)::INT AS methods_count,
+                    COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                    (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
+                    COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                    COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                    (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
+                FROM metrics.get_methods_with_coverage(
+                    input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendCoverageFilterParams(coverageTestTag, coverageEnvId, coverageBranch)
+            append(
+                """
+                )
+                GROUP BY class_name
+                ORDER BY class_name
+                """.trimIndent()
+            )
         }
     }
 
@@ -1103,3 +1176,22 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 }
+
+private fun SqlBuilder.appendCoverageFilterParams(
+    coverageTestTag: String?,
+    coverageEnvId: String?,
+    coverageBranch: String?,
+) {
+    appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { listOf(it) }
+    appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
+    appendOptional(", input_coverage_branches => ?", coverageBranch) { listOf(it) }
+}
+
+// Drill stores class names with "/" package separators (same as treemap builder).
+private const val PACKAGE_NAME_SQL = """
+    CASE
+        WHEN POSITION('/' IN class_name) > 0 THEN
+            REVERSE(SUBSTRING(REVERSE(class_name) FROM POSITION('/' IN REVERSE(class_name)) + 1))
+        ELSE ''
+    END
+"""

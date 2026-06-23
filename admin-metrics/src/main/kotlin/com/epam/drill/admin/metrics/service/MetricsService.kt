@@ -138,19 +138,35 @@ interface MetricsService {
     ): PagedList<MethodView>
 
     suspend fun getCoverage(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        page: Int?,
-        pageSize: Int?
+        buildId: String? = null,
+        groupId: String? = null,
+        appId: String? = null,
+        instanceId: String? = null,
+        commitSha: String? = null,
+        buildVersion: String? = null,
+        testTag: String? = null,
+        envId: String? = null,
+        branch: String? = null,
+        packageNamePattern: String? = null,
+        classNamePattern: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null
     ): PagedList<MethodView>
+
+    suspend fun getCoverageByPackage(
+        buildId: String,
+        testTag: String? = null,
+        envId: String? = null,
+        branch: String? = null,
+    ): List<PackageCoverageView>
+
+    suspend fun getCoverageByClass(
+        buildId: String,
+        packageName: String? = null,
+        testTag: String? = null,
+        envId: String? = null,
+        branch: String? = null,
+    ): List<ClassCoverageView>
 
     suspend fun getImpactedTests(
         build: Build,

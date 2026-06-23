@@ -1200,8 +1200,27 @@ paths:
       parameters:
         - name: buildId
           in: query
-          required: true
-          description: Internal build identifier for which to retrieve method-level coverage data.
+          description: Internal build identifier. When omitted, groupId, appId, and one of instanceId/commitSha/buildVersion are required.
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+        - name: appId
+          in: query
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
           schema:
             type: string
         - name: testTag
@@ -1219,14 +1238,14 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
-        - name: packageNamePattern
+        - name: packageName
           in: query
-          description: Optional package name pattern filter for narrowing results to specific packages.
+          description: Optional package name filter for narrowing results to specific packages.
           schema:
             type: string
-        - name: classNamePattern
+        - name: className
           in: query
-          description: Optional class name pattern filter for narrowing results to specific classes.
+          description: Optional class name filter for narrowing results to specific classes.
           schema:
             type: string
         - name: page
@@ -1246,6 +1265,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/coverage/by-package:
+    get:
+      summary: Get aggregated package coverage for a build
+      operationId: getCoverageByPackage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Package coverage aggregates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/coverage/by-class:
+    get:
+      summary: Get aggregated class coverage for a build
+      operationId: getCoverageByClass
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Class coverage aggregates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/impacted-tests:
     get:
       summary: Get impacted tests
