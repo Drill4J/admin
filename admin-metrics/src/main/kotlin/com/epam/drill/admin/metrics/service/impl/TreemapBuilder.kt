@@ -164,16 +164,24 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
         computeAggregates(root)
     }
 
-    // Step 5: Flatten
-    return collapsedNodeMap.values.map {
-        mapOf(
-            "name" to it["name"],
-            "full_name" to it["full_name"],
-            "parent" to it["parent"],
-            "probes_count" to it["probes_count"],
-            "covered_probes" to it["covered_probes"],
-            "params" to it["params"],
-            "return_type" to it["return_type"]
+    fun serializeNode(path: String): Map<String, Any?> {
+        val node = collapsedNodeMap.getValue(path)
+        val children = (node["children"] as Set<String>)
+            .map { serializeNode(it) }
+            .sortedBy { it["name"] as String }
+
+        return mapOf(
+            "name" to node["name"],
+            "full_name" to node["full_name"],
+            "probes_count" to node["probes_count"],
+            "covered_probes" to node["covered_probes"],
+            "params" to node["params"],
+            "return_type" to node["return_type"],
+            "children" to children,
         )
     }
+
+    return newRoots
+        .map { serializeNode(it) }
+        .sortedBy { it["name"] as String }
 }
