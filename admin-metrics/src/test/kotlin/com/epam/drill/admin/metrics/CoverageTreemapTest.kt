@@ -252,20 +252,20 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
                 parameter("testSessionId", session1.id)
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId + testDefinitionId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
         }
     }

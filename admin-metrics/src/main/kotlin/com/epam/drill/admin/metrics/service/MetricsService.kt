@@ -33,8 +33,8 @@ interface MetricsService {
     suspend fun getBuilds(
         groupId: String,
         appId: String,
-        branch: String?,
-        envId: String?,
+        branches: List<String>,
+        envIds: List<String>,
         page: Int?,
         pageSize: Int?
     ): PagedList<BuildView>
@@ -43,22 +43,24 @@ interface MetricsService {
 
     suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
 
+    suspend fun getAppTestTags(groupId: String, appId: String): List<String>
+
     suspend fun getBuildDetail(buildId: String): BuildDetailView
 
     suspend fun getBuildCoverageByProbes(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): CoverageUnitSummaryView
 
     suspend fun getBuildCoverageByMethods(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): CoverageUnitSummaryView
 
     suspend fun getChangesSummary(
@@ -72,9 +74,9 @@ interface MetricsService {
 
     suspend fun getCoverageTreemap(
         buildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -85,9 +87,9 @@ interface MetricsService {
     suspend fun getChangesCoverageTreemap(
         buildId: String,
         baselineBuildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -144,9 +146,9 @@ interface MetricsService {
         instanceId: String? = null,
         commitSha: String? = null,
         buildVersion: String? = null,
-        testTag: String? = null,
-        envId: String? = null,
-        branch: String? = null,
+        testTags: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
         packageNamePattern: String? = null,
         classNamePattern: String? = null,
         page: Int? = null,
@@ -155,17 +157,17 @@ interface MetricsService {
 
     suspend fun getCoverageByPackage(
         buildId: String,
-        testTag: String? = null,
-        envId: String? = null,
-        branch: String? = null,
+        testTags: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
     ): List<PackageCoverageView>
 
     suspend fun getCoverageByClass(
         buildId: String,
         packageName: String? = null,
-        testTag: String? = null,
-        envId: String? = null,
-        branch: String? = null,
+        testTags: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
     ): List<ClassCoverageView>
 
     suspend fun getImpactedTests(

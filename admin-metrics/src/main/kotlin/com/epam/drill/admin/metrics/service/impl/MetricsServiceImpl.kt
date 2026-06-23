@@ -65,15 +65,15 @@ class MetricsServiceImpl(
     override suspend fun getBuilds(
         groupId: String,
         appId: String,
-        branch: String?,
-        envId: String?,
+        branches: List<String>,
+        envIds: List<String>,
         page: Int?,
         pageSize: Int?
     ): PagedList<BuildView> = transaction {
         pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
-                branch, envId,
+                branches, envIds,
                 offset, limit
             ).map {
                 BuildView(
@@ -92,7 +92,7 @@ class MetricsServiceImpl(
         } withTotal {
             metricsRepository.getBuildsCount(
                 groupId, appId,
-                branch, envId
+                branches, envIds
             )
         }
     }
@@ -103,6 +103,10 @@ class MetricsServiceImpl(
 
     override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
         metricsRepository.getAppEnvIds(groupId, appId)
+    }
+
+    override suspend fun getAppTestTags(groupId: String, appId: String): List<String> = transaction {
+        metricsRepository.getAppTestTags(groupId, appId)
     }
 
     override suspend fun getBuildDetail(buildId: String): BuildDetailView = transaction {
@@ -117,29 +121,29 @@ class MetricsServiceImpl(
     override suspend fun getBuildCoverageByProbes(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): CoverageUnitSummaryView = transaction {
-        getBuildCoverageUnitSummary(buildId, baselineBuildId, envId, branch, testTag, CoverageUnit.PROBES)
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, CoverageUnit.PROBES)
     }
 
     override suspend fun getBuildCoverageByMethods(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): CoverageUnitSummaryView = transaction {
-        getBuildCoverageUnitSummary(buildId, baselineBuildId, envId, branch, testTag, CoverageUnit.METHODS)
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, CoverageUnit.METHODS)
     }
 
     private suspend fun getBuildCoverageUnitSummary(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
         unit: CoverageUnit,
     ): CoverageUnitSummaryView {
         if (!metricsRepository.buildExists(buildId)) {
@@ -151,7 +155,7 @@ class MetricsServiceImpl(
             }
         }
         val row = metricsRepository.getBuildCoverageSummary(
-            buildId, baselineBuildId, envId, branch, testTag
+            buildId, baselineBuildId, envIds, branches, testTags
         )
         return CoverageUnitSummaryView(slices = mapToCoverageUnitSlices(row, unit))
     }
@@ -209,9 +213,9 @@ class MetricsServiceImpl(
 
     override suspend fun getCoverageTreemap(
         buildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -236,7 +240,7 @@ class MetricsServiceImpl(
                     testDefinitionId = testDefinitionId,
                     packageNamePattern = methodCriteria.packageNamePattern,
                     methodSignaturePattern = methodCriteria.signaturePattern,
-                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                    coverageAppEnvIds = envIds,
                 )
             }
             testSessionId != null -> {
@@ -245,16 +249,16 @@ class MetricsServiceImpl(
                     testSessionId = testSessionId,
                     packageNamePattern = methodCriteria.packageNamePattern,
                     methodSignaturePattern = methodCriteria.signaturePattern,
-                    coverageAppEnvIds = envId?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
-                    testTags = testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList(),
+                    coverageAppEnvIds = envIds,
+                    testTags = testTags,
                 )
             }
             else -> {
                 metricsRepository.getMethodsWithCoverage(
                     buildId = buildId,
-                    coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-                    coverageEnvId = envId?.takeIf { it.isNotBlank() },
-                    coverageBranch = branch?.takeIf { it.isNotBlank() },
+                    coverageTestTags = testTags,
+                    coverageAppEnvIds = envIds,
+                    coverageBranches = branches,
                     packageName = packageNamePattern?.takeIf { it.isNotBlank() },
                     className = classNamePattern?.takeIf { it.isNotBlank() }
                 )
@@ -267,9 +271,9 @@ class MetricsServiceImpl(
     override suspend fun getChangesCoverageTreemap(
         buildId: String,
         baselineBuildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -288,9 +292,9 @@ class MetricsServiceImpl(
         val data = metricsRepository.getChangesWithCoverage(
             buildId = buildId,
             baselineBuildId = baselineBuildId,
-            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-            coverageEnvId = envId?.takeIf { it.isNotBlank() },
-            coverageBranch = branch?.takeIf { it.isNotBlank() },
+            coverageTestTags = testTags,
+            coverageAppEnvIds = envIds,
+            coverageBranches = branches,
             packageName = packageNamePattern?.takeIf { it.isNotBlank() },
             className = classNamePattern?.takeIf { it.isNotBlank() },
             includeDeleted = includeDeleted?.takeIf { it },
@@ -574,9 +578,9 @@ class MetricsServiceImpl(
         instanceId: String?,
         commitSha: String?,
         buildVersion: String?,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         page: Int?,
@@ -597,9 +601,9 @@ class MetricsServiceImpl(
         ) { offset, limit ->
             metricsRepository.getMethodsWithCoverage(
                 buildId = resolvedBuildId,
-                coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-                coverageEnvId = envId?.takeIf { it.isNotBlank() },
-                coverageBranch = branch?.takeIf { it.isNotBlank() },
+                coverageTestTags = testTags,
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
                 packageName = packageFilter,
                 className = classFilter,
                 offset = offset,
@@ -616,27 +620,27 @@ class MetricsServiceImpl(
 
     override suspend fun getCoverageByPackage(
         buildId: String,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
     ): List<PackageCoverageView> = transaction {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
         metricsRepository.getPackageCoverage(
             buildId = buildId,
-            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-            coverageEnvId = envId?.takeIf { it.isNotBlank() },
-            coverageBranch = branch?.takeIf { it.isNotBlank() },
+            coverageTestTags = testTags,
+            coverageAppEnvIds = envIds,
+            coverageBranches = branches,
         ).map(::mapToPackageCoverageView)
     }
 
     override suspend fun getCoverageByClass(
         buildId: String,
         packageName: String?,
-        testTag: String?,
-        envId: String?,
-        branch: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
     ): List<ClassCoverageView> = transaction {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -644,9 +648,9 @@ class MetricsServiceImpl(
         metricsRepository.getClassCoverage(
             buildId = buildId,
             packageName = packageName?.takeIf { it.isNotBlank() },
-            coverageTestTag = testTag?.takeIf { it.isNotBlank() },
-            coverageEnvId = envId?.takeIf { it.isNotBlank() },
-            coverageBranch = branch?.takeIf { it.isNotBlank() },
+            coverageTestTags = testTags,
+            coverageAppEnvIds = envIds,
+            coverageBranches = branches,
         ).map(::mapToClassCoverageView)
     }
 

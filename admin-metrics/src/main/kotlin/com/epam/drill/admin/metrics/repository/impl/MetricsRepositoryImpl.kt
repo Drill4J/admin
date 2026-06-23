@@ -63,7 +63,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuilds(
         groupId: String, appId: String,
-        branch: String?, envId: String?,
+        branches: List<String>, envIds: List<String>,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
@@ -86,8 +86,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE b.group_id = ? AND b.app_id = ?
             """.trimIndent(), groupId, appId
             )
-            appendOptional(" AND b.branch = ?", branch)
-            appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
             append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
@@ -120,6 +120,29 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).map { it["env_id"] as String }
     }
 
+    override suspend fun getAppTestTags(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT tag AS test_tag
+            FROM metrics.test_definitions td
+            JOIN metrics.test_launches tl
+                ON tl.group_id = td.group_id
+                AND tl.test_definition_id = td.test_definition_id
+            JOIN metrics.test_session_builds tsb
+                ON tsb.group_id = tl.group_id
+                AND tsb.test_session_id = tl.test_session_id
+            JOIN metrics.builds b
+                ON b.group_id = tsb.group_id
+                AND b.build_id = tsb.build_id
+            CROSS JOIN LATERAL unnest(td.test_tags) AS tag
+            WHERE b.group_id = ? AND b.app_id = ?
+              AND tag IS NOT NULL AND tag <> ''
+            ORDER BY tag
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["test_tag"] as String }
+    }
+
     override suspend fun getBuildDetail(buildId: String): Map<String, Any?>? = transaction {
         executeQueryReturnMap(
             """
@@ -148,9 +171,9 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getBuildCoverageSummary(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): Map<String, Any?>? = transaction {
         executeQueryReturnMap {
             append(
@@ -167,9 +190,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), buildId
             )
             appendOptional(", input_baseline_build_id => ?", baselineBuildId)
-            appendOptional(", input_coverage_app_env_ids => ?", envId?.takeIf { it.isNotBlank() }?.let { listOf(it) })
-            appendOptional(", input_coverage_branches => ?", branch?.takeIf { it.isNotBlank() }?.let { listOf(it) })
-            appendOptional(", input_coverage_test_tags => ?", testTag?.takeIf { it.isNotBlank() }?.let { listOf(it) })
+            appendCoverageFilterParams(testTags, envIds, branches)
             append("\n)")
         }.firstOrNull()
     }
@@ -242,7 +263,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
-        branch: String?, envId: String?
+        branches: List<String>, envIds: List<String>
     ): Long = transaction {
         val result = executeQueryReturnMap {
             append(
@@ -252,17 +273,17 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE b.group_id = ? AND b.app_id = ?
             """.trimIndent(), groupId, appId
             )
-            appendOptional(" AND b.branch = ?", branch)
-            appendOptional(" AND ? = ANY(b.env_ids)", envId)
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
         }
         (result[0]["cnt"] as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
         packageName: String?,
         className: String?,
         offset: Int?, limit: Int?
@@ -287,9 +308,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { listOf(it) }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
-            appendOptional(", input_coverage_branches => ?", coverageBranch) { listOf(it) }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             append(
                 """
                 ) 
@@ -385,9 +404,9 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String?,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
         packageName: String?,
         className: String?,
         offset: Int?,
@@ -417,9 +436,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_baseline_build_id => ?", baselineBuildId)
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { arrayOf(it) }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { arrayOf(it) }
-            appendOptional(", input_coverage_branches => ?", coverageBranch) { arrayOf(it) }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             appendOptional(", include_deleted => ?", includeDeleted) { it }
             appendOptional(", include_equal => ?", includeEqual) { it }
             append(
@@ -435,9 +452,9 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getPackageCoverage(
         buildId: String,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -459,7 +476,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                         input_build_id => ?
                 """.trimIndent(), buildId
             )
-            appendCoverageFilterParams(coverageTestTag, coverageEnvId, coverageBranch)
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             append(
                 """
                     )
@@ -474,9 +491,9 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getClassCoverage(
         buildId: String,
         packageName: String?,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -494,7 +511,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(), buildId
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendCoverageFilterParams(coverageTestTag, coverageEnvId, coverageBranch)
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             append(
                 """
                 )
@@ -1178,13 +1195,13 @@ class MetricsRepositoryImpl : MetricsRepository {
 }
 
 private fun SqlBuilder.appendCoverageFilterParams(
-    coverageTestTag: String?,
-    coverageEnvId: String?,
-    coverageBranch: String?,
+    coverageTestTags: List<String>,
+    coverageAppEnvIds: List<String>,
+    coverageBranches: List<String>,
 ) {
-    appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { listOf(it) }
-    appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
-    appendOptional(", input_coverage_branches => ?", coverageBranch) { listOf(it) }
+    appendOptional(", input_coverage_test_tags => ?", coverageTestTags)
+    appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+    appendOptional(", input_coverage_branches => ?", coverageBranches)
 }
 
 // Drill stores class names with "/" package separators (same as treemap builder).

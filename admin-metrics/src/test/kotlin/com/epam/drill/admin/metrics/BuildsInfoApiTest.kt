@@ -103,7 +103,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("branch", testBranch)
+            parameter("branches", testBranch)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())
@@ -126,7 +126,7 @@ class BuildsInfoApiTest : MetricsDatabaseTests({ default, metrics ->
         client.get("/metrics/builds") {
             parameter("groupId", testGroup)
             parameter("appId", testApp)
-            parameter("envId", testEnv)
+            parameter("envIds", testEnv)
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val json = JsonPath.parse(bodyAsText())

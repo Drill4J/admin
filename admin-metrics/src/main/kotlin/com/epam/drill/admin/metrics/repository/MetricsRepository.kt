@@ -29,27 +29,29 @@ interface MetricsRepository {
 
     suspend fun getBuilds(
         groupId: String, appId: String,
-        branch: String? = null, envId: String? = null,
+        branches: List<String> = emptyList(), envIds: List<String> = emptyList(),
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
     suspend fun getBuildsCount(
         groupId: String, appId: String,
-        branch: String? = null, envId: String? = null
+        branches: List<String> = emptyList(), envIds: List<String> = emptyList()
     ): Long
 
     suspend fun getAppBranches(groupId: String, appId: String): List<String>
 
     suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
 
+    suspend fun getAppTestTags(groupId: String, appId: String): List<String>
+
     suspend fun getBuildDetail(buildId: String): Map<String, Any?>?
 
     suspend fun getBuildCoverageSummary(
         buildId: String,
         baselineBuildId: String?,
-        envId: String?,
-        branch: String?,
-        testTag: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
     ): Map<String, Any?>?
 
     suspend fun getChangesSummary(
@@ -63,9 +65,9 @@ interface MetricsRepository {
 
     suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTag: String? = null,
-        coverageEnvId: String? = null,
-        coverageBranch: String? = null,
+        coverageTestTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        coverageBranches: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         offset: Int? = null, limit: Int? = null
@@ -98,25 +100,25 @@ interface MetricsRepository {
 
     suspend fun getPackageCoverage(
         buildId: String,
-        coverageTestTag: String? = null,
-        coverageEnvId: String? = null,
-        coverageBranch: String? = null,
+        coverageTestTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        coverageBranches: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
     suspend fun getClassCoverage(
         buildId: String,
         packageName: String? = null,
-        coverageTestTag: String? = null,
-        coverageEnvId: String? = null,
-        coverageBranch: String? = null,
+        coverageTestTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        coverageBranches: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
     suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,
-        coverageTestTag: String? = null,
-        coverageEnvId: String? = null,
-        coverageBranch: String? = null,
+        coverageTestTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        coverageBranches: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         offset: Int? = null, limit: Int? = null,
