@@ -124,7 +124,7 @@ class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
             assertEquals(HttpStatusCode.OK, status)
             val data = JsonPath.parse(bodyAsText()).read<List<Map<String, Any>>>("$.data")
             assertEquals(1, data.size)
-            assertTrue(data.all { (it["className"] as String).startsWith(packageName) })
+            assertEquals("ClassA", data.first()["className"])
         }
     }
 

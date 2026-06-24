@@ -853,8 +853,9 @@ class MetricsServiceImpl(
         val coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0
         val probesCount = (row["probes_count"] as? Number)?.toInt() ?: 0
         val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
+        val fullClassName = row["class_name"] as String
         return ClassCoverageView(
-            className = row["class_name"] as String,
+            className = simpleClassName(fullClassName),
             methodsCount = methodsCount,
             coveredMethods = coveredMethods,
             missedMethods = (row["missed_methods"] as? Number)?.toInt() ?: 0,
@@ -868,6 +869,11 @@ class MetricsServiceImpl(
 
     private fun coverageRatio(covered: Int, total: Int): Double =
         if (total > 0) covered.toDouble() / total else 0.0
+
+    private fun simpleClassName(className: String): String {
+        val lastSlash = className.lastIndexOf('/')
+        return if (lastSlash >= 0) className.substring(lastSlash + 1) else className
+    }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         signature = resultSet["signature"] as String,
