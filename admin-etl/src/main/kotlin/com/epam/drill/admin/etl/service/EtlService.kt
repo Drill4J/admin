@@ -16,16 +16,17 @@
 package com.epam.drill.admin.etl.service
 
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlProcessingResult
 import java.time.Instant
 
 interface EtlService {
     suspend fun refresh(
         context: EtlContext? = null,
-        etl: String? = null,
+        etlName: String? = null,
         reset: Boolean = false,
         initTimestamp: Instant? = null,
         finalTimestamp: Instant? = null,
-    )
+    ): List<EtlProcessingResult>
 
     suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
 }
