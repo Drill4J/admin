@@ -17,6 +17,7 @@ package com.epam.drill.admin.metrics.service
 
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
@@ -35,6 +36,10 @@ interface MetricsService {
         appId: String,
         branch: String?,
         envId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField? = null,
+        sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?,
         freshAfter: Instant? = null,

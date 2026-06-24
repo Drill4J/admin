@@ -26,6 +26,7 @@ import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
@@ -72,15 +73,26 @@ class MetricsServiceImpl(
         appId: String,
         branch: String?,
         envId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
         freshAfter: Instant?,
     ): PagedList<BuildView> {
         return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getBuilds(
-                groupId, appId,
-                branch, envId,
-                offset, limit
+                groupId,
+                appId,
+                branch,
+                envId,
+                commitSha,
+                buildVersion,
+                sortBy,
+                sortOrder,
+                offset,
+                limit
             ).map {
                 BuildView(
                     id = it["build_id"] as String,
