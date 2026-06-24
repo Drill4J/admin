@@ -299,7 +299,7 @@ class ExpectationDsl(
         ImpactedTests(listOf(this), build, TestImpactStatus.UNKNOWN_IMPACT)
 
     suspend infix fun ImpactedTests.comparedTo(baseline: InstancePayload) {
-        client.getImpactedTests(this.build, baseline, parameters).returns { data ->
+        client.getImpactedTests(this.build, baseline, this.impactStatus, parameters).returns { data ->
             when (this.impactStatus) {
                 TestImpactStatus.IMPACTED -> this.tests.forEach { it.assertTestIsImpacted(data) }
                 TestImpactStatus.NOT_IMPACTED -> this.tests.forEach { it.assertTestIsNotImpacted(data) }

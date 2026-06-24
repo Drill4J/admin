@@ -85,21 +85,6 @@ interface MetricsService {
         freshAfter: Instant? = null,
     ): Map<String, Any?>
 
-    suspend fun getRecommendedTests(
-        groupId: String,
-        appId: String,
-        testsToSkip: Boolean? = null,
-        testTaskId: String? = null,
-        coveragePeriodDays: Int? = null,
-        targetInstanceId: String? = null,
-        targetCommitSha: String? = null,
-        targetBuildVersion: String? = null,
-        baselineInstanceId: String? = null,
-        baselineCommitSha: String? = null,
-        baselineBuildVersion: String? = null,
-        baselineBuildBranches: List<String> = emptyList(),
-    ): Map<String, Any?>
-
     suspend fun getChanges(
         groupId: String,
         appId: String,
@@ -138,6 +123,7 @@ interface MetricsService {
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         page: Int?,

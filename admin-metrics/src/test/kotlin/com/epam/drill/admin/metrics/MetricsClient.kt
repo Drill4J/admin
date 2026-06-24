@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.metrics.views.ChangeType
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
@@ -29,6 +30,7 @@ import kotlin.test.assertTrue
 suspend fun HttpClient.getImpactedTests(
     build: InstancePayload,
     baselineBuild: InstancePayload,
+    impactStatus: TestImpactStatus = TestImpactStatus.IMPACTED,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
     return get("/metrics/impacted-tests") {
@@ -36,6 +38,7 @@ suspend fun HttpClient.getImpactedTests(
         parameter("appId", build.appId)
         parameter("buildVersion", build.buildVersion)
         parameter("baselineBuildVersion", baselineBuild.buildVersion)
+        parameter("impactStatuses", impactStatus.name)
         otherParameters()
     }.assertSuccessStatus()
 }
@@ -87,21 +90,31 @@ suspend fun HttpClient.getCoverage(
 
 fun TestDetails.assertTestIsImpacted(data: List<Map<String, Any?>>) {
     assertTrue(data.any {
-        it["testName"] == this.testName && it["testPath"] == this.path
-    }, "Expected test [${this.testName}] to be impacted, but it was not found in response of impacted tests.")
+        it["testName"] == this.testName && it["testPath"] == this.path && it["impactStatus"] == TestImpactStatus.IMPACTED.name
+    }, "Expected test [${this.testName}] to be impacted, but ${
+        getImpactStatus(data) ?: "it was not found"
+    } in response of impacted tests.")
 }
 
 fun TestDetails.assertTestIsNotImpacted(data: List<Map<String, Any?>>) {
-    assertTrue(data.none {
-        it["testName"] == this.testName && it["testPath"] == this.path
-    }, "Expected test [${this.testName}] to be not impacted, but it was found in response of impacted tests.")
+    assertTrue(data.any {
+        it["testName"] == this.testName && it["testPath"] == this.path && it["impactStatus"] == TestImpactStatus.NOT_IMPACTED.name
+    }, "Expected test [${this.testName}] to be not impacted, but ${
+        getImpactStatus(data) ?: "it was not found"
+    } in response of impacted tests.")
 }
 
 fun TestDetails.assertTestHasUnknownImpact(data: List<Map<String, Any?>>) {
-    assertTrue(data.none {
-        it["testName"] == this.testName && it["testPath"] == this.path
-    }, "Expected test [${this.testName}] to have unknown impact, but it was found in response of impacted tests.")
+    assertTrue(data.any {
+        it["testName"] == this.testName && it["testPath"] == this.path && it["impactStatus"] == TestImpactStatus.UNKNOWN_IMPACT.name
+    }, "Expected test [${this.testName}] to have unknown impact, but ${
+        getImpactStatus(data) ?: "it was not found"
+    } in response of impacted tests.")
 }
+
+private fun TestDetails.getImpactStatus(data: List<Map<String, Any?>>): Any? =
+    data.firstOrNull { it["testName"] == this.testName && it["testPath"] == this.path }?.get("impactStatus")
+
 
 fun SingleMethodPayload.assertMethodIsImpacted(data: List<Map<String, Any?>>) {
     assertTrue(

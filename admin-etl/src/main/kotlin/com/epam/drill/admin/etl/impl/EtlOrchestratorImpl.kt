@@ -114,9 +114,13 @@ open class EtlOrchestratorImpl(
         block: suspend (ownerId: String) -> List<EtlProcessingResult>,
     ): List<EtlProcessingResult> {
         val ownerId = UUID.randomUUID().toString()
+        var firstAttempt = true
         while (!runsRepository.tryAcquireLockAndStart(name, context, ownerId, lockLeaseSeconds)) {
-            logger.debug {
-                "ETL [$name] for group [${context.groupId}] is locked by another instance, waiting..."
+            if (firstAttempt) {
+                logger.debug {
+                    "ETL [$name] with owner [$ownerId] is locked by another instance, waiting..."
+                }
+                firstAttempt = false
             }
             yield() // guarantees cooperation even when poll delay is 0
             if (lockPollDelaySeconds > 0) delay(lockPollDelaySeconds.seconds)
@@ -130,7 +134,7 @@ open class EtlOrchestratorImpl(
             runCatching {
                 runsRepository.markFinishedAndRelease(name, context, ownerId, lastProcessedAt)
             }.onFailure {
-                logger.warn(it) { "ETL [$name] for group [${context.groupId}] failed to release run-lock" }
+                logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to release run-lock" }
             }
         }
     }
@@ -143,7 +147,7 @@ open class EtlOrchestratorImpl(
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
         val groupId = context.groupId
         val snapshotTime = finalTimestamp ?: Instant.now().minusSeconds(processingDelay)
-        logger.info("ETL [$name] for group [$groupId] is starting...")
+        logger.info("ETL [$name] with owner [$ownerId] is starting...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val duration = measureTimeMillis {
             trackProgressOf {
@@ -163,11 +167,11 @@ open class EtlOrchestratorImpl(
                     }
                 }.awaitAll()
             }.every(1.minutes) {
-                logger.info { "ETL [$name] for group [$groupId] is still running..." }
+                logger.info { "ETL [$name] with owner [$ownerId] is still running..." }
                 runCatching {
                     runsRepository.extendLease(name, context, ownerId, lockLeaseSeconds)
                 }.onFailure {
-                    logger.warn(it) { "ETL [$name] for group [$groupId] failed to extend run-lock lease" }
+                    logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to extend run-lock lease" }
                 }
             }
         }
@@ -175,9 +179,9 @@ open class EtlOrchestratorImpl(
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0L && failures == 0)
-                "ETL [$name] for group [$groupId] completed in ${duration}ms, no new rows"
+                "ETL [$name] with owner [$ownerId] completed in ${duration}ms, no new rows"
             else
-                "ETL [$name] for group [$groupId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL [$name] with owner [$ownerId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return@withContext results
     }
