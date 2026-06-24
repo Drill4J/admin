@@ -87,6 +87,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
         }.returns { data ->
             assertTrue(data.isNotEmpty())
+            assertTrue(treemapAll(data) { it["type"] in listOf("package", "class", "method") })
+            assertTrue(treemapAny(data) { it["type"] == "method" && it["signature"] != null })
             assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
             assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
         }
@@ -283,7 +285,7 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(data.isNotEmpty())
                 assertTrue(
                     treemapAny(data) {
-                        it["params"] != null &&
+                        it["type"] == "method" &&
                             it["name"].toString().startsWith(method1.name) &&
                             it["covered_probes"] == 1
                     }
