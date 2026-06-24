@@ -31,3 +31,4 @@ ON CONFLICT (
 )
 DO UPDATE SET
     updated_at_day = EXCLUDED.created_at_day
+WHERE test_to_code_mapping.updated_at_day < EXCLUDED.created_at_day
