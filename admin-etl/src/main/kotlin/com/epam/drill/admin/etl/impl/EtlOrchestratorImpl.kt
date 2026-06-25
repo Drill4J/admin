@@ -344,6 +344,8 @@ open class EtlOrchestratorImpl(
                 status = EtlStatus.FAILED,
                 errorMessage = e.message,
             )
+        } finally {
+            sharedFlow.close()
         }
     }
 

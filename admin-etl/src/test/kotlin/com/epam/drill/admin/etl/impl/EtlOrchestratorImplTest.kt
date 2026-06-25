@@ -88,6 +88,22 @@ class EtlOrchestratorImplTest {
         override suspend fun deleteAll(context: EtlContext) = received.clear()
     }
 
+    inner class ThrowingLoader(override val name: String) : DataLoader<GRow> {
+        override suspend fun load(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<GRow>,
+            onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+            onStatusChanged: suspend (EtlStatus) -> Unit,
+        ): EtlLoadingResult {
+            collector.collect { throw RuntimeException("Simulated loader failure in ${this.name}") }
+            return EtlLoadingResult(lastProcessedAt = sinceTimestamp)
+        }
+
+        override suspend fun deleteAll(context: EtlContext) {}
+    }
+
     @BeforeEach
     fun reset() {
         extractCallCount.set(0)
@@ -306,5 +322,50 @@ class EtlOrchestratorImplTest {
         assertEquals(0L, results.first().rowsProcessed, "No rows must be processed for a skipped pipeline")
         assertEquals(0, extractCallCount.get(), "Extractor must NOT be called for an already up-to-date pipeline")
         assertTrue(loader.received.isEmpty(), "Loader must not receive any rows for a skipped pipeline")
+    }
+
+    @Test
+    fun `orchestrator marks failing loader pipeline as FAILED and lets healthy loader pipeline succeed`() = runBlocking {
+        val now = Instant.now()
+        val rows = (1..5).map { GRow(it, now) }
+        val sharedExtractor = CountingExtractor(name = "shared", rows = rows)
+
+        val healthyLoader = CollectingLoader("loader-healthy")
+        val failingLoader = ThrowingLoader("loader-failing")
+
+        val healthyPipeline = EtlPipelineImpl(
+            name = "pipeline-healthy",
+            extractor = sharedExtractor,
+            transformer = gRowIdentity,
+            loader = healthyLoader,
+            metrics = metrics,
+        )
+        val failingPipeline = EtlPipelineImpl(
+            name = "pipeline-failing",
+            extractor = sharedExtractor,
+            transformer = gRowIdentity,
+            loader = failingLoader,
+            metrics = metrics,
+        )
+
+        val orchestrator = EtlOrchestratorImpl(
+            name = "test",
+            pipelines = listOf(healthyPipeline, failingPipeline),
+            metadataRepository = SimpleMetadataRepository(),
+            runsRepository = SimpleEtlRunsRepository(),
+            bufferSize = 0
+        )
+
+        val results = orchestrator.run(EtlContext(groupId = "g1"))
+
+        assertEquals(2, results.size)
+        val healthyResult = results.first { it.pipelineName == "pipeline-healthy" }
+        val failingResult = results.first { it.pipelineName == "pipeline-failing" }
+
+        assertEquals(EtlStatus.SUCCESS, healthyResult.status, "Healthy pipeline must complete with SUCCESS")
+        assertEquals(5, healthyLoader.received.size, "Healthy loader must receive all rows")
+
+        assertEquals(EtlStatus.FAILED, failingResult.status, "Failing pipeline must be reported as FAILED")
+        assertTrue(failingResult.errorMessage != null, "Failing pipeline must carry an error message")
     }
 }
