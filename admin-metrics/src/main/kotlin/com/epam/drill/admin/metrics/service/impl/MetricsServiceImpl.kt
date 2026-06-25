@@ -28,6 +28,7 @@ import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.util.simpleClassName
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -869,11 +870,6 @@ class MetricsServiceImpl(
 
     private fun coverageRatio(covered: Int, total: Int): Double =
         if (total > 0) covered.toDouble() / total else 0.0
-
-    private fun simpleClassName(className: String): String {
-        val lastSlash = className.lastIndexOf('/')
-        return if (lastSlash >= 0) className.substring(lastSlash + 1) else className
-    }
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         signature = resultSet["signature"] as String,

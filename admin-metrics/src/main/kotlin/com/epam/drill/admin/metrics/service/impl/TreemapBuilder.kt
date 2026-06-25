@@ -15,17 +15,13 @@
  */
 package com.epam.drill.admin.metrics.service.impl
 
+import com.epam.drill.admin.metrics.util.packageNameForPathIndex
+import com.epam.drill.admin.metrics.util.packageNameFromClassName
+import com.epam.drill.admin.metrics.util.simpleClassName
+
 internal const val TREEMAP_TYPE_PACKAGE = "package"
 internal const val TREEMAP_TYPE_CLASS = "class"
 internal const val TREEMAP_TYPE_METHOD = "method"
-
-private fun packageNameFromClassName(className: String): String {
-    val slash = className.lastIndexOf('/')
-    return if (slash < 0) "" else className.substring(0, slash)
-}
-
-private fun packageNameForPathIndex(pathParts: List<String>, index: Int): String =
-    pathParts.subList(0, index + 1).joinToString("/")
 
 internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map<String, Any?>> {
     val nodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
@@ -226,7 +222,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             put("package_name", node["package_name"] as? String ?: "")
             put("probes_count", node["probes_count"])
             put("covered_probes", node["covered_probes"])
-            node["class_name"]?.let { put("class_name", it) }
+            node["class_name"]?.let { put("class_name", simpleClassName(it as String)) }
             node["signature"]?.let { put("signature", it) }
             node["params"]?.let { put("params", it) }
             node["return_type"]?.let { put("return_type", it) }
