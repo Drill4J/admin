@@ -87,7 +87,11 @@ class SubscribableChannelFlow<T>(
             try {
                 ch.send(value)
             } catch (_: ClosedSendChannelException) {
-                // Subscriber cancelled between snapshot and send — ignore
+                // Subscriber closed its channel gracefully — ignore
+            } catch (_: CancellationException) {
+                // Subscriber cancelled its channel (e.g. via ch.cancel()) — ignore only if
+                // our own coroutine is still active; otherwise propagate the cancellation.
+                currentCoroutineContext().ensureActive()
             }
         }
     }
@@ -148,10 +152,13 @@ class SubscribableChannelFlow<T>(
                     doneCause?.let { throw it }
                 } finally {
                     mutex.withLock { channels.remove(ch) }
+                    // cancel() explicitly unblocks any producer suspended on ch.send() by
+                    // throwing CancellationException, which emit() handles via ensureActive().
+                    ch.cancel()
                 }
             },
             onClose = {
-                ch.close()
+                ch.cancel()
             }
         )
     }
