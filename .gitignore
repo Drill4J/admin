@@ -7,3 +7,4 @@ build/
 /tests/work
 **/out/
 .kotlin/
+run.sh
