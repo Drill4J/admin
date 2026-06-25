@@ -1328,13 +1328,21 @@ paths:
           in: query
           schema:
             type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Class coverage aggregates
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/impacted-tests:
     get:
       summary: Get impacted tests

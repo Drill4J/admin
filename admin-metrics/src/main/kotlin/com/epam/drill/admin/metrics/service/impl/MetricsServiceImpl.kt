@@ -642,17 +642,37 @@ class MetricsServiceImpl(
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
-    ): List<ClassCoverageView> = transaction {
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<ClassCoverageView> = transaction {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
-        metricsRepository.getClassCoverage(
-            buildId = buildId,
-            packageName = packageName?.takeIf { it.isNotBlank() },
-            coverageTestTags = testTags,
-            coverageAppEnvIds = envIds,
-            coverageBranches = branches,
-        ).map(::mapToClassCoverageView)
+
+        val packageFilter = packageName?.takeIf { it.isNotBlank() }
+
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
+            metricsRepository.getClassCoverage(
+                buildId = buildId,
+                packageName = packageFilter,
+                coverageTestTags = testTags,
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+                offset = offset,
+                limit = limit,
+            ).map(::mapToClassCoverageView)
+        } withTotal {
+            metricsRepository.getClassCoverageCount(
+                buildId = buildId,
+                packageName = packageFilter,
+                coverageTestTags = testTags,
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+            )
+        }
     }
 
     override suspend fun getImpactedTests(

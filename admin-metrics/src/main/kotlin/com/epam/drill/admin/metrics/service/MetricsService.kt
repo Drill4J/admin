@@ -168,7 +168,9 @@ interface MetricsService {
         testTags: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
-    ): List<ClassCoverageView>
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<ClassCoverageView>
 
     suspend fun getImpactedTests(
         build: Build,

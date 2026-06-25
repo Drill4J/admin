@@ -111,7 +111,17 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        offset: Int? = null,
+        limit: Int? = null,
     ): List<Map<String, Any?>>
+
+    suspend fun getClassCoverageCount(
+        buildId: String,
+        packageName: String? = null,
+        coverageTestTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        coverageBranches: List<String> = emptyList(),
+    ): Long
 
     suspend fun getChangesWithCoverage(
         buildId: String,

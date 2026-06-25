@@ -494,6 +494,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
+        offset: Int?,
+        limit: Int?,
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -519,7 +521,39 @@ class MetricsRepositoryImpl : MetricsRepository {
                 ORDER BY class_name
                 """.trimIndent()
             )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getClassCoverageCount(
+        buildId: String,
+        packageName: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+    ): Long = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT class_name
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+        }
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getMethodsCount(

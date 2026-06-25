@@ -260,6 +260,8 @@ class Metrics {
         val testTags: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
+        val page: Int? = null,
+        val pageSize: Int? = null,
     )
 
     @Resource("/impacted-tests")
@@ -669,8 +671,16 @@ fun Route.getCoverageByClass() {
             testTags = params.testTags,
             envIds = params.envIds,
             branches = params.branches,
+            page = params.page,
+            pageSize = params.pageSize,
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
     }
 }
 
