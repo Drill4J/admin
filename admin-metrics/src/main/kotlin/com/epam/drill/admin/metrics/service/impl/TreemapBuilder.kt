@@ -103,23 +103,23 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
         var node = nodeMap.getValue(path)
         var name = node["name"] as String
         var fullName = path
-        var currentPath = path
         var children = node["children"] as Set<String>
 
         while (children.size == 1) {
             val childPath = children.first()
             val child = nodeMap[childPath] ?: break
-            val grandChildren = child["children"] as Set<String>
 
-            val isSecondToLast = grandChildren.any { (nodeMap[it]?.get("children") as? Set<*>)?.isEmpty() == true }
-            if (isSecondToLast) break
+            // Only collapse consecutive single-child package nodes. Never collapse across the
+            // class/method boundary (e.g. a class that contains only a single method), otherwise
+            // the class node would be merged into its method and the method would dangle directly
+            // under the package.
+            if (child["type"] != TREEMAP_TYPE_PACKAGE) break
 
             val childName = child["name"] as String
             name = "$name/$childName"
             fullName = child["full_name"] as String
-            currentPath = fullName
             node = child
-            children = grandChildren
+            children = child["children"] as Set<String>
         }
 
         val nodeType = node["type"] as String
