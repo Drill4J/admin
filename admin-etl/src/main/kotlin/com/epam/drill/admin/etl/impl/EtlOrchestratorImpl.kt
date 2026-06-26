@@ -61,6 +61,7 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         initTimestamp: Instant,
         finalTimestamp: Instant?,
+        skipIfLocked: Boolean,
     ): List<EtlProcessingResult> {
         if (finalTimestamp != null) {
             val lastProcessedAt = runsRepository.getLastProcessedAt(name, context)
@@ -81,7 +82,7 @@ open class EtlOrchestratorImpl(
                 }
             }
         }
-        return executeWithLock(context) { ownerId ->
+        return executeWithLock(context, skipIfLocked) { ownerId ->
             runInternal(context, initTimestamp, finalTimestamp, ownerId)
         }
     }
@@ -90,8 +91,9 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         initTimestamp: Instant,
         finalTimestamp: Instant?,
-        withDataDeletion: Boolean
-    ): List<EtlProcessingResult> = executeWithLock(context) { ownerId ->
+        withDataDeletion: Boolean,
+        skipIfLocked: Boolean,
+    ): List<EtlProcessingResult> = executeWithLock(context, skipIfLocked) { ownerId ->
         val groupId = context.groupId
         logger.info { "ETL [$name] for group [$groupId] is deleting all metadata for rerun..." }
         pipelines.map { it.name }.forEach { pipelineName ->
@@ -111,10 +113,27 @@ open class EtlOrchestratorImpl(
      */
     private suspend fun executeWithLock(
         context: EtlContext,
+        skipIfLocked: Boolean = false,
         block: suspend (ownerId: String) -> List<EtlProcessingResult>,
     ): List<EtlProcessingResult> {
         val ownerId = UUID.randomUUID().toString()
         while (!runsRepository.tryAcquireLockAndStart(name, context, ownerId, lockLeaseSeconds)) {
+            if (skipIfLocked) {
+                logger.info {
+                    "ETL [$name] for group [${context.groupId}] is locked by another instance, skipping..."
+                }
+                return pipelines.map { pipeline ->
+                    EtlProcessingResult(
+                        context = context,
+                        pipelineName = pipeline.name,
+                        lastProcessedAt = runsRepository.getLastProcessedAt(name, context)
+                            ?: Instant.EPOCH,
+                        rowsProcessed = 0,
+                        status = EtlStatus.SKIPPED,
+                        errorMessage = null,
+                    )
+                }
+            }
             logger.debug {
                 "ETL [$name] for group [${context.groupId}] is locked by another instance, waiting..."
             }

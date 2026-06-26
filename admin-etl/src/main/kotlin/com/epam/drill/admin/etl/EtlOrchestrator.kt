@@ -38,6 +38,7 @@ interface EtlOrchestrator {
         context: EtlContext,
         initTimestamp: Instant = Instant.EPOCH,
         finalTimestamp: Instant? = null,
+        skipIfLocked: Boolean = false,
     ): List<EtlProcessingResult>
 
     /**
@@ -52,7 +53,8 @@ interface EtlOrchestrator {
         context: EtlContext,
         initTimestamp: Instant = Instant.EPOCH,
         finalTimestamp: Instant? = null,
-        withDataDeletion: Boolean
+        withDataDeletion: Boolean = false,
+        skipIfLocked: Boolean = false,
     ): List<EtlProcessingResult>
 }
 

@@ -44,9 +44,10 @@ class EtlServiceImpl(
         etlName: String?,
         reset: Boolean,
         initTimestamp: Instant?,
-        finalTimestamp: Instant?
+        finalTimestamp: Instant?,
+        skipIfLocked: Boolean,
     ): List<EtlProcessingResult> {
-        val rerun = reset || initTimestamp != null
+        val rerun = reset || initTimestamp != null || finalTimestamp != null
         val orchestratorName = etlName ?: DEFAULT_ETL
         val etl = etls[orchestratorName]
             ?: throw IllegalArgumentException("Etl with name '$orchestratorName' not found")
@@ -65,9 +66,9 @@ class EtlServiceImpl(
             params.map { (context, initTimestamp) ->
                 async {
                     if (rerun)
-                        etl.rerun(context, initTimestamp, finalTimestamp, withDataDeletion = reset)
+                        etl.rerun(context, initTimestamp, finalTimestamp, withDataDeletion = reset, skipIfLocked = skipIfLocked)
                     else
-                        etl.run(context, initTimestamp, finalTimestamp)
+                        etl.run(context, initTimestamp, finalTimestamp, skipIfLocked)
                 }
             }.awaitAll().flatten()
         }

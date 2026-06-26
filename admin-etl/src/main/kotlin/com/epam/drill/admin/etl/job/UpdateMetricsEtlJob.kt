@@ -40,11 +40,12 @@ class UpdateMetricsEtlJob(
         val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
         val initTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("initTimestamp")
         val finalTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("finalTimestamp")
+        val skipIfLocked = context.mergedJobDataMap.getBooleanValue("skipIfLocked")
         val etlContext = takeIf { hasGroupId }?.let {
             context.mergedJobDataMap.toEtlContext()
         }
         context.result = runBlocking {
-            etlService.refresh(etlContext, etlName, reset, initTimestamp, finalTimestamp)
+            etlService.refresh(etlContext, etlName, reset, initTimestamp, finalTimestamp, skipIfLocked)
         }
     }
 

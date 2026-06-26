@@ -1415,7 +1415,27 @@ paths:
           schema:
             type: string
         - name: reset
-          description: If true, clears existing computed data and restarts the ETL process from scratch.
+          description: If true, clears existing computed data and rerun the ETL process from scratch.
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: initTimestamp
+          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun from this timestamp
+          in: query
+          required: false
+          schema:
+              type: integer
+              format: int64
+        - name: finalTimestamp
+          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun up to this timestamp
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: skipIfLocked
+          description: If true, the refresh request will be skipped if another refresh is already in progress. Defaults to false.
           in: query
           required: false
           schema:
