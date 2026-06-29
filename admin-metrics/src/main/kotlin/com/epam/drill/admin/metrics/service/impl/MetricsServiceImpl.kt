@@ -655,6 +655,8 @@ class MetricsServiceImpl(
 
         val sortingFieldMapping = mapOf(
             "methodsCoverageRatio" to "methods_coverage_ratio",
+            "methodsCount" to "methods_count",
+            "coveredMethods" to "covered_methods",
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] }
 

@@ -507,6 +507,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                     ELSE 0
                 END $sortDirection, class_name ASC
             """.trimIndent()
+            "methods_count" -> "methods_count $sortDirection, class_name ASC"
+            "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
             else -> "class_name ASC"
         }
 
