@@ -1336,6 +1336,34 @@ paths:
           in: query
           schema:
             type: integer
+        - name: sortBy
+          in: query
+          description: |
+            Field to sort results by. When omitted, results are ordered by class name ascending.
+            Supported values:
+            - methodsCoverageRatio — method coverage percentage
+            - methodsCount — total methods count
+            - coveredMethods — covered methods count
+            - probesCoverageRatio — probe coverage percentage
+            - probesCount — total probes count
+            - coveredProbes — covered probes count
+          schema:
+            type: string
+            enum:
+              - methodsCoverageRatio
+              - methodsCount
+              - coveredMethods
+              - probesCoverageRatio
+              - probesCount
+              - coveredProbes
+        - name: sortOrder
+          in: query
+          description: Sort direction. Defaults to ASC when sortBy is set. Ignored when sortBy is omitted.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
       responses:
         '200':
           description: Class coverage aggregates
