@@ -168,6 +168,8 @@ interface MetricsService {
         testTags: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int? = null,
         pageSize: Int? = null,
     ): PagedList<ClassCoverageView>

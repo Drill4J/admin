@@ -642,6 +642,8 @@ class MetricsServiceImpl(
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
     ): PagedList<ClassCoverageView> = transaction {
@@ -650,6 +652,11 @@ class MetricsServiceImpl(
         }
 
         val packageFilter = packageName?.takeIf { it.isNotBlank() }
+
+        val sortingFieldMapping = mapOf(
+            "methodsCoverageRatio" to "methods_coverage_ratio",
+        )
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -661,6 +668,8 @@ class MetricsServiceImpl(
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
             ).map(::mapToClassCoverageView)

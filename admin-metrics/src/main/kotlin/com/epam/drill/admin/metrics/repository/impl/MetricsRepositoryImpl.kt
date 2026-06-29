@@ -494,31 +494,47 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageTestTags: List<String>,
         coverageAppEnvIds: List<String>,
         coverageBranches: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "methods_coverage_ratio" -> """
+                CASE
+                    WHEN methods_count > 0 THEN covered_methods::DOUBLE PRECISION / methods_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            else -> "class_name ASC"
+        }
+
         executeQueryReturnMap {
             append(
                 """
-                SELECT
-                    class_name,
-                    COUNT(*)::INT AS methods_count,
-                    COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
-                    (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
-                    COALESCE(SUM(probes_count), 0)::INT AS probes_count,
-                    COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
-                    (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
-                FROM metrics.get_methods_with_coverage(
-                    input_build_id => ?
+                SELECT *
+                FROM (
+                    SELECT
+                        class_name,
+                        COUNT(*)::INT AS methods_count,
+                        COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                        (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
+                        COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                        COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                        (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
                 """.trimIndent(), buildId
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             append(
                 """
-                )
-                GROUP BY class_name
-                ORDER BY class_name
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                ORDER BY $orderBy
                 """.trimIndent()
             )
             appendOptional(" OFFSET ?", offset)

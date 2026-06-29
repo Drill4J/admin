@@ -111,6 +111,8 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null,
         limit: Int? = null,
     ): List<Map<String, Any?>>

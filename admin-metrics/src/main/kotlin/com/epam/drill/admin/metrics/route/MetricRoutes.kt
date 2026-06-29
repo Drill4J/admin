@@ -260,6 +260,8 @@ class Metrics {
         val testTags: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
         val page: Int? = null,
         val pageSize: Int? = null,
     )
@@ -671,6 +673,8 @@ fun Route.getCoverageByClass() {
             testTags = params.testTags,
             envIds = params.envIds,
             branches = params.branches,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )
