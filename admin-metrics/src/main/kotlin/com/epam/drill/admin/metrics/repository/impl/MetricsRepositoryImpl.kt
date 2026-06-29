@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.repository.impl
 
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
+import com.epam.drill.admin.metrics.config.SqlBuilder
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.models.SortOrder
@@ -36,6 +37,16 @@ class MetricsRepositoryImpl : MetricsRepository {
         ).isNotEmpty()
     }
 
+    override suspend fun getGroups(): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT group_id
+            FROM metrics.builds
+            ORDER BY group_id
+            """.trimIndent()
+        ).map { it["group_id"] as String }
+    }
+
     override suspend fun getApplications(groupId: String?): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
             append(
@@ -52,7 +63,7 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuilds(
         groupId: String, appId: String,
-        branch: String?, envId: String?,
+        branches: List<String>, envIds: List<String>,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
@@ -75,17 +86,184 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE b.group_id = ? AND b.app_id = ?
             """.trimIndent(), groupId, appId
             )
-            appendOptional(" AND b.branch = ?", branch)
-            appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
             append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
     }
 
+    override suspend fun getAppBranches(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT branch
+            FROM metrics.builds
+            WHERE group_id = ? AND app_id = ?
+              AND branch IS NOT NULL AND branch <> ''
+            ORDER BY branch
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["branch"] as String }
+    }
+
+    override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT env_id
+            FROM metrics.builds b
+            CROSS JOIN LATERAL unnest(b.app_env_ids) AS env_id
+            WHERE b.group_id = ? AND b.app_id = ?
+            ORDER BY env_id
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["env_id"] as String }
+    }
+
+    override suspend fun getAppTestTags(groupId: String, appId: String): List<String> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT DISTINCT tag AS test_tag
+            FROM metrics.test_definitions td
+            JOIN metrics.test_launches tl
+                ON tl.group_id = td.group_id
+                AND tl.test_definition_id = td.test_definition_id
+            JOIN metrics.test_session_builds tsb
+                ON tsb.group_id = tl.group_id
+                AND tsb.test_session_id = tl.test_session_id
+            JOIN metrics.builds b
+                ON b.group_id = tsb.group_id
+                AND b.build_id = tsb.build_id
+            CROSS JOIN LATERAL unnest(td.test_tags) AS tag
+            WHERE b.group_id = ? AND b.app_id = ?
+              AND tag IS NOT NULL AND tag <> ''
+            ORDER BY tag
+            """.trimIndent(),
+            groupId, appId
+        ).map { it["test_tag"] as String }
+    }
+
+    override suspend fun getBuildDetail(buildId: String): Map<String, Any?>? = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                group_id,
+                app_id,
+                build_id,
+                version_id,
+                build_version,
+                branch,
+                commit_sha,
+                commit_author,
+                commit_message,
+                committed_at,
+                app_env_ids,
+                total_classes,
+                total_methods,
+                total_probes
+            FROM metrics.builds_with_statistics
+            WHERE build_id = ?
+            """.trimIndent(),
+            buildId
+        ).firstOrNull()
+    }
+
+    override suspend fun getBuildCoverageSummary(
+        buildId: String,
+        baselineBuildId: String?,
+        envIds: List<String>,
+        branches: List<String>,
+        testTags: List<String>,
+    ): Map<String, Any?>? = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT
+                    total_probes,
+                    isolated_covered_probes,
+                    aggregated_covered_probes,
+                    total_methods,
+                    isolated_tested_methods,
+                    aggregated_tested_methods
+                FROM metrics.get_builds_with_coverage(
+                    input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_baseline_build_id => ?", baselineBuildId)
+            appendCoverageFilterParams(testTags, envIds, branches)
+            append("\n)")
+        }.firstOrNull()
+    }
+
+    override suspend fun getChangesSummary(
+        buildId: String,
+        baselineBuildId: String,
+    ): Map<String, Any?> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                COUNT(CASE WHEN change_type = 'modified' THEN 1 END) AS modified_methods,
+                COUNT(CASE WHEN change_type = 'new' THEN 1 END) AS new_methods,
+                COUNT(CASE WHEN change_type = 'deleted' THEN 1 END) AS deleted_methods
+            FROM metrics.get_changes(
+                input_build_id => ?,
+                input_baseline_build_id => ?,
+                include_deleted => true
+            )
+            """.trimIndent(),
+            buildId,
+            baselineBuildId
+        ).firstOrNull() ?: mapOf(
+            "modified_methods" to 0,
+            "new_methods" to 0,
+            "deleted_methods" to 0
+        )
+    }
+
+    override suspend fun getSimilarBuilds(buildId: String): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                sb.build_id,
+                b.version_id,
+                b.build_version,
+                b.branch,
+                sb.identity_ratio,
+                sb.target_equal_methods,
+                sb.target_total_methods
+            FROM metrics.get_similar_builds(input_build_id => ?) sb
+            JOIN metrics.builds b
+                ON b.group_id = sb.group_id
+                AND b.app_id = sb.app_id
+                AND b.build_id = sb.build_id
+            ORDER BY sb.identity_ratio DESC, b.committed_at DESC NULLS LAST
+            """.trimIndent(),
+            buildId
+        )
+    }
+
+    override suspend fun getBuildTestSessionStats(buildId: String): Map<String, Any?> = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                COUNT(DISTINCT tsb.test_session_id) AS session_count,
+                COUNT(tl.test_launch_id) AS test_run_count
+            FROM metrics.test_session_builds tsb
+            LEFT JOIN metrics.test_launches tl
+                ON tl.group_id = tsb.group_id
+                AND tl.test_session_id = tsb.test_session_id
+            WHERE tsb.build_id = ?
+            """.trimIndent(),
+            buildId
+        ).firstOrNull() ?: mapOf(
+            "session_count" to 0,
+            "test_run_count" to 0
+        )
+    }
+
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
-        branch: String?, envId: String?
+        branches: List<String>, envIds: List<String>
     ): Long = transaction {
         val result = executeQueryReturnMap {
             append(
@@ -95,17 +273,17 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE b.group_id = ? AND b.app_id = ?
             """.trimIndent(), groupId, appId
             )
-            appendOptional(" AND b.branch = ?", branch)
-            appendOptional(" AND ? = ANY(b.env_ids)", envId)
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
         }
         (result[0]["cnt"] as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getMethodsWithCoverage(
         buildId: String,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
         packageName: String?,
         className: String?,
         offset: Int?, limit: Int?
@@ -130,9 +308,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { listOf(it) }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { listOf(it) }
-            appendOptional(", input_coverage_branches => ?", coverageBranch) { listOf(it) }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             append(
                 """
                 ) 
@@ -228,9 +404,9 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String?,
-        coverageTestTag: String?,
-        coverageEnvId: String?,
-        coverageBranch: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
         packageName: String?,
         className: String?,
         offset: Int?,
@@ -260,9 +436,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_baseline_build_id => ?", baselineBuildId)
             appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
             appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendOptional(", input_coverage_test_tags => ?", coverageTestTag) { arrayOf(it) }
-            appendOptional(", input_coverage_app_env_ids => ?", coverageEnvId) { arrayOf(it) }
-            appendOptional(", input_coverage_branches => ?", coverageBranch) { arrayOf(it) }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
             appendOptional(", include_deleted => ?", includeDeleted) { it }
             appendOptional(", include_equal => ?", includeEqual) { it }
             append(
@@ -274,6 +448,138 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getPackageCoverage(
+        buildId: String,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT
+                    package_name,
+                    COUNT(*)::INT AS methods_count,
+                    COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                    (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
+                    COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                    COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                    (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
+                FROM (
+                    SELECT
+                        $PACKAGE_NAME_SQL AS package_name,
+                        probes_count,
+                        isolated_covered_probes
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
+            append(
+                """
+                    )
+                ) methods_with_package
+                GROUP BY package_name
+                ORDER BY package_name
+                """.trimIndent()
+            )
+        }
+    }
+
+    override suspend fun getClassCoverage(
+        buildId: String,
+        packageName: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "methods_coverage_ratio" -> """
+                CASE
+                    WHEN methods_count > 0 THEN covered_methods::DOUBLE PRECISION / methods_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "methods_count" -> "methods_count $sortDirection, class_name ASC"
+            "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
+            "probes_coverage_ratio" -> """
+                CASE
+                    WHEN probes_count > 0 THEN covered_probes::DOUBLE PRECISION / probes_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "probes_count" -> "probes_count $sortDirection, class_name ASC"
+            "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
+            else -> "class_name ASC"
+        }
+
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT *
+                FROM (
+                    SELECT
+                        class_name,
+                        COUNT(*)::INT AS methods_count,
+                        COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                        (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
+                        COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                        COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                        (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                ORDER BY $orderBy
+                """.trimIndent()
+            )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getClassCoverageCount(
+        buildId: String,
+        packageName: String?,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+    ): Long = transaction {
+        val result = executeQueryReturnMap {
+            append(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT class_name
+                    FROM metrics.get_methods_with_coverage(
+                        input_build_id => ?
+                """.trimIndent(), buildId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+        }
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun getMethodsCount(
@@ -575,6 +881,24 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getImpactedTestsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long = transaction {
+        val result = executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_impacted_tests_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?
+            )
+            """.trimIndent(),
+            targetBuildId,
+            baselineBuildId
+        )
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+    }
+
     override suspend fun getImpactedMethods(
         targetBuildId: String,
         baselineBuildId: String,
@@ -640,6 +964,24 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getImpactedMethodsCount(
+        targetBuildId: String,
+        baselineBuildId: String,
+    ): Long = transaction {
+        val result = executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_impacted_methods_v2(
+                input_build_id => ?,
+                input_baseline_build_id => ?
+            )
+            """.trimIndent(),
+            targetBuildId,
+            baselineBuildId
+        )
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
@@ -911,3 +1253,22 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 }
+
+private fun SqlBuilder.appendCoverageFilterParams(
+    coverageTestTags: List<String>,
+    coverageAppEnvIds: List<String>,
+    coverageBranches: List<String>,
+) {
+    appendOptional(", input_coverage_test_tags => ?", coverageTestTags)
+    appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+    appendOptional(", input_coverage_branches => ?", coverageBranches)
+}
+
+// Drill stores class names with "/" package separators (same as treemap builder).
+private const val PACKAGE_NAME_SQL = """
+    CASE
+        WHEN POSITION('/' IN class_name) > 0 THEN
+            REVERSE(SUBSTRING(REVERSE(class_name) FROM POSITION('/' IN REVERSE(class_name)) + 1))
+        ELSE ''
+    END
+"""

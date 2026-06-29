@@ -489,6 +489,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
   # Metrics Endpoints
+  /api/metrics/groups:
+    get:
+      summary: Get groups
+      description: |
+        Retrieves distinct group IDs that have metrics build data.
+      operationId: getGroups
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of group IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/applications:
     get:
       summary: Get applications
@@ -509,6 +526,62 @@ paths:
       responses:
         '200':
           description: List of applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/branches:
+    get:
+      summary: Get app branches
+      description: |
+        Retrieves distinct Git branch names for builds of the specified application.
+      operationId: getAppBranches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of branch names
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/env-ids:
+    get:
+      summary: Get app environment IDs
+      description: |
+        Retrieves distinct environment IDs from builds of the specified application.
+      operationId: getAppEnvIds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of environment IDs
           content:
             application/json:
               schema:
@@ -563,6 +636,169 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}:
+    get:
+      summary: Get build details
+      operationId: getBuildById
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Build details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-probes:
+    get:
+      summary: Get build code coverage by probes
+      operationId: getBuildCoverageByProbes
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Probe coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-methods:
+    get:
+      summary: Get build code coverage by methods
+      operationId: getBuildCoverageByMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Method coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/changes-summary:
+    get:
+      summary: Get build changes summary
+      operationId: getBuildChangesSummary
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Change type counts vs baseline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/similar-builds:
+    get:
+      summary: Get similar builds for baseline selection
+      operationId: getSimilarBuilds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Similar builds ranked by identity ratio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}/test-session-stats:
+    get:
+      summary: Get test session stats for a build
+      operationId: getBuildTestSessionStats
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session and launch counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report
@@ -964,8 +1200,27 @@ paths:
       parameters:
         - name: buildId
           in: query
-          required: true
-          description: Internal build identifier for which to retrieve method-level coverage data.
+          description: Internal build identifier. When omitted, groupId, appId, and one of instanceId/commitSha/buildVersion are required.
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+        - name: appId
+          in: query
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
           schema:
             type: string
         - name: testTag
@@ -983,14 +1238,14 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
-        - name: packageNamePattern
+        - name: packageName
           in: query
-          description: Optional package name pattern filter for narrowing results to specific packages.
+          description: Optional package name filter for narrowing results to specific packages.
           schema:
             type: string
-        - name: classNamePattern
+        - name: className
           in: query
-          description: Optional class name pattern filter for narrowing results to specific classes.
+          description: Optional class name filter for narrowing results to specific classes.
           schema:
             type: string
         - name: page
@@ -1010,6 +1265,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/coverage/by-package:
+    get:
+      summary: Get aggregated package coverage for a build
+      operationId: getCoverageByPackage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Package coverage aggregates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/coverage/by-class:
+    get:
+      summary: Get aggregated class coverage for a build
+      operationId: getCoverageByClass
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: packageName
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          description: |
+            Field to sort results by. When omitted, results are ordered by class name ascending.
+            Supported values:
+            - methodsCoverageRatio — method coverage percentage
+            - methodsCount — total methods count
+            - coveredMethods — covered methods count
+            - probesCoverageRatio — probe coverage percentage
+            - probesCount — total probes count
+            - coveredProbes — covered probes count
+          schema:
+            type: string
+            enum:
+              - methodsCoverageRatio
+              - methodsCount
+              - coveredMethods
+              - probesCoverageRatio
+              - probesCount
+              - coveredProbes
+        - name: sortOrder
+          in: query
+          description: Sort direction. Defaults to ASC when sortBy is set. Ignored when sortBy is omitted.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
+      responses:
+        '200':
+          description: Class coverage aggregates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/impacted-tests:
     get:
       summary: Get impacted tests

@@ -30,6 +30,40 @@ import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
+private fun walkTreemapNodes(
+    nodes: List<Map<String, Any?>>,
+    visit: (Map<String, Any?>) -> Unit,
+) {
+    nodes.forEach { node ->
+        visit(node)
+        @Suppress("UNCHECKED_CAST")
+        val children = node["children"] as? List<Map<String, Any?>> ?: emptyList()
+        walkTreemapNodes(children, visit)
+    }
+}
+
+private fun treemapAny(
+    nodes: List<Map<String, Any?>>,
+    predicate: (Map<String, Any?>) -> Boolean,
+): Boolean = nodes.any { node ->
+    predicate(node) || @Suppress("UNCHECKED_CAST") (
+        (node["children"] as? List<Map<String, Any?>>)?.let { treemapAny(it, predicate) } == true
+    )
+}
+
+private fun treemapAll(
+    nodes: List<Map<String, Any?>>,
+    predicate: (Map<String, Any?>) -> Boolean,
+): Boolean {
+    var valid = true
+    walkTreemapNodes(nodes) { node ->
+        if (!predicate(node)) {
+            valid = false
+        }
+    }
+    return valid && nodes.isNotEmpty()
+}
+
 class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
     RawDataWriterDatabaseConfig.init(default)
     MetricsDatabaseConfig.init(metrics)
@@ -53,8 +87,10 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
         }.returns { data ->
             assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
-            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+            assertTrue(treemapAll(data) { it["type"] in listOf("package", "class", "method") })
+            assertTrue(treemapAny(data) { it["type"] == "method" && it["signature"] != null })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
         }
     }
 
@@ -67,8 +103,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
         }.returns { data ->
             assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
         }
     }
 
@@ -83,8 +119,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
         }.returns { data ->
             assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
         }
         // Filter by session1 - only method1 coverage
         client.get("/metrics/coverage-treemap") {
@@ -92,8 +128,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("testSessionId", session1.id)
         }.returns { data ->
             assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
         }
         // Filter by session2 - only method2 coverage
         client.get("/metrics/coverage-treemap") {
@@ -101,8 +137,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
             parameter("testSessionId", session2.id)
         }.returns { data ->
             assertTrue(data.isNotEmpty())
-            assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
-            assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
+            assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
         }
     }
 
@@ -121,8 +157,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
                 parameter("testDefinitionId", test1.definitionId)
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
-                assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 2 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 0 })
             }
             // Filter by test2 definition (test2 covering method2) - requires testSessionId
             client.get("/metrics/coverage-treemap") {
@@ -131,8 +167,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
                 parameter("testDefinitionId", test2.definitionId)
             }.returns { data ->
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.any { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
-                assertTrue(data.any { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method1.name) && it["covered_probes"] == 0 })
+                assertTrue(treemapAny(data) { it["name"].toString().startsWith(method2.name) && it["covered_probes"] == 3 })
             }
         }
     }
@@ -156,8 +192,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             fun onlyMatchingMethods(data: List<Map<String, Any?>>) {
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.all { it["name"].toString().contains("com.example.foo") })
-                assertTrue(data.none { it["name"].toString().contains("com.other.bar") })
+                assertTrue(treemapAll(data) { it["name"].toString().contains("com.example.foo") })
+                assertTrue(!treemapAny(data) { it["name"].toString().contains("com.other.bar") })
             }
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {
@@ -199,8 +235,8 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             fun onlyMatchingMethods(data: List<Map<String, Any?>>) {
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.all { it["name"].toString().contains("com.example.foo.ClassA") })
-                assertTrue(data.none { it["name"].toString().contains("com.example.foo.ClassB") })
+                assertTrue(treemapAll(data) { it["name"].toString().contains("com.example.foo.ClassA") })
+                assertTrue(!treemapAny(data) { it["name"].toString().contains("com.example.foo.ClassB") })
             }
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {
@@ -247,25 +283,31 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             fun onlyMatchingEnvironments(data: List<Map<String, Any?>>) {
                 assertTrue(data.isNotEmpty())
-                assertTrue(data.filter { it["name"] == method1.name }.all { it["isolated_covered_probes"].toString() == "1" })
+                assertTrue(
+                    treemapAny(data) {
+                        it["type"] == "method" &&
+                            it["name"].toString().startsWith(method1.name) &&
+                            it["covered_probes"] == 1
+                    }
+                )
             }
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
                 parameter("testSessionId", session1.id)
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
             // Get coverage treemap by buildId + testSessionId + testDefinitionId
             client.get("/metrics/coverage-treemap") {
                 parameter("buildId", "${build1.groupId}:${build1.appId}:${build1.buildVersion}")
                 parameter("testSessionId", session1.id)
                 parameter("testDefinitionId", test1.definitionId)
-                parameter("envId", "env-A")
+                parameter("envIds", "env-A")
             }.returns { onlyMatchingEnvironments(it) }
         }
     }
