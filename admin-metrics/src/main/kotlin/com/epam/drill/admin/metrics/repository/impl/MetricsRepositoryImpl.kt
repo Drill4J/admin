@@ -509,6 +509,14 @@ class MetricsRepositoryImpl : MetricsRepository {
             """.trimIndent()
             "methods_count" -> "methods_count $sortDirection, class_name ASC"
             "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
+            "probes_coverage_ratio" -> """
+                CASE
+                    WHEN probes_count > 0 THEN covered_probes::DOUBLE PRECISION / probes_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "probes_count" -> "probes_count $sortDirection, class_name ASC"
+            "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
             else -> "class_name ASC"
         }
 
