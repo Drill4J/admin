@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.flow
+package com.epam.drill.admin.etl
 
-import kotlinx.coroutines.flow.Flow
-
-interface StoppableFlow<out T>: Flow<T> {
-    suspend fun stop()
+enum class EtlRunStatus {
+    RUNNING,
+    IDLE;
 }

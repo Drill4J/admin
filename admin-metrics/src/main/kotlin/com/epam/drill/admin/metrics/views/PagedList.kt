@@ -15,11 +15,14 @@
  */
 package com.epam.drill.admin.metrics.views
 
+import java.time.Instant
+
 class PagedList<T>(
     val page: Int,
     val pageSize: Int,
     val items: List<T>,
-    val total: Long? = null
+    val total: Long? = null,
+    val refreshedAt: Instant? = null
 )
 
 suspend fun <T> pagedListOf(

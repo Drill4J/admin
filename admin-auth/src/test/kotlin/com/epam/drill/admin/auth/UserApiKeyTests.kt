@@ -34,6 +34,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -85,19 +86,19 @@ class UserApiKeyTests {
             )
         )
 
-        withTestApplication(withRoute {
-            authenticate {
-                getUserApiKeysRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/user-keys") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    getUserApiKeysRoute()
+                }
+            })
+            val response = client.get("/user-keys") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addJwtToken(username = "test-user", userId = testUserId)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: List<UserApiKeyView> = assertResponseNotNull(ListSerializer(UserApiKeyView.serializer()))
-                assertEquals(2, response.size)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: List<UserApiKeyView> = response.assertResponseNotNull(ListSerializer(UserApiKeyView.serializer()))
+            assertEquals(2, body.size)
         }
     }
 
@@ -112,26 +113,26 @@ class UserApiKeyTests {
         wheneverBlocking(secretGenerator) { generate() }.thenReturn("secret")
         wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn(testApiKey)
 
-        withTestApplication(withRoute {
-            authenticate {
-                generateUserApiKeyRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Post, "/user-keys") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    generateUserApiKeyRoute()
+                }
+            })
+            val response = client.post("/user-keys") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = GenerateApiKeyPayload(
                     description = "for some client",
                     expiryPeriod = ExpiryPeriod.ONE_MONTH
                 )
                 setBody(Json.encodeToString(GenerateApiKeyPayload.serializer(), form))
                 addJwtToken(username = "test-user", userId = testUserId)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: ApiKeyCredentialsView = assertResponseNotNull(ApiKeyCredentialsView.serializer())
-                assertEquals(testApiKeyId, response.id)
-                assertEquals(testApiKey, response.apiKey)
-                assertNotNull(response.expiresAt)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: ApiKeyCredentialsView = response.assertResponseNotNull(ApiKeyCredentialsView.serializer())
+            assertEquals(testApiKeyId, body.id)
+            assertEquals(testApiKey, body.apiKey)
+            assertNotNull(body.expiresAt)
         }
     }
 
@@ -143,24 +144,24 @@ class UserApiKeyTests {
         wheneverBlocking(secretGenerator) { generate() }.thenReturn("secret")
         wheneverBlocking(apiKeyBuilder) { format(any()) }.thenReturn("test-api-key")
 
-        withTestApplication(withRoute {
-            authenticate {
-                generateUserApiKeyRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Post, "/user-keys") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    generateUserApiKeyRoute()
+                }
+            })
+            val response = client.post("/user-keys") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = GenerateApiKeyPayload(
                     description = "for some client",
                     expiryPeriod = ExpiryPeriod.THREE_MONTHS
                 )
                 setBody(Json.encodeToString(GenerateApiKeyPayload.serializer(), form))
                 addJwtToken(username = "test-user", userId = 43)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: ApiKeyCredentialsView = assertResponseNotNull(ApiKeyCredentialsView.serializer())
-                assertEquals(firstJanuary2023.plusMonths(3).toKotlinLocalDateTime(), response.expiresAt)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: ApiKeyCredentialsView = response.assertResponseNotNull(ApiKeyCredentialsView.serializer())
+            assertEquals(firstJanuary2023.plusMonths(3).toKotlinLocalDateTime(), body.expiresAt)
         }
     }
 
@@ -174,18 +175,18 @@ class UserApiKeyTests {
                 user = UserEntity(id = testUserId, username = "test-user", role = "USER")
             )
         )
-        withTestApplication(withRoute {
-            authenticate {
-                deleteUserApiKeyRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Delete, "/user-keys/$testApiKey") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    deleteUserApiKeyRoute()
+                }
+            })
+            val response = client.delete("/user-keys/$testApiKey") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addJwtToken(username = "test-user", userId = testUserId)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(apiKeyRepository) { deleteById(testApiKey) }
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(apiKeyRepository) { deleteById(testApiKey) }
         }
     }
 
@@ -200,21 +201,21 @@ class UserApiKeyTests {
                 user = UserEntity(id = anotherUserId, username = "another-user", role = "USER")
             )
         )
-        withTestApplication(withRoute {
-            authenticate {
-                deleteUserApiKeyRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Delete, "/user-keys/$testApiKey") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    deleteUserApiKeyRoute()
+                }
+            })
+            val response = client.delete("/user-keys/$testApiKey") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addJwtToken(username = "test-user", userId = testUserId)
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
-    private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
+    private fun withRoute(route: Route.() -> Unit): Application.() -> Unit = {
         install(Resources)
         install(ContentNegotiation) {
             json()

@@ -16,6 +16,7 @@ val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
+val kotlinxCoroutinesVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
@@ -25,6 +26,7 @@ val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
 val awaitilityVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -66,9 +68,10 @@ dependencies {
     implementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     implementation("org.testcontainers:postgresql:$testContainersVersion")
     implementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
     implementation("org.postgresql:postgresql:$postgresSqlVersion")
     implementation("org.awaitility:awaitility:${awaitilityVersion}")
+    implementation("io.micrometer:micrometer-core:${micrometerVersion}")
 }
 
 tasks {

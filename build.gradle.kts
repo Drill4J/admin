@@ -49,6 +49,11 @@ if(version == Project.DEFAULT_VERSION) {
 }
 
 subprojects {
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+            jvmToolchain(17)
+        }
+    }
     val constraints = setOf(
         dependencies.constraints.create("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"),
         dependencies.constraints.create("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"),
@@ -66,6 +71,8 @@ subprojects {
         dependencies.constraints.create("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion"),
     )
     configurations.all {
-        dependencyConstraints += constraints
+        if (isCanBeDeclared) {
+            dependencyConstraints += constraints
+        }
     }
 }

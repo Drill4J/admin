@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.repository
 
 import com.epam.drill.admin.metrics.models.SortOrder
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.time.Instant
 import java.time.LocalDateTime
 
@@ -97,36 +98,10 @@ interface MetricsRepository {
         coverageThreshold: Double,
     ): Map<String, Any?>
 
-    suspend fun getRecommendedTests(
-        targetBuildId: String,
-        testImpactStatuses: List<String>,
-
-        baselineBuildIds: List<String> = emptyList(),
-        baselineFromBuildId: String? = null,
-        baselineUntilBuildId: String? = null,
-        baselineBuildBranches: List<String> = emptyList(),
-
-        testTaskIds: List<String> = emptyList(),
-        testTags: List<String> = emptyList(),
-        testPathPattern: String? = null,
-        testNamePattern: String? = null,
-
-        packageNamePattern: String? = null,
-        classNamePattern: String? = null,
-
-        coverageAppEnvIds: List<String> = emptyList(),
-        coveragePeriodFrom: LocalDateTime? = null,
-        coveragePeriodUntil: LocalDateTime? = null,
-
-        offset: Int?,
-        limit: Int?
-    ): List<Map<String, Any?>>
-
     suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
 
-        testTaskId: String? = null,
         testTags: List<String> = emptyList(),
         testPathPattern: String? = null,
         testNamePattern: String? = null,
@@ -137,6 +112,8 @@ interface MetricsRepository {
 
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
+
+        impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
 
         sortBy: String? = null,
         sortOrder: SortOrder? = null,

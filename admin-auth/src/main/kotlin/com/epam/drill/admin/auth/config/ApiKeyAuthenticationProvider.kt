@@ -40,7 +40,7 @@ class ApiKeyAuthenticationProvider internal constructor(
      */
     class Configuration internal constructor(name: String?) : Config(name) {
 
-        internal lateinit var authenticationFunction: suspend ApplicationCall.(String) -> Principal?
+        internal lateinit var authenticationFunction: suspend ApplicationCall.(String) -> Any?
 
         internal var challengeFunction: suspend (ApplicationCall) -> Unit = { call ->
             call.respond(HttpStatusCode.Unauthorized)
@@ -60,7 +60,7 @@ class ApiKeyAuthenticationProvider internal constructor(
          * A function that will check given API key retrieved from [headerName] and return [Principal],
          * or null if credential does not correspond to an authenticated principal.
          */
-        fun validate(body: suspend ApplicationCall.(String) -> Principal?) {
+        fun validate(body: suspend ApplicationCall.(String) -> Any?) {
             authenticationFunction = body
         }
 

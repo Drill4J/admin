@@ -17,10 +17,11 @@ package com.epam.drill.admin.etl.service.impl
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.EtlMetadataRepository
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.config.getUpdateMetricsEtlDataMap
-import com.epam.drill.admin.etl.config.updateMetricsEtlJobKey
+import com.epam.drill.admin.etl.job.getJobDataMap
+import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
 import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
@@ -34,8 +35,14 @@ class EtlServiceImpl(
     private val etlRepository: EtlMetadataRepository
 ) : EtlService {
     @Suppress("UNCHECKED_CAST")
-    override suspend fun refresh(groupId: String?, reset: Boolean) {
-        val params = getUpdateMetricsEtlDataMap(groupId, reset)
+    override suspend fun refresh(
+        context: EtlContext?,
+        etl: String?,
+        reset: Boolean,
+        initTimestamp: Instant?,
+        finalTimestamp: Instant?
+    ) {
+        val params = getJobDataMap(context, etl, reset, initTimestamp, finalTimestamp)
         val results = suspendCancellableCoroutine { continuation ->
             scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
                 if (exception != null)
@@ -53,7 +60,7 @@ class EtlServiceImpl(
     }
 
     override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {
-        val metadata = etlRepository.getAllMetadata(groupId)
+        val metadata = etlRepository.getAllMetadata(EtlContext(groupId = groupId))
         if (metadata.isEmpty()) return emptyMap()
 
         val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)

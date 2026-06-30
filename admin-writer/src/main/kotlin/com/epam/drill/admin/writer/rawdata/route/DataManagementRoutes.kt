@@ -22,6 +22,7 @@ import io.ktor.resources.Resource
 import io.ktor.server.application.call
 import io.ktor.server.auth.principal
 import io.ktor.server.resources.delete
+import io.ktor.server.resources.put
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import mu.KotlinLogging

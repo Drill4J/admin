@@ -15,7 +15,17 @@
  */
 package com.epam.drill.admin.etl.service
 
+import com.epam.drill.admin.etl.EtlContext
+import java.time.Instant
+
 interface EtlService {
-    suspend fun refresh(groupId: String? = null, reset: Boolean = false)
+    suspend fun refresh(
+        context: EtlContext? = null,
+        etl: String? = null,
+        reset: Boolean = false,
+        initTimestamp: Instant? = null,
+        finalTimestamp: Instant? = null,
+    )
+
     suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
 }

@@ -19,5 +19,6 @@ enum class EtlStatus {
     FAILED,
     SUCCESS,
     LOADING,
-    EXTRACTING;
+    EXTRACTING,
+    SKIPPED;
 }

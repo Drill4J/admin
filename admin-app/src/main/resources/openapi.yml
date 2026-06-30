@@ -506,6 +506,13 @@ paths:
           description: Optional filter to retrieve applications belonging to a specific group only.
           schema:
             type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of applications
@@ -556,6 +563,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of builds
@@ -627,98 +641,16 @@ paths:
             type: number
             format: float
             default: 1.0
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Build diff report
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
-  /api/metrics/recommended-tests:
-    get:
-      summary: Get recommended tests
-      description: |
-        Analyzes code changes between a target build and a baseline build and returns a list of tests recommended
-        for execution based on impact analysis. The endpoint identifies which methods have changed and finds tests
-        that previously covered those methods, recommending them for re-execution to validate the changes.
-        When testsToSkip is true, the endpoint inverts the result - returning tests that can be safely skipped
-        because they do not cover any changed code. The target build is identified by
-        targetInstanceId, targetCommitSha, or targetBuildVersion. The baseline build is identified by
-        baselineInstanceId, baselineCommitSha, baselineBuildVersion, or baselineBuildBranches.
-      operationId: getRecommendedTests
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: testsToSkip
-          in: query
-          description: When true, returns tests that can be safely skipped (not impacted by changes). When false (default), returns tests that should be executed because they cover changed code.
-          schema:
-            type: boolean
-            default: false
-        - name: testTaskId
-          in: query
-          description: Optional test task ID filter. When specified, only considers test launches associated with this task ID for recommendations.
-          schema:
-            type: string
-        - name: targetInstanceId
-          in: query
-          description: Instance ID of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: targetCommitSha
-          in: query
-          description: Git commit SHA of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: targetBuildVersion
-          in: query
-          description: Build version of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineBuildBranches
-          in: query
-          description: List of Git branch names to consider when selecting the baseline build. Useful when the baseline should be chosen from specific branches (e.g., main, develop).
-          schema:
-            type: array
-            items:
-              type: string
-        - name: coveragePeriodDays
-          in: query
-          description: Number of days to look back for coverage data when determining test recommendations. Limits the scope of historical coverage data used for analysis.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Recommended tests
           content:
             application/json:
               schema:
@@ -781,6 +713,13 @@ paths:
           description: Filter coverage by test definition ID. Requires testSessionId to be specified. When provided, only coverage data from the specific test definition is included.
           schema:
             type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Coverage treemap data
@@ -862,6 +801,13 @@ paths:
           description: Whether to include methods that are unchanged between builds. Defaults to false.
           schema:
             type: boolean
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Changes coverage treemap data
@@ -944,6 +890,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of method changes between builds
@@ -1003,6 +956,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Method list with coverage data
@@ -1088,11 +1048,6 @@ paths:
               type: string
           style: form
           explode: true
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only tests from launches associated with this task ID are considered.
-          schema:
-            type: string
         - name: testTag
           in: query
           description: Optional filter by test tag. When specified, only tests with this tag are included.
@@ -1120,6 +1075,18 @@ paths:
         - name: coverageAppEnvIds
           in: query
           description: List of application environment IDs to consider when selecting coverage data for impact analysis.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: impactStatuses
+          in: query
+          description: |
+            List of impact statuses to filter results by. Supported values are IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT. 
+            When specified, only tests with one of these impact statuses are returned.
+            Defaults to IMPACTED if not specified.
           schema:
             type: array
             items:
@@ -1154,6 +1121,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of impacted tests
@@ -1255,11 +1229,6 @@ paths:
           description: Optional filter by method name to narrow results to a specific method.
           schema:
             type: string
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
-          schema:
-            type: string
         - name: testTag
           in: query
           description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
@@ -1303,6 +1272,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of impacted methods
@@ -2472,6 +2448,11 @@ components:
         pageSize:
           type: integer
           nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
     ImpactedMethodsRequest:
       type: object
       description: |
@@ -2560,3 +2541,8 @@ components:
         pageSize:
           type: integer
           nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.

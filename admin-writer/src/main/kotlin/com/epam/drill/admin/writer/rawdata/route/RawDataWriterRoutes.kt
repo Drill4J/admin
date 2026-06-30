@@ -240,7 +240,7 @@ internal suspend fun sendPostRequest(url: String, data: Any) {
 
     client.post(url) {
         contentType(ContentType.Application.Json)
-        body = data
+        setBody(data)
     }
 }
 

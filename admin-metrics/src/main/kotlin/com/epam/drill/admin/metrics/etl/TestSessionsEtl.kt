@@ -13,41 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl.metrics
+package com.epam.drill.admin.metrics.etl
 
-import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.pipeline
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 
-val EtlConfig.testDefinitionsExtractor
+val EtlConfig.testSessionsExtractor
     get() = UntypedSqlDataExtractor(
-        name = "test_definitions",
-        sqlQuery = fromResource("/etl/db/metrics/test_definitions_extractor.sql"),
+        name = "test_sessions",
+        sqlQuery = fromResource("/metrics/db/etl/test_sessions_extractor.sql"),
         database = RawDataWriterDatabaseConfig.database,
         fetchSize = fetchSize,
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
-        lastExtractedAtColumnName = "updated_at",
+        lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
     )
 
-val EtlConfig.testDefinitionsLoader
+val EtlConfig.testSessionsLoader
     get() = UntypedSqlDataLoader(
-        name = "test_definitions",
-        sqlUpsert = fromResource("/etl/db/metrics/test_definitions_loader.sql"),
-        sqlDelete = fromResource("/etl/db/metrics/test_definitions_delete.sql"),
+        name = "test_sessions",
+        sqlUpsert = fromResource("/metrics/db/etl/test_sessions_loader.sql"),
+        sqlDelete = fromResource("/metrics/db/etl/test_sessions_delete.sql"),
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
     )
 
-val EtlConfig.testDefinitionsPipeline
-    get() = EtlPipelineImpl.singleLoader(
-        name = "test_definitions",
-        extractor = testDefinitionsExtractor,
-        loader = testDefinitionsLoader,
-        bufferSize = bufferSize
-    )
+val EtlConfig.testSessionsPipeline
+    get() = pipeline("test_sessions")
+        .extractWith(testSessionsExtractor)
+        .loadWith(testSessionsLoader)

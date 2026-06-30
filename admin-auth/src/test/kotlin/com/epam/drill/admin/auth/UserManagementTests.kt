@@ -34,6 +34,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
@@ -76,14 +77,14 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findAll() }
             .thenReturn(listOf(USER_ADMIN, USER_USER))
 
-        withTestApplication(withRoute { getUsersRoute() }) {
-            with(handleRequest(HttpMethod.Get, "/users") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: List<UserView> = assertResponseNotNull(ListSerializer(UserView.serializer()))
-                assertEquals(2, response.size)
+        testApplication {
+            application(withRoute { getUsersRoute() })
+            val response = client.get("/users") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: List<UserView> = response.assertResponseNotNull(ListSerializer(UserView.serializer()))
+            assertEquals(2, body.size)
         }
     }
 
@@ -97,14 +98,14 @@ class UserManagementTest {
             )
         )
 
-        withTestApplication(withRoute { getUserRoute() }) {
-            with(handleRequest(HttpMethod.Get, "/users/1") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = assertResponseNotNull(UserView.serializer())
-                assertEquals("admin", response.username)
+        testApplication {
+            application(withRoute { getUserRoute() })
+            val response = client.get("/users/1") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: UserView = response.assertResponseNotNull(UserView.serializer())
+            assertEquals("admin", body.username)
         }
     }
 
@@ -115,17 +116,17 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { update(any()) }
             .thenAnswer(CopyUser)
 
-        withTestApplication(withRoute { editUserRoute() }) {
-            with(handleRequest(HttpMethod.Put, "/users/1") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute { editUserRoute() })
+            val response = client.put("/users/1") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
                 setBody(Json.encodeToString(EditUserPayload.serializer(), form))
-            }) {
-                verifyBlocking(userRepository) { update(USER_ADMIN.copy(role = "USER")) }
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response: UserView = assertResponseNotNull(UserView.serializer())
-                assertEquals(Role.USER, response.role)
             }
+            verifyBlocking(userRepository) { update(USER_ADMIN.copy(role = "USER")) }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body: UserView = response.assertResponseNotNull(UserView.serializer())
+            assertEquals(Role.USER, body.role)
         }
     }
 
@@ -134,13 +135,13 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(withRoute { deleteUserRoute() }) {
-            with(handleRequest(HttpMethod.Delete, "/users/1") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { deleteById(1) }
+        testApplication {
+            application(withRoute { deleteUserRoute() })
+            val response = client.delete("/users/1") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) { deleteById(1) }
         }
     }
 
@@ -149,13 +150,13 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN)
 
-        withTestApplication(withRoute { blockUserRoute() }) {
-            with(handleRequest(HttpMethod.Patch, "/users/1/block") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = true)) }
+        testApplication {
+            application(withRoute { blockUserRoute() })
+            val response = client.patch("/users/1/block") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = true)) }
         }
     }
 
@@ -164,13 +165,13 @@ class UserManagementTest {
         wheneverBlocking(userRepository) { findById(1) }
             .thenReturn(USER_ADMIN.copy(blocked = true))
 
-        withTestApplication(withRoute { unblockUserRoute() }) {
-            with(handleRequest(HttpMethod.Patch, "/users/1/unblock") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = false)) }
+        testApplication {
+            application(withRoute { unblockUserRoute() })
+            val response = client.patch("/users/1/unblock") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) { update(USER_ADMIN.copy(blocked = false)) }
         }
     }
 
@@ -183,63 +184,63 @@ class UserManagementTest {
         whenever(passwordService.hashPassword("newsecret"))
             .thenReturn("newhash")
 
-        withTestApplication(withRoute { resetPasswordRoute() }) {
-            with(handleRequest(HttpMethod.Patch, "/users/1/reset-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { update(USER_ADMIN.copy(passwordHash = "newhash")) }
+        testApplication {
+            application(withRoute { resetPasswordRoute() })
+            val response = client.patch("/users/1/reset-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) { update(USER_ADMIN.copy(passwordHash = "newhash")) }
         }
     }
 
     @Test
     fun `given user identifier equal to current user, 'DELETE users {id}' must fail`() {
-        withTestApplication(withRoute {
-            authenticate {
-                deleteUserRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Delete, "/users/123") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    deleteUserRoute()
+                }
+            })
+            val response = client.delete("/users/123") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addJwtToken("foo", userId = 123)
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
     @Test
     fun `given user identifier equal to current user, 'PATCH users {id} block' must fail`() {
-        withTestApplication(withRoute {
-            authenticate {
-                blockUserRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Patch, "/users/123/block") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    blockUserRoute()
+                }
+            })
+            val response = client.patch("/users/123/block") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addJwtToken("foo", userId = 123)
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
     @Test
     fun `given user identifier equal to current user, 'PUT users {id}' must fail`() {
-        withTestApplication(withRoute {
-            authenticate {
-                editUserRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Put, "/users/123") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(withRoute {
+                authenticate {
+                    editUserRoute()
+                }
+            })
+            val response = client.put("/users/123") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.USER)
                 setBody(Json.encodeToString(EditUserPayload.serializer(), form))
                 addJwtToken("foo", userId = 123)
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
@@ -247,18 +248,15 @@ class UserManagementTest {
     fun `given external user, 'PATCH users {id} reset-password' must fail`() {
         wheneverBlocking(userRepository) { findById(123) }
             .thenReturn(
-                //null password hash means the user is external
                 UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
             )
 
-        withTestApplication(withRoute {
-            resetPasswordRoute()
-        }) {
-            with(handleRequest(HttpMethod.Patch, "/users/123/reset-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
+        testApplication {
+            application(withRoute { resetPasswordRoute() })
+            val response = client.patch("/users/123/reset-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
@@ -266,46 +264,45 @@ class UserManagementTest {
     fun `given external user with external role management, 'PUT users {id}' must fail`() {
         wheneverBlocking(userRepository) { findById(123) }
             .thenReturn(
-                //null password hash means the user is external
                 UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
             )
 
-        withTestApplication(moduleFunction = {
-            install(Resources)
-            install(ContentNegotiation) {
-                json()
-            }
-            di {
-                bind<UserRepository>() with eagerSingleton { userRepository }
-                bind<PasswordService>() with eagerSingleton { passwordService }
-                bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
-                bind<UserManagementService>() with eagerSingleton {
-                    UserManagementServiceImpl(
-                        userRepository = instance(),
-                        passwordService = instance(),
-                        passwordGenerator = instance(),
-                        externalRoleManagement = true
-                    )
+        testApplication {
+            application {
+                install(Resources)
+                install(ContentNegotiation) {
+                    json()
+                }
+                di {
+                    bind<UserRepository>() with eagerSingleton { userRepository }
+                    bind<PasswordService>() with eagerSingleton { passwordService }
+                    bind<PasswordGenerator>() with eagerSingleton { passwordGenerator }
+                    bind<UserManagementService>() with eagerSingleton {
+                        UserManagementServiceImpl(
+                            userRepository = instance(),
+                            passwordService = instance(),
+                            passwordGenerator = instance(),
+                            externalRoleManagement = true
+                        )
+                    }
+                }
+                install(StatusPages) {
+                    authStatusPages()
+                }
+                routing {
+                    editUserRoute()
                 }
             }
-            install(StatusPages) {
-                authStatusPages()
-            }
-            routing {
-                editUserRoute()
-            }
-        }) {
-            with(handleRequest(HttpMethod.Put, "/users/123") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            val response = client.put("/users/123") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = EditUserPayload(role = Role.ADMIN)
                 setBody(Json.encodeToString(EditUserPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
-    private fun withRoute(route: Routing.() -> Unit): Application.() -> Unit = {
+    private fun withRoute(route: Route.() -> Unit): Application.() -> Unit = {
         install(Resources)
         install(ContentNegotiation) {
             json()
