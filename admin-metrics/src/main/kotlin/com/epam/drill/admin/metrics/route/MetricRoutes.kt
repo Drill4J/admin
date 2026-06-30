@@ -27,6 +27,7 @@ import com.epam.drill.admin.common.config.Paging
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import com.epam.drill.admin.metrics.views.TestView
 import io.ktor.http.*
 import io.ktor.resources.*
@@ -115,24 +116,6 @@ class Metrics(
         val coverageThreshold: Double = 0.0,
     )
 
-    @Resource("/recommended-tests")
-    class RecommendedTests(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val testsToSkip: Boolean = false,
-        val testTaskId: String? = null,
-        val targetInstanceId: String? = null,
-        val targetCommitSha: String? = null,
-        val targetBuildVersion: String? = null,
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-        val baselineBuildBranches: List<String> = emptyList(),
-        val coveragePeriodDays: Int? = null,
-    )
-
     @Resource("/changes")
     class Changes(
         val parent: Metrics,
@@ -196,13 +179,14 @@ class Metrics(
 
         val excludeMethodSignatures: List<String> = emptyList(),
 
-        val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
 
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
+
+        val impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
 
         val sortBy: String? = null,
         val sortOrder: SortOrder? = null,
@@ -229,12 +213,7 @@ class Metrics(
         val packageName: String? = null,
         val className: String? = null,
         val methodName: String? = null,
-        @Deprecated("Use packageName instead")
-        val packageNamePattern: String? = null,
-        @Deprecated("Use className instead")
-        val classNamePattern: String? = null,
 
-        val testTaskId: String? = null,
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
@@ -263,7 +242,6 @@ fun Route.metricsRoutes() {
     getApplications()
     getBuilds()
     getBuildDiffReport()
-    getRecommendedTests()
     getCoverageTreemap()
     getChangesCoverageTreemap()
     getChanges()
@@ -366,28 +344,6 @@ fun Route.getBuildDiffReport() {
             baselineBuildVersion = params.baselineBuildVersion,
             coverageThreshold = params.coverageThreshold,
             freshAfter = params.parent.freshAfter.toInstant(),
-        )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
-    }
-}
-
-fun Route.getRecommendedTests() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.RecommendedTests> { params ->
-        val report = metricsService.getRecommendedTests(
-            groupId = params.groupId,
-            appId = params.appId,
-            testsToSkip = params.testsToSkip,
-            testTaskId = params.testTaskId,
-            coveragePeriodDays = params.coveragePeriodDays,
-            targetInstanceId = params.targetInstanceId,
-            targetCommitSha = params.targetCommitSha,
-            targetBuildVersion = params.targetBuildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            baselineBuildBranches = params.baselineBuildBranches,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(report))
     }
@@ -541,7 +497,6 @@ private suspend fun getImpactedTests(
         baselineBuild = baselineBuild,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
-            testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName
         ),
@@ -555,6 +510,7 @@ private suspend fun getImpactedTests(
             branches = params.coverageBranches,
             appEnvIds = params.coverageAppEnvIds,
         ),
+        impactStatuses = params.impactStatuses,
         sortBy = params.sortBy,
         sortOrder = params.sortOrder,
         page = params.page,
@@ -586,14 +542,13 @@ private suspend fun getImpactedMethods(
         baselineBuild = baselineBuild,
         testCriteria = TestCriteria(
             testTags = listOfNotNull(params.testTag),
-            testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName
         ),
         methodCriteria = MethodCriteria(
-            packageName = params.packageName ?: params.packageNamePattern,
-            className = params.className ?: params.classNamePattern,
-            methodName = params.methodName
+            packageName = params.packageName,
+            className = params.className,
+            methodName = params.methodName,
         ),
         coverageCriteria = CoverageCriteria(
             branches = params.coverageBranches,

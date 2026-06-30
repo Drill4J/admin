@@ -78,16 +78,40 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
-    fun `given new methods compared to baseline, impacted tests service should return tests which cover new methods`() =
+    fun `given new covered methods compared to baseline, impacted tests service should return tests which cover new methods`() =
         havingData {
             build1 has listOf(method1)
             build2 hasNew method2 comparedTo build1
             test1 covers method2 on build2
         }.expectThat {
             test1 isImpactedOn build2 comparedTo build1
+
             method2 isImpactedOn build2 comparedTo build1
             //because
             method2 isNewOn build2 comparedTo build1
+            method2 isCoveredOn build2
+        }
+
+    @Test
+    fun `given new uncovered methods compared to baseline, impacted methods service should not return uncovered new methods`() =
+        havingData {
+            build1 has listOf(method1)
+            build2 hasNew method2 comparedTo build1
+        }.expectThat {
+            method2 isNotImpactedOn build2 comparedTo build1
+            //because
+            method2 isNewOn build2 comparedTo build1
+            method2 isNotCoveredOn build2
+        }
+
+    @Test
+    fun `given failed test, impacted tests service should return unknown impact`() =
+        havingData {
+            build1 has listOf(method1)
+            test1 failsOn method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat {
+            test1 hasUnknownImpactOn build2 comparedTo build1
         }
 
     @Test

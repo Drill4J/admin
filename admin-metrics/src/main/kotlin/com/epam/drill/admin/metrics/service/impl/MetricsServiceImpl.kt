@@ -331,107 +331,6 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun getRecommendedTests(
-        groupId: String,
-        appId: String,
-        testsToSkip: Boolean?,
-        testTaskId: String?,
-        coveragePeriodDays: Int?,
-        targetInstanceId: String?,
-        targetCommitSha: String?,
-        targetBuildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        baselineBuildBranches: List<String>
-    ): Map<String, Any?> = transaction {
-        val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
-
-        val baselineBuildId = takeIf { hasBaselineBuild }?.let {
-            generateBuildId(
-                groupId,
-                appId,
-                baselineInstanceId,
-                baselineCommitSha,
-                baselineBuildVersion,
-                """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-            ).also { buildId ->
-                if (!metricsRepository.buildExists(buildId)) {
-                    throw BuildNotFound("Baseline build info not found for $buildId")
-                }
-            }
-        }
-
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            targetInstanceId,
-            targetCommitSha,
-            targetBuildVersion,
-            """
-            Provide at least one the following: targetInstanceId, targetCommitSha, targetBuildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
-        }
-
-        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-        val testImpactStatus = when (testsToSkip) {
-            true -> listOf(TestImpactStatus.NOT_IMPACTED)
-            false -> listOf(TestImpactStatus.IMPACTED, TestImpactStatus.UNKNOWN_IMPACT)
-            null -> TestImpactStatus.entries
-        }
-
-
-        val recommendedTests = metricsRepository.getRecommendedTests(
-            targetBuildId = targetBuildId,
-            testImpactStatuses = testImpactStatus.map { it.name },
-            baselineUntilBuildId = baselineBuildId,
-            baselineBuildBranches = baselineBuildBranches,
-            testTaskIds = listOfNotNull(testTaskId),
-            coveragePeriodFrom = coveragePeriodFrom,
-            offset = 0,
-            limit = null
-        ).map { data ->
-            RecommendedTestsView(
-                testDefinitionId = data["test_definition_id"] as String,
-                testRunner = data["test_runner"] as String?,
-                testPath = data["test_path"] as String,
-                testName = data["test_name"] as String,
-                tags = data["test_tags"] as List<String>?,
-                metadata = data["test_metadata"] as JsonElement?,
-                testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
-                impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
-                baselineBuildId = data["baseline_build_id"] as String?,
-            )
-        }
-
-        // TODO add recommended tests UI link
-        // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
-        mapOf(
-            "inputParameters" to mapOf(
-                "groupId" to groupId,
-                "appId" to appId,
-                "targetInstanceId" to targetInstanceId,
-                "targetCommitSha" to targetCommitSha,
-                "targetBuildVersion" to targetBuildVersion,
-                "baselineInstanceId" to baselineInstanceId,
-                "baselineCommitSha" to baselineCommitSha,
-                "baselineBuildVersion" to baselineBuildVersion,
-            ),
-            "inferredValues" to mapOf(
-                "build" to targetBuildId,
-                "baselineBuild" to baselineBuildId,
-            ),
-            "recommendedTests" to recommendedTests,
-        )
-    }
-
     override suspend fun getChanges(
         groupId: String,
         appId: String,
@@ -523,11 +422,12 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        impactStatuses: List<TestImpactStatus>,
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
-        freshAfter: Instant?,
+        freshAfter: Instant?
     ): PagedList<TestView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
@@ -549,7 +449,6 @@ class MetricsServiceImpl(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
-                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
@@ -560,6 +459,8 @@ class MetricsServiceImpl(
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                impactStatuses = impactStatuses,
 
                 sortBy = mappedSortBy,
                 sortOrder = sortOrder,
@@ -574,6 +475,7 @@ class MetricsServiceImpl(
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
+                    impactStatus = (data["impact_status"] as String).let { TestImpactStatus.valueOf(it) },
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
@@ -612,7 +514,6 @@ class MetricsServiceImpl(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
-                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
