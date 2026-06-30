@@ -129,7 +129,7 @@ val gitUsername = System.getenv("GH_USERNAME") ?: ""
 val gitPassword = System.getenv("GH_TOKEN") ?: ""
 jib {
     from {
-        image = "adoptopenjdk/openjdk11:latest"
+        image = "eclipse-temurin:17-jre"
     }
     to {
         image = fullImageTag
@@ -146,7 +146,6 @@ jib {
         jvmFlags = defaultJvmArgs
     }
     extraDirectories {
-        setPaths("/config/ssl")
         permissions = mapOf("/config" to "775","/config/ssl" to "775")
         paths {
             path{

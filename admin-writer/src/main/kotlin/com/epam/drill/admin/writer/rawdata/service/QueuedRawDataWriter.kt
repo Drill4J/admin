@@ -64,8 +64,8 @@ class QueuedRawDataWriter(
             logger.error(e) { "Error while saving [${output.payload::class.simpleName}]: ${e.message}" }
             metrics.failures.increment()
         },
-        onSuccess = { payload ->
-            logger.debug { "Successfully saved [${payload::class.simpleName}]" }
+        onSuccess = { output ->
+            logger.debug { "Successfully saved [${output.payload::class.simpleName}]" }
             metrics.saved.increment()
         }
     )

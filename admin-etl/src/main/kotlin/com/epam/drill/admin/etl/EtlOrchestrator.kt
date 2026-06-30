@@ -25,7 +25,34 @@ import java.time.Instant
  */
 interface EtlOrchestrator {
     val name: String
-    suspend fun run(groupId: String, initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResult>
-    suspend fun rerun(groupId: String, initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
+    val pipelines: List<EtlPipeline<*, *>>
+
+    /**
+     * Runs all pipelines in the orchestrator for the given context and time range.
+     * @param context The ETL context containing identifiers for the data to process.
+     * @param initTimestamp The start of the time range for processing (inclusive).
+     * @param finalTimestamp The end of the time range for processing (exclusive). If null, calculated on the implementation side.
+     * @return A list of EtlProcessingResult
+     */
+    suspend fun run(
+        context: EtlContext,
+        initTimestamp: Instant = Instant.EPOCH,
+        finalTimestamp: Instant? = null,
+    ): List<EtlProcessingResult>
+
+    /**
+     * Reruns all pipelines in the orchestrator for the given context and time range, with an option to delete existing data.
+     * @param context The ETL context containing identifiers for the data to process.
+     * @param initTimestamp The start of the time range for processing (inclusive).
+     * @param finalTimestamp The end of the time range for processing (exclusive). If null, calculated on the implementation side.
+     * @param withDataDeletion If true, existing data in the target storage for the specified time range will be deleted before reprocessing.
+     * @return A list of EtlProcessingResult
+     */
+    suspend fun rerun(
+        context: EtlContext,
+        initTimestamp: Instant = Instant.EPOCH,
+        finalTimestamp: Instant? = null,
+        withDataDeletion: Boolean
+    ): List<EtlProcessingResult>
 }
 

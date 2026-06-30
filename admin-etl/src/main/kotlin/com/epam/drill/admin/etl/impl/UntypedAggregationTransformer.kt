@@ -16,12 +16,14 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataTransformer
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.flow.LruMap
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.seconds
 
 class UntypedAggregationTransformer(
@@ -35,19 +37,15 @@ class UntypedAggregationTransformer(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
+        val groupId = context.groupId
         var isTransformationStarted = false
-        val transformedRows = metrics.rowsTransformed(name, groupId)
-        val aggregatedRows = metrics.rowsAggregated(name, groupId)
-        val emittedRows = metrics.rowsEmitted(name, groupId)
-        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, groupId)
+        val transformedRows = AtomicInteger()
+        val aggregatedRows = metrics.rowsAggregated(name, context)
+        val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
-
-        fun getAggregationRatio(): Double =
-            if (transformedRows.count() < 1) 0.0
-            else (1 - aggregatedRows.count() / transformedRows.count())
 
         trackProgressOf {
             try {
@@ -66,17 +64,16 @@ class UntypedAggregationTransformer(
                             aggregate(value, row)
                         }
                     }
-                    transformedRows.increment()
+                    transformedRows.incrementAndGet()
                     bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
                     if (evicted != null) {
-                        emittedRows.increment()
                         emit(evicted)
                     }
                 }
 
                 // Emit remaining aggregated rows
                 buffer.evictAll { _, evicted ->
-                    emittedRows.increment()
+                    bufferOccupancy.set(if (bufferSize == 0) 0.0 else buffer.size.toDouble() / bufferSize.toDouble())
                     emit(evicted)
                 }
             } catch (e: Exception) {
@@ -86,14 +83,14 @@ class UntypedAggregationTransformer(
         }.every(loggingFrequency.seconds) {
             if (isTransformationStarted)
                 logger.debug {
-                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.count()} rows" +
-                            ", aggregation ratio: ${getAggregationRatio()}"
+                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.get()} rows" +
+                            ", buffer occupancy: ${buffer.size}" +
+                            ", buffer occupancy ratio: ${bufferOccupancy.get()}"
                 }
         }
         if (isTransformationStarted) {
             logger.debug {
-                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows, " +
-                        "aggregation ratio: ${getAggregationRatio()}"
+                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows"
             }
         }
         bufferOccupancy.set(0.0)

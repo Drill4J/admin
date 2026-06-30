@@ -25,6 +25,7 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import org.kodein.di.*
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
@@ -48,57 +49,55 @@ class SimpleAuthModuleTest {
 
     @Test
     fun `given user with valid jwt token, request jwt-only must succeed`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/jwt-only") {
+        testApplication {
+            application(config)
+            val response = client.get("/jwt-only") {
                 addJwtToken(
                     username = "admin",
                     issuer = testIssuer,
                     secret = testSecret,
-                    configureHeader = { addHeader(HttpHeaders.Cookie, "jwt=$it;") }
+                    configureHeader = { header(HttpHeaders.Cookie, "jwt=$it;") }
                 )
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `given user without jwt token, request jwt-only must fail with 401 status`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/jwt-only") {
-                //not to add jwt token
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/jwt-only")
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
     @Test
     fun `given user with expired jwt token, request jwt-only must fail with 401 status`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/jwt-only") {
+        testApplication {
+            application(config)
+            val response = client.get("/jwt-only") {
                 addJwtToken(
                     username = "admin",
                     secret = testSecret,
                     expiresAt = Date(System.currentTimeMillis() - 1000)
                 )
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
     @Test
     fun `given user with invalid jwt token, request jwt-only must fail with 401 status`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/jwt-only") {
+        testApplication {
+            application(config)
+            val response = client.get("/jwt-only") {
                 addJwtToken(
                     username = "admin",
                     secret = "wrong_secret"
                 )
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 

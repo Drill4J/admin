@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.FlowCollector
@@ -35,16 +36,17 @@ abstract class PageDataExtractor<T : EtlRow>(
     private val logger = KotlinLogging.logger {}
 
     override suspend fun extract(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         emitter: FlowCollector<T>,
         onExtractingProgress: suspend (EtlExtractingResult) -> Unit
     ) {
+        val groupId = context.groupId
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = metrics.rowsFetched(name, groupId)
-        val failures = metrics.extractionFailures(name, groupId)
+        val rowsFetched = metrics.rowsFetched(name, context)
+        val failures = metrics.extractionFailures(name, context)
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
@@ -61,7 +63,7 @@ abstract class PageDataExtractor<T : EtlRow>(
 
                     isExecutingQuery.set(true)
                     extractPage(
-                        groupId = groupId,
+                        context = context,
                         sinceTimestamp = currentSince,
                         untilTimestamp = untilTimestamp,
                         limit = extractionLimit,
@@ -120,11 +122,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                     "Error during data extraction with extractor [$name]: ${e.message ?: e.javaClass.simpleName}"
                 }
                 failures.increment()
-                onExtractingProgress(
-                    EtlExtractingResult(
-                        errorMessage = e.message
-                    )
-                )
+                throw e
             }
         }.every(loggingFrequency.seconds) {
             if (isExecutingQuery.get()) {
@@ -151,7 +149,7 @@ abstract class PageDataExtractor<T : EtlRow>(
     }
 
     abstract suspend fun extractPage(
-        groupId: String,
+        context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         limit: Int,

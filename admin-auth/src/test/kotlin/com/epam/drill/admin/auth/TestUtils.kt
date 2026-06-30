@@ -34,6 +34,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.server.config.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
@@ -56,17 +57,17 @@ import java.net.URL
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
-import java.util.*
+import java.util.*;
 import kotlin.test.assertNotNull
 
 const val TEST_JWT_SECRET = "secret"
 
-fun TestApplicationRequest.addBasicAuth(username: String, password: String) {
+fun HttpRequestBuilder.addBasicAuth(username: String, password: String) {
     val encodedCredentials = String(Base64.getEncoder().encode("$username:$password".toByteArray()))
-    addHeader(HttpHeaders.Authorization, "Basic $encodedCredentials")
+    header(HttpHeaders.Authorization, "Basic $encodedCredentials")
 }
 
-fun TestApplicationRequest.addJwtToken(
+fun HttpRequestBuilder.addJwtToken(
     username: String,
     secret: String = TEST_JWT_SECRET,
     expiresAt: Date = Date(System.currentTimeMillis() + 10_000),
@@ -78,7 +79,7 @@ fun TestApplicationRequest.addJwtToken(
     configureJwt: JWTCreator.Builder.() -> Unit = {
         withClaim(CLAIM_ROLE, role).withClaim(CLAIM_USER_ID, userId)
     },
-    configureHeader: TestApplicationRequest.(String) -> Unit = { addHeader(HttpHeaders.Authorization, "Bearer $it") }
+    configureHeader: HttpRequestBuilder.(String) -> Unit = { header(HttpHeaders.Authorization, "Bearer $it") }
 ) {
     val token = JWT.create()
         .withSubject(username)
@@ -90,8 +91,8 @@ fun TestApplicationRequest.addJwtToken(
     configureHeader(token)
 }
 
-fun <T> TestApplicationCall.assertResponseNotNull(serializer: KSerializer<T>): T {
-    val value = assertNotNull(response.content)
+suspend fun <T> HttpResponse.assertResponseNotNull(serializer: KSerializer<T>): T {
+    val value = assertNotNull(bodyAsText())
     val response = Json.decodeFromString(DataResponse.serializer(serializer), value)
     return response.data
 }

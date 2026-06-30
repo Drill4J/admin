@@ -46,9 +46,15 @@ fun generateBuildId(
     ).joinToString(BUILD_ID_SEPARATOR)
 }
 
-data class AppGroupIds(val groupId: String, val appId: String)
+data class GroupApp(
+    val groupId: String,
+    val appId: String,
+)
 
-fun getAppAndGroupIdFromBuildId(buildId: String): AppGroupIds {
-    val (groupId, appId, _) = buildId.split(BUILD_ID_SEPARATOR)
-    return AppGroupIds(groupId, appId)
+fun parseBuildId(buildId: String): GroupApp {
+    val parts = buildId.split(BUILD_ID_SEPARATOR)
+    if (parts.size != 3) {
+        throw InvalidParameters("Invalid buildId format. Expected format: groupId:appId:buildVersion|commitSha|instanceId")
+    }
+    return GroupApp(groupId = parts[0], appId = parts[1])
 }

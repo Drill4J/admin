@@ -29,84 +29,71 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import kotlin.test.*
 
 class RoleBasedAuthorizationTest {
 
     @Test
     fun `given user with admin role, request only-admins should return 200 OK`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/only-admins") {
-                addBasicAuth("admin", "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/only-admins") { addBasicAuth("admin", "secret") }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `given user with user role, request only-admins should return 403 Access denied`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/only-admins") {
-                addBasicAuth("user", "secret")
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/only-admins") { addBasicAuth("user", "secret") }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
     @Test
     fun `given user with user role, request only-users should return 200 OK`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/only-users") {
-                addBasicAuth("user", "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/only-users") { addBasicAuth("user", "secret") }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `given user with admin role, request only-users should return 403 Access denied`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/only-users") {
-                addBasicAuth("admin", "secret")
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/only-users") { addBasicAuth("admin", "secret") }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
     @Test
     fun `given user with user role, request admins-or-users should return 200 OK`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/admins-or-users") {
-                addBasicAuth("user", "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/admins-or-users") { addBasicAuth("user", "secret") }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `given guest without role, request admins-or-users should return 403 Access denied`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/admins-or-users") {
-                addBasicAuth("guest", "secret")
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/admins-or-users") { addBasicAuth("guest", "secret") }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
     @Test
     fun `given guest without role, request all should return 200 OK`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/all") {
-                addBasicAuth("guest", "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
+        testApplication {
+            application(config)
+            val response = client.get("/all") { addBasicAuth("guest", "secret") }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 

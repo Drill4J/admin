@@ -163,6 +163,7 @@ val settingsServicesDIModule
 val dataManagementServicesDIModule
     get() = DI.Module("dataManagementServices") {
         bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+        bind<TestLaunchCoverageRequestRepository>() with singleton { TestLaunchCoverageRequestRepositoryImpl() }
         bind<DataManagementService>() with singleton {
             DataManagementServiceImpl(
                 instanceRepository = instance(),
@@ -173,6 +174,7 @@ val dataManagementServicesDIModule
                 testLaunchRepository = instance(),
                 testSessionBuildRepository = instance(),
                 methodIgnoreRuleRepository = instance(),
+                testLaunchCoverageRequestRepository = instance(),
                 scheduler = instance(),
             )
         }

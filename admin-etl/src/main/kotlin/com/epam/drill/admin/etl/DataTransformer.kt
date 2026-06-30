@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.Flow
 interface DataTransformer<in T: EtlRow, out R: EtlRow> {
     val name: String
     suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<T>,
     ): Flow<R>
 }

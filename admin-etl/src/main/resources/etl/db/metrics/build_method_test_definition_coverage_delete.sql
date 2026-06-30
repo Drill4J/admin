@@ -1,1 +1,0 @@
-DELETE FROM metrics.build_method_test_definition_coverage WHERE group_id = :group_id

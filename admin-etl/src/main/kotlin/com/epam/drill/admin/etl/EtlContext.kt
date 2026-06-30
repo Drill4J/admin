@@ -1,8 +1,3 @@
-package com.epam.drill.admin.metrics.views
-
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-
 /**
  * Copyright 2020 - 2022 EPAM Systems
  *
@@ -18,15 +13,14 @@ import kotlinx.serialization.json.JsonElement
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Serializable
-class RecommendedTestsView(
-    val testDefinitionId: String,
-    val testRunner: String? = null,
-    val testPath: String,
-    val testName: String,
-    val tags: List<String>? = null,
-    val metadata: JsonElement? = null,
-    val testImpactStatus: TestImpactStatus? = null,
-    val impactedMethods: Int? = null,
-    val baselineBuildId: String? = null,
+package com.epam.drill.admin.etl
+
+data class EtlContext(
+    val groupId: String,
+    val appId: String? = null,
+    val buildId: String? = null,
+    val instanceId: String? = null,
+    val testSessionId: String? = null,
+    val testDefinitionId: String? = null,
+    val testLaunchId: String? = null,
 )

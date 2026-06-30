@@ -16,12 +16,14 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.PageDataExtractorTest.TestPageDataExtractor.ExtractedPageInfo
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.assertThrows
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,7 +50,7 @@ class PageDataExtractorTest {
         )
 
         override suspend fun extractPage(
-            groupId: String,
+            context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
             limit: Int,
@@ -56,7 +58,7 @@ class PageDataExtractorTest {
             rowsExtractor: suspend (row: TestItem) -> Unit
         ) {
             val info = ExtractedPageInfo(
-                groupId = groupId,
+                groupId = context.groupId,
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
                 limit = limit,
@@ -82,7 +84,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -105,7 +107,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -136,7 +138,7 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -171,7 +173,7 @@ class PageDataExtractorTest {
         }
 
         extractor.extract(
-            groupId = "test-group",
+            context = EtlContext(groupId = "test-group"),
             sinceTimestamp = Instant.EPOCH,
             untilTimestamp = Instant.ofEpochSecond(100),
             emitter = emitter,
@@ -208,19 +210,15 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         val progressResults = mutableListOf<EtlExtractingResult>()
-        extractor.extract(
-            groupId = "test-group",
-            sinceTimestamp = Instant.EPOCH,
-            untilTimestamp = Instant.ofEpochSecond(100),
-            emitter = emitter,
-            onExtractingProgress = { progressResults.add(it) }
-        )
-
-        // Should catch the error and report it via progress callback
-        assertTrue(progressResults.any { it.errorMessage != null })
-        assertTrue(progressResults.any {
-            it.errorMessage?.contains("not in ascending order") == true
-        })
+        assertThrows<IllegalStateException> {
+            extractor.extract(
+                context = EtlContext(groupId = "test-group"),
+                sinceTimestamp = Instant.EPOCH,
+                untilTimestamp = Instant.ofEpochSecond(100),
+                emitter = emitter,
+                onExtractingProgress = { progressResults.add(it) }
+            )
+        }
     }
 
     @Test
@@ -237,17 +235,14 @@ class PageDataExtractorTest {
         val emitter = FlowCollector<TestItem> { emittedItems.add(it) }
 
         val progressResults = mutableListOf<EtlExtractingResult>()
-        extractor.extract(
-            groupId = "test-group",
-            sinceTimestamp = Instant.EPOCH,
-            untilTimestamp = Instant.ofEpochSecond(100),
-            emitter = emitter,
-            onExtractingProgress = { progressResults.add(it) }
-        )
-
-        // Should report error about needing to increase extraction limit
-        assertTrue(progressResults.any {
-            it.errorMessage?.contains("increase the extraction limit") == true
-        })
+        assertThrows<IllegalStateException> {
+            extractor.extract(
+                context = EtlContext(groupId = "test-group"),
+                sinceTimestamp = Instant.EPOCH,
+                untilTimestamp = Instant.ofEpochSecond(100),
+                emitter = emitter,
+                onExtractingProgress = { progressResults.add(it) }
+            )
+        }
     }
 }

@@ -63,7 +63,7 @@ fun withTransaction(db: Database? = null, test: suspend () -> Unit) {
 
 fun drillApplication(
     vararg diModules: DI.Module = emptyArray(),
-    routes: Routing.() -> Unit
+    routes: Route.() -> Unit = {}
 ) = TestApplication {
     install(Resources)
     install(ContentNegotiation) {
@@ -77,7 +77,7 @@ fun drillApplication(
             import(meterModule)
             diModules.forEach { import(it) }
         }
-        environment.monitor.subscribe(ApplicationStopping) {
+        monitor.subscribe(ApplicationStopping) {
             val closableComponents: List<AutoCloseable> by closestDI().allInstances()
             runBlocking {
                 closableComponents.map {

@@ -64,7 +64,7 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
         withRollback {
             val testGroup = "test-group"
             val testApp = "test-app"
-            val testInstance = "test-instance"
+            val testInstance = "test-instance-1"
             val timeBeforeTest = LocalDateTime.now()
             val app = drillApplication(rawDataServicesDIModule) {
                 putInstances()
@@ -121,7 +121,7 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
     @Test
     fun `given existing build, put instances service should refer to existing build, save new instance in database and return OK`() =
         withRollback {
-            val testInstance = "test-instance"
+            val testInstance = "test-instance-2"
             val timeBeforeTest = LocalDateTime.now()
             val app = drillApplication(rawDataServicesDIModule) {
                 putInstances()

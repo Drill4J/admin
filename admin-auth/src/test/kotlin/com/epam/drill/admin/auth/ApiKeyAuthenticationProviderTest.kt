@@ -23,6 +23,7 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -32,41 +33,41 @@ class ApiKeyAuthenticationProviderTest {
     fun `given correct api key, authenticated request must succeed`() {
         val testApiKey = "test-api-key"
 
-        withTestApplication({
-            install(Authentication) {
-                configureSimpleApiKey(testApiKey)
-            }
-            routing {
-                authenticate {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                install(Authentication) {
+                    configureSimpleApiKey(testApiKey)
+                }
+                routing {
+                    authenticate {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, testApiKey)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, testApiKey)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `given incorrect api key, authenticated request must fail`() {
-        withTestApplication({
-            install(Authentication) {
-                configureSimpleApiKey( "correct-api-key")
-            }
-            routing {
-                authenticate {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                install(Authentication) {
+                    configureSimpleApiKey("correct-api-key")
+                }
+                routing {
+                    authenticate {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, "incorrect-api-key")
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, "incorrect-api-key")
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -74,24 +75,24 @@ class ApiKeyAuthenticationProviderTest {
     fun `given api key challenge function, authenticated request must fail with specified error`() {
         val testFailError = HttpStatusCode.BadRequest
 
-        withTestApplication({
-            install(Authentication) {
-                apiKey {
-                    validate { null }
-                    challenge { call ->
-                        call.respond(testFailError)
+        testApplication {
+            application {
+                install(Authentication) {
+                    apiKey {
+                        validate { null }
+                        challenge { call ->
+                            call.respond(testFailError)
+                        }
+                    }
+                }
+                routing {
+                    authenticate {
+                        configureGetApiRoute()
                     }
                 }
             }
-            routing {
-                authenticate {
-                    configureGetApiRoute()
-                }
-            }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api")) {
-                assertEquals(testFailError, response.status())
-            }
+            val response = client.get("/api")
+            assertEquals(testFailError, response.status)
         }
     }
 
@@ -99,28 +100,28 @@ class ApiKeyAuthenticationProviderTest {
     fun `given custom api key header, authenticated request must succeed in retrieving api key from that header`() {
         val testHeader = "X-Test-Api-Key"
         val testApiKey = "test-api-key"
-        withTestApplication({
-            install(Authentication) {
-                apiKey {
-                    headerName = testHeader
-                    validate { apiKey ->
-                        apiKey
-                            .takeIf { it == testApiKey }
-                            ?.let { UserIdPrincipal("username") }
+        testApplication {
+            application {
+                install(Authentication) {
+                    apiKey {
+                        headerName = testHeader
+                        validate { apiKey ->
+                            apiKey
+                                .takeIf { it == testApiKey }
+                                ?.let { UserIdPrincipal("username") }
+                        }
+                    }
+                }
+                routing {
+                    authenticate {
+                        configureGetApiRoute()
                     }
                 }
             }
-            routing {
-                authenticate {
-                    configureGetApiRoute()
-                }
+            val response = client.get("/api") {
+                header(testHeader, testApiKey)
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(testHeader, testApiKey)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-            }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 

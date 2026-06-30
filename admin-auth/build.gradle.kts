@@ -17,6 +17,7 @@ val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
+val kotlinxCoroutinesVersion: String by parent!!.extra
 val jbcryptVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
@@ -72,7 +73,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:$testContainersVersion")
     testImplementation("org.postgresql:postgresql:$postgresSqlVersion")
     testImplementation("com.zaxxer:HikariCP:$zaxxerHikaricpVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
 }
 
 tasks {

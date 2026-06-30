@@ -27,14 +27,9 @@ class UntypedSqlDataLoader(
     batchSize: Int = 1000,
     loggingFrequency: Int = 10,
     metrics: EtlMeter,
-    val processable: (UntypedRow) -> Boolean = { true }
 ) : SqlDataLoader<UntypedRow>(name, batchSize, loggingFrequency, sqlUpsert, sqlDelete, database, metrics) {
 
     override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)
-    }
-
-    override fun isProcessable(args: UntypedRow): Boolean {
-        return processable(args)
     }
 }
