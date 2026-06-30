@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.impl.EtlPipelineImpl
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedFilterTransformer
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
@@ -32,6 +33,14 @@ val EtlConfig.testSessionBuildsExtractor
         extractionLimit = extractionLimit,
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
+        metrics = metrics,
+    )
+
+val EtlConfig.testSessionBuildsTransformer
+    get() = UntypedFilterTransformer(
+        name = "test_session_builds",
+        metrics = metrics,
+        predicate = { true },
     )
 
 val EtlConfig.testSessionBuildsLoader
@@ -42,6 +51,7 @@ val EtlConfig.testSessionBuildsLoader
         database = MetricsDatabaseConfig.database,
         batchSize = batchSize,
         loggingFrequency = loggingFrequency,
+        metrics = metrics,
         processable = { it["test_session_id"] != null }
     )
 
@@ -49,6 +59,7 @@ val EtlConfig.testSessionBuildsPipeline
     get() = EtlPipelineImpl.singleLoader(
         name = "test_session_builds",
         extractor = testSessionBuildsExtractor,
+        transformer = testSessionBuildsTransformer,
         loader = testSessionBuildsLoader,
         bufferSize = bufferSize
     )

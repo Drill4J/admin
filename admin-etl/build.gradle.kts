@@ -20,6 +20,7 @@ val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -53,6 +54,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
+    implementation("io.micrometer:micrometer-core:$micrometerVersion")
 
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")

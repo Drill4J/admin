@@ -23,6 +23,7 @@ val testContainersVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -44,6 +45,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
+    implementation("io.micrometer:micrometer-core:$micrometerVersion")
     implementation("org.kodein.di:kodein-di-framework-ktor-server-jvm:$kodeinVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")

@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
-import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.config.toBitString

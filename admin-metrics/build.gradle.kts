@@ -22,6 +22,7 @@ val flywaydbVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -59,6 +60,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
     implementation("org.quartz-scheduler:quartz:$quartzVersion")
+    implementation("io.micrometer:micrometer-core:${micrometerVersion}")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 

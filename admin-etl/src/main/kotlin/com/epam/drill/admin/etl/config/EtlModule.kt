@@ -54,8 +54,10 @@ val etlDIModule
             )
         }
         bind<EtlOrchestrator>() with singleton {
+            val metrics = EtlMeter(instance())
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"))
+            val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
+
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = "metrics",
@@ -65,8 +67,8 @@ val etlDIModule
                         coveragePipeline, testLaunchCoveragePipeline, testSessionBuildsPipeline
                     ),
                     metadataRepository = instance(),
-                    consistencyWindow = etlConfig.consistencyWindow,
-                    processingDelay = etlConfig.processingDelay
+                    consistencyWindow = consistencyWindow,
+                    processingDelay = processingDelay
                 )
             }
         }

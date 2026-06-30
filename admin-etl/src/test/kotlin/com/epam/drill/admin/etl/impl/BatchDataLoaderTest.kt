@@ -17,6 +17,9 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
@@ -32,7 +35,8 @@ class BatchDataLoaderTest {
         private val failOnBatch: Int = -1,
         private val failOnTimestamp: Boolean = false,
         private val outOfOrder: Boolean = false
-    ) : BatchDataLoader<TestItem>("test-loader", batchSize) {
+    ) : BatchDataLoader<TestItem>("test-loader", batchSize,
+        metrics = EtlMeter(SimpleMeterRegistry())) {
 
         val loadedBatches = mutableListOf<List<TestItem>>()
 
