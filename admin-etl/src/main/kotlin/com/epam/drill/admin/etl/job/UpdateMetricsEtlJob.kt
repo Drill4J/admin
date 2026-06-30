@@ -15,15 +15,10 @@
  */
 package com.epam.drill.admin.etl.job
 
-import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.impl.toEtlContext
 import com.epam.drill.admin.etl.impl.toMap
-import com.epam.drill.admin.writer.rawdata.service.SettingsService
-import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
@@ -31,57 +26,28 @@ import org.quartz.JobDataMap
 import org.quartz.JobExecutionContext
 import org.quartz.JobKey
 import java.time.Instant
-import java.time.ZoneOffset.UTC
 
 const val DEFAULT_ETL = "metrics"
 
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
-    private val settingsService: SettingsService,
-    private val etls: Map<String, EtlOrchestrator>,
+    private val etlService: EtlService,
 ) : Job {
 
     override fun execute(context: JobExecutionContext) {
         val etlName = context.mergedJobDataMap.getString("etl") ?: DEFAULT_ETL
-        val etl = etls[etlName] ?: throw IllegalArgumentException("Etl with name '$etlName' not found")
         val hasGroupId: Boolean = context.mergedJobDataMap.getString("groupId") != null
         val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
         val initTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("initTimestamp")
         val finalTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("finalTimestamp")
-
-        val params: Map<EtlContext, Instant> = runBlocking {
-            if (hasGroupId) {
-                val etlContext = context.mergedJobDataMap.toEtlContext()
-                mapOf(etlContext to (initTimestamp ?: resolveInitTimestamp(etlContext.groupId)))
-            } else {
-                settingsService.getAllGroupSettings().map { (groupId, groupSettings) ->
-                    EtlContext(groupId) to (initTimestamp ?: resolveInitTimestamp(groupSettings))
-                }.toMap()
-            }
+        val skipIfLocked = context.mergedJobDataMap.getBooleanValue("skipIfLocked")
+        val etlContext = takeIf { hasGroupId }?.let {
+            context.mergedJobDataMap.toEtlContext()
         }
-
-        val results: List<EtlProcessingResult> = runBlocking {
-            params.map { (context, initTimestamp) ->
-                async {
-                    if (reset)
-                        etl.rerun(context, initTimestamp, finalTimestamp, withDataDeletion = true)
-                    else
-                        etl.run(context, initTimestamp, finalTimestamp)
-                }
-            }.awaitAll().flatten()
+        context.result = runBlocking {
+            etlService.refresh(etlContext, etlName, reset, initTimestamp, finalTimestamp, skipIfLocked)
         }
-        context.result = results
     }
-
-    private suspend fun resolveInitTimestamp(groupId: String): Instant = resolveInitTimestamp(
-        settingsService.getGroupSettings(groupId)
-    )
-
-
-    private fun resolveInitTimestamp(groupSettings: GroupSettingsView): Instant =
-        groupSettings.metricsPeriodDays?.let {
-            Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
-        } ?: Instant.EPOCH
 
     private fun JobDataMap.getInstantValue(key: String): Instant? = get(key)?.let {
         when (it) {

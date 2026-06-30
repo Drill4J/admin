@@ -35,4 +35,5 @@ ON CONFLICT (
 )
 DO UPDATE
 SET
-    probes = method_daily_coverage.probes | EXCLUDED.probes;
+    probes = method_daily_coverage.probes | EXCLUDED.probes
+WHERE method_daily_coverage.probes IS DISTINCT FROM EXCLUDED.probes

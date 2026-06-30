@@ -116,9 +116,14 @@ val etlDIModule
             }
         }
         bind<EtlService>() with singleton {
+            val etlList: List<EtlOrchestrator> = listOf(
+                instance(tag = DEFAULT_ETL),
+                instance(tag = TEST_DEFINITION_COVERAGE_ETL)
+            )
             EtlServiceImpl(
-                scheduler = instance<DrillScheduler>(),
-                etlRepository = instance()
+                etlRepository = instance(),
+                etls = etlList.associateBy { it.name },
+                settingsService = instance(),
             )
         }
         bind<UpdateMetricsEtlJob>() with singleton {
@@ -127,8 +132,7 @@ val etlDIModule
                 instance(tag = TEST_DEFINITION_COVERAGE_ETL)
             )
             UpdateMetricsEtlJob(
-                settingsService = instance(),
-                etls = etlList.associateBy { it.name },
+                etlService = instance(),
             )
         }
     }

@@ -37,4 +37,5 @@ ON CONFLICT (
 DO UPDATE
 SET
     probes = build_method_test_session_coverage.probes | EXCLUDED.probes,
-    updated_at_day = EXCLUDED.created_at_day;
+    updated_at_day = EXCLUDED.created_at_day
+WHERE build_method_test_session_coverage.probes IS DISTINCT FROM EXCLUDED.probes;

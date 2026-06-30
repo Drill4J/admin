@@ -15,48 +15,65 @@
  */
 package com.epam.drill.admin.etl.service.impl
 
-import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.job.getJobDataMap
-import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
+import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.service.EtlService
-import kotlinx.coroutines.suspendCancellableCoroutine
+import com.epam.drill.admin.writer.rawdata.service.SettingsService
+import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import java.time.ZoneOffset.UTC
+import kotlin.collections.component1
+import kotlin.collections.component2
 
 class EtlServiceImpl(
-    private val scheduler: DrillScheduler,
-    private val etlRepository: EtlMetadataRepository
+    private val etlRepository: EtlMetadataRepository,
+    private val etls: Map<String, EtlOrchestrator>,
+    private val settingsService: SettingsService,
 ) : EtlService {
-    @Suppress("UNCHECKED_CAST")
     override suspend fun refresh(
         context: EtlContext?,
-        etl: String?,
+        etlName: String?,
         reset: Boolean,
         initTimestamp: Instant?,
-        finalTimestamp: Instant?
-    ) {
-        val params = getJobDataMap(context, etl, reset, initTimestamp, finalTimestamp)
-        val results = suspendCancellableCoroutine { continuation ->
-            scheduler.triggerJob(updateMetricsEtlJobKey, params) { results, exception ->
-                if (exception != null)
-                    continuation.resumeWithException(exception)
-                else
-                    continuation.resume(results as List<EtlProcessingResult>)
+        finalTimestamp: Instant?,
+        skipIfLocked: Boolean,
+    ): List<EtlProcessingResult> {
+        val rerun = reset || initTimestamp != null || finalTimestamp != null
+        val orchestratorName = etlName ?: DEFAULT_ETL
+        val etl = etls[orchestratorName]
+            ?: throw IllegalArgumentException("Etl with name '$orchestratorName' not found")
+
+        val params: Map<EtlContext, Instant> = runBlocking {
+            if (context != null) {
+                mapOf(context to (initTimestamp ?: resolveInitTimestamp(context.groupId)))
+            } else {
+                settingsService.getAllGroupSettings().map { (groupId, groupSettings) ->
+                    EtlContext(groupId) to (initTimestamp ?: resolveInitTimestamp(groupSettings))
+                }.toMap()
             }
         }
-        if (results.any { it.status != EtlStatus.SUCCESS }) {
-            val errorMessages = results.filter { it.status == EtlStatus.FAILED }.joinToString(separator = "\n") {
-                "Pipeline `${it.pipelineName}`: ${it.errorMessage ?: "Unknown error"}"
-            }
-            throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
+
+        val results: List<EtlProcessingResult> = runBlocking {
+            params.map { (context, initTimestamp) ->
+                async {
+                    if (rerun)
+                        etl.rerun(context, initTimestamp, finalTimestamp, withDataDeletion = reset, skipIfLocked = skipIfLocked)
+                    else
+                        etl.run(context, initTimestamp, finalTimestamp, skipIfLocked)
+                }
+            }.awaitAll().flatten()
         }
+
+        return results
     }
 
     override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {
@@ -81,4 +98,13 @@ class EtlServiceImpl(
             put("lastRowsProcessed", sumRowsProcessed)
         }
     }
+
+    private suspend fun resolveInitTimestamp(groupId: String): Instant = resolveInitTimestamp(
+        settingsService.getGroupSettings(groupId)
+    )
+
+    private fun resolveInitTimestamp(groupSettings: GroupSettingsView): Instant =
+        groupSettings.metricsPeriodDays?.let {
+            Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
+        } ?: Instant.EPOCH
 }

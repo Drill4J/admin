@@ -19,6 +19,7 @@ import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.common.config.ApiResponse
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlStatus
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
 import io.ktor.server.resources.*
@@ -36,6 +37,7 @@ class Refresh(
     val reset: Boolean = false,
     val initTimestamp: Long? = null,
     val finalTimestamp: Long? = null,
+    val skipIfLocked: Boolean = false,
 )
 
 @Resource("/refresh-status")
@@ -52,12 +54,19 @@ fun Route.postRefreshMetrics() {
     val etlService by closestDI().instance<EtlService>()
 
     postWithParams<Refresh> { params ->
-        etlService.refresh(
+        val results = etlService.refresh(
             context = params.groupId?.let { EtlContext(it) },
             reset = params.reset,
             initTimestamp = params.initTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
-            finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) }
+            finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
+            skipIfLocked = params.skipIfLocked,
         )
+        if (results.any { it.status != EtlStatus.SUCCESS }) {
+            val errorMessages = results.filter { it.status == EtlStatus.FAILED }.joinToString(separator = "\n") {
+                "Pipeline `${it.pipelineName}`: ${it.errorMessage ?: "Unknown error"}"
+            }
+            throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
+        }
         call.ok("Metrics were refreshed.")
     }
 }
