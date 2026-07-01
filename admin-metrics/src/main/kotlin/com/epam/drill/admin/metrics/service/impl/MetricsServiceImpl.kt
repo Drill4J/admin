@@ -28,6 +28,7 @@ import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.util.packageNameFromClassName
 import com.epam.drill.admin.metrics.util.simpleClassName
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.*
@@ -890,6 +891,8 @@ class MetricsServiceImpl(
         val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
         val fullClassName = row["class_name"] as String
         return ClassCoverageView(
+            fullClassName = fullClassName,
+            packageName = packageNameFromClassName(fullClassName),
             className = simpleClassName(fullClassName),
             methodsCount = methodsCount,
             coveredMethods = coveredMethods,

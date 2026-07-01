@@ -112,9 +112,16 @@ class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
             name = "methodB", params = "()", returnType = "void",
             probesCount = 3, probesStartPos = 2, bodyChecksum = "B02",
         )
-        build1 has listOf(classAMethod, classBMethod)
+        // A class located in a nested subpackage of "com/example/foo".
+        val classCMethod = SingleMethodPayload(
+            classname = "com/example/foo/sub/ClassC",
+            name = "methodC", params = "()", returnType = "void",
+            probesCount = 2, probesStartPos = 5, bodyChecksum = "C02",
+        )
+        build1 has listOf(classAMethod, classBMethod, classCMethod)
         test1 covers classAMethod with probesOf(1, 1) on build1
         test1 covers classBMethod with probesOf(0, 0, 1) on build1
+        test1 covers classCMethod with probesOf(1, 1) on build1
     }.expectThat {
         val packageName = "com/example/foo"
         client.get("/metrics/coverage/by-class") {
@@ -125,9 +132,28 @@ class CoverageAggregationApiTest : MetricsDatabaseTests({ default, metrics ->
             val json = JsonPath.parse(bodyAsText())
             val data = json.read<List<Map<String, Any>>>("$.data")
             val total = json.read<Int>("$.paging.total")
+            // Only the class located directly in the requested package must be
+            // returned. The nested subpackage class (ClassC) must be excluded.
             assertEquals(1, data.size)
             assertEquals(1, total)
+            assertEquals("com/example/foo/ClassA", data.first()["fullClassName"])
             assertEquals("ClassA", data.first()["className"])
+            assertEquals(packageName, data.first()["packageName"])
+        }
+
+        // The nested subpackage must be addressable on its own and must report
+        // its own package name for the class it contains.
+        client.get("/metrics/coverage/by-class") {
+            parameter("buildId", build1Id)
+            parameter("packageName", "com/example/foo/sub")
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val json = JsonPath.parse(bodyAsText())
+            val data = json.read<List<Map<String, Any>>>("$.data")
+            assertEquals(1, data.size)
+            assertEquals("com/example/foo/sub/ClassC", data.first()["fullClassName"])
+            assertEquals("ClassC", data.first()["className"])
+            assertEquals("com/example/foo/sub", data.first()["packageName"])
         }
     }
 

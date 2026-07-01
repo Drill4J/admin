@@ -32,6 +32,8 @@ data class PackageCoverageView(
 
 @Serializable
 data class ClassCoverageView(
+    val fullClassName: String,
+    val packageName: String,
     val className: String,
     val methodsCount: Int,
     val coveredMethods: Int,

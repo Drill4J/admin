@@ -544,9 +544,10 @@ class MetricsRepositoryImpl : MetricsRepository {
                     )
                     GROUP BY class_name
                 ) AS class_coverage
-                ORDER BY $orderBy
                 """.trimIndent()
             )
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
+            append(" ORDER BY $orderBy")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -578,6 +579,9 @@ class MetricsRepositoryImpl : MetricsRepository {
                 ) AS class_coverage
                 """.trimIndent()
             )
+            // Match the direct-package restriction applied in getClassCoverage so the
+            // total count stays consistent with the returned rows.
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
         }
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
