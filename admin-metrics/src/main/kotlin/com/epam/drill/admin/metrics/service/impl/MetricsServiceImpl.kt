@@ -585,6 +585,8 @@ class MetricsServiceImpl(
         branches: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?
     ): PagedList<MethodView> = transaction {
@@ -597,6 +599,13 @@ class MetricsServiceImpl(
         val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
         val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
 
+        val sortingFieldMapping = mapOf(
+            "coverageRatio" to "isolated_probes_coverage_ratio",
+            "probesCount" to "probes_count",
+            "coveredProbes" to "isolated_covered_probes",
+        )
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] }
+
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
@@ -608,6 +617,8 @@ class MetricsServiceImpl(
                 coverageBranches = branches,
                 packageName = packageFilter,
                 className = classFilter,
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit
             ).map(::mapToMethodView)

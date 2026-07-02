@@ -286,8 +286,19 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageBranches: List<String>,
         packageName: String?,
         className: String?,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "isolated_probes_coverage_ratio" ->
+                "isolated_probes_coverage_ratio $sortDirection, signature ASC"
+            "probes_count" -> "probes_count $sortDirection, signature ASC"
+            "isolated_covered_probes" -> "isolated_covered_probes $sortDirection, signature ASC"
+            else -> "signature ASC"
+        }
+
         executeQueryReturnMap {
             append(
                 """
@@ -312,7 +323,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 ) 
-                ORDER BY signature    
+                ORDER BY $orderBy    
                 """.trimIndent()
             )
             appendOptional(" OFFSET ?", offset)

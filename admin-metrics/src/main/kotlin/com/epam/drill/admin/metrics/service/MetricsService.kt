@@ -151,6 +151,8 @@ interface MetricsService {
         branches: List<String> = emptyList(),
         packageNamePattern: String? = null,
         classNamePattern: String? = null,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int? = null,
         pageSize: Int? = null
     ): PagedList<MethodView>

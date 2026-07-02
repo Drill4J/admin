@@ -237,6 +237,9 @@ class Metrics {
         val packageName: String? = null,
         val className: String? = null,
 
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
+
         val page: Int? = null,
         val pageSize: Int? = null
     )
@@ -636,6 +639,8 @@ fun Route.getCoverage() {
             branches = params.branches,
             packageNamePattern = params.packageName,
             classNamePattern = params.className,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )

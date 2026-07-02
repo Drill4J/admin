@@ -1248,6 +1248,22 @@ paths:
           description: Optional class name filter for narrowing results to specific classes.
           schema:
             type: string
+        - name: sortBy
+          in: query
+          description: |
+            Field to sort results by. When omitted, results are ordered by method signature ascending.
+            Supported values:
+            - coverageRatio — probe coverage percentage
+            - probesCount — total probes count
+            - coveredProbes — covered probes count
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          description: Sort direction. Defaults to ASC when sortBy is set.
+          schema:
+            type: string
+            enum: [ASC, DESC]
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1 if not specified.

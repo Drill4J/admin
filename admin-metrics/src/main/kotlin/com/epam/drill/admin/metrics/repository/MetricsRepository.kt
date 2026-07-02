@@ -70,6 +70,8 @@ interface MetricsRepository {
         coverageBranches: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 
