@@ -1251,7 +1251,7 @@ paths:
         - name: sortBy
           in: query
           description: |
-            Field to sort results by. When omitted, results are ordered by method signature ascending.
+            Field to sort results by. When omitted, results are ordered by method id ascending.
             Supported values:
             - coverageRatio — probe coverage percentage
             - probesCount — total probes count

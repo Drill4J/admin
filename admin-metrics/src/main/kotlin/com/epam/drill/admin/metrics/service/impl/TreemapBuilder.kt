@@ -68,6 +68,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
 
                 when (nodeType) {
                     TREEMAP_TYPE_METHOD -> {
+                        node["method_id"] = item["method_id"]
                         node["signature"] = item["signature"]
                         node["class_name"] = className
                         node["package_name"] = packageNameFromClass
@@ -139,6 +140,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             },
             "class_name" to node["class_name"],
             "signature" to node["signature"],
+            "method_id" to node["method_id"],
         )
         collapsedNodeMap[fullName] = newNode
 
@@ -224,6 +226,7 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             put("covered_probes", node["covered_probes"])
             node["class_name"]?.let { put("class_name", simpleClassName(it as String)) }
             node["signature"]?.let { put("signature", it) }
+            node["method_id"]?.let { put("method_id", it) }
             node["params"]?.let { put("params", it) }
             node["return_type"]?.let { put("return_type", it) }
             put("children", children)

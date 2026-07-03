@@ -920,6 +920,7 @@ class MetricsServiceImpl(
         if (total > 0) covered.toDouble() / total else 0.0
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
+        methodId = resultSet["method_id"] as? String,
         signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
         name = resultSet["method_name"] as String,

@@ -293,16 +293,17 @@ class MetricsRepositoryImpl : MetricsRepository {
         val sortDirection = sortOrder?.name ?: "ASC"
         val orderBy = when (sortBy) {
             "isolated_probes_coverage_ratio" ->
-                "isolated_probes_coverage_ratio $sortDirection, signature ASC"
-            "probes_count" -> "probes_count $sortDirection, signature ASC"
-            "isolated_covered_probes" -> "isolated_covered_probes $sortDirection, signature ASC"
-            else -> "signature ASC"
+                "isolated_probes_coverage_ratio $sortDirection, method_id ASC"
+            "probes_count" -> "probes_count $sortDirection, method_id ASC"
+            "isolated_covered_probes" -> "isolated_covered_probes $sortDirection, method_id ASC"
+            else -> "method_id ASC"
         }
 
         executeQueryReturnMap {
             append(
                 """
                 SELECT 
+                    method_id,
                     signature,
                     class_name,
                     method_name,
@@ -343,6 +344,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    method_id,
                     signature,
                     class_name,
                     method_name,
@@ -383,6 +385,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT 
+                    method_id,
                     signature,
                     class_name,
                     method_name,
