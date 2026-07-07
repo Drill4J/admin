@@ -59,6 +59,19 @@ class Metrics {
         val groupId: String? = null,
     )
 
+    @Resource("/test-sessions")
+    class TestSessions(
+        val parent: Metrics,
+
+        val groupId: String,
+        val buildId: String? = null,
+        val testTaskId: String? = null,
+        val createdBy: String? = null,
+
+        val page: Int? = null,
+        val pageSize: Int? = null,
+    )
+
     @Resource("/builds")
     class Builds(
         val parent: Metrics,
@@ -356,6 +369,7 @@ fun Route.metricsRoutes() {
     getAppBranches()
     getAppEnvIds()
     getAppTestTags()
+    getTestSessions()
     getBuilds()
     getBuildById()
     getBuildCoverageByProbes()
@@ -421,6 +435,28 @@ fun Route.getAppTestTags() {
     get<Metrics.AppTestTags> { params ->
         val data = metricsService.getAppTestTags(params.groupId, params.appId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestSessions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessions> { params ->
+        val data = metricsService.getTestSessions(
+            groupId = params.groupId,
+            buildId = params.buildId,
+            testTaskId = params.testTaskId,
+            createdBy = params.createdBy,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
     }
 }
 

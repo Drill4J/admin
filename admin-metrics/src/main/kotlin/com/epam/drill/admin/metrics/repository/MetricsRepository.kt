@@ -63,6 +63,22 @@ interface MetricsRepository {
 
     suspend fun getBuildTestSessionStats(buildId: String): Map<String, Any?>
 
+    suspend fun getTestSessions(
+        groupId: String,
+        buildId: String? = null,
+        testTaskId: String? = null,
+        createdBy: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getTestSessionsCount(
+        groupId: String,
+        buildId: String? = null,
+        testTaskId: String? = null,
+        createdBy: String? = null,
+    ): Long
+
     suspend fun getMethodsWithCoverage(
         buildId: String,
         coverageTestTags: List<String> = emptyList(),

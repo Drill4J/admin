@@ -586,6 +586,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/test-sessions:
+    get:
+      summary: Get test sessions
+      description: |
+        Retrieves a paginated list of test sessions for a group, optionally filtered by build,
+        test task, or creator.
+      operationId: getTestSessions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: Group identifier.
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          description: Optional build identifier to limit sessions to a specific build.
+          schema:
+            type: string
+        - name: testTaskId
+          in: query
+          required: false
+          description: Optional test task identifier filter.
+          schema:
+            type: string
+        - name: createdBy
+          in: query
+          required: false
+          description: Optional creator filter.
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of test sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/builds:
     get:
       summary: Get builds

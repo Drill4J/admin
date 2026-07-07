@@ -212,6 +212,55 @@ class MetricsServiceImpl(
         )
     }
 
+    override suspend fun getTestSessions(
+        groupId: String,
+        buildId: String?,
+        testTaskId: String?,
+        createdBy: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestSessionView> = transaction {
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getTestSessions(
+                groupId = groupId,
+                buildId = buildId,
+                testTaskId = testTaskId,
+                createdBy = createdBy,
+                offset = offset,
+                limit = limit,
+            ).map { row ->
+                TestSessionView(
+                    testSessionId = row["test_session_id"] as String,
+                    groupId = row["group_id"] as String,
+                    appId = row["app_id"] as String,
+                    buildId = row["build_id"] as String,
+                    testTaskId = row["test_task_id"] as String?,
+                    sessionStartedAt = (row["session_started_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+                    createdBy = row["created_by"] as String?,
+                    testDefinitions = (row["test_definitions"] as? Number)?.toInt() ?: 0,
+                    testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+                    result = row["result"] as String,
+                    testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
+                    testDurationFormatted = row["test_duration_formatted"] as String,
+                    failed = (row["failed"] as? Number)?.toInt() ?: 0,
+                    passed = (row["passed"] as? Number)?.toInt() ?: 0,
+                    skipped = (row["skipped"] as? Number)?.toInt() ?: 0,
+                    smartSkipped = (row["smart_skipped"] as? Number)?.toInt() ?: 0,
+                    success = (row["success"] as? Number)?.toInt() ?: 0,
+                    successRate = (row["success_rate"] as? Number)?.toDouble() ?: 0.0,
+                    timeSaved = (row["time_saved"] as? Number)?.toLong() ?: 0L,
+                    timeSavedFormatted = row["time_saved_formatted"] as String,
+                )
+            }
+        } withTotal {
+            metricsRepository.getTestSessionsCount(
+                groupId = groupId,
+                buildId = buildId,
+                testTaskId = testTaskId,
+                createdBy = createdBy,
+            )
+        }
+    }
 
     override suspend fun getCoverageTreemap(
         buildId: String,

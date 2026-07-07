@@ -261,6 +261,85 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
+    override suspend fun getTestSessions(
+        groupId: String,
+        buildId: String?,
+        testTaskId: String?,
+        createdBy: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsb.group_id,
+                tsb.app_id,
+                tsb.build_id,
+                tss.test_session_id,
+                tss.test_task_id,
+                tss.session_started_at,
+                tss.created_by,
+                tss.test_definitions,
+                tss.test_launches,
+                tss.result,
+                tss.test_duration,
+                metrics.format_duration(tss.test_duration::bigint) AS test_duration_formatted,
+                tss.failed,
+                tss.passed,
+                tss.skipped,
+                tss.smart_skipped,
+                tss.success,
+                tss.success_rate,
+                tss.time_saved,
+                metrics.format_duration_rounded(tss.time_saved::bigint) AS time_saved_formatted
+            FROM metrics.test_session_builds tsb
+            JOIN metrics.test_sessions_with_statistics tss
+                ON tss.group_id = tsb.group_id
+                AND tss.test_session_id = tsb.test_session_id
+            WHERE tsb.group_id = ?
+                """.trimIndent(),
+                groupId
+            )
+            appendOptional(" AND tsb.build_id = ?", buildId)
+            appendOptional(" AND tss.test_task_id = ?", testTaskId)
+            appendOptional(" AND tss.created_by = ?", createdBy)
+            append(" ORDER BY tss.session_started_at DESC NULLS LAST ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getTestSessionsCount(
+        groupId: String,
+        buildId: String?,
+        testTaskId: String?,
+        createdBy: String?,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_session_builds tsb
+            JOIN metrics.test_sessions_with_statistics tss
+                ON tss.group_id = tsb.group_id
+                AND tss.test_session_id = tsb.test_session_id
+            WHERE tsb.group_id = ?
+                """.trimIndent(),
+                groupId
+            )
+            appendOptional(" AND tsb.build_id = ?", buildId)
+            appendOptional(" AND tss.test_task_id = ?", testTaskId)
+            appendOptional(" AND tss.created_by = ?", createdBy)
+        }.firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
         branches: List<String>, envIds: List<String>
