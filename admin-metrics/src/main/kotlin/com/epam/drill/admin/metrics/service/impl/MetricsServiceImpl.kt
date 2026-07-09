@@ -215,17 +215,32 @@ class MetricsServiceImpl(
     override suspend fun getTestSessions(
         groupId: String,
         buildId: String?,
-        testTaskId: String?,
-        createdBy: String?,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
     ): PagedList<TestSessionView> = transaction {
+        val validatedSortBy = sortBy?.let { requestedSortBy ->
+            val normalized = requestedSortBy.trim()
+            if (normalized.isBlank() || normalized !in TEST_SESSION_SORT_FIELDS) {
+                throw IllegalArgumentException(
+                    "Invalid sortBy '$requestedSortBy'. Allowed values: ${TEST_SESSION_SORT_FIELDS.joinToString(", ")}"
+                )
+            }
+            normalized
+        }
         pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getTestSessions(
                 groupId = groupId,
                 buildId = buildId,
-                testTaskId = testTaskId,
-                createdBy = createdBy,
+                testTaskIds = testTaskIds,
+                createdBys = createdBys,
+                results = results,
+                sortBy = validatedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
             ).map { row ->
@@ -256,10 +271,22 @@ class MetricsServiceImpl(
             metricsRepository.getTestSessionsCount(
                 groupId = groupId,
                 buildId = buildId,
-                testTaskId = testTaskId,
-                createdBy = createdBy,
+                testTaskIds = testTaskIds,
+                createdBys = createdBys,
+                results = results,
             )
         }
+    }
+
+    override suspend fun getTestSessionFilterOptions(
+        groupId: String,
+        buildId: String?,
+    ): TestSessionFilterOptionsView = transaction {
+        TestSessionFilterOptionsView(
+            testTaskIds = metricsRepository.getTestSessionTestTaskIds(groupId, buildId),
+            createdBys = metricsRepository.getTestSessionCreatedBys(groupId, buildId),
+            results = metricsRepository.getTestSessionResults(groupId, buildId),
+        )
     }
 
     override suspend fun getCoverageTreemap(
@@ -991,5 +1018,9 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
+    }
+
+    companion object {
+        private val TEST_SESSION_SORT_FIELDS = setOf("sessionStartedAt", "successRate")
     }
 }

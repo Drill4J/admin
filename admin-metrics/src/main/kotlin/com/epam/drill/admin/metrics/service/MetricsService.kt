@@ -75,11 +75,19 @@ interface MetricsService {
     suspend fun getTestSessions(
         groupId: String,
         buildId: String?,
-        testTaskId: String?,
-        createdBy: String?,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
     ): PagedList<TestSessionView>
+
+    suspend fun getTestSessionFilterOptions(
+        groupId: String,
+        buildId: String?,
+    ): TestSessionFilterOptionsView
 
     suspend fun getCoverageTreemap(
         buildId: String,

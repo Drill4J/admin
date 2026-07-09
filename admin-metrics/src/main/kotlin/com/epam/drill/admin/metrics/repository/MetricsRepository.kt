@@ -66,8 +66,11 @@ interface MetricsRepository {
     suspend fun getTestSessions(
         groupId: String,
         buildId: String? = null,
-        testTaskId: String? = null,
-        createdBy: String? = null,
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null,
         limit: Int? = null,
     ): List<Map<String, Any?>>
@@ -75,9 +78,16 @@ interface MetricsRepository {
     suspend fun getTestSessionsCount(
         groupId: String,
         buildId: String? = null,
-        testTaskId: String? = null,
-        createdBy: String? = null,
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
     ): Long
+
+    suspend fun getTestSessionTestTaskIds(groupId: String, buildId: String? = null): List<String>
+
+    suspend fun getTestSessionCreatedBys(groupId: String, buildId: String? = null): List<String>
+
+    suspend fun getTestSessionResults(groupId: String, buildId: String? = null): List<String>
 
     suspend fun getMethodsWithCoverage(
         buildId: String,

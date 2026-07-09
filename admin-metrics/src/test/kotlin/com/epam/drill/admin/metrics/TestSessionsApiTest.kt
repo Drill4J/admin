@@ -30,6 +30,7 @@ import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.HttpStatusCode
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
@@ -96,6 +97,52 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
             assertEquals(3, total.toInt())
+        }
+
+    @Test
+    fun `given sortBy successRate DESC, sessions should be ordered by success rate`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session2 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+                parameter("sortBy", "successRate")
+                parameter("sortOrder", "DESC")
+            }.returns { data ->
+                assertTrue(data.size >= 2)
+            }
+        }
+
+    @Test
+    fun `given invalid sortBy, should return BadRequest`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+        }.expectThat {
+            val response = client.get("/metrics/test-sessions") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+                parameter("sortBy", "invalidSortBy")
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid sortBy"))
+        }
+
+    @Test
+    fun `given filter options endpoint, should return distinct values for build`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+            }.returnsSingle { data ->
+                assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
+                assertTrue((data["results"] as List<*>).contains("PASSED"))
+            }
         }
 
     @AfterEach

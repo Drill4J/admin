@@ -41,3 +41,10 @@ data class TestSessionView(
     val timeSaved: Long,
     val timeSavedFormatted: String,
 )
+
+@Serializable
+data class TestSessionFilterOptionsView(
+    val testTaskIds: List<String>,
+    val createdBys: List<String>,
+    val results: List<String>,
+)

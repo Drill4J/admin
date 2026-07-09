@@ -610,18 +610,43 @@ paths:
           description: Optional build identifier to limit sessions to a specific build.
           schema:
             type: string
-        - name: testTaskId
+        - name: testTaskIds
           in: query
           required: false
-          description: Optional test task identifier filter.
+          description: Optional test task identifier filters.
           schema:
-            type: string
-        - name: createdBy
+            type: array
+            items:
+              type: string
+        - name: createdBys
           in: query
           required: false
-          description: Optional creator filter.
+          description: Optional creator filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          description: Sort field — `sessionStartedAt` or `successRate`.
           schema:
             type: string
+        - name: sortOrder
+          in: query
+          required: false
+          description: Sort direction — `ASC` or `DESC`.
+          schema:
+            type: string
+            enum: [ASC, DESC]
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1.
@@ -639,6 +664,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/filter-options:
+    get:
+      summary: Get test session filter options
+      description: |
+        Returns distinct values for test session filters scoped to a group and optional build.
+      operationId: getTestSessionFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Distinct filter option values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
   /api/metrics/builds:
     get:
       summary: Get builds

@@ -65,11 +65,22 @@ class Metrics {
 
         val groupId: String,
         val buildId: String? = null,
-        val testTaskId: String? = null,
-        val createdBy: String? = null,
+        val testTaskIds: List<String> = emptyList(),
+        val createdBys: List<String> = emptyList(),
+        val results: List<String> = emptyList(),
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null,
+    )
+
+    @Resource("/test-sessions/filter-options")
+    class TestSessionFilterOptions(
+        val parent: Metrics = Metrics(),
+
+        val groupId: String,
+        val buildId: String? = null,
     )
 
     @Resource("/builds")
@@ -370,6 +381,7 @@ fun Route.metricsRoutes() {
     getAppEnvIds()
     getAppTestTags()
     getTestSessions()
+    getTestSessionFilterOptions()
     getBuilds()
     getBuildById()
     getBuildCoverageByProbes()
@@ -445,8 +457,11 @@ fun Route.getTestSessions() {
         val data = metricsService.getTestSessions(
             groupId = params.groupId,
             buildId = params.buildId,
-            testTaskId = params.testTaskId,
-            createdBy = params.createdBy,
+            testTaskIds = params.testTaskIds,
+            createdBys = params.createdBys,
+            results = params.results,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -457,6 +472,18 @@ fun Route.getTestSessions() {
                 Paging(data.page, data.pageSize, data.total)
             )
         )
+    }
+}
+
+fun Route.getTestSessionFilterOptions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionFilterOptions> { params ->
+        val data = metricsService.getTestSessionFilterOptions(
+            groupId = params.groupId,
+            buildId = params.buildId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 
