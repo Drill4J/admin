@@ -28,9 +28,7 @@ import com.epam.drill.admin.writer.rawdata.table.MethodTable
 import com.epam.drill.admin.writer.rawdata.table.TestDefinitionTable
 import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
-import io.ktor.client.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import org.jetbrains.exposed.sql.deleteAll
 import org.junit.jupiter.api.AfterEach
 import kotlin.test.Test
@@ -62,43 +60,8 @@ class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(2, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
                 assertTrue(data.any { it["name"] == method3.name && it["changeType"] == ChangeType.NEW.name })
-                assertTrue(data.all { (it["coveredProbes"] as Int) == 0 })
-            }
-        }
-
-    @Test
-    fun `given isolated tested target build, changes service should return method changes with coverage in current build`(): Unit =
-        havingData {
-            initBuildsAndMethodsData()
-            test1 covers method2 with probesOf(1, 1, 0) on build3
-        }.expectThat {
-            client.get("/metrics/changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
-            }.returns { data ->
-                assertEquals(2, data.size)
-                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
-            }
-        }
-
-    @Test
-    fun `given aggregated tested builds, changes service should return method changes with coverage in other builds`(): Unit =
-        havingData {
-            initBuildsAndMethodsData()
-            test1 covers method2 with probesOf(1, 1, 0) on build2
-            test2 covers method2 with probesOf(0, 0, 1) on build3
-        }.expectThat {
-            client.get("/metrics/changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
-            }.returns { data ->
-                assertEquals(2, data.size)
-                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
-                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
+                assertTrue(data.all { it["coveredProbes"] == null })
+                assertTrue(data.all { it["probesCount"] == null })
             }
         }
 

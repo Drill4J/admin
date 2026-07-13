@@ -245,6 +245,26 @@ class Metrics {
         val pageSize: Int? = null
     )
 
+    @Resource("/risks")
+    class Risks(
+        val parent: Metrics,
+
+        val groupId: String,
+        val appId: String,
+        val instanceId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+        val baselineInstanceId: String? = null,
+        val baselineCommitSha: String? = null,
+        val baselineBuildVersion: String? = null,
+        val testTags: List<String> = emptyList(),
+        val envIds: List<String> = emptyList(),
+        val branches: List<String> = emptyList(),
+
+        val page: Int? = null,
+        val pageSize: Int? = null
+    )
+
     @Resource("/coverage")
     class Coverage(
         val parent: Metrics,
@@ -311,6 +331,7 @@ class Metrics {
         val packageName: String? = null,
         val className: String? = null,
         val methodName: String? = null,
+        val methodSignature: String? = null,
         @Deprecated("Use packageName instead")
         val packageNamePattern: String? = null,
         @Deprecated("Use className instead")
@@ -351,6 +372,7 @@ class Metrics {
         val packageName: String? = null,
         val className: String? = null,
         val methodName: String? = null,
+        val methodSignature: String? = null,
         @Deprecated("Use packageName instead")
         val packageNamePattern: String? = null,
         @Deprecated("Use className instead")
@@ -394,6 +416,7 @@ fun Route.metricsRoutes() {
     getCoverageTreemap()
     getChangesCoverageTreemap()
     getChanges()
+    getRisks()
     getCoverage()
     getCoverageByPackage()
     getCoverageByClass()
@@ -686,6 +709,35 @@ fun Route.getChanges() {
     }
 }
 
+fun Route.getRisks() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.Risks> { params ->
+        val data = metricsService.getRisks(
+            groupId = params.groupId,
+            appId = params.appId,
+            instanceId = params.instanceId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            baselineInstanceId = params.baselineInstanceId,
+            baselineCommitSha = params.baselineCommitSha,
+            baselineBuildVersion = params.baselineBuildVersion,
+            testTags = params.testTags,
+            envIds = params.envIds,
+            branches = params.branches,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
 fun Route.getCoverage() {
     val metricsService by closestDI().instance<MetricsService>()
 
@@ -848,6 +900,7 @@ private suspend fun getImpactedTests(
             packageName = params.packageName ?: params.packageNamePattern,
             className = params.className ?: params.classNamePattern,
             methodName = params.methodName,
+            methodSignature = params.methodSignature,
             excludeMethodSignatures = params.excludeMethodSignatures
         ),
         coverageCriteria = CoverageCriteria(
@@ -891,7 +944,8 @@ private suspend fun getImpactedMethods(
         methodCriteria = MethodCriteria(
             packageName = params.packageName ?: params.packageNamePattern,
             className = params.className ?: params.classNamePattern,
-            methodName = params.methodName
+            methodName = params.methodName,
+            methodSignature = params.methodSignature,
         ),
         coverageCriteria = CoverageCriteria(
             branches = params.coverageBranches,

@@ -154,6 +154,22 @@ interface MetricsService {
         includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
+    ): PagedList<ChangeView>
+
+    suspend fun getRisks(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTags: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        branches: List<String> = emptyList(),
+        page: Int?,
+        pageSize: Int?
     ): PagedList<MethodView>
 
     suspend fun getCoverage(

@@ -1216,8 +1216,7 @@ paths:
       summary: Get method changes between builds
       description: |
         Retrieves a paginated list of method-level changes between a target build and a baseline build.
-        The target build is identified by instanceId, commitSha, or buildVersion; the baseline build is identified
-        by baselineInstanceId, baselineCommitSha, or baselineBuildVersion.
+        Uses `metrics.get_changes` — method diff only (no coverage). For coverage risks, use `GET /api/metrics/risks`.
       operationId: getMethodChanges
       tags:
         - metrics
@@ -1289,6 +1288,89 @@ paths:
       responses:
         '200':
           description: List of method changes between builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/risks:
+    get:
+      summary: Get coverage risks report between builds
+      description: |
+        Retrieves a paginated risks report for changed methods between a target build and a baseline build.
+        Mirrors Metabase card 2: `metrics.get_changes_with_coverage` LEFT JOIN `metrics.get_impacted_methods_v2`,
+        sorted by aggregated missed probes descending.
+      operationId: getRisksReport
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          schema:
+            type: string
+        - name: testTags
+          in: query
+          description: Optional test tag filters for coverage and impacted-methods join.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          description: Optional app environment filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: branches
+          in: query
+          description: Optional branch filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated risks report
           content:
             application/json:
               schema:
@@ -2902,6 +2984,10 @@ components:
           type: string
           nullable: true
           description: Optional filter to only consider methods with this name when determining impacted tests.
+        methodSignature:
+          type: string
+          nullable: true
+          description: Optional filter by full method signature (className:methodName:params:returnType).
         excludeMethodSignatures:
           type: array
           items:
@@ -3005,6 +3091,10 @@ components:
           type: string
           nullable: true
           description: Optional filter by method name to narrow results to a specific method.
+        methodSignature:
+          type: string
+          nullable: true
+          description: Optional filter by full method signature (className:methodName:params:returnType).
         testTaskId:
           type: string
           nullable: true

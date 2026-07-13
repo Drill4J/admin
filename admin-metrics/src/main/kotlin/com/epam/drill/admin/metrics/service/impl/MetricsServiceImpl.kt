@@ -611,6 +611,63 @@ class MetricsServiceImpl(
         includeEqual: Boolean?,
         page: Int?,
         pageSize: Int?
+    ): PagedList<ChangeView> = transaction {
+        val baselineBuildId = generateBuildId(
+            groupId,
+            appId,
+            baselineInstanceId,
+            baselineCommitSha,
+            baselineBuildVersion,
+            """
+                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
+                """.trimIndent()
+        )
+
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+
+        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+
+        return@transaction pagedListOf(
+            page = page ?: 1,
+            pageSize = pageSize ?: metricsConfig.pageSize
+        ) { offset, limit ->
+            metricsRepository.getChanges(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                includeDeleted = includeDeleted?.takeIf { it },
+                includeEqual = includeEqual?.takeIf { it },
+                offset = offset,
+                limit = limit
+            ).map(::mapToChangeView)
+        } withTotal {
+            metricsRepository.getChangesCount(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                includeDeleted = includeDeleted?.takeIf { it },
+                includeEqual = includeEqual?.takeIf { it },
+            )
+        }
+    }
+
+    override suspend fun getRisks(
+        groupId: String,
+        appId: String,
+        instanceId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        baselineInstanceId: String?,
+        baselineCommitSha: String?,
+        baselineBuildVersion: String?,
+        testTags: List<String>,
+        envIds: List<String>,
+        branches: List<String>,
+        page: Int?,
+        pageSize: Int?
     ): PagedList<MethodView> = transaction {
         val baselineBuildId = generateBuildId(
             groupId,
@@ -636,16 +693,23 @@ class MetricsServiceImpl(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
-            metricsRepository.getChangesWithCoverage(
+            metricsRepository.getRisksReport(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
-                includeDeleted = includeDeleted?.takeIf { it },
-                includeEqual = includeEqual?.takeIf { it },
+                coverageTestTags = testTags,
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
                 offset = offset,
-                limit = limit
+                limit = limit,
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getChangesCount(buildId = buildId, baselineBuildId = baselineBuildId)
+            metricsRepository.getRisksReportCount(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                coverageTestTags = testTags,
+                coverageAppEnvIds = envIds,
+                coverageBranches = branches,
+            )
         }
     }
 
@@ -840,7 +904,22 @@ class MetricsServiceImpl(
                 )
             }
         } withTotal {
-            metricsRepository.getImpactedTestsCount(targetBuildId, baselineBuildId)
+            metricsRepository.getImpactedTestsCount(
+                targetBuildId = targetBuildId,
+                baselineBuildId = baselineBuildId,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
+
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+            )
         }
     }
 
@@ -897,7 +976,22 @@ class MetricsServiceImpl(
                 limit = limit
             ).map(::mapToMethodView)
         } withTotal {
-            metricsRepository.getImpactedMethodsCount(targetBuildId, baselineBuildId)
+            metricsRepository.getImpactedMethodsCount(
+                targetBuildId = targetBuildId,
+                baselineBuildId = baselineBuildId,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
+
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+            )
         }
     }
 
@@ -995,6 +1089,15 @@ class MetricsServiceImpl(
     private fun coverageRatio(covered: Int, total: Int): Double =
         if (total > 0) covered.toDouble() / total else 0.0
 
+    private fun mapToChangeView(resultSet: Map<String, Any?>): ChangeView = ChangeView(
+        signature = resultSet["signature"] as String,
+        className = resultSet["class_name"] as String,
+        name = resultSet["method_name"] as String,
+        params = (resultSet["method_params"] as String).split(",").map(String::trim),
+        returnType = resultSet["return_type"] as String,
+        changeType = ChangeType.fromString(resultSet["change_type"] as String?),
+    )
+
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         methodId = resultSet["method_id"] as? String,
         signature = resultSet["signature"] as String,
@@ -1008,6 +1111,8 @@ class MetricsServiceImpl(
         coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
         coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        missedProbes = (resultSet["isolated_missed_probes"] as Number?)?.toInt(),
+        missedProbesInOtherBuilds = (resultSet["aggregated_missed_probes"] as Number?)?.toInt(),
         impactedTests = (resultSet["impacted_tests"] as Number?)?.toInt(),
     )
 
