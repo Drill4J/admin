@@ -1024,7 +1024,7 @@ BEGIN
             c.group_id,
             c.app_id,
             c.build_id,
-            c.test_session_id,
+            input_test_session_id::VARCHAR AS test_session_id,
 
             COALESCE(SUM(c.probes_count), 0) AS total_probes,
             COALESCE(SUM(c.covered_probes), 0) AS covered_probes,
@@ -1041,7 +1041,7 @@ BEGIN
             input_coverage_app_env_ids => input_coverage_app_env_ids,
             input_coverage_test_tags => input_coverage_test_tags
         ) c
-        GROUP BY c.group_id, c.app_id, c.build_id, c.test_session_id
+        GROUP BY c.group_id, c.app_id, c.build_id
     )
 	SELECT
 		c.group_id::VARCHAR,

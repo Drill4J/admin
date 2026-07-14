@@ -692,6 +692,217 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/test-sessions/{testSessionId}:
+    get:
+      summary: Get test session details
+      operationId: getTestSessionById
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+        '404':
+          description: Test session not found or group mismatch
+  /api/metrics/test-sessions/{testSessionId}/coverage-summary:
+    get:
+      summary: Get test session coverage summary
+      operationId: getTestSessionCoverageSummary
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session coverage summary (probes and methods)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/test-sessions/{testSessionId}/definitions:
+    get:
+      summary: Get paginated test definitions for a session
+      operationId: getTestSessionDefinitions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          description: Search by test definition id, name, or path
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated test definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches:
+    get:
+      summary: Get test launches for a session
+      operationId: getTestLaunches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testResults
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated test launches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches:
+    get:
+      summary: Get file-level test launches for a session
+      operationId: getTestFileLaunches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated file-level launches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/builds:
     get:
       summary: Get builds

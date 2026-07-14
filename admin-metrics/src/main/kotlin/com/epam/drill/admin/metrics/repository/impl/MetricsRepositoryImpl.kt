@@ -346,6 +346,374 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getTestSessionResults(groupId: String, buildId: String?): List<String> =
         getTestSessionDistinctValues(groupId, buildId, "tss.result")
 
+    override suspend fun testSessionExists(groupId: String, testSessionId: String): Boolean = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT 1
+            FROM metrics.test_sessions
+            WHERE group_id = ? AND test_session_id = ?
+            LIMIT 1
+            """.trimIndent(),
+            groupId,
+            testSessionId
+        ).isNotEmpty()
+    }
+
+    override suspend fun testSessionBuildExists(
+        groupId: String,
+        testSessionId: String,
+        buildId: String,
+    ): Boolean = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT 1
+            FROM metrics.test_session_builds
+            WHERE group_id = ? AND test_session_id = ? AND build_id = ?
+            LIMIT 1
+            """.trimIndent(),
+            groupId,
+            testSessionId,
+            buildId
+        ).isNotEmpty()
+    }
+
+    override suspend fun getTestSessionDetail(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+    ): Map<String, Any?>? = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsb.group_id,
+                tsb.app_id,
+                tsb.build_id,
+                bws.build_version,
+                bws.branch,
+                tss.test_session_id,
+                tss.test_task_id,
+                tss.session_started_at,
+                tss.created_by,
+                tss.test_definitions,
+                tss.test_launches,
+                tss.result,
+                tss.test_duration,
+                metrics.format_duration(tss.test_duration::bigint) AS test_duration_formatted,
+                tss.failed,
+                tss.passed,
+                tss.skipped,
+                tss.smart_skipped,
+                tss.success,
+                tss.success_rate,
+                tss.time_saved,
+                metrics.format_duration_rounded(tss.time_saved::bigint) AS time_saved_formatted
+            FROM metrics.test_session_builds tsb
+            JOIN metrics.test_sessions_with_statistics tss
+                ON tss.group_id = tsb.group_id
+                AND tss.test_session_id = tsb.test_session_id
+            LEFT JOIN metrics.builds_with_statistics bws
+                ON bws.group_id = tsb.group_id
+                AND bws.app_id = tsb.app_id
+                AND bws.build_id = tsb.build_id
+            WHERE tsb.group_id = ?
+                AND tsb.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendOptional(" AND tsb.build_id = ?", buildId)
+            append(" ORDER BY tsb.build_id LIMIT 1 ")
+        }.firstOrNull()
+    }
+
+    override suspend fun getTestSessionCoverageSummary(
+        buildId: String,
+        testSessionId: String,
+    ): Map<String, Any?>? = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                total_probes,
+                covered_probes,
+                missed_probes,
+                total_methods,
+                tested_methods,
+                missed_methods
+            FROM metrics.get_builds_with_coverage_by_test_session(
+                input_build_id => ?,
+                input_test_session_id => ?
+            )
+            """.trimIndent(),
+            buildId,
+            testSessionId
+        ).firstOrNull()
+    }
+
+    override suspend fun getTestDefinitionCoverageSummary(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+    ): Map<String, Any?>? = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT
+                total_probes,
+                covered_probes,
+                missed_probes,
+                total_methods,
+                tested_methods,
+                missed_methods
+            FROM metrics.get_builds_with_coverage_by_test_definition(
+                input_build_id => ?,
+                input_test_session_id => ?,
+                input_test_definition_id => ?
+            )
+            """.trimIndent(),
+            buildId,
+            testSessionId,
+            testDefinitionId,
+        ).firstOrNull()
+    }
+
+    override suspend fun getTestSessionDefinitions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsd.test_definition_id,
+                tsd.test_name,
+                tsd.test_path,
+                tsd.test_runner,
+                tsd.test_result,
+                tsd.test_launches
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestSessionDefinitionsWhere(buildId, query)
+            append(" ORDER BY tsd.test_path, tsd.test_name ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getTestSessionDefinitionsCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        query: String?,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestSessionDefinitionsWhere(buildId, query)
+        }.firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getTestLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+        testResults: List<String>,
+        testTags: List<String>,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsd.test_definition_id,
+                tsd.test_name,
+                tsd.test_path,
+                tsd.test_runner,
+                tsd.test_tags,
+                tsd.test_launches,
+                tsd.test_duration_sum AS test_duration,
+                tsd.test_duration_sum_formatted AS test_duration_formatted,
+                tsd.test_result
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, testResults, testTags)
+            append(" ORDER BY tsd.test_path, tsd.test_name ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getTestLaunchesCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+        testResults: List<String>,
+        testTags: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, testResults, testTags)
+        }.firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getTestFileLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tfl.test_path,
+                tfl.test_definitions,
+                tfl.test_launches,
+                tfl.result,
+                tfl.failed,
+                tfl.passed,
+                tfl.skipped,
+                tfl.smart_skipped,
+                tfl.success,
+                tfl.test_duration,
+                metrics.format_duration(tfl.test_duration::bigint) AS test_duration_formatted,
+                tfl.success_rate
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            append(" ORDER BY tfl.test_path ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getTestFileLaunchesCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+    ): Long = transaction {
+        if (buildId != null && !testSessionBuildExists(groupId, testSessionId, buildId)) {
+            return@transaction 0L
+        }
+        executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+            """.trimIndent(),
+            groupId,
+            testSessionId
+        ).firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    private fun SqlBuilder.appendTestSessionDefinitionsWhere(
+        buildId: String?,
+        query: String?,
+    ) {
+        appendOptional(
+            """
+             AND (
+                tsd.test_definition_id ILIKE ?
+                OR tsd.test_name ILIKE ?
+                OR COALESCE(tsd.test_path, '') ILIKE ?
+             )
+            """.trimIndent(),
+            query,
+            query,
+            query,
+        ) { "%$it%" }
+        if (buildId != null) {
+            append(
+                """
+                 AND EXISTS (
+                    SELECT 1
+                    FROM metrics.test_session_builds tsb
+                    WHERE tsb.group_id = ts.group_id
+                        AND tsb.test_session_id = ts.test_session_id
+                        AND tsb.build_id = ?
+                )
+                """.trimIndent(), buildId
+            )
+        }
+    }
+
+    private fun SqlBuilder.appendTestLaunchesWhere(
+        buildId: String?,
+        path: String?,
+        testResults: List<String>,
+        testTags: List<String>,
+    ) {
+        appendOptional(" AND tsd.test_path = ?", path)
+        appendOptional(" AND tsd.test_result = ANY(?)", testResults)
+        appendOptional(" AND tsd.test_tags && ?::varchar[]", testTags)
+        if (buildId != null) {
+            append(
+                """
+                 AND EXISTS (
+                    SELECT 1
+                    FROM metrics.test_session_builds tsb
+                    WHERE tsb.group_id = ts.group_id
+                        AND tsb.test_session_id = ts.test_session_id
+                        AND tsb.build_id = ?
+                )
+                """.trimIndent(), buildId
+            )
+        }
+    }
+
     private suspend fun getTestSessionDistinctValues(
         groupId: String,
         buildId: String?,
@@ -474,7 +842,19 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageNamePattern: String?,
         methodSignaturePattern: String?,
         coverageAppEnvIds: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "probes_coverage_ratio" -> "probes_coverage_ratio $sortDirection, method_id ASC"
+            "probes_count" -> "probes_count $sortDirection, method_id ASC"
+            "covered_probes" -> "covered_probes $sortDirection, method_id ASC"
+            else -> "signature ASC"
+        }
+
         executeQueryReturnMap {
             append(
                 """
@@ -502,10 +882,43 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 ) 
-                ORDER BY signature    
+                ORDER BY $orderBy
                 """.trimIndent()
             )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getMethodsWithCoverageByTestSessionCount(
+        buildId: String,
+        testSessionId: String,
+        testTags: List<String>,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_methods_with_coverage_by_test_session(
+                input_build_id => ?,
+                input_test_session_id => ?
+                """.trimIndent(), buildId, testSessionId
+            )
+            appendOptional(", input_coverage_test_tags => ?", testTags)
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(" ) ")
+        }.firstOrNull()?.get("cnt")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
     }
 
     override suspend fun getMethodsWithCoverageByTestDefinition(
@@ -515,7 +928,19 @@ class MetricsRepositoryImpl : MetricsRepository {
         packageNamePattern: String?,
         methodSignaturePattern: String?,
         coverageAppEnvIds: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
     ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "probes_coverage_ratio" -> "probes_coverage_ratio $sortDirection, method_id ASC"
+            "probes_count" -> "probes_count $sortDirection, method_id ASC"
+            "covered_probes" -> "covered_probes $sortDirection, method_id ASC"
+            else -> "signature ASC"
+        }
+
         executeQueryReturnMap {
             append(
                 """
@@ -543,12 +968,254 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 ) 
-                ORDER BY signature    
+                ORDER BY $orderBy
                 """.trimIndent()
             )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }
     }
 
+    override suspend fun getMethodsWithCoverageByTestDefinitionCount(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        coverageAppEnvIds: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS cnt
+            FROM metrics.get_methods_with_coverage_by_test_definition(
+                input_build_id => ?,
+                input_test_session_id => ?,
+                input_test_definition_id => ?
+                """.trimIndent(), buildId, testSessionId, testDefinitionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
+            appendOptional(", input_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(" ) ")
+        }.firstOrNull()?.get("cnt")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getClassCoverageByTestSession(
+        buildId: String,
+        testSessionId: String,
+        packageName: String?,
+        testTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "methods_coverage_ratio" -> """
+                CASE
+                    WHEN methods_count > 0 THEN covered_methods::DOUBLE PRECISION / methods_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "methods_count" -> "methods_count $sortDirection, class_name ASC"
+            "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
+            "probes_coverage_ratio" -> """
+                CASE
+                    WHEN probes_count > 0 THEN covered_probes::DOUBLE PRECISION / probes_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "probes_count" -> "probes_count $sortDirection, class_name ASC"
+            "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
+            else -> "class_name ASC"
+        }
+
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT *
+                FROM (
+                    SELECT
+                        class_name,
+                        COUNT(*)::INT AS methods_count,
+                        COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS covered_methods,
+                        (COUNT(*) - COUNT(*) FILTER (WHERE covered_probes > 0))::INT AS missed_methods,
+                        COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                        COALESCE(SUM(covered_probes), 0)::INT AS covered_probes,
+                        (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(covered_probes), 0))::INT AS missed_probes
+                    FROM metrics.get_methods_with_coverage_by_test_session(
+                        input_build_id => ?,
+                        input_test_session_id => ?
+                """.trimIndent(), buildId, testSessionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendOptional(", input_coverage_test_tags => ?", testTags)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
+            append(" ORDER BY $orderBy")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getClassCoverageByTestSessionCount(
+        buildId: String,
+        testSessionId: String,
+        packageName: String?,
+        testTags: List<String>,
+        coverageAppEnvIds: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT class_name
+                    FROM metrics.get_methods_with_coverage_by_test_session(
+                        input_build_id => ?,
+                        input_test_session_id => ?
+                """.trimIndent(), buildId, testSessionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendOptional(", input_coverage_test_tags => ?", testTags)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
+        }.firstOrNull()?.get("cnt")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getClassCoverageByTestDefinition(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageName: String?,
+        coverageAppEnvIds: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = when (sortBy) {
+            "methods_coverage_ratio" -> """
+                CASE
+                    WHEN methods_count > 0 THEN covered_methods::DOUBLE PRECISION / methods_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "methods_count" -> "methods_count $sortDirection, class_name ASC"
+            "covered_methods" -> "covered_methods $sortDirection, class_name ASC"
+            "probes_coverage_ratio" -> """
+                CASE
+                    WHEN probes_count > 0 THEN covered_probes::DOUBLE PRECISION / probes_count::DOUBLE PRECISION
+                    ELSE 0
+                END $sortDirection, class_name ASC
+            """.trimIndent()
+            "probes_count" -> "probes_count $sortDirection, class_name ASC"
+            "covered_probes" -> "covered_probes $sortDirection, class_name ASC"
+            else -> "class_name ASC"
+        }
+
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT *
+                FROM (
+                    SELECT
+                        class_name,
+                        COUNT(*)::INT AS methods_count,
+                        COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS covered_methods,
+                        (COUNT(*) - COUNT(*) FILTER (WHERE covered_probes > 0))::INT AS missed_methods,
+                        COALESCE(SUM(probes_count), 0)::INT AS probes_count,
+                        COALESCE(SUM(covered_probes), 0)::INT AS covered_probes,
+                        (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(covered_probes), 0))::INT AS missed_probes
+                    FROM metrics.get_methods_with_coverage_by_test_definition(
+                        input_build_id => ?,
+                        input_test_session_id => ?,
+                        input_test_definition_id => ?
+                """.trimIndent(), buildId, testSessionId, testDefinitionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
+            append(" ORDER BY $orderBy")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getClassCoverageByTestDefinitionCount(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageName: String?,
+        coverageAppEnvIds: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT class_name
+                    FROM metrics.get_methods_with_coverage_by_test_definition(
+                        input_build_id => ?,
+                        input_test_session_id => ?,
+                        input_test_definition_id => ?
+                """.trimIndent(), buildId, testSessionId, testDefinitionId
+            )
+            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+            append(
+                """
+                    )
+                    GROUP BY class_name
+                ) AS class_coverage
+                """.trimIndent()
+            )
+            appendOptional(" WHERE substring(class_name from '^(.*)/') = ?", packageName)
+        }.firstOrNull()?.get("cnt")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
 
     override suspend fun getChanges(
         buildId: String,

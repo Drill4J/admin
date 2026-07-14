@@ -89,6 +89,77 @@ interface MetricsRepository {
 
     suspend fun getTestSessionResults(groupId: String, buildId: String? = null): List<String>
 
+    suspend fun testSessionExists(groupId: String, testSessionId: String): Boolean
+
+    suspend fun testSessionBuildExists(groupId: String, testSessionId: String, buildId: String): Boolean
+
+    suspend fun getTestSessionDetail(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+    ): Map<String, Any?>?
+
+    suspend fun getTestSessionCoverageSummary(
+        buildId: String,
+        testSessionId: String,
+    ): Map<String, Any?>?
+
+    suspend fun getTestDefinitionCoverageSummary(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+    ): Map<String, Any?>?
+
+    suspend fun getTestSessionDefinitions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getTestSessionDefinitionsCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        query: String? = null,
+    ): Long
+
+    suspend fun getTestLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+        testResults: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getTestLaunchesCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+        testResults: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+    ): Long
+
+    suspend fun getTestFileLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getTestFileLaunchesCount(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+    ): Long
+
     suspend fun getMethodsWithCoverage(
         buildId: String,
         coverageTestTags: List<String> = emptyList(),
@@ -108,7 +179,20 @@ interface MetricsRepository {
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
         coverageAppEnvIds: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        offset: Int? = null,
+        limit: Int? = null,
     ): List<Map<String, Any?>>
+
+    suspend fun getMethodsWithCoverageByTestSessionCount(
+        buildId: String,
+        testSessionId: String,
+        testTags: List<String> = emptyList(),
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): Long
 
     suspend fun getMethodsWithCoverageByTestDefinition(
         buildId: String,
@@ -117,7 +201,60 @@ interface MetricsRepository {
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
         coverageAppEnvIds: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        offset: Int? = null,
+        limit: Int? = null,
     ): List<Map<String, Any?>>
+
+    suspend fun getMethodsWithCoverageByTestDefinitionCount(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageNamePattern: String? = null,
+        methodSignaturePattern: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): Long
+
+    suspend fun getClassCoverageByTestSession(
+        buildId: String,
+        testSessionId: String,
+        packageName: String? = null,
+        testTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getClassCoverageByTestSessionCount(
+        buildId: String,
+        testSessionId: String,
+        packageName: String? = null,
+        testTags: List<String> = emptyList(),
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): Long
+
+    suspend fun getClassCoverageByTestDefinition(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageName: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getClassCoverageByTestDefinitionCount(
+        buildId: String,
+        testSessionId: String,
+        testDefinitionId: String,
+        packageName: String? = null,
+        coverageAppEnvIds: List<String> = emptyList(),
+    ): Long
 
 
     suspend fun getMethodsCount(

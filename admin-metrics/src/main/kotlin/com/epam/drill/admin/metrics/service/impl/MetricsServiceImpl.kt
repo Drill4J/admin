@@ -16,6 +16,7 @@
 package com.epam.drill.admin.metrics.service.impl
 
 import com.epam.drill.admin.common.exception.BuildNotFound
+import com.epam.drill.admin.common.exception.ResourceNotFoundException
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
@@ -287,6 +288,157 @@ class MetricsServiceImpl(
             createdBys = metricsRepository.getTestSessionCreatedBys(groupId, buildId),
             results = metricsRepository.getTestSessionResults(groupId, buildId),
         )
+    }
+
+    override suspend fun getTestSessionDetail(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+    ): TestSessionDetailView = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        val row = metricsRepository.getTestSessionDetail(groupId, testSessionId, buildId)
+            ?: throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        mapToTestSessionDetailView(row)
+    }
+
+    override suspend fun getTestSessionCoverageSummary(
+        groupId: String,
+        testSessionId: String,
+        buildId: String,
+        testDefinitionId: String?,
+    ): TestSessionCoverageSummaryView = transaction {
+        validateTestSessionBuild(groupId, testSessionId, buildId)
+        val row = if (testDefinitionId.isNullOrBlank()) {
+            metricsRepository.getTestSessionCoverageSummary(buildId, testSessionId)
+        } else {
+            metricsRepository.getTestDefinitionCoverageSummary(buildId, testSessionId, testDefinitionId)
+        }
+        mapToTestSessionCoverageSummaryView(row)
+    }
+
+    override suspend fun getTestSessionDefinitions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestDefinitionView> = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        val searchQuery = query?.takeIf { it.isNotBlank() }
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getTestSessionDefinitions(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+                query = searchQuery,
+                offset = offset,
+                limit = limit,
+            ).map { row ->
+                TestDefinitionView(
+                    testDefinitionId = row["test_definition_id"] as String,
+                    testName = row["test_name"] as? String,
+                    testPath = row["test_path"] as? String,
+                    testRunner = row["test_runner"] as? String,
+                    testResult = row["test_result"] as String,
+                    testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+                )
+            }
+        } withTotal {
+            metricsRepository.getTestSessionDefinitionsCount(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+                query = searchQuery,
+            )
+        }
+    }
+
+    override suspend fun getTestLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+        testResults: List<String>,
+        testTags: List<String>,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestLaunchView> = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getTestLaunches(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+                path = path,
+                testResults = testResults,
+                testTags = testTags,
+                offset = offset,
+                limit = limit,
+            ).map { row -> mapToTestLaunchView(row) }
+        } withTotal {
+            metricsRepository.getTestLaunchesCount(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+                path = path,
+                testResults = testResults,
+                testTags = testTags,
+            )
+        }
+    }
+
+    override suspend fun getTestFileLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestFileLaunchView> = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getTestFileLaunches(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+                offset = offset,
+                limit = limit,
+            ).map { row -> mapToTestFileLaunchView(row) }
+        } withTotal {
+            metricsRepository.getTestFileLaunchesCount(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                buildId = buildId,
+            )
+        }
     }
 
     override suspend fun getCoverageTreemap(
@@ -728,7 +880,9 @@ class MetricsServiceImpl(
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
+        pageSize: Int?,
+        testSessionId: String?,
+        testDefinitionId: String?,
     ): PagedList<MethodView> = transaction {
         val resolvedBuildId = buildId?.takeIf { it.isNotBlank() }
             ?: generateBuildId(groupId!!, appId!!, instanceId, commitSha, buildVersion)
@@ -738,13 +892,86 @@ class MetricsServiceImpl(
 
         val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
         val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
+        val methodCriteria = MethodCriteria(packageName = packageFilter, className = classFilter)
+
+        val sessionSortMapping = mapOf(
+            "coverageRatio" to "probes_coverage_ratio",
+            "probesCount" to "probes_count",
+            "coveredProbes" to "covered_probes",
+        )
+        val mappedSortBy = sortBy?.let { sessionSortMapping[it] }
+
+        when {
+            testDefinitionId != null -> {
+                val resolvedTestSessionId = testSessionId
+                    ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                validateTestSessionBuildForCoverage(resolvedTestSessionId, resolvedBuildId)
+
+                return@transaction pagedListOf(
+                    page = page ?: 1,
+                    pageSize = pageSize ?: metricsConfig.pageSize
+                ) { offset, limit ->
+                    metricsRepository.getMethodsWithCoverageByTestDefinition(
+                        buildId = resolvedBuildId,
+                        testSessionId = resolvedTestSessionId,
+                        testDefinitionId = testDefinitionId,
+                        packageNamePattern = methodCriteria.packageNamePattern,
+                        methodSignaturePattern = methodCriteria.signaturePattern,
+                        coverageAppEnvIds = envIds,
+                        sortBy = mappedSortBy,
+                        sortOrder = sortOrder,
+                        offset = offset,
+                        limit = limit,
+                    ).map(::mapToMethodView)
+                } withTotal {
+                    metricsRepository.getMethodsWithCoverageByTestDefinitionCount(
+                        buildId = resolvedBuildId,
+                        testSessionId = resolvedTestSessionId,
+                        testDefinitionId = testDefinitionId,
+                        packageNamePattern = methodCriteria.packageNamePattern,
+                        methodSignaturePattern = methodCriteria.signaturePattern,
+                        coverageAppEnvIds = envIds,
+                    )
+                }
+            }
+            testSessionId != null -> {
+                validateTestSessionBuildForCoverage(testSessionId, resolvedBuildId)
+
+                return@transaction pagedListOf(
+                    page = page ?: 1,
+                    pageSize = pageSize ?: metricsConfig.pageSize
+                ) { offset, limit ->
+                    metricsRepository.getMethodsWithCoverageByTestSession(
+                        buildId = resolvedBuildId,
+                        testSessionId = testSessionId,
+                        testTags = testTags,
+                        packageNamePattern = methodCriteria.packageNamePattern,
+                        methodSignaturePattern = methodCriteria.signaturePattern,
+                        coverageAppEnvIds = envIds,
+                        sortBy = mappedSortBy,
+                        sortOrder = sortOrder,
+                        offset = offset,
+                        limit = limit,
+                    ).map(::mapToMethodView)
+                } withTotal {
+                    metricsRepository.getMethodsWithCoverageByTestSessionCount(
+                        buildId = resolvedBuildId,
+                        testSessionId = testSessionId,
+                        testTags = testTags,
+                        packageNamePattern = methodCriteria.packageNamePattern,
+                        methodSignaturePattern = methodCriteria.signaturePattern,
+                        coverageAppEnvIds = envIds,
+                    )
+                }
+            }
+        }
 
         val sortingFieldMapping = mapOf(
             "coverageRatio" to "isolated_probes_coverage_ratio",
             "probesCount" to "probes_count",
             "coveredProbes" to "isolated_covered_probes",
         )
-        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] }
+        val buildMappedSortBy = sortBy?.let { sortingFieldMapping[it] }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -757,7 +984,7 @@ class MetricsServiceImpl(
                 coverageBranches = branches,
                 packageName = packageFilter,
                 className = classFilter,
-                sortBy = mappedSortBy,
+                sortBy = buildMappedSortBy,
                 sortOrder = sortOrder,
                 offset = offset,
                 limit = limit
@@ -798,6 +1025,8 @@ class MetricsServiceImpl(
         sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
+        testSessionId: String?,
+        testDefinitionId: String?,
     ): PagedList<ClassCoverageView> = transaction {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -814,6 +1043,67 @@ class MetricsServiceImpl(
             "coveredProbes" to "covered_probes",
         )
         val mappedSortBy = sortBy?.let { sortingFieldMapping[it] }
+
+        when {
+            testDefinitionId != null -> {
+                val resolvedTestSessionId = testSessionId
+                    ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                validateTestSessionBuildForCoverage(resolvedTestSessionId, buildId)
+
+                return@transaction pagedListOf(
+                    page = page ?: 1,
+                    pageSize = pageSize ?: metricsConfig.pageSize
+                ) { offset, limit ->
+                    metricsRepository.getClassCoverageByTestDefinition(
+                        buildId = buildId,
+                        testSessionId = resolvedTestSessionId,
+                        testDefinitionId = testDefinitionId,
+                        packageName = packageFilter,
+                        coverageAppEnvIds = envIds,
+                        sortBy = mappedSortBy,
+                        sortOrder = sortOrder,
+                        offset = offset,
+                        limit = limit,
+                    ).map(::mapToClassCoverageView)
+                } withTotal {
+                    metricsRepository.getClassCoverageByTestDefinitionCount(
+                        buildId = buildId,
+                        testSessionId = resolvedTestSessionId,
+                        testDefinitionId = testDefinitionId,
+                        packageName = packageFilter,
+                        coverageAppEnvIds = envIds,
+                    )
+                }
+            }
+            testSessionId != null -> {
+                validateTestSessionBuildForCoverage(testSessionId, buildId)
+
+                return@transaction pagedListOf(
+                    page = page ?: 1,
+                    pageSize = pageSize ?: metricsConfig.pageSize
+                ) { offset, limit ->
+                    metricsRepository.getClassCoverageByTestSession(
+                        buildId = buildId,
+                        testSessionId = testSessionId,
+                        packageName = packageFilter,
+                        testTags = testTags,
+                        coverageAppEnvIds = envIds,
+                        sortBy = mappedSortBy,
+                        sortOrder = sortOrder,
+                        offset = offset,
+                        limit = limit,
+                    ).map(::mapToClassCoverageView)
+                } withTotal {
+                    metricsRepository.getClassCoverageByTestSessionCount(
+                        buildId = buildId,
+                        testSessionId = testSessionId,
+                        packageName = packageFilter,
+                        testTags = testTags,
+                        coverageAppEnvIds = envIds,
+                    )
+                }
+            }
+        }
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -1114,6 +1404,96 @@ class MetricsServiceImpl(
         missedProbes = (resultSet["isolated_missed_probes"] as Number?)?.toInt(),
         missedProbesInOtherBuilds = (resultSet["aggregated_missed_probes"] as Number?)?.toInt(),
         impactedTests = (resultSet["impacted_tests"] as Number?)?.toInt(),
+    )
+
+    private fun mapToTestSessionCoverageSummaryView(row: Map<String, Any?>?): TestSessionCoverageSummaryView {
+        val coveredProbes = (row?.get("covered_probes") as? Number)?.toInt() ?: 0
+        val missedProbes = (row?.get("missed_probes") as? Number)?.toInt() ?: 0
+        val testedMethods = (row?.get("tested_methods") as? Number)?.toInt() ?: 0
+        val missedMethods = (row?.get("missed_methods") as? Number)?.toInt() ?: 0
+        return TestSessionCoverageSummaryView(
+            probes = CoverageUnitSummaryView(
+                slices = listOf(
+                    CoverageUnitSliceView(metric = "covered", value = coveredProbes),
+                    CoverageUnitSliceView(metric = "missed", value = missedProbes),
+                ),
+            ),
+            methods = CoverageUnitSummaryView(
+                slices = listOf(
+                    CoverageUnitSliceView(metric = "covered", value = testedMethods),
+                    CoverageUnitSliceView(metric = "missed", value = missedMethods),
+                ),
+            ),
+        )
+    }
+
+    private fun mapToTestSessionDetailView(row: Map<String, Any?>): TestSessionDetailView = TestSessionDetailView(
+        testSessionId = row["test_session_id"] as String,
+        groupId = row["group_id"] as String,
+        appId = row["app_id"] as String,
+        buildId = row["build_id"] as String,
+        buildVersion = row["build_version"] as? String,
+        branch = row["branch"] as? String,
+        testTaskId = row["test_task_id"] as String?,
+        sessionStartedAt = (row["session_started_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+        createdBy = row["created_by"] as String?,
+        testDefinitions = (row["test_definitions"] as? Number)?.toInt() ?: 0,
+        testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+        result = row["result"] as String,
+        testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
+        testDurationFormatted = row["test_duration_formatted"] as String,
+        failed = (row["failed"] as? Number)?.toInt() ?: 0,
+        passed = (row["passed"] as? Number)?.toInt() ?: 0,
+        skipped = (row["skipped"] as? Number)?.toInt() ?: 0,
+        smartSkipped = (row["smart_skipped"] as? Number)?.toInt() ?: 0,
+        success = (row["success"] as? Number)?.toInt() ?: 0,
+        successRate = (row["success_rate"] as? Number)?.toDouble() ?: 0.0,
+        timeSaved = (row["time_saved"] as? Number)?.toLong() ?: 0L,
+        timeSavedFormatted = row["time_saved_formatted"] as String,
+    )
+
+    private suspend fun validateTestSessionBuild(groupId: String, testSessionId: String, buildId: String) {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, buildId)) {
+            throw ResourceNotFoundException("Test session $testSessionId is not linked to build $buildId")
+        }
+        if (!metricsRepository.buildExists(buildId)) {
+            throw BuildNotFound("Build info not found for $buildId")
+        }
+    }
+
+    private suspend fun validateTestSessionBuildForCoverage(testSessionId: String, buildId: String) {
+        val groupId = buildId.substringBefore(":")
+        validateTestSessionBuild(groupId, testSessionId, buildId)
+    }
+
+    private fun mapToTestLaunchView(row: Map<String, Any?>): TestLaunchView = TestLaunchView(
+        testDefinitionId = row["test_definition_id"] as String,
+        testName = row["test_name"] as? String,
+        testPath = row["test_path"] as? String,
+        testRunner = row["test_runner"] as? String,
+        testTags = (row["test_tags"] as? List<String>) ?: emptyList(),
+        testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+        testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
+        testDurationFormatted = row["test_duration_formatted"] as String,
+        testResult = row["test_result"] as String,
+    )
+
+    private fun mapToTestFileLaunchView(row: Map<String, Any?>): TestFileLaunchView = TestFileLaunchView(
+        testPath = row["test_path"] as String,
+        testDefinitions = (row["test_definitions"] as? Number)?.toInt() ?: 0,
+        testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+        result = row["result"] as String,
+        failed = (row["failed"] as? Number)?.toInt() ?: 0,
+        passed = (row["passed"] as? Number)?.toInt() ?: 0,
+        skipped = (row["skipped"] as? Number)?.toInt() ?: 0,
+        smartSkipped = (row["smart_skipped"] as? Number)?.toInt() ?: 0,
+        success = (row["success"] as? Number)?.toInt() ?: 0,
+        testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
+        testDurationFormatted = row["test_duration_formatted"] as String,
+        successRate = (row["success_rate"] as? Number)?.toDouble() ?: 0.0,
     )
 
     // TODO good candidate to be moved to common functions (probably)

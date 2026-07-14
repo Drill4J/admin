@@ -83,6 +83,49 @@ class Metrics {
         val buildId: String? = null,
     )
 
+    @Resource("/test-sessions/{testSessionId}")
+    class TestSessionById(
+        val parent: Metrics = Metrics(),
+        val testSessionId: String,
+        val groupId: String,
+        val buildId: String? = null,
+    ) {
+        @Resource("coverage-summary")
+        class CoverageSummary(
+            val parent: TestSessionById,
+            val buildId: String,
+            val testDefinitionId: String? = null,
+        )
+
+        @Resource("definitions")
+        class Definitions(
+            val parent: TestSessionById,
+            val buildId: String? = null,
+            val query: String? = null,
+            val page: Int? = null,
+            val pageSize: Int? = null,
+        )
+
+        @Resource("launches")
+        class Launches(
+            val parent: TestSessionById,
+            val buildId: String? = null,
+            val path: String? = null,
+            val testResults: List<String> = emptyList(),
+            val testTags: List<String> = emptyList(),
+            val page: Int? = null,
+            val pageSize: Int? = null,
+        )
+
+        @Resource("file-launches")
+        class FileLaunches(
+            val parent: TestSessionById,
+            val buildId: String? = null,
+            val page: Int? = null,
+            val pageSize: Int? = null,
+        )
+    }
+
     @Resource("/builds")
     class Builds(
         val parent: Metrics,
@@ -285,7 +328,10 @@ class Metrics {
         val sortOrder: SortOrder? = null,
 
         val page: Int? = null,
-        val pageSize: Int? = null
+        val pageSize: Int? = null,
+
+        val testSessionId: String? = null,
+        val testDefinitionId: String? = null,
     )
 
     @Resource("/coverage/by-package")
@@ -311,6 +357,8 @@ class Metrics {
         val sortOrder: SortOrder? = null,
         val page: Int? = null,
         val pageSize: Int? = null,
+        val testSessionId: String? = null,
+        val testDefinitionId: String? = null,
     )
 
     @Resource("/impacted-tests")
@@ -404,6 +452,11 @@ fun Route.metricsRoutes() {
     getAppTestTags()
     getTestSessions()
     getTestSessionFilterOptions()
+    getTestSessionById()
+    getTestSessionCoverageSummary()
+    getTestSessionDefinitions()
+    getTestLaunches()
+    getTestFileLaunches()
     getBuilds()
     getBuildById()
     getBuildCoverageByProbes()
@@ -507,6 +560,112 @@ fun Route.getTestSessionFilterOptions() {
             buildId = params.buildId,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestSessionById() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById> { params ->
+        val data = metricsService.getTestSessionDetail(
+            groupId = params.groupId,
+            testSessionId = params.testSessionId,
+            buildId = params.buildId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestSessionCoverageSummary() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.CoverageSummary> { params ->
+        val data = metricsService.getTestSessionCoverageSummary(
+            groupId = params.parent.groupId,
+            testSessionId = params.parent.testSessionId,
+            buildId = params.buildId,
+            testDefinitionId = params.testDefinitionId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestSessionDefinitions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.Definitions> { params ->
+        val data = metricsService.getTestSessionDefinitions(
+            groupId = params.parent.groupId,
+            testSessionId = params.parent.testSessionId,
+            buildId = params.buildId,
+            query = params.query,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data = data.items,
+                paging = Paging(
+                    page = data.page,
+                    pageSize = data.pageSize,
+                    total = data.total,
+                ),
+            )
+        )
+    }
+}
+
+fun Route.getTestLaunches() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.Launches> { params ->
+        val data = metricsService.getTestLaunches(
+            groupId = params.parent.groupId,
+            testSessionId = params.parent.testSessionId,
+            buildId = params.buildId,
+            path = params.path,
+            testResults = params.testResults,
+            testTags = params.testTags,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data = data.items,
+                paging = Paging(
+                    page = data.page,
+                    pageSize = data.pageSize,
+                    total = data.total,
+                ),
+            )
+        )
+    }
+}
+
+fun Route.getTestFileLaunches() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.FileLaunches> { params ->
+        val data = metricsService.getTestFileLaunches(
+            groupId = params.parent.groupId,
+            testSessionId = params.parent.testSessionId,
+            buildId = params.buildId,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data = data.items,
+                paging = Paging(
+                    page = data.page,
+                    pageSize = data.pageSize,
+                    total = data.total,
+                ),
+            )
+        )
     }
 }
 
@@ -758,6 +917,8 @@ fun Route.getCoverage() {
             sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
+            testSessionId = params.testSessionId,
+            testDefinitionId = params.testDefinitionId,
         )
         this.call.respond(
             HttpStatusCode.OK,
@@ -797,6 +958,8 @@ fun Route.getCoverageByClass() {
             sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
+            testSessionId = params.testSessionId,
+            testDefinitionId = params.testDefinitionId,
         )
         this.call.respond(
             HttpStatusCode.OK,

@@ -89,6 +89,47 @@ interface MetricsService {
         buildId: String?,
     ): TestSessionFilterOptionsView
 
+    suspend fun getTestSessionDetail(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+    ): TestSessionDetailView
+
+    suspend fun getTestSessionCoverageSummary(
+        groupId: String,
+        testSessionId: String,
+        buildId: String,
+        testDefinitionId: String? = null,
+    ): TestSessionCoverageSummaryView
+
+    suspend fun getTestSessionDefinitions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<TestDefinitionView>
+
+    suspend fun getTestLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+        testResults: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<TestLaunchView>
+
+    suspend fun getTestFileLaunches(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<TestFileLaunchView>
+
     suspend fun getCoverageTreemap(
         buildId: String,
         testTags: List<String>,
@@ -187,7 +228,9 @@ interface MetricsService {
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         page: Int? = null,
-        pageSize: Int? = null
+        pageSize: Int? = null,
+        testSessionId: String? = null,
+        testDefinitionId: String? = null,
     ): PagedList<MethodView>
 
     suspend fun getCoverageByPackage(
@@ -207,6 +250,8 @@ interface MetricsService {
         sortOrder: SortOrder? = null,
         page: Int? = null,
         pageSize: Int? = null,
+        testSessionId: String? = null,
+        testDefinitionId: String? = null,
     ): PagedList<ClassCoverageView>
 
     suspend fun getImpactedTests(

@@ -48,3 +48,74 @@ data class TestSessionFilterOptionsView(
     val createdBys: List<String>,
     val results: List<String>,
 )
+
+@Serializable
+data class TestSessionDetailView(
+    val testSessionId: String,
+    val groupId: String,
+    val appId: String,
+    val buildId: String,
+    val buildVersion: String?,
+    val branch: String?,
+    val testTaskId: String?,
+    val sessionStartedAt: LocalDateTime?,
+    val createdBy: String?,
+    val testDefinitions: Int,
+    val testLaunches: Int,
+    val result: String,
+    val testDuration: Long,
+    val testDurationFormatted: String,
+    val failed: Int,
+    val passed: Int,
+    val skipped: Int,
+    val smartSkipped: Int,
+    val success: Int,
+    val successRate: Double,
+    val timeSaved: Long,
+    val timeSavedFormatted: String,
+)
+
+@Serializable
+data class TestDefinitionView(
+    val testDefinitionId: String,
+    val testName: String?,
+    val testPath: String?,
+    val testRunner: String?,
+    val testResult: String,
+    val testLaunches: Int,
+)
+
+@Serializable
+data class TestSessionCoverageSummaryView(
+    val probes: CoverageUnitSummaryView,
+    val methods: CoverageUnitSummaryView,
+)
+
+@Serializable
+data class TestLaunchView(
+    val testDefinitionId: String,
+    val testName: String?,
+    val testPath: String?,
+    val testRunner: String?,
+    val testTags: List<String>,
+    val testLaunches: Int,
+    val testDuration: Long,
+    val testDurationFormatted: String,
+    val testResult: String,
+)
+
+@Serializable
+data class TestFileLaunchView(
+    val testPath: String,
+    val testDefinitions: Int,
+    val testLaunches: Int,
+    val result: String,
+    val failed: Int,
+    val passed: Int,
+    val skipped: Int,
+    val smartSkipped: Int,
+    val success: Int,
+    val testDuration: Long,
+    val testDurationFormatted: String,
+    val successRate: Double,
+)
