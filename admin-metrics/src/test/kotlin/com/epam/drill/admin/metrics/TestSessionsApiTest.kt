@@ -62,6 +62,23 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
+    fun `given test sessions on different builds, group list without buildId returns all sessions`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            build2 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test1 of session2 covers method1 with probesOf(1, 1) on build2
+        }.expectThat {
+            client.get("/metrics/test-sessions") {
+                parameter("groupId", testGroup)
+            }.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.any { it["testSessionId"] == session1.id })
+                assertTrue(data.any { it["testSessionId"] == session2.id })
+            }
+        }
+
+    @Test
     fun `given test sessions on different builds, buildId filter should return only matching sessions`(): Unit =
         havingData {
             build1 has listOf(method1)
@@ -139,6 +156,20 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             client.get("/metrics/test-sessions/filter-options") {
                 parameter("groupId", testGroup)
                 parameter("buildId", build1Id)
+            }.returnsSingle { data ->
+                assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
+                assertTrue((data["results"] as List<*>).contains("PASSED"))
+            }
+        }
+
+    @Test
+    fun `given filter options without buildId, should return distinct values for group`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
             }.returnsSingle { data ->
                 assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
                 assertTrue((data["results"] as List<*>).contains("PASSED"))
