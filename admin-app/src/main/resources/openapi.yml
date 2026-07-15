@@ -553,6 +553,21 @@ paths:
           description: Optional environment identifier filter. When specified, only builds deployed in this environment are returned.
           schema:
             type: string
+        - name: commitSha
+          in: query
+          description: Optional Git commit SHA filter. When specified, only builds from this commit are returned.
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          description: Optional build version filter. When specified, only builds with this version are returned.
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Field to sort builds by. Supported values COMMIT_DATE, BUILD_VERSION. Defaults to COMMIT_DATE.
+          schema:
+            type: string
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1 if not specified.
