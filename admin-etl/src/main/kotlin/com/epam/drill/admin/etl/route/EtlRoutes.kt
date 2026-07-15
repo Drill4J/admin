@@ -37,6 +37,7 @@ class Refresh(
     val reset: Boolean = false,
     val initTimestamp: Long? = null,
     val finalTimestamp: Long? = null,
+    val skipIfLocked: Boolean = false,
 )
 
 @Resource("/refresh-status")
@@ -57,7 +58,8 @@ fun Route.postRefreshMetrics() {
             context = params.groupId?.let { EtlContext(it) },
             reset = params.reset,
             initTimestamp = params.initTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
-            finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) }
+            finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
+            skipIfLocked = params.skipIfLocked,
         )
         if (results.any { it.status != EtlStatus.SUCCESS }) {
             val errorMessages = results.filter { it.status == EtlStatus.FAILED }.joinToString(separator = "\n") {

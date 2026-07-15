@@ -26,6 +26,7 @@ interface EtlService {
         reset: Boolean = false,
         initTimestamp: Instant? = null,
         finalTimestamp: Instant? = null,
+        skipIfLocked: Boolean = false,
     ): List<EtlProcessingResult>
 
     suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
