@@ -1,2 +1,23 @@
-gradlew text eol=lf
-*.bat   text eol=crlf
+# Normalize text files to LF in the repo and working tree.
+# Overrides global core.autocrlf so Windows checkouts stay clean.
+* text=auto eol=lf
+
+# Windows scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.jar binary
+*.war binary
+*.zip binary
+*.gz binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.class binary
+*.keystore binary
+*.jks binary
