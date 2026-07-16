@@ -2502,8 +2502,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  # API Key Management Routes
-  /api/api-keys:
+  # API Key Management Routes (admin — matches ApiKeyManagementRoutes @Resource("/keys"))
+  /api/keys:
     get:
       summary: Get API keys
       description: |
@@ -2522,29 +2522,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ListDataResponse'
-    post:
-      summary: Generate API key
-      description: |
-        Generates a new API key on behalf of any user.
-      operationId: generateApiKey
-      tags:
-        - auth
-      security:
-        - apiKeyAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenerateApiKeyPayload'
-      responses:
-        '200':
-          description: API Key successfully generated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
-  /api/api-keys/{id}:
+  /api/keys/{id}:
     delete:
       summary: Delete API key
       description: |
