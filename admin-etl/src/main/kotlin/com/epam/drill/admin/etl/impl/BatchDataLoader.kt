@@ -132,15 +132,6 @@ abstract class BatchDataLoader<T : EtlRow>(
                         onLoadingProgress(it)
                     }
                 }
-            } else {
-                // Update last processed timestamp even if no rows were loaded
-                if (lastLoadedTimestamp == sinceTimestamp) {
-                    result += EtlLoadingResult(
-                        lastProcessedAt = untilTimestamp
-                    ).also {
-                        onLoadingProgress(it)
-                    }
-                }
             }
             onStatusChanged(EtlStatus.SUCCESS)
         }
