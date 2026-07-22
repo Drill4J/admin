@@ -15,9 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.service
 
-import com.epam.drill.admin.common.principal.User
+import com.epam.drill.admin.writer.rawdata.entity.BuildValidationStatus
 import com.epam.drill.admin.writer.rawdata.route.payload.*
-import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
 
 interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
@@ -29,4 +28,5 @@ interface RawDataWriter {
     suspend fun saveTestDefinitions(testDefinitionsPayload: AddTestDefinitionsPayload)
     suspend fun saveTestLaunches(testLaunchesPayload: AddTestLaunchesPayload)
     suspend fun saveTestSession(sessionPayload: SessionPayload, username: String?)
+    suspend fun finalizeBuild(payload: BuildFinalizePayload): BuildValidationStatus
 }

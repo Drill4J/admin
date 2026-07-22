@@ -16,13 +16,16 @@
 package com.epam.drill.admin.writer.rawdata.repository.impl
 
 import com.epam.drill.admin.writer.rawdata.entity.Build
+import com.epam.drill.admin.writer.rawdata.entity.BuildValidationStatus
 import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.table.BuildTable
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
@@ -54,7 +57,10 @@ class BuildRepositoryImpl: BuildRepository {
                 BuildTable.branch,
                 BuildTable.committedAt,
                 BuildTable.commitAuthor,
-                BuildTable.commitMessage
+                BuildTable.commitMessage,
+                BuildTable.status,
+                BuildTable.validatedAt,
+                BuildTable.finalizedAt,
             ),
         ) {
             it[id] = build.id
@@ -84,4 +90,88 @@ class BuildRepositoryImpl: BuildRepository {
             (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
         }
     }
+
+    override suspend fun getById(groupId: String, appId: String, buildId: String): Build? {
+        return BuildTable.selectAll().where {
+            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+        }.map { it.toBuild() }.firstOrNull()
+    }
+
+    override suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus? {
+        return BuildTable.select(BuildTable.status).where {
+            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+        }.map { BuildValidationStatus.valueOf(it[BuildTable.status]) }.firstOrNull()
+    }
+
+    override suspend fun saveBuildFinalization(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        methodsCount: Int,
+        methodsChecksum: String,
+    ) {
+        BuildTable.upsert(
+            onUpdateExclude = listOf(
+                BuildTable.createdAt,
+                BuildTable.branch,
+                BuildTable.committedAt,
+                BuildTable.commitAuthor,
+                BuildTable.commitMessage,
+                BuildTable.commitSha,
+                BuildTable.buildVersion,
+                BuildTable.instanceId,
+            ),
+        ) {
+            it[id] = buildId
+            it[BuildTable.groupId] = groupId
+            it[BuildTable.appId] = appId
+            it[BuildTable.methodsCount] = methodsCount
+            it[BuildTable.methodsChecksum] = methodsChecksum
+            it[BuildTable.status] = BuildValidationStatus.PENDING.name
+            it[BuildTable.validatedAt] = null
+            it[BuildTable.finalizedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+            it[BuildTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+        }
+    }
+
+    override suspend fun updateBuildStatus(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        status: BuildValidationStatus,
+    ) {
+        BuildTable.update(
+            where = {
+                (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+            }
+        ) {
+            it[BuildTable.status] = status.name
+            it[BuildTable.validatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+            it[BuildTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
+        }
+    }
+
+    override suspend fun findBuildsToRetry(limit: Int): List<Build> {
+        return BuildTable.selectAll().where {
+            BuildTable.status eq BuildValidationStatus.PENDING.name
+        }.limit(limit).map { it.toBuild() }
+    }
+
+    private fun ResultRow.toBuild(): Build = Build(
+        id = this[BuildTable.id].value,
+        groupId = this[BuildTable.groupId],
+        appId = this[BuildTable.appId],
+        commitSha = this[BuildTable.commitSha],
+        buildVersion = this[BuildTable.buildVersion],
+        instanceId = this[BuildTable.instanceId],
+        branch = this[BuildTable.branch],
+        commitDate = this[BuildTable.committedAt],
+        commitMessage = this[BuildTable.commitMessage],
+        commitAuthor = this[BuildTable.commitAuthor],
+        status = BuildValidationStatus.valueOf(this[BuildTable.status]),
+        methodsCount = this[BuildTable.methodsCount],
+        buildChecksum = this[BuildTable.methodsChecksum],
+        finalizedAt = this[BuildTable.finalizedAt],
+        validatedAt = this[BuildTable.validatedAt],
+    )
 }

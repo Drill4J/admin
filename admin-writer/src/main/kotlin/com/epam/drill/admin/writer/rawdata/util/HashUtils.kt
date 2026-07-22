@@ -24,3 +24,32 @@ fun String.md5(): String {
     val digest = MessageDigest.getInstance("MD5").digest(toByteArray(Charsets.UTF_8))
     return digest.joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
 }
+
+/**
+ * Thrown when a method's body checksum cannot be parsed as a base-36 CRC64 value.
+ */
+class InvalidChecksumException(checksum: String) : Exception("Invalid checksum value: $checksum")
+
+/**
+ * Combines the CRC64 checksums (stringified as signed base-36, e.g. "-o40ap3ip2wwz") of all
+ * methods of a build into a single build checksum by summing them modulo 2^64 (i.e. relying on
+ * natural `Long` overflow), then re-encoding the result the same way.
+ *
+ * Being a commutative sum, the result does not depend on the order of the input checksums,
+ * which makes it suitable for comparing a build's checksum regardless of the order in which its
+ * methods were sent/stored.
+ *
+ * @throws InvalidChecksumException if any of the checksums is not a valid base-36 value.
+ */
+fun combineChecksumsCrc64(checksums: Iterable<String>): String {
+    val sum = checksums.fold(0L) { acc, checksum ->
+        acc + (checksum.toLongOrNull(CHECKSUM_RADIX) ?: throw InvalidChecksumException(checksum))
+    }
+    return sum.toString(CHECKSUM_RADIX)
+}
+
+/**
+ * Radix used to (de)serialize CRC64 checksum values as compact alphanumeric strings
+ * (via `Long.toString(36)` / `String.toLong(36)`), e.g. "-o40ap3ip2wwz".
+ */
+private const val CHECKSUM_RADIX = 36

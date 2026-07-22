@@ -34,6 +34,9 @@ import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.config.buildFinalizationRetryJob
+import com.epam.drill.admin.writer.rawdata.config.buildFinalizationRetryTrigger
+import com.epam.drill.admin.writer.rawdata.config.BuildValidationConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
@@ -231,6 +234,7 @@ private fun Application.initScheduler() {
     val dataSource by closestDI().instance<DataSource>()
     val schedulerConfig by closestDI().instance<SchedulerConfig>()
     val scheduler by closestDI().instance<DrillScheduler>()
+    val buildValidationConfig by closestDI().instance<BuildValidationConfig>()
 
     scheduler.init(KodeinJobFactory(closestDI()), dataSource)
     monitor.subscribe(ApplicationStopped) {
@@ -240,6 +244,7 @@ private fun Application.initScheduler() {
     scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
     scheduler.scheduleJob(rawDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("rawDataRetentionPolicyTrigger"))
     scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("metricsRetentionPolicyTrigger"))
+    scheduler.scheduleJob(buildFinalizationRetryJob, buildFinalizationRetryTrigger(buildValidationConfig.retryJobCron))
     scheduler.addJob(deleteMetricsDataJob)
 }
 

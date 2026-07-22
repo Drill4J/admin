@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.service.BuildValidationService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.util.md5
 import kotlinx.datetime.TimeZone
@@ -42,6 +43,7 @@ class RawDataServiceImpl(
     private val buildRepository: BuildRepository,
     private val testSessionRepository: TestSessionRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
+    private val buildValidationService: BuildValidationService,
 ) : RawDataWriter {
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
@@ -120,14 +122,20 @@ class RawDataServiceImpl(
     }
 
     override suspend fun saveMethods(methodsPayload: MethodsPayload) {
+        val buildId = generateBuildId(
+            methodsPayload.groupId,
+            methodsPayload.appId,
+            methodsPayload.instanceId,
+            methodsPayload.commitSha,
+            methodsPayload.buildVersion
+        )
+        transaction {
+            val status = buildRepository.getStatus(methodsPayload.groupId, methodsPayload.appId, buildId)
+            if (status == BuildValidationStatus.VALID) {
+                error("Rejected ${methodsPayload.methods.size} method(s) for build [$buildId]: build is already FINALIZED.")
+            }
+        }
         methodsPayload.methods.map { method ->
-            val buildId = generateBuildId(
-                methodsPayload.groupId,
-                methodsPayload.appId,
-                methodsPayload.instanceId,
-                methodsPayload.commitSha,
-                methodsPayload.buildVersion
-            )
             val signature = listOf(
                 method.classname,
                 method.name,
@@ -139,7 +147,6 @@ class RawDataServiceImpl(
                 method.bodyChecksum,
                 method.probesCount
             ).joinToString(":").md5()
-            // TODO add validation for fields (we had issues with body_checksum)
             Method(
                 groupId = methodsPayload.groupId,
                 appId = methodsPayload.appId,
@@ -273,6 +280,26 @@ class RawDataServiceImpl(
                 )
                 testSessionBuildRepository.create(sessionPayload.id, buildId, sessionPayload.groupId)
             }
+        }
+    }
+
+    override suspend fun finalizeBuild(payload: BuildFinalizePayload): BuildValidationStatus {
+        val buildId = generateBuildId(
+            payload.groupId,
+            payload.appId,
+            payload.instanceId,
+            payload.commitSha,
+            payload.buildVersion
+        )
+        return transaction {
+            buildRepository.saveBuildFinalization(
+                groupId = payload.groupId,
+                appId = payload.appId,
+                buildId = buildId,
+                methodsCount = payload.methodsCount,
+                methodsChecksum = payload.methodsChecksum,
+            )
+            buildValidationService.validateBuildById(payload.groupId, payload.appId, buildId)
         }
     }
 
