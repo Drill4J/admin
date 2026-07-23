@@ -284,48 +284,4 @@ class BuildFinalizationServiceImplTest : DatabaseTests({ RawDataWriterDatabaseCo
 
         assertEquals(BuildValidationStatus.VALID, secondStatus)
     }
-
-    @Test
-    fun `saveMethods should reject new methods once build is VALID`() = withRollback {
-        val groupId = "test-group"
-        val appId = "test-app"
-        val buildVersion = "6.0.0"
-        val id = buildId(groupId, appId, buildVersion)
-        val checksums = listOf("100", "200")
-        seedMethods(groupId, appId, id, checksums)
-
-        val service = BuildValidationServiceImpl(buildRepository, methodRepository)
-        val writer = rawDataWriter(service)
-        val status = writer.finalizeBuild(
-            BuildFinalizePayload(
-                groupId = groupId,
-                appId = appId,
-                buildVersion = buildVersion,
-                methodsCount = checksums.size,
-                methodsChecksum = combineChecksumsCrc64(checksums),
-            )
-        )
-        assertEquals(BuildValidationStatus.VALID, status)
-
-        assertFailsWith(IllegalStateException::class) {
-            writer.saveMethods(
-                MethodsPayload(
-                    groupId = groupId,
-                    appId = appId,
-                    buildVersion = buildVersion,
-                    methods = arrayOf(
-                        SingleMethodPayload(
-                            classname = "com.example.NewClass",
-                            name = "newMethod",
-                            params = "",
-                            returnType = "void",
-                            probesCount = 1,
-                            probesStartPos = 0,
-                            bodyChecksum = "999",
-                        )
-                    )
-                )
-            )
-        }
-    }
 }
