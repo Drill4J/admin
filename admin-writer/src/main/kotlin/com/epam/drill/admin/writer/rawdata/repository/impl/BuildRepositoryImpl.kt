@@ -29,7 +29,7 @@ import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.upsert
 import java.time.LocalDate
 
-class BuildRepositoryImpl: BuildRepository {
+class BuildRepositoryImpl : BuildRepository {
     override suspend fun saveBuildInfo(build: Build) {
         BuildTable.upsert(
             onUpdateExclude = listOf(
@@ -58,7 +58,7 @@ class BuildRepositoryImpl: BuildRepository {
                 BuildTable.committedAt,
                 BuildTable.commitAuthor,
                 BuildTable.commitMessage,
-                BuildTable.status,
+                BuildTable.validationStatus,
                 BuildTable.validatedAt,
                 BuildTable.finalizedAt,
             ),
@@ -76,8 +76,8 @@ class BuildRepositoryImpl: BuildRepository {
     override suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean {
         return BuildTable.selectAll().where {
             (BuildTable.groupId eq groupId) and
-            (BuildTable.appId eq appId) and
-            (BuildTable.id eq buildId)
+                    (BuildTable.appId eq appId) and
+                    (BuildTable.id eq buildId)
         }.any()
     }
 
@@ -98,9 +98,12 @@ class BuildRepositoryImpl: BuildRepository {
     }
 
     override suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus? {
-        return BuildTable.select(BuildTable.status).where {
-            (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
-        }.map { BuildValidationStatus.valueOf(it[BuildTable.status]) }.firstOrNull()
+        return BuildTable.select(BuildTable.validationStatus)
+            .where {
+                (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
+            }
+            .map { it[BuildTable.validationStatus] }.firstOrNull()
+            ?.let { BuildValidationStatus.valueOf(it) }
     }
 
     override suspend fun saveBuildFinalization(
@@ -127,7 +130,7 @@ class BuildRepositoryImpl: BuildRepository {
             it[BuildTable.appId] = appId
             it[BuildTable.methodsCount] = methodsCount
             it[BuildTable.methodsChecksum] = methodsChecksum
-            it[BuildTable.status] = BuildValidationStatus.PENDING.name
+            it[BuildTable.validationStatus] = BuildValidationStatus.PENDING.name
             it[BuildTable.validatedAt] = null
             it[BuildTable.finalizedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
             it[BuildTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
@@ -145,7 +148,7 @@ class BuildRepositoryImpl: BuildRepository {
                 (BuildTable.groupId eq groupId) and (BuildTable.appId eq appId) and (BuildTable.id eq buildId)
             }
         ) {
-            it[BuildTable.status] = status.name
+            it[BuildTable.validationStatus] = status.name
             it[BuildTable.validatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
             it[BuildTable.updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
@@ -153,7 +156,7 @@ class BuildRepositoryImpl: BuildRepository {
 
     override suspend fun findBuildsToRetry(limit: Int): List<Build> {
         return BuildTable.selectAll().where {
-            BuildTable.status eq BuildValidationStatus.PENDING.name
+            BuildTable.validationStatus eq BuildValidationStatus.PENDING.name
         }.limit(limit).map { it.toBuild() }
     }
 
@@ -168,7 +171,7 @@ class BuildRepositoryImpl: BuildRepository {
         commitDate = this[BuildTable.committedAt],
         commitMessage = this[BuildTable.commitMessage],
         commitAuthor = this[BuildTable.commitAuthor],
-        status = BuildValidationStatus.valueOf(this[BuildTable.status]),
+        status = this[BuildTable.validationStatus]?.let { BuildValidationStatus.valueOf(it) },
         methodsCount = this[BuildTable.methodsCount],
         buildChecksum = this[BuildTable.methodsChecksum],
         finalizedAt = this[BuildTable.finalizedAt],

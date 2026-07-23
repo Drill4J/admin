@@ -42,7 +42,7 @@ class InvalidChecksumException(checksum: String) : Exception("Invalid checksum v
  * @throws InvalidChecksumException if any of the checksums is not a valid base-36 value.
  */
 fun combineChecksumsCrc64(checksums: Iterable<String>): String {
-    val sum = checksums.fold(0L) { acc, checksum ->
+    val sum = checksums.filter { it.isNotEmpty() }.fold(0L) { acc, checksum ->
         acc + (checksum.toLongOrNull(CHECKSUM_RADIX) ?: throw InvalidChecksumException(checksum))
     }
     return sum.toString(CHECKSUM_RADIX)

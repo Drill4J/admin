@@ -32,4 +32,9 @@ interface BuildValidationService {
      * validated successfully or until the maximum validation window (since `finalizedAt`) elapses.
      */
     suspend fun validateAllBuilds()
+
+    /**
+     * Checks if a build is finalized (i.e., has been successfully validated).
+     */
+    suspend fun isBuildFinalized(groupId: String, appId: String, buildId: String): Boolean
 }

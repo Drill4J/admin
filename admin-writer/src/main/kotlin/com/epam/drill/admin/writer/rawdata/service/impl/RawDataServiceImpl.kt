@@ -46,6 +46,8 @@ class RawDataServiceImpl(
     private val buildValidationService: BuildValidationService,
 ) : RawDataWriter {
 
+    private val logger = mu.KotlinLogging.logger {}
+
     override suspend fun saveBuild(buildPayload: BuildPayload) {
         val build = Build(
             id = generateBuildId(
@@ -129,12 +131,11 @@ class RawDataServiceImpl(
             methodsPayload.commitSha,
             methodsPayload.buildVersion
         )
-        transaction {
-            val status = buildRepository.getStatus(methodsPayload.groupId, methodsPayload.appId, buildId)
-            if (status == BuildValidationStatus.VALID) {
-                error("Rejected ${methodsPayload.methods.size} method(s) for build [$buildId]: build is already FINALIZED.")
-            }
+        if (buildValidationService.isBuildFinalized(methodsPayload.groupId, methodsPayload.appId, buildId)) {
+            logger.warn { "Rejected ${methodsPayload.methods.size} method(s) for build [$buildId]: build is already finalized." }
+            return
         }
+
         methodsPayload.methods.map { method ->
             val signature = listOf(
                 method.classname,
@@ -291,7 +292,11 @@ class RawDataServiceImpl(
             payload.commitSha,
             payload.buildVersion
         )
-        return transaction {
+        if (buildValidationService.isBuildFinalized(payload.groupId, payload.appId, buildId)) {
+            logger.warn { "Rejected build finalization for build [$buildId]: build is already finalized." }
+            return BuildValidationStatus.VALID
+        }
+        transaction {
             buildRepository.saveBuildFinalization(
                 groupId = payload.groupId,
                 appId = payload.appId,
@@ -299,8 +304,8 @@ class RawDataServiceImpl(
                 methodsCount = payload.methodsCount,
                 methodsChecksum = payload.methodsChecksum,
             )
-            buildValidationService.validateBuildById(payload.groupId, payload.appId, buildId)
         }
+        return buildValidationService.validateBuildById(payload.groupId, payload.appId, buildId)
     }
 
     private fun convertGitDefaultDateTime(commitDate: String): LocalDateTime {

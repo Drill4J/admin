@@ -28,7 +28,7 @@ class Build(
     val commitDate: LocalDateTime? = null,
     val commitMessage: String? = null,
     val commitAuthor: String? = null,
-    val status: BuildValidationStatus = BuildValidationStatus.PENDING,
+    val status: BuildValidationStatus? = null,
     val methodsCount: Int? = null,
     val buildChecksum: String? = null,
     val finalizedAt: LocalDateTime? = null,

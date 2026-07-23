@@ -36,16 +36,24 @@ class BuildValidationServiceImpl(
     private val maxValidationWindow: Duration = Duration.ofHours(1),
 ) : BuildValidationService {
 
+    override suspend fun isBuildFinalized(
+        groupId: String,
+        appId: String,
+        buildId: String
+    ): Boolean = transaction {
+        buildRepository.getStatus(groupId, appId, buildId) == BuildValidationStatus.VALID
+    }
+
     override suspend fun validateBuildById(groupId: String, appId: String, buildId: String): BuildValidationStatus {
-        val build = buildRepository.getById(groupId, appId, buildId)
-            ?: error("Build [$buildId] not found, cannot validate.")
-        return validateBuild(build)
+        return transaction {
+            val build = buildRepository.getById(groupId, appId, buildId)
+                ?: error("Build [$buildId] not found, cannot validate.")
+            validateBuild(build)
+        }
     }
 
     override suspend fun validateAllBuilds() {
-        val builds = transaction {
-            buildRepository.findBuildsToRetry(RETRY_BATCH_LIMIT)
-        }
+        val builds = transaction { buildRepository.findBuildsToRetry(RETRY_BATCH_LIMIT) }
         if (builds.isEmpty()) return
 
         logger.info { "Retrying finalization validation for ${builds.size} build(s)..." }
@@ -60,7 +68,7 @@ class BuildValidationServiceImpl(
         val finalizedAt = build.finalizedAt
         if (expectedMethodsCount == null || expectedBuildChecksum == null || finalizedAt == null) {
             logger.warn { "Build [${build.id}] has no finalization data to validate against, skipping." }
-            return build.status
+            return build.status ?: BuildValidationStatus.PENDING
         }
 
         val now = LocalDateTime.now()
@@ -83,7 +91,7 @@ class BuildValidationServiceImpl(
                         buildId = build.id,
                         status = BuildValidationStatus.INVALID,
                     )
-                    logger.warn { "Build [${build.id}] marked as INVALID: validation window ($maxValidationWindow) since finalization elapsed without the expected methods arriving." }
+                    logger.warn { "Build [${build.id}] marked as INVALID: validation window (${maxValidationWindow.toMinutes()} minutes) since finalization elapsed without the expected methods arriving." }
                     BuildValidationStatus.INVALID
                 } else {
                     buildRepository.updateBuildStatus(
@@ -139,7 +147,7 @@ class BuildValidationServiceImpl(
         val checksumMatches = try {
             combineChecksumsCrc64(checksums) == expectedBuildChecksum
         } catch (e: InvalidChecksumException) {
-            logger.warn(e) { "Build [${build.id}] contains a method with an invalid checksum." }
+            logger.warn { "Build [${build.id}] contains a method with an invalid checksum." }
             false
         }
         return if (checksumMatches) ValidationResult.VALID else ValidationResult.CHECKSUM_MISMATCH
