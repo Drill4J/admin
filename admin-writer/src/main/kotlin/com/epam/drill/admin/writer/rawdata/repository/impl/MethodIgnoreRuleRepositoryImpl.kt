@@ -19,7 +19,10 @@ import com.epam.drill.admin.writer.rawdata.entity.MethodIgnoreRule
 import com.epam.drill.admin.writer.rawdata.repository.MethodIgnoreRuleRepository
 import com.epam.drill.admin.writer.rawdata.table.MethodIgnoreRulesTable
 import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRulesPageView
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
@@ -34,19 +37,37 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
         }
     }
 
-    override fun getAll(): List<MethodIgnoreRuleView> {
-        return MethodIgnoreRulesTable.selectAll().map {
-            MethodIgnoreRuleView(
-                id = it[MethodIgnoreRulesTable.id].value,
-                groupId = it[MethodIgnoreRulesTable.groupId],
-                appId = it[MethodIgnoreRulesTable.appId],
-                namePattern = it[MethodIgnoreRulesTable.namePattern],
-                classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
-            )
-        }
+    override fun getAll(groupId: String, appId: String, page: Int, pageSize: Int): MethodIgnoreRulesPageView {
+        val condition = (MethodIgnoreRulesTable.groupId eq groupId) and
+            (MethodIgnoreRulesTable.appId eq appId)
+        val total = MethodIgnoreRulesTable.selectAll().where { condition }.count()
+        val skip = ((page - 1) * pageSize).toLong()
+        val data = MethodIgnoreRulesTable.selectAll()
+            .where { condition }
+            .orderBy(MethodIgnoreRulesTable.id to SortOrder.ASC)
+            .limit(pageSize, skip)
+            .map {
+                MethodIgnoreRuleView(
+                    id = it[MethodIgnoreRulesTable.id].value,
+                    groupId = it[MethodIgnoreRulesTable.groupId],
+                    appId = it[MethodIgnoreRulesTable.appId],
+                    namePattern = it[MethodIgnoreRulesTable.namePattern],
+                    classnamePattern = it[MethodIgnoreRulesTable.classnamePattern],
+                )
+            }
+        return MethodIgnoreRulesPageView(
+            data = data,
+            page = page,
+            pageSize = pageSize,
+            total = total,
+        )
     }
 
-    override fun deleteById(ruleId: Int) {
-        MethodIgnoreRulesTable.deleteWhere { MethodIgnoreRulesTable.id eq ruleId }
+    override fun deleteById(groupId: String, appId: String, ruleId: Int) {
+        MethodIgnoreRulesTable.deleteWhere {
+            (MethodIgnoreRulesTable.id eq ruleId) and
+                (MethodIgnoreRulesTable.groupId eq groupId) and
+                (MethodIgnoreRulesTable.appId eq appId)
+        }
     }
 }

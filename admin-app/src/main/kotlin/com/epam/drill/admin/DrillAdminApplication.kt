@@ -100,6 +100,7 @@ fun Application.module() {
     routing {
         rootRoute()
         swaggerUI(path = "swagger", swaggerFile = "openapi.yml")
+
         if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
             //UI
@@ -125,8 +126,12 @@ fun Application.module() {
 
             //Data Management
             authenticate("jwt", "api-key") {
+                withRole(Role.USER, Role.ADMIN) {
+                    dataManagementReadRoutes()
+                }
                 withRole(Role.ADMIN) {
                     dataManagementRoutes()
+                    dataManagementWriteRoutes()
                 }
             }
 

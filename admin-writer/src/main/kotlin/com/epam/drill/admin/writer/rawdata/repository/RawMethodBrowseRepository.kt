@@ -13,11 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.config
+package com.epam.drill.admin.writer.rawdata.repository
 
-import com.epam.drill.admin.common.config.DatabaseConfig
+import com.epam.drill.admin.writer.rawdata.views.RawMethodLeaf
+import com.epam.drill.admin.writer.rawdata.views.RawMethodPageView
 
-object RawDataWriterDatabaseConfig : DatabaseConfig(
-    dbSchema = "raw_data",
-    schemaMigrationLocation = "classpath:raw_data/db/migration"
-)
+interface RawMethodBrowseRepository {
+    fun getMethodLeaves(
+        groupId: String,
+        appId: String,
+        buildId: String,
+    ): List<RawMethodLeaf>
+
+    fun getMethods(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        className: String,
+        page: Int,
+        pageSize: Int,
+    ): RawMethodPageView
+}

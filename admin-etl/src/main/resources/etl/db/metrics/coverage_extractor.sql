@@ -24,8 +24,8 @@ JOIN raw_data.methods m ON m.method_id = c.method_id AND m.app_id = c.app_id AND
             FROM raw_data.method_ignore_rules r
             WHERE r.group_id = m.group_id
                 AND r.app_id = m.app_id
-                AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
-                    OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
+                AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
+                AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
         )
 JOIN raw_data.instances i ON i.id = c.instance_id AND i.app_id = c.app_id AND i.group_id = c.group_id
 JOIN raw_data.builds b ON b.group_id = c.group_id AND b.app_id = c.app_id AND b.id = c.build_id

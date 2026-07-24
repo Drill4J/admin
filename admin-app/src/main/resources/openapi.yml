@@ -338,19 +338,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-  /api/data-ingest/method-ignore-rules:
+  /api/data-management/method-ignore-rules:
     post:
       summary: Save method ignore rule
       description: |
         Creates a new rule for excluding methods from coverage analysis and metrics computation.
-        Rules are matched by name pattern and/or class name pattern using glob-style matching.
+        All populated fields within one rule are AND-ed; separate rules are OR-ed.
+        Pattern values are regular expressions.
 
         **Note:** Newly created rules are automatically applied during subsequent ETL cycles for new data only.
         If you need the rule to take effect for already loaded data, trigger an ETL refresh from scratch
         by calling `POST /api/metrics/refresh?reset=true`.
       operationId: postMethodIgnoreRules
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
       requestBody:
@@ -370,10 +371,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
     get:
-      summary: Get all method ignore rules
+      summary: Get method ignore rules for an app
       description: |
-        Retrieves the complete list of method ignore rules configured in the system.
-        Each rule defines patterns (name and/or class name) used to exclude matching methods
+        Retrieves method ignore rules for the requested group and application.
+        Each rule defines class name and/or method name patterns used to exclude matching methods
         from coverage analysis and metrics computation.
 
         **Note:** Changes to ignore rules (creation or deletion) are automatically applied during subsequent ETL cycles
@@ -381,17 +382,43 @@ paths:
         from scratch by calling `POST /api/metrics/refresh?reset=true`.
       operationId: getAllMethodIgnoreRules
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 500
       responses:
         '200':
-          description: List of method ignore rules
+          description: Paged list of method ignore rules
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
-  /api/data-ingest/method-ignore-rules/{id}:
+                $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
+  /api/data-management/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
       description: |
@@ -401,7 +428,7 @@ paths:
         an ETL refresh from scratch. Trigger it by calling `POST /api/metrics/refresh?reset=true`.
       operationId: deleteMethodIgnoreRuleById
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
       parameters:
@@ -411,6 +438,16 @@ paths:
           description: Unique numeric identifier of the method ignore rule to delete.
           schema:
             type: integer
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Method ignore rule deleted
@@ -418,6 +455,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/tree:
+    get:
+      summary: Browse nested raw package/class/method tree for a build
+      description: |
+        Returns a nested package→class→method tree built server-side (same nesting/collapse approach as coverage treemap).
+        Method leaves are included for structure treemap rendering; the methods endpoint remains for paged class drill-down.
+        Ignore rules only affect ignored / ignoredMethods flags; they never filter nodes.
+        Response includes roots plus affectedMethods and totalMethods scalars.
+      operationId: getRawMethodTree
+      tags: [data-management]
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string } }
+        - { name: appId, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Nested package/class/method tree with total and ignored method counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawMethodTreeDataResponse'
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/methods:
+    get:
+      summary: Browse every raw method in a class
+      description: Returns methods whether or not they match saved ignore rules; matching methods are marked with ignored=true.
+      operationId: getRawMethods
+      tags: [data-management]
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string } }
+        - { name: appId, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+        - { name: className, in: query, required: true, schema: { type: string } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, default: 100, minimum: 1, maximum: 500 } }
+      responses:
+        '200':
+          description: Paged raw methods with ignore metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawMethodPageDataResponse'
   # Data Management Endpoints
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
     delete:
@@ -3018,21 +3100,238 @@ components:
       type: object
       description: |
         Rule definition for excluding methods from coverage analysis and metrics computation.
+        At least one of namePattern or classnamePattern must be a non-empty valid regular expression.
+        Populated pattern fields within one rule are AND-ed; separate rules are OR-ed.
+        Empty / null pattern fields are ignored and do not participate in matching.
+      required:
+        - groupId
+        - appId
+      anyOf:
+        - required: [namePattern]
+        - required: [classnamePattern]
       properties:
         groupId:
           type: string
+          minLength: 1
           description: Unique identifier for the application group this rule applies to.
         appId:
           type: string
+          minLength: 1
           description: Unique identifier for the application this rule applies to.
         namePattern:
           type: string
           nullable: true
-          description: Glob-style pattern for matching method names to exclude (e.g., 'get*', 'set*', 'toString'). Methods with names matching this pattern will be excluded from analysis.
+          description: Regular expression for matching method names. Must be valid regex when non-empty.
         classnamePattern:
           type: string
           nullable: true
-          description: Glob-style pattern for matching fully qualified class names to exclude (e.g., 'com.example.generated.*'). All methods in classes matching this pattern will be excluded.
+          description: Regular expression for matching fully qualified class names. Must be valid regex when non-empty.
+    MethodIgnoreRuleView:
+      type: object
+      description: Saved method ignore rule.
+      required:
+        - id
+        - groupId
+        - appId
+      properties:
+        id:
+          type: integer
+          description: Unique numeric identifier of the rule.
+        groupId:
+          type: string
+        appId:
+          type: string
+        namePattern:
+          type: string
+          nullable: true
+        classnamePattern:
+          type: string
+          nullable: true
+    MethodIgnoreRulesPageView:
+      type: object
+      description: Paged method ignore rules for one group/app.
+      required:
+        - data
+        - page
+        - pageSize
+        - total
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MethodIgnoreRuleView'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          format: int64
+    MethodIgnoreRulesDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MethodIgnoreRulesPageView'
+        message:
+          type: string
+          nullable: true
+    RawMethodTreeNodeView:
+      type: object
+      description: |
+        Nested package, class, or method node in the raw-methods tree.
+        Several fields are serialized with snake_case names (full_name, package_name, etc.).
+      required:
+        - type
+        - name
+        - full_name
+        - package_name
+      properties:
+        type:
+          type: string
+          enum: [package, class, method]
+        name:
+          type: string
+        full_name:
+          type: string
+          description: Full package path, class path, or method path.
+        package_name:
+          type: string
+          description: Package path using `/` separators; empty string means the default package.
+        class_name:
+          type: string
+          nullable: true
+        method_id:
+          type: string
+          nullable: true
+        method_name:
+          type: string
+          nullable: true
+        signature:
+          type: string
+          nullable: true
+        params:
+          type: string
+          nullable: true
+        return_type:
+          type: string
+          nullable: true
+        probes_count:
+          type: integer
+          format: int64
+          description: Layout size for treemap (at least 1 so zero-probe methods remain visible).
+        covered_probes:
+          type: integer
+          format: int64
+          description: Unused for ignore-rules coloring; kept for coverage treemap layout compatibility.
+        ignored:
+          type: boolean
+          description: True when a method leaf matches saved ignore rules.
+        total_methods:
+          type: integer
+          description: Methods under this node (1 for method leaves).
+        ignored_methods:
+          type: integer
+          description: Methods under this node matched by saved ignore rules.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodTreeNodeView'
+    RawMethodTreeView:
+      type: object
+      description: Server-built nested package→class→method tree for one build catalog.
+      required:
+        - roots
+        - affectedMethods
+        - totalMethods
+      properties:
+        roots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodTreeNodeView'
+        affectedMethods:
+          type: integer
+          format: int64
+          description: Methods matched by saved ignore rules.
+        totalMethods:
+          type: integer
+          format: int64
+          description: Total methods in the build catalog under this tree.
+    RawMethodTreeDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RawMethodTreeView'
+        message:
+          type: string
+          nullable: true
+    RawMethodView:
+      type: object
+      description: One raw method from a build catalog with ignore-rule metadata.
+      required:
+        - methodId
+        - methodName
+        - className
+        - signature
+        - methodParams
+        - returnType
+        - probesCount
+        - ignored
+        - matchingRuleIds
+      properties:
+        methodId:
+          type: string
+        methodName:
+          type: string
+        className:
+          type: string
+        signature:
+          type: string
+        methodParams:
+          type: string
+        returnType:
+          type: string
+        probesCount:
+          type: integer
+        ignored:
+          type: boolean
+          description: True when the method matches at least one saved ignore rule.
+        matchingRuleIds:
+          type: array
+          items:
+            type: integer
+          description: Saved rule ids that match this method.
+    RawMethodPageView:
+      type: object
+      description: Paged raw methods for one class in a build.
+      required:
+        - data
+        - page
+        - pageSize
+        - total
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodView'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          format: int64
+    RawMethodPageDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RawMethodPageView'
+        message:
+          type: string
+          nullable: true
     # Auth Schemas
     LoginPayload:
       type: object

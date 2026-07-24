@@ -18,18 +18,18 @@ package com.epam.drill.admin.writer.rawdata.route
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
+import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
 import io.ktor.resources.Resource
 import io.ktor.server.application.call
 import io.ktor.server.auth.principal
 import io.ktor.server.resources.delete
+import io.ktor.server.resources.get
+import io.ktor.server.resources.post
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
-import mu.KotlinLogging
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI
 import kotlin.getValue
-
-private val logger = KotlinLogging.logger {}
 
 @Resource("/groups")
 class Groups() {
@@ -42,7 +42,21 @@ class Groups() {
                 @Resource("/builds")
                 class Builds(val parent: Apps.Id) {
                     @Resource("/{buildId}")
-                    class Id(val parent: Builds, val buildId: String)
+                    class Id(val parent: Builds, val buildId: String) {
+                        @Resource("/raw-methods")
+                        class RawMethods(val parent: Id) {
+                            @Resource("/tree")
+                            class Tree(val parent: RawMethods)
+
+                            @Resource("/methods")
+                            class Methods(
+                                val parent: RawMethods,
+                                val className: String,
+                                val page: Int = 1,
+                                val pageSize: Int = 100,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -57,10 +71,38 @@ class Groups() {
     }
 }
 
+@Resource("method-ignore-rules")
+class MethodIgnoreRulesRoute(
+    val groupId: String? = null,
+    val appId: String? = null,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+) {
+    @Resource("/{id}")
+    class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
+}
+
 fun Route.dataManagementRoutes() {
     route("/data-management") {
         deleteBuildData()
         deleteTestSessionData()
+    }
+}
+
+/** Browse method ignore rules and raw-method hierarchy (USER + ADMIN). */
+fun Route.dataManagementReadRoutes() {
+    route("/data-management") {
+        getMethodIgnoreRules()
+        getRawMethodTree()
+        getRawMethods()
+    }
+}
+
+/** Create/delete method ignore rules (ADMIN). */
+fun Route.dataManagementWriteRoutes() {
+    route("/data-management") {
+        postMethodIgnoreRules()
+        deleteMethodIgnoreRule()
     }
 }
 
@@ -88,5 +130,75 @@ fun Route.deleteTestSessionData() {
             user = call.principal<User>()
         )
         call.ok("Test session data deleted successfully")
+    }
+}
+
+fun Route.postMethodIgnoreRules() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    post<MethodIgnoreRulesRoute> {
+        dataManagementService.saveMethodIgnoreRule(call.decompressAndReceive())
+        call.ok("Method ignore rule saved")
+    }
+}
+
+fun Route.getMethodIgnoreRules() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    get<MethodIgnoreRulesRoute> { params ->
+        val groupId = requireNotNull(params.groupId) { "Query parameter 'groupId' is required" }
+        val appId = requireNotNull(params.appId) { "Query parameter 'appId' is required" }
+        call.ok(
+            dataManagementService.getAllMethodIgnoreRules(
+                groupId,
+                appId,
+                params.page,
+                params.pageSize,
+            )
+        )
+    }
+}
+
+fun Route.deleteMethodIgnoreRule() {
+    val dataManagementService by closestDI().instance<DataManagementService>()
+
+    delete<MethodIgnoreRulesRoute.Id> { params ->
+        val groupId = requireNotNull(params.parent.groupId) { "Query parameter 'groupId' is required" }
+        val appId = requireNotNull(params.parent.appId) { "Query parameter 'appId' is required" }
+        dataManagementService.deleteMethodIgnoreRuleById(groupId, appId, params.id)
+        call.ok("Method ignore rule deleted")
+    }
+}
+
+fun Route.getRawMethodTree() {
+    val service by closestDI().instance<RawMethodBrowseService>()
+
+    get<Groups.Id.Apps.Id.Builds.Id.RawMethods.Tree> { params ->
+        val build = params.parent.parent
+        call.ok(
+            service.getTree(
+                build.parent.parent.parent.parent.groupId,
+                build.parent.parent.appId,
+                build.buildId,
+            )
+        )
+    }
+}
+
+fun Route.getRawMethods() {
+    val service by closestDI().instance<RawMethodBrowseService>()
+
+    get<Groups.Id.Apps.Id.Builds.Id.RawMethods.Methods> { params ->
+        val build = params.parent.parent
+        call.ok(
+            service.getMethods(
+                build.parent.parent.parent.parent.groupId,
+                build.parent.parent.appId,
+                build.buildId,
+                params.className,
+                params.page,
+                params.pageSize,
+            )
+        )
     }
 }

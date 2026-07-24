@@ -25,3 +25,11 @@ class MethodIgnoreRuleView (
     val namePattern: String? = null,
     val classnamePattern: String? = null,
 )
+
+@Serializable
+data class MethodIgnoreRulesPageView(
+    val data: List<MethodIgnoreRuleView>,
+    val page: Int,
+    val pageSize: Int,
+    val total: Long,
+)

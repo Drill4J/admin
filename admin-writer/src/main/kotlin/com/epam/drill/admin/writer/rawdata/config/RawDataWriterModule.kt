@@ -27,8 +27,10 @@ import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
+import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
+import com.epam.drill.admin.writer.rawdata.service.impl.RawMethodBrowseServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.toKey
@@ -159,6 +161,10 @@ val settingsServicesDIModule
 val dataManagementServicesDIModule
     get() = DI.Module("dataManagementServices") {
         bind<MethodIgnoreRuleRepository>() with singleton { MethodIgnoreRuleRepositoryImpl() }
+        bind<RawMethodBrowseRepository>() with singleton { RawMethodBrowseRepositoryImpl() }
+        bind<RawMethodBrowseService>() with singleton {
+            RawMethodBrowseServiceImpl(repository = instance())
+        }
         bind<DataManagementService>() with singleton {
             DataManagementServiceImpl(
                 instanceRepository = instance(),

@@ -33,7 +33,7 @@ import com.epam.drill.admin.writer.rawdata.repository.TestSessionBuildRepository
 import com.epam.drill.admin.writer.rawdata.repository.TestSessionRepository
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
-import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRulesPageView
 
 class DataManagementServiceImpl(
     private val buildRepository: BuildRepository,
@@ -86,15 +86,22 @@ class DataManagementServiceImpl(
         }
     }
 
-    override suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView> {
+    override suspend fun getAllMethodIgnoreRules(
+        groupId: String,
+        appId: String,
+        page: Int,
+        pageSize: Int,
+    ): MethodIgnoreRulesPageView {
+        if (page < 1) throw InvalidParameters("Field 'page' must be greater than 0")
+        if (pageSize !in 1..500) throw InvalidParameters("Field 'pageSize' must be between 1 and 500")
         return transaction {
-            methodIgnoreRuleRepository.getAll()
+            methodIgnoreRuleRepository.getAll(groupId, appId, page, pageSize)
         }
     }
 
-    override suspend fun deleteMethodIgnoreRuleById(ruleId: Int) {
+    override suspend fun deleteMethodIgnoreRuleById(groupId: String, appId: String, ruleId: Int) {
         transaction {
-            methodIgnoreRuleRepository.deleteById(ruleId)
+            methodIgnoreRuleRepository.deleteById(groupId, appId, ruleId)
         }
     }
 }

@@ -13,11 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.config
+package com.epam.drill.admin.writer.rawdata.service
 
-import com.epam.drill.admin.common.config.DatabaseConfig
+import com.epam.drill.admin.writer.rawdata.views.RawMethodPageView
+import com.epam.drill.admin.writer.rawdata.views.RawMethodTreeView
 
-object RawDataWriterDatabaseConfig : DatabaseConfig(
-    dbSchema = "raw_data",
-    schemaMigrationLocation = "classpath:raw_data/db/migration"
-)
+interface RawMethodBrowseService {
+    suspend fun getTree(groupId: String, appId: String, buildId: String): RawMethodTreeView
+
+    suspend fun getMethods(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        className: String,
+        page: Int,
+        pageSize: Int,
+    ): RawMethodPageView
+}
