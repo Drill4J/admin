@@ -123,6 +123,18 @@ class RawDataServiceImpl(
         }
     }
 
+    override suspend fun saveInstanceHeartbeat(agentHeartbeatPayload: AgentHeartbeatPayload) {
+        val instance = InstanceHeartbeat(
+            id = agentHeartbeatPayload.instanceId,
+            groupId = agentHeartbeatPayload.groupId,
+            appId = agentHeartbeatPayload.appId,
+            status = agentHeartbeatPayload.status
+        )
+        transaction {
+            instanceRepository.updateHeartbeat(instance)
+        }
+    }
+
     override suspend fun saveMethods(methodsPayload: MethodsPayload) {
         val buildId = generateBuildId(
             methodsPayload.groupId,

@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.route.payload
 
-import com.epam.drill.admin.writer.rawdata.entity.Instance
-import com.epam.drill.admin.writer.rawdata.entity.InstanceHeartbeat
-import java.time.LocalDate
+import kotlinx.serialization.Serializable
 
-interface InstanceRepository {
-    suspend fun create(instance: Instance)
-    suspend fun updateHeartbeat(instance: InstanceHeartbeat)
-    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
-    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
-}
+@Serializable
+class AgentHeartbeatPayload(
+    val groupId: String,
+    val appId: String,
+    val instanceId: String,
+    val status: AgentHeartbeatStatus,
+)

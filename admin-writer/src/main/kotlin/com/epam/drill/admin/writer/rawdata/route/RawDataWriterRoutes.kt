@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildFinalizePayload
+import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.views.BuildFinalizationResultView
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
@@ -65,6 +66,9 @@ class BuildsFinalizeRoute()
 @Resource("instances")
 class InstancesRoute(): DataIngestRoute
 
+@Resource("instances/heartbeat")
+class InstanceHeartbeatRoute()
+
 @Resource("coverage")
 class CoverageRoute(): DataIngestRoute
 
@@ -97,6 +101,7 @@ fun Route.dataIngestRoutes() {
         putBuildsInfo()
         putBuildsFinalize()
         putInstances()
+        putInstanceHeartbeat()
         postCoverage()
         putMethods()
         postTestMetadata()
@@ -144,6 +149,16 @@ fun Route.putInstances() {
     put<InstancesRoute> { params ->
         queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Instance saved")
+    }
+}
+
+fun Route.putInstanceHeartbeat() {
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
+
+    put<InstanceHeartbeatRoute> {
+        val payload = call.decompressAndReceive<AgentHeartbeatPayload>()
+        rawDataWriter.saveInstanceHeartbeat(payload)
+        call.ok("Instance heartbeat saved")
     }
 }
 
