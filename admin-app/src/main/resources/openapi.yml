@@ -1852,6 +1852,20 @@ components:
           type: string
           nullable: true
           description: Name or identifier of the commit author.
+        agentVersion:
+          type: string
+          nullable: true
+          description: Version of the Drill4J agent that reported this build.
+        agentEnvironment:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Agent runtime environment info (e.g., OS, Java version).
+        agentParams:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Arbitrary agent configuration parameters as a free-form JSON object.
       required:
         - groupId
         - appId
@@ -1881,6 +1895,20 @@ components:
           type: string
           nullable: true
           description: Environment identifier where this application instance is deployed (e.g., 'dev', 'staging', 'production'). Specifies the deployment environment context.
+        agentVersion:
+          type: string
+          nullable: true
+          description: Version of the Drill4J agent running on this instance.
+        agentEnvironment:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Agent runtime environment info (e.g., OS, Java version).
+        agentParams:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Arbitrary agent configuration parameters as a free-form JSON object.
       required:
         - groupId
         - appId

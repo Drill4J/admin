@@ -58,9 +58,13 @@ class BuildRepositoryImpl : BuildRepository {
                 BuildTable.committedAt,
                 BuildTable.commitAuthor,
                 BuildTable.commitMessage,
+                BuildTable.commitMessage,
                 BuildTable.validationStatus,
                 BuildTable.validatedAt,
                 BuildTable.finalizedAt,
+                BuildTable.agentVersion,
+                BuildTable.agentEnv,
+                BuildTable.agentParams,
             ),
         ) {
             it[id] = build.id
@@ -69,6 +73,9 @@ class BuildRepositoryImpl : BuildRepository {
             it[commitSha] = build.commitSha
             it[buildVersion] = build.buildVersion
             it[instanceId] = build.instanceId
+            it[agentVersion] = build.agentVersion
+            it[agentEnv] = build.agentEnv
+            it[agentParams] = build.agentParams
             it[updatedAt] = org.jetbrains.exposed.sql.javatime.CurrentDateTime
         }
     }

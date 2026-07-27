@@ -34,6 +34,9 @@ class InstanceRepositoryImpl: InstanceRepository {
             it[appId] = instance.appId
             it[buildId] = instance.buildId
             it[envId] = instance.envId
+            it[agentVersion] = instance.agentVersion
+            it[agentEnv] = instance.agentEnv
+            it[agentParams] = instance.agentParams
         }
     }
 
