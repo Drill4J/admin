@@ -15,6 +15,13 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import kotlinx.serialization.json.Json
+
 const val LONG_TEXT_LENGTH = 65535 // java class name max len
 const val MEDIUM_TEXT_LENGTH = 2000
 const val SHORT_TEXT_LENGTH = 255
+
+val rawDataJson = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}

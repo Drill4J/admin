@@ -62,6 +62,9 @@ class RawDataServiceImpl(
             instanceId = null,
             commitSha = buildPayload.commitSha,
             buildVersion = buildPayload.buildVersion,
+            agentVersion = buildPayload.agentVersion,
+            agentEnv = buildPayload.agentEnvironment,
+            agentParams = buildPayload.agentParams,
         )
         transaction {
             buildRepository.saveBuildId(build)
@@ -105,7 +108,10 @@ class RawDataServiceImpl(
             groupId = instancePayload.groupId,
             appId = instancePayload.appId,
             buildId = buildId,
-            envId = instancePayload.envId
+            envId = instancePayload.envId,
+            agentVersion = instancePayload.agentVersion,
+            agentEnv = instancePayload.agentEnvironment,
+            agentParams = instancePayload.agentParams
         )
         transaction {
             if (!buildRepository.existsById(instancePayload.groupId, instancePayload.appId, buildId)) {

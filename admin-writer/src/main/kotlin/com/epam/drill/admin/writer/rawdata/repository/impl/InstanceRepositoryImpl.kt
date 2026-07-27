@@ -45,6 +45,9 @@ class InstanceRepositoryImpl : InstanceRepository {
             it[envId] = instance.envId
             it[lastHeartbeatAt] = CurrentDateTime
             it[status] = AgentHeartbeatStatus.RUNNING.name
+            it[agentVersion] = instance.agentVersion
+            it[agentEnv] = instance.agentEnv
+            it[agentParams] = instance.agentParams
         }
     }
 

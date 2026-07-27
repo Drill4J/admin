@@ -259,8 +259,7 @@ fun Route.deleteMethodIgnoreRule() {
 //    }
 //}
 
-internal suspend fun sendPostRequest(url: String, data: Any) {
-    val client = HttpClient(Apache) {
+internal suspend fun sendPostRequest(url: String, data: Any) {    val client = HttpClient(Apache) {
         expectSuccess = true
         install(ContentNegotiation) {
             json(Json {
