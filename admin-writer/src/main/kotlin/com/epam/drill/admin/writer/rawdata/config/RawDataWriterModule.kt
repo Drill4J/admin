@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.config
 
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.job.BuildFinalizationRetryJob
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.KafkaDataQueue
@@ -25,9 +26,11 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
+import com.epam.drill.admin.writer.rawdata.service.BuildValidationService
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
+import com.epam.drill.admin.writer.rawdata.service.impl.BuildValidationServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.SettingsServiceImpl
@@ -40,8 +43,11 @@ import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import org.quartz.CronScheduleBuilder
+import org.quartz.CronTrigger
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
+import org.quartz.TriggerBuilder
 import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = mu.KotlinLogging.logger {}
@@ -63,6 +69,12 @@ val rawDataDIModule
                 buildRepository = instance(),
             )
         }
+
+        bind<BuildFinalizationRetryJob>() with singleton {
+            BuildFinalizationRetryJob(
+                buildValidationService = instance(),
+            )
+        }
     }
 
 val rawDataServicesDIModule
@@ -77,6 +89,19 @@ val rawDataServicesDIModule
         bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
         bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
 
+        bind<BuildValidationConfig>() with singleton {
+            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
+            BuildValidationConfig(drillConfig.config("buildValidation"))
+        }
+        bind<BuildValidationService>() with singleton {
+            val config = instance<BuildValidationConfig>()
+            BuildValidationServiceImpl(
+                buildRepository = instance(),
+                methodRepository = instance(),
+                maxValidationWindow = java.time.Duration.ofMinutes(config.maxValidationWindowMinutes),
+            )
+        }
+
         bind<RawDataWriter>() with singleton {
             RawDataServiceImpl(
                 instanceRepository = instance(),
@@ -87,6 +112,7 @@ val rawDataServicesDIModule
                 buildRepository = instance(),
                 testSessionRepository = instance(),
                 testSessionBuildRepository = instance(),
+                buildValidationService = instance(),
             )
         }
 
@@ -186,3 +212,16 @@ val rawDataRetentionPolicyJob: JobDetail
         .withDescription("Job for deleting raw data older than the retention period.")
         .withIdentity("rawDataRetentionPolicyJob", "drill")
         .build()
+
+val buildFinalizationRetryJob: JobDetail
+    get() = JobBuilder.newJob(BuildFinalizationRetryJob::class.java)
+        .storeDurably()
+        .withDescription("Job for periodically retrying build finalization validation at a fixed interval.")
+        .withIdentity("buildFinalizationRetryJob", "drill")
+        .build()
+
+fun buildFinalizationRetryTrigger(cron: String): CronTrigger = TriggerBuilder.newTrigger()
+    .withIdentity("buildFinalizationRetryTrigger", "drill")
+    .startNow()
+    .withSchedule(CronScheduleBuilder.cronSchedule(cron))
+    .build()

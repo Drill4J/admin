@@ -21,6 +21,7 @@ import com.epam.drill.admin.writer.rawdata.config.toBitString
 import com.epam.drill.admin.writer.rawdata.entity.*
 import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.service.BuildValidationService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.util.md5
 import kotlinx.datetime.TimeZone
@@ -42,7 +43,10 @@ class RawDataServiceImpl(
     private val buildRepository: BuildRepository,
     private val testSessionRepository: TestSessionRepository,
     private val testSessionBuildRepository: TestSessionBuildRepository,
+    private val buildValidationService: BuildValidationService,
 ) : RawDataWriter {
+
+    private val logger = mu.KotlinLogging.logger {}
 
     override suspend fun saveBuild(buildPayload: BuildPayload) {
         val build = Build(
@@ -119,15 +123,32 @@ class RawDataServiceImpl(
         }
     }
 
+    override suspend fun saveInstanceHeartbeat(agentHeartbeatPayload: AgentHeartbeatPayload) {
+        val instance = InstanceHeartbeat(
+            id = agentHeartbeatPayload.instanceId,
+            groupId = agentHeartbeatPayload.groupId,
+            appId = agentHeartbeatPayload.appId,
+            status = agentHeartbeatPayload.status
+        )
+        transaction {
+            instanceRepository.updateHeartbeat(instance)
+        }
+    }
+
     override suspend fun saveMethods(methodsPayload: MethodsPayload) {
+        val buildId = generateBuildId(
+            methodsPayload.groupId,
+            methodsPayload.appId,
+            methodsPayload.instanceId,
+            methodsPayload.commitSha,
+            methodsPayload.buildVersion
+        )
+        if (buildValidationService.isBuildFinalized(methodsPayload.groupId, methodsPayload.appId, buildId)) {
+            logger.warn { "Rejected ${methodsPayload.methods.size} method(s) for build [$buildId]: build is already finalized." }
+            return
+        }
+
         methodsPayload.methods.map { method ->
-            val buildId = generateBuildId(
-                methodsPayload.groupId,
-                methodsPayload.appId,
-                methodsPayload.instanceId,
-                methodsPayload.commitSha,
-                methodsPayload.buildVersion
-            )
             val signature = listOf(
                 method.classname,
                 method.name,
@@ -139,7 +160,6 @@ class RawDataServiceImpl(
                 method.bodyChecksum,
                 method.probesCount
             ).joinToString(":").md5()
-            // TODO add validation for fields (we had issues with body_checksum)
             Method(
                 groupId = methodsPayload.groupId,
                 appId = methodsPayload.appId,
@@ -274,6 +294,30 @@ class RawDataServiceImpl(
                 testSessionBuildRepository.create(sessionPayload.id, buildId, sessionPayload.groupId)
             }
         }
+    }
+
+    override suspend fun finalizeBuild(payload: BuildFinalizePayload): BuildValidationStatus {
+        val buildId = generateBuildId(
+            payload.groupId,
+            payload.appId,
+            payload.instanceId,
+            payload.commitSha,
+            payload.buildVersion
+        )
+        if (buildValidationService.isBuildFinalized(payload.groupId, payload.appId, buildId)) {
+            logger.warn { "Rejected build finalization for build [$buildId]: build is already finalized." }
+            return BuildValidationStatus.VALID
+        }
+        transaction {
+            buildRepository.saveBuildFinalization(
+                groupId = payload.groupId,
+                appId = payload.appId,
+                buildId = buildId,
+                methodsCount = payload.methodsCount,
+                methodsChecksum = payload.methodsChecksum,
+            )
+        }
+        return buildValidationService.validateBuildById(payload.groupId, payload.appId, buildId)
     }
 
     private fun convertGitDefaultDateTime(commitDate: String): LocalDateTime {

@@ -27,5 +27,10 @@ class Build(
     val branch: String? = null,
     val commitDate: LocalDateTime? = null,
     val commitMessage: String? = null,
-    val commitAuthor: String? = null
+    val commitAuthor: String? = null,
+    val status: BuildValidationStatus? = null,
+    val methodsCount: Int? = null,
+    val buildChecksum: String? = null,
+    val finalizedAt: LocalDateTime? = null,
+    val validatedAt: LocalDateTime? = null,
 )

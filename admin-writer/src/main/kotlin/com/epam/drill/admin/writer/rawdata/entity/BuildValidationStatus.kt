@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.entity
 
-import com.epam.drill.admin.writer.rawdata.entity.Method
-import java.time.LocalDate
-
-interface MethodRepository {
-    suspend fun createMany(data: List<Method>)
-    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
-    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
-    suspend fun countByBuildId(groupId: String, appId: String, buildId: String): Int
-    suspend fun getBodyChecksumsByBuildId(groupId: String, appId: String, buildId: String): List<String>
+/**
+ * Build finalization/integrity validation status.
+ *
+ * PENDING - build is accepting/has accepted methods, not yet validated (or validation pending retry).
+ * VALID - build methods count and checksum matched the values reported by the agent.
+ * INVALID - validation failed and the retry limit has been reached.
+ */
+enum class BuildValidationStatus {
+    PENDING,
+    VALID,
+    INVALID
 }

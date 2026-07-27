@@ -30,4 +30,9 @@ object BuildTable : StringIdTable("raw_data.builds") {
     val committedAt = datetime("committed_at").nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
+    val validationStatus = varchar("validation_status", SHORT_TEXT_LENGTH).nullable()
+    val methodsCount = integer("methods_count").nullable()
+    val methodsChecksum = varchar("methods_checksum", SHORT_TEXT_LENGTH).nullable()
+    val finalizedAt = datetime("finalized_at").nullable()
+    val validatedAt = datetime("validated_at").nullable()
 }

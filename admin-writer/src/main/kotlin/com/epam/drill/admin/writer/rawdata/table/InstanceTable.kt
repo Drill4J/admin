@@ -24,4 +24,6 @@ object InstanceTable : StringIdTable("raw_data.instances", "id") {
     val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val lastHeartbeatAt = datetime("last_heartbeat_at").nullable()
+    val status = varchar("status", MEDIUM_TEXT_LENGTH).nullable()
 }
