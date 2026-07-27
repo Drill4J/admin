@@ -22,6 +22,7 @@ interface RawDataWriter {
     suspend fun saveBuild(buildPayload: BuildPayload)
     suspend fun saveBuildInfo(buildPayload: BuildInfoPayload)
     suspend fun saveInstance(instancePayload: InstancePayload)
+    suspend fun saveInstanceHeartbeat(agentHeartbeatPayload: AgentHeartbeatPayload)
     suspend fun saveMethods(methodsPayload: MethodsPayload)
     suspend fun saveCoverage(coveragePayload: CoveragePayload)
     suspend fun saveTestMetadata(testsPayload: AddTestsPayload)

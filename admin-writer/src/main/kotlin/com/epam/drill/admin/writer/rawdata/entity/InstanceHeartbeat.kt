@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.writer.rawdata.repository
+package com.epam.drill.admin.writer.rawdata.entity
 
-import com.epam.drill.admin.writer.rawdata.entity.Instance
-import com.epam.drill.admin.writer.rawdata.entity.InstanceHeartbeat
-import java.time.LocalDate
+import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatStatus
 
-interface InstanceRepository {
-    suspend fun create(instance: Instance)
-    suspend fun updateHeartbeat(instance: InstanceHeartbeat)
-    suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
-    suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
-}
+class InstanceHeartbeat(
+    val groupId: String,
+    val appId: String,
+    val id: String,
+    val status: AgentHeartbeatStatus,
+)

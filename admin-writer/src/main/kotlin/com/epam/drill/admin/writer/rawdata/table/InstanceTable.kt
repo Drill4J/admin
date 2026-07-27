@@ -29,4 +29,6 @@ object InstanceTable : StringIdTable("raw_data.instances", "id") {
     val agentEnv = jsonb<JsonElement>("agent_env", rawDataJson).nullable()
     val agentParams = jsonb<JsonElement>("agent_params", rawDataJson).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val lastHeartbeatAt = datetime("last_heartbeat_at").nullable()
+    val status = varchar("status", MEDIUM_TEXT_LENGTH).nullable()
 }
