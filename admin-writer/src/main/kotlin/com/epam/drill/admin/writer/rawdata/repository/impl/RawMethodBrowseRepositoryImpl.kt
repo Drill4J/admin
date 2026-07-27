@@ -81,7 +81,6 @@ class RawMethodBrowseRepositoryImpl : RawMethodBrowseRepository {
                 return_type,
                 probes_count,
                 ignored,
-                matching_rule_ids,
                 COUNT(*) OVER() AS total
             FROM candidate_methods
             WHERE class_name = ?
@@ -101,7 +100,6 @@ class RawMethodBrowseRepositoryImpl : RawMethodBrowseRepository {
                     returnType = row.string("return_type"),
                     probesCount = row.int("probes_count"),
                     ignored = row["ignored"] as Boolean,
-                    matchingRuleIds = row.numberList("matching_rule_ids"),
                 )
             },
             page = page,
@@ -119,8 +117,6 @@ class RawMethodBrowseRepositoryImpl : RawMethodBrowseRepository {
 
     private fun Map<String, Any?>.string(name: String): String = this[name] as? String ?: ""
     private fun Map<String, Any?>.int(name: String): Int = (this[name] as Number).toInt()
-    private fun Map<String, Any?>.numberList(name: String): List<Int> =
-        (this[name] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList()
 
     private companion object {
         private const val SAVED_RULE_MATCH = """
@@ -139,15 +135,7 @@ class RawMethodBrowseRepositoryImpl : RawMethodBrowseRepository {
                         WHERE r.group_id = m.group_id
                             AND r.app_id = m.app_id
                             AND $SAVED_RULE_MATCH
-                    ) AS ignored,
-                    ARRAY(
-                        SELECT r.id
-                        FROM raw_data.method_ignore_rules r
-                        WHERE r.group_id = m.group_id
-                            AND r.app_id = m.app_id
-                            AND $SAVED_RULE_MATCH
-                        ORDER BY r.id
-                    ) AS matching_rule_ids
+                    ) AS ignored
                 FROM raw_data.build_methods bm
                 JOIN raw_data.methods m
                     ON m.group_id = bm.group_id

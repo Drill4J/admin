@@ -457,7 +457,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/tree:
     get:
-      summary: Browse nested raw package/class/method tree for a build
+      summary: Browse nested package/class/method tree for a build
       description: |
         Returns a nested package→class→method tree built server-side (same nesting/collapse approach as coverage treemap).
         Method leaves are included for structure treemap rendering; the methods endpoint remains for paged class drill-down.
@@ -480,7 +480,7 @@ paths:
                 $ref: '#/components/schemas/RawMethodTreeDataResponse'
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/methods:
     get:
-      summary: Browse every raw method in a class
+      summary: Browse every method in a class
       description: Returns methods whether or not they match saved ignore rules; matching methods are marked with ignored=true.
       operationId: getRawMethods
       tags: [data-management]
@@ -495,7 +495,7 @@ paths:
         - { name: pageSize, in: query, required: false, schema: { type: integer, default: 100, minimum: 1, maximum: 500 } }
       responses:
         '200':
-          description: Paged raw methods with ignore metadata
+          description: Paged methods with ignore metadata
           content:
             application/json:
               schema:
@@ -3240,7 +3240,7 @@ components:
             $ref: '#/components/schemas/RawMethodTreeNodeView'
     RawMethodTreeView:
       type: object
-      description: Server-built nested package→class→method tree for one build catalog.
+      description: Server-built nested package→class→method tree.
       required:
         - roots
         - affectedMethods
@@ -3268,7 +3268,7 @@ components:
           nullable: true
     RawMethodView:
       type: object
-      description: One raw method from a build catalog with ignore-rule metadata.
+      description: One method with ignore-rule metadata.
       required:
         - methodId
         - methodName
@@ -3278,7 +3278,6 @@ components:
         - returnType
         - probesCount
         - ignored
-        - matchingRuleIds
       properties:
         methodId:
           type: string
@@ -3297,14 +3296,9 @@ components:
         ignored:
           type: boolean
           description: True when the method matches at least one saved ignore rule.
-        matchingRuleIds:
-          type: array
-          items:
-            type: integer
-          description: Saved rule ids that match this method.
     RawMethodPageView:
       type: object
-      description: Paged raw methods for one class in a build.
+      description: Paged methods for one class in a build.
       required:
         - data
         - page
@@ -3416,7 +3410,7 @@ components:
         retentionPeriodDays:
           type: integer
           nullable: true
-          description: Number of days to retain raw ingested data (builds, coverage, methods, test sessions) before automatic cleanup. Set to null to use the system default.
+          description: Number of days to retain ingested data (builds, coverage, methods, test sessions) before automatic cleanup. Set to null to use the system default.
         metricsPeriodDays:
           type: integer
           nullable: true

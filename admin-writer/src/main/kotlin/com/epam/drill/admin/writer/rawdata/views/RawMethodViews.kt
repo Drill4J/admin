@@ -59,7 +59,7 @@ data class RawMethodTreeView(
     val roots: List<RawMethodTreeNodeView>,
     /** Methods matched by saved ignore rules. */
     val affectedMethods: Long,
-    /** Total methods in the build catalog under this tree. */
+    /** Total methods in the build under this tree. */
     val totalMethods: Long,
 )
 
@@ -73,7 +73,6 @@ data class RawMethodView(
     val returnType: String,
     val probesCount: Int,
     val ignored: Boolean,
-    val matchingRuleIds: List<Int>,
 )
 
 @Serializable
