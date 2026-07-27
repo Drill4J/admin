@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.metrics.repository
 
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.time.Instant
@@ -27,8 +28,13 @@ interface MetricsRepository {
     suspend fun getApplications(groupId: String? = null): List<Map<String, Any?>>
 
     suspend fun getBuilds(
-        groupId: String, appId: String,
-        branch: String? = null, envId: String? = null,
+        groupId: String,
+        appId: String,
+        branch: String? = null,
+        envId: String? = null,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField?, sortOrder: SortOrder?,
         offset: Int? = null, limit: Int? = null
     ): List<Map<String, Any?>>
 

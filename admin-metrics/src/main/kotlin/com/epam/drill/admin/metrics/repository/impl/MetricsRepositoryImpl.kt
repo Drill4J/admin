@@ -18,6 +18,7 @@ package com.epam.drill.admin.metrics.repository.impl
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.views.TestImpactStatus
@@ -52,8 +53,13 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getBuilds(
-        groupId: String, appId: String,
-        branch: String?, envId: String?,
+        groupId: String,
+        appId: String,
+        branch: String?,
+        envId: String?,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField?, sortOrder: SortOrder?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
@@ -76,9 +82,19 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE b.group_id = ? AND b.app_id = ?
             """.trimIndent(), groupId, appId
             )
+            appendOptional(" AND b.commit_sha = ?", commitSha)
+            appendOptional(" AND b.build_version = ?", buildVersion)
             appendOptional(" AND b.branch = ?", branch)
             appendOptional(" AND ? = ANY(b.app_env_ids)", envId)
-            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
+            val sortOrder = sortOrder?.name ?: SortOrder.ASC.name
+            when (sortBy ?: BuildSortField.COMMIT_DATE) {
+                BuildSortField.COMMIT_DATE -> "COALESCE(b.committed_at, b.created_at) $sortOrder"
+                BuildSortField.BUILD_VERSION -> (1..3).joinToString(separator = ", ") {
+                    "SPLIT_PART(b.build_version, '.', $it) $sortOrder"
+                }
+            }.let {
+                append(" ORDER BY $it")
+            }
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }

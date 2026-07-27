@@ -24,6 +24,7 @@ import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.common.config.ApiResponse
 import com.epam.drill.admin.common.config.Paging
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.service.MetricsService
 import com.epam.drill.admin.metrics.views.MethodView
 import com.epam.drill.admin.metrics.views.PagedList
@@ -63,6 +64,11 @@ class Metrics(
         val appId: String,
         val branch: String? = null,
         val envId: String? = null,
+        val commitSha: String? = null,
+        val buildVersion: String? = null,
+
+        val sortBy: BuildSortField? = null,
+        val sortOrder: SortOrder? = null,
 
         val page: Int? = null,
         val pageSize: Int? = null
@@ -273,6 +279,10 @@ fun Route.getBuilds() {
             appId = params.appId,
             branch = params.branch,
             envId = params.envId,
+            commitSha = params.commitSha,
+            buildVersion = params.buildVersion,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
             freshAfter = params.parent.freshAfter.toInstant(),

@@ -17,6 +17,11 @@ package com.epam.drill.admin.metrics.views
 
 import java.time.Instant
 
+class SingleResponse<T>(
+    val data: T,
+    val refreshedAt: Instant? = null
+)
+
 class PagedList<T>(
     val page: Int,
     val pageSize: Int,
