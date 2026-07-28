@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.common.route
 
+import com.epam.drill.admin.common.exception.BuildFinalized
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.exception.InvalidParameters
 import io.ktor.server.plugins.statuspages.*
@@ -39,5 +40,9 @@ fun StatusPagesConfig.commonStatusPages() {
     exception<MissingFieldException> { call, exception ->
         logger.trace(exception) { "400 MissingFieldException ${exception.message}" }
         call.validationError(exception)
+    }
+    exception<BuildFinalized> { call, exception ->
+        logger.trace(exception) { "422 Build finalized" }
+        call.unprocessableEntity(exception, "Build finalized")
     }
 }

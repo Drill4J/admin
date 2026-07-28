@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.service.impl
 
+import com.epam.drill.admin.common.exception.BuildFinalized
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
 import com.epam.drill.admin.writer.rawdata.config.toBitString
@@ -66,6 +67,9 @@ class RawDataServiceImpl(
             agentEnv = buildPayload.agentEnvironment,
             agentParams = buildPayload.agentParams,
         )
+        if (buildValidationService.isBuildFinalized(build.groupId, build.appId, build.id)) {
+            throw BuildFinalized()
+        }
         transaction {
             buildRepository.saveBuildId(build)
         }
