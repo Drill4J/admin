@@ -64,7 +64,6 @@ class Metrics {
         val parent: Metrics,
 
         val groupId: String,
-        val buildId: String? = null,
         val testTaskIds: List<String> = emptyList(),
         val createdBys: List<String> = emptyList(),
         val results: List<String> = emptyList(),
@@ -124,6 +123,13 @@ class Metrics {
             val page: Int? = null,
             val pageSize: Int? = null,
         )
+
+        @Resource("builds")
+        class Builds(
+            val parent: TestSessionById,
+            val page: Int? = null,
+            val pageSize: Int? = null,
+        )
     }
 
     @Resource("/builds")
@@ -176,6 +182,19 @@ class Metrics {
         @Resource("test-session-stats")
         class TestSessionStats(
             val parent: BuildById,
+        )
+
+        @Resource("test-sessions")
+        class TestSessions(
+            val parent: BuildById,
+            val groupId: String,
+            val testTaskIds: List<String> = emptyList(),
+            val createdBys: List<String> = emptyList(),
+            val results: List<String> = emptyList(),
+            val sortBy: String? = null,
+            val sortOrder: SortOrder? = null,
+            val page: Int? = null,
+            val pageSize: Int? = null,
         )
     }
 
@@ -451,8 +470,10 @@ fun Route.metricsRoutes() {
     getAppEnvIds()
     getAppTestTags()
     getTestSessions()
+    getBuildTestSessions()
     getTestSessionFilterOptions()
     getTestSessionById()
+    getTestSessionBuilds()
     getTestSessionCoverageSummary()
     getTestSessionDefinitions()
     getTestLaunches()
@@ -530,9 +551,33 @@ fun Route.getTestSessions() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.TestSessions> { params ->
-        val data = metricsService.getTestSessions(
+        val data = metricsService.getGroupTestSessions(
             groupId = params.groupId,
-            buildId = params.buildId,
+            testTaskIds = params.testTaskIds,
+            createdBys = params.createdBys,
+            results = params.results,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data.items,
+                Paging(data.page, data.pageSize, data.total)
+            )
+        )
+    }
+}
+
+fun Route.getBuildTestSessions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.BuildById.TestSessions> { params ->
+        val data = metricsService.getBuildTestSessions(
+            groupId = params.groupId,
+            buildId = params.parent.buildId,
             testTaskIds = params.testTaskIds,
             createdBys = params.createdBys,
             results = params.results,
@@ -573,6 +618,30 @@ fun Route.getTestSessionById() {
             buildId = params.buildId,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestSessionBuilds() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.Builds> { params ->
+        val data = metricsService.getTestSessionBuilds(
+            groupId = params.parent.groupId,
+            testSessionId = params.parent.testSessionId,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respond(
+            HttpStatusCode.OK,
+            PagedDataResponse(
+                data = data.items,
+                paging = Paging(
+                    page = data.page,
+                    pageSize = data.pageSize,
+                    total = data.total,
+                ),
+            )
+        )
     }
 }
 

@@ -261,9 +261,91 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
-    override suspend fun getTestSessions(
+    override suspend fun getGroupTestSessions(
         groupId: String,
-        buildId: String?,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        val orderBy = resolveTestSessionOrderBy(sortBy, sortOrder)
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tss.group_id,
+                tss.test_session_id,
+                tss.test_task_id,
+                tss.session_started_at,
+                tss.created_by,
+                tss.test_definitions,
+                tss.test_launches,
+                tss.result,
+                tss.test_duration,
+                metrics.format_duration(tss.test_duration::bigint) AS test_duration_formatted,
+                tss.failed,
+                tss.passed,
+                tss.skipped,
+                tss.smart_skipped,
+                tss.success,
+                tss.success_rate,
+                tss.time_saved,
+                metrics.format_duration_rounded(tss.time_saved::bigint) AS time_saved_formatted
+            FROM metrics.test_sessions_with_statistics tss
+            WHERE tss.group_id = ?
+                AND EXISTS (
+                    SELECT 1
+                    FROM metrics.test_session_builds tsb
+                    WHERE tsb.group_id = tss.group_id
+                        AND tsb.test_session_id = tss.test_session_id
+                )
+                """.trimIndent(),
+                groupId,
+            )
+            appendTestSessionFilters(testTaskIds, createdBys, results)
+            append(" ORDER BY $orderBy ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getGroupTestSessionsCount(
+        groupId: String,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_sessions_with_statistics tss
+            WHERE tss.group_id = ?
+                AND EXISTS (
+                    SELECT 1
+                    FROM metrics.test_session_builds tsb
+                    WHERE tsb.group_id = tss.group_id
+                        AND tsb.test_session_id = tss.test_session_id
+                )
+                """.trimIndent(),
+                groupId,
+            )
+            appendTestSessionFilters(testTaskIds, createdBys, results)
+        }.firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getBuildTestSessions(
+        groupId: String,
+        buildId: String,
         testTaskIds: List<String>,
         createdBys: List<String>,
         results: List<String>,
@@ -301,18 +383,22 @@ class MetricsRepositoryImpl : MetricsRepository {
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
                 AND tss.test_session_id = tsb.test_session_id
-                """.trimIndent()
+            WHERE tsb.group_id = ?
+                AND tsb.build_id = ?
+                """.trimIndent(),
+                groupId,
+                buildId,
             )
-            appendTestSessionsWhere(groupId, buildId, testTaskIds, createdBys, results)
+            appendTestSessionFilters(testTaskIds, createdBys, results)
             append(" ORDER BY $orderBy ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
     }
 
-    override suspend fun getTestSessionsCount(
+    override suspend fun getBuildTestSessionsCount(
         groupId: String,
-        buildId: String?,
+        buildId: String,
         testTaskIds: List<String>,
         createdBys: List<String>,
         results: List<String>,
@@ -325,10 +411,75 @@ class MetricsRepositoryImpl : MetricsRepository {
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
                 AND tss.test_session_id = tsb.test_session_id
-                """.trimIndent()
+            WHERE tsb.group_id = ?
+                AND tsb.build_id = ?
+                """.trimIndent(),
+                groupId,
+                buildId,
             )
-            appendTestSessionsWhere(groupId, buildId, testTaskIds, createdBys, results)
+            appendTestSessionFilters(testTaskIds, createdBys, results)
         }.firstOrNull()?.get("total")?.let {
+            when (it) {
+                is Long -> it
+                is Number -> it.toLong()
+                else -> 0L
+            }
+        } ?: 0L
+    }
+
+    override suspend fun getTestSessionBuilds(
+        groupId: String,
+        testSessionId: String,
+        offset: Int?,
+        limit: Int?,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT
+                tsb.app_id,
+                tsb.build_id,
+                bws.build_version,
+                bws.branch,
+                COALESCE(cov.covered_probes, 0) AS covered_probes,
+                COALESCE(cov.total_probes, 0) AS total_probes,
+                COALESCE(cov.tested_methods, 0) AS covered_methods,
+                COALESCE(cov.total_methods, 0) AS total_methods
+            FROM metrics.test_session_builds tsb
+            LEFT JOIN metrics.builds_with_statistics bws
+                ON bws.group_id = tsb.group_id
+                AND bws.app_id = tsb.app_id
+                AND bws.build_id = tsb.build_id
+            LEFT JOIN metrics.get_builds_with_coverage_by_test_session(
+                input_build_id => tsb.build_id,
+                input_test_session_id => tsb.test_session_id
+            ) cov ON TRUE
+            WHERE tsb.group_id = ?
+                AND tsb.test_session_id = ?
+            ORDER BY tsb.app_id, bws.build_version NULLS LAST, tsb.build_id
+                """.trimIndent(),
+                groupId,
+                testSessionId,
+            )
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
+    }
+
+    override suspend fun getTestSessionBuildsCount(
+        groupId: String,
+        testSessionId: String,
+    ): Long = transaction {
+        executeQueryReturnMap(
+            """
+            SELECT COUNT(*) AS total
+            FROM metrics.test_session_builds tsb
+            WHERE tsb.group_id = ?
+                AND tsb.test_session_id = ?
+            """.trimIndent(),
+            groupId,
+            testSessionId,
+        ).firstOrNull()?.get("total")?.let {
             when (it) {
                 is Long -> it
                 is Number -> it.toLong()
@@ -727,23 +878,21 @@ class MetricsRepositoryImpl : MetricsRepository {
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
                 AND tss.test_session_id = tsb.test_session_id
-                """.trimIndent()
+            WHERE tsb.group_id = ?
+                """.trimIndent(),
+                groupId,
             )
-            appendTestSessionsWhere(groupId, buildId, emptyList(), emptyList(), emptyList())
+            appendOptional(" AND tsb.build_id = ?", buildId)
             append(" AND $column IS NOT NULL AND $column::text <> '' ")
             append(" ORDER BY value ")
         }.mapNotNull { it["value"] as? String }
     }
 
-    private fun SqlBuilder.appendTestSessionsWhere(
-        groupId: String,
-        buildId: String?,
+    private fun SqlBuilder.appendTestSessionFilters(
         testTaskIds: List<String>,
         createdBys: List<String>,
         results: List<String>,
     ) {
-        append(" WHERE tsb.group_id = ?", groupId)
-        appendOptional(" AND tsb.build_id = ?", buildId)
         appendOptional(" AND tss.test_task_id = ANY(?)", testTaskIds)
         appendOptional(" AND tss.created_by = ANY(?)", createdBys)
         appendOptional(" AND tss.result = ANY(?)", results)

@@ -72,9 +72,20 @@ interface MetricsService {
 
     suspend fun getBuildTestSessionStats(buildId: String): BuildTestSessionStatsView
 
-    suspend fun getTestSessions(
+    suspend fun getGroupTestSessions(
         groupId: String,
-        buildId: String?,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestSessionView>
+
+    suspend fun getBuildTestSessions(
+        groupId: String,
+        buildId: String,
         testTaskIds: List<String>,
         createdBys: List<String>,
         results: List<String>,
@@ -94,6 +105,13 @@ interface MetricsService {
         testSessionId: String,
         buildId: String? = null,
     ): TestSessionDetailView
+
+    suspend fun getTestSessionBuilds(
+        groupId: String,
+        testSessionId: String,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<TestSessionBuildView>
 
     suspend fun getTestSessionCoverageSummary(
         groupId: String,

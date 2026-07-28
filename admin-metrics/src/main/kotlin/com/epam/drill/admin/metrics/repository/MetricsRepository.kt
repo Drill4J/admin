@@ -63,9 +63,8 @@ interface MetricsRepository {
 
     suspend fun getBuildTestSessionStats(buildId: String): Map<String, Any?>
 
-    suspend fun getTestSessions(
+    suspend fun getGroupTestSessions(
         groupId: String,
-        buildId: String? = null,
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
@@ -75,9 +74,28 @@ interface MetricsRepository {
         limit: Int? = null,
     ): List<Map<String, Any?>>
 
-    suspend fun getTestSessionsCount(
+    suspend fun getGroupTestSessionsCount(
         groupId: String,
-        buildId: String? = null,
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+    ): Long
+
+    suspend fun getBuildTestSessions(
+        groupId: String,
+        buildId: String,
+        testTaskIds: List<String> = emptyList(),
+        createdBys: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getBuildTestSessionsCount(
+        groupId: String,
+        buildId: String,
         testTaskIds: List<String> = emptyList(),
         createdBys: List<String> = emptyList(),
         results: List<String> = emptyList(),
@@ -98,6 +116,18 @@ interface MetricsRepository {
         testSessionId: String,
         buildId: String? = null,
     ): Map<String, Any?>?
+
+    suspend fun getTestSessionBuilds(
+        groupId: String,
+        testSessionId: String,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<Map<String, Any?>>
+
+    suspend fun getTestSessionBuildsCount(
+        groupId: String,
+        testSessionId: String,
+    ): Long
 
     suspend fun getTestSessionCoverageSummary(
         buildId: String,

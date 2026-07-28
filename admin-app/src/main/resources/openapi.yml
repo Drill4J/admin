@@ -670,11 +670,11 @@ paths:
                 $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/test-sessions:
     get:
-      summary: Get test sessions
+      summary: Get test sessions for a group
       description: |
-        Retrieves a paginated list of test sessions for a group, optionally filtered by build,
-        test task, or creator.
-      operationId: getTestSessions
+        Retrieves a paginated list of test sessions for a group (one row per session ID).
+        Sessions may span multiple builds; use the session builds endpoint for per-build detail.
+      operationId: getGroupTestSessions
       tags:
         - metrics
       security:
@@ -684,12 +684,6 @@ paths:
           in: query
           required: true
           description: Group identifier.
-          schema:
-            type: string
-        - name: buildId
-          in: query
-          required: false
-          description: Optional build identifier to limit sessions to a specific build.
           schema:
             type: string
         - name: testTaskIds
@@ -774,6 +768,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/test-sessions/{testSessionId}/builds:
+    get:
+      summary: Get builds affected by a test session
+      operationId: getTestSessionBuilds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated builds linked to the test session with per-build coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+        '404':
+          description: Test session not found or group mismatch
   /api/metrics/test-sessions/{testSessionId}:
     get:
       summary: Get test session details
@@ -1198,6 +1232,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/test-sessions:
+    get:
+      summary: Get test sessions for a build
+      description: |
+        Retrieves a paginated list of test sessions linked to a specific build.
+      operationId: getBuildTestSessions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          description: Group identifier.
+          schema:
+            type: string
+        - name: testTaskIds
+          in: query
+          required: false
+          description: Optional test task identifier filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: createdBys
+          in: query
+          required: false
+          description: Optional creator filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          description: Sort field — `sessionStartedAt` or `successRate`.
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          required: false
+          description: Sort direction — `ASC` or `DESC`.
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of test sessions for the build
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report

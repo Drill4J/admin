@@ -213,9 +213,8 @@ class MetricsServiceImpl(
         )
     }
 
-    override suspend fun getTestSessions(
+    override suspend fun getGroupTestSessions(
         groupId: String,
-        buildId: String?,
         testTaskIds: List<String>,
         createdBys: List<String>,
         results: List<String>,
@@ -224,17 +223,42 @@ class MetricsServiceImpl(
         page: Int?,
         pageSize: Int?,
     ): PagedList<TestSessionView> = transaction {
-        val validatedSortBy = sortBy?.let { requestedSortBy ->
-            val normalized = requestedSortBy.trim()
-            if (normalized.isBlank() || normalized !in TEST_SESSION_SORT_FIELDS) {
-                throw IllegalArgumentException(
-                    "Invalid sortBy '$requestedSortBy'. Allowed values: ${TEST_SESSION_SORT_FIELDS.joinToString(", ")}"
-                )
-            }
-            normalized
-        }
+        val validatedSortBy = validateTestSessionSortBy(sortBy)
         pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
-            metricsRepository.getTestSessions(
+            metricsRepository.getGroupTestSessions(
+                groupId = groupId,
+                testTaskIds = testTaskIds,
+                createdBys = createdBys,
+                results = results,
+                sortBy = validatedSortBy,
+                sortOrder = sortOrder,
+                offset = offset,
+                limit = limit,
+            ).map(::mapToTestSessionView)
+        } withTotal {
+            metricsRepository.getGroupTestSessionsCount(
+                groupId = groupId,
+                testTaskIds = testTaskIds,
+                createdBys = createdBys,
+                results = results,
+            )
+        }
+    }
+
+    override suspend fun getBuildTestSessions(
+        groupId: String,
+        buildId: String,
+        testTaskIds: List<String>,
+        createdBys: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestSessionView> = transaction {
+        val validatedSortBy = validateTestSessionSortBy(sortBy)
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getBuildTestSessions(
                 groupId = groupId,
                 buildId = buildId,
                 testTaskIds = testTaskIds,
@@ -244,32 +268,9 @@ class MetricsServiceImpl(
                 sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
-            ).map { row ->
-                TestSessionView(
-                    testSessionId = row["test_session_id"] as String,
-                    groupId = row["group_id"] as String,
-                    appId = row["app_id"] as String,
-                    buildId = row["build_id"] as String,
-                    testTaskId = row["test_task_id"] as String?,
-                    sessionStartedAt = (row["session_started_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
-                    createdBy = row["created_by"] as String?,
-                    testDefinitions = (row["test_definitions"] as? Number)?.toInt() ?: 0,
-                    testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
-                    result = row["result"] as String,
-                    testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
-                    testDurationFormatted = row["test_duration_formatted"] as String,
-                    failed = (row["failed"] as? Number)?.toInt() ?: 0,
-                    passed = (row["passed"] as? Number)?.toInt() ?: 0,
-                    skipped = (row["skipped"] as? Number)?.toInt() ?: 0,
-                    smartSkipped = (row["smart_skipped"] as? Number)?.toInt() ?: 0,
-                    success = (row["success"] as? Number)?.toInt() ?: 0,
-                    successRate = (row["success_rate"] as? Number)?.toDouble() ?: 0.0,
-                    timeSaved = (row["time_saved"] as? Number)?.toLong() ?: 0L,
-                    timeSavedFormatted = row["time_saved_formatted"] as String,
-                )
-            }
+            ).map(::mapToTestSessionView)
         } withTotal {
-            metricsRepository.getTestSessionsCount(
+            metricsRepository.getBuildTestSessionsCount(
                 groupId = groupId,
                 buildId = buildId,
                 testTaskIds = testTaskIds,
@@ -306,6 +307,38 @@ class MetricsServiceImpl(
         val row = metricsRepository.getTestSessionDetail(groupId, testSessionId, buildId)
             ?: throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
         mapToTestSessionDetailView(row)
+    }
+
+    override suspend fun getTestSessionBuilds(
+        groupId: String,
+        testSessionId: String,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<TestSessionBuildView> = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            metricsRepository.getTestSessionBuilds(
+                groupId = groupId,
+                testSessionId = testSessionId,
+                offset = offset,
+                limit = limit,
+            ).map { row ->
+                TestSessionBuildView(
+                    appId = row["app_id"] as String,
+                    buildId = row["build_id"] as String,
+                    buildVersion = row["build_version"] as? String,
+                    branch = row["branch"] as? String,
+                    coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0,
+                    totalProbes = (row["total_probes"] as? Number)?.toInt() ?: 0,
+                    coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0,
+                    totalMethods = (row["total_methods"] as? Number)?.toInt() ?: 0,
+                )
+            }
+        } withTotal {
+            metricsRepository.getTestSessionBuildsCount(groupId, testSessionId)
+        }
     }
 
     override suspend fun getTestSessionCoverageSummary(
@@ -1426,6 +1459,39 @@ class MetricsServiceImpl(
             ),
         )
     }
+
+    private fun validateTestSessionSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        if (normalized.isBlank() || normalized !in TEST_SESSION_SORT_FIELDS) {
+            throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${TEST_SESSION_SORT_FIELDS.joinToString(", ")}"
+            )
+        }
+        normalized
+    }
+
+    private fun mapToTestSessionView(row: Map<String, Any?>): TestSessionView = TestSessionView(
+        testSessionId = row["test_session_id"] as String,
+        groupId = row["group_id"] as String,
+        appId = row["app_id"] as? String,
+        buildId = row["build_id"] as? String,
+        testTaskId = row["test_task_id"] as String?,
+        sessionStartedAt = (row["session_started_at"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+        createdBy = row["created_by"] as String?,
+        testDefinitions = (row["test_definitions"] as? Number)?.toInt() ?: 0,
+        testLaunches = (row["test_launches"] as? Number)?.toInt() ?: 0,
+        result = row["result"] as String,
+        testDuration = (row["test_duration"] as? Number)?.toLong() ?: 0L,
+        testDurationFormatted = row["test_duration_formatted"] as String,
+        failed = (row["failed"] as? Number)?.toInt() ?: 0,
+        passed = (row["passed"] as? Number)?.toInt() ?: 0,
+        skipped = (row["skipped"] as? Number)?.toInt() ?: 0,
+        smartSkipped = (row["smart_skipped"] as? Number)?.toInt() ?: 0,
+        success = (row["success"] as? Number)?.toInt() ?: 0,
+        successRate = (row["success_rate"] as? Number)?.toDouble() ?: 0.0,
+        timeSaved = (row["time_saved"] as? Number)?.toLong() ?: 0L,
+        timeSavedFormatted = row["time_saved_formatted"] as String,
+    )
 
     private fun mapToTestSessionDetailView(row: Map<String, Any?>): TestSessionDetailView = TestSessionDetailView(
         testSessionId = row["test_session_id"] as String,

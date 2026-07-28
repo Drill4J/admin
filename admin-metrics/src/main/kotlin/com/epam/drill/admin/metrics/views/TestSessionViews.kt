@@ -22,8 +22,8 @@ import kotlinx.serialization.Serializable
 data class TestSessionView(
     val testSessionId: String,
     val groupId: String,
-    val appId: String,
-    val buildId: String,
+    val appId: String? = null,
+    val buildId: String? = null,
     val testTaskId: String?,
     val sessionStartedAt: LocalDateTime?,
     val createdBy: String?,
@@ -47,6 +47,18 @@ data class TestSessionFilterOptionsView(
     val testTaskIds: List<String>,
     val createdBys: List<String>,
     val results: List<String>,
+)
+
+@Serializable
+data class TestSessionBuildView(
+    val appId: String,
+    val buildId: String,
+    val buildVersion: String?,
+    val branch: String?,
+    val coveredProbes: Int,
+    val totalProbes: Int,
+    val coveredMethods: Int,
+    val totalMethods: Int,
 )
 
 @Serializable

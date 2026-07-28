@@ -44,15 +44,14 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
     private val build1Id = "${build1.groupId}:${build1.appId}:${build1.buildVersion}"
 
     @Test
-    fun `given build with test sessions, should return sessions filtered by buildId`(): Unit =
+    fun `given build with test sessions, should return sessions for that build`(): Unit =
         havingData {
             build1 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session2 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions") {
+            client.get("/metrics/builds/$build1Id/test-sessions") {
                 parameter("groupId", testGroup)
-                parameter("buildId", build1Id)
             }.returns { data ->
                 assertEquals(2, data.size)
                 assertTrue(data.all { it["buildId"] == build1Id })
@@ -62,7 +61,7 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
-    fun `given test sessions on different builds, group list without buildId returns all sessions`(): Unit =
+    fun `given test sessions on different builds, group list returns all sessions`(): Unit =
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
@@ -79,16 +78,15 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
-    fun `given test sessions on different builds, buildId filter should return only matching sessions`(): Unit =
+    fun `given test sessions on different builds, build endpoint returns only matching sessions`(): Unit =
         havingData {
             build1 has listOf(method1)
             build2 has listOf(method1)
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test1 of session2 covers method1 with probesOf(1, 1) on build2
         }.expectThat {
-            client.get("/metrics/test-sessions") {
+            client.get("/metrics/builds/$build1Id/test-sessions") {
                 parameter("groupId", testGroup)
-                parameter("buildId", build1Id)
             }.returns { data ->
                 assertEquals(1, data.size)
                 assertEquals(session1.id, data[0]["testSessionId"])
@@ -103,9 +101,8 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             test2 of session2 covers method1 with probesOf(1, 1) on build1
             test3 of session3 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            val response = client.get("/metrics/test-sessions") {
+            val response = client.get("/metrics/builds/$build1Id/test-sessions") {
                 parameter("groupId", testGroup)
-                parameter("buildId", build1Id)
                 parameter("page", 1)
                 parameter("pageSize", 2)
             }
@@ -123,9 +120,8 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             test1 of session1 covers method1 with probesOf(1, 1) on build1
             test2 of session2 covers method1 with probesOf(1, 1) on build1
         }.expectThat {
-            client.get("/metrics/test-sessions") {
+            client.get("/metrics/builds/$build1Id/test-sessions") {
                 parameter("groupId", testGroup)
-                parameter("buildId", build1Id)
                 parameter("sortBy", "successRate")
                 parameter("sortOrder", "DESC")
             }.returns { data ->
@@ -138,9 +134,8 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
         havingData {
             build1 has listOf(method1)
         }.expectThat {
-            val response = client.get("/metrics/test-sessions") {
+            val response = client.get("/metrics/builds/$build1Id/test-sessions") {
                 parameter("groupId", testGroup)
-                parameter("buildId", build1Id)
                 parameter("sortBy", "invalidSortBy")
             }
             assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -174,6 +169,62 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
                 assertTrue((data["results"] as List<*>).contains("PASSED"))
             }
+        }
+
+    @Test
+    fun `given same session on multiple builds, group list returns one row per session`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            build2 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test1 of session1 covers method1 with probesOf(1, 1) on build2
+        }.expectThat {
+            client.get("/metrics/test-sessions") {
+                parameter("groupId", testGroup)
+            }.returns { data ->
+                assertEquals(1, data.size)
+                assertEquals(session1.id, data[0]["testSessionId"])
+            }
+        }
+
+    @Test
+    fun `given session with builds, builds endpoint returns linked builds`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            build2 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test1 of session1 covers method1 with probesOf(1, 1) on build2
+        }.expectThat {
+            val response = client.get("/metrics/test-sessions/${session1.id}/builds") {
+                parameter("groupId", testGroup)
+            }
+            response.returns { data ->
+                assertEquals(2, data.size)
+                assertTrue(data.any { it["buildId"] == build1Id })
+                assertTrue(data.any { it["buildId"] == "${build2.groupId}:${build2.appId}:${build2.buildVersion}" })
+            }
+            val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
+            assertEquals(2, total.toInt())
+        }
+
+    @Test
+    fun `given session with builds, builds endpoint respects pageSize`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            build2 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test1 of session1 covers method1 with probesOf(1, 1) on build2
+        }.expectThat {
+            val response = client.get("/metrics/test-sessions/${session1.id}/builds") {
+                parameter("groupId", testGroup)
+                parameter("page", 1)
+                parameter("pageSize", 1)
+            }
+            response.returns { data ->
+                assertEquals(1, data.size)
+            }
+            val total = JsonPath.read<Number>(response.bodyAsText(), "$.paging.total")
+            assertEquals(2, total.toInt())
         }
 
     @AfterEach
