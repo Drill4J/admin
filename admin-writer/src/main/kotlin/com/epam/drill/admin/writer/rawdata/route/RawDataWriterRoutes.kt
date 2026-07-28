@@ -116,19 +116,19 @@ fun Route.dataIngestRoutes() {
 }
 
 fun Route.putBuilds() {
-    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<BuildsRoute> { params ->
-        queuedRawDataWriter.enqueue(params, call.decompress())
+        rawDataWriter.saveBuild(call.decompressAndReceive())
         call.ok("Build saved")
     }
 }
 
 fun Route.putBuildsInfo() {
-    val queuedRawDataWriter by closestDI().instance<QueuedRawDataWriter>()
+    val rawDataWriter by closestDI().instance<RawDataWriter>()
 
     put<BuildsInfoRoute> { params ->
-        queuedRawDataWriter.enqueue(params, call.decompress())
+        rawDataWriter.saveBuildInfo(call.decompressAndReceive())
         call.ok("Build info saved")
     }
 }

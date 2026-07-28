@@ -62,9 +62,6 @@ class BuildRepositoryImpl : BuildRepository {
                 BuildTable.validationStatus,
                 BuildTable.validatedAt,
                 BuildTable.finalizedAt,
-                BuildTable.agentVersion,
-                BuildTable.agentEnv,
-                BuildTable.agentParams,
             ),
         ) {
             it[id] = build.id

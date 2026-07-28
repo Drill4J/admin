@@ -16,7 +16,6 @@
 package com.epam.drill.admin.writer.rawdata.entity
 
 import com.epam.drill.admin.common.exception.InvalidParameters
-import com.epam.drill.admin.writer.rawdata.exception.InvalidMethodIgnoreRule
 import java.util.regex.PatternSyntaxException
 
 class MethodIgnoreRule(
