@@ -828,6 +828,7 @@ BEGIN
 
 	RETURN QUERY
     WITH
+	-- Full change set for impacted-methods counts (signature filter applied separately for test selection)
 	changes AS (
 	    SELECT
 	        m.group_id,
@@ -842,10 +843,8 @@ BEGIN
             input_build_id => input_build_id,
             input_baseline_build_id => input_baseline_build_id,
             input_package_name_pattern => input_package_name_pattern,
-            input_method_signature_pattern => input_method_signature_pattern,
             input_exclude_method_signatures => input_exclude_method_signatures,
             input_class_name => input_class_name,
-            input_method_signature => input_method_signature,
             include_deleted => true,
             include_equal => false
         ) m
@@ -868,6 +867,23 @@ BEGIN
             AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
             AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
         GROUP BY tc.test_definition_id
+    ),
+    -- methodSignature / methodSignaturePattern only select which tests to return
+    tests_matching_signature AS (
+        SELECT DISTINCT tc.test_definition_id
+        FROM metrics.test_to_code_mapping tc
+        JOIN changes changed_m ON changed_m.group_id = tc.group_id AND changed_m.app_id = tc.app_id AND changed_m.signature = tc.signature
+        JOIN metrics.test_definitions td ON td.group_id = tc.group_id AND td.test_definition_id = tc.test_definition_id
+        WHERE tc.group_id = _group_id
+            AND tc.app_id = _app_id
+            AND (input_method_signature_pattern IS NULL OR changed_m.signature LIKE input_method_signature_pattern)
+            AND (input_method_signature IS NULL OR changed_m.signature = input_method_signature)
+            AND (input_coverage_branches IS NULL OR tc.branch = ANY(input_coverage_branches::VARCHAR[]))
+            AND (input_coverage_app_env_ids IS NULL OR tc.app_env_id = ANY(input_coverage_app_env_ids::VARCHAR[]))
+            AND (input_test_task_id IS NULL OR tc.test_task_id = input_test_task_id)
+            AND (input_test_tags IS NULL OR td.test_tags && input_test_tags::VARCHAR[])
+            AND (input_test_path_pattern IS NULL OR td.test_path LIKE input_test_path_pattern)
+            AND (input_test_name_pattern IS NULL OR td.test_name LIKE input_test_name_pattern)
     )
     SELECT
         td.group_id,
@@ -881,6 +897,10 @@ BEGIN
     FROM metrics.test_definitions td
 	JOIN impacted_tests it ON it.test_definition_id = td.test_definition_id
     WHERE td.group_id = _group_id
+        AND (
+            (input_method_signature_pattern IS NULL AND input_method_signature IS NULL)
+            OR td.test_definition_id IN (SELECT tms.test_definition_id FROM tests_matching_signature tms)
+        )
 	;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;

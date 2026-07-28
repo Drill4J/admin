@@ -35,7 +35,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
+class BuildChangesApiTest : MetricsDatabaseTests({ default, metrics ->
     RawDataWriterDatabaseConfig.init(default)
     MetricsDatabaseConfig.init(metrics)
 }) {
@@ -47,58 +47,76 @@ class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
     }
 
     @Test
-    fun `given target and baseline build, changes service should return method changes between builds`(): Unit =
+    fun `given target and baseline build, build-changes should return diff with coverage and impact`(): Unit =
         havingData {
             initBuildsAndMethodsData()
         }.expectThat {
-            client.get("/metrics/changes") {
+            client.get("/metrics/build-changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "3.0.0")
                 parameter("baselineBuildVersion", "1.0.0")
             }.returns { data ->
-                assertEquals(2, data.size)
+                assertEquals(3, data.size)
                 assertTrue(data.any { it["name"] == method2.name && it["changeType"] == ChangeType.MODIFIED.name })
                 assertTrue(data.any { it["name"] == method3.name && it["changeType"] == ChangeType.NEW.name })
-                assertTrue(data.all { it["coveredProbes"] == null })
-                assertTrue(data.all { it["probesCount"] == null })
-            }
-        }
-
-    @Test
-    fun `given includeDeleted parameter, changes service should return deleted methods between builds`(): Unit =
-        havingData {
-            initBuildsAndMethodsData()
-        }.expectThat {
-            client.get("/metrics/changes") {
-                parameter("groupId", testGroup)
-                parameter("appId", testApp)
-                parameter("buildVersion", "3.0.0")
-                parameter("baselineBuildVersion", "1.0.0")
-                parameter("includeDeleted", true)
-            }.returns { data ->
                 assertTrue(data.any { it["name"] == method4.name && it["changeType"] == ChangeType.DELETED.name })
             }
         }
 
     @Test
-    fun `given includeEqual parameter, changes service should return equal methods between builds`(): Unit =
+    fun `given isolated tested target build, build-changes should return coverage in current build`(): Unit =
         havingData {
             initBuildsAndMethodsData()
+            test1 covers method2 with probesOf(1, 1, 0) on build3
         }.expectThat {
-            client.get("/metrics/changes") {
+            client.get("/metrics/build-changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "3.0.0")
                 parameter("baselineBuildVersion", "1.0.0")
-                parameter("includeEqual", true)
             }.returns { data ->
-                assertTrue(data.any { it["name"] == method1.name && it["changeType"] == ChangeType.EQUAL.name })
+                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 2 })
             }
         }
 
     @Test
-    fun `given page and size, get changes endpoint should return changes only for specified page and size`(): Unit =
+    fun `given aggregated tested builds, build-changes should return coverage in other builds`(): Unit =
+        havingData {
+            initBuildsAndMethodsData()
+            test1 covers method2 with probesOf(1, 1, 0) on build2
+            test2 covers method2 with probesOf(0, 0, 1) on build3
+        }.expectThat {
+            client.get("/metrics/build-changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+            }.returns { data ->
+                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbes"] as Int) == 1 })
+                assertTrue(data.any { it["name"] == method2.name && (it["coveredProbesInOtherBuilds"] as Int) == 3 })
+            }
+        }
+
+    @Test
+    fun `given changeTypes filter, build-changes should return only matching rows`(): Unit =
+        havingData {
+            initBuildsAndMethodsData()
+        }.expectThat {
+            client.get("/metrics/build-changes") {
+                parameter("groupId", testGroup)
+                parameter("appId", testApp)
+                parameter("buildVersion", "3.0.0")
+                parameter("baselineBuildVersion", "1.0.0")
+                parameter("changeTypes", "deleted")
+            }.returns { data ->
+                assertEquals(1, data.size)
+                assertTrue(data.all { it["changeType"] == ChangeType.DELETED.name })
+            }
+        }
+
+    @Test
+    fun `given page and size, build-changes should paginate`(): Unit =
         havingData {
             val methods = (1..15).map { idx ->
                 SingleMethodPayload(
@@ -115,7 +133,7 @@ class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
             client.deployInstance(instance = build2, methods = methods.map { it.changeChecksum() }.toTypedArray())
 
         }.expectThat {
-            client.get("/metrics/changes") {
+            client.get("/metrics/build-changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "2.0.0")
@@ -126,7 +144,7 @@ class ChangesApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertEquals(5, data.size)
             }
 
-            client.get("/metrics/changes") {
+            client.get("/metrics/build-changes") {
                 parameter("groupId", testGroup)
                 parameter("appId", testApp)
                 parameter("buildVersion", "2.0.0")

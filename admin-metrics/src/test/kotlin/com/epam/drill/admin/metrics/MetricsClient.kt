@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics
 
-import com.epam.drill.admin.metrics.views.ChangeType
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
@@ -23,55 +22,66 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.assertTrue
 
-suspend fun HttpClient.getImpactedTests(
+suspend fun HttpClient.postImpactedTests(
     build: InstancePayload,
     baselineBuild: InstancePayload,
+    otherParameters: MutableMap<String, Any?>.() -> Unit = {}
+): HttpResponse {
+    val extras = mutableMapOf<String, Any?>()
+    extras.otherParameters()
+    val body = buildJsonObject {
+        put("groupId", build.groupId)
+        put("appId", build.appId)
+        put("buildVersion", build.buildVersion)
+        put("baselineBuildVersion", baselineBuild.buildVersion)
+        extras.forEach { (key, value) ->
+            when (value) {
+                null -> Unit
+                is String -> put(key, value)
+                is Number -> put(key, value)
+                is Boolean -> put(key, value)
+                is List<*> -> put(
+                    key,
+                    JsonArray(value.map { item -> JsonPrimitive(item.toString()) })
+                )
+                else -> put(key, value.toString())
+            }
+        }
+    }
+    return post("/metrics/impacted-tests") {
+        contentType(ContentType.Application.Json)
+        setBody(body)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.getBuildChanges(
+    build: InstancePayload,
+    baselineBuild: InstancePayload,
+    hasImpactedTests: Boolean? = null,
     otherParameters: HttpRequestBuilder.() -> Unit = {}
 ): HttpResponse {
-    return get("/metrics/impacted-tests") {
+    return get("/metrics/build-changes") {
         parameter("groupId", build.groupId)
         parameter("appId", build.appId)
         parameter("buildVersion", build.buildVersion)
         parameter("baselineBuildVersion", baselineBuild.buildVersion)
+        if (hasImpactedTests == true) {
+            parameter("hasImpactedTests", true)
+        }
         otherParameters()
     }.assertSuccessStatus()
 }
-
-suspend fun HttpClient.getImpactedMethods(
-    build: InstancePayload,
-    baselineBuild: InstancePayload,
-    otherParameters: HttpRequestBuilder.() -> Unit = {}
-): HttpResponse {
-    return get("/metrics/impacted-methods") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
-        parameter("baselineBuildVersion", baselineBuild.buildVersion)
-        otherParameters()
-    }.assertSuccessStatus()
-}
-
-suspend fun HttpClient.getChanges(
-    build: InstancePayload,
-    baselineBuild: InstancePayload,
-    includeDeleted: Boolean? = null,
-    includeEqual: Boolean? = null,
-    otherParameters: HttpRequestBuilder.() -> Unit = {}
-): HttpResponse {
-    return get("/metrics/changes") {
-        parameter("groupId", build.groupId)
-        parameter("appId", build.appId)
-        parameter("buildVersion", build.buildVersion)
-        parameter("baselineBuildVersion", baselineBuild.buildVersion)
-        parameter("includeDeleted", includeDeleted)
-        parameter("includeEqual", includeEqual)
-        otherParameters()
-    }.assertSuccessStatus()
-}
-
 
 suspend fun HttpClient.getCoverage(
     build: InstancePayload,
@@ -108,7 +118,7 @@ fun SingleMethodPayload.assertMethodIsImpacted(data: List<Map<String, Any?>>) {
         data.any {
             it["name"] == this.name && it["className"] == this.classname
         },
-        "Expected method [${this.classname}.${this.name}] to be impacted, but it was not found in response of impacted methods."
+        "Expected method [${this.classname}.${this.name}] to be impacted, but it was not found in response of build changes."
     )
 }
 
@@ -117,7 +127,7 @@ fun SingleMethodPayload.assertMethodIsNotImpacted(data: List<Map<String, Any?>>)
         data.none {
             it["name"] == this.name && it["className"] == this.classname
         },
-        "Expected method [${this.classname}.${this.name}] to be not impacted, but it was found in response of impacted methods."
+        "Expected method [${this.classname}.${this.name}] to be not impacted, but it was found in response of build changes."
     )
 }
 
@@ -126,7 +136,7 @@ fun SingleMethodPayload.assertMethodHasUnknownImpact(data: List<Map<String, Any?
         data.none {
             it["name"] == this.name && it["className"] == this.classname
         },
-        "Expected method [${this.classname}.${this.name}] to be not impacted, but it was found in response of impacted methods."
+        "Expected method [${this.classname}.${this.name}] to be not impacted, but it was found in response of build changes."
     )
 }
 
@@ -136,11 +146,11 @@ fun SingleMethodPayload.assertMethodIsModified(data: List<Map<String, Any?>>) {
     }
     assertTrue(
         actual != null,
-        "Expected method [${this.classname}.${this.name}] to be modified, but it was not found in response of changes."
+        "Expected method [${this.classname}.${this.name}] to be modified, but it was not found in response of build changes."
     )
     assertTrue(
-        actual["changeType"] == ChangeType.MODIFIED.name,
-        "Expected method [${this.classname}.${this.name}] to be modified, but it was marked as ${actual["changeType"]} in response of changes."
+        actual["changeType"] == com.epam.drill.admin.metrics.views.ChangeType.MODIFIED.name,
+        "Expected method [${this.classname}.${this.name}] to be modified, but it was marked as ${actual["changeType"]} in response of build changes."
     )
 }
 
@@ -150,25 +160,11 @@ fun SingleMethodPayload.assertMethodIsNew(data: List<Map<String, Any?>>) {
     }
     assertTrue(
         actual != null,
-        "Expected method [${this.classname}.${this.name}] to be new, but it was not found in response of changes."
+        "Expected method [${this.classname}.${this.name}] to be new, but it was not found in response of build changes."
     )
     assertTrue(
-        actual["changeType"] == ChangeType.NEW.name,
-        "Expected method [${this.classname}.${this.name}] to be new, but it was marked as ${actual["changeType"]} in response of changes."
-    )
-}
-
-fun SingleMethodPayload.assertMethodIsDeleted(data: List<Map<String, Any?>>) {
-    val actual = data.find {
-        it["name"] == this.name
-    }
-    assertTrue(
-        actual != null,
-        "Expected method [${this.classname}.${this.name}] to be deleted, but it was not found in response of changes."
-    )
-    assertTrue(
-        actual["changeType"] == ChangeType.DELETED.name,
-        "Expected method [${this.classname}.${this.name}] to be deleted, but it was marked as ${actual["changeType"]} in response of changes."
+        actual["changeType"] == com.epam.drill.admin.metrics.views.ChangeType.NEW.name,
+        "Expected method [${this.classname}.${this.name}] to be new, but it was marked as ${actual["changeType"]} in response of build changes."
     )
 }
 
@@ -178,11 +174,25 @@ fun SingleMethodPayload.assertMethodIsEqual(data: List<Map<String, Any?>>) {
     }
     assertTrue(
         actual != null,
-        "Expected method [${this.classname}.${this.name}] to be equal, but it was not found in response of changes."
+        "Expected method [${this.classname}.${this.name}] to be equal, but it was not found in response of build changes."
     )
     assertTrue(
-        actual["changeType"] == ChangeType.EQUAL.name,
-        "Expected method [${this.classname}.${this.name}] to be equal, but it was marked as ${actual["changeType"]} in response of changes."
+        actual["changeType"] == com.epam.drill.admin.metrics.views.ChangeType.EQUAL.name,
+        "Expected method [${this.classname}.${this.name}] to be equal, but it was marked as ${actual["changeType"]} in response of build changes."
+    )
+}
+
+fun SingleMethodPayload.assertMethodIsDeleted(data: List<Map<String, Any?>>) {
+    val actual = data.find {
+        it["name"] == this.name
+    }
+    assertTrue(
+        actual != null,
+        "Expected method [${this.classname}.${this.name}] to be deleted, but it was not found in response of build changes."
+    )
+    assertTrue(
+        actual["changeType"] == com.epam.drill.admin.metrics.views.ChangeType.DELETED.name,
+        "Expected method [${this.classname}.${this.name}] to be deleted, but it was marked as ${actual["changeType"]} in response of build changes."
     )
 }
 

@@ -13,17 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.metrics.models
+package com.epam.drill.admin.metrics.views
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-open class TestCriteria(
-    val testTags: List<String> = emptyList(),
-    val testPath: String? = null,
-    val testName: String? = null,
-    val testTaskId: String? = null,
-    val testDefinitionId: String? = null,
-) {
-    object NONE: TestCriteria()
-}
+data class BuildChangeView(
+    val signature: String,
+    val className: String,
+    val name: String,
+    val params: List<String> = emptyList(),
+    val returnType: String?,
+    val changeType: ChangeType? = null,
+    val probesCount: Int? = null,
+    val coveredProbes: Int? = null,
+    val coveredProbesInOtherBuilds: Int? = null,
+    val coverageRatio: Double? = null,
+    val coverageRatioInOtherBuilds: Double? = null,
+    val missedProbes: Int? = null,
+    val missedProbesInOtherBuilds: Int? = null,
+    val impactedTests: Int = 0,
+)

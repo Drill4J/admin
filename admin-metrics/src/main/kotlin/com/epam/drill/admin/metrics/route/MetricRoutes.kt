@@ -270,45 +270,8 @@ class Metrics {
         val coverageThreshold: Double = 0.0,
     )
 
-    @Resource("/recommended-tests")
-    class RecommendedTests(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val testsToSkip: Boolean = false,
-        val testTaskId: String? = null,
-        val targetInstanceId: String? = null,
-        val targetCommitSha: String? = null,
-        val targetBuildVersion: String? = null,
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-        val baselineBuildBranches: List<String> = emptyList(),
-        val coveragePeriodDays: Int? = null,
-    )
-
-    @Resource("/changes")
-    class Changes(
-        val parent: Metrics,
-
-        val groupId: String,
-        val appId: String,
-        val instanceId: String? = null,
-        val commitSha: String? = null,
-        val buildVersion: String? = null,
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-        val includeDeleted: Boolean? = null,
-        val includeEqual: Boolean? = null,
-
-        val page: Int? = null,
-        val pageSize: Int? = null
-    )
-
-    @Resource("/risks")
-    class Risks(
+    @Resource("/build-changes")
+    class BuildChanges(
         val parent: Metrics,
 
         val groupId: String,
@@ -322,9 +285,14 @@ class Metrics {
         val testTags: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
-
+        val changeTypes: List<String> = emptyList(),
+        val hasImpactedTests: Boolean? = null,
+        val methodSignature: String? = null,
+        val testDefinitionId: String? = null,
+        val sortBy: String? = null,
+        val sortOrder: SortOrder? = null,
         val page: Int? = null,
-        val pageSize: Int? = null
+        val pageSize: Int? = null,
     )
 
     @Resource("/coverage")
@@ -410,50 +378,10 @@ class Metrics {
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+        val testDefinitionId: String? = null,
 
         val coverageBranches: List<String> = emptyList(),
         val coverageAppEnvIds: List<String> = emptyList(),
-
-        val sortBy: String? = null,
-        val sortOrder: SortOrder? = null,
-
-        val page: Int? = null,
-        val pageSize: Int? = null,
-    )
-
-    @Resource("/impacted-methods")
-    @Serializable
-    class ImpactedMethods(
-        val parent: Metrics = Metrics(),
-
-        val groupId: String,
-        val appId: String,
-        val instanceId: String? = null,
-        val commitSha: String? = null,
-        val buildVersion: String? = null,
-
-        val baselineInstanceId: String? = null,
-        val baselineCommitSha: String? = null,
-        val baselineBuildVersion: String? = null,
-
-        val packageName: String? = null,
-        val className: String? = null,
-        val methodName: String? = null,
-        val methodSignature: String? = null,
-        @Deprecated("Use packageName instead")
-        val packageNamePattern: String? = null,
-        @Deprecated("Use className instead")
-        val classNamePattern: String? = null,
-
-        val testTaskId: String? = null,
-        val testTag: String? = null,
-        val testPath: String? = null,
-        val testName: String? = null,
-
-        val onlyBaselineBuildTestsEnabled: Boolean = false,
-        val coverageBranches: List<String> = emptyList(),
-        val coverageAppEnvIds: List<String> = emptyList(),
-        val coveragePeriodDays: Int? = null,
 
         val sortBy: String? = null,
         val sortOrder: SortOrder? = null,
@@ -486,18 +414,13 @@ fun Route.metricsRoutes() {
     getSimilarBuilds()
     getBuildTestSessionStats()
     getBuildDiffReport()
-    getRecommendedTests()
     getCoverageTreemap()
     getChangesCoverageTreemap()
-    getChanges()
-    getRisks()
+    getBuildChanges()
     getCoverage()
     getCoverageByPackage()
     getCoverageByClass()
-    getImpactedTests()
     postImpactedTests()
-    getImpactedMethods()
-    postImpactedMethods()
 }
 
 fun Route.getGroups() {
@@ -887,61 +810,11 @@ fun Route.getBuildDiffReport() {
     }
 }
 
-fun Route.getRecommendedTests() {
+fun Route.getBuildChanges() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Metrics.RecommendedTests> { params ->
-        val report = metricsService.getRecommendedTests(
-            groupId = params.groupId,
-            appId = params.appId,
-            testsToSkip = params.testsToSkip,
-            testTaskId = params.testTaskId,
-            coveragePeriodDays = params.coveragePeriodDays,
-            targetInstanceId = params.targetInstanceId,
-            targetCommitSha = params.targetCommitSha,
-            targetBuildVersion = params.targetBuildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            baselineBuildBranches = params.baselineBuildBranches,
-        )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(report))
-    }
-}
-
-fun Route.getChanges() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.Changes> { params ->
-        val data = metricsService.getChanges(
-            groupId = params.groupId,
-            appId = params.appId,
-            instanceId = params.instanceId,
-            commitSha = params.commitSha,
-            buildVersion = params.buildVersion,
-            baselineInstanceId = params.baselineInstanceId,
-            baselineCommitSha = params.baselineCommitSha,
-            baselineBuildVersion = params.baselineBuildVersion,
-            includeDeleted = params.includeDeleted,
-            includeEqual = params.includeEqual,
-            page = params.page,
-            pageSize = params.pageSize,
-        )
-        this.call.respond(
-            HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
-            )
-        )
-    }
-}
-
-fun Route.getRisks() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.Risks> { params ->
-        val data = metricsService.getRisks(
+    get<Metrics.BuildChanges> { params ->
+        val data = metricsService.getBuildChanges(
             groupId = params.groupId,
             appId = params.appId,
             instanceId = params.instanceId,
@@ -953,6 +826,12 @@ fun Route.getRisks() {
             testTags = params.testTags,
             envIds = params.envIds,
             branches = params.branches,
+            changeTypes = params.changeTypes,
+            hasImpactedTests = params.hasImpactedTests,
+            methodSignature = params.methodSignature,
+            testDefinitionId = params.testDefinitionId,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -1040,21 +919,6 @@ fun Route.getCoverageByClass() {
     }
 }
 
-fun Route.getImpactedTests() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.ImpactedTests> { params ->
-        val data = getImpactedTests(params, metricsService)
-        this.call.respond(
-            HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
-            )
-        )
-    }
-}
-
 fun Route.postImpactedTests() {
     val metricsService by closestDI().instance<MetricsService>()
 
@@ -1068,35 +932,39 @@ fun Route.postImpactedTests() {
             )
         )
     }
-}
 
-fun Route.getImpactedMethods() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    get<Metrics.ImpactedMethods> { params ->
-        val data = getImpactedMethods(params, metricsService)
-        this.call.respond(
-            HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
-            )
+    post("metrics/impacted-tests/filter-options") {
+        val params = call.receive<Metrics.ImpactedTests>()
+        val targetBuild = Build(
+            params.groupId,
+            params.appId,
+            params.instanceId,
+            params.commitSha,
+            params.buildVersion
         )
-    }
-}
-
-fun Route.postImpactedMethods() {
-    val metricsService by closestDI().instance<MetricsService>()
-
-    post("metrics/impacted-methods") {
-        val data = getImpactedMethods(call.receive(), metricsService)
-        this.call.respond(
-            HttpStatusCode.OK,
-            PagedDataResponse(
-                data.items,
-                Paging(data.page, data.pageSize, data.total)
-            )
+        val baselineBuild = BaselineBuild(
+            params.groupId,
+            params.appId,
+            params.baselineInstanceId,
+            params.baselineCommitSha,
+            params.baselineBuildVersion
         )
+        val data = metricsService.getImpactedTestsFilterOptions(
+            build = targetBuild,
+            baselineBuild = baselineBuild,
+            methodCriteria = MethodCriteria(
+                packageName = params.packageName ?: params.packageNamePattern,
+                className = params.className ?: params.classNamePattern,
+                methodName = params.methodName,
+                methodSignature = params.methodSignature,
+                excludeMethodSignatures = params.excludeMethodSignatures
+            ),
+            coverageCriteria = CoverageCriteria(
+                branches = params.coverageBranches,
+                appEnvIds = params.coverageAppEnvIds,
+            ),
+        )
+        call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 
@@ -1126,7 +994,8 @@ private suspend fun getImpactedTests(
             testTags = listOfNotNull(params.testTag),
             testTaskId = params.testTaskId,
             testPath = params.testPath,
-            testName = params.testName
+            testName = params.testName,
+            testDefinitionId = params.testDefinitionId,
         ),
         methodCriteria = MethodCriteria(
             packageName = params.packageName ?: params.packageNamePattern,
@@ -1144,49 +1013,4 @@ private suspend fun getImpactedTests(
         page = params.page,
         pageSize = params.pageSize,
     )
-}
-
-private suspend fun getImpactedMethods(
-    params: Metrics.ImpactedMethods,
-    metricsService: MetricsService
-): PagedList<MethodView> {
-    val targetBuild = Build(
-        params.groupId,
-        params.appId,
-        params.instanceId,
-        params.commitSha,
-        params.buildVersion
-    )
-    val baselineBuild = BaselineBuild(
-        params.groupId,
-        params.appId,
-        params.baselineInstanceId,
-        params.baselineCommitSha,
-        params.baselineBuildVersion
-    )
-    val data = metricsService.getImpactedMethods(
-        build = targetBuild,
-        baselineBuild = baselineBuild,
-        testCriteria = TestCriteria(
-            testTags = listOfNotNull(params.testTag),
-            testTaskId = params.testTaskId,
-            testPath = params.testPath,
-            testName = params.testName
-        ),
-        methodCriteria = MethodCriteria(
-            packageName = params.packageName ?: params.packageNamePattern,
-            className = params.className ?: params.classNamePattern,
-            methodName = params.methodName,
-            methodSignature = params.methodSignature,
-        ),
-        coverageCriteria = CoverageCriteria(
-            branches = params.coverageBranches,
-            appEnvIds = params.coverageAppEnvIds,
-        ),
-        sortBy = params.sortBy,
-        sortOrder = params.sortOrder,
-        page = params.page,
-        pageSize = params.pageSize,
-    )
-    return data
 }

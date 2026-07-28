@@ -1379,95 +1379,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/recommended-tests:
-    get:
-      summary: Get recommended tests
-      description: |
-        Analyzes code changes between a target build and a baseline build and returns a list of tests recommended
-        for execution based on impact analysis. The endpoint identifies which methods have changed and finds tests
-        that previously covered those methods, recommending them for re-execution to validate the changes.
-        When testsToSkip is true, the endpoint inverts the result - returning tests that can be safely skipped
-        because they do not cover any changed code. The target build is identified by
-        targetInstanceId, targetCommitSha, or targetBuildVersion. The baseline build is identified by
-        baselineInstanceId, baselineCommitSha, baselineBuildVersion, or baselineBuildBranches.
-      operationId: getRecommendedTests
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: testsToSkip
-          in: query
-          description: When true, returns tests that can be safely skipped (not impacted by changes). When false (default), returns tests that should be executed because they cover changed code.
-          schema:
-            type: boolean
-            default: false
-        - name: testTaskId
-          in: query
-          description: Optional test task ID filter. When specified, only considers test launches associated with this task ID for recommendations.
-          schema:
-            type: string
-        - name: targetInstanceId
-          in: query
-          description: Instance ID of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: targetCommitSha
-          in: query
-          description: Git commit SHA of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: targetBuildVersion
-          in: query
-          description: Build version of the target build. One of targetInstanceId, targetCommitSha, or targetBuildVersion should be provided.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build. If not provided, the system automatically selects the previous build as baseline.
-          schema:
-            type: string
-        - name: baselineBuildBranches
-          in: query
-          description: List of Git branch names to consider when selecting the baseline build. Useful when the baseline should be chosen from specific branches (e.g., main, develop).
-          schema:
-            type: array
-            items:
-              type: string
-        - name: coveragePeriodDays
-          in: query
-          description: Number of days to look back for coverage data when determining test recommendations. Limits the scope of historical coverage data used for analysis.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Recommended tests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
   /api/metrics/coverage-treemap:
     get:
       summary: Get coverage treemap
@@ -1614,95 +1525,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/changes:
+  /api/metrics/build-changes:
     get:
-      summary: Get method changes between builds
+      summary: Get unified build changes between builds
       description: |
-        Retrieves a paginated list of method-level changes between a target build and a baseline build.
-        Uses `metrics.get_changes` — method diff only (no coverage). For coverage risks, use `GET /api/metrics/risks`.
-      operationId: getMethodChanges
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: instanceId
-          in: query
-          description: Instance ID of the target build deployment.
-          schema:
-            type: string
-        - name: commitSha
-          in: query
-          description: Git commit SHA of the target build.
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          description: Build version of the target build.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build deployment.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build.
-          schema:
-            type: string
-        - name: includeDeleted
-          in: query
-          description: Whether to include methods that were deleted in the target build (present in baseline but absent in target). Defaults to false.
-          schema:
-            type: boolean
-        - name: includeEqual
-          in: query
-          description: Whether to include methods that are unchanged between builds. Defaults to false.
-          schema:
-            type: boolean
-        - name: page
-          in: query
-          description: Page number for pagination (1-based). Defaults to 1 if not specified.
-          schema:
-            type: integer
-        - name: pageSize
-          in: query
-          description: Number of items per page. Defaults to a system-defined value if not specified.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: List of method changes between builds
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListDataResponse'
-  /api/metrics/risks:
-    get:
-      summary: Get coverage risks report between builds
-      description: |
-        Retrieves a paginated risks report for changed methods between a target build and a baseline build.
-        Mirrors Metabase card 2: `metrics.get_changes_with_coverage` LEFT JOIN `metrics.get_impacted_methods_v2`,
-        sorted by aggregated missed probes descending.
-      operationId: getRisksReport
+        Retrieves a paginated unified changes report between a target build and a baseline build.
+        Composes `metrics.get_changes_with_coverage` (with deleted methods included) LEFT JOIN
+        `metrics.get_impacted_methods_v2` — one row per diff entry with coverage and impacted test counts.
+        Default sort is aggregated missed probes descending.
+      operationId: getBuildChanges
       tags:
         - metrics
       security:
@@ -1763,6 +1594,51 @@ paths:
             type: array
             items:
               type: string
+        - name: changeTypes
+          in: query
+          description: Optional filter by change type. Supported values are new, modified, deleted, equal.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - new
+                - modified
+                - deleted
+                - equal
+        - name: hasImpactedTests
+          in: query
+          description: When true, return only rows with impactedTests > 0.
+          schema:
+            type: boolean
+        - name: methodSignature
+          in: query
+          description: Optional filter by full method signature (className:methodName:params:returnType).
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          description: Optional reverse drill-down filter — return only changed methods linked to the given test definition.
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Field name to sort results by.
+          schema:
+            type: string
+            enum:
+              - changeType
+              - coverageRatioInOtherBuilds
+              - impactedTests
+              - aggregatedMissedProbes
+              - signature
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
           schema:
@@ -1773,11 +1649,11 @@ paths:
             type: integer
       responses:
         '200':
-          description: Paginated risks report
+          description: Paginated unified build changes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/coverage:
     get:
       summary: Get coverage by methods for a build
@@ -1979,162 +1855,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/impacted-tests:
-    get:
+    post:
       summary: Get impacted tests
       description: |
         Retrieves a paginated list of tests that are impacted by code changes between a target build and a baseline build.
         Impact analysis identifies which tests previously covered methods that have been modified, added, or deleted.
-      operationId: getImpactedTests
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: instanceId
-          in: query
-          description: Instance ID of the target build deployment.
-          schema:
-            type: string
-        - name: commitSha
-          in: query
-          description: Git commit SHA of the target build.
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          description: Build version of the target build.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build deployment.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build.
-          schema:
-            type: string
-        - name: packageName
-          in: query
-          description: Optional filter to only consider methods in this package when determining impacted tests.
-          schema:
-            type: string
-        - name: className
-          in: query
-          description: Optional filter to only consider methods in this class when determining impacted tests.
-          schema:
-            type: string
-        - name: methodName
-          in: query
-          description: Optional filter to only consider methods with this name when determining impacted tests.
-          schema:
-            type: string
-        - name: excludeMethodSignatures
-          in: query
-          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType".
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only tests from launches associated with this task ID are considered.
-          schema:
-            type: string
-        - name: testTag
-          in: query
-          description: Optional filter by test tag. When specified, only tests with this tag are included.
-          schema:
-            type: string
-        - name: testPath
-          in: query
-          description: Optional filter by test source path. When specified, only tests at this path are included.
-          schema:
-            type: string
-        - name: testName
-          in: query
-          description: Optional filter by test name. When specified, only tests with this name are included.
-          schema:
-            type: string
-        - name: coverageBranches
-          in: query
-          description: List of Git branch names to consider when selecting coverage data for impact analysis.
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: coverageAppEnvIds
-          in: query
-          description: List of application environment IDs to consider when selecting coverage data for impact analysis.
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: sortBy
-          in: query
-          description: Field name to sort results by. Supported values are testPath, testName, testRunner, impactedMethods.
-          schema:
-            type: string
-            enum:
-              - testPath
-              - testName
-              - testRunner
-              - impactedMethods
-        - name: sortOrder
-          in: query
-          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
-          schema:
-            type: string
-            enum:
-              - ASC
-              - DESC
-        - name: page
-          in: query
-          description: Page number for pagination (1-based). Defaults to 1 if not specified.
-          schema:
-            type: integer
-        - name: pageSize
-          in: query
-          description: Number of items per page. Defaults to a system-defined value if not specified.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: List of impacted tests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListDataResponse'
-    post:
-      summary: Get impacted tests (POST)
-      description: |
-        POST variant of the impacted tests endpoint. Accepts the same parameters as the GET endpoint but via a JSON
-        request body instead of query parameters. Useful when the number of filter parameters is large or contains
-        complex values (e.g., lists of method signatures to exclude) that are impractical to pass as query parameters.
+        Accepts filters via JSON request body (including lists such as excludeMethodSignatures) that are impractical as query parameters.
       operationId: postImpactedTests
       tags:
         - metrics
@@ -2149,155 +1875,6 @@ paths:
       responses:
         '200':
           description: List of impacted tests
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListDataResponse'
-  /api/metrics/impacted-methods:
-    get:
-      summary: Get impacted methods
-      description: |
-        Retrieves a paginated list of methods that have been covered by tests and changed between a target build and a baseline build. 
-        While impacted-tests shows which tests are affected by changes, impacted-methods shows
-        which changed methods are covered (or uncovered) by existing tests.
-      operationId: getImpactedMethods
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      parameters:
-        - name: groupId
-          in: query
-          required: true
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
-          in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: instanceId
-          in: query
-          description: Instance ID of the target build deployment.
-          schema:
-            type: string
-        - name: commitSha
-          in: query
-          description: Git commit SHA of the target build.
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          description: Build version of the target build.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build deployment.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build
-          schema:
-            type: string
-        - name: packageName
-          in: query
-          description: Optional filter by package name to narrow results to methods in a specific package.
-          schema:
-            type: string
-        - name: className
-          in: query
-          description: Optional filter by class name to narrow results to methods in a specific class.
-          schema:
-            type: string
-        - name: methodName
-          in: query
-          description: Optional filter by method name to narrow results to a specific method.
-          schema:
-            type: string
-        - name: testTaskId
-          in: query
-          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
-          schema:
-            type: string
-        - name: testTag
-          in: query
-          description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
-          schema:
-            type: string
-        - name: testPath
-          in: query
-          description: Optional filter by test source path. When specified, only tests at this path are considered for impact counting.
-          schema:
-            type: string
-        - name: testName
-          in: query
-          description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
-          schema:
-            type: string
-        - name: sortBy
-          in: query
-          description: Field name to sort results by. Supported values are signature, className, name, impactedTests.
-          schema:
-            type: string
-            enum:
-              - signature
-              - className
-              - name
-              - impactedTests
-        - name: sortOrder
-          in: query
-          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
-          schema:
-            type: string
-            enum:
-              - ASC
-              - DESC
-        - name: page
-          in: query
-          description: Page number for pagination (1-based). Defaults to 1 if not specified.
-          schema:
-            type: integer
-        - name: pageSize
-          in: query
-          description: Number of items per page. Defaults to a system-defined value if not specified.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: List of impacted methods
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListDataResponse'
-    post:
-      summary: Get impacted methods (POST)
-      description: |
-        POST variant of the impacted methods endpoint. Accepts the same parameters as the GET endpoint but via a JSON
-        request body instead of query parameters. Useful when the number of filter parameters is large or contains
-        complex values that are impractical to pass as query parameters.
-      operationId: postImpactedMethods
-      tags:
-        - metrics
-      security:
-        - apiKeyAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ImpactedMethodsRequest'
-      responses:
-        '200':
-          description: List of impacted methods
           content:
             application/json:
               schema:
@@ -3601,6 +3178,10 @@ components:
           type: string
           nullable: true
           description: Optional filter by test name. When specified, only tests with this name are included.
+        testDefinitionId:
+          type: string
+          nullable: true
+          description: Optional filter by exact test definition ID.
         coverageBranches:
           type: array
           items:
@@ -3633,95 +3214,52 @@ components:
         pageSize:
           type: integer
           nullable: true
-    ImpactedMethodsRequest:
+    BuildChangeView:
       type: object
-      description: |
-        Request body for the POST variant of the impacted methods endpoint.
-      required:
-        - groupId
-        - appId
+      description: Unified build change row with coverage and impacted test count.
       properties:
-        groupId:
+        signature:
           type: string
-          description: Unique identifier for the application group.
-        appId:
-          type: string
-          description: Unique identifier for the application.
-        instanceId:
-          type: string
-          nullable: true
-          description: Instance ID of the target build. One of instanceId, commitSha, or buildVersion should be provided.
-        commitSha:
-          type: string
-          nullable: true
-          description: Git commit SHA of the target build. One of instanceId, commitSha, or buildVersion should be provided.
-        buildVersion:
-          type: string
-          nullable: true
-          description: Build version of the target build. One of instanceId, commitSha, or buildVersion should be provided.
-        baselineInstanceId:
-          type: string
-          nullable: true
-          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build.
-        baselineCommitSha:
-          type: string
-          nullable: true
-          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build.
-        baselineBuildVersion:
-          type: string
-          nullable: true
-          description: Build version of the baseline build. If not provided, the system automatically selects the previous build.
-        packageName:
-          type: string
-          nullable: true
-          description: Optional filter by package name to narrow results to methods in a specific package.
         className:
           type: string
-          nullable: true
-          description: Optional filter by class name to narrow results to methods in a specific class.
-        methodName:
+        name:
+          type: string
+        params:
+          type: array
+          items:
+            type: string
+        returnType:
           type: string
           nullable: true
-          description: Optional filter by method name to narrow results to a specific method.
-        methodSignature:
-          type: string
-          nullable: true
-          description: Optional filter by full method signature (className:methodName:params:returnType).
-        testTaskId:
-          type: string
-          nullable: true
-          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
-        testTag:
-          type: string
-          nullable: true
-          description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
-        testPath:
-          type: string
-          nullable: true
-          description: Optional filter by test source path. When specified, only tests at this path are considered for impact counting.
-        testName:
-          type: string
-          nullable: true
-          description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
-        sortBy:
+        changeType:
           type: string
           enum:
-            - signature
-            - className
-            - name
-            - impactedTests
-          description: Field name to sort results by.
-          nullable: true
-        sortOrder:
-          type: string
-          enum:
-            - ASC
-            - DESC
-          description: Sort order direction. Defaults to ASC if not specified.
-          nullable: true
-        page:
+            - NEW
+            - MODIFIED
+            - DELETED
+            - EQUAL
+        probesCount:
           type: integer
           nullable: true
-        pageSize:
+        coveredProbes:
           type: integer
           nullable: true
+        missedProbes:
+          type: integer
+          nullable: true
+        coverageRatio:
+          type: number
+          format: double
+          nullable: true
+        coveredProbesInOtherBuilds:
+          type: integer
+          nullable: true
+        missedProbesInOtherBuilds:
+          type: integer
+          nullable: true
+        coverageRatioInOtherBuilds:
+          type: number
+          format: double
+          nullable: true
+        impactedTests:
+          type: integer

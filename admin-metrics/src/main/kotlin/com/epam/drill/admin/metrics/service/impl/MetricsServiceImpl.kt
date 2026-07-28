@@ -682,164 +682,7 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun getRecommendedTests(
-        groupId: String,
-        appId: String,
-        testsToSkip: Boolean?,
-        testTaskId: String?,
-        coveragePeriodDays: Int?,
-        targetInstanceId: String?,
-        targetCommitSha: String?,
-        targetBuildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        baselineBuildBranches: List<String>
-    ): Map<String, Any?> = transaction {
-        val hasBaselineBuild = listOf(baselineInstanceId, baselineCommitSha, baselineBuildVersion).any { it != null }
-
-        val baselineBuildId = takeIf { hasBaselineBuild }?.let {
-            generateBuildId(
-                groupId,
-                appId,
-                baselineInstanceId,
-                baselineCommitSha,
-                baselineBuildVersion,
-                """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-            ).also { buildId ->
-                if (!metricsRepository.buildExists(buildId)) {
-                    throw BuildNotFound("Baseline build info not found for $buildId")
-                }
-            }
-        }
-
-        val targetBuildId = generateBuildId(
-            groupId,
-            appId,
-            targetInstanceId,
-            targetCommitSha,
-            targetBuildVersion,
-            """
-            Provide at least one the following: targetInstanceId, targetCommitSha, targetBuildVersion
-            """.trimIndent()
-        )
-        if (!metricsRepository.buildExists(targetBuildId)) {
-            throw BuildNotFound("Target build info not found for $targetBuildId")
-        }
-
-        val coveragePeriodFrom = (coveragePeriodDays ?: testRecommendationsConfig.coveragePeriodDays)?.let {
-            LocalDateTime.now().minusDays(it.toLong())
-        }
-        val testImpactStatus = when (testsToSkip) {
-            true -> listOf(TestImpactStatus.NOT_IMPACTED)
-            false -> listOf(TestImpactStatus.IMPACTED, TestImpactStatus.UNKNOWN_IMPACT)
-            null -> TestImpactStatus.entries
-        }
-
-
-        val recommendedTests = metricsRepository.getRecommendedTests(
-            targetBuildId = targetBuildId,
-            testImpactStatuses = testImpactStatus.map { it.name },
-            baselineUntilBuildId = baselineBuildId,
-            baselineBuildBranches = baselineBuildBranches,
-            testTaskIds = listOfNotNull(testTaskId),
-            coveragePeriodFrom = coveragePeriodFrom,
-            offset = 0,
-            limit = null
-        ).map { data ->
-            RecommendedTestsView(
-                testDefinitionId = data["test_definition_id"] as String,
-                testRunner = data["test_runner"] as String?,
-                testPath = data["test_path"] as String,
-                testName = data["test_name"] as String,
-                tags = data["test_tags"] as List<String>?,
-                metadata = data["test_metadata"] as JsonElement?,
-                testImpactStatus = (data["test_impact_status"] as String?)?.let { TestImpactStatus.valueOf(it) },
-                impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
-                baselineBuildId = data["baseline_build_id"] as String?,
-            )
-        }
-
-        // TODO add recommended tests UI link
-        // val recommendedTestsReportPath = metricsServiceUiLinksConfig.recommendedTestsReportPath
-        mapOf(
-            "inputParameters" to mapOf(
-                "groupId" to groupId,
-                "appId" to appId,
-                "targetInstanceId" to targetInstanceId,
-                "targetCommitSha" to targetCommitSha,
-                "targetBuildVersion" to targetBuildVersion,
-                "baselineInstanceId" to baselineInstanceId,
-                "baselineCommitSha" to baselineCommitSha,
-                "baselineBuildVersion" to baselineBuildVersion,
-            ),
-            "inferredValues" to mapOf(
-                "build" to targetBuildId,
-                "baselineBuild" to baselineBuildId,
-            ),
-            "recommendedTests" to recommendedTests,
-        )
-    }
-
-    override suspend fun getChanges(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        includeDeleted: Boolean?,
-        includeEqual: Boolean?,
-        page: Int?,
-        pageSize: Int?
-    ): PagedList<ChangeView> = transaction {
-        val baselineBuildId = generateBuildId(
-            groupId,
-            appId,
-            baselineInstanceId,
-            baselineCommitSha,
-            baselineBuildVersion,
-            """
-                Provide at least one the following: baselineInstanceId, baselineCommitSha, baselineBuildVersion
-                """.trimIndent()
-        )
-
-        if (!metricsRepository.buildExists(baselineBuildId)) {
-            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
-        }
-
-        val buildId = generateBuildId(groupId, appId, instanceId, commitSha, buildVersion)
-        if (!metricsRepository.buildExists(buildId)) {
-            throw BuildNotFound("Build info not found for $buildId")
-        }
-
-        return@transaction pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
-            metricsRepository.getChanges(
-                buildId = buildId,
-                baselineBuildId = baselineBuildId,
-                includeDeleted = includeDeleted?.takeIf { it },
-                includeEqual = includeEqual?.takeIf { it },
-                offset = offset,
-                limit = limit
-            ).map(::mapToChangeView)
-        } withTotal {
-            metricsRepository.getChangesCount(
-                buildId = buildId,
-                baselineBuildId = baselineBuildId,
-                includeDeleted = includeDeleted?.takeIf { it },
-                includeEqual = includeEqual?.takeIf { it },
-            )
-        }
-    }
-
-    override suspend fun getRisks(
+    override suspend fun getBuildChanges(
         groupId: String,
         appId: String,
         instanceId: String?,
@@ -851,9 +694,16 @@ class MetricsServiceImpl(
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        changeTypes: List<String>,
+        hasImpactedTests: Boolean?,
+        methodSignature: String?,
+        testDefinitionId: String?,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?
-    ): PagedList<MethodView> = transaction {
+    ): PagedList<BuildChangeView> = transaction {
+        val validatedSortBy = validateBuildChangeSortBy(sortBy)
         val baselineBuildId = generateBuildId(
             groupId,
             appId,
@@ -874,26 +724,42 @@ class MetricsServiceImpl(
             throw BuildNotFound("Build info not found for $buildId")
         }
 
+        val normalizedChangeTypes = changeTypes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+
         return@transaction pagedListOf(
             page = page ?: 1,
             pageSize = pageSize ?: metricsConfig.pageSize
         ) { offset, limit ->
-            metricsRepository.getRisksReport(
+            metricsRepository.getBuildChanges(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
+                groupId = groupId,
+                appId = appId,
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                changeTypes = normalizedChangeTypes,
+                hasImpactedTests = hasImpactedTests,
+                methodSignature = methodSignature?.takeIf { it.isNotBlank() },
+                testDefinitionId = testDefinitionId?.takeIf { it.isNotBlank() },
+                sortBy = validatedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
-            ).map(::mapToMethodView)
+            ).map(::mapToBuildChangeView)
         } withTotal {
-            metricsRepository.getRisksReportCount(
+            metricsRepository.getBuildChangesCount(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
+                groupId = groupId,
+                appId = appId,
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                changeTypes = normalizedChangeTypes,
+                hasImpactedTests = hasImpactedTests,
+                methodSignature = methodSignature?.takeIf { it.isNotBlank() },
+                testDefinitionId = testDefinitionId?.takeIf { it.isNotBlank() },
             )
         }
     }
@@ -1202,6 +1068,7 @@ class MetricsServiceImpl(
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
+                testDefinitionId = testCriteria.testDefinitionId,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
@@ -1235,6 +1102,7 @@ class MetricsServiceImpl(
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
+                testDefinitionId = testCriteria.testDefinitionId,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
                 methodSignaturePattern = methodCriteria.signaturePattern,
@@ -1246,76 +1114,31 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun getImpactedMethods(
+    override suspend fun getImpactedTestsFilterOptions(
         build: Build,
         baselineBuild: BaselineBuild,
-        testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
-        sortBy: String?,
-        sortOrder: SortOrder?,
-        page: Int?,
-        pageSize: Int?
-    ): PagedList<MethodView> = transaction {
+    ): ImpactedTestsFilterOptionsView = transaction {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
-
         val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        // Map response field names to database column names
-        val sortingFieldMapping = mapOf(
-            "signature" to "signature",
-            "className" to "class_name",
-            "name" to "method_name",
-            "impactedTests" to "impacted_tests"
+        val options = metricsRepository.getImpactedTestsFilterOptions(
+            targetBuildId = targetBuildId,
+            baselineBuildId = baselineBuildId,
+            packageNamePattern = methodCriteria.packageNamePattern,
+            methodSignaturePattern = methodCriteria.signaturePattern,
+            excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
+            coverageBranches = coverageCriteria.branches,
+            coverageAppEnvIds = coverageCriteria.appEnvIds,
         )
-        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
-
-        return@transaction pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
-            metricsRepository.getImpactedMethods(
-                targetBuildId = targetBuildId,
-                baselineBuildId = baselineBuildId,
-
-                testTaskId = testCriteria.testTaskId,
-                testTags = testCriteria.testTags,
-                testPathPattern = testCriteria.testPath,
-                testNamePattern = testCriteria.testName,
-
-                packageNamePattern = methodCriteria.packageNamePattern,
-                methodSignaturePattern = methodCriteria.signaturePattern,
-                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
-
-                coverageBranches = coverageCriteria.branches,
-                coverageAppEnvIds = coverageCriteria.appEnvIds,
-
-                sortBy = mappedSortBy,
-                sortOrder = sortOrder,
-
-                offset = offset,
-                limit = limit
-            ).map(::mapToMethodView)
-        } withTotal {
-            metricsRepository.getImpactedMethodsCount(
-                targetBuildId = targetBuildId,
-                baselineBuildId = baselineBuildId,
-
-                testTaskId = testCriteria.testTaskId,
-                testTags = testCriteria.testTags,
-                testPathPattern = testCriteria.testPath,
-                testNamePattern = testCriteria.testName,
-
-                packageNamePattern = methodCriteria.packageNamePattern,
-                methodSignaturePattern = methodCriteria.signaturePattern,
-                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
-
-                coverageBranches = coverageCriteria.branches,
-                coverageAppEnvIds = coverageCriteria.appEnvIds,
-            )
-        }
+        ImpactedTestsFilterOptionsView(
+            testPaths = options["testPaths"].orEmpty(),
+            testNames = options["testNames"].orEmpty(),
+            testTags = options["testTags"].orEmpty(),
+        )
     }
 
     private fun mapToBuildDetailView(row: Map<String, Any?>): BuildDetailView = BuildDetailView(
@@ -1412,6 +1235,23 @@ class MetricsServiceImpl(
     private fun coverageRatio(covered: Int, total: Int): Double =
         if (total > 0) covered.toDouble() / total else 0.0
 
+    private fun mapToBuildChangeView(resultSet: Map<String, Any?>): BuildChangeView = BuildChangeView(
+        signature = resultSet["signature"] as String,
+        className = resultSet["class_name"] as String,
+        name = resultSet["method_name"] as String,
+        params = (resultSet["method_params"] as String).split(",").map(String::trim),
+        returnType = resultSet["return_type"] as String,
+        changeType = ChangeType.fromString(resultSet["change_type"] as String?),
+        probesCount = (resultSet["probes_count"] as Number?)?.toInt(),
+        coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt(),
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt(),
+        coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble(),
+        coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble(),
+        missedProbes = (resultSet["isolated_missed_probes"] as Number?)?.toInt(),
+        missedProbesInOtherBuilds = (resultSet["aggregated_missed_probes"] as Number?)?.toInt(),
+        impactedTests = (resultSet["impacted_tests"] as Number).toInt(),
+    )
+
     private fun mapToChangeView(resultSet: Map<String, Any?>): ChangeView = ChangeView(
         signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
@@ -1458,6 +1298,16 @@ class MetricsServiceImpl(
                 ),
             ),
         )
+    }
+
+    private fun validateBuildChangeSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        if (normalized.isBlank() || normalized !in BUILD_CHANGE_SORT_FIELDS) {
+            throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${BUILD_CHANGE_SORT_FIELDS.joinToString(", ")}"
+            )
+        }
+        normalized
     }
 
     private fun validateTestSessionSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
@@ -1572,6 +1422,13 @@ class MetricsServiceImpl(
     }
 
     companion object {
+        private val BUILD_CHANGE_SORT_FIELDS = setOf(
+            "changeType",
+            "coverageRatioInOtherBuilds",
+            "impactedTests",
+            "aggregatedMissedProbes",
+            "signature",
+        )
         private val TEST_SESSION_SORT_FIELDS = setOf("sessionStartedAt", "successRate")
     }
 }

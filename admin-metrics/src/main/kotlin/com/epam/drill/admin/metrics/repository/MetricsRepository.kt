@@ -320,17 +320,6 @@ interface MetricsRepository {
         coverageBranches: List<String> = emptyList(),
     ): Long
 
-    suspend fun getChanges(
-        buildId: String,
-        baselineBuildId: String? = null,
-        packageName: String? = null,
-        className: String? = null,
-        offset: Int? = null,
-        limit: Int? = null,
-        includeDeleted: Boolean? = null,
-        includeEqual: Boolean? = null,
-    ): List<Map<String, Any?>>
-
     suspend fun getChangesWithCoverage(
         buildId: String,
         baselineBuildId: String? = null,
@@ -344,31 +333,36 @@ interface MetricsRepository {
         includeEqual: Boolean? = null
     ): List<Map<String, Any?>>
 
-    suspend fun getChangesCount(
-        buildId: String,
-        baselineBuildId: String? = null,
-        packageNamePattern: String? = null,
-        classNamePattern: String? = null,
-        includeDeleted: Boolean? = null,
-        includeEqual: Boolean? = null,
-    ): Long
-
-    suspend fun getRisksReport(
+    suspend fun getBuildChanges(
         buildId: String,
         baselineBuildId: String,
+        groupId: String,
+        appId: String,
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        changeTypes: List<String> = emptyList(),
+        hasImpactedTests: Boolean? = null,
+        methodSignature: String? = null,
+        testDefinitionId: String? = null,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null,
         limit: Int? = null,
     ): List<Map<String, Any?>>
 
-    suspend fun getRisksReportCount(
+    suspend fun getBuildChangesCount(
         buildId: String,
         baselineBuildId: String,
+        groupId: String,
+        appId: String,
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        changeTypes: List<String> = emptyList(),
+        hasImpactedTests: Boolean? = null,
+        methodSignature: String? = null,
+        testDefinitionId: String? = null,
     ): Long
 
     suspend fun getBuildDiffReport(
@@ -418,6 +412,8 @@ interface MetricsRepository {
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
 
+        testDefinitionId: String? = null,
+
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
 
@@ -439,46 +435,19 @@ interface MetricsRepository {
 
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
+
+        testDefinitionId: String? = null,
     ): Long
 
-    suspend fun getImpactedMethods(
+    suspend fun getImpactedTestsFilterOptions(
         targetBuildId: String,
         baselineBuildId: String,
-
-        testTaskId: String? = null,
-        testTags: List<String> = emptyList(),
-        testPathPattern: String?,
-        testNamePattern: String?,
-
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
         excludeMethodSignatures: List<String> = emptyList(),
-
         coverageBranches: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
-
-        sortBy: String? = null,
-        sortOrder: SortOrder? = null,
-
-        offset: Int? = null, limit: Int? = null
-    ): List<Map<String, Any?>>
-
-    suspend fun getImpactedMethodsCount(
-        targetBuildId: String,
-        baselineBuildId: String,
-
-        testTaskId: String? = null,
-        testTags: List<String> = emptyList(),
-        testPathPattern: String? = null,
-        testNamePattern: String? = null,
-
-        packageNamePattern: String? = null,
-        methodSignaturePattern: String? = null,
-        excludeMethodSignatures: List<String> = emptyList(),
-
-        coverageBranches: List<String> = emptyList(),
-        coverageAppEnvIds: List<String> = emptyList(),
-    ): Long
+    ): Map<String, List<String>>
 
     suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant)
     suspend fun deleteAllTestDataCreatedBefore(groupId: String, timestamp: Instant)

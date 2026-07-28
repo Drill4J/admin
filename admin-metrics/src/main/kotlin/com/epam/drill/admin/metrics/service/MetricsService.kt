@@ -185,37 +185,7 @@ interface MetricsService {
         coverageThreshold: Double
     ): Map<String, Any?>
 
-    suspend fun getRecommendedTests(
-        groupId: String,
-        appId: String,
-        testsToSkip: Boolean? = null,
-        testTaskId: String? = null,
-        coveragePeriodDays: Int? = null,
-        targetInstanceId: String? = null,
-        targetCommitSha: String? = null,
-        targetBuildVersion: String? = null,
-        baselineInstanceId: String? = null,
-        baselineCommitSha: String? = null,
-        baselineBuildVersion: String? = null,
-        baselineBuildBranches: List<String> = emptyList()
-    ): Map<String, Any?>
-
-    suspend fun getChanges(
-        groupId: String,
-        appId: String,
-        instanceId: String?,
-        commitSha: String?,
-        buildVersion: String?,
-        baselineInstanceId: String?,
-        baselineCommitSha: String?,
-        baselineBuildVersion: String?,
-        includeDeleted: Boolean?,
-        includeEqual: Boolean?,
-        page: Int?,
-        pageSize: Int?
-    ): PagedList<ChangeView>
-
-    suspend fun getRisks(
+    suspend fun getBuildChanges(
         groupId: String,
         appId: String,
         instanceId: String?,
@@ -227,9 +197,15 @@ interface MetricsService {
         testTags: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
+        changeTypes: List<String> = emptyList(),
+        hasImpactedTests: Boolean? = null,
+        methodSignature: String? = null,
+        testDefinitionId: String? = null,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int?,
         pageSize: Int?
-    ): PagedList<MethodView>
+    ): PagedList<BuildChangeView>
 
     suspend fun getCoverage(
         buildId: String? = null,
@@ -284,15 +260,10 @@ interface MetricsService {
         pageSize: Int?
     ): PagedList<TestView>
 
-    suspend fun getImpactedMethods(
+    suspend fun getImpactedTestsFilterOptions(
         build: Build,
         baselineBuild: BaselineBuild,
-        testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
-        sortBy: String? = null,
-        sortOrder: SortOrder? = null,
-        page: Int?,
-        pageSize: Int?
-    ): PagedList<MethodView>
+    ): ImpactedTestsFilterOptionsView
 }

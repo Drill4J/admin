@@ -48,7 +48,7 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             test2 covers method2 on build1
             build2 hasModified method2 comparedTo build1
         }.expectThat {
-            client.getImpactedTests(build2, build1).returns { data ->
+            client.postImpactedTests(build2, build1).returns { data ->
                 assertTrue { data.isNotEmpty() }
                 assertTrue { data.any { it["testName"] == test2.testName } }
                 assertTrue { data.none { it["testName"] == test1.testName } }
@@ -65,17 +65,17 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            client.getImpactedTests(build2, build1) {
-                parameter("page", 1)
-                parameter("pageSize", 10)
+            client.postImpactedTests(build2, build1) {
+                put("page", 1)
+                put("pageSize", 10)
             }.returns { data ->
                 // Should return at most 10 records
                 assertTrue(data.size <= 10, "Expected at most 10 records, but got ${data.size}")
             }
 
-            client.getImpactedTests(build2, build1) {
-                parameter("page", 2)
-                parameter("pageSize", 10)
+            client.postImpactedTests(build2, build1) {
+                put("page", 2)
+                put("pageSize", 10)
             }.returns { data ->
                 // The second page should contain the remaining tests (5 or fewer)
                 assertTrue(data.size <= 5, "Expected at most 5 records, but got ${data.size}")
@@ -92,8 +92,8 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             untaggedTest covers method1 on build1
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            client.getImpactedTests(build2, build1) {
-                parameter("testTag", "important-tag")
+            client.postImpactedTests(build2, build1) {
+                put("testTag", "important-tag")
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test with the specified tag")
                 assertTrue(data.all { it["testName"] == "taggedTest" }, "All returned tests should have the specified tag")
@@ -113,8 +113,8 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             test3 covers method1 on build1
             build2 hasModified method1 comparedTo build1
         }.expectThat { client ->
-            client.getImpactedTests(build2, build1) {
-                parameter("testPath", "com/example/path1")
+            client.postImpactedTests(build2, build1) {
+                put("testPath", "com/example/path1")
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test with the specified path")
                 assertTrue(data.all { it["testName"] == "pathFilteredTest1" || it["testName"] == "pathFilteredTest2" }, "All returned tests should match the specified path")
@@ -148,9 +148,9 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             build2 hasModified method2 comparedTo build1
             build2 hasModified method3 comparedTo build1
         }.expectThat { client ->
-            client.getImpactedTests(build2, build1) {
-                parameter("sortBy", "impactedMethods")
-                parameter("sortOrder", "DESC")
+            client.postImpactedTests(build2, build1) {
+                put("sortBy", "impactedMethods")
+                put("sortOrder", "DESC")
             }.returns { data ->
                 assertTrue(data.size >= 3, "Expected at least 3 tests")
                 val sortedByImpactedMethods = data.sortedByDescending { (it["impactedMethods"] as Number?)?.toInt() ?: 0 }
@@ -186,8 +186,8 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             // Exclude method1 signature: className:methodName:params:returnType
             val method1Signature = "${method1.classname}:${method1.name}:${method1.params}:${method1.returnType}"
 
-            client.getImpactedTests(build2, build1) {
-                parameter("excludeMethodSignatures", method1Signature)
+            client.postImpactedTests(build2, build1) {
+                put("excludeMethodSignatures", listOf(method1Signature))
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected some tests to remain after exclusion")
 

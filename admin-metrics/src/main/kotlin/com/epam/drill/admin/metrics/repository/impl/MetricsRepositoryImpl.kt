@@ -1366,44 +1366,167 @@ class MetricsRepositoryImpl : MetricsRepository {
         } ?: 0L
     }
 
-    override suspend fun getChanges(
+    override suspend fun getBuildChanges(
         buildId: String,
-        baselineBuildId: String?,
-        packageName: String?,
-        className: String?,
+        baselineBuildId: String,
+        groupId: String,
+        appId: String,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+        changeTypes: List<String>,
+        hasImpactedTests: Boolean?,
+        methodSignature: String?,
+        testDefinitionId: String?,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         offset: Int?,
         limit: Int?,
-        includeDeleted: Boolean?,
-        includeEqual: Boolean?,
     ): List<Map<String, Any?>> = transaction {
+        val orderBy = resolveBuildChangeOrderBy(sortBy, sortOrder)
         executeQueryReturnMap {
             append(
                 """
                 SELECT
-                    signature,
-                    class_name,
-                    method_name,
-                    method_params,
-                    return_type,
-                    change_type
-                FROM metrics.get_changes(
-                    input_build_id => ?
-                """.trimIndent(), buildId
-            )
-            appendOptional(", input_baseline_build_id => ?", baselineBuildId)
-            appendOptional(", input_package_name_pattern => ?", packageName) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", className) { "%$it" }
-            appendOptional(", include_deleted => ?", includeDeleted) { it }
-            appendOptional(", include_equal => ?", includeEqual) { it }
-            append(
-                """
-                )
-                ORDER BY signature
+                    c.change_type,
+                    c.class_name,
+                    c.method_name,
+                    c.method_params,
+                    c.return_type,
+                    c.probes_count,
+                    c.isolated_covered_probes,
+                    c.isolated_missed_probes,
+                    c.isolated_probes_coverage_ratio,
+                    c.aggregated_covered_probes,
+                    c.aggregated_missed_probes,
+                    c.aggregated_probes_coverage_ratio,
+                    c.signature,
+                    COALESCE(i.impacted_tests, 0) AS impacted_tests
                 """.trimIndent()
             )
+            appendBuildChangesFromClause(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                groupId = groupId,
+                appId = appId,
+                coverageTestTags = coverageTestTags,
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                changeTypes = changeTypes,
+                hasImpactedTests = hasImpactedTests,
+                methodSignature = methodSignature,
+                testDefinitionId = testDefinitionId,
+            )
+            append(" ORDER BY $orderBy")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
+    }
+
+    override suspend fun getBuildChangesCount(
+        buildId: String,
+        baselineBuildId: String,
+        groupId: String,
+        appId: String,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+        changeTypes: List<String>,
+        hasImpactedTests: Boolean?,
+        methodSignature: String?,
+        testDefinitionId: String?,
+    ): Long = transaction {
+        val result = executeQueryReturnMap {
+            append(" SELECT COUNT(*) AS cnt ")
+            appendBuildChangesFromClause(
+                buildId = buildId,
+                baselineBuildId = baselineBuildId,
+                groupId = groupId,
+                appId = appId,
+                coverageTestTags = coverageTestTags,
+                coverageAppEnvIds = coverageAppEnvIds,
+                coverageBranches = coverageBranches,
+                changeTypes = changeTypes,
+                hasImpactedTests = hasImpactedTests,
+                methodSignature = methodSignature,
+                testDefinitionId = testDefinitionId,
+            )
+        }
+        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+    }
+
+    private fun SqlBuilder.appendBuildChangesFromClause(
+        buildId: String,
+        baselineBuildId: String,
+        groupId: String,
+        appId: String,
+        coverageTestTags: List<String>,
+        coverageAppEnvIds: List<String>,
+        coverageBranches: List<String>,
+        changeTypes: List<String>,
+        hasImpactedTests: Boolean?,
+        methodSignature: String?,
+        testDefinitionId: String?,
+    ) {
+        append("\n")
+        append(
+            """
+                FROM metrics.get_changes_with_coverage(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+            """.trimIndent(), buildId, baselineBuildId
+        )
+        appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
+        val includeEqual = changeTypes.any { it.equals("equal", ignoreCase = true) }
+        appendOptional(", include_deleted => ?", true) { it }
+        appendOptional(", include_equal => ?", includeEqual) { it }
+        append(
+            """
+                ) c
+                LEFT JOIN metrics.get_impacted_methods_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+            """.trimIndent(), buildId, baselineBuildId
+        )
+        appendOptional(", input_test_tags => ?", coverageTestTags)
+        append(
+            """
+                ) i ON c.signature = i.signature
+                WHERE 1 = 1
+            """.trimIndent()
+        )
+        appendOptional(" AND c.change_type = ANY(?)", changeTypes)
+        if (hasImpactedTests == true) {
+            append(" AND COALESCE(i.impacted_tests, 0) > 0")
+        }
+        appendOptional(" AND c.signature = ?", methodSignature)
+        if (testDefinitionId != null) {
+            append(
+                """
+                 AND EXISTS (
+                    SELECT 1
+                    FROM metrics.test_to_code_mapping tc
+                    WHERE tc.group_id = ?
+                        AND tc.app_id = ?
+                        AND tc.signature = c.signature
+                        AND tc.test_definition_id = ?
+                )
+                """.trimIndent(), groupId, appId, testDefinitionId
+            )
+        }
+    }
+
+    private fun resolveBuildChangeOrderBy(sortBy: String?, sortOrder: SortOrder?): String {
+        val direction = sortOrder?.name ?: if (sortBy == null) "DESC" else "ASC"
+        val column = when (sortBy) {
+            "changeType" -> "c.change_type"
+            "coverageRatioInOtherBuilds" -> "c.aggregated_probes_coverage_ratio"
+            "impactedTests" -> "impacted_tests"
+            "signature" -> "c.signature"
+            null, "aggregatedMissedProbes" -> "c.aggregated_missed_probes"
+            else -> "c.aggregated_missed_probes"
+        }
+        return "$column $direction NULLS LAST, c.signature ASC"
     }
 
     override suspend fun getChangesWithCoverage(
@@ -1615,115 +1738,6 @@ class MetricsRepositoryImpl : MetricsRepository {
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
-    override suspend fun getChangesCount(
-        buildId: String,
-        baselineBuildId: String?,
-        packageNamePattern: String?,
-        classNamePattern: String?,
-        includeDeleted: Boolean?,
-        includeEqual: Boolean?,
-    ): Long = transaction {
-        val result = executeQueryReturnMap {
-            append(
-                """
-                SELECT COUNT(*) AS cnt
-                FROM metrics.get_changes(
-                    input_build_id => ?
-            """.trimIndent(), buildId
-            )
-            appendOptional(", input_baseline_build_id => ?", baselineBuildId)
-            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "%$it" }
-            appendOptional(", include_deleted => ?", includeDeleted) { it }
-            appendOptional(", include_equal => ?", includeEqual) { it }
-            append(
-                """
-                )
-            """.trimIndent()
-            )
-        }
-        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
-    }
-
-    override suspend fun getRisksReport(
-        buildId: String,
-        baselineBuildId: String,
-        coverageTestTags: List<String>,
-        coverageAppEnvIds: List<String>,
-        coverageBranches: List<String>,
-        offset: Int?,
-        limit: Int?,
-    ): List<Map<String, Any?>> = transaction {
-        executeQueryReturnMap {
-            append(
-                """
-                SELECT
-                    c.change_type,
-                    c.class_name,
-                    c.method_name,
-                    c.method_params,
-                    c.return_type,
-                    c.probes_count,
-                    c.isolated_covered_probes,
-                    c.isolated_missed_probes,
-                    c.isolated_probes_coverage_ratio,
-                    c.aggregated_covered_probes,
-                    c.aggregated_missed_probes,
-                    c.aggregated_probes_coverage_ratio,
-                    c.signature,
-                    COALESCE(i.impacted_tests, 0) AS impacted_tests
-                FROM metrics.get_changes_with_coverage(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?
-                """.trimIndent(), buildId, baselineBuildId
-            )
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
-            append(
-                """
-                ) c
-                LEFT JOIN metrics.get_impacted_methods_v2(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?
-                """.trimIndent(), buildId, baselineBuildId
-            )
-            appendOptional(", input_test_tags => ?", coverageTestTags)
-            append(
-                """
-                ) i ON c.signature = i.signature
-                ORDER BY c.aggregated_missed_probes DESC
-                """.trimIndent()
-            )
-            appendOptional(" OFFSET ?", offset)
-            appendOptional(" LIMIT ?", limit)
-        }
-    }
-
-    override suspend fun getRisksReportCount(
-        buildId: String,
-        baselineBuildId: String,
-        coverageTestTags: List<String>,
-        coverageAppEnvIds: List<String>,
-        coverageBranches: List<String>,
-    ): Long = transaction {
-        val result = executeQueryReturnMap {
-            append(
-                """
-                SELECT COUNT(*) AS cnt
-                FROM metrics.get_changes_with_coverage(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?
-                """.trimIndent(), buildId, baselineBuildId
-            )
-            appendCoverageFilterParams(coverageTestTags, coverageAppEnvIds, coverageBranches)
-            append(
-                """
-                )
-                """.trimIndent()
-            )
-        }
-        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
-    }
-
     override suspend fun getBuildDiffReport(
         buildId: String,
         baselineBuildId: String,
@@ -1920,6 +1934,8 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
 
+        testDefinitionId: String?,
+
         sortBy: String?,
         sortOrder: SortOrder?,
 
@@ -1931,14 +1947,14 @@ class MetricsRepositoryImpl : MetricsRepository {
         executeQueryReturnMap {
             append(
                 """
-                SELECT 
+                SELECT
                     test_definition_id,
                     test_path,
-                    test_name,      
+                    test_name,
                     test_runner,
                     test_tags,
                     test_metadata,
-                    impacted_methods                 
+                    impacted_methods
                 FROM metrics.get_impacted_tests_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
@@ -1961,6 +1977,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
+            appendOptional(" WHERE test_definition_id = ?", testDefinitionId)
 
             if (sortBy != null) {
                 append(" ORDER BY $sortBy $sortDirection")
@@ -1986,6 +2003,8 @@ class MetricsRepositoryImpl : MetricsRepository {
 
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
+
+        testDefinitionId: String?,
     ): Long = transaction {
         val result = executeQueryReturnMap {
             append(
@@ -2011,123 +2030,93 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 )
-                """.trimIndent()
+            """.trimIndent()
             )
+            appendOptional(" WHERE test_definition_id = ?", testDefinitionId)
         }
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
 
-    override suspend fun getImpactedMethods(
+    override suspend fun getImpactedTestsFilterOptions(
         targetBuildId: String,
         baselineBuildId: String,
-
-        testTaskId: String?,
-        testTags: List<String>,
-        testPathPattern: String?,
-        testNamePattern: String?,
-
         packageNamePattern: String?,
         methodSignaturePattern: String?,
         excludeMethodSignatures: List<String>,
-
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-
-        sortBy: String?,
-        sortOrder: SortOrder?,
-
-        offset: Int?,
-        limit: Int?
-    ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
-
-        executeQueryReturnMap {
-            append(
-                """
-                SELECT 
-                    group_id,
-                    app_id,
-                    signature,
-                    class_name,
-                    method_name,
-                    method_params,
-                    return_type,
-                    impacted_tests
-                FROM metrics.get_impacted_methods_v2(
-                    input_build_id => ?,
-                    input_baseline_build_id => ?
-                    """.trimIndent(), targetBuildId, baselineBuildId
-            )
-            appendOptional(", input_test_task_id => ?", testTaskId)
-            appendOptional(", input_test_tags => ?", testTags)
-            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
-            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
-
-            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+    ): Map<String, List<String>> = transaction {
+        fun SqlBuilder.appendImpactedTestsFilterParams() {
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern) { "$it%" }
             appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
             appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
-
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-
-            append(
-                """
-                )
-            """.trimIndent()
-            )
-
-            if (sortBy != null) {
-                append(" ORDER BY $sortBy $sortDirection")
-            }
-            appendOptional(" OFFSET ?", offset)
-            appendOptional(" LIMIT ?", limit)
         }
-    }
 
-    override suspend fun getImpactedMethodsCount(
-        targetBuildId: String,
-        baselineBuildId: String,
-
-        testTaskId: String?,
-        testTags: List<String>,
-        testPathPattern: String?,
-        testNamePattern: String?,
-
-        packageNamePattern: String?,
-        methodSignaturePattern: String?,
-        excludeMethodSignatures: List<String>,
-
-        coverageBranches: List<String>,
-        coverageAppEnvIds: List<String>,
-    ): Long = transaction {
-        val result = executeQueryReturnMap {
+        val paths = executeQueryReturnMap {
             append(
                 """
-                SELECT COUNT(*) AS cnt
-                FROM metrics.get_impacted_methods_v2(
+                SELECT DISTINCT test_path AS value
+                FROM metrics.get_impacted_tests_v2(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
             )
-            appendOptional(", input_test_task_id => ?", testTaskId)
-            appendOptional(", input_test_tags => ?", testTags)
-            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
-            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
-
-            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
-            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
-            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
-
-            appendOptional(", input_coverage_branches => ?", coverageBranches)
-            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-
+            appendImpactedTestsFilterParams()
             append(
                 """
                 )
+                WHERE test_path IS NOT NULL AND test_path <> ''
+                ORDER BY 1
                 """.trimIndent()
             )
-        }
-        (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+        }.mapNotNull { it["value"] as? String }
+
+        val names = executeQueryReturnMap {
+            append(
+                """
+                SELECT DISTINCT test_name AS value
+                FROM metrics.get_impacted_tests_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendImpactedTestsFilterParams()
+            append(
+                """
+                )
+                WHERE test_name IS NOT NULL AND test_name <> ''
+                ORDER BY 1
+                """.trimIndent()
+            )
+        }.mapNotNull { it["value"] as? String }
+
+        val tags = executeQueryReturnMap {
+            append(
+                """
+                SELECT DISTINCT tag AS value
+                FROM metrics.get_impacted_tests_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendImpactedTestsFilterParams()
+            append(
+                """
+                ) t
+                CROSS JOIN LATERAL unnest(COALESCE(t.test_tags, ARRAY[]::varchar[])) AS tag
+                WHERE tag IS NOT NULL AND tag <> ''
+                ORDER BY 1
+                """.trimIndent()
+            )
+        }.mapNotNull { it["value"] as? String }
+
+        mapOf(
+            "testPaths" to paths,
+            "testNames" to names,
+            "testTags" to tags,
+        )
     }
 
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
