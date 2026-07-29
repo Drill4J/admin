@@ -404,6 +404,7 @@ interface MetricsRepository {
         testTags: List<String> = emptyList(),
         testPathPattern: String? = null,
         testNamePattern: String? = null,
+        testRunner: String? = null,
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,
@@ -428,6 +429,7 @@ interface MetricsRepository {
         testTags: List<String> = emptyList(),
         testPathPattern: String? = null,
         testNamePattern: String? = null,
+        testRunner: String? = null,
 
         packageNamePattern: String? = null,
         methodSignaturePattern: String? = null,

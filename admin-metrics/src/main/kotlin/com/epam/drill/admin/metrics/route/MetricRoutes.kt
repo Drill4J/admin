@@ -378,6 +378,7 @@ class Metrics {
         val testTag: String? = null,
         val testPath: String? = null,
         val testName: String? = null,
+        val testRunner: String? = null,
         val testDefinitionId: String? = null,
 
         val coverageBranches: List<String> = emptyList(),
@@ -995,6 +996,7 @@ private suspend fun getImpactedTests(
             testTaskId = params.testTaskId,
             testPath = params.testPath,
             testName = params.testName,
+            testRunner = params.testRunner,
             testDefinitionId = params.testDefinitionId,
         ),
         methodCriteria = MethodCriteria(

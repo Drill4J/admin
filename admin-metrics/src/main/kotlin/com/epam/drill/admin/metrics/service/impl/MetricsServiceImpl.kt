@@ -1068,6 +1068,7 @@ class MetricsServiceImpl(
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
+                testRunner = testCriteria.testRunner,
                 testDefinitionId = testCriteria.testDefinitionId,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
@@ -1102,6 +1103,7 @@ class MetricsServiceImpl(
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
+                testRunner = testCriteria.testRunner,
                 testDefinitionId = testCriteria.testDefinitionId,
 
                 packageNamePattern = methodCriteria.packageNamePattern,
@@ -1137,6 +1139,7 @@ class MetricsServiceImpl(
         ImpactedTestsFilterOptionsView(
             testPaths = options["testPaths"].orEmpty(),
             testNames = options["testNames"].orEmpty(),
+            testRunners = options["testRunners"].orEmpty(),
             testTags = options["testTags"].orEmpty(),
         )
     }

@@ -1926,6 +1926,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+        testRunner: String?,
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
@@ -1977,7 +1978,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
-            appendOptional(" WHERE test_definition_id = ?", testDefinitionId)
+            appendImpactedTestsResultFilters(testDefinitionId, testRunner)
 
             if (sortBy != null) {
                 append(" ORDER BY $sortBy $sortDirection")
@@ -1996,6 +1997,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
+        testRunner: String?,
 
         packageNamePattern: String?,
         methodSignaturePattern: String?,
@@ -2032,7 +2034,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
             """.trimIndent()
             )
-            appendOptional(" WHERE test_definition_id = ?", testDefinitionId)
+            appendImpactedTestsResultFilters(testDefinitionId, testRunner)
         }
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
     }
@@ -2092,6 +2094,25 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
         }.mapNotNull { it["value"] as? String }
 
+        val runners = executeQueryReturnMap {
+            append(
+                """
+                SELECT DISTINCT test_runner AS value
+                FROM metrics.get_impacted_tests_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendImpactedTestsFilterParams()
+            append(
+                """
+                )
+                WHERE test_runner IS NOT NULL AND test_runner <> ''
+                ORDER BY 1
+                """.trimIndent()
+            )
+        }.mapNotNull { it["value"] as? String }
+
         val tags = executeQueryReturnMap {
             append(
                 """
@@ -2115,6 +2136,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         mapOf(
             "testPaths" to paths,
             "testNames" to names,
+            "testRunners" to runners,
             "testTags" to tags,
         )
     }
@@ -2386,6 +2408,30 @@ class MetricsRepositoryImpl : MetricsRepository {
                 """.trimIndent(),
             groupId, timestamp
         )
+    }
+}
+
+private fun SqlBuilder.appendImpactedTestsResultFilters(
+    testDefinitionId: String?,
+    testRunner: String?,
+) {
+    val filters = buildList {
+        if (!testDefinitionId.isNullOrBlank()) {
+            add("test_definition_id = ?" to testDefinitionId)
+        }
+        if (!testRunner.isNullOrBlank()) {
+            add("test_runner = ?" to testRunner)
+        }
+    }
+    if (filters.isEmpty()) {
+        return
+    }
+    append(" WHERE ")
+    filters.forEachIndexed { index, (condition, value) ->
+        if (index > 0) {
+            append(" AND ")
+        }
+        append(condition, value)
     }
 }
 

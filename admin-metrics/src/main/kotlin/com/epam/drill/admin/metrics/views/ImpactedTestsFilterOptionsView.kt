@@ -21,5 +21,6 @@ import kotlinx.serialization.Serializable
 data class ImpactedTestsFilterOptionsView(
     val testPaths: List<String> = emptyList(),
     val testNames: List<String> = emptyList(),
+    val testRunners: List<String> = emptyList(),
     val testTags: List<String> = emptyList(),
 )
