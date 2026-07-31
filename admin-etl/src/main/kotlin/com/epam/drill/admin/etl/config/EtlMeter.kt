@@ -112,9 +112,12 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     private fun tagContext(context: EtlContext, tag: (String, String) -> Unit) {
+        // Emit every context field as a tag (using an empty string for nulls) so that all meters
+        // sharing the same name always have an identical set of tag keys. Prometheus drops meters
+        // with the same name but differing tag keys, which happens when contexts vary in shape
+        // (e.g. group-level vs build-level ETL runs).
         context.toMap()
-            .filterValues { v -> v != null }
-            .map { (k, v) -> k to v.toString() }
+            .map { (k, v) -> k to (v?.toString() ?: "") }
             .forEach { (k, v) -> tag(k, v) }
     }
     private fun <T> Gauge.Builder<T>.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }

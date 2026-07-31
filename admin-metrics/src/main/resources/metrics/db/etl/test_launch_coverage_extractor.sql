@@ -33,6 +33,8 @@ WITH test_launch_coverage AS (
 	        )
 	LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
 	WHERE tl.group_id = :group_id
+	    AND c.app_id = :app_id
+	    AND c.build_id = :build_id
 	    AND (:test_session_id::TEXT IS NULL OR tl.test_session_id = :test_session_id)
 	    AND (:test_definition_id::TEXT IS NULL OR tl.test_definition_id = :test_definition_id)
 	    AND tl.created_at > :since_timestamp

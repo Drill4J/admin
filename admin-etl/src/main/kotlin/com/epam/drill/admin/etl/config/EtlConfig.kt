@@ -85,4 +85,10 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      */
     val lockPollDelaySeconds : Long
         get() = config.propertyOrNull("lockPollDelaySeconds")?.getString()?.toLongOrNull() ?: 5L
+
+    /**
+     * Maximum number of ETL runs executed concurrently.
+     */
+    val maxParallelism : Int
+        get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 4
 }

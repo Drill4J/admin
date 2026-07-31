@@ -39,7 +39,6 @@ val metricsDIModule
             MetricsServiceImpl(
                 metricsRepository = instance(),
                 metricsServiceUiLinksConfig = MetricsServiceUiLinksConfig(drillConfig.config("metrics.ui")),
-                testRecommendationsConfig = TestRecommendationsConfig(drillConfig.config("testRecommendations")),
                 metricsConfig = MetricsConfig(drillConfig.config("metrics")),
                 etl = instance(tag = DEFAULT_ETL),
                 testDefinitionCoverageEtl = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
