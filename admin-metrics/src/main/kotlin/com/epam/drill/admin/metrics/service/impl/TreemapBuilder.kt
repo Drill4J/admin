@@ -23,7 +23,20 @@ internal const val TREEMAP_TYPE_PACKAGE = "package"
 internal const val TREEMAP_TYPE_CLASS = "class"
 internal const val TREEMAP_TYPE_METHOD = "method"
 
-internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map<String, Any?>> {
+/** Result-map column used as the leaf `covered_probes` source when building a treemap.
+ *  Nodes also always carry rolled-up `isolated_covered_probes` and `aggregated_covered_probes`
+ *  for table stacked bars; the canvas still reads only `covered_probes`.
+ */
+internal enum class TreemapCoveredProbesKey(val column: String) {
+    AGGREGATED("aggregated_covered_probes"),
+    ISOLATED("isolated_covered_probes"),
+}
+
+internal fun buildTree(
+    data: List<Map<String, Any?>>,
+    rootId: String?,
+    coveredProbesKey: TreemapCoveredProbesKey = TreemapCoveredProbesKey.AGGREGATED,
+): List<Map<String, Any?>> {
     val nodeMap = mutableMapOf<String, MutableMap<String, Any?>>()
     val rootNodes = mutableSetOf<String>()
 
@@ -60,6 +73,8 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
                     "type" to nodeType,
                     "probes_count" to 0L,
                     "covered_probes" to 0L,
+                    "isolated_covered_probes" to 0L,
+                    "aggregated_covered_probes" to 0L,
                     "children" to mutableSetOf<String>(),
                     "parent" to if (index == 0) null else pathParts.subList(0, index).joinToString("/"),
                     "params" to if (index == pathParts.lastIndex) item["method_params"] else null,
@@ -94,7 +109,12 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
 
         val leafNode = nodeMap.getValue(currentPath)
         leafNode["probes_count"] = (item["probes_count"] as Number).toLong()
-        leafNode["covered_probes"] = (item["aggregated_covered_probes"] as Number).toLong()
+        leafNode["isolated_covered_probes"] =
+            (item[TreemapCoveredProbesKey.ISOLATED.column] as Number).toLong()
+        leafNode["aggregated_covered_probes"] =
+            (item[TreemapCoveredProbesKey.AGGREGATED.column] as Number).toLong()
+        // Canvas / layout still consume a single selected field.
+        leafNode["covered_probes"] = (item[coveredProbesKey.column] as Number).toLong()
     }
 
     // Step 2: Collapse into a new map
@@ -131,6 +151,8 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             "parent" to parentPath,
             "probes_count" to node["probes_count"] as Long,
             "covered_probes" to node["covered_probes"] as Long,
+            "isolated_covered_probes" to node["isolated_covered_probes"] as Long,
+            "aggregated_covered_probes" to node["aggregated_covered_probes"] as Long,
             "params" to node["params"],
             "return_type" to node["return_type"],
             "children" to mutableSetOf<String>(),
@@ -204,6 +226,10 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             val childNode = collapsedNodeMap.getValue(child)
             node["probes_count"] = (node["probes_count"] as Long) + (childNode["probes_count"] as Long)
             node["covered_probes"] = (node["covered_probes"] as Long) + (childNode["covered_probes"] as Long)
+            node["isolated_covered_probes"] =
+                (node["isolated_covered_probes"] as Long) + (childNode["isolated_covered_probes"] as Long)
+            node["aggregated_covered_probes"] =
+                (node["aggregated_covered_probes"] as Long) + (childNode["aggregated_covered_probes"] as Long)
         }
     }
 
@@ -224,6 +250,8 @@ internal fun buildTree(data: List<Map<String, Any?>>, rootId: String?): List<Map
             put("package_name", node["package_name"] as? String ?: "")
             put("probes_count", node["probes_count"])
             put("covered_probes", node["covered_probes"])
+            put("isolated_covered_probes", node["isolated_covered_probes"])
+            put("aggregated_covered_probes", node["aggregated_covered_probes"])
             node["class_name"]?.let { put("class_name", simpleClassName(it as String)) }
             node["signature"]?.let { put("signature", it) }
             node["method_id"]?.let { put("method_id", it) }

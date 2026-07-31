@@ -158,6 +158,7 @@ interface MetricsService {
         rootId: String?,
         testSessionId: String? = null,
         testDefinitionId: String? = null,
+        includeOtherBuilds: Boolean = true,
     ): List<Any>
 
     suspend fun getChangesCoverageTreemap(
@@ -170,7 +171,8 @@ interface MetricsService {
         classNamePattern: String?,
         rootId: String?,
         includeDeleted: Boolean?,
-        includeEqual: Boolean?
+        includeEqual: Boolean?,
+        includeOtherBuilds: Boolean = true,
     ): List<Any>
 
     suspend fun getBuildDiffReport(

@@ -1437,6 +1437,12 @@ paths:
           description: Filter coverage by test definition ID. Requires testSessionId to be specified. When provided, only coverage data from the specific test definition is included.
           schema:
             type: string
+        - name: includeOtherBuilds
+          in: query
+          description: Whether covered probes include aggregated coverage contributed by other builds. Defaults to true.
+          schema:
+            type: boolean
+            default: true
       responses:
         '200':
           description: Coverage treemap data
@@ -1518,6 +1524,12 @@ paths:
           description: Whether to include methods that are unchanged between builds. Defaults to false.
           schema:
             type: boolean
+        - name: includeOtherBuilds
+          in: query
+          description: Whether covered probes include aggregated coverage contributed by other builds. Defaults to true.
+          schema:
+            type: boolean
+            default: true
       responses:
         '200':
           description: Changes coverage treemap data

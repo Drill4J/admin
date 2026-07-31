@@ -1197,9 +1197,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         class_name,
                         COUNT(*)::INT AS methods_count,
                         COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS covered_methods,
+                        COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS aggregated_covered_methods,
                         (COUNT(*) - COUNT(*) FILTER (WHERE covered_probes > 0))::INT AS missed_methods,
                         COALESCE(SUM(probes_count), 0)::INT AS probes_count,
                         COALESCE(SUM(covered_probes), 0)::INT AS covered_probes,
+                        COALESCE(SUM(covered_probes), 0)::INT AS aggregated_covered_probes,
                         (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(covered_probes), 0))::INT AS missed_probes
                     FROM metrics.get_methods_with_coverage_by_test_session(
                         input_build_id => ?,
@@ -1302,9 +1304,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         class_name,
                         COUNT(*)::INT AS methods_count,
                         COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS covered_methods,
+                        COUNT(*) FILTER (WHERE covered_probes > 0)::INT AS aggregated_covered_methods,
                         (COUNT(*) - COUNT(*) FILTER (WHERE covered_probes > 0))::INT AS missed_methods,
                         COALESCE(SUM(probes_count), 0)::INT AS probes_count,
                         COALESCE(SUM(covered_probes), 0)::INT AS covered_probes,
+                        COALESCE(SUM(covered_probes), 0)::INT AS aggregated_covered_probes,
                         (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(covered_probes), 0))::INT AS missed_probes
                     FROM metrics.get_methods_with_coverage_by_test_definition(
                         input_build_id => ?,
@@ -1591,15 +1595,18 @@ class MetricsRepositoryImpl : MetricsRepository {
                     package_name,
                     COUNT(*)::INT AS methods_count,
                     COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                    COUNT(*) FILTER (WHERE aggregated_covered_probes > 0)::INT AS aggregated_covered_methods,
                     (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
                     COALESCE(SUM(probes_count), 0)::INT AS probes_count,
                     COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                    COALESCE(SUM(aggregated_covered_probes), 0)::INT AS aggregated_covered_probes,
                     (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
                 FROM (
                     SELECT
                         $PACKAGE_NAME_SQL AS package_name,
                         probes_count,
-                        isolated_covered_probes
+                        isolated_covered_probes,
+                        aggregated_covered_probes
                     FROM metrics.get_methods_with_coverage(
                         input_build_id => ?
                 """.trimIndent(), buildId
@@ -1657,9 +1664,11 @@ class MetricsRepositoryImpl : MetricsRepository {
                         class_name,
                         COUNT(*)::INT AS methods_count,
                         COUNT(*) FILTER (WHERE isolated_covered_probes > 0)::INT AS covered_methods,
+                        COUNT(*) FILTER (WHERE aggregated_covered_probes > 0)::INT AS aggregated_covered_methods,
                         (COUNT(*) - COUNT(*) FILTER (WHERE isolated_covered_probes > 0))::INT AS missed_methods,
                         COALESCE(SUM(probes_count), 0)::INT AS probes_count,
                         COALESCE(SUM(isolated_covered_probes), 0)::INT AS covered_probes,
+                        COALESCE(SUM(aggregated_covered_probes), 0)::INT AS aggregated_covered_probes,
                         (COALESCE(SUM(probes_count), 0) - COALESCE(SUM(isolated_covered_probes), 0))::INT AS missed_probes
                     FROM metrics.get_methods_with_coverage(
                         input_build_id => ?

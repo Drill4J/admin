@@ -234,7 +234,8 @@ class Metrics {
         val classNamePattern: String? = null,
         val rootId: String? = null,
         val testSessionId: String? = null,
-        val testDefinitionId: String? = null
+        val testDefinitionId: String? = null,
+        val includeOtherBuilds: Boolean = true,
     )
 
     @Resource("/changes-coverage-treemap")
@@ -252,7 +253,8 @@ class Metrics {
         val page: Int? = null,
         val pageSize: Int? = null,
         val includeDeleted: Boolean? = null,
-        val includeEqual: Boolean? = null
+        val includeEqual: Boolean? = null,
+        val includeOtherBuilds: Boolean = true,
     )
 
     @Resource("/build-diff-report")
@@ -766,7 +768,8 @@ fun Route.getCoverageTreemap() {
             params.classNamePattern,
             params.rootId,
             params.testSessionId,
-            params.testDefinitionId
+            params.testDefinitionId,
+            params.includeOtherBuilds,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }
@@ -786,7 +789,8 @@ fun Route.getChangesCoverageTreemap() {
             params.classNamePattern,
             params.rootId,
             params.includeDeleted,
-            params.includeEqual
+            params.includeEqual,
+            params.includeOtherBuilds,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(treemap))
     }

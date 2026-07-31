@@ -484,6 +484,7 @@ class MetricsServiceImpl(
         rootId: String?,
         testSessionId: String?,
         testDefinitionId: String?,
+        includeOtherBuilds: Boolean,
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -528,7 +529,11 @@ class MetricsServiceImpl(
             }
         }
 
-        return buildTree(data, rootId)
+        return buildTree(
+            data,
+            rootId,
+            if (includeOtherBuilds) TreemapCoveredProbesKey.AGGREGATED else TreemapCoveredProbesKey.ISOLATED,
+        )
     }
 
     override suspend fun getChangesCoverageTreemap(
@@ -542,6 +547,7 @@ class MetricsServiceImpl(
         rootId: String?,
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
+        includeOtherBuilds: Boolean,
     ): List<Any> {
 
         if (!metricsRepository.buildExists(baselineBuildId)) {
@@ -564,7 +570,11 @@ class MetricsServiceImpl(
             includeEqual = includeEqual?.takeIf { it },
         )
 
-        return buildTree(data, rootId)
+        return buildTree(
+            data,
+            rootId,
+            if (includeOtherBuilds) TreemapCoveredProbesKey.AGGREGATED else TreemapCoveredProbesKey.ISOLATED,
+        )
     }
 
     override suspend fun getBuildDiffReport(
@@ -1201,13 +1211,18 @@ class MetricsServiceImpl(
         val coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0
         val probesCount = (row["probes_count"] as? Number)?.toInt() ?: 0
         val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
+        val coveredProbesInOtherBuilds =
+            (row["aggregated_covered_probes"] as Number).toInt()
         return PackageCoverageView(
             packageName = row["package_name"] as? String ?: "",
             methodsCount = methodsCount,
             coveredMethods = coveredMethods,
+            coveredMethodsInOtherBuilds =
+                (row["aggregated_covered_methods"] as Number).toInt(),
             missedMethods = (row["missed_methods"] as? Number)?.toInt() ?: 0,
             probesCount = probesCount,
             coveredProbes = coveredProbes,
+            coveredProbesInOtherBuilds = coveredProbesInOtherBuilds,
             missedProbes = (row["missed_probes"] as? Number)?.toInt() ?: 0,
             probesCoverageRatio = coverageRatio(coveredProbes, probesCount),
             methodsCoverageRatio = coverageRatio(coveredMethods, methodsCount),
@@ -1219,6 +1234,8 @@ class MetricsServiceImpl(
         val coveredMethods = (row["covered_methods"] as? Number)?.toInt() ?: 0
         val probesCount = (row["probes_count"] as? Number)?.toInt() ?: 0
         val coveredProbes = (row["covered_probes"] as? Number)?.toInt() ?: 0
+        val coveredProbesInOtherBuilds =
+            (row["aggregated_covered_probes"] as Number).toInt()
         val fullClassName = row["class_name"] as String
         return ClassCoverageView(
             fullClassName = fullClassName,
@@ -1226,9 +1243,12 @@ class MetricsServiceImpl(
             className = simpleClassName(fullClassName),
             methodsCount = methodsCount,
             coveredMethods = coveredMethods,
+            coveredMethodsInOtherBuilds =
+                (row["aggregated_covered_methods"] as Number).toInt(),
             missedMethods = (row["missed_methods"] as? Number)?.toInt() ?: 0,
             probesCount = probesCount,
             coveredProbes = coveredProbes,
+            coveredProbesInOtherBuilds = coveredProbesInOtherBuilds,
             missedProbes = (row["missed_probes"] as? Number)?.toInt() ?: 0,
             probesCoverageRatio = coverageRatio(coveredProbes, probesCount),
             methodsCoverageRatio = coverageRatio(coveredMethods, methodsCount),
@@ -1274,7 +1294,7 @@ class MetricsServiceImpl(
         changeType = ChangeType.fromString(resultSet["change_type"] as String?),
         probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
         coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
-        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number).toInt(),
         coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         missedProbes = (resultSet["isolated_missed_probes"] as Number?)?.toInt(),
