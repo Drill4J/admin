@@ -90,5 +90,5 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      * Maximum number of ETL runs executed concurrently.
      */
     val maxParallelism : Int
-        get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 4
+        get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 16
 }

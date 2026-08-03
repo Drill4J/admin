@@ -29,6 +29,7 @@ import com.epam.drill.admin.etl.EtlRunsRepository
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.ClosableFlow
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -54,6 +55,7 @@ open class EtlOrchestratorImpl(
     open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
     open val lockPollDelaySeconds: Long = 2,
+    open val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
@@ -163,7 +165,7 @@ open class EtlOrchestratorImpl(
         initTimestamp: Instant,
         finalTimestamp: Instant?,
         ownerId: String,
-    ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
+    ): List<EtlProcessingResult> = withContext(dispatcher) {
         val groupId = context.groupId
         val snapshotTime = finalTimestamp ?: Instant.now().minusSeconds(processingDelay)
         logger.info("ETL [$name] with owner [$ownerId] is starting...")

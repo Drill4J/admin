@@ -31,15 +31,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset.UTC
 import kotlin.collections.component1
 import kotlin.collections.component2
-
-private const val DEFAULT_MAX_PARALLELISM = 4
 
 class EtlServiceImpl(
     private val etlRepository: EtlMetadataRepository,
@@ -48,11 +45,11 @@ class EtlServiceImpl(
     private val buildRepository: BuildRepository,
     private val buildLevelEtlNames: Set<String> = emptySet(),
     private val defaultEtlNames: Set<String> = setOf(DEFAULT_ETL),
-    maxParallelism: Int = DEFAULT_MAX_PARALLELISM,
-    private val refreshDispatcher: CoroutineDispatcher =
-//        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    maxParallelism: Int,
+    private val dispatcher: CoroutineDispatcher =
         Dispatchers.IO.limitedParallelism(maxParallelism.coerceAtLeast(1)),
 ) : EtlService {
+
     override suspend fun refresh(
         context: EtlContext?,
         etlName: String?,
@@ -76,7 +73,7 @@ class EtlServiceImpl(
             orchestrators.map { etl ->
                 val params = resolveParams(etl.name, context, initTimestamp)
                 params.map { (etlContext, resolvedInitTimestamp) ->
-                    async(refreshDispatcher) {
+                    async(dispatcher) {
                         if (rerun)
                             etl.rerun(
                                 etlContext,
