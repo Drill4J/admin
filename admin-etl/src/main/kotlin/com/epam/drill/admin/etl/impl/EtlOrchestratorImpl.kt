@@ -269,18 +269,18 @@ open class EtlOrchestratorImpl(
 
         val minLastProcessedAt = activePipelines.mapNotNull { sinceTimestamps[it.name] }.min()
         val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
-        val jobs = activePipelines.map { pipeline ->
+        val subscriptions = activePipelines.map { pipeline -> pipeline to sharedFlow.subscribe() }
+        val jobs = subscriptions.map { (pipeline, subscription) ->
             async {
                 runPipelineWithExtractionFlow(
                     context = context,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = snapshotTime,
-                    sharedFlow = sharedFlow.subscribe(),
+                    sharedFlow = subscription,
                 )
             }
         }
-        sharedFlow.waitForSubscribers(jobs.count { it.isActive })
         extractRowsToExtractionFlow(
             context = context,
             extractor = extractor,

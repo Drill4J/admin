@@ -87,7 +87,10 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
         get() = config.propertyOrNull("lockPollDelaySeconds")?.getString()?.toLongOrNull() ?: 5L
 
     /**
-     * Maximum number of ETL runs executed concurrently.
+     * Maximum number of ETL runs (one per context/extractor-group admission) executed concurrently.
+     *
+     * Setting this too high relative to the pool size risks connection-pool exhaustion (an
+     * extractor holding a connection while waiting on a loader that can't get one).
      */
     val maxParallelism : Int
         get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 16
