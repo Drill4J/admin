@@ -93,5 +93,5 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      * extractor holding a connection while waiting on a loader that can't get one).
      */
     val maxParallelism : Int
-        get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 16
+        get() = config.propertyOrNull("maxParallelism")?.getString()?.toIntOrNull() ?: 4
 }
