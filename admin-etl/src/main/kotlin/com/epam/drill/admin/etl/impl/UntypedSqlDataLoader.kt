@@ -15,9 +15,11 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import org.jetbrains.exposed.sql.Database
+import java.time.Instant
 
 class UntypedSqlDataLoader(
     name: String,
@@ -31,5 +33,9 @@ class UntypedSqlDataLoader(
 
     override fun prepareSql(sql: String): PreparedSql<UntypedRow> {
         return UntypedPreparedSql.prepareSql(sql)
+    }
+
+    override fun parseRow(context: EtlContext): UntypedRow {
+        return UntypedRow(Instant.EPOCH, context.toMap(NamingConvention.UNDERSCORE))
     }
 }

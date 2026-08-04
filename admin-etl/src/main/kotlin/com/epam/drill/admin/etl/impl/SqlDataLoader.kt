@@ -42,6 +42,7 @@ abstract class SqlDataLoader<T: EtlRow>(
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>
+    abstract fun parseRow(context: EtlContext): T
 
     override suspend fun loadBatch(
         context: EtlContext,
@@ -99,7 +100,14 @@ abstract class SqlDataLoader<T: EtlRow>(
             newSuspendedTransaction(context = Dispatchers.IO, db = database) {
                 exec(object : Statement<Unit>(StatementType.DELETE, emptyList()) {
                     override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
-                        set(1, groupId)
+                        val columns = preparedSql.getArgs(parseRow(context))
+                        for (index in columns.indices) {
+                            val value = columns[index]
+                            if (value != null) {
+                                set(index + 1, value)
+                            } else
+                                setNull(index + 1, TextColumnType())
+                        }
                         executeUpdate()
                     }
                     override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()

@@ -26,6 +26,7 @@ interface BuildRepository {
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String)
     suspend fun getById(groupId: String, appId: String, buildId: String): Build?
+    suspend fun getFinalizedBuilds(groupId: String, appId: String? = null): List<Build>
     suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus?
     suspend fun saveBuildFinalization(
         groupId: String,

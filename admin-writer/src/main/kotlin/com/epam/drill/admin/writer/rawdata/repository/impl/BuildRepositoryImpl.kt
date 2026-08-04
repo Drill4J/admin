@@ -104,6 +104,17 @@ class BuildRepositoryImpl : BuildRepository {
         }.map { it.toBuild() }.firstOrNull()
     }
 
+    override suspend fun getFinalizedBuilds(groupId: String, appId: String?): List<Build> {
+        return BuildTable.selectAll().where {
+            var condition = (BuildTable.groupId eq groupId) and
+                    (BuildTable.validationStatus eq BuildValidationStatus.VALID.name)
+            if (appId != null) {
+                condition = condition and (BuildTable.appId eq appId)
+            }
+            condition
+        }.map { it.toBuild() }
+    }
+
     override suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus? {
         return BuildTable.select(BuildTable.validationStatus)
             .where {

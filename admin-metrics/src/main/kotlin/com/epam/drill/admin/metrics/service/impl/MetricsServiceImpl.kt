@@ -46,7 +46,6 @@ import java.time.LocalDateTime
 class MetricsServiceImpl(
     private val metricsRepository: MetricsRepository,
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
-    private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
     private val etl: EtlOrchestrator,
     private val testDefinitionCoverageEtl: EtlOrchestrator,
@@ -145,6 +144,8 @@ class MetricsServiceImpl(
                 testDefinitionCoverageEtl.run(
                     EtlContext(
                         groupId = parseBuildId(buildId).groupId,
+                        appId = parseBuildId(buildId).appId,
+                        buildId = buildId,
                         testSessionId = testSessionId,
                         testDefinitionId = testDefinitionId
                     ),

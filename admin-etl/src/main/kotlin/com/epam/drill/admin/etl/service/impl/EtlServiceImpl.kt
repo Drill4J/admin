@@ -22,11 +22,17 @@ import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.service.EtlService
+import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig.transaction
+import com.epam.drill.admin.writer.rawdata.repository.BuildRepository
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -38,7 +44,13 @@ class EtlServiceImpl(
     private val etlRepository: EtlMetadataRepository,
     private val etls: Map<String, EtlOrchestrator>,
     private val settingsService: SettingsService,
+    private val buildRepository: BuildRepository,
+    private val buildLevelEtlNames: Set<String> = emptySet(),
+    private val defaultEtlNames: Set<String> = setOf(DEFAULT_ETL),
+    maxParallelism: Int,
 ) : EtlService {
+    private val runGate = Semaphore(maxParallelism.coerceAtLeast(1))
+
     override suspend fun refresh(
         context: EtlContext?,
         etlName: String?,
@@ -48,32 +60,91 @@ class EtlServiceImpl(
         skipIfLocked: Boolean,
     ): List<EtlProcessingResult> {
         val rerun = reset || initTimestamp != null || finalTimestamp != null
-        val orchestratorName = etlName ?: DEFAULT_ETL
-        val etl = etls[orchestratorName]
-            ?: throw IllegalArgumentException("Etl with name '$orchestratorName' not found")
 
-        val params: Map<EtlContext, Instant> = runBlocking {
-            if (context != null) {
-                mapOf(context to (initTimestamp ?: resolveInitTimestamp(context.groupId)))
+        val orchestrators: List<EtlOrchestrator> = if (etlName != null) {
+            listOf(
+                etls[etlName]
+                    ?: throw IllegalArgumentException("Etl with name [$etlName] not found")
+            )
+        } else {
+            defaultEtlNames.mapNotNull { etls[it] }
+        }
+
+        return coroutineScope {
+            orchestrators.map { etl ->
+                val params = resolveParams(etl.name, context, initTimestamp)
+                params.map { (etlContext, resolvedInitTimestamp) ->
+                    async(Dispatchers.IO) {
+                        runGate.withPermit {
+                            if (rerun)
+                                etl.rerun(
+                                    etlContext,
+                                    resolvedInitTimestamp,
+                                    finalTimestamp,
+                                    withDataDeletion = reset,
+                                    skipIfLocked = skipIfLocked
+                                )
+                            else
+                                etl.run(etlContext, resolvedInitTimestamp, finalTimestamp, skipIfLocked)
+                        }
+                    }
+                }.awaitAll().flatten()
+            }.flatten()
+        }
+    }
+
+    private suspend fun resolveParams(
+        orchestratorName: String,
+        context: EtlContext?,
+        initTimestamp: Instant?,
+    ): Map<EtlContext, Instant> {
+        val contexts = resolveContexts(orchestratorName, context)
+        val initTimestampByGroup = HashMap<String, Instant>()
+        val params = LinkedHashMap<EtlContext, Instant>()
+        for (etlContext in contexts) {
+            val resolved = initTimestamp
+                ?: initTimestampByGroup[etlContext.groupId]
+                ?: resolveInitTimestamp(etlContext.groupId).also {
+                    initTimestampByGroup[etlContext.groupId] = it
+                }
+            params[etlContext] = resolved
+        }
+        return params
+    }
+
+    private suspend fun resolveContexts(
+        orchestratorName: String,
+        context: EtlContext?,
+    ): List<EtlContext> {
+        return if (orchestratorName in buildLevelEtlNames) {
+            resolveBuildContexts(context)
+        } else if (context != null) {
+            listOf(context)
+        } else {
+            settingsService.getAllGroupSettings().keys.map { EtlContext(it) }
+        }
+    }
+
+    /**
+     * Expands the given context into one context per finalized (VALID) build.
+     * - groupId: from the context if present, otherwise every configured group.
+     * - appId/buildId: taken from the context when set; otherwise resolved from the
+     *   finalized-builds lookup (optionally narrowed by the context appId).
+     */
+    private suspend fun resolveBuildContexts(context: EtlContext?): List<EtlContext> {
+        val groupIds = context?.groupId?.let { listOf(it) }
+            ?: settingsService.getAllGroupSettings().keys.toList()
+        return groupIds.flatMap { groupId ->
+            val appId = context?.appId
+            val buildId = context?.buildId
+            if (buildId != null) {
+                listOf(EtlContext(groupId = groupId, appId = appId, buildId = buildId))
             } else {
-                settingsService.getAllGroupSettings().map { (groupId, groupSettings) ->
-                    EtlContext(groupId) to (initTimestamp ?: resolveInitTimestamp(groupSettings))
-                }.toMap()
+                transaction { buildRepository.getFinalizedBuilds(groupId, appId) }.map { build ->
+                    EtlContext(groupId = groupId, appId = build.appId, buildId = build.id)
+                }
             }
         }
-
-        val results: List<EtlProcessingResult> = runBlocking {
-            params.map { (context, initTimestamp) ->
-                async {
-                    if (rerun)
-                        etl.rerun(context, initTimestamp, finalTimestamp, withDataDeletion = reset, skipIfLocked = skipIfLocked)
-                    else
-                        etl.run(context, initTimestamp, finalTimestamp, skipIfLocked)
-                }
-            }.awaitAll().flatten()
-        }
-
-        return results
     }
 
     override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {

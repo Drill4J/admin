@@ -28,6 +28,7 @@ import com.epam.drill.admin.etl.SimpleEtlRunsRepository
 import com.epam.drill.admin.etl.SimpleMetadataRepository
 import com.epam.drill.admin.etl.config.EtlMeter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.runBlocking
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.measureTimeMillis
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -102,6 +104,33 @@ class EtlOrchestratorImplTest {
         }
 
         override suspend fun deleteAll(context: EtlContext) {}
+    }
+
+    /**
+     * A loader that sleeps [delayMillis] before consuming each row, used to simulate a slow
+     * downstream write. Real extractors/loaders are suspend-based, so a slow loader must not
+     * force other loaders (or the extractor's DB connection) to sit idle behind it.
+     */
+    inner class SlowLoader(override val name: String, private val delayMillis: Long) : DataLoader<GRow> {
+        val received = mutableListOf<GRow>()
+
+        override suspend fun load(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<GRow>,
+            onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
+            onStatusChanged: suspend (EtlStatus) -> Unit,
+        ): EtlLoadingResult {
+            collector.collect {
+                delay(delayMillis)
+                received.add(it)
+            }
+            val lastTs = received.maxOfOrNull { it.ts } ?: sinceTimestamp
+            return EtlLoadingResult(lastProcessedAt = lastTs, processedRows = received.size.toLong())
+        }
+
+        override suspend fun deleteAll(context: EtlContext) = received.clear()
     }
 
     @BeforeEach
@@ -368,4 +397,51 @@ class EtlOrchestratorImplTest {
         assertEquals(EtlStatus.FAILED, failingResult.status, "Failing pipeline must be reported as FAILED")
         assertTrue(failingResult.errorMessage != null, "Failing pipeline must carry an error message")
     }
+
+    @Test
+    fun `orchestrator runs pipelines in a group fully concurrently, not serialized behind a slow loader`() =
+        runBlocking {
+            val now = Instant.now()
+            val rows = (1..5).map { GRow(it, now) }
+            val sharedExtractor = CountingExtractor(name = "shared", rows = rows)
+
+            val loaderDelayMillis = 200L
+            val slowLoaders = (1..4).map { SlowLoader("slow-loader-$it", loaderDelayMillis) }
+            val pipelines = slowLoaders.mapIndexed { i, loader ->
+                EtlPipelineImpl(
+                    name = "pipeline-$i",
+                    extractor = sharedExtractor,
+                    transformer = gRowIdentity,
+                    loader = loader,
+                    metrics = metrics,
+                )
+            }
+
+            val orchestrator = EtlOrchestratorImpl(
+                name = "test",
+                pipelines = pipelines,
+                metadataRepository = SimpleMetadataRepository(),
+                runsRepository = SimpleEtlRunsRepository(),
+                bufferSize = rows.size,
+            )
+
+            val elapsedMillis = measureTimeMillis {
+                orchestrator.run(EtlContext(groupId = "g1"))
+            }
+
+            // If loaders (or the extractor feeding them) were serialized by an internal throttle,
+            // total time would scale with loaders.size * rows.size * loaderDelayMillis.
+            // Since all 4 loaders run concurrently, total time should stay close to a single
+            // loader's own critical path (rows.size * loaderDelayMillis), with generous headroom.
+            val serializedLowerBound = slowLoaders.size * rows.size * loaderDelayMillis
+            val singleLoaderCriticalPath = rows.size * loaderDelayMillis
+            assertTrue(
+                elapsedMillis < serializedLowerBound,
+                "Expected concurrent execution (~${singleLoaderCriticalPath}ms) but took ${elapsedMillis}ms, " +
+                        "close to serialized bound of ${serializedLowerBound}ms"
+            )
+            slowLoaders.forEach { loader ->
+                assertEquals(rows.size, loader.received.size, "Each loader must receive all rows")
+            }
+        }
 }

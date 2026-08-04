@@ -164,7 +164,6 @@ open class EtlOrchestratorImpl(
         finalTimestamp: Instant?,
         ownerId: String,
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        val groupId = context.groupId
         val snapshotTime = finalTimestamp ?: Instant.now().minusSeconds(processingDelay)
         logger.info("ETL [$name] with owner [$ownerId] is starting...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
@@ -270,18 +269,18 @@ open class EtlOrchestratorImpl(
 
         val minLastProcessedAt = activePipelines.mapNotNull { sinceTimestamps[it.name] }.min()
         val sharedFlow = SubscribableChannelFlow<T>(bufferSize)
-        val jobs = activePipelines.map { pipeline ->
+        val subscriptions = activePipelines.map { pipeline -> pipeline to sharedFlow.subscribe() }
+        val jobs = subscriptions.map { (pipeline, subscription) ->
             async {
                 runPipelineWithExtractionFlow(
                     context = context,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = snapshotTime,
-                    sharedFlow = sharedFlow.subscribe(),
+                    sharedFlow = subscription,
                 )
             }
         }
-        sharedFlow.waitForSubscribers(jobs.count { it.isActive })
         extractRowsToExtractionFlow(
             context = context,
             extractor = extractor,

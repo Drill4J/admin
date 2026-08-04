@@ -15,7 +15,9 @@
  */
 package com.epam.drill.admin.metrics
 
+import com.epam.drill.admin.test.waitUntilInBlocking
 import com.epam.drill.admin.writer.rawdata.route.payload.*
+import com.epam.drill.admin.writer.rawdata.util.combineChecksumsCrc64
 import com.jayway.jsonpath.JsonPath
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -39,6 +41,24 @@ suspend fun HttpClient.deployInstance(
             methods = methods
         )
     )
+    waitUntilInBlocking {
+        val response = finalizeBuild(
+            BuildFinalizePayload(
+                groupId = instance.groupId,
+                appId = instance.appId,
+                commitSha = instance.commitSha,
+                buildVersion = instance.buildVersion,
+                instanceId = instance.instanceId,
+                methodsCount = methods.size,
+                methodsChecksum = combineChecksumsCrc64(methods.map { it.bodyChecksum }),
+            )
+        )
+        response.returnsSingle { data ->
+            assertEquals("VALID", data["status"],
+                "Expected build finalization status to be VALID, but got ${data["status"]}")
+        }
+    }
+
 }
 
 suspend fun HttpClient.launchTest(
@@ -118,6 +138,12 @@ suspend fun HttpClient.putInstance(payload: InstancePayload): HttpResponse {
 
 suspend fun HttpClient.putMethods(payload: MethodsPayload): HttpResponse {
     return put("/data-ingest/methods") {
+        setBody(payload)
+    }.assertSuccessStatus()
+}
+
+suspend fun HttpClient.finalizeBuild(payload: BuildFinalizePayload): HttpResponse {
+    return put("/data-ingest/builds/finalize") {
         setBody(payload)
     }.assertSuccessStatus()
 }
