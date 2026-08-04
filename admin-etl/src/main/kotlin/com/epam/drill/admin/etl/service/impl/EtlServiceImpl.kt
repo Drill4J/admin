@@ -31,6 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -46,9 +48,8 @@ class EtlServiceImpl(
     private val buildLevelEtlNames: Set<String> = emptySet(),
     private val defaultEtlNames: Set<String> = setOf(DEFAULT_ETL),
     maxParallelism: Int,
-    private val dispatcher: CoroutineDispatcher =
-        Dispatchers.IO.limitedParallelism(maxParallelism.coerceAtLeast(1)),
 ) : EtlService {
+    private val runGate = Semaphore(maxParallelism.coerceAtLeast(1))
 
     override suspend fun refresh(
         context: EtlContext?,
@@ -73,17 +74,19 @@ class EtlServiceImpl(
             orchestrators.map { etl ->
                 val params = resolveParams(etl.name, context, initTimestamp)
                 params.map { (etlContext, resolvedInitTimestamp) ->
-                    async(dispatcher) {
-                        if (rerun)
-                            etl.rerun(
-                                etlContext,
-                                resolvedInitTimestamp,
-                                finalTimestamp,
-                                withDataDeletion = reset,
-                                skipIfLocked = skipIfLocked
-                            )
-                        else
-                            etl.run(etlContext, resolvedInitTimestamp, finalTimestamp, skipIfLocked)
+                    async(Dispatchers.IO) {
+                        runGate.withPermit {
+                            if (rerun)
+                                etl.rerun(
+                                    etlContext,
+                                    resolvedInitTimestamp,
+                                    finalTimestamp,
+                                    withDataDeletion = reset,
+                                    skipIfLocked = skipIfLocked
+                                )
+                            else
+                                etl.run(etlContext, resolvedInitTimestamp, finalTimestamp, skipIfLocked)
+                        }
                     }
                 }.awaitAll().flatten()
             }.flatten()

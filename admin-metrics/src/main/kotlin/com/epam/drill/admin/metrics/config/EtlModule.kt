@@ -33,8 +33,6 @@ import com.epam.drill.admin.etl.service.impl.EtlServiceImpl
 import com.epam.drill.admin.writer.rawdata.config.settingsServicesDIModule
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.instance
@@ -44,16 +42,10 @@ import org.quartz.JobDetail
 
 const val TEST_DEFINITION_COVERAGE_ETL = "testDefinitionCoverage"
 const val COVERAGE_ETL = "coverage"
-const val ETL_DISPATCHER = "etlDispatcher"
 
 val etlDIModule
     get() = DI.Module("etlServices") {
         importOnce(settingsServicesDIModule)
-        bind<CoroutineDispatcher>(tag = ETL_DISPATCHER) with singleton {
-            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"), EtlMeter(instance()))
-            Dispatchers.IO.limitedParallelism(etlConfig.maxParallelism.coerceAtLeast(1))
-        }
         bind<EtlMetadataRepository>() with singleton {
             EtlMetadataRepositoryImpl(
                 database = MetricsDatabaseConfig.database,
@@ -91,7 +83,6 @@ val etlDIModule
                     bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
                     lockPollDelaySeconds = lockPollDelaySeconds,
-                    dispatcher = instance(tag = ETL_DISPATCHER),
                 )
             }
         }
@@ -123,7 +114,6 @@ val etlDIModule
                     bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
                     lockPollDelaySeconds = lockPollDelaySeconds,
-                    dispatcher = instance(tag = ETL_DISPATCHER),
                 )
             }
         }
@@ -140,7 +130,6 @@ val etlDIModule
                     runsRepository = instance(),
                     lockLeaseSeconds = lockLeaseSeconds,
                     lockPollDelaySeconds = lockPollDelaySeconds,
-                    dispatcher = instance(tag = ETL_DISPATCHER),
                 )
             }
         }
@@ -160,7 +149,6 @@ val etlDIModule
                 buildLevelEtlNames = setOf(COVERAGE_ETL, TEST_DEFINITION_COVERAGE_ETL),
                 defaultEtlNames = setOf(DEFAULT_ETL, COVERAGE_ETL),
                 maxParallelism = etlConfig.maxParallelism,
-                dispatcher = instance(tag = ETL_DISPATCHER),
             )
         }
         bind<UpdateMetricsEtlJob>() with singleton {
