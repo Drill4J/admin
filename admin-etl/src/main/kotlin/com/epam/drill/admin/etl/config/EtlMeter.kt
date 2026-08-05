@@ -21,10 +21,19 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 class EtlMeter(val registry: MeterRegistry) {
+
+    // Micrometer silently ignores a Gauge registration when a meter with the same name and tags
+    // already exists, keeping the value supplier from the first registration. Since jobs are
+    // re-run repeatedly with identical tags (jobName/context), we must reuse the same backing
+    // AtomicInteger/AtomicReference across calls instead of creating a fresh one each time,
+    // otherwise later runs would update a value that the registered gauge never reads.
+    private val doubleGauges = ConcurrentHashMap<String, AtomicReference<Double>>()
+    private val integerGauges = ConcurrentHashMap<String, AtomicInteger>()
 
     fun rowsFetched(jobName: String, context: EtlContext): Counter {
         return registerCounter("etl_rows_fetched", jobName, context)
@@ -79,21 +88,35 @@ class EtlMeter(val registry: MeterRegistry) {
     }
 
     private fun registerIntegerGauge(metricName: String, jobName: String, context: EtlContext): AtomicInteger {
-        val value = AtomicInteger(0)
-        Gauge.builder(metricName) { value.get() }
-            .tag("jobName", jobName)
-            .tagContext(context)
-            .register(registry)
-        return value
+        val key = gaugeKey(metricName, jobName, context)
+        return integerGauges.computeIfAbsent(key) {
+            val value = AtomicInteger(0)
+            Gauge.builder(metricName) { value.get() }
+                .tag("jobName", jobName)
+                .tagContext(context)
+                .register(registry)
+            value
+        }
     }
 
     private fun registerDoubleGauge(metricName: String, jobName: String, context: EtlContext): AtomicReference<Double> {
-        val value = AtomicReference(0.0)
-        Gauge.builder(metricName) { value.get() }
-            .tag("jobName", jobName)
-            .tagContext(context)
-            .register(registry)
-        return value
+        val key = gaugeKey(metricName, jobName, context)
+        return doubleGauges.computeIfAbsent(key) {
+            val value = AtomicReference(0.0)
+            Gauge.builder(metricName) { value.get() }
+                .tag("jobName", jobName)
+                .tagContext(context)
+                .register(registry)
+            value
+        }
+    }
+
+    private fun gaugeKey(metricName: String, jobName: String, context: EtlContext): String {
+        val tags = (context.toMap().mapValues { (_, v) -> v?.toString() ?: "" } + ("jobName" to jobName))
+            .toSortedMap()
+            .entries
+            .joinToString(",") { (k, v) -> "$k=$v" }
+        return "$metricName{$tags}"
     }
 
     private fun registerCounter(metricName: String, jobName: String, context: EtlContext): Counter {
