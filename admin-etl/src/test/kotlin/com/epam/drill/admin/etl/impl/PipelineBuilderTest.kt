@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
@@ -258,7 +259,7 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
         return EtlLoadingResult(lastProcessedAt = untilTimestamp, processedRows = received.size.toLong())
     }
 
-    override suspend fun deleteAll(context: EtlContext) = received.clear()
+    override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) = received.clear()
 }
 
 private class PbPassThroughTransformer(override val name: String = "pass") :

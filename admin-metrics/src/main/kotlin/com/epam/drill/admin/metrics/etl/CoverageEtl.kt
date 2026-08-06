@@ -146,7 +146,8 @@ val EtlConfig.buildMethodCoverageAggregator
             "app_env_id",
             "test_result",
             "test_tag",
-            "test_task_id"
+            "test_task_id",
+            "created_at_day"
         ),
         aggregate = { current, next ->
             val map = HashMap<String, Any?>(current)
@@ -244,7 +245,8 @@ val EtlConfig.test2CodeMappingPipeline
             "test_definition_id",
             "branch",
             "app_env_id",
-            "test_task_id"
+            "test_task_id",
+            "created_at_day"
         ) { current, next ->
             val map = HashMap<String, Any?>(current)
             map["updated_at_day"] = next["created_at_day"]

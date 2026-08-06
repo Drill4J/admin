@@ -22,6 +22,7 @@ import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlRow
@@ -63,8 +64,9 @@ open class EtlOrchestratorImpl(
         finalTimestamp: Instant?,
         skipIfLocked: Boolean,
     ): List<EtlProcessingResult> {
+        val period = EtlPeriod.UNBOUNDED
         if (finalTimestamp != null) {
-            val lastProcessedAt = runsRepository.getLastProcessedAt(name, context)
+            val lastProcessedAt = runsRepository.getLastProcessedAt(name, context, period)
             if (lastProcessedAt != null && !finalTimestamp.isAfter(lastProcessedAt)) {
                 logger.info {
                     "ETL [$name] for group [${context.groupId}] skipped: finalTimestamp ($finalTimestamp) " +
@@ -82,8 +84,8 @@ open class EtlOrchestratorImpl(
                 }
             }
         }
-        return executeWithLock(context, skipIfLocked) { ownerId ->
-            runInternal(context, initTimestamp, finalTimestamp, ownerId)
+        return executeWithLock(context, period, skipIfLocked) { ownerId ->
+            runInternal(context, period, initTimestamp, finalTimestamp, ownerId)
         }
     }
 
@@ -91,43 +93,67 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         initTimestamp: Instant,
         finalTimestamp: Instant?,
+        period: EtlPeriod,
         withDataDeletion: Boolean,
         skipIfLocked: Boolean,
-    ): List<EtlProcessingResult> = executeWithLock(context, skipIfLocked) { ownerId ->
+    ): List<EtlProcessingResult> = executeWithLock(context, period, skipIfLocked) { ownerId ->
         val groupId = context.groupId
-        logger.info { "ETL [$name] for group [$groupId] is deleting all metadata for rerun..." }
+        // For a bounded period the extraction window is derived from the day range;
+        // otherwise the caller-provided timestamps drive a full reprocess.
+        val effectiveInit = period.sinceTimestamp ?: initTimestamp
+        val effectiveFinal = period.untilTimestamp ?: finalTimestamp
+        logger.info { "ETL [$name] for group [$groupId] is deleting metadata for rerun (period=$period)..." }
         pipelines.map { it.name }.forEach { pipelineName ->
-            metadataRepository.deleteMetadataByPipeline(context, pipelineName)
+            metadataRepository.deleteMetadataByPipeline(context, pipelineName, period)
         }
-        logger.info { "ETL [$name] for group [$groupId] deleted all metadata for rerun." }
+        logger.info { "ETL [$name] for group [$groupId] deleted metadata for rerun." }
         if (withDataDeletion) {
-            logger.info { "ETL [$name] for group [$groupId] is deleting all data for rerun..." }
-            pipelines.forEach { it.cleanUp(context) }
-            logger.info { "ETL [$name] for group [$groupId] deleted all data for rerun." }
+            logger.info { "ETL [$name] for group [$groupId] is deleting data for rerun (period=$period)..." }
+            pipelines.forEach { it.cleanUp(context, period) }
+            logger.info { "ETL [$name] for group [$groupId] deleted data for rerun." }
         }
-        runInternal(context, initTimestamp, finalTimestamp, ownerId = ownerId)
+        runInternal(context, period, effectiveInit, effectiveFinal, ownerId = ownerId)
+    }
+
+    override suspend fun resumeUnfinished(
+        context: EtlContext?,
+    ): List<EtlProcessingResult> {
+        val targets = metadataRepository.getUnfinishedTargets(pipelines.map { it.name })
+            .filter { context == null || it.context == context }
+        if (targets.isEmpty()) return emptyList()
+        logger.info { "ETL [$name] is resuming ${targets.size} unfinished period(s)..." }
+        return targets.flatMap { target ->
+            val period = target.period
+            // Continue from the persisted watermark: no metadata/data deletion here.
+            executeWithLock(target.context, period, skipIfLocked = true) { ownerId ->
+                val effectiveInit = period.sinceTimestamp ?: Instant.EPOCH
+                val effectiveFinal = period.untilTimestamp
+                runInternal(target.context, period, effectiveInit, effectiveFinal, ownerId)
+            }
+        }
     }
 
     /**
-     * Acquires the distributed lock.
+     * Acquires the distributed lock for the given [context] and [period].
      */
     private suspend fun executeWithLock(
         context: EtlContext,
+        period: EtlPeriod,
         skipIfLocked: Boolean = false,
         block: suspend (ownerId: String) -> List<EtlProcessingResult>,
     ): List<EtlProcessingResult> {
         val ownerId = UUID.randomUUID().toString()
         var firstAttempt = true
-        while (!runsRepository.tryAcquireLockAndStart(name, context, ownerId, lockLeaseSeconds)) {
+        while (!runsRepository.tryAcquireLockAndStart(name, context, ownerId, lockLeaseSeconds, period)) {
             if (skipIfLocked) {
                 logger.info {
-                    "ETL [$name] for group [${context.groupId}] is locked by another instance, skipping..."
+                    "ETL [$name] for group [${context.groupId}] period [$period] is locked by another instance, skipping..."
                 }
                 return pipelines.map { pipeline ->
                     EtlProcessingResult(
                         context = context,
                         pipelineName = pipeline.name,
-                        lastProcessedAt = runsRepository.getLastProcessedAt(name, context)
+                        lastProcessedAt = runsRepository.getLastProcessedAt(name, context, period)
                             ?: Instant.EPOCH,
                         rowsProcessed = 0,
                         status = EtlStatus.SKIPPED,
@@ -151,7 +177,7 @@ open class EtlOrchestratorImpl(
             return results
         } finally {
             runCatching {
-                runsRepository.markFinishedAndRelease(name, context, ownerId, lastProcessedAt)
+                runsRepository.markFinishedAndRelease(name, context, ownerId, lastProcessedAt, period)
             }.onFailure {
                 logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to release run-lock" }
             }
@@ -160,6 +186,7 @@ open class EtlOrchestratorImpl(
 
     private suspend fun runInternal(
         context: EtlContext,
+        period: EtlPeriod,
         initTimestamp: Instant,
         finalTimestamp: Instant?,
         ownerId: String,
@@ -178,6 +205,7 @@ open class EtlOrchestratorImpl(
                         val typedPipelines = groupedPipelines as List<EtlPipeline<EtlRow, *>>
                         results += runPipelineGroupByExtractor(
                             context = context,
+                            period = period,
                             groupedPipelines = typedPipelines,
                             extractor = typedPipelines.first().extractor,
                             initTimestamp = initTimestamp,
@@ -188,7 +216,7 @@ open class EtlOrchestratorImpl(
             }.every(1.minutes) {
                 logger.info { "ETL [$name] with owner [$ownerId] is still running..." }
                 runCatching {
-                    runsRepository.extendLease(name, context, ownerId, lockLeaseSeconds)
+                    runsRepository.extendLease(name, context, ownerId, lockLeaseSeconds, period)
                 }.onFailure {
                     logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to extend run-lock lease" }
                 }
@@ -211,6 +239,7 @@ open class EtlOrchestratorImpl(
      */
     private suspend fun <T : EtlRow> runPipelineGroupByExtractor(
         context: EtlContext,
+        period: EtlPeriod,
         groupedPipelines: List<EtlPipeline<T, *>>,
         extractor: DataExtractor<T> = groupedPipelines.first().extractor,
         initTimestamp: Instant,
@@ -220,7 +249,7 @@ open class EtlOrchestratorImpl(
 
         // Compute per-pipeline sinceTimestamp from metadata
         val sinceTimestamps: Map<String, Instant> = groupedPipelines.associate { pipeline ->
-            val metadata = metadataRepository.getMetadata(context, pipeline.name)
+            val metadata = metadataRepository.getMetadata(context, pipeline.name, period)
             val sinceTimestamp = if (metadata?.lastProcessedAt != null)
                 metadata.lastProcessedAt.minusSeconds(consistencyWindow)
             else
@@ -258,6 +287,7 @@ open class EtlOrchestratorImpl(
                         status = EtlStatus.EXTRACTING,
                         lastProcessedAt = sinceTimestamps[pipeline.name] ?: initTimestamp,
                         lastRunAt = snapshotTime,
+                        period = period,
                     )
                 )
             } catch (e: Throwable) {
@@ -274,6 +304,7 @@ open class EtlOrchestratorImpl(
             async {
                 runPipelineWithExtractionFlow(
                     context = context,
+                    period = period,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = snapshotTime,
@@ -284,6 +315,7 @@ open class EtlOrchestratorImpl(
         sharedFlow.waitForSubscribers(jobs.count { it.isActive })
         extractRowsToExtractionFlow(
             context = context,
+            period = period,
             extractor = extractor,
             sinceTimestamp = minLastProcessedAt,
             untilTimestamp = snapshotTime,
@@ -296,6 +328,7 @@ open class EtlOrchestratorImpl(
 
     private suspend fun <T : EtlRow> extractRowsToExtractionFlow(
         context: EtlContext,
+        period: EtlPeriod,
         extractor: DataExtractor<T>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
@@ -310,7 +343,7 @@ open class EtlOrchestratorImpl(
                 emitter = sharedFlow,
                 onExtractingProgress = { result ->
                     activePipelines.forEach { pipeline ->
-                        progressExtracting(context, pipeline.name, extractor.name, result)
+                        progressExtracting(context, period, pipeline.name, extractor.name, result)
                     }
                 }
             )
@@ -327,6 +360,7 @@ open class EtlOrchestratorImpl(
      */
     private suspend fun <T : EtlRow, R : EtlRow> runPipelineWithExtractionFlow(
         context: EtlContext,
+        period: EtlPeriod,
         pipeline: EtlPipeline<T, R>,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
@@ -340,13 +374,14 @@ open class EtlOrchestratorImpl(
                 untilTimestamp = untilTimestamp,
                 extractionFlow = sharedFlow,
                 onLoadingProgress = { result ->
-                    progressLoading(context, pipeline.name, result)
+                    progressLoading(context, period, pipeline.name, result)
                 },
                 onStatusChanged = { status ->
                     try {
                         metadataRepository.accumulateMetadataByLoader(
                             context = context,
                             pipelineName = pipeline.name,
+                            period = period,
                             status = status,
                         )
                     } catch (e: Throwable) {
@@ -374,6 +409,7 @@ open class EtlOrchestratorImpl(
 
     private suspend fun progressExtracting(
         context: EtlContext,
+        period: EtlPeriod,
         pipelineName: String,
         extractorName: String,
         result: EtlExtractingResult,
@@ -382,6 +418,7 @@ open class EtlOrchestratorImpl(
             metadataRepository.accumulateMetadataByExtractor(
                 context = context,
                 pipelineName = pipelineName,
+                period = period,
                 errorMessage = result.errorMessage,
                 extractDuration = result.duration,
             )
@@ -395,6 +432,7 @@ open class EtlOrchestratorImpl(
 
     private suspend fun progressLoading(
         context: EtlContext,
+        period: EtlPeriod,
         pipelineName: String,
         result: EtlLoadingResult,
     ) {
@@ -402,6 +440,7 @@ open class EtlOrchestratorImpl(
             metadataRepository.accumulateMetadataByLoader(
                 context = context,
                 pipelineName = pipelineName,
+                period = period,
                 errorMessage = result.errorMessage,
                 lastProcessedAt = result.lastProcessedAt,
                 loadDuration = result.duration ?: 0L,

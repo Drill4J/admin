@@ -25,6 +25,7 @@ ON CONFLICT (
     app_id,
     signature,
     test_definition_id,
+    created_at_day,
     COALESCE(branch,''),
     COALESCE(app_env_id,''),
     COALESCE(test_task_id,'')

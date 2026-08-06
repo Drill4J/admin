@@ -29,6 +29,7 @@ ON CONFLICT (
     app_id,
     build_id,
     method_id,
+    created_at_day,
     COALESCE(app_env_id,''),
     COALESCE(test_result,''),
     COALESCE(test_tag,''),

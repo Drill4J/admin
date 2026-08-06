@@ -16,14 +16,19 @@
 package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlRunStatus
 import com.epam.drill.admin.etl.EtlRunsRepository
 import com.epam.drill.admin.etl.table.EtlRunsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
@@ -48,9 +53,19 @@ class EtlRunsRepositoryImpl(
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod,
     ): Boolean = newSuspendedTransaction(db = database) {
         val now = Instant.now()
         val expiresAt = now.plusSeconds(leaseSeconds)
+
+        // Serialize concurrent acquisitions for the same orchestrator+context so the
+        // overlap check below and the subsequent upsert are atomic w.r.t. each other.
+        exec("SELECT pg_advisory_xact_lock(${advisoryLockKey(orchestratorName, context)})")
+
+        if (period.isBounded && hasOverlappingActiveLock(orchestratorName, context, ownerId, period)) {
+            return@newSuspendedTransaction false
+        }
+
         val result = runsTable.upsertReturning(
             onUpdate = {
                 it[runsTable.status] = EtlRunStatus.RUNNING.name
@@ -66,6 +81,7 @@ class EtlRunsRepositoryImpl(
             where = {
                 sameOrchestrator(orchestratorName) and
                         sameContext(context) and
+                        samePeriod(period) and
                         freeOrOwnedBy(ownerId)
             }
         ) {
@@ -77,6 +93,9 @@ class EtlRunsRepositoryImpl(
             it[testSessionId] = context.testSessionId ?: ""
             it[testDefinitionId] = context.testDefinitionId ?: ""
             it[testLaunchId] = context.testLaunchId ?: ""
+
+            it[periodFrom] = period.storedFrom
+            it[periodTo] = period.storedTo
 
             it[runsTable.status] = EtlRunStatus.RUNNING.name
             it[runsTable.runsCount] = 1
@@ -97,12 +116,14 @@ class EtlRunsRepositoryImpl(
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod,
     ) {
         val expiresAt = Instant.now().plusSeconds(leaseSeconds)
         newSuspendedTransaction(db = database) {
             runsTable.update(where = {
                 sameOrchestrator(orchestratorName) and
                         sameContext(context) and
+                        samePeriod(period) and
                         ownedBy(ownerId)
             }) {
                 it[lockExpiresAt] = expiresAt
@@ -114,10 +135,11 @@ class EtlRunsRepositoryImpl(
     override suspend fun getLastProcessedAt(
         orchestratorName: String,
         context: EtlContext,
+        period: EtlPeriod,
     ): Instant? = newSuspendedTransaction(db = database) {
         runsTable
             .selectAll()
-            .where { sameOrchestrator(orchestratorName) and sameContext(context) }
+            .where { sameOrchestrator(orchestratorName) and sameContext(context) and samePeriod(period) }
             .singleOrNull()
             ?.get(runsTable.lastProcessedAt)
     }
@@ -127,11 +149,13 @@ class EtlRunsRepositoryImpl(
         context: EtlContext,
         ownerId: String,
         lastProcessedAt: Instant?,
+        period: EtlPeriod,
     ) {
         newSuspendedTransaction(db = database) {
             runsTable.update(where = {
                 sameOrchestrator(orchestratorName) and
                         sameContext(context) and
+                        samePeriod(period) and
                         ownedBy(ownerId)
             }) {
                 it[status] = EtlRunStatus.IDLE.name
@@ -144,6 +168,46 @@ class EtlRunsRepositoryImpl(
                 it[updatedAt] = CurrentDateTime
             }
         }
+    }
+
+    private fun hasOverlappingActiveLock(
+        orchestratorName: String,
+        context: EtlContext,
+        ownerId: String,
+        period: EtlPeriod,
+    ): Boolean = runsTable
+        .selectAll()
+        .where {
+            sameOrchestrator(orchestratorName) and
+                    sameContext(context) and
+                    // exclude the incremental/unbounded lane
+                    notSentinelPeriod() and
+                    // exclude this exact period (re-acquire is handled by the upsert guard)
+                    ((runsTable.periodFrom neq period.storedFrom) or (runsTable.periodTo neq period.storedTo)) and
+                    // day ranges overlap
+                    (runsTable.periodFrom lessEq period.storedTo) and
+                    (runsTable.periodTo greaterEq period.storedFrom) and
+                    // held by someone else and not expired
+                    runsTable.lockOwner.isNotNull() and
+                    (runsTable.lockOwner neq ownerId) and
+                    (runsTable.status eq EtlRunStatus.RUNNING.name) and
+                    (runsTable.lockExpiresAt greaterEq CurrentTimestamp)
+        }
+        .limit(1)
+        .any()
+
+    private fun advisoryLockKey(orchestratorName: String, context: EtlContext): Long {
+        val key = listOf(
+            orchestratorName,
+            context.groupId,
+            context.appId.orEmpty(),
+            context.instanceId.orEmpty(),
+            context.buildId.orEmpty(),
+            context.testSessionId.orEmpty(),
+            context.testDefinitionId.orEmpty(),
+            context.testLaunchId.orEmpty(),
+        ).joinToString("\u0000")
+        return key.hashCode().toLong()
     }
 
     private fun sameOrchestrator(
@@ -160,6 +224,13 @@ class EtlRunsRepositoryImpl(
             runsTable.lockExpiresAt.less(CurrentTimestamp) or
             ownedBy(ownerId)
 
+    private fun samePeriod(
+        period: EtlPeriod,
+    ): Op<Boolean> =
+        (runsTable.periodFrom eq period.storedFrom) and (runsTable.periodTo eq period.storedTo)
+
+    private fun notSentinelPeriod(): Op<Boolean> =
+        (runsTable.periodFrom neq EtlPeriod.SENTINEL_FROM) or (runsTable.periodTo neq EtlPeriod.SENTINEL_TO)
 
     private fun sameContext(
         context: EtlContext,

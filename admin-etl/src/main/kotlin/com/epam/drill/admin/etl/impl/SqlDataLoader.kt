@@ -17,7 +17,9 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.common.config.recordInline
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
@@ -29,6 +31,8 @@ import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.sql.Timestamp
+import java.time.Instant
 
 abstract class SqlDataLoader<T: EtlRow>(
     override val name: String,
@@ -91,15 +95,30 @@ abstract class SqlDataLoader<T: EtlRow>(
         )
     }
 
-    override suspend fun deleteAll(context: EtlContext) {
+    override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
         val groupId = context.groupId
-        logger.debug { "Loader [$name] deleting data for group [$groupId]" }
-        val preparedSql = prepareSql(sqlDelete)
+        logger.debug { "Loader [$name] deleting data for group [$groupId] period [$period]" }
+        val preparedSql = UntypedPreparedSql.prepareSql(sqlDelete)
+        val args = preparedSql.getArgs(
+            UntypedRow(
+                Instant.EPOCH,
+                context.toMap(NamingConvention.UNDERSCORE) + mapOf(
+                    "since_day" to period.sinceDay?.let { Timestamp.from(it) },
+                    "until_day" to period.untilDay?.let { Timestamp.from(it) },
+                )
+            )
+        )
         val duration = try {
             newSuspendedTransaction(context = Dispatchers.IO, db = database) {
                 exec(object : Statement<Unit>(StatementType.DELETE, emptyList()) {
                     override fun PreparedStatementApi.executeInternal(transaction: Transaction) {
-                        set(1, groupId)
+                        for (index in args.indices) {
+                            val value = args[index]
+                            if (value != null) {
+                                set(index + 1, value)
+                            } else
+                                setNull(index + 1, TextColumnType())
+                        }
                         executeUpdate()
                     }
                     override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()

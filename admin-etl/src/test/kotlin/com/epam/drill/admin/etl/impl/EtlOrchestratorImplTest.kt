@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
@@ -85,7 +86,7 @@ class EtlOrchestratorImplTest {
             return result
         }
 
-        override suspend fun deleteAll(context: EtlContext) = received.clear()
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) = received.clear()
     }
 
     inner class ThrowingLoader(override val name: String) : DataLoader<GRow> {
@@ -101,7 +102,7 @@ class EtlOrchestratorImplTest {
             return EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         }
 
-        override suspend fun deleteAll(context: EtlContext) {}
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {}
     }
 
     @BeforeEach

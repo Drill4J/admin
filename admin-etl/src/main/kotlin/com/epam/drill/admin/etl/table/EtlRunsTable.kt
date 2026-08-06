@@ -17,6 +17,7 @@ package com.epam.drill.admin.etl.table
 
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.javatime.timestamp
 
@@ -29,9 +30,12 @@ class EtlRunsTable(tableName: String) : Table(tableName) {
     val testSessionId = varchar("test_session_id", 225)
     val testDefinitionId = varchar("test_definition_id", 225)
     val testLaunchId = varchar("test_launch_id", 225)
+    val periodFrom = date("period_from")
+    val periodTo = date("period_to")
     override val primaryKey = PrimaryKey(
         orchestratorName, groupId, appId, instanceId, buildId,
-        testSessionId, testDefinitionId, testLaunchId
+        testSessionId, testDefinitionId, testLaunchId,
+        periodFrom, periodTo
     )
 
     val runsCount = long("runs_count").default(0L)

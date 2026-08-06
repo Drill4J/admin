@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
@@ -237,7 +238,7 @@ class EtlPipelineImplTest {
             }
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             loadedItems.clear()
         }
     }
@@ -270,7 +271,7 @@ class EtlPipelineImplTest {
             }
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             loadedItems.clear()
         }
     }
@@ -290,7 +291,7 @@ class EtlPipelineImplTest {
             return EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         }
 
-        override suspend fun deleteAll(context: EtlContext) {}
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {}
     }
 
     private fun buildPipeline(loader: CapturingLoader) = EtlPipelineImpl(

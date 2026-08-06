@@ -26,7 +26,6 @@ import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
 import com.epam.drill.admin.etl.impl.EtlRunsRepositoryImpl
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.etl.job.getUpdateMetricsEtlDataMap
 import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
 import com.epam.drill.admin.metrics.etl.*
 import com.epam.drill.admin.etl.service.EtlService
@@ -122,7 +121,7 @@ val etlDIModule
             )
             EtlServiceImpl(
                 etlRepository = instance(),
-                etls = etlList.associateBy { it.name },
+                etl = instance(tag = DEFAULT_ETL),
                 settingsService = instance(),
             )
         }
@@ -142,7 +141,6 @@ val updateMetricsEtlJob: JobDetail
         .storeDurably()
         .withDescription("Job for updating metrics using ETL processing.")
         .withIdentity(updateMetricsEtlJobKey)
-        .usingJobData(getUpdateMetricsEtlDataMap(null, false))
         .build()
 
 

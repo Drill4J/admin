@@ -15,19 +15,28 @@
  */
 package com.epam.drill.admin.etl.service
 
-import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlProcessingResult
 import java.time.Instant
+import java.time.LocalDate
 
 interface EtlService {
     suspend fun refresh(
-        context: EtlContext? = null,
-        etlName: String? = null,
+        groupId: String? = null,
         reset: Boolean = false,
         initTimestamp: Instant? = null,
         finalTimestamp: Instant? = null,
+        fromDay: LocalDate? = null,
+        toDay: LocalDate? = null,
+        chunkDays: Int? = null,
         skipIfLocked: Boolean = false,
     ): List<EtlProcessingResult>
+
+    /**
+     * Resumes interrupted/failed bounded-period reruns for the given orchestrator (or all
+     * orchestrators when [etlName] is null). Used by the scheduler to continue back-fills
+     * after a restart.
+     */
+    suspend fun resumeUnfinished(): List<EtlProcessingResult>
 
     suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
 }

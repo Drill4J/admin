@@ -22,6 +22,7 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
@@ -82,8 +83,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         )
     }
 
-    override suspend fun cleanUp(context: EtlContext) {
-        loader.deleteAll(context)
+    override suspend fun cleanUp(context: EtlContext, period: EtlPeriod) {
+        loader.deleteAll(context, period)
     }
 
     private suspend fun loadData(

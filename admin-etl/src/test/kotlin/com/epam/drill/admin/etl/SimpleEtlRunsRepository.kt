@@ -34,20 +34,42 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
         var lastProcessedAt: Instant? = null,
     )
 
-    private val store = mutableMapOf<Pair<String, EtlContext>, RunState>()
+    private data class Key(val orchestratorName: String, val context: EtlContext, val period: EtlPeriod)
+
+    private val store = mutableMapOf<Key, RunState>()
     private val mutex = Mutex()
 
-    fun snapshot(orchestratorName: String, context: EtlContext): RunState? = store[orchestratorName to context]?.copy()
+    fun snapshot(
+        orchestratorName: String,
+        context: EtlContext,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    ): RunState? = store[Key(orchestratorName, context, period)]?.copy()
 
     override suspend fun tryAcquireLockAndStart(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod,
     ): Boolean = mutex.withLock {
-        val key = orchestratorName to context
         val now = Instant.now()
-        val state = store.getOrPut(key) { RunState() }
+
+        if (period.isBounded) {
+            val overlappingActive = store.entries.any { (key, state) ->
+                key.orchestratorName == orchestratorName &&
+                        key.context == context &&
+                        key.period != period &&
+                        key.period.isBounded &&
+                        key.period.overlaps(period) &&
+                        state.lockOwner != null &&
+                        state.lockOwner != ownerId &&
+                        state.status == EtlRunStatus.RUNNING &&
+                        state.lockExpiresAt?.isAfter(now) == true
+            }
+            if (overlappingActive) return@withLock false
+        }
+
+        val state = store.getOrPut(Key(orchestratorName, context, period)) { RunState() }
         val held = state.lockOwner != null &&
                 state.lockExpiresAt?.isAfter(now) == true &&
                 state.lockOwner != ownerId
@@ -65,8 +87,9 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod,
     ) = mutex.withLock {
-        val state = store[orchestratorName to context] ?: return@withLock
+        val state = store[Key(orchestratorName, context, period)] ?: return@withLock
         if (state.lockOwner == ownerId) {
             state.lockExpiresAt = Instant.now().plusSeconds(leaseSeconds)
         }
@@ -75,17 +98,19 @@ class SimpleEtlRunsRepository : EtlRunsRepository {
     override suspend fun getLastProcessedAt(
         orchestratorName: String,
         context: EtlContext,
+        period: EtlPeriod,
     ): Instant? = mutex.withLock {
-        store[orchestratorName to context]?.lastProcessedAt
+        store[Key(orchestratorName, context, period)]?.lastProcessedAt
     }
 
     override suspend fun markFinishedAndRelease(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
-        lastProcessedAt: Instant?
+        lastProcessedAt: Instant?,
+        period: EtlPeriod,
     ) = mutex.withLock {
-        val state = store[orchestratorName to context] ?: return@withLock
+        val state = store[Key(orchestratorName, context, period)] ?: return@withLock
         if (state.lockOwner == ownerId) {
             state.status = EtlRunStatus.IDLE
             state.lastFinishedAt = Instant.now()

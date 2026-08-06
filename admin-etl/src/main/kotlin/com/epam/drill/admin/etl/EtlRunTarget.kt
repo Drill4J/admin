@@ -15,19 +15,11 @@
  */
 package com.epam.drill.admin.etl
 
-import java.time.Instant
-
-data class EtlMetadata(
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastRunAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
-    val errorMessage: String? = null,
-    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
+/**
+ * Identifies a single ETL execution scope: the data [context] plus the day [period]
+ * it applies to. Used to enumerate interrupted period reruns that must be resumed.
+ */
+data class EtlRunTarget(
+    val context: EtlContext,
+    val period: EtlPeriod,
 )
-

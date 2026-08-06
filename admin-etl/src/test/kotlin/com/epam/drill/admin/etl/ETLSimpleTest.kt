@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlPipelineImpl
@@ -86,7 +87,7 @@ class ETLSimpleTest {
             }
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             dataStore.clear()
         }
     }
@@ -120,7 +121,7 @@ class ETLSimpleTest {
             )
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             dataStore.clear()
         }
     }

@@ -36,5 +36,5 @@ interface EtlPipeline<T : EtlRow, R : EtlRow> {
         onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlProcessingResult
 
-    suspend fun cleanUp(context: EtlContext)
+    suspend fun cleanUp(context: EtlContext, period: EtlPeriod = EtlPeriod.UNBOUNDED)
 }

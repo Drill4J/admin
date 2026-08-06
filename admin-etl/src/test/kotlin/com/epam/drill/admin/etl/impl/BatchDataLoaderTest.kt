@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
@@ -48,7 +49,7 @@ class BatchDataLoaderTest {
             return BatchResult(success = true, rowsLoaded = batch.size.toLong())
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
         }
     }
 

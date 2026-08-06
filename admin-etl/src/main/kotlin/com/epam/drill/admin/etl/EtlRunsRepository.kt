@@ -21,14 +21,22 @@ package com.epam.drill.admin.etl
 interface EtlRunsRepository {
 
     /**
-     * Atomic UPSERT that simultaneously claims the lock and starts the run.
-     * @return true if the lock was acquired, false if another instance currently holds an active lease.
+     * Atomic UPSERT that simultaneously claims the lock and starts the run for a given [period].
+     *
+     * Bounded periods ([EtlPeriod.isBounded]) get their own lock row (keyed by period), so
+     * non-overlapping periods for the same context run in parallel. Acquisition of a bounded
+     * period fails when another *active* (non-expired) bounded lock for the same orchestrator and
+     * context holds an **overlapping** day range — such periods are serialized, not merged. The
+     * unbounded/incremental lane is a separate lane and never conflicts with bounded periods.
+     *
+     * @return true if the lock was acquired, false if a conflicting active lock exists.
      */
     suspend fun tryAcquireLockAndStart(
         orchestratorName: String,
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
     ): Boolean
 
     /**
@@ -40,15 +48,17 @@ interface EtlRunsRepository {
         context: EtlContext,
         ownerId: String,
         leaseSeconds: Long,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
     )
 
     /**
-     * Returns the last successfully processed timestamp for the given orchestrator and context,
-     * or null if no completed run exists yet.
+     * Returns the last successfully processed timestamp for the given orchestrator, context and
+     * [period], or null if no completed run exists yet.
      */
     suspend fun getLastProcessedAt(
         orchestratorName: String,
         context: EtlContext,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
     ): java.time.Instant?
 
     /**
@@ -60,5 +70,6 @@ interface EtlRunsRepository {
         context: EtlContext,
         ownerId: String,
         lastProcessedAt: java.time.Instant? = null,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
     )
 }

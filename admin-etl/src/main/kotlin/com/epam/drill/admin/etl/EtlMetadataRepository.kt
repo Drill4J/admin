@@ -18,24 +18,41 @@ package com.epam.drill.admin.etl
 import java.time.Instant
 
 interface EtlMetadataRepository {
-    suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata>
-    suspend fun getMetadata(context: EtlContext, pipelineName: String): EtlMetadata?
+    suspend fun getAllMetadata(context: EtlContext, period: EtlPeriod = EtlPeriod.UNBOUNDED): List<EtlMetadata>
+    suspend fun getMetadata(
+        context: EtlContext,
+        pipelineName: String,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    ): EtlMetadata?
 
     suspend fun saveMetadata(context: EtlContext, metadata: EtlMetadata)
     suspend fun accumulateMetadataByLoader(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
         lastProcessedAt: Instant? = null,
         status: EtlStatus? = null, loadDuration: Long = 0L, rowsProcessed: Long = 0L,
         errorMessage: String? = null
     )
 
-    suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String)
+    suspend fun deleteMetadataByPipeline(
+        context: EtlContext,
+        pipelineName: String,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    )
     suspend fun accumulateMetadataByExtractor(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
         status: EtlStatus? = null, extractDuration: Long = 0L,
         errorMessage: String? = null
     )
+
+    /**
+     * Returns distinct bounded-period ([EtlPeriod.isBounded]) targets whose metadata is
+     * in a non-terminal state (interrupted or failed) for any of the given [pipelineNames],
+     * so that [com.epam.drill.admin.etl.EtlOrchestrator] can resume them after a restart.
+     */
+    suspend fun getUnfinishedTargets(pipelineNames: Collection<String>): List<EtlRunTarget>
 }
 

@@ -37,6 +37,9 @@ class Refresh(
     val reset: Boolean = false,
     val initTimestamp: Long? = null,
     val finalTimestamp: Long? = null,
+    val fromDay: String? = null,
+    val toDay: String? = null,
+    val chunkDays: Int? = null,
     val skipIfLocked: Boolean = false,
 )
 
@@ -55,10 +58,13 @@ fun Route.postRefreshMetrics() {
 
     postWithParams<Refresh> { params ->
         val results = etlService.refresh(
-            context = params.groupId?.let { EtlContext(it) },
+            groupId = params.groupId,
             reset = params.reset,
             initTimestamp = params.initTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
             finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
+            fromDay = params.fromDay?.let { java.time.LocalDate.parse(it) },
+            toDay = params.toDay?.let { java.time.LocalDate.parse(it) },
+            chunkDays = params.chunkDays,
             skipIfLocked = params.skipIfLocked,
         )
         if (results.any { it.status != EtlStatus.SUCCESS }) {

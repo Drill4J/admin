@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
@@ -77,7 +78,7 @@ class EtlOrchestratorLockTest {
             return result
         }
 
-        override suspend fun deleteAll(context: EtlContext) {}
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {}
     }
 
     private inner class CapturingLoader : DataLoader<Row> {
@@ -101,7 +102,7 @@ class EtlOrchestratorLockTest {
             return result
         }
 
-        override suspend fun deleteAll(context: EtlContext) {}
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {}
     }
 
     private inner class FixedExtractor(private val rows: List<Row>) : DataExtractor<Row> {
