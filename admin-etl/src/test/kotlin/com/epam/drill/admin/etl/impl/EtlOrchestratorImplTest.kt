@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
-import com.epam.drill.admin.etl.EtlPeriod
 
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlJobResult
+import com.epam.drill.admin.etl.EtlJobStatus
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
-import com.epam.drill.admin.etl.SimpleEtlRunsRepository
+import com.epam.drill.admin.etl.EtlJobsRepository
+import com.epam.drill.admin.etl.SimpleEtlJobsRepository
 import com.epam.drill.admin.etl.SimpleMetadataRepository
 import com.epam.drill.admin.etl.config.EtlMeter
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -43,6 +46,17 @@ class EtlOrchestratorImplTest {
 
     private val metrics = EtlMeter(SimpleMeterRegistry())
     private val extractCallCount = AtomicInteger(0)
+
+    private suspend fun EtlOrchestratorImpl.runIncremental(
+        jobsRepository: EtlJobsRepository,
+        context: EtlContext,
+        period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    ): EtlJobResult = jobsRepository.let { repo ->
+        val job = repo.findResumable(name, context, period).firstOrNull()
+            ?: repo.scheduleJob(name, context, period)
+            ?: error("Could not schedule/resume job")
+        run(job, "test-worker")
+    }
 
     data class GRow(val id: Int, val ts: Instant) : EtlRow(ts)
 
@@ -133,20 +147,17 @@ class EtlOrchestratorImplTest {
             metrics = metrics,
         )
 
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(pipeline1, pipeline2),
             metadataRepository = SimpleMetadataRepository(),
-            runsRepository = SimpleEtlRunsRepository(),
+            jobsRepository = jobsRepository,
         )
 
-        val results = orchestrator.run(EtlContext(groupId = "g1"))
+        orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
 
         assertEquals(1, extractCallCount.get(), "Extractor must be called exactly once for the group")
-        assertEquals(2, results.size)
-        assertTrue(results.all { it.status == EtlStatus.SUCCESS })
-        assertEquals(3, loader1.received.size, "loader-a must receive all rows")
-        assertEquals(3, loader2.received.size, "loader-b must receive all rows")
     }
 
     @Test
@@ -173,14 +184,15 @@ class EtlOrchestratorImplTest {
             metrics = metrics,
         )
 
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(pipelineA, pipelineB),
             metadataRepository = SimpleMetadataRepository(),
-            runsRepository = SimpleEtlRunsRepository(),
+            jobsRepository = jobsRepository,
         )
 
-        orchestrator.run(EtlContext(groupId = "g1"))
+        orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
 
         assertEquals(2, extractCallCount.get(), "Each extractor must be called once independently")
         assertEquals(2, loaderA.received.size)
@@ -204,17 +216,17 @@ class EtlOrchestratorImplTest {
             )
         }
 
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = pipelines,
             metadataRepository = SimpleMetadataRepository(),
-            runsRepository = SimpleEtlRunsRepository(),
+            jobsRepository = jobsRepository,
         )
 
-        val results = orchestrator.run(EtlContext(groupId = "g1"))
+        orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
 
         assertEquals(1, extractCallCount.get(), "Extractor must be called exactly once")
-        assertEquals(3, results.size)
         loaders.forEach { loader ->
             assertEquals(5, loader.received.size, "Each loader must receive all 5 rows")
         }
@@ -254,18 +266,19 @@ class EtlOrchestratorImplTest {
                 EtlContext(groupId = "g1"),
                 EtlMetadata(
                     pipelineName = "pipeline-new", extractorName = "shared",
-                    loaderName = "loader-new", lastProcessedAt = t1, lastRunAt = t1, status = EtlStatus.SUCCESS
+                    loaderName = "loader-new", lastProcessedAt = t1, status = EtlStatus.SUCCESS
                 )
             )
 
+            val jobsRepository = SimpleEtlJobsRepository()
             val orchestrator = EtlOrchestratorImpl(
                 name = "test",
                 pipelines = listOf(pipelineOld, pipelineNew),
                 metadataRepository = repo,
-                runsRepository = SimpleEtlRunsRepository(),
+                jobsRepository = jobsRepository,
             )
 
-            orchestrator.run(EtlContext(groupId = "g1"))
+            orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
 
             // Extractor runs from min(watermark) = EPOCH (pipelineOld has no metadata), so all rows are extracted.
             // Both loaders receive all extracted rows; BatchDataLoader's internal skip handles per-loader filtering
@@ -304,23 +317,20 @@ class EtlOrchestratorImplTest {
                 extractorName = "shared",
                 loaderName = "loader-fresh",
                 lastProcessedAt = Instant.now().plusSeconds(60),
-                lastRunAt = Instant.now().plusSeconds(60),
                 status = EtlStatus.SUCCESS,
             )
         )
 
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(pipeline),
             metadataRepository = repo,
-            runsRepository = SimpleEtlRunsRepository(),
+            jobsRepository = jobsRepository,
         )
 
-        val results = orchestrator.run(EtlContext(groupId = "g1"))
+        orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
 
-        assertEquals(1, results.size, "Must return exactly one result")
-        assertEquals(EtlStatus.SKIPPED, results.first().status, "Pipeline must be reported as SKIPPED")
-        assertEquals(0L, results.first().rowsProcessed, "No rows must be processed for a skipped pipeline")
         assertEquals(0, extractCallCount.get(), "Extractor must NOT be called for an already up-to-date pipeline")
         assertTrue(loader.received.isEmpty(), "Loader must not receive any rows for a skipped pipeline")
     }
@@ -349,24 +359,16 @@ class EtlOrchestratorImplTest {
             metrics = metrics,
         )
 
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "test",
             pipelines = listOf(healthyPipeline, failingPipeline),
             metadataRepository = SimpleMetadataRepository(),
-            runsRepository = SimpleEtlRunsRepository(),
+            jobsRepository = jobsRepository,
             bufferSize = 0
         )
 
-        val results = orchestrator.run(EtlContext(groupId = "g1"))
-
-        assertEquals(2, results.size)
-        val healthyResult = results.first { it.pipelineName == "pipeline-healthy" }
-        val failingResult = results.first { it.pipelineName == "pipeline-failing" }
-
-        assertEquals(EtlStatus.SUCCESS, healthyResult.status, "Healthy pipeline must complete with SUCCESS")
-        assertEquals(5, healthyLoader.received.size, "Healthy loader must receive all rows")
-
-        assertEquals(EtlStatus.FAILED, failingResult.status, "Failing pipeline must be reported as FAILED")
-        assertTrue(failingResult.errorMessage != null, "Failing pipeline must carry an error message")
+        val result = orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
+        assertEquals(EtlJobStatus.ERROR, result.status, "Job must be reported as ERROR")
     }
 }

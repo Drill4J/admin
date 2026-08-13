@@ -17,170 +17,173 @@ package com.epam.drill.admin.etl.impl
 
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.EtlExtractingResult
+import com.epam.drill.admin.etl.EtlJobsRepository
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlMetadata
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlJob
+import com.epam.drill.admin.etl.EtlJobResult
+import com.epam.drill.admin.etl.EtlJobStatus
 import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlRow
-import com.epam.drill.admin.etl.EtlRunsRepository
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.ClosableFlow
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import mu.KotlinLogging
 import java.time.Instant
 import java.util.Collections
-import java.util.UUID
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 open class EtlOrchestratorImpl(
     override val name: String,
     override val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
-    open val runsRepository: EtlRunsRepository,
+    open val jobsRepository: EtlJobsRepository,
     open val consistencyWindow: Long = 0,
     open val processingDelay: Long = 0,
     open val bufferSize: Int = 2000,
     open val lockLeaseSeconds: Long = 180,
-    open val lockPollDelaySeconds: Long = 2,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    override suspend fun run(
-        context: EtlContext,
-        initTimestamp: Instant,
-        finalTimestamp: Instant?,
-        skipIfLocked: Boolean,
-    ): List<EtlProcessingResult> {
-        val period = EtlPeriod.UNBOUNDED
-        if (finalTimestamp != null) {
-            val lastProcessedAt = runsRepository.getLastProcessedAt(name, context, period)
-            if (lastProcessedAt != null && !finalTimestamp.isAfter(lastProcessedAt)) {
-                logger.info {
-                    "ETL [$name] for group [${context.groupId}] skipped: finalTimestamp ($finalTimestamp) " +
-                            "<= lastProcessedAt ($lastProcessedAt)"
-                }
-                return pipelines.map { pipeline ->
-                    EtlProcessingResult(
-                        context = context,
-                        pipelineName = pipeline.name,
-                        lastProcessedAt = lastProcessedAt,
-                        rowsProcessed = 0,
-                        status = EtlStatus.SKIPPED,
-                        errorMessage = null,
-                    )
-                }
-            }
-        }
-        return executeWithLock(context, period, skipIfLocked) { ownerId ->
-            runInternal(context, period, initTimestamp, finalTimestamp, ownerId)
-        }
+    override suspend fun run(job: EtlJob, workerId: String, snapshotTimestamp: Instant?): EtlJobResult {
+        return runSafely(job, workerId, snapshotTimestamp)
     }
 
-    override suspend fun rerun(
-        context: EtlContext,
-        initTimestamp: Instant,
-        finalTimestamp: Instant?,
-        period: EtlPeriod,
-        withDataDeletion: Boolean,
-        skipIfLocked: Boolean,
-    ): List<EtlProcessingResult> = executeWithLock(context, period, skipIfLocked) { ownerId ->
-        val groupId = context.groupId
-        // For a bounded period the extraction window is derived from the day range;
-        // otherwise the caller-provided timestamps drive a full reprocess.
-        val effectiveInit = period.sinceTimestamp ?: initTimestamp
-        val effectiveFinal = period.untilTimestamp ?: finalTimestamp
-        logger.info { "ETL [$name] for group [$groupId] is deleting metadata for rerun (period=$period)..." }
+    override suspend fun rerun(job: EtlJob, workerId: String, withDataDeletion: Boolean): EtlJobResult {
+        val context = job.context
+        val period = job.period
+        logger.info { "ETL job [$workerId] is deleting metadata for rerun [$period]..." }
         pipelines.map { it.name }.forEach { pipelineName ->
             metadataRepository.deleteMetadataByPipeline(context, pipelineName, period)
         }
-        logger.info { "ETL [$name] for group [$groupId] deleted metadata for rerun." }
+        logger.info { "ETL job [$workerId] deleted metadata for rerun [$period]." }
         if (withDataDeletion) {
-            logger.info { "ETL [$name] for group [$groupId] is deleting data for rerun (period=$period)..." }
+            logger.info { "ETL job [$workerId] is deleting data for rerun [$period]..." }
             pipelines.forEach { it.cleanUp(context, period) }
-            logger.info { "ETL [$name] for group [$groupId] deleted data for rerun." }
+            logger.info { "ETL job [$workerId] deleted data for rerun [$period]." }
         }
-        runInternal(context, period, effectiveInit, effectiveFinal, ownerId = ownerId)
+        return runSafely(job, workerId, snapshotTimestamp = null)
     }
 
-    override suspend fun resumeUnfinished(
-        context: EtlContext?,
-    ): List<EtlProcessingResult> {
-        val targets = metadataRepository.getUnfinishedTargets(pipelines.map { it.name })
-            .filter { context == null || it.context == context }
-        if (targets.isEmpty()) return emptyList()
-        logger.info { "ETL [$name] is resuming ${targets.size} unfinished period(s)..." }
-        return targets.flatMap { target ->
-            val period = target.period
-            // Continue from the persisted watermark: no metadata/data deletion here.
-            executeWithLock(target.context, period, skipIfLocked = true) { ownerId ->
-                val effectiveInit = period.sinceTimestamp ?: Instant.EPOCH
-                val effectiveFinal = period.untilTimestamp
-                runInternal(target.context, period, effectiveInit, effectiveFinal, ownerId)
-            }
+    private suspend fun runSafely(
+        job: EtlJob,
+        workerId: String,
+        snapshotTimestamp: Instant?
+    ): EtlJobResult {
+        val context = job.context
+        val period = job.period
+        val now = Instant.now().minusSeconds(processingDelay)
+        val initTimestamp = period.sinceTimestamp ?: Instant.EPOCH
+        val finalTimestamp = snapshotTimestamp?.takeIf { period.untilTimestamp == null || !it.isAfter(period.untilTimestamp) }
+            ?: period.untilTimestamp?.takeIf { it.isBefore(now) }
+            ?: now
+        check(finalTimestamp.isAfter(initTimestamp)) {
+            "ETL job [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
-    }
-
-    /**
-     * Acquires the distributed lock for the given [context] and [period].
-     */
-    private suspend fun executeWithLock(
-        context: EtlContext,
-        period: EtlPeriod,
-        skipIfLocked: Boolean = false,
-        block: suspend (ownerId: String) -> List<EtlProcessingResult>,
-    ): List<EtlProcessingResult> {
-        val ownerId = UUID.randomUUID().toString()
-        var firstAttempt = true
-        while (!runsRepository.tryAcquireLockAndStart(name, context, ownerId, lockLeaseSeconds, period)) {
-            if (skipIfLocked) {
-                logger.info {
-                    "ETL [$name] for group [${context.groupId}] period [$period] is locked by another instance, skipping..."
-                }
-                return pipelines.map { pipeline ->
-                    EtlProcessingResult(
-                        context = context,
-                        pipelineName = pipeline.name,
-                        lastProcessedAt = runsRepository.getLastProcessedAt(name, context, period)
-                            ?: Instant.EPOCH,
-                        rowsProcessed = 0,
-                        status = EtlStatus.SKIPPED,
-                        errorMessage = null,
-                    )
-                }
-            }
-            if (firstAttempt) {
-                logger.debug {
-                    "ETL [$name] with owner [$ownerId] is locked by another instance, waiting..."
-                }
-                firstAttempt = false
-            }
-            yield() // guarantees cooperation even when poll delay is 0
-            if (lockPollDelaySeconds > 0) delay(lockPollDelaySeconds.seconds)
-        }
-        var lastProcessedAt: Instant? = null
         try {
-            val results = block(ownerId)
-            lastProcessedAt = results.takeIfAll { it.status != EtlStatus.FAILED }?.minOfOrNull { it.lastProcessedAt }
-            return results
-        } finally {
-            runCatching {
-                runsRepository.markFinishedAndRelease(name, context, ownerId, lastProcessedAt, period)
-            }.onFailure {
-                logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to release run-lock" }
+            return trackProgressOf {
+                val results = runInternal(context, period, initTimestamp, finalTimestamp, workerId)
+                val jobFinished = finalTimestamp == period.untilTimestamp
+                val minLastProcessedAt = results.minOf { it.lastProcessedAt }
+                val hasErrors = results.any { it.status == EtlStatus.FAILED }
+
+                return@trackProgressOf when {
+                    hasErrors -> {
+                        val errors = results
+                            .filter { it.status == EtlStatus.FAILED }
+                            .joinToString(separator = "; ") { it.errorMessage ?: "Unknown error" }
+                        job.markError(workerId, errors)
+                        EtlJobResult(
+                            job = job,
+                            status = EtlJobStatus.ERROR,
+                            errorMessage = errors,
+                            processedUntilTimestamp = minLastProcessedAt
+                        )
+                    }
+
+                    !hasErrors && jobFinished -> {
+                        job.markCompleted(workerId, finalTimestamp)
+                        EtlJobResult(
+                            job = job,
+                            status = EtlJobStatus.COMPLETED,
+                            processedUntilTimestamp = finalTimestamp
+                        )
+                    }
+
+                    else -> {
+                        job.markIdle(workerId, minLastProcessedAt)
+                        EtlJobResult(
+                            job = job,
+                            status = EtlJobStatus.IDLE,
+                            processedUntilTimestamp = minLastProcessedAt
+                        )
+                    }
+                }
+            }.every(1.minutes) {
+                runCatching {
+                    val extended = jobsRepository.extendLease(job, workerId, lockLeaseSeconds)
+                    if (!extended) {
+                        this@every.cancel(CancellationException("Job was cancelled"))
+                    }
+                }.onFailure { e ->
+                    logger.warn(e) { "ETL job [$workerId] failed to extend run-lock lease" }
+                    this@every.cancel(CancellationException(e.message))
+                }
             }
+        } catch (e: CancellationException) {
+            logger.info { "ETL job [$workerId] interrupted: ${e.message}" }
+            job.markCancelled(workerId)
+            return EtlJobResult(
+                job = job,
+                status = EtlJobStatus.CANCELLED,
+                processedUntilTimestamp = initTimestamp
+            )
+        } catch (e: Throwable) {
+            logger.error(e) { "ETL job [$workerId] failed: ${e.message}" }
+            job.markError(workerId, e.message ?: e::class.java.name)
+            return EtlJobResult(
+                job = job,
+                status = EtlJobStatus.ERROR,
+                errorMessage = e.message,
+                processedUntilTimestamp = initTimestamp
+            )
+        }
+    }
+
+    private suspend fun EtlJob.markCompleted(workerId: String, processedUntilTimestamp: Instant) {
+        runCatching { jobsRepository.markCompleted(this, workerId, processedUntilTimestamp) }.onFailure {
+            logger.warn(it) { "ETL job [$workerId] failed to mark job as COMPLETED" }
+        }
+    }
+
+    private suspend fun EtlJob.markIdle(workerId: String, processedUntilTimestamp: Instant) {
+        runCatching { jobsRepository.markIdle(this, workerId, processedUntilTimestamp) }.onFailure {
+            logger.warn(it) { "ETL job [$workerId] failed to mark job as IDLE" }
+        }
+    }
+
+    private suspend fun EtlJob.markCancelled(workerId: String) {
+        runCatching { jobsRepository.markCancelled(this, workerId) }.onFailure {
+            logger.warn(it) { "ETL job [$workerId] failed to mark job as CANCELLED" }
+        }
+    }
+
+    private suspend fun EtlJob.markError(workerId: String, errorMessage: String) {
+        runCatching { jobsRepository.markError(this, workerId, errorMessage) }.onFailure {
+            logger.warn(it) { "ETL job [$workerId] failed to mark job as ERROR" }
         }
     }
 
@@ -188,12 +191,10 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         period: EtlPeriod,
         initTimestamp: Instant,
-        finalTimestamp: Instant?,
-        ownerId: String,
+        finalTimestamp: Instant,
+        workerId: String,
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        val groupId = context.groupId
-        val snapshotTime = finalTimestamp ?: Instant.now().minusSeconds(processingDelay)
-        logger.info("ETL [$name] with owner [$ownerId] is starting...")
+        logger.info("ETL job [$workerId] is starting [$period]...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val duration = measureTimeMillis {
             trackProgressOf {
@@ -209,26 +210,21 @@ open class EtlOrchestratorImpl(
                             groupedPipelines = typedPipelines,
                             extractor = typedPipelines.first().extractor,
                             initTimestamp = initTimestamp,
-                            snapshotTime = snapshotTime,
+                            finalTimestamp = finalTimestamp,
                         )
                     }
                 }.awaitAll()
             }.every(1.minutes) {
-                logger.info { "ETL [$name] with owner [$ownerId] is still running..." }
-                runCatching {
-                    runsRepository.extendLease(name, context, ownerId, lockLeaseSeconds, period)
-                }.onFailure {
-                    logger.warn(it) { "ETL [$name] with owner [$ownerId] failed to extend run-lock lease" }
-                }
+                logger.info { "ETL job [$workerId] is still running [$period]..." }
             }
         }
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0L && failures == 0)
-                "ETL [$name] with owner [$ownerId] completed in ${duration}ms, no new rows"
+                "ETL job [$workerId] completed [$period] in ${duration}ms, no new rows"
             else
-                "ETL [$name] with owner [$ownerId] completed in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL job [$workerId] completed [$period] in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return@withContext results
     }
@@ -243,9 +239,8 @@ open class EtlOrchestratorImpl(
         groupedPipelines: List<EtlPipeline<T, *>>,
         extractor: DataExtractor<T> = groupedPipelines.first().extractor,
         initTimestamp: Instant,
-        snapshotTime: Instant,
+        finalTimestamp: Instant,
     ): List<EtlProcessingResult> = coroutineScope {
-        val groupId = context.groupId
 
         // Compute per-pipeline sinceTimestamp from metadata
         val sinceTimestamps: Map<String, Instant> = groupedPipelines.associate { pipeline ->
@@ -258,7 +253,7 @@ open class EtlOrchestratorImpl(
         }
 
         val (skippedPipelines, activePipelines) = groupedPipelines.partition { pipeline ->
-            (sinceTimestamps[pipeline.name] ?: initTimestamp) >= snapshotTime
+            (sinceTimestamps[pipeline.name] ?: initTimestamp) >= finalTimestamp
         }
 
         val skippedResults = skippedPipelines.map { pipeline ->
@@ -270,7 +265,7 @@ open class EtlOrchestratorImpl(
                 status = EtlStatus.SKIPPED,
                 errorMessage = null,
             ).also {
-                logger.debug { "ETL pipeline [${pipeline.name}] for group [$groupId] is already up-to-date." }
+                logger.debug { "ETL pipeline [${pipeline.name}] for [$period] is already up-to-date." }
             }
         }
 
@@ -286,13 +281,12 @@ open class EtlOrchestratorImpl(
                         loaderName = pipeline.loader.name,
                         status = EtlStatus.EXTRACTING,
                         lastProcessedAt = sinceTimestamps[pipeline.name] ?: initTimestamp,
-                        lastRunAt = snapshotTime,
                         period = period,
                     )
                 )
             } catch (e: Throwable) {
                 logger.warn(
-                    "ETL pipeline [${pipeline.name}] for group [$groupId] failed to save initial metadata: ${e.message}",
+                    "ETL pipeline [${pipeline.name}] for [$period] failed to save initial metadata: ${e.message}",
                     e
                 )
             }
@@ -307,7 +301,7 @@ open class EtlOrchestratorImpl(
                     period = period,
                     pipeline = pipeline,
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
-                    untilTimestamp = snapshotTime,
+                    untilTimestamp = finalTimestamp,
                     sharedFlow = sharedFlow.subscribe(),
                 )
             }
@@ -318,7 +312,7 @@ open class EtlOrchestratorImpl(
             period = period,
             extractor = extractor,
             sinceTimestamp = minLastProcessedAt,
-            untilTimestamp = snapshotTime,
+            untilTimestamp = finalTimestamp,
             sharedFlow = sharedFlow,
             activePipelines = activePipelines,
         )
@@ -348,7 +342,7 @@ open class EtlOrchestratorImpl(
                 }
             )
         } catch (e: Throwable) {
-            logger.debug(e) { "ETL extractor [${extractor.name}] for group [${context.groupId}] failed: ${e.message}" }
+            logger.debug(e) { "ETL extractor [${extractor.name}] for [$period] failed: ${e.message}" }
             sharedFlow.close(e)
         } finally {
             sharedFlow.close()
@@ -366,7 +360,6 @@ open class EtlOrchestratorImpl(
         untilTimestamp: Instant,
         sharedFlow: ClosableFlow<T>,
     ): EtlProcessingResult {
-        val groupId = context.groupId
         return try {
             pipeline.execute(
                 context = context,
@@ -377,23 +370,11 @@ open class EtlOrchestratorImpl(
                     progressLoading(context, period, pipeline.name, result)
                 },
                 onStatusChanged = { status ->
-                    try {
-                        metadataRepository.accumulateMetadataByLoader(
-                            context = context,
-                            pipelineName = pipeline.name,
-                            period = period,
-                            status = status,
-                        )
-                    } catch (e: Throwable) {
-                        logger.warn(
-                            "ETL pipeline [${pipeline.name}] for group [$groupId] failed to update loading status: ${e.message}",
-                            e
-                        )
-                    }
+                    changeStatus(context, period, pipeline.name, status)
                 }
             )
         } catch (e: Throwable) {
-            logger.error("ETL pipeline [${pipeline.name}] for group [$groupId] failed: ${e.message}", e)
+            logger.error("ETL pipeline [${pipeline.name}] for [$period] failed: ${e.message}", e)
             EtlProcessingResult(
                 context = context,
                 pipelineName = pipeline.name,
@@ -424,7 +405,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [$pipelineName] for group [${context.groupId}] failed to update extracting progress: ${e.message}",
+                "ETL pipeline [$pipelineName] for [$period] failed to update extracting progress: ${e.message}",
                 e
             )
         }
@@ -448,13 +429,30 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [$pipelineName] for group [${context.groupId}] failed to update loading progress: ${e.message}",
+                "ETL pipeline [$pipelineName] for [$period] failed to update loading progress: ${e.message}",
                 e
             )
         }
     }
-}
 
-private fun <T> List<T>.takeIfAll(predicate: (T) -> Boolean): List<T>? {
-    return if (all(predicate)) this else null
+    private suspend fun changeStatus(
+        context: EtlContext,
+        period: EtlPeriod,
+        pipelineName: String,
+        status: EtlStatus
+    ) {
+        try {
+            metadataRepository.accumulateMetadataByLoader(
+                context = context,
+                pipelineName = pipelineName,
+                period = period,
+                status = status,
+            )
+        } catch (e: Throwable) {
+            logger.warn(
+                "ETL pipeline [${pipelineName}] for [$period] failed to update loading status: ${e.message}",
+                e
+            )
+        }
+    }
 }

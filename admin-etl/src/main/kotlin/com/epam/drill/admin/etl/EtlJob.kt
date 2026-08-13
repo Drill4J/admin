@@ -15,18 +15,11 @@
  */
 package com.epam.drill.admin.etl
 
-import java.time.Instant
-
-data class EtlMetadata(
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
-    val errorMessage: String? = null,
-    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
+/**
+ * Represents a single ETL job for a specific context and period.
+ */
+data class EtlJob(
+    val etlName: String,
+    val context: EtlContext,
+    val period: EtlPeriod,
 )
-

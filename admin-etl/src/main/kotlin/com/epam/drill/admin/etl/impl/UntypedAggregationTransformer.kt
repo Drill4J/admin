@@ -40,7 +40,6 @@ class UntypedAggregationTransformer(
         context: EtlContext,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
-        val groupId = context.groupId
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
         val aggregatedRows = metrics.rowsAggregated(name, context)
@@ -51,7 +50,7 @@ class UntypedAggregationTransformer(
             try {
                 collector.collect { row ->
                     if (!isTransformationStarted) {
-                        logger.debug { "ETL transformer [$name] for group [$groupId] started transformation..." }
+                        logger.debug { "ETL transformer [$name] started transformation..." }
                         isTransformationStarted = true
                     }
 
@@ -77,20 +76,20 @@ class UntypedAggregationTransformer(
                     emit(evicted)
                 }
             } catch (e: Exception) {
-                logger.error(e) { "ETL transformer [$name] for group [$groupId] failed during transformation: ${e.message}" }
+                logger.error(e) { "ETL transformer [$name] failed during transformation: ${e.message}" }
                 throw e
             }
         }.every(loggingFrequency.seconds) {
             if (isTransformationStarted)
                 logger.debug {
-                    "ETL transformer [$name] for group [$groupId] transformed ${transformedRows.get()} rows" +
+                    "ETL transformer [$name] transformed ${transformedRows.get()} rows" +
                             ", buffer occupancy: ${buffer.size}" +
                             ", buffer occupancy ratio: ${bufferOccupancy.get()}"
                 }
         }
         if (isTransformationStarted) {
             logger.debug {
-                "ETL transformer [$name] for group [$groupId] completed transformation for $transformedRows rows"
+                "ETL transformer [$name] completed transformation for ${transformedRows.get()} rows"
             }
         }
         bufferOccupancy.set(0.0)

@@ -96,15 +96,14 @@ abstract class SqlDataLoader<T: EtlRow>(
     }
 
     override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
-        val groupId = context.groupId
-        logger.debug { "Loader [$name] deleting data for group [$groupId] period [$period]" }
+        logger.debug { "Loader [$name] deleting data for [$period]" }
         val preparedSql = UntypedPreparedSql.prepareSql(sqlDelete)
         val args = preparedSql.getArgs(
             UntypedRow(
                 Instant.EPOCH,
                 context.toMap(NamingConvention.UNDERSCORE) + mapOf(
-                    "since_day" to period.sinceDay?.let { Timestamp.from(it) },
-                    "until_day" to period.untilDay?.let { Timestamp.from(it) },
+                    "since_day" to period.sinceTimestamp?.let { Timestamp.from(it) },
+                    "until_day" to period.untilTimestamp?.let { Timestamp.from(it) },
                 )
             )
         )
@@ -127,9 +126,9 @@ abstract class SqlDataLoader<T: EtlRow>(
                 duration
             }
         } catch (e: Exception) {
-            logger.error(e) { "Error during deleting data with loader $name for groupId $groupId: ${e.message ?: e.javaClass.simpleName}" }
+            logger.error(e) { "Error during deleting data with loader $name: ${e.message ?: e.javaClass.simpleName}" }
             throw e
         }
-        logger.debug { "Loader [$name] deleted data for groupId [$groupId] in ${duration}ms" }
+        logger.debug { "Loader [$name] deleted data in ${duration}ms" }
     }
 }

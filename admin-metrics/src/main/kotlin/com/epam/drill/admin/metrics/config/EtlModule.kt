@@ -15,18 +15,23 @@
  */
 package com.epam.drill.admin.metrics.config
 
-import com.epam.drill.admin.common.scheduler.DrillScheduler
+import com.epam.drill.admin.etl.EtlJobsRepository
+import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
-import com.epam.drill.admin.etl.EtlRunsRepository
 import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.etl.config.EtlMeter
+import com.epam.drill.admin.etl.impl.EtlJobsRepositoryImpl
+import com.epam.drill.admin.etl.impl.EtlLauncherImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
-import com.epam.drill.admin.etl.impl.EtlRunsRepositoryImpl
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
-import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
-import com.epam.drill.admin.etl.job.updateMetricsEtlJobKey
+import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
+import com.epam.drill.admin.etl.job.RunIdleEtlJobsJob
+import com.epam.drill.admin.etl.job.ScheduleUnloadedDaysEtlJob
+import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
+import com.epam.drill.admin.etl.job.runIdleEtlJobsJobKey
+import com.epam.drill.admin.etl.job.scheduleUnloadedDaysEtlJobKey
 import com.epam.drill.admin.metrics.etl.*
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.etl.service.impl.EtlServiceImpl
@@ -51,17 +56,19 @@ val etlDIModule
                 dbSchema = MetricsDatabaseConfig.dbSchema
             )
         }
-        bind<EtlRunsRepository>() with singleton {
-            EtlRunsRepositoryImpl(
+        bind<EtlJobsRepository>() with singleton {
+            EtlJobsRepositoryImpl(
                 database = MetricsDatabaseConfig.database,
                 dbSchema = MetricsDatabaseConfig.dbSchema
             )
         }
-        bind<EtlOrchestrator>(tag = DEFAULT_ETL) with singleton {
+        bind<EtlConfig>() with singleton {
             val metrics = EtlMeter(instance())
             val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
-
+            EtlConfig(drillConfig.config("etl"), metrics)
+        }
+        bind<EtlOrchestrator>(tag = DEFAULT_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = DEFAULT_ETL,
@@ -85,62 +92,76 @@ val etlDIModule
                         methodDailyCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
-                        // Coverage by request extractor group
-//                        buildMethodTestDefinitionCoverageByRequestPipeline
                     ),
                     metadataRepository = instance(),
-                    runsRepository = instance(),
+                    jobsRepository = instance(),
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
                     bufferSize = bufferSize,
                     lockLeaseSeconds = lockLeaseSeconds,
-                    lockPollDelaySeconds = lockPollDelaySeconds,
                 )
             }
         }
         bind<EtlOrchestrator>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
-            val metrics = EtlMeter(instance())
-            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
-            val etlConfig = EtlConfig(drillConfig.config("etl"), metrics)
-
+            val etlConfig = instance<EtlConfig>()
             with(etlConfig) {
                 EtlOrchestratorImpl(
                     name = TEST_DEFINITION_COVERAGE_ETL,
                     pipelines = listOf(buildMethodTestDefinitionCoveragePipeline),
                     metadataRepository = instance(),
-                    runsRepository = instance(),
+                    jobsRepository = instance(),
                     lockLeaseSeconds = lockLeaseSeconds,
-                    lockPollDelaySeconds = lockPollDelaySeconds,
                 )
             }
         }
-        bind<EtlService>() with singleton {
-            val etlList: List<EtlOrchestrator> = listOf(
-                instance(tag = DEFAULT_ETL),
-                instance(tag = TEST_DEFINITION_COVERAGE_ETL)
-            )
-            EtlServiceImpl(
-                etlRepository = instance(),
-                etl = instance(tag = DEFAULT_ETL),
-                settingsService = instance(),
+        bind<EtlLauncher>(tag = DEFAULT_ETL) with singleton {
+            EtlLauncherImpl(
+                orchestrator = instance(tag = DEFAULT_ETL),
+                jobsRepository = instance(),
             )
         }
-        bind<UpdateMetricsEtlJob>() with singleton {
-            val etlList: List<EtlOrchestrator> = listOf(
-                instance(tag = DEFAULT_ETL),
-                instance(tag = TEST_DEFINITION_COVERAGE_ETL)
+        bind<EtlLauncher>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
+            EtlLauncherImpl(
+                orchestrator = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
+                jobsRepository = instance(),
             )
-            UpdateMetricsEtlJob(
-                etlService = instance(),
+        }
+        bind<EtlService>() with singleton {
+            EtlServiceImpl(
+                defaultLauncher = instance(tag = DEFAULT_ETL),
+                testDefinitionCoverageLauncher = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
+                settingsService = instance(),
+                maxWorkers = instance<EtlConfig>().maxWorkers,
             )
+        }
+        bind<IncrementalRunEtlJob>() with singleton {
+            IncrementalRunEtlJob(etlService = instance())
+        }
+        bind<RunIdleEtlJobsJob>() with singleton {
+            RunIdleEtlJobsJob(etlService = instance())
+        }
+        bind<ScheduleUnloadedDaysEtlJob>() with singleton {
+            ScheduleUnloadedDaysEtlJob(etlService = instance())
         }
     }
 
-val updateMetricsEtlJob: JobDetail
-    get() = JobBuilder.newJob(UpdateMetricsEtlJob::class.java)
+val incrementalRunEtlJob: JobDetail
+    get() = JobBuilder.newJob(IncrementalRunEtlJob::class.java)
         .storeDurably()
-        .withDescription("Job for updating metrics using ETL processing.")
-        .withIdentity(updateMetricsEtlJobKey)
+        .withDescription("Daily incremental ETL run (skips if already running).")
+        .withIdentity(incrementalRunEtlJobKey)
         .build()
 
+val runIdleEtlJobsJob: JobDetail
+    get() = JobBuilder.newJob(RunIdleEtlJobsJob::class.java)
+        .storeDurably()
+        .withDescription("Resumes idle/expired-lease ETL jobs, bounded by the worker budget.")
+        .withIdentity(runIdleEtlJobsJobKey)
+        .build()
 
+val scheduleUnloadedDaysEtlJob: JobDetail
+    get() = JobBuilder.newJob(ScheduleUnloadedDaysEtlJob::class.java)
+        .storeDurably()
+        .withDescription("Schedules loading of unloaded/unplanned days.")
+        .withIdentity(scheduleUnloadedDaysEtlJobKey)
+        .build()

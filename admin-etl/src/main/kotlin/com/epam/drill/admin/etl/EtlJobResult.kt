@@ -17,16 +17,14 @@ package com.epam.drill.admin.etl
 
 import java.time.Instant
 
-data class EtlMetadata(
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
+/**
+ * A result (status) of a single ETL job run.
+ */
+data class EtlJobResult(
+    val job: EtlJob,
+    val status: EtlJobStatus,
+    val processedUntilTimestamp: Instant,
     val errorMessage: String? = null,
-    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    val workerId : String? = null,
+    val lockExpiresAt: Instant? = null,
 )
-

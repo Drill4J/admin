@@ -15,18 +15,22 @@
  */
 package com.epam.drill.admin.etl
 
-import java.time.Instant
+/**
+ * Represents the daily status of an ETL process.
+ */
+enum class EtlDailyStatus {
+    /** No job has ever been scheduled/run for this day. */
+    UNLOADED,
 
-data class EtlMetadata(
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
-    val errorMessage: String? = null,
-    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
-)
+    /** A job covering this day has been scheduled but hasn't started running yet. */
+    SCHEDULED,
 
+    /** A job covering this day is currently running. */
+    RUNNING,
+
+    /** A job covering this day has finished successfully. */
+    COMPLETED,
+
+    /** A job covering this day finished with an error or was cancelled. */
+    FAILED,
+}

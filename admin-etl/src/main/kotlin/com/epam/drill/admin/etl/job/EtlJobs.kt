@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.etl.job
 
-import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
@@ -26,17 +25,46 @@ import org.quartz.JobKey
 const val DEFAULT_ETL = "metrics"
 
 @DisallowConcurrentExecution
-class UpdateMetricsEtlJob(
+class IncrementalRunEtlJob(
     private val etlService: EtlService,
 ) : Job {
-
     override fun execute(context: JobExecutionContext) {
         val groupId = context.mergedJobDataMap.getString("groupId")
-        context.result = runBlocking {
-            etlService.refresh(groupId = groupId, skipIfLocked = true)
+        runBlocking {
+            etlService.refresh(groupId = groupId)
         }
     }
 }
 
-val updateMetricsEtlJobKey: JobKey
-    get() = JobKey.jobKey("metricsEtl", "drill")
+@DisallowConcurrentExecution
+class RunIdleEtlJobsJob(
+    private val etlService: EtlService,
+) : Job {
+    override fun execute(context: JobExecutionContext) {
+        val groupId = context.mergedJobDataMap.getString("groupId")
+        runBlocking {
+            etlService.runIdleJobs(groupId = groupId)
+        }
+    }
+}
+
+@DisallowConcurrentExecution
+class ScheduleUnloadedDaysEtlJob(
+    private val etlService: EtlService,
+) : Job {
+    override fun execute(context: JobExecutionContext) {
+        val groupId = context.mergedJobDataMap.getString("groupId")
+        runBlocking {
+            etlService.scheduleUnloadedDays(groupId = groupId)
+        }
+    }
+}
+
+val incrementalRunEtlJobKey: JobKey
+    get() = JobKey.jobKey("incrementalRunEtl", "drill")
+
+val runIdleEtlJobsJobKey: JobKey
+    get() = JobKey.jobKey("runIdleEtlJobs", "drill")
+
+val scheduleUnloadedDaysEtlJobKey: JobKey
+    get() = JobKey.jobKey("scheduleUnloadedDaysEtl", "drill")

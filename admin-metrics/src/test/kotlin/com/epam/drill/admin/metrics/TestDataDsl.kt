@@ -16,10 +16,9 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
-import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
-import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
+import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.metrics.views.ChangeType
@@ -42,7 +41,6 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.server.routing.route
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
-import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
@@ -50,7 +48,7 @@ import org.kodein.di.singleton
 val scheduler = DI.Module("testModule") {
     bind<DrillScheduler>() with singleton {
         StubDrillScheduler(
-            instance<UpdateMetricsEtlJob>()
+            instance<IncrementalRunEtlJob>()
         )
     }
 }

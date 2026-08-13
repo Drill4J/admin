@@ -31,6 +31,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -81,7 +82,7 @@ class EtlMetadataRepositoryImpl(
 
             it[status] = metadata.status.name
             it[lastProcessedAt] = metadata.lastProcessedAt
-            it[lastRunAt] = metadata.lastRunAt
+            it[lastRunAt] = CurrentTimestamp
             it[lastLoadDuration] = metadata.lastLoadDuration
             it[lastExtractDuration] = metadata.lastExtractDuration
             it[lastRowsProcessed] = metadata.lastRowsProcessed
@@ -193,7 +194,6 @@ class EtlMetadataRepositoryImpl(
         extractorName = row[metadataTable.extractorName],
         loaderName = row[metadataTable.loaderName],
         lastProcessedAt = row[metadataTable.lastProcessedAt],
-        lastRunAt = row[metadataTable.lastRunAt],
         lastLoadDuration = row[metadataTable.lastLoadDuration],
         lastExtractDuration = row[metadataTable.lastExtractDuration],
         lastRowsProcessed = row[metadataTable.lastRowsProcessed],

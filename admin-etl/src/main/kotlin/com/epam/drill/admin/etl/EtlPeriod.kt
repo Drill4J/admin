@@ -17,16 +17,11 @@ package com.epam.drill.admin.etl
 
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.time.ZoneOffset.UTC
 import java.time.temporal.ChronoUnit
 
 /**
  * A bounded or unbounded day range (time-of-day is ignored) used to scope an ETL rerun.
- *
- * - [from] `== null` && [to] `== null` → the unbounded/incremental lane (the live `run()` watermark).
- * - both set → the inclusive day range `[from, to]`.
- *
- * Bounded periods get their own metadata (watermark) and run-lock rows, so they run
- * independently of the incremental run and, when non-overlapping, in parallel.
  */
 data class EtlPeriod(
     val from: LocalDate? = null,
@@ -55,7 +50,7 @@ data class EtlPeriod(
     val untilTimestamp: java.time.Instant?
         get() = to?.plusDays(1)?.atStartOfDay(ZoneOffset.UTC)?.toInstant()
 
-    /** Whether the day ranges of two periods intersect (used for same-context serialization). */
+    /** Whether the day ranges of two periods intersect. */
     fun overlaps(other: EtlPeriod): Boolean {
         val thisFrom = from ?: LocalDate.MIN
         val thisTo = to ?: LocalDate.MAX
@@ -71,12 +66,22 @@ data class EtlPeriod(
     val storedTo: LocalDate get() = to ?: SENTINEL_TO
 
     companion object {
-        val SENTINEL_FROM: LocalDate = LocalDate.of(1, 1, 1)
-        val SENTINEL_TO: LocalDate = LocalDate.of(9999, 12, 31)
+        val SENTINEL_FROM: LocalDate = LocalDate.of(2000, 1, 1)
+        val SENTINEL_TO: LocalDate = LocalDate.of(2100, 1, 1)
         val UNBOUNDED = EtlPeriod()
+        val FROM_TODAY: EtlPeriod
+            get() = EtlPeriod(from = LocalDate.now(UTC))
+        val BEFORE_TODAY: EtlPeriod
+            get() = EtlPeriod(to = LocalDate.now(UTC).minusDays(1))
+        val TODAY: EtlPeriod
+            get() = EtlPeriod(to = LocalDate.now(UTC), from = LocalDate.now(UTC))
 
         /** Rebuilds an [EtlPeriod] from persisted sentinel-aware bounds. */
         fun fromStored(from: LocalDate, to: LocalDate): EtlPeriod =
             EtlPeriod(from.takeUnless { it == SENTINEL_FROM }, to.takeUnless { it == SENTINEL_TO })
+    }
+
+    override fun toString(): String {
+        return (from?.let { "$from" } ?: "") + (to?.let { ",$to" } ?: "")
     }
 }

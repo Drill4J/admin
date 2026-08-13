@@ -15,147 +15,199 @@
  */
 package com.epam.drill.admin.etl.service.impl
 
-import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlDailyStatus
+import com.epam.drill.admin.etl.EtlDailyStatusRow
+import com.epam.drill.admin.etl.EtlJobResult
+import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlPeriod
-import com.epam.drill.admin.etl.EtlProcessingResult
-import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.model.EtlJobView
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
 import com.epam.drill.admin.writer.rawdata.views.GroupSettingsView
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.ZoneOffset.UTC
-import kotlin.collections.component1
-import kotlin.collections.component2
 
 class EtlServiceImpl(
-    private val etlRepository: EtlMetadataRepository,
-    private val etl: EtlOrchestrator,
+    private val defaultLauncher: EtlLauncher,
+    private val testDefinitionCoverageLauncher: EtlLauncher,
     private val settingsService: SettingsService,
+    private val maxWorkers: Int,
 ) : EtlService {
-    override suspend fun refresh(
-        groupId: String?,
-        reset: Boolean,
-        initTimestamp: Instant?,
-        finalTimestamp: Instant?,
-        fromDay: LocalDate?,
-        toDay: LocalDate?,
-        chunkDays: Int?,
-        skipIfLocked: Boolean
-    ): List<EtlProcessingResult> {
-        val rerun = reset || initTimestamp != null || finalTimestamp != null
-        val periods = buildPeriods(fromDay, toDay, chunkDays)
-        val context = groupId?.let { EtlContext(it) }
-        val params: Map<EtlContext, Instant> = runBlocking {
-            if (context != null) {
-                mapOf(context to (initTimestamp ?: resolveInitTimestamp(context.groupId)))
-            } else {
-                settingsService.getAllGroupSettings().map { (groupId, groupSettings) ->
-                    EtlContext(groupId) to (initTimestamp ?: resolveInitTimestamp(groupSettings))
-                }.toMap()
+    private val logger = KotlinLogging.logger {}
+
+    /** Fallback history window (in days) used when a group has no `metricsPeriodDays` configured. */
+    private val defaultHistoryDays = 365L
+
+    override suspend fun refresh(groupId: String?) {
+        forEachContext(groupId) { context ->
+            defaultLauncher.resume(context, EtlPeriod.TODAY, skipIfRunning = true).takeIf { it.isNotEmpty() }
+                ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
+                    defaultLauncher.run(it, skipIfRunning = true)
+                }
+        }
+    }
+
+    override suspend fun forceRefresh(groupId: String?, snapshotTimestamp: Instant?): Instant {
+        return forEachContext(groupId) { context ->
+            defaultLauncher.resume(context, EtlPeriod.TODAY, snapshotTimestamp, skipIfRunning = false).takeIf { it.isNotEmpty() }
+                ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
+                    defaultLauncher.run(it, snapshotTimestamp, skipIfRunning = false)
+                }
+        }.minOf { it.processedUntilTimestamp }
+    }
+
+    override suspend fun scheduleUnloadedDays(groupId: String?) {
+        val today = LocalDate.now(UTC)
+        forEachContextWithPeriodFrom(groupId) { context, from ->
+            val historyPeriod = EtlPeriod(from, today)
+
+            val unloadedDays =
+                defaultLauncher.getDailyStatuses(context, historyPeriod).filter { it.status == EtlDailyStatus.UNLOADED }
+                    .map { it.day }
+            val unplannedPeriods = combineIntoPeriods(unloadedDays)
+
+            val workersPerPeriod = (maxWorkers / unplannedPeriods.size).takeIf { it > 0 } ?: 1
+            for (period in unplannedPeriods) {
+                defaultLauncher.schedule(context, period, workersPerPeriod)
+            }
+            for (period in unplannedPeriods) {
+                defaultLauncher.resume(context, period)
             }
         }
-
-        val results: List<EtlProcessingResult> = runBlocking {
-            params.flatMap { (context, resolvedInitTimestamp) ->
-                if (periods.isNotEmpty()) {
-                    // Day-period rerun(s): each period runs independently (and, when
-                    // non-overlapping, in parallel) with its own watermark and lock.
-                    periods.map { period ->
-                        async {
-                            etl.rerun(
-                                context,
-                                period = period,
-                                withDataDeletion = reset,
-                                skipIfLocked = skipIfLocked,
-                            )
-                        }
-                    }
-                } else {
-                    listOf(async {
-                        if (rerun)
-                            etl.rerun(
-                                context,
-                                resolvedInitTimestamp,
-                                finalTimestamp,
-                                withDataDeletion = reset,
-                                skipIfLocked = skipIfLocked,
-                            )
-                        else
-                            etl.run(context, resolvedInitTimestamp, finalTimestamp, skipIfLocked)
-                    })
-                }
-            }.awaitAll().flatten()
-        }
-
-        return results
     }
 
-    override suspend fun resumeUnfinished(): List<EtlProcessingResult> {
-        return runBlocking {
-            etl.resumeUnfinished()
+    override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?) {
+        val today = LocalDate.now(UTC)
+        forEachContextWithPeriodFrom(groupId) { context, resolvedFrom ->
+            val resolvedTo = to ?: today
+            if (resolvedTo != today) {
+                val period = EtlPeriod(resolvedFrom, resolvedTo)
+                defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
+            } else {
+                val period = EtlPeriod(resolvedFrom, today.minusDays(1))
+                defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
+                defaultLauncher.rerun(context, EtlPeriod.FROM_TODAY, 1, withDataDeletion = true)
+            }
         }
     }
 
-    /**
-     * Splits `[fromDay, toDay]` into [EtlPeriod]s of at most [chunkDays] days each. Returns a
-     * single (possibly half-open) period when [chunkDays] is not a positive number or when a
-     * bound is missing, and an empty list when no day bound is provided at all.
-     */
-    private fun buildPeriods(fromDay: LocalDate?, toDay: LocalDate?, chunkDays: Int?): List<EtlPeriod> {
-        if (fromDay == null && toDay == null) return emptyList()
-        if (chunkDays == null || chunkDays <= 0 || fromDay == null || toDay == null) {
-            return listOf(EtlPeriod(fromDay, toDay))
+    override suspend fun rerunAllData(groupId: String?) {
+        rerunDateRange(groupId, null, null)
+    }
+
+    override suspend fun rerunToday(groupId: String?) {
+        val today = LocalDate.now(UTC)
+        rerunDateRange(groupId, today, null)
+    }
+
+    override suspend fun runIdleJobs(groupId: String?) {
+        forEachContextWithPeriodFrom(groupId) { context, from ->
+            defaultLauncher.resume(context, EtlPeriod(from, null))
         }
-        val from: LocalDate = fromDay
-        val to: LocalDate = toDay
-        require(!from.isAfter(to)) { "fromDay ($from) must not be after toDay ($to)" }
+    }
+
+    override suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow> {
+        val context = EtlContext(groupId)
+        val resolvedFrom = from ?: resolveHistoryStart(settingsService.getGroupSettings(groupId))
+        val resolvedTo = to ?: LocalDate.now(UTC)
+        val period = EtlPeriod(resolvedFrom, resolvedTo)
+        return defaultLauncher.getDailyStatuses(context, period)
+    }
+
+    override suspend fun getLastProcessedTimestamp(groupId: String): Instant? {
+        val context = EtlContext(groupId)
+        return defaultLauncher.getLastProcessedTimestamp(context)
+    }
+
+    override suspend fun loadTestDefinitionCoverage(
+        groupId: String, testSessionId: String, testDefinitionId: String, snapshotTimestamp: Instant?
+    ) {
+        val context = EtlContext(
+            groupId = groupId, testSessionId = testSessionId, testDefinitionId = testDefinitionId
+        )
+        testDefinitionCoverageLauncher.resume(context, EtlPeriod.UNBOUNDED, snapshotTimestamp, skipIfRunning = false).takeIf { it.isNotEmpty() }
+            ?: testDefinitionCoverageLauncher.schedule(context, EtlPeriod.UNBOUNDED, 1).map {
+                testDefinitionCoverageLauncher.run(it, skipIfRunning = false)
+            }
+    }
+
+    override suspend fun getActiveJobs(
+        groupId: String?,
+        from: LocalDate?,
+        to: LocalDate?
+    ): List<EtlJobView> {
+        val period = EtlPeriod(from, to)
+        val context = groupId?.let { EtlContext(groupId = it) }
+        return defaultLauncher.getActiveJobs(context, period).map { it ->
+            EtlJobView(
+                groupId = it.job.context.groupId,
+                workerId = it.workerId,
+                status = it.status,
+                fromDay = it.job.period.from?.toString(),
+                toDay = it.job.period.to?.toString(),
+                processedUntilTimestamp = it.processedUntilTimestamp.toString(),
+            )
+        }
+    }
+
+    /** Combines a (sorted or unsorted) list of individual days into contiguous [EtlPeriod]s. */
+    private fun combineIntoPeriods(days: List<LocalDate>): List<EtlPeriod> {
+        if (days.isEmpty()) return emptyList()
+        val sorted = days.distinct().sorted()
         val periods = mutableListOf<EtlPeriod>()
-        var start = from
-        while (!start.isAfter(to)) {
-            val end = minOf(start.plusDays((chunkDays - 1).toLong()), to)
-            periods += EtlPeriod(start, end)
-            start = end.plusDays(1)
+        var rangeStart = sorted.first()
+        var rangeEnd = sorted.first()
+        for (day in sorted.drop(1)) {
+            if (day == rangeEnd.plusDays(1)) {
+                rangeEnd = day
+            } else {
+                periods += EtlPeriod(rangeStart, rangeEnd)
+                rangeStart = day
+                rangeEnd = day
+            }
         }
+        periods += EtlPeriod(rangeStart, rangeEnd)
         return periods
     }
 
-    override suspend fun getRefreshStatus(groupId: String): Map<String, Any?> {
-        val metadata = etlRepository.getAllMetadata(EtlContext(groupId = groupId))
-        if (metadata.isEmpty()) return emptyMap()
-
-        val statusOrder = listOf(EtlStatus.FAILED, EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.SUCCESS)
-        val minStatus = metadata.minByOrNull { statusOrder.indexOf(it.status) }?.status ?: EtlStatus.SUCCESS
-        fun Instant.toTimestamp() = LocalDateTime.ofInstant(this, ZoneId.systemDefault())
-        val maxLastProcessedAt = metadata.maxOfOrNull { it.lastProcessedAt.toTimestamp() }
-        val maxLastRunAt = metadata.maxOfOrNull { it.lastRunAt.toTimestamp() }
-        val errorMessages = metadata.mapNotNull { it.errorMessage }
-        val sumDuration = metadata.sumOf { it.lastLoadDuration + it.lastExtractDuration }
-        val sumRowsProcessed = metadata.sumOf { it.lastRowsProcessed }
-
-        return buildMap {
-            put("status", minStatus.name)
-            put("lastProcessedAt", maxLastProcessedAt)
-            put("lastRunAt", maxLastRunAt)
-            if (errorMessages.isNotEmpty()) put("errorMessage", errorMessages.joinToString("; "))
-            put("lastDuration", sumDuration)
-            put("lastRowsProcessed", sumRowsProcessed)
+    private suspend fun forEachContext(
+        groupId: String?, block: suspend (EtlContext) -> List<EtlJobResult>
+    ): List<EtlJobResult> {
+        return if (groupId != null) {
+            block(EtlContext(groupId))
+        } else {
+            settingsService.getAllGroupSettings().keys.flatMap { block(EtlContext(it)) }
         }
     }
 
-    private suspend fun resolveInitTimestamp(groupId: String): Instant = resolveInitTimestamp(
-        settingsService.getGroupSettings(groupId)
-    )
+    private suspend fun forEachContextWithPeriodFrom(
+        groupId: String?, from: LocalDate? = null, block: suspend (EtlContext, LocalDate) -> Unit
+    ) {
+        if (groupId != null && from != null) {
+            block(EtlContext(groupId), from)
+        } else if (groupId != null) {
+            val groupSettings = settingsService.getGroupSettings(groupId)
+            val historyStart = resolveHistoryStart(groupSettings)
+            block(EtlContext(groupId), historyStart)
+        } else {
+            settingsService.getAllGroupSettings().forEach { (groupId, settings) ->
+                if (from != null) {
+                    block(EtlContext(groupId), from)
+                } else {
+                    val historyStart = resolveHistoryStart(settings)
+                    block(EtlContext(groupId), historyStart)
+                }
+            }
+        }
+    }
 
-    private fun resolveInitTimestamp(groupSettings: GroupSettingsView): Instant =
-        groupSettings.metricsPeriodDays?.let {
-            Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
-        } ?: Instant.EPOCH
+    private fun resolveHistoryStart(groupSettings: GroupSettingsView): LocalDate {
+        val today = LocalDate.now()
+        return groupSettings.metricsPeriodDays?.let {
+            today.minusDays(it.toLong())
+        } ?: today.minusDays(defaultHistoryDays)
+    }
 }

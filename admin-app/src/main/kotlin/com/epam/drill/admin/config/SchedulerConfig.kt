@@ -28,16 +28,39 @@ import org.quartz.CronTrigger
 import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
-    private val etlJobCron: String = config.propertyOrNull("etlJobCron")?.getString() ?: "0 * * * * ?"
+    private val incrementalRunEtlJobCron: String = config.propertyOrNull("incrementalRunEtlJobCron")?.getString() ?: "0 * * * * ?"
+    private val runIdleEtlJobsCron: String = config.propertyOrNull("runIdleEtlJobsCron")?.getString() ?: "0 */10 * * * ?"
+    private val scheduleUnloadedDaysEtlJobCron: String = config.propertyOrNull("scheduleUnloadedDaysEtlJobCron")?.getString() ?: "0 0 * * * ?"
     private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
 
-    val etlTrigger: CronTrigger
+    /** Daily incremental ETL run (skip if already running). */
+    val incrementalRunEtlTrigger: CronTrigger
         get() = TriggerBuilder.newTrigger()
-            .withIdentity("etlTrigger", "drill")
+            .withIdentity("incrementalRunEtlTrigger", "drill")
             .startNow()
             .withSchedule(
-                CronScheduleBuilder.cronSchedule(etlJobCron)
+                CronScheduleBuilder.cronSchedule(incrementalRunEtlJobCron)
+            )
+            .build()
+
+    /** Run idle/expired ETL jobs. */
+    val runIdleEtlJobsTrigger: CronTrigger
+        get() = TriggerBuilder.newTrigger()
+            .withIdentity("runIdleEtlJobsTrigger", "drill")
+            .startNow()
+            .withSchedule(
+                CronScheduleBuilder.cronSchedule(runIdleEtlJobsCron)
+            )
+            .build()
+
+    /** Schedule loading of unloaded/unplanned days. */
+    val scheduleUnloadedDaysEtlTrigger: CronTrigger
+        get() = TriggerBuilder.newTrigger()
+            .withIdentity("scheduleUnloadedDaysEtlTrigger", "drill")
+            .startNow()
+            .withSchedule(
+                CronScheduleBuilder.cronSchedule(scheduleUnloadedDaysEtlJobCron)
             )
             .build()
 

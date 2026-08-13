@@ -15,7 +15,13 @@
  */
 package com.epam.drill.admin.etl
 
-enum class EtlRunStatus {
-    RUNNING,
-    IDLE;
-}
+import java.time.LocalDate
+
+/**
+ * The aggregated [EtlDailyStatus] of a single calendar [day], as returned by
+ * [EtlLauncher.getDailyStatuses] / [EtlService.getDailyStatuses].
+ */
+data class EtlDailyStatusRow(
+    val day: LocalDate,
+    val status: EtlDailyStatus,
+)

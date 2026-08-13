@@ -17,34 +17,26 @@ package com.epam.drill.admin.etl.table
 
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
-import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.javatime.timestamp
 
-class EtlRunsTable(tableName: String) : Table(tableName) {
-    val orchestratorName = varchar("orchestrator_name", 225)
+class EtlJobsTable(tableName: String) : Table(tableName) {
+    val etlName = varchar("etl_name", 225)
     val groupId = varchar("group_id", 225)
     val appId = varchar("app_id", 225)
-    val instanceId = varchar("instance_id", 225)
     val buildId = varchar("build_id", 225)
     val testSessionId = varchar("test_session_id", 225)
     val testDefinitionId = varchar("test_definition_id", 225)
-    val testLaunchId = varchar("test_launch_id", 225)
-    val periodFrom = date("period_from")
-    val periodTo = date("period_to")
-    override val primaryKey = PrimaryKey(
-        orchestratorName, groupId, appId, instanceId, buildId,
-        testSessionId, testDefinitionId, testLaunchId,
-        periodFrom, periodTo
-    )
+    val period = registerColumn("period", DateRangeColumnType())
 
-    val runsCount = long("runs_count").default(0L)
     val status = varchar("status", 50)
-    val lastStartedAt = timestamp("last_started_at").nullable()
-    val lastFinishedAt = timestamp("last_finished_at").nullable()
-    val lastProcessedAt = timestamp("last_processed_at").nullable()
-    val lockOwner = varchar("lock_owner", 255).nullable()
+    val processedUntilTimestamp = timestamp("processed_until_timestamp")
+    val errorMessage = text("error_message").nullable()
+
+    val workerId = varchar("worker_id", 255).nullable()
     val lockExpiresAt = timestamp("lock_expires_at").nullable()
+    val startedAt = timestamp("started_at").nullable()
+    val finishedAt = timestamp("finished_at").nullable()
 
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)

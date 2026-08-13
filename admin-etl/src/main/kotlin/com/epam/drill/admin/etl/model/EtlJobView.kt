@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.epam.drill.admin.etl
+package com.epam.drill.admin.etl.model
 
-import java.time.Instant
+import com.epam.drill.admin.etl.EtlJobStatus
+import kotlinx.serialization.Serializable
+import java.time.LocalDate
 
-data class EtlMetadata(
-    val pipelineName: String,
-    val extractorName: String,
-    val loaderName: String,
-    val lastProcessedAt: Instant,
-    val lastLoadDuration: Long = 0L,
-    val lastExtractDuration: Long = 0L,
-    val lastRowsProcessed: Long = 0L,
-    val status: EtlStatus,
-    val errorMessage: String? = null,
-    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
+@Serializable
+class EtlJobView(
+    val workerId: String?,
+    val processedUntilTimestamp: String?,
+    val groupId: String,
+    val fromDay: String?,
+    val toDay: String?,
+    val status: EtlJobStatus,
 )
-

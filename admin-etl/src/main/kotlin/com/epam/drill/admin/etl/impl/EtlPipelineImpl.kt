@@ -52,8 +52,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        val groupId = context.groupId
-        logger.debug { "ETL pipeline [$name] for group [$groupId] loading since $sinceTimestamp..." }
+        logger.debug { "ETL pipeline [$name] loading since $sinceTimestamp..." }
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val duration = measureTimeMillis {
             result = loadData(
@@ -67,10 +66,10 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         }
         logger.debug {
             if (result.processedRows == 0L && !result.isFailed) {
-                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, no new rows"
+                "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else {
                 val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
-                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, rows processed: ${result.processedRows}" + errors
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${result.processedRows}" + errors
             }
         }
         EtlProcessingResult(
@@ -116,8 +115,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             )
         }
     } catch (e: Throwable) {
-        val groupId = context.groupId
-        logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for loader [${loader.name}]: ${e.message}" }
+        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
             lastProcessedAt = sinceTimestamp
