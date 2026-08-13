@@ -115,15 +115,25 @@ val etlDIModule
             }
         }
         bind<EtlLauncher>(tag = DEFAULT_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
             EtlLauncherImpl(
                 orchestrator = instance(tag = DEFAULT_ETL),
                 jobsRepository = instance(),
+                lockLeaseSeconds = etlConfig.lockLeaseSeconds,
+                lockRetryDelay = etlConfig.lockRetryDelay * 1000,
+                lockAttempts = etlConfig.lockAttempts,
+                maxWorkers = etlConfig.maxWorkers,
             )
         }
         bind<EtlLauncher>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
+            val etlConfig = instance<EtlConfig>()
             EtlLauncherImpl(
                 orchestrator = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
                 jobsRepository = instance(),
+                lockLeaseSeconds = etlConfig.lockLeaseSeconds,
+                lockRetryDelay = etlConfig.lockRetryDelay * 1000,
+                lockAttempts = etlConfig.lockAttempts,
+                maxWorkers = 1,
             )
         }
         bind<EtlService>() with singleton {

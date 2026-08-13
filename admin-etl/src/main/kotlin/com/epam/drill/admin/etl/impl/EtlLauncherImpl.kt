@@ -24,6 +24,7 @@ import com.epam.drill.admin.etl.EtlJobsRepository
 import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPeriod
+import com.epam.drill.admin.etl.exception.LockAcquisitionException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +40,8 @@ class EtlLauncherImpl(
     private val jobsRepository: EtlJobsRepository,
     private val lockLeaseSeconds: Long = 180,
     private val lockRetryDelay: Long = 10000L,
+    private val lockAttempts: Int = 60,
+    private val maxWorkers: Int = 4,
 ) : EtlLauncher {
     private val logger = KotlinLogging.logger {}
     private val etlName get() = orchestrator.name
@@ -166,8 +169,8 @@ class EtlLauncherImpl(
             locked = jobsRepository.lockJob(job, workerId, lockLeaseSeconds)
             if (!locked) {
                 activeJob = jobsRepository.getActiveJob(job)
-                check(activeJob != null) {
-                    "ETL [${job.etlName}] for [${job.period}] cannot run because it was not scheduled"
+                if (activeJob == null) {
+                    throw LockAcquisitionException("ETL [${job.etlName}] for [${job.period}] cannot run because it was not scheduled")
                 }
                 if (skipIfRunning && activeJob.status == EtlJobStatus.RUNNING) {
                     logger.info {
@@ -184,9 +187,9 @@ class EtlLauncherImpl(
                 }
                 delay(lockRetryDelay)
             }
-        } while (!locked && attempts < 60)
+        } while (!locked && attempts < lockAttempts)
         if (!locked) {
-            error("ETL [$etlName] for [${job.period}] is still running after $attempts attempts")
+            throw LockAcquisitionException("ETL [$etlName] for [${job.period}] is still running after $attempts attempts")
         }
         return null
     }
