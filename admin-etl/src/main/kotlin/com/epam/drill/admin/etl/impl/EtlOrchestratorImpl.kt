@@ -33,6 +33,7 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.flow.ClosableFlow
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
+import io.ktor.util.collections.ConcurrentMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -40,6 +41,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import java.time.Duration
 import java.time.Instant
 import java.util.Collections
 import kotlin.coroutines.cancellation.CancellationException
@@ -58,6 +60,17 @@ open class EtlOrchestratorImpl(
     open val lockLeaseSeconds: Long = 180,
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
+
+    inner class ProgressTracker {
+        private val progress: ConcurrentMap<String, Instant> = ConcurrentMap()
+        fun register(pipelineName: String, lastProcessedAt: Instant) {
+            progress.put(pipelineName, lastProcessedAt)
+        }
+
+        fun getProcessedUntilTimestamp(): Instant {
+            return progress.values.minOrNull() ?: Instant.EPOCH
+        }
+    }
 
     override suspend fun run(job: EtlJob, workerId: String, snapshotTimestamp: Instant?): EtlJobResult {
         return runSafely(job, workerId, snapshotTimestamp)
@@ -202,6 +215,7 @@ open class EtlOrchestratorImpl(
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
         logger.info("ETL job [$workerId] is starting ${job.period}...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
+        val progressTracker = ProgressTracker()
         val duration = measureTimeMillis {
             trackProgressOf {
                 // Group pipelines by extractor name; pipelines in the same group share one extractor run
@@ -217,11 +231,22 @@ open class EtlOrchestratorImpl(
                             extractor = typedPipelines.first().extractor,
                             initTimestamp = initTimestamp,
                             finalTimestamp = finalTimestamp,
+                            progressTracker = progressTracker
                         )
                     }
                 }.awaitAll()
             }.every(1.minutes) {
-                logger.info { "ETL job [$workerId] is still running ${job.period}..." }
+                val processedUntilTimestamp = progressTracker.getProcessedUntilTimestamp()
+                val total = Duration.between(initTimestamp, finalTimestamp).toMillis()
+                val processed = Duration.between(initTimestamp, processedUntilTimestamp).toMillis()
+                val progress = ((processed.toDouble() / total) * 100).toInt()
+
+                logger.info { "ETL job [$workerId] is still running ${job.period} ... Progress: $progress%" }
+                jobsRepository.updateProcessedUntilTimestamp(
+                    job,
+                    workerId,
+                    processedUntilTimestamp
+                )
             }
         }
         logger.info {
@@ -246,6 +271,7 @@ open class EtlOrchestratorImpl(
         extractor: DataExtractor<T> = groupedPipelines.first().extractor,
         initTimestamp: Instant,
         finalTimestamp: Instant,
+        progressTracker: ProgressTracker,
     ): List<EtlProcessingResult> = coroutineScope {
 
         // Compute per-pipeline sinceTimestamp from metadata
@@ -255,6 +281,7 @@ open class EtlOrchestratorImpl(
                 metadata.lastProcessedAt.minusSeconds(consistencyWindow)
             else
                 initTimestamp
+            progressTracker.register(pipeline.name, sinceTimestamp)
             pipeline.name to sinceTimestamp
         }
 
@@ -297,6 +324,7 @@ open class EtlOrchestratorImpl(
                     sinceTimestamp = sinceTimestamps[pipeline.name] ?: initTimestamp,
                     untilTimestamp = finalTimestamp,
                     sharedFlow = sharedFlow.subscribe(),
+                    progressTracker = progressTracker,
                 )
             }
         }
@@ -353,6 +381,7 @@ open class EtlOrchestratorImpl(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         sharedFlow: ClosableFlow<T>,
+        progressTracker: ProgressTracker,
     ): EtlProcessingResult {
         return try {
             pipeline.execute(
@@ -362,6 +391,7 @@ open class EtlOrchestratorImpl(
                 extractionFlow = sharedFlow,
                 onLoadingProgress = { result ->
                     saveLoadingProgress(context, period, pipeline.name, result)
+                    progressTracker.register(pipeline.name, result.lastProcessedAt)
                 },
                 onStatusChanged = { status ->
                     saveStatusChange(context, period, pipeline.name, status)

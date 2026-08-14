@@ -243,4 +243,16 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
             .mapNotNull { it.value.processedUntilTimestamp }
             .maxOrNull()
     }
+
+    override suspend fun updateProcessedUntilTimestamp(
+        job: EtlJob,
+        workerId: String,
+        processedUntilTimestamp: Instant
+    ) {
+        mutex.withLock {
+            val current = jobs[job] ?: return@withLock
+            if (current.workerId != workerId || current.status != EtlJobStatus.RUNNING) return@withLock
+            jobs[job] = current.copy(processedUntilTimestamp = processedUntilTimestamp)
+        }
+    }
 }

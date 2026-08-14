@@ -28,5 +28,5 @@ interface EtlWorkerPool {
      * Runs [block] once a worker slot becomes available, releasing the slot back to the pool
      * when [block] completes (successfully or with an exception).
      */
-    suspend fun <T> withWorker(block: suspend (workerId: String) -> T): T
+    suspend fun <T> withWorker(job: EtlJob, block: suspend (workerId: String) -> T): T
 }

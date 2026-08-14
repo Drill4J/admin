@@ -238,6 +238,19 @@ class EtlJobsRepositoryImpl(
             .minOrNull()
     }
 
+    override suspend fun updateProcessedUntilTimestamp(
+        job: EtlJob,
+        workerId: String,
+        processedUntilTimestamp: Instant
+    ) {
+        newSuspendedTransaction(db = database) {
+            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
+                it[jobsTable.processedUntilTimestamp] = processedUntilTimestamp
+                it[updatedAt] = CurrentDateTime
+            }
+        }
+    }
+
     private fun dayStatus(day: LocalDate, jobs: List<EtlJobResult>): EtlDailyStatus {
         val covering = jobs.filter { jobProgress ->
             val from = jobProgress.job.period.from ?: LocalDate.MIN

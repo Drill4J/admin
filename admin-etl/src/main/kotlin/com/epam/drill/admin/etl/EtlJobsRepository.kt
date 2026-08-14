@@ -137,4 +137,10 @@ interface EtlJobsRepository {
         etlName: String,
         context: EtlContext,
     ): Instant?
+
+    suspend fun updateProcessedUntilTimestamp(
+        job: EtlJob,
+        workerId: String,
+        processedUntilTimestamp: Instant,
+    )
 }

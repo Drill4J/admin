@@ -205,7 +205,7 @@ class EtlLauncherImplTest {
     }
 
     @Test
-    fun `schedule fails fast when a chunk overlaps an already active job`(): Unit = runBlocking {
+    fun `schedule skip a chunk overlaps an already active job`(): Unit = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
         val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
@@ -217,9 +217,8 @@ class EtlLauncherImplTest {
         // Pre-schedule a job overlapping the first chunk to force the exclude-constraint failure
         jobsRepository.scheduleJob(orchestrator.name, context, EtlPeriod(from, from))
 
-        assertFailsWith<IllegalStateException> {
-            launcher.schedule(context, period, workers = 2)
-        }
+        val jobs = launcher.schedule(context, period, workers = 2)
+        assertEquals(1, jobs.size)
     }
 
     @Test

@@ -143,7 +143,7 @@ class EtlLauncherImpl(
         job: EtlJob,
         skipIfRunning: Boolean,
         block: suspend (workerId: String) -> EtlJobResult,
-    ): EtlJobResult = workerPool.withWorker { workerId ->
+    ): EtlJobResult = workerPool.withWorker(job) { workerId ->
         val skippedJob = tryToLock(job, workerId, skipIfRunning)
         if (skippedJob != null) {
             return@withWorker skippedJob
