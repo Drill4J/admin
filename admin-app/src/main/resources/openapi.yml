@@ -1348,20 +1348,6 @@ paths:
           required: false
           schema:
             type: boolean
-        - name: initTimestamp
-          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun from this timestamp
-          in: query
-          required: false
-          schema:
-              type: integer
-              format: int64
-        - name: finalTimestamp
-          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun up to this timestamp
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
         - name: fromDay
           description: >
             Inclusive start day (ISO-8601 date, e.g. 2024-01-31) of a day-scoped rerun. When provided, the ETL
@@ -1380,21 +1366,6 @@ paths:
           schema:
             type: string
             format: date
-        - name: chunkDays
-          description: >
-            When set together with fromDay/toDay, splits the range into chunks of at most this many days and runs
-            them as independent (parallel where non-overlapping) period reruns.
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-        - name: skipIfLocked
-          description: If true, the refresh request will be skipped if another refresh is already in progress. Defaults to false.
-          in: query
-          required: false
-          schema:
-            type: boolean
       responses:
         '200':
           description: Metrics were refreshed
@@ -1402,7 +1373,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-  /api/metrics/refresh-status:
+    get:
+      summary: Get active ETL jobs
+      description: |
+        Retrieves a list of currently active (running) ETL jobs for an application group. Optionally filter by day range
+        to see jobs processing specific date ranges.
+      operationId: getActiveEtlJobs
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: false
+          description: Unique identifier for the application group.
+          schema:
+            type: string
+        - name: fromDay
+          in: query
+          required: false
+          description: Optional inclusive start day (ISO-8601 date, e.g. 2024-01-31) to filter active jobs by day range.
+          schema:
+            type: string
+            format: date
+        - name: toDay
+          in: query
+          required: false
+          description: Optional inclusive end day (ISO-8601 date, e.g. 2024-02-29) to filter active jobs by day range. Used together with fromDay.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of active ETL jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/refresh/status:
     get:
       summary: Get refresh status
       description: |
@@ -1421,9 +1430,48 @@ paths:
           description: Unique identifier for the application group whose refresh status is being queried.
           schema:
             type: string
+        - name: fromDay
+          in: query
+          required: false
+          description: Optional inclusive start day (ISO-8601 date, e.g. 2024-01-31) to filter refresh status by day range.
+          schema:
+            type: string
+            format: date
+        - name: toDay
+          in: query
+          required: false
+          description: Optional inclusive end day (ISO-8601 date, e.g. 2024-02-29) to filter refresh status by day range. Used together with fromDay.
+          schema:
+            type: string
+            format: date
       responses:
         '200':
           description: Metrics status was retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/refresh/last-processed-timestamp:
+    get:
+      summary: Get last processed timestamp
+      description: |
+        Retrieves the timestamp of the last successfully processed record during ETL refresh for a specific application group.
+        This indicates how recent the computed metrics data is.
+      operationId: getLastProcessedTimestamp
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: Unique identifier for the application group.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Last processed timestamp retrieved
           content:
             application/json:
               schema:
