@@ -59,11 +59,7 @@ class EtlLauncherImpl(
 
     override suspend fun schedule(context: EtlContext, period: EtlPeriod, workers: Int): List<EtlJob> {
         val chunks = partition(period, workers)
-        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it) }.also {
-            check(it.size == chunks.size) {
-                "Failed to schedule all jobs: ${chunks.size} chunks, ${it.size} scheduled"
-            }
-        }
+        return chunks.mapNotNull { jobsRepository.scheduleJob(etlName, context, it) }
     }
 
     override suspend fun resume(

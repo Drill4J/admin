@@ -26,6 +26,7 @@ import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.table.DateRangeValue
 import com.epam.drill.admin.etl.table.DaterangeOverlaps
 import com.epam.drill.admin.etl.table.EtlJobsTable
+import com.epam.drill.admin.etl.table.TimestampPlusSeconds
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
@@ -44,7 +45,6 @@ import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.updateReturning
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 class EtlJobsRepositoryImpl(
@@ -70,8 +70,8 @@ class EtlJobsRepositoryImpl(
                 it[testDefinitionId] = context.testDefinitionId ?: ""
                 it[jobsTable.period] = period.toDateRangeValue()
                 it[status] = EtlJobStatus.IDLE.name
-                it[createdAt] = LocalDateTime.now()
-                it[updatedAt] = LocalDateTime.now()
+                it[createdAt] = CurrentDateTime
+                it[updatedAt] = CurrentDateTime
             }
             EtlJob(
                 etlName = etlName,
@@ -110,11 +110,10 @@ class EtlJobsRepositoryImpl(
         workerId: String,
         leaseSeconds: Long,
     ): Boolean = newSuspendedTransaction(db = database) {
-        val expiresAt = Instant.now().plusSeconds(leaseSeconds)
         jobsTable.update(where = { sameJob(job) and resumableStatus() }) {
             it[status] = EtlJobStatus.RUNNING.name
             it[jobsTable.workerId] = workerId
-            it[lockExpiresAt] = expiresAt
+            it[lockExpiresAt] = TimestampPlusSeconds(leaseSeconds)
             it[startedAt] = CurrentTimestamp
             it[finishedAt] = null
             it[updatedAt] = CurrentDateTime
@@ -122,10 +121,9 @@ class EtlJobsRepositoryImpl(
     }
 
     override suspend fun extendLease(job: EtlJob, workerId: String, leaseSeconds: Long): Boolean {
-        val expiresAt = Instant.now().plusSeconds(leaseSeconds)
         return newSuspendedTransaction(db = database) {
             jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and jobIsRunning() }) {
-                it[lockExpiresAt] = expiresAt
+                it[lockExpiresAt] = TimestampPlusSeconds(leaseSeconds)
                 it[updatedAt] = CurrentDateTime
             } > 0
         }

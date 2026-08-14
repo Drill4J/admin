@@ -37,10 +37,12 @@ interface EtlLauncher {
 
     /**
      * Schedules [EtlOrchestrator] runs across date ranges (periods) with the specified number of workers.
+     * If a job cannot be scheduled, it will be skipped.
      *
      * @param context the [EtlContext] for the job
      * @param period the [EtlPeriod] to cover
      * @param workers the number of workers to use
+     * @return a list of [EtlJobResult]s for the scheduled jobs
      */
     suspend fun schedule(
         context: EtlContext,

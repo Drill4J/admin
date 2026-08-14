@@ -56,7 +56,8 @@ class EtlServiceImpl(
                 .takeIf { it.isNotEmpty() }
                 ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
                     defaultLauncher.run(it, snapshotTimestamp, skipIfRunning = false)
-                }
+                }.takeIf { it.isNotEmpty() }
+                ?: throw IllegalStateException("Cannot force refresh ETL, because some job is already running for group ${context.groupId}.")
         }.minOf { it.processedUntilTimestamp ?: Instant.EPOCH }
     }
 
@@ -83,6 +84,9 @@ class EtlServiceImpl(
     }
 
     override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?) {
+        check(to?.isBefore(LocalDate.now().plusDays(1)) ?: true) {
+            "Cannot rerun ETL for future dates."
+        }
         val today = LocalDate.now(UTC)
         forEachContextWithPeriodFrom(groupId) { context, resolvedFrom ->
             val resolvedTo = to ?: today

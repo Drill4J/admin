@@ -67,7 +67,7 @@ data class EtlPeriod(
 
     companion object {
         val SENTINEL_FROM: LocalDate = LocalDate.of(2000, 1, 1)
-        val SENTINEL_TO: LocalDate = LocalDate.of(2100, 1, 1)
+        val SENTINEL_TO: LocalDate = LocalDate.of(2099, 12, 31)
         val UNBOUNDED = EtlPeriod()
         val FROM_TODAY: EtlPeriod
             get() = EtlPeriod(from = LocalDate.now(UTC))
