@@ -96,7 +96,7 @@ abstract class SqlDataLoader<T: EtlRow>(
     }
 
     override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
-        logger.debug { "Loader [$name] deleting data for [$period]" }
+        logger.debug { "Loader [$name] deleting data for $period" }
         val preparedSql = UntypedPreparedSql.prepareSql(sqlDelete)
         val args = preparedSql.getArgs(
             UntypedRow(

@@ -23,7 +23,7 @@ import java.time.Instant
 data class EtlJobResult(
     val job: EtlJob,
     val status: EtlJobStatus,
-    val processedUntilTimestamp: Instant,
+    val processedUntilTimestamp: Instant? = null,
     val errorMessage: String? = null,
     val workerId : String? = null,
     val lockExpiresAt: Instant? = null,

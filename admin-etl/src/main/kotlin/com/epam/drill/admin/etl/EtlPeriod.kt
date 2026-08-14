@@ -77,11 +77,13 @@ data class EtlPeriod(
             get() = EtlPeriod(to = LocalDate.now(UTC), from = LocalDate.now(UTC))
 
         /** Rebuilds an [EtlPeriod] from persisted sentinel-aware bounds. */
-        fun fromStored(from: LocalDate, to: LocalDate): EtlPeriod =
-            EtlPeriod(from.takeUnless { it == SENTINEL_FROM }, to.takeUnless { it == SENTINEL_TO })
+        fun fromStored(from: LocalDate, to: LocalDate): EtlPeriod {
+            return EtlPeriod(from.takeUnless { it == SENTINEL_FROM }, to.takeUnless { it == SENTINEL_TO })
+        }
+
     }
 
     override fun toString(): String {
-        return (from?.let { "$from" } ?: "") + (to?.let { ",$to" } ?: "")
+        return "[" + (from?.toString() ?: "") + "," + (to?.toString() ?: "") + "]"
     }
 }

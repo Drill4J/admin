@@ -52,11 +52,12 @@ class EtlServiceImpl(
 
     override suspend fun forceRefresh(groupId: String?, snapshotTimestamp: Instant?): Instant {
         return forEachContext(groupId) { context ->
-            defaultLauncher.resume(context, EtlPeriod.TODAY, snapshotTimestamp, skipIfRunning = false).takeIf { it.isNotEmpty() }
+            defaultLauncher.resume(context, EtlPeriod.TODAY, snapshotTimestamp, skipIfRunning = false)
+                .takeIf { it.isNotEmpty() }
                 ?: defaultLauncher.schedule(context, EtlPeriod.FROM_TODAY, 1).map {
                     defaultLauncher.run(it, snapshotTimestamp, skipIfRunning = false)
                 }
-        }.minOf { it.processedUntilTimestamp }
+        }.minOf { it.processedUntilTimestamp ?: Instant.EPOCH }
     }
 
     override suspend fun scheduleUnloadedDays(groupId: String?) {
@@ -69,12 +70,14 @@ class EtlServiceImpl(
                     .map { it.day }
             val unplannedPeriods = combineIntoPeriods(unloadedDays)
 
-            val workersPerPeriod = (maxWorkers / unplannedPeriods.size).takeIf { it > 0 } ?: 1
-            for (period in unplannedPeriods) {
-                defaultLauncher.schedule(context, period, workersPerPeriod)
-            }
-            for (period in unplannedPeriods) {
-                defaultLauncher.resume(context, period)
+            if (unplannedPeriods.isNotEmpty()) {
+                val workersPerPeriod = (maxWorkers / unplannedPeriods.size).takeIf { it > 0 } ?: 1
+                for (period in unplannedPeriods) {
+                    defaultLauncher.schedule(context, period, workersPerPeriod)
+                }
+                for (period in unplannedPeriods) {
+                    defaultLauncher.resume(context, period)
+                }
             }
         }
     }
@@ -128,7 +131,8 @@ class EtlServiceImpl(
         val context = EtlContext(
             groupId = groupId, testSessionId = testSessionId, testDefinitionId = testDefinitionId
         )
-        testDefinitionCoverageLauncher.resume(context, EtlPeriod.UNBOUNDED, snapshotTimestamp, skipIfRunning = false).takeIf { it.isNotEmpty() }
+        testDefinitionCoverageLauncher.resume(context, EtlPeriod.UNBOUNDED, snapshotTimestamp, skipIfRunning = false)
+            .takeIf { it.isNotEmpty() }
             ?: testDefinitionCoverageLauncher.schedule(context, EtlPeriod.UNBOUNDED, 1).map {
                 testDefinitionCoverageLauncher.run(it, skipIfRunning = false)
             }

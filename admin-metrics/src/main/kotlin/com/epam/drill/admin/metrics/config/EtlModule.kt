@@ -19,12 +19,14 @@ import com.epam.drill.admin.etl.EtlJobsRepository
 import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlMetadataRepository
 import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.EtlWorkerPool
 import com.epam.drill.admin.etl.config.EtlConfig
 import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.impl.EtlJobsRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlLauncherImpl
 import com.epam.drill.admin.etl.impl.EtlMetadataRepositoryImpl
 import com.epam.drill.admin.etl.impl.EtlOrchestratorImpl
+import com.epam.drill.admin.etl.impl.SemaphoreWorkerPool
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.job.RunIdleEtlJobsJob
@@ -114,6 +116,10 @@ val etlDIModule
                 )
             }
         }
+        bind<EtlWorkerPool>() with singleton {
+            val etlConfig = instance<EtlConfig>()
+            SemaphoreWorkerPool(maxWorkers = etlConfig.maxWorkers)
+        }
         bind<EtlLauncher>(tag = DEFAULT_ETL) with singleton {
             val etlConfig = instance<EtlConfig>()
             EtlLauncherImpl(
@@ -122,7 +128,7 @@ val etlDIModule
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
                 lockRetryDelay = etlConfig.lockRetryDelay * 1000,
                 lockAttempts = etlConfig.lockAttempts,
-                maxWorkers = etlConfig.maxWorkers,
+                workerPool = instance(),
             )
         }
         bind<EtlLauncher>(tag = TEST_DEFINITION_COVERAGE_ETL) with singleton {
@@ -133,7 +139,7 @@ val etlDIModule
                 lockLeaseSeconds = etlConfig.lockLeaseSeconds,
                 lockRetryDelay = etlConfig.lockRetryDelay * 1000,
                 lockAttempts = etlConfig.lockAttempts,
-                maxWorkers = 1,
+                workerPool = instance(),
             )
         }
         bind<EtlService>() with singleton {

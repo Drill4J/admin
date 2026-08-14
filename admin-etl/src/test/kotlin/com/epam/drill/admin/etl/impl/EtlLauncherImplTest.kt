@@ -81,8 +81,8 @@ class EtlLauncherImplTest {
 
         private suspend fun applyToRepository(result: EtlJobResult, workerId: String) {
             when (result.status) {
-                EtlJobStatus.COMPLETED -> jobsRepository.markCompleted(result.job, workerId, result.processedUntilTimestamp)
-                EtlJobStatus.IDLE -> jobsRepository.markIdle(result.job, workerId, result.processedUntilTimestamp)
+                EtlJobStatus.COMPLETED -> jobsRepository.markCompleted(result.job, workerId, result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH)
+                EtlJobStatus.IDLE -> jobsRepository.markIdle(result.job, workerId, result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH)
                 EtlJobStatus.ERROR -> jobsRepository.markError(result.job, workerId, result.errorMessage)
                 EtlJobStatus.CANCELLED -> jobsRepository.markCancelled(result.job, workerId)
                 EtlJobStatus.RUNNING -> Unit

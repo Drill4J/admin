@@ -45,6 +45,7 @@ import org.jetbrains.exposed.sql.updateReturning
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class EtlJobsRepositoryImpl(
     private val database: Database,
@@ -234,9 +235,9 @@ class EtlJobsRepositoryImpl(
         context: EtlContext,
     ): Instant? = newSuspendedTransaction(db = database) {
         jobsTable.selectAll()
-            .andWhere { sameEtl(etlName) and sameContext(context) and (jobsTable.status neq EtlJobStatus.CANCELLED.name) }
+            .andWhere { sameEtl(etlName) and sameContext(context) and activeStatus() }
             .mapNotNull { it[jobsTable.processedUntilTimestamp] }
-            .maxOrNull()
+            .minOrNull()
     }
 
     private fun dayStatus(day: LocalDate, jobs: List<EtlJobResult>): EtlDailyStatus {
@@ -246,9 +247,30 @@ class EtlJobsRepositoryImpl(
             !day.isBefore(from) && !day.isAfter(to)
         }
         if (covering.isEmpty()) return EtlDailyStatus.UNLOADED
-        return when (covering.first().status) {
+        val coveredJob = covering.first()
+        val startOfNextDay = day.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC)
+        val startOfCurrentDay = day.atStartOfDay().toInstant(ZoneOffset.UTC)
+        //job is extracting data for the first day of the period
+        if (coveredJob.processedUntilTimestamp == null && day == coveredJob.job.period.from) {
+            return EtlDailyStatus.RUNNING
+        }
+        //job has already processed data for the day
+        if (coveredJob.processedUntilTimestamp?.isAfter(startOfNextDay) ?: false) {
+            return EtlDailyStatus.COMPLETED
+        }
+        //job has not yet processed data for the day
+        if (coveredJob.processedUntilTimestamp?.isBefore(startOfCurrentDay) ?: true) {
+            return when (coveredJob.status) {
+                EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
+                EtlJobStatus.COMPLETED -> EtlDailyStatus.UNLOADED
+            }
+        }
+        //job is processing data for the day
+        return when (coveredJob.status) {
             EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
-            EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
+            EtlJobStatus.IDLE -> EtlDailyStatus.RUNNING
             EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
             EtlJobStatus.COMPLETED -> EtlDailyStatus.COMPLETED
         }
@@ -265,10 +287,7 @@ class EtlJobsRepositoryImpl(
                 testSessionId = row[jobsTable.testSessionId].ifEmpty { null },
                 testDefinitionId = row[jobsTable.testDefinitionId].ifEmpty { null },
             ),
-            period = EtlPeriod(
-                from = range.from,
-                to = range.to,
-            ),
+            period = EtlPeriod.fromStored(range.from, range.to),
         )
     }
 

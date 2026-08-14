@@ -45,6 +45,7 @@ import java.util.Collections
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 open class EtlOrchestratorImpl(
     override val name: String,
@@ -65,15 +66,15 @@ open class EtlOrchestratorImpl(
     override suspend fun rerun(job: EtlJob, workerId: String, withDataDeletion: Boolean): EtlJobResult {
         val context = job.context
         val period = job.period
-        logger.info { "ETL job [$workerId] is deleting metadata for rerun [$period]..." }
+        logger.info { "ETL job [$workerId] is deleting metadata for rerun $period..." }
         pipelines.map { it.name }.forEach { pipelineName ->
             metadataRepository.deleteMetadataByPipeline(context, pipelineName, period)
         }
-        logger.info { "ETL job [$workerId] deleted metadata for rerun [$period]." }
+        logger.info { "ETL job [$workerId] deleted metadata for rerun $period." }
         if (withDataDeletion) {
-            logger.info { "ETL job [$workerId] is deleting data for rerun [$period]..." }
+            logger.info { "ETL job [$workerId] is deleting data for rerun $period..." }
             pipelines.forEach { it.cleanUp(context, period) }
-            logger.info { "ETL job [$workerId] deleted data for rerun [$period]." }
+            logger.info { "ETL job [$workerId] deleted data for rerun $period." }
         }
         return runSafely(job, workerId, snapshotTimestamp = null)
     }
@@ -124,11 +125,11 @@ open class EtlOrchestratorImpl(
                     }
 
                     else -> {
-                        job.markIdle(workerId, minLastProcessedAt)
+                        job.markIdle(workerId, finalTimestamp)
                         EtlJobResult(
                             job = job,
                             status = EtlJobStatus.IDLE,
-                            processedUntilTimestamp = minLastProcessedAt
+                            processedUntilTimestamp = finalTimestamp
                         )
                     }
                 }
@@ -156,7 +157,7 @@ open class EtlOrchestratorImpl(
     private suspend fun extendLeaseOf(job: EtlJob, workerId: String, body: suspend () -> EtlJobResult): EtlJobResult {
         return trackProgressOf {
             body()
-        }.every(1.minutes) {
+        }.every(lockLeaseSeconds.seconds / 2) {
             runCatching {
                 val extended = jobsRepository.extendLease(job, workerId, lockLeaseSeconds)
                 if (!extended) {
@@ -199,7 +200,7 @@ open class EtlOrchestratorImpl(
         initTimestamp: Instant,
         finalTimestamp: Instant,
     ): List<EtlProcessingResult> = withContext(Dispatchers.IO) {
-        logger.info("ETL job [$workerId] is starting [${job.period}]...")
+        logger.info("ETL job [$workerId] is starting ${job.period}...")
         val results = Collections.synchronizedList(mutableListOf<EtlProcessingResult>())
         val duration = measureTimeMillis {
             trackProgressOf {
@@ -220,16 +221,16 @@ open class EtlOrchestratorImpl(
                     }
                 }.awaitAll()
             }.every(1.minutes) {
-                logger.info { "ETL job [$workerId] is still running [${job.period}]..." }
+                logger.info { "ETL job [$workerId] is still running ${job.period}..." }
             }
         }
         logger.info {
             val rowsProcessed = results.sumOf { it.rowsProcessed }
             val failures = results.count { it.status == EtlStatus.FAILED }
             if (rowsProcessed == 0L && failures == 0)
-                "ETL job [$workerId] completed [${job.period}] in ${duration}ms, no new rows"
+                "ETL job [$workerId] completed ${job.period} in ${duration}ms, no new rows"
             else
-                "ETL job [$workerId] completed [${job.period}] in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
+                "ETL job [$workerId] completed ${job.period} in ${duration}ms, rows processed: $rowsProcessed, failures: $failures"
         }
         return@withContext results
     }
@@ -270,7 +271,7 @@ open class EtlOrchestratorImpl(
                 status = EtlStatus.SKIPPED,
                 errorMessage = null,
             ).also {
-                logger.debug { "ETL pipeline [${pipeline.name}] for [$period] is already up-to-date." }
+                logger.debug { "ETL pipeline [${pipeline.name}] for $period is already up-to-date." }
             }
         }
 
@@ -335,7 +336,7 @@ open class EtlOrchestratorImpl(
                 }
             )
         } catch (e: Throwable) {
-            logger.debug(e) { "ETL extractor [${extractor.name}] for [$period] failed: ${e.message}" }
+            logger.debug(e) { "ETL extractor [${extractor.name}] for $period failed: ${e.message}" }
             sharedFlow.close(e)
         } finally {
             sharedFlow.close()
@@ -367,7 +368,7 @@ open class EtlOrchestratorImpl(
                 }
             )
         } catch (e: Throwable) {
-            logger.error("ETL pipeline [${pipeline.name}] for [$period] failed: ${e.message}", e)
+            logger.error("ETL pipeline [${pipeline.name}] for $period failed: ${e.message}", e)
             EtlProcessingResult(
                 context = context,
                 pipelineName = pipeline.name,
@@ -398,7 +399,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [$pipelineName] for [$period] failed to update extracting progress: ${e.message}",
+                "ETL pipeline [$pipelineName] for $period failed to update extracting progress: ${e.message}",
                 e
             )
         }
@@ -422,7 +423,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [$pipelineName] for [$period] failed to update loading progress: ${e.message}",
+                "ETL pipeline [$pipelineName] for $period failed to update loading progress: ${e.message}",
                 e
             )
         }
@@ -443,7 +444,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [${pipelineName}] for [$period] failed to update loading status: ${e.message}",
+                "ETL pipeline [${pipelineName}] for $period failed to update loading status: ${e.message}",
                 e
             )
         }
@@ -469,7 +470,7 @@ open class EtlOrchestratorImpl(
             )
         } catch (e: Throwable) {
             logger.warn(
-                "ETL pipeline [${pipeline.name}] for [$period] failed to save initial metadata: ${e.message}",
+                "ETL pipeline [${pipeline.name}] for $period failed to save initial metadata: ${e.message}",
                 e
             )
         }
