@@ -24,6 +24,7 @@ import com.epam.drill.admin.etl.EtlJobsRepository
 import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPeriod
+import com.epam.drill.admin.etl.EtlWorkerPool
 import com.epam.drill.admin.etl.exception.LockAcquisitionException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -33,7 +34,6 @@ import mu.KotlinLogging
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 
 class EtlLauncherImpl(
     private val orchestrator: EtlOrchestrator,
@@ -41,7 +41,7 @@ class EtlLauncherImpl(
     private val lockLeaseSeconds: Long = 180,
     private val lockRetryDelay: Long = 10000L,
     private val lockAttempts: Int = 60,
-    private val maxWorkers: Int = 4,
+    private val workerPool: EtlWorkerPool = SemaphoreWorkerPool(maxWorkers = 4),
 ) : EtlLauncher {
     private val logger = KotlinLogging.logger {}
     private val etlName get() = orchestrator.name
@@ -147,13 +147,12 @@ class EtlLauncherImpl(
         job: EtlJob,
         skipIfRunning: Boolean,
         block: suspend (workerId: String) -> EtlJobResult,
-    ): EtlJobResult {
-        val workerId = UUID.randomUUID().toString()
+    ): EtlJobResult = workerPool.withWorker { workerId ->
         val skippedJob = tryToLock(job, workerId, skipIfRunning)
         if (skippedJob != null) {
-            return skippedJob
+            return@withWorker skippedJob
         }
-        return block(workerId)
+        block(workerId)
     }
 
     /**
@@ -170,11 +169,11 @@ class EtlLauncherImpl(
             if (!locked) {
                 activeJob = jobsRepository.getActiveJob(job)
                 if (activeJob == null) {
-                    throw LockAcquisitionException("ETL [${job.etlName}] for [${job.period}] cannot run because it was not scheduled")
+                    throw LockAcquisitionException("ETL [${job.etlName}] for ${job.period} cannot run because it was not scheduled")
                 }
                 if (skipIfRunning && activeJob.status == EtlJobStatus.RUNNING) {
                     logger.info {
-                        "ETL [$etlName] for [${job.period}] is already running by [${activeJob?.workerId}], skipping..."
+                        "ETL [$etlName] for ${job.period} is already running by [${activeJob?.workerId}], skipping..."
                     }
                     return activeJob
                 }
@@ -182,14 +181,14 @@ class EtlLauncherImpl(
                 if (attempts % 10 == 0) {
                     //log every 10 attempts
                     logger.info {
-                        "ETL [$etlName] for [${job.period}] is still running, waiting for lock..."
+                        "ETL [$etlName] for ${job.period} is still running, waiting for lock..."
                     }
                 }
                 delay(lockRetryDelay)
             }
         } while (!locked && attempts < lockAttempts)
         if (!locked) {
-            throw LockAcquisitionException("ETL [$etlName] for [${job.period}] is still running after $attempts attempts")
+            throw LockAcquisitionException("ETL [$etlName] for ${job.period} is still running after $attempts attempts")
         }
         return null
     }

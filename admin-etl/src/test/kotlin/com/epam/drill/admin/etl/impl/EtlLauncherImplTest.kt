@@ -23,6 +23,7 @@ import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.SimpleEtlJobsRepository
+import com.epam.drill.admin.etl.exception.LockAcquisitionException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -163,7 +164,7 @@ class EtlLauncherImplTest {
             ?: error("Failed to schedule job")
         jobsRepository.lockJob(job, "other-worker", leaseSeconds = 180)
 
-        assertFailsWith<IllegalStateException> {
+        assertFailsWith<LockAcquisitionException> {
             launcher.run(job, skipIfRunning = false)
         }
         assertTrue(orchestrator.runCalls.isEmpty())
