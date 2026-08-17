@@ -1057,14 +1057,7 @@ class MetricsServiceImpl(
         val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        // Map response field names to database column names
-        val sortingFieldMapping = mapOf(
-            "testPath" to "test_path",
-            "testName" to "test_name",
-            "testRunner" to "test_runner",
-            "impactedMethods" to "impacted_methods"
-        )
-        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
+        val mappedSortBy = validateImpactedTestsSortBy(sortBy)
 
         return@transaction pagedListOf(
             page = page ?: 1,
@@ -1343,6 +1336,14 @@ class MetricsServiceImpl(
         normalized
     }
 
+    private fun validateImpactedTestsSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        IMPACTED_TESTS_SORT_FIELDS[normalized]
+            ?: throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${IMPACTED_TESTS_SORT_FIELDS.keys.joinToString(", ")}"
+            )
+    }
+
     private fun mapToTestSessionView(row: Map<String, Any?>): TestSessionView = TestSessionView(
         testSessionId = row["test_session_id"] as String,
         groupId = row["group_id"] as String,
@@ -1453,5 +1454,11 @@ class MetricsServiceImpl(
             "signature",
         )
         private val TEST_SESSION_SORT_FIELDS = setOf("sessionStartedAt", "successRate")
+        private val IMPACTED_TESTS_SORT_FIELDS = mapOf(
+            "testPath" to "test_path",
+            "testName" to "test_name",
+            "testRunner" to "test_runner",
+            "impactedMethods" to "impacted_methods",
+        )
     }
 }

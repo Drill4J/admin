@@ -30,9 +30,15 @@ import com.epam.drill.admin.writer.rawdata.table.TestLaunchTable
 import com.epam.drill.admin.writer.rawdata.table.TestSessionTable
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.jetbrains.exposed.sql.deleteAll
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
@@ -159,6 +165,29 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(actualTestNames == expectedTestNames,
                     "Tests should be sorted by impactedMethods DESC. Expected: $expectedTestNames, but got: $actualTestNames")
             }
+        }
+
+    @Test
+    fun `given invalid sortBy, should return BadRequest`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            val response = client.post("/metrics/impacted-tests") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("groupId", build2.groupId)
+                        put("appId", build2.appId)
+                        put("buildVersion", build2.buildVersion)
+                        put("baselineBuildVersion", build1.buildVersion)
+                        put("sortBy", "invalidSortBy")
+                    }
+                )
+            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.bodyAsText().contains("Invalid sortBy"))
         }
 
     @Test

@@ -21,6 +21,7 @@ import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
+import com.epam.drill.admin.metrics.util.sqlSortDirection
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
@@ -489,13 +490,13 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     override suspend fun getTestSessionTestTaskIds(groupId: String, buildId: String?): List<String> =
-        getTestSessionDistinctValues(groupId, buildId, "tss.test_task_id")
+        getTestSessionDistinctValues(groupId, buildId, TestSessionDistinctColumn.TEST_TASK_ID)
 
     override suspend fun getTestSessionCreatedBys(groupId: String, buildId: String?): List<String> =
-        getTestSessionDistinctValues(groupId, buildId, "tss.created_by")
+        getTestSessionDistinctValues(groupId, buildId, TestSessionDistinctColumn.CREATED_BY)
 
     override suspend fun getTestSessionResults(groupId: String, buildId: String?): List<String> =
-        getTestSessionDistinctValues(groupId, buildId, "tss.result")
+        getTestSessionDistinctValues(groupId, buildId, TestSessionDistinctColumn.RESULT)
 
     override suspend fun testSessionExists(groupId: String, testSessionId: String): Boolean = transaction {
         executeQueryReturnMap(
@@ -865,15 +866,28 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    private enum class TestSessionDistinctColumn {
+        TEST_TASK_ID,
+        CREATED_BY,
+        RESULT,
+    }
+
+    private fun testSessionDistinctColumnSql(column: TestSessionDistinctColumn): String = when (column) {
+        TestSessionDistinctColumn.TEST_TASK_ID -> "tss.test_task_id"
+        TestSessionDistinctColumn.CREATED_BY -> "tss.created_by"
+        TestSessionDistinctColumn.RESULT -> "tss.result"
+    }
+
     private suspend fun getTestSessionDistinctValues(
         groupId: String,
         buildId: String?,
-        column: String,
+        column: TestSessionDistinctColumn,
     ): List<String> = transaction {
+        val sqlColumn = testSessionDistinctColumnSql(column)
         executeQueryReturnMap {
             append(
                 """
-            SELECT DISTINCT $column AS value
+            SELECT DISTINCT $sqlColumn AS value
             FROM metrics.test_session_builds tsb
             JOIN metrics.test_sessions_with_statistics tss
                 ON tss.group_id = tsb.group_id
@@ -883,7 +897,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                 groupId,
             )
             appendOptional(" AND tsb.build_id = ?", buildId)
-            append(" AND $column IS NOT NULL AND $column::text <> '' ")
+            append(" AND $sqlColumn IS NOT NULL AND $sqlColumn::text <> '' ")
             append(" ORDER BY value ")
         }.mapNotNull { it["value"] as? String }
     }
@@ -904,11 +918,10 @@ class MetricsRepositoryImpl : MetricsRepository {
             "successRate" -> "tss.success_rate"
             else -> "tss.session_started_at"
         }
-        val direction = when {
-            sortBy == null -> "DESC"
-            sortOrder == null -> "DESC"
-            sortOrder == SortOrder.DESC -> "DESC"
-            else -> "ASC"
+        val direction = if (sortBy == null) {
+            "DESC"
+        } else {
+            sqlSortDirection(sortOrder, default = SortOrder.DESC)
         }
         return "$column $direction NULLS LAST, tss.test_session_id ASC"
     }
@@ -942,7 +955,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         sortOrder: SortOrder?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "isolated_probes_coverage_ratio" ->
                 "isolated_probes_coverage_ratio $sortDirection, method_id ASC"
@@ -996,7 +1009,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "probes_coverage_ratio" -> "probes_coverage_ratio $sortDirection, method_id ASC"
             "probes_count" -> "probes_count $sortDirection, method_id ASC"
@@ -1082,7 +1095,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "probes_coverage_ratio" -> "probes_coverage_ratio $sortDirection, method_id ASC"
             "probes_count" -> "probes_count $sortDirection, method_id ASC"
@@ -1167,7 +1180,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "methods_coverage_ratio" -> """
                 CASE
@@ -1274,7 +1287,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "methods_coverage_ratio" -> """
                 CASE
@@ -1521,7 +1534,10 @@ class MetricsRepositoryImpl : MetricsRepository {
     }
 
     private fun resolveBuildChangeOrderBy(sortBy: String?, sortOrder: SortOrder?): String {
-        val direction = sortOrder?.name ?: if (sortBy == null) "DESC" else "ASC"
+        val direction = sqlSortDirection(
+            sortOrder,
+            default = if (sortBy == null) SortOrder.DESC else SortOrder.ASC
+        )
         val column = when (sortBy) {
             "changeType" -> "c.change_type"
             "coverageRatioInOtherBuilds" -> "c.aggregated_probes_coverage_ratio"
@@ -1531,6 +1547,17 @@ class MetricsRepositoryImpl : MetricsRepository {
             else -> "c.aggregated_missed_probes"
         }
         return "$column $direction NULLS LAST, c.signature ASC"
+    }
+
+    private fun resolveImpactedTestsOrderBy(sortBy: String?, sortOrder: SortOrder?): String? {
+        val column = when (sortBy) {
+            "test_path" -> "test_path"
+            "test_name" -> "test_name"
+            "test_runner" -> "test_runner"
+            "impacted_methods" -> "impacted_methods"
+            else -> return null
+        }
+        return "$column ${sqlSortDirection(sortOrder)}"
     }
 
     override suspend fun getChangesWithCoverage(
@@ -1634,7 +1661,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val sortDirection = sqlSortDirection(sortOrder)
         val orderBy = when (sortBy) {
             "methods_coverage_ratio" -> """
                 CASE
@@ -1952,7 +1979,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
-        val sortDirection = sortOrder?.name ?: "ASC"
+        val orderBy = resolveImpactedTestsOrderBy(sortBy, sortOrder)
 
         executeQueryReturnMap {
             append(
@@ -1989,8 +2016,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendImpactedTestsResultFilters(testDefinitionId, testRunner)
 
-            if (sortBy != null) {
-                append(" ORDER BY $sortBy $sortDirection")
+            if (orderBy != null) {
+                append(" ORDER BY $orderBy")
             }
 
             appendOptional(" OFFSET ?", offset)
