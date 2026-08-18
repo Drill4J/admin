@@ -54,16 +54,6 @@ class SchedulerConfig(private val config: ApplicationConfig) {
             )
             .build()
 
-    /** Schedule loading of unloaded/unplanned days. */
-    val scheduleUnloadedDaysEtlTrigger: CronTrigger
-        get() = TriggerBuilder.newTrigger()
-            .withIdentity("scheduleUnloadedDaysEtlTrigger", "drill")
-            .startNow()
-            .withSchedule(
-                CronScheduleBuilder.cronSchedule(scheduleUnloadedDaysEtlJobCron)
-            )
-            .build()
-
     fun getRetentionPoliciesTrigger(triggerName: String): CronTrigger = TriggerBuilder.newTrigger()
             .withIdentity(triggerName, "drill")
             .startNow()

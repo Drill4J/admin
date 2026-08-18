@@ -242,7 +242,6 @@ private fun Application.initScheduler() {
     scheduler.start()
     scheduler.scheduleJob(incrementalRunEtlJob, schedulerConfig.incrementalRunEtlTrigger)
     scheduler.scheduleJob(runIdleEtlJobsJob, schedulerConfig.runIdleEtlJobsTrigger)
-    scheduler.scheduleJob(scheduleUnloadedDaysEtlJob, schedulerConfig.scheduleUnloadedDaysEtlTrigger)
     scheduler.scheduleJob(rawDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("rawDataRetentionPolicyTrigger"))
     scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("metricsRetentionPolicyTrigger"))
     scheduler.scheduleJob(buildFinalizationRetryJob, buildFinalizationRetryTrigger(buildValidationConfig.retryJobCron))
