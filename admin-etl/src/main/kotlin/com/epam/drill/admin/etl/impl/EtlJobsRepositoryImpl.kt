@@ -171,6 +171,7 @@ class EtlJobsRepositoryImpl(
         newSuspendedTransaction(db = database) {
             jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
                 it[status] = EtlJobStatus.ERROR.name
+                it[jobsTable.errorMessage] = errorMessage
                 it[finishedAt] = CurrentTimestamp
                 it[jobsTable.workerId] = null
                 it[lockExpiresAt] = null
