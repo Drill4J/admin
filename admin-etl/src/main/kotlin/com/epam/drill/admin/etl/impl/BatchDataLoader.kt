@@ -127,9 +127,7 @@ abstract class BatchDataLoader<T : EtlRow>(
                         lastProcessedAt = lastLoadedTimestamp,
                         processedRows = if (batch.success) batch.rowsLoaded else 0,
                         duration = batch.duration
-                    ).also {
-                        onLoadingProgress(it)
-                    }
+                    )
                 }
             }
             onStatusChanged(EtlStatus.SUCCESS)

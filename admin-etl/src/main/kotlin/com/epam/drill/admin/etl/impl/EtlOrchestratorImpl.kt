@@ -394,7 +394,12 @@ open class EtlOrchestratorImpl(
                     progressTracker.register(pipeline.name, result.lastProcessedAt)
                 },
                 onStatusChanged = { status ->
-                    saveStatusChange(context, period, pipeline.name, status)
+                    if (status == EtlStatus.SUCCESS) {
+                        saveStatusChange(context, period, pipeline.name, status, untilTimestamp)
+                        progressTracker.register(pipeline.name, untilTimestamp)
+                    } else {
+                        saveStatusChange(context, period, pipeline.name, status, null)
+                    }
                 }
             )
         } catch (e: Throwable) {
@@ -463,7 +468,8 @@ open class EtlOrchestratorImpl(
         context: EtlContext,
         period: EtlPeriod,
         pipelineName: String,
-        status: EtlStatus
+        status: EtlStatus,
+        lastProcessedAt: Instant?,
     ) {
         try {
             metadataRepository.accumulateMetadataByLoader(
@@ -471,6 +477,7 @@ open class EtlOrchestratorImpl(
                 pipelineName = pipelineName,
                 period = period,
                 status = status,
+                lastProcessedAt = lastProcessedAt,
             )
         } catch (e: Throwable) {
             logger.warn(
