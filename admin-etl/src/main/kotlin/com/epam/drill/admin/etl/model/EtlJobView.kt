@@ -26,5 +26,5 @@ class EtlJobView(
     val groupId: String,
     val fromDay: String?,
     val toDay: String?,
-    val status: EtlJobStatus,
+    val status: EtlJobStatus?,
 )

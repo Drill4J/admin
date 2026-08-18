@@ -18,6 +18,7 @@ package com.epam.drill.admin.etl.service.impl
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlDailyStatus
 import com.epam.drill.admin.etl.EtlDailyStatusRow
+import com.epam.drill.admin.etl.EtlJob
 import com.epam.drill.admin.etl.EtlJobResult
 import com.epam.drill.admin.etl.EtlLauncher
 import com.epam.drill.admin.etl.EtlPeriod
@@ -80,15 +81,16 @@ class EtlServiceImpl(
                     defaultLauncher.resume(context, period)
                 }
             }
+            emptyList<EtlJob>()
         }
     }
 
-    override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?) {
+    override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView> {
         check(to?.isBefore(LocalDate.now().plusDays(1)) ?: true) {
             "Cannot rerun ETL for future dates."
         }
         val today = LocalDate.now(UTC)
-        forEachContextWithPeriodFrom(groupId) { context, resolvedFrom ->
+        return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val resolvedTo = to ?: today
             if (resolvedTo != today) {
                 val period = EtlPeriod(resolvedFrom, resolvedTo)
@@ -98,22 +100,22 @@ class EtlServiceImpl(
                 defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
                 defaultLauncher.rerun(context, EtlPeriod.FROM_TODAY, 1, withDataDeletion = true)
             }
-        }
+        }.map { it.toJobView() }
     }
 
-    override suspend fun rerunAllData(groupId: String?) {
-        rerunDateRange(groupId, null, null)
+    override suspend fun rerunAllData(groupId: String?): List<EtlJobView> {
+        return rerunDateRange(groupId, null, null)
     }
 
-    override suspend fun rerunToday(groupId: String?) {
+    override suspend fun rerunToday(groupId: String?): List<EtlJobView> {
         val today = LocalDate.now(UTC)
-        rerunDateRange(groupId, today, null)
+        return rerunDateRange(groupId, today, null)
     }
 
-    override suspend fun runIdleJobs(groupId: String?) {
-        forEachContextWithPeriodFrom(groupId) { context, from ->
+    override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {
+        return forEachContextWithPeriodFrom(groupId) { context, from ->
             defaultLauncher.resume(context, EtlPeriod(from, null))
-        }
+        }.map { it.toJobView() }
     }
 
     override suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow> {
@@ -149,17 +151,40 @@ class EtlServiceImpl(
     ): List<EtlJobView> {
         val period = EtlPeriod(from, to)
         val context = groupId?.let { EtlContext(groupId = it) }
-        return defaultLauncher.getActiveJobs(context, period).map { it ->
-            EtlJobView(
-                groupId = it.job.context.groupId,
-                workerId = it.workerId,
-                status = it.status,
-                fromDay = it.job.period.from?.toString(),
-                toDay = it.job.period.to?.toString(),
-                processedUntilTimestamp = it.processedUntilTimestamp.toString(),
-            )
-        }
+        return defaultLauncher.getActiveJobs(context, period).map { it.toJobView() }
     }
+
+    override suspend fun cancelJobs(groupId: String?,
+                                    from: LocalDate?,
+                                    to: LocalDate?): List<EtlJobView> {
+        check(to?.isBefore(LocalDate.now().plusDays(1)) ?: true) {
+            "Cannot cancel ETL for future dates."
+        }
+        val today = LocalDate.now(UTC)
+        return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
+            val resolvedTo = to ?: today
+            val period = EtlPeriod(resolvedFrom, resolvedTo)
+            defaultLauncher.cancel(context, period)
+        }.map { it.toJobView() }
+    }
+
+    private fun EtlJobResult.toJobView(): EtlJobView = EtlJobView(
+        groupId = this.job.context.groupId,
+        workerId = this.workerId,
+        status = this.status,
+        fromDay = this.job.period.from?.toString(),
+        toDay = this.job.period.to?.toString(),
+        processedUntilTimestamp = this.processedUntilTimestamp.toString(),
+    )
+
+    private fun EtlJob.toJobView(): EtlJobView = EtlJobView(
+        groupId = this.context.groupId,
+        fromDay = this.period.from?.toString(),
+        toDay = this.period.to?.toString(),
+        workerId = null,
+        status = null,
+        processedUntilTimestamp = null,
+    )
 
     /** Combines a (sorted or unsorted) list of individual days into contiguous [EtlPeriod]s. */
     private fun combineIntoPeriods(days: List<LocalDate>): List<EtlPeriod> {
@@ -191,24 +216,26 @@ class EtlServiceImpl(
         }
     }
 
-    private suspend fun forEachContextWithPeriodFrom(
-        groupId: String?, from: LocalDate? = null, block: suspend (EtlContext, LocalDate) -> Unit
-    ) {
+    private suspend fun <T> forEachContextWithPeriodFrom(
+        groupId: String?, from: LocalDate? = null, block: suspend (EtlContext, LocalDate) -> List<T>
+    ): List<T> {
         if (groupId != null && from != null) {
-            block(EtlContext(groupId), from)
+            return block(EtlContext(groupId), from)
         } else if (groupId != null) {
             val groupSettings = settingsService.getGroupSettings(groupId)
             val historyStart = resolveHistoryStart(groupSettings)
-            block(EtlContext(groupId), historyStart)
+            return block(EtlContext(groupId), historyStart)
         } else {
+            val list = mutableListOf<T>()
             settingsService.getAllGroupSettings().forEach { (groupId, settings) ->
                 if (from != null) {
-                    block(EtlContext(groupId), from)
+                    list.addAll(block(EtlContext(groupId), from))
                 } else {
                     val historyStart = resolveHistoryStart(settings)
-                    block(EtlContext(groupId), historyStart)
+                    list.addAll(block(EtlContext(groupId), historyStart))
                 }
             }
+            return list
         }
     }
 

@@ -51,16 +51,16 @@ interface EtlService {
     suspend fun scheduleUnloadedDays(groupId: String? = null)
 
     /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
-    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?)
+    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 
     /** Force rerun of the whole history. */
-    suspend fun rerunAllData(groupId: String? = null)
+    suspend fun rerunAllData(groupId: String? = null): List<EtlJobView>
 
     /** Force rerun of the `(today, today)` period. */
-    suspend fun rerunToday(groupId: String? = null)
+    suspend fun rerunToday(groupId: String? = null): List<EtlJobView>
 
     /** Resumes/(re)starts idle or expired-lease jobs, bounded by the available worker budget. */
-    suspend fun runIdleJobs(groupId: String? = null)
+    suspend fun runIdleJobs(groupId: String? = null): List<EtlJobView>
 
     /** Per-day ETL status within `[from, to]` for [groupId] (worst status across orchestrators wins). */
     suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow>
@@ -74,4 +74,6 @@ interface EtlService {
     )
 
     suspend fun getActiveJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
+
+    suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 }

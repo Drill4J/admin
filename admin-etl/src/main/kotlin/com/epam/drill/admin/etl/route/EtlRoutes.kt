@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.common.config.ApiResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
+import io.ktor.server.resources.delete
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post as postWithParams
 import io.ktor.server.response.respond
@@ -55,6 +56,7 @@ fun Route.etlManagementRoutes() {
     getRefreshStatus()
     getLastProcessedTimestamp()
     getActiveJobs()
+    cancelJobs()
 }
 
 fun Route.postRefreshMetrics() {
@@ -104,6 +106,17 @@ fun Route.getActiveJobs() {
     val etlService by closestDI().instance<EtlService>()
     get<Refresh> { params ->
         val jobs = etlService.getActiveJobs(
+            groupId = params.groupId,
+            from = params.fromDay?.let { LocalDate.parse(it) },
+            to = params.toDay?.let { LocalDate.parse(it) })
+        call.respond(HttpStatusCode.OK, ApiResponse(jobs))
+    }
+}
+
+fun Route.cancelJobs() {
+    val etlService by closestDI().instance<EtlService>()
+    delete<Refresh> { params ->
+        val jobs = etlService.cancelJobs(
             groupId = params.groupId,
             from = params.fromDay?.let { LocalDate.parse(it) },
             to = params.toDay?.let { LocalDate.parse(it) })
