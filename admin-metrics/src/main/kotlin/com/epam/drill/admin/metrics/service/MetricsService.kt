@@ -134,19 +134,65 @@ interface MetricsService {
         testSessionId: String,
         buildId: String? = null,
         path: String? = null,
+        testNames: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testTags: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int? = null,
         pageSize: Int? = null,
     ): PagedList<TestLaunchView>
+
+    suspend fun getTestLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+    ): TestLaunchFilterOptionsView
+
+    suspend fun getTestLaunchPage(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+        testNames: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        pageSize: Int? = null,
+        launchId: String,
+    ): TablePageView
 
     suspend fun getTestFileLaunches(
         groupId: String,
         testSessionId: String,
         buildId: String? = null,
+        testPaths: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         page: Int? = null,
         pageSize: Int? = null,
     ): PagedList<TestFileLaunchView>
+
+    suspend fun getTestFileLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+    ): TestFileLaunchFilterOptionsView
+
+    suspend fun getTestFileLaunchPage(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        testPaths: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        pageSize: Int? = null,
+        path: String,
+    ): TablePageView
 
     suspend fun getCoverageTreemap(
         buildId: String,

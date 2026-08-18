@@ -161,8 +161,11 @@ interface MetricsRepository {
         testSessionId: String,
         buildId: String? = null,
         path: String? = null,
+        testNames: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testTags: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null,
         limit: Int? = null,
     ): List<Map<String, Any?>>
@@ -172,14 +175,39 @@ interface MetricsRepository {
         testSessionId: String,
         buildId: String? = null,
         path: String? = null,
+        testNames: List<String> = emptyList(),
         testResults: List<String> = emptyList(),
         testTags: List<String> = emptyList(),
     ): Long
+
+    suspend fun getTestLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+    ): Map<String, List<String>>
+
+    suspend fun getTestLaunchRowNumber(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        path: String? = null,
+        testNames: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        launchId: String,
+    ): Long?
 
     suspend fun getTestFileLaunches(
         groupId: String,
         testSessionId: String,
         buildId: String? = null,
+        testPaths: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
         offset: Int? = null,
         limit: Int? = null,
     ): List<Map<String, Any?>>
@@ -188,7 +216,26 @@ interface MetricsRepository {
         groupId: String,
         testSessionId: String,
         buildId: String? = null,
+        testPaths: List<String> = emptyList(),
+        results: List<String> = emptyList(),
     ): Long
+
+    suspend fun getTestFileLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+    ): Map<String, List<String>>
+
+    suspend fun getTestFileLaunchRowNumber(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        testPaths: List<String> = emptyList(),
+        results: List<String> = emptyList(),
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        path: String,
+    ): Long?
 
     suspend fun getMethodsWithCoverage(
         buildId: String,

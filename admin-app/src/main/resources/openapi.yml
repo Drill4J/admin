@@ -965,6 +965,25 @@ paths:
             type: array
             items:
               type: string
+        - name: testNames
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testLaunches, testDuration]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
         - name: page
           in: query
           schema:
@@ -1004,6 +1023,40 @@ paths:
           required: false
           schema:
             type: string
+        - name: testPaths
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - testDefinitions
+              - testLaunches
+              - passed
+              - failed
+              - skipped
+              - smartSkipped
+              - testDuration
+              - successRate
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
         - name: page
           in: query
           schema:
@@ -1019,6 +1072,219 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches/filter-options:
+    get:
+      summary: Get filter options for test launches in a session
+      operationId: getTestLaunchFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Distinct test names, tags, and results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches/page:
+    get:
+      summary: Get the page number of a test launch in the filtered, sorted list
+      operationId: getTestLaunchPage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: launchId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testNames
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testResults
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testLaunches, testDuration]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 1-based page containing the launch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches/filter-options:
+    get:
+      summary: Get filter options for file-level test launches
+      operationId: getTestFileLaunchFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Distinct test file paths and results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches/page:
+    get:
+      summary: Get the page number of a test file in the filtered, sorted list
+      operationId: getTestFileLaunchPage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testPaths
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testDefinitions, testLaunches, passed, failed, skipped, smartSkipped, testDuration, successRate]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 1-based page containing the test file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
   /api/metrics/builds:
     get:
       summary: Get builds

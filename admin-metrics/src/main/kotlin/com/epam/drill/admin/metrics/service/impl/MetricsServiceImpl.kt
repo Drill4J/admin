@@ -406,8 +406,11 @@ class MetricsServiceImpl(
         testSessionId: String,
         buildId: String?,
         path: String?,
+        testNames: List<String>,
         testResults: List<String>,
         testTags: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
     ): PagedList<TestLaunchView> = transaction {
@@ -419,14 +422,18 @@ class MetricsServiceImpl(
                 throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
             }
         }
+        val validatedSortBy = validateTestLaunchSortBy(sortBy)
         pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getTestLaunches(
                 groupId = groupId,
                 testSessionId = testSessionId,
                 buildId = buildId,
                 path = path,
+                testNames = testNames,
                 testResults = testResults,
                 testTags = testTags,
+                sortBy = validatedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
             ).map { row -> mapToTestLaunchView(row) }
@@ -436,16 +443,88 @@ class MetricsServiceImpl(
                 testSessionId = testSessionId,
                 buildId = buildId,
                 path = path,
+                testNames = testNames,
                 testResults = testResults,
                 testTags = testTags,
             )
         }
     }
 
+    override suspend fun getTestLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+    ): TestLaunchFilterOptionsView = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        val options = metricsRepository.getTestLaunchFilterOptions(
+            groupId = groupId,
+            testSessionId = testSessionId,
+            buildId = buildId,
+            path = path,
+        )
+        TestLaunchFilterOptionsView(
+            testNames = options.getValue("testNames"),
+            testTags = options.getValue("testTags"),
+            testResults = options.getValue("testResults"),
+        )
+    }
+
+    override suspend fun getTestLaunchPage(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+        testNames: List<String>,
+        testResults: List<String>,
+        testTags: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        pageSize: Int?,
+        launchId: String,
+    ): TablePageView = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        if (launchId.isBlank()) {
+            throw IllegalArgumentException("launchId is required")
+        }
+        val validatedSortBy = validateTestLaunchSortBy(sortBy)
+        val rowNumber = metricsRepository.getTestLaunchRowNumber(
+            groupId = groupId,
+            testSessionId = testSessionId,
+            buildId = buildId,
+            path = path,
+            testNames = testNames,
+            testResults = testResults,
+            testTags = testTags,
+            sortBy = validatedSortBy,
+            sortOrder = sortOrder,
+            launchId = launchId,
+        ) ?: throw ResourceNotFoundException("Test launch $launchId was not found")
+        TablePageView(page = pageFromRowNumber(rowNumber, pageSize))
+    }
+
     override suspend fun getTestFileLaunches(
         groupId: String,
         testSessionId: String,
         buildId: String?,
+        testPaths: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         page: Int?,
         pageSize: Int?,
     ): PagedList<TestFileLaunchView> = transaction {
@@ -457,11 +536,16 @@ class MetricsServiceImpl(
                 throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
             }
         }
+        val validatedSortBy = validateTestFileLaunchSortBy(sortBy)
         pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
             metricsRepository.getTestFileLaunches(
                 groupId = groupId,
                 testSessionId = testSessionId,
                 buildId = buildId,
+                testPaths = testPaths,
+                results = results,
+                sortBy = validatedSortBy,
+                sortOrder = sortOrder,
                 offset = offset,
                 limit = limit,
             ).map { row -> mapToTestFileLaunchView(row) }
@@ -470,8 +554,70 @@ class MetricsServiceImpl(
                 groupId = groupId,
                 testSessionId = testSessionId,
                 buildId = buildId,
+                testPaths = testPaths,
+                results = results,
             )
         }
+    }
+
+    override suspend fun getTestFileLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+    ): TestFileLaunchFilterOptionsView = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        val options = metricsRepository.getTestFileLaunchFilterOptions(
+            groupId = groupId,
+            testSessionId = testSessionId,
+            buildId = buildId,
+        )
+        TestFileLaunchFilterOptionsView(
+            testPaths = options.getValue("testPaths"),
+            results = options.getValue("results"),
+        )
+    }
+
+    override suspend fun getTestFileLaunchPage(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        testPaths: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        pageSize: Int?,
+        path: String,
+    ): TablePageView = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        if (path.isBlank()) {
+            throw IllegalArgumentException("path is required")
+        }
+        val validatedSortBy = validateTestFileLaunchSortBy(sortBy)
+        val rowNumber = metricsRepository.getTestFileLaunchRowNumber(
+            groupId = groupId,
+            testSessionId = testSessionId,
+            buildId = buildId,
+            testPaths = testPaths,
+            results = results,
+            sortBy = validatedSortBy,
+            sortOrder = sortOrder,
+            path = path,
+        ) ?: throw ResourceNotFoundException("Test file $path was not found")
+        TablePageView(page = pageFromRowNumber(rowNumber, pageSize))
     }
 
     override suspend fun getCoverageTreemap(
@@ -1316,6 +1462,11 @@ class MetricsServiceImpl(
         )
     }
 
+    private fun pageFromRowNumber(rowNumber: Long, pageSize: Int?): Int {
+        val size = pageSize?.takeIf { it > 0 } ?: metricsConfig.pageSize
+        return ((rowNumber - 1) / size).toInt() + 1
+    }
+
     private fun validateBuildChangeSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
         val normalized = requestedSortBy.trim()
         if (normalized.isBlank() || normalized !in BUILD_CHANGE_SORT_FIELDS) {
@@ -1342,6 +1493,26 @@ class MetricsServiceImpl(
             ?: throw IllegalArgumentException(
                 "Invalid sortBy '$requestedSortBy'. Allowed values: ${IMPACTED_TESTS_SORT_FIELDS.keys.joinToString(", ")}"
             )
+    }
+
+    private fun validateTestFileLaunchSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        if (normalized.isBlank() || normalized !in TEST_FILE_LAUNCH_SORT_FIELDS) {
+            throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${TEST_FILE_LAUNCH_SORT_FIELDS.joinToString(", ")}"
+            )
+        }
+        normalized
+    }
+
+    private fun validateTestLaunchSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        if (normalized.isBlank() || normalized !in TEST_LAUNCH_SORT_FIELDS) {
+            throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${TEST_LAUNCH_SORT_FIELDS.joinToString(", ")}"
+            )
+        }
+        normalized
     }
 
     private fun mapToTestSessionView(row: Map<String, Any?>): TestSessionView = TestSessionView(
@@ -1454,6 +1625,17 @@ class MetricsServiceImpl(
             "signature",
         )
         private val TEST_SESSION_SORT_FIELDS = setOf("sessionStartedAt", "successRate")
+        private val TEST_FILE_LAUNCH_SORT_FIELDS = setOf(
+            "testDefinitions",
+            "testLaunches",
+            "passed",
+            "failed",
+            "skipped",
+            "smartSkipped",
+            "testDuration",
+            "successRate",
+        )
+        private val TEST_LAUNCH_SORT_FIELDS = setOf("testLaunches", "testDuration")
         private val IMPACTED_TESTS_SORT_FIELDS = mapOf(
             "testPath" to "test_path",
             "testName" to "test_name",

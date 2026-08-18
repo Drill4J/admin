@@ -110,19 +110,48 @@ class Metrics {
             val parent: TestSessionById,
             val buildId: String? = null,
             val path: String? = null,
+            val testNames: List<String> = emptyList(),
             val testResults: List<String> = emptyList(),
             val testTags: List<String> = emptyList(),
+            val sortBy: String? = null,
+            val sortOrder: SortOrder? = null,
             val page: Int? = null,
             val pageSize: Int? = null,
-        )
+        ) {
+            @Resource("filter-options")
+            class FilterOptions(
+                val parent: Launches,
+            )
+
+            @Resource("page")
+            class Page(
+                val parent: Launches,
+                val launchId: String,
+            )
+        }
 
         @Resource("file-launches")
         class FileLaunches(
             val parent: TestSessionById,
             val buildId: String? = null,
+            val testPaths: List<String> = emptyList(),
+            val results: List<String> = emptyList(),
+            val sortBy: String? = null,
+            val sortOrder: SortOrder? = null,
             val page: Int? = null,
             val pageSize: Int? = null,
-        )
+        ) {
+            @Resource("filter-options")
+            class FilterOptions(
+                val parent: FileLaunches,
+            )
+
+            @Resource("page")
+            class Page(
+                val parent: FileLaunches,
+                val path: String,
+            )
+        }
 
         @Resource("builds")
         class Builds(
@@ -408,7 +437,11 @@ fun Route.metricsRoutes() {
     getTestSessionCoverageSummary()
     getTestSessionDefinitions()
     getTestLaunches()
+    getTestLaunchFilterOptions()
+    getTestLaunchPage()
     getTestFileLaunches()
+    getTestFileLaunchFilterOptions()
+    getTestFileLaunchPage()
     getBuilds()
     getBuildById()
     getBuildCoverageByProbes()
@@ -620,8 +653,11 @@ fun Route.getTestLaunches() {
             testSessionId = params.parent.testSessionId,
             buildId = params.buildId,
             path = params.path,
+            testNames = params.testNames,
             testResults = params.testResults,
             testTags = params.testTags,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -647,6 +683,10 @@ fun Route.getTestFileLaunches() {
             groupId = params.parent.groupId,
             testSessionId = params.parent.testSessionId,
             buildId = params.buildId,
+            testPaths = params.testPaths,
+            results = params.results,
+            sortBy = params.sortBy,
+            sortOrder = params.sortOrder,
             page = params.page,
             pageSize = params.pageSize,
         )
@@ -661,6 +701,81 @@ fun Route.getTestFileLaunches() {
                 ),
             )
         )
+    }
+}
+
+fun Route.getTestLaunchFilterOptions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.Launches.FilterOptions> { params ->
+        val launches = params.parent
+        val session = launches.parent
+        val data = metricsService.getTestLaunchFilterOptions(
+            groupId = session.groupId,
+            testSessionId = session.testSessionId,
+            buildId = launches.buildId,
+            path = launches.path,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestLaunchPage() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.Launches.Page> { params ->
+        val launches = params.parent
+        val session = launches.parent
+        val data = metricsService.getTestLaunchPage(
+            groupId = session.groupId,
+            testSessionId = session.testSessionId,
+            buildId = launches.buildId,
+            path = launches.path,
+            testNames = launches.testNames,
+            testResults = launches.testResults,
+            testTags = launches.testTags,
+            sortBy = launches.sortBy,
+            sortOrder = launches.sortOrder,
+            pageSize = launches.pageSize,
+            launchId = params.launchId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestFileLaunchFilterOptions() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.FileLaunches.FilterOptions> { params ->
+        val files = params.parent
+        val session = files.parent
+        val data = metricsService.getTestFileLaunchFilterOptions(
+            groupId = session.groupId,
+            testSessionId = session.testSessionId,
+            buildId = files.buildId,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getTestFileLaunchPage() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.TestSessionById.FileLaunches.Page> { params ->
+        val files = params.parent
+        val session = files.parent
+        val data = metricsService.getTestFileLaunchPage(
+            groupId = session.groupId,
+            testSessionId = session.testSessionId,
+            buildId = files.buildId,
+            testPaths = files.testPaths,
+            results = files.results,
+            sortBy = files.sortBy,
+            sortOrder = files.sortOrder,
+            pageSize = files.pageSize,
+            path = params.path,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 

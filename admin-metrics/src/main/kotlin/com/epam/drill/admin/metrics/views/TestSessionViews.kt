@@ -131,3 +131,21 @@ data class TestFileLaunchView(
     val testDurationFormatted: String,
     val successRate: Double,
 )
+
+@Serializable
+data class TestFileLaunchFilterOptionsView(
+    val testPaths: List<String>,
+    val results: List<String>,
+)
+
+@Serializable
+data class TestLaunchFilterOptionsView(
+    val testNames: List<String>,
+    val testTags: List<String>,
+    val testResults: List<String>,
+)
+
+@Serializable
+data class TablePageView(
+    val page: Int,
+)

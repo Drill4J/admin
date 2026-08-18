@@ -690,11 +690,15 @@ class MetricsRepositoryImpl : MetricsRepository {
         testSessionId: String,
         buildId: String?,
         path: String?,
+        testNames: List<String>,
         testResults: List<String>,
         testTags: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
+        val orderBy = resolveTestLaunchesOrderBy(sortBy, sortOrder)
         executeQueryReturnMap {
             append(
                 """
@@ -715,8 +719,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE tsd.test_session_id = ?
                 """.trimIndent(), groupId, testSessionId
             )
-            appendTestLaunchesWhere(buildId, path, testResults, testTags)
-            append(" ORDER BY tsd.test_path, tsd.test_name ")
+            appendTestLaunchesWhere(buildId, path, testNames, testResults, testTags)
+            append(" ORDER BY $orderBy ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -727,6 +731,7 @@ class MetricsRepositoryImpl : MetricsRepository {
         testSessionId: String,
         buildId: String?,
         path: String?,
+        testNames: List<String>,
         testResults: List<String>,
         testTags: List<String>,
     ): Long = transaction {
@@ -741,7 +746,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             WHERE tsd.test_session_id = ?
                 """.trimIndent(), groupId, testSessionId
             )
-            appendTestLaunchesWhere(buildId, path, testResults, testTags)
+            appendTestLaunchesWhere(buildId, path, testNames, testResults, testTags)
         }.firstOrNull()?.get("total")?.let {
             when (it) {
                 is Long -> it
@@ -751,13 +756,110 @@ class MetricsRepositoryImpl : MetricsRepository {
         } ?: 0L
     }
 
+    override suspend fun getTestLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+    ): Map<String, List<String>> = transaction {
+        val names = executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tsd.test_name AS value
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, emptyList(), emptyList(), emptyList())
+            append(" AND tsd.test_name IS NOT NULL AND tsd.test_name <> '' ORDER BY 1")
+        }.mapNotNull { it["value"] as? String }
+
+        val results = executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tsd.test_result AS value
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, emptyList(), emptyList(), emptyList())
+            append(" AND tsd.test_result IS NOT NULL AND tsd.test_result <> '' ORDER BY 1")
+        }.mapNotNull { it["value"] as? String }
+
+        val tags = executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tag AS value
+            FROM metrics.test_session_definitions tsd
+            JOIN metrics.test_sessions ts
+                ON ts.group_id = ?
+                AND ts.test_session_id = tsd.test_session_id
+            CROSS JOIN LATERAL unnest(COALESCE(tsd.test_tags, ARRAY[]::varchar[])) AS tag
+            WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, emptyList(), emptyList(), emptyList())
+            append(" AND tag IS NOT NULL AND tag <> '' ORDER BY 1")
+        }.mapNotNull { it["value"] as? String }
+
+        mapOf(
+            "testNames" to names,
+            "testTags" to tags,
+            "testResults" to results,
+        )
+    }
+
+    override suspend fun getTestLaunchRowNumber(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        path: String?,
+        testNames: List<String>,
+        testResults: List<String>,
+        testTags: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        launchId: String,
+    ): Long? = transaction {
+        val orderBy = resolveTestLaunchesOrderBy(sortBy, sortOrder)
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT ranked.rn
+            FROM (
+                SELECT
+                    tsd.test_definition_id,
+                    ROW_NUMBER() OVER (ORDER BY $orderBy) AS rn
+                FROM metrics.test_session_definitions tsd
+                JOIN metrics.test_sessions ts
+                    ON ts.group_id = ?
+                    AND ts.test_session_id = tsd.test_session_id
+                WHERE tsd.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestLaunchesWhere(buildId, path, testNames, testResults, testTags)
+            append(") ranked WHERE ranked.test_definition_id = ?", launchId)
+        }.firstOrNull()?.let { rowNumber(it["rn"]) }
+    }
+
     override suspend fun getTestFileLaunches(
         groupId: String,
         testSessionId: String,
         buildId: String?,
+        testPaths: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
         offset: Int?,
         limit: Int?,
     ): List<Map<String, Any?>> = transaction {
+        val orderBy = resolveTestFileLaunchesOrderBy(sortBy, sortOrder)
         executeQueryReturnMap {
             append(
                 """
@@ -779,7 +881,8 @@ class MetricsRepositoryImpl : MetricsRepository {
                 AND tfl.test_session_id = ?
                 """.trimIndent(), groupId, testSessionId
             )
-            append(" ORDER BY tfl.test_path ")
+            appendTestFileLaunchesWhere(testPaths, results)
+            append(" ORDER BY $orderBy ")
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -789,20 +892,23 @@ class MetricsRepositoryImpl : MetricsRepository {
         groupId: String,
         testSessionId: String,
         buildId: String?,
+        testPaths: List<String>,
+        results: List<String>,
     ): Long = transaction {
         if (buildId != null && !testSessionBuildExists(groupId, testSessionId, buildId)) {
             return@transaction 0L
         }
-        executeQueryReturnMap(
-            """
+        executeQueryReturnMap {
+            append(
+                """
             SELECT COUNT(*) AS total
             FROM metrics.test_file_launches_with_statistics tfl
             WHERE tfl.group_id = ?
                 AND tfl.test_session_id = ?
-            """.trimIndent(),
-            groupId,
-            testSessionId
-        ).firstOrNull()?.get("total")?.let {
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestFileLaunchesWhere(testPaths, results)
+        }.firstOrNull()?.get("total")?.let {
             when (it) {
                 is Long -> it
                 is Number -> it.toLong()
@@ -811,22 +917,92 @@ class MetricsRepositoryImpl : MetricsRepository {
         } ?: 0L
     }
 
+    override suspend fun getTestFileLaunchFilterOptions(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+    ): Map<String, List<String>> = transaction {
+        val testPaths = executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tfl.test_path AS value
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+                AND tfl.test_path IS NOT NULL AND tfl.test_path <> ''
+            ORDER BY 1
+                """.trimIndent(), groupId, testSessionId
+            )
+        }.mapNotNull { it["value"] as? String }
+
+        val results = executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tfl.result AS value
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+                AND tfl.result IS NOT NULL AND tfl.result <> ''
+            ORDER BY 1
+                """.trimIndent(), groupId, testSessionId
+            )
+        }.mapNotNull { it["value"] as? String }
+
+        mapOf(
+            "testPaths" to testPaths,
+            "results" to results,
+        )
+    }
+
+    override suspend fun getTestFileLaunchRowNumber(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        testPaths: List<String>,
+        results: List<String>,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        path: String,
+    ): Long? = transaction {
+        if (buildId != null && !testSessionBuildExists(groupId, testSessionId, buildId)) {
+            return@transaction null
+        }
+        val orderBy = resolveTestFileLaunchesOrderBy(sortBy, sortOrder)
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT ranked.rn
+            FROM (
+                SELECT
+                    tfl.test_path,
+                    ROW_NUMBER() OVER (ORDER BY $orderBy) AS rn
+                FROM metrics.test_file_launches_with_statistics tfl
+                WHERE tfl.group_id = ?
+                    AND tfl.test_session_id = ?
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendTestFileLaunchesWhere(testPaths, results)
+            append(") ranked WHERE ranked.test_path = ?", path)
+        }.firstOrNull()?.let { rowNumber(it["rn"]) }
+    }
+
+    private fun rowNumber(value: Any?): Long? = when (value) {
+        is Long -> value
+        is Number -> value.toLong()
+        else -> null
+    }
+
     private fun SqlBuilder.appendTestSessionDefinitionsWhere(
         buildId: String?,
         query: String?,
     ) {
+        val pattern = query?.takeIf { it.isNotBlank() }?.let { "%$it%" }
         appendOptional(
-            """
-             AND (
-                tsd.test_definition_id ILIKE ?
-                OR tsd.test_name ILIKE ?
-                OR COALESCE(tsd.test_path, '') ILIKE ?
-             )
-            """.trimIndent(),
-            query,
-            query,
-            query,
-        ) { "%$it%" }
+            " AND (tsd.test_definition_id ILIKE ? OR tsd.test_name ILIKE ? OR COALESCE(tsd.test_path, '') ILIKE ?)",
+            pattern,
+            pattern,
+            pattern,
+        )
         if (buildId != null) {
             append(
                 """
@@ -845,10 +1021,12 @@ class MetricsRepositoryImpl : MetricsRepository {
     private fun SqlBuilder.appendTestLaunchesWhere(
         buildId: String?,
         path: String?,
+        testNames: List<String>,
         testResults: List<String>,
         testTags: List<String>,
     ) {
         appendOptional(" AND tsd.test_path = ?", path)
+        appendOptional(" AND tsd.test_name = ANY(?)", testNames)
         appendOptional(" AND tsd.test_result = ANY(?)", testResults)
         appendOptional(" AND tsd.test_tags && ?::varchar[]", testTags)
         if (buildId != null) {
@@ -863,6 +1041,38 @@ class MetricsRepositoryImpl : MetricsRepository {
                 )
                 """.trimIndent(), buildId
             )
+        }
+    }
+
+    private fun SqlBuilder.appendTestFileLaunchesWhere(
+        testPaths: List<String>,
+        results: List<String>,
+    ) {
+        appendOptional(" AND tfl.test_path = ANY(?)", testPaths)
+        appendOptional(" AND tfl.result = ANY(?)", results)
+    }
+
+    private fun resolveTestFileLaunchesOrderBy(sortBy: String?, sortOrder: SortOrder?): String {
+        val direction = sqlSortDirection(sortOrder, default = SortOrder.ASC)
+        return when (sortBy) {
+            "testDefinitions" -> "tfl.test_definitions $direction NULLS LAST, tfl.test_path ASC"
+            "testLaunches" -> "tfl.test_launches $direction NULLS LAST, tfl.test_path ASC"
+            "passed" -> "tfl.passed $direction NULLS LAST, tfl.test_path ASC"
+            "failed" -> "tfl.failed $direction NULLS LAST, tfl.test_path ASC"
+            "skipped" -> "tfl.skipped $direction NULLS LAST, tfl.test_path ASC"
+            "smartSkipped" -> "tfl.smart_skipped $direction NULLS LAST, tfl.test_path ASC"
+            "testDuration" -> "tfl.test_duration $direction NULLS LAST, tfl.test_path ASC"
+            "successRate" -> "tfl.success_rate $direction NULLS LAST, tfl.test_path ASC"
+            else -> "tfl.test_path ASC"
+        }
+    }
+
+    private fun resolveTestLaunchesOrderBy(sortBy: String?, sortOrder: SortOrder?): String {
+        val direction = sqlSortDirection(sortOrder, default = SortOrder.ASC)
+        return when (sortBy) {
+            "testLaunches" -> "tsd.test_launches $direction NULLS LAST, tsd.test_path ASC, tsd.test_name ASC"
+            "testDuration" -> "tsd.test_duration_sum $direction NULLS LAST, tsd.test_path ASC, tsd.test_name ASC"
+            else -> "tsd.test_path ASC, tsd.test_name ASC"
         }
     }
 

@@ -198,6 +198,136 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             }
         }
 
+    @Test
+    fun `file launches should sort by successRate and reject invalid sortBy`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/file-launches") {
+                parameter("groupId", testGroup)
+                parameter("sortBy", "successRate")
+                parameter("sortOrder", "DESC")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty())
+            }
+
+            val invalid = client.get("/metrics/test-sessions/${session1.id}/file-launches") {
+                parameter("groupId", testGroup)
+                parameter("sortBy", "invalidSortBy")
+            }
+            assertEquals(HttpStatusCode.BadRequest, invalid.status)
+            assertTrue(invalid.bodyAsText().contains("Invalid sortBy"))
+        }
+
+    @Test
+    fun `file launches filter-options should return paths and results`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/file-launches/filter-options") {
+                parameter("groupId", testGroup)
+            }.returnsSingle { data ->
+                @Suppress("UNCHECKED_CAST")
+                val testPaths = data["testPaths"] as List<String>
+                @Suppress("UNCHECKED_CAST")
+                val results = data["results"] as List<String>
+                assertTrue(testPaths.contains(testPath))
+                assertTrue(results.isNotEmpty())
+            }
+        }
+
+    @Test
+    fun `launches should filter by testName and sort by testLaunches`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/launches") {
+                parameter("groupId", testGroup)
+                parameter("testNames", test1.testName)
+            }.returns { data ->
+                assertEquals(1, data.size)
+                assertEquals(test1.testName, data[0]["testName"])
+            }
+
+            client.get("/metrics/test-sessions/${session1.id}/launches") {
+                parameter("groupId", testGroup)
+                parameter("sortBy", "testLaunches")
+                parameter("sortOrder", "DESC")
+            }.returns { data ->
+                assertEquals(2, data.size)
+            }
+
+            val invalid = client.get("/metrics/test-sessions/${session1.id}/launches") {
+                parameter("groupId", testGroup)
+                parameter("sortBy", "invalidSortBy")
+            }
+            assertEquals(HttpStatusCode.BadRequest, invalid.status)
+            assertTrue(invalid.bodyAsText().contains("Invalid sortBy"))
+        }
+
+    @Test
+    fun `file launches page should return the page for a path`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
+                parameter("groupId", testGroup)
+                parameter("path", testPath)
+                parameter("pageSize", 1)
+            }.returnsSingle { data ->
+                assertEquals(1, (data["page"] as Number).toInt())
+            }
+
+            val invalid = client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
+                parameter("groupId", testGroup)
+                parameter("path", testPath)
+                parameter("sortBy", "invalidSortBy")
+            }
+            assertEquals(HttpStatusCode.BadRequest, invalid.status)
+
+            val missing = client.get("/metrics/test-sessions/${session1.id}/file-launches/page") {
+                parameter("groupId", testGroup)
+                parameter("path", "missing.spec.ts")
+            }
+            assertEquals(HttpStatusCode.NotFound, missing.status)
+        }
+
+    @Test
+    fun `launches page should return the page for a launchId`(): Unit =
+        havingData {
+            build1 has listOf(method1)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session1 covers method1 with probesOf(1, 1) on build1
+        }.expectThat {
+            client.get("/metrics/test-sessions/${session1.id}/launches/page") {
+                parameter("groupId", testGroup)
+                parameter("path", testPath)
+                parameter("launchId", test2.definitionId)
+                parameter("pageSize", 1)
+            }.returnsSingle { data ->
+                assertEquals(2, (data["page"] as Number).toInt())
+            }
+
+            val invalid = client.get("/metrics/test-sessions/${session1.id}/launches/page") {
+                parameter("groupId", testGroup)
+                parameter("launchId", test1.definitionId)
+                parameter("sortBy", "invalidSortBy")
+            }
+            assertEquals(HttpStatusCode.BadRequest, invalid.status)
+
+            val missing = client.get("/metrics/test-sessions/${session1.id}/launches/page") {
+                parameter("groupId", testGroup)
+                parameter("launchId", "missing-launch")
+            }
+            assertEquals(HttpStatusCode.NotFound, missing.status)
+        }
+
     @AfterEach
     fun cleanup() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()
