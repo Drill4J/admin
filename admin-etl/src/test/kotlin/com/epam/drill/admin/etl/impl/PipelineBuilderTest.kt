@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+
 import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
@@ -264,7 +265,10 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
 
 private class PbPassThroughTransformer(override val name: String = "pass") :
     DataTransformer<UntypedRow, UntypedRow> {
-    override suspend fun transform(context: EtlContext, collector: Flow<UntypedRow>): Flow<UntypedRow> = flow {
+    override suspend fun transform(
+        context: EtlContext, sinceTimestamp: Instant,
+        untilTimestamp: Instant, collector: Flow<UntypedRow>
+    ): Flow<UntypedRow> = flow {
         collector.collect { emit(it) }
     }
 }

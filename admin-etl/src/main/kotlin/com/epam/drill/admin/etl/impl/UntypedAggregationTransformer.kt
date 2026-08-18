@@ -23,6 +23,7 @@ import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,11 +39,13 @@ class UntypedAggregationTransformer(
 
     override suspend fun transform(
         context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         collector: Flow<UntypedRow>
     ): Flow<UntypedRow> = flow {
         var isTransformationStarted = false
         val transformedRows = AtomicInteger()
-        val aggregatedRows = metrics.rowsAggregated(name, context)
+        val aggregatedRows = metrics.rowsAggregated(name, context, sinceTimestamp)
         val bufferOccupancy = metrics.aggregationBufferOccupancyRatio(name, context)
         val buffer = LruMap<List<Any?>, UntypedRow>(maxSize = bufferSize)
 

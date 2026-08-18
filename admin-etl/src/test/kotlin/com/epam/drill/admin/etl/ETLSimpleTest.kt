@@ -97,6 +97,8 @@ class ETLSimpleTest {
         override val name = SIMPLE_TRANSFORMER
         override suspend fun transform(
             context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
             collector: Flow<SimpleClass>
         ): Flow<SimpleClass> = flow {
             collector.collect { emit(it) }

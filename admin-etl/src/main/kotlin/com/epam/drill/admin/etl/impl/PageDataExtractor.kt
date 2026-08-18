@@ -44,8 +44,8 @@ abstract class PageDataExtractor<T : EtlRow>(
     ) {
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = metrics.rowsFetched(name, context)
-        val failures = metrics.extractionFailures(name, context)
+        val rowsFetched = metrics.rowsFetched(name, context, sinceTimestamp)
+        val failures = metrics.extractionFailures(name, context, sinceTimestamp)
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)

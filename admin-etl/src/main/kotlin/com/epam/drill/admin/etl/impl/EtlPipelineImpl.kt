@@ -107,7 +107,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 )
             )
         }
-        transformer.transform(context, transformationFlow).let { loadingFlow ->
+        transformer.transform(context, sinceTimestamp, untilTimestamp, transformationFlow).let { loadingFlow ->
             loader.load(
                 context, sinceTimestamp, untilTimestamp, loadingFlow,
                 onLoadingProgress = onLoadingProgress,
@@ -130,8 +130,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         onLoadingError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
-        val rowsExtracted = metrics.rowsExtracted(name, context)
-        val skippedRows = metrics.rowsSkipped(name, context)
+        val rowsExtracted = metrics.rowsExtracted(name, context, sinceTimestamp)
+        val skippedRows = metrics.rowsSkipped(name, context, sinceTimestamp)
         suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
             close()
             onLoadingError(message, previousTimestamp ?: sinceTimestamp)

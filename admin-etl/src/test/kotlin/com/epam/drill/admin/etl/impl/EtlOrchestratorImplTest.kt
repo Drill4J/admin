@@ -62,7 +62,12 @@ class EtlOrchestratorImplTest {
 
     private val gRowIdentity: DataTransformer<GRow, GRow> = object : DataTransformer<GRow, GRow> {
         override val name = "identity"
-        override suspend fun transform(context: EtlContext, collector: Flow<GRow>): Flow<GRow> = collector
+        override suspend fun transform(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<GRow>
+        ): Flow<GRow> = collector
     }
 
     inner class CountingExtractor(

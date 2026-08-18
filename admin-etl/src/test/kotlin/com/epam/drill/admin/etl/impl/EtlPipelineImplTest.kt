@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+
 import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.DataExtractor
@@ -193,19 +194,28 @@ class EtlPipelineImplTest {
             untilTimestamp: Instant,
             emitter: FlowCollector<TestItem>,
             onExtractingProgress: suspend (EtlExtractingResult) -> Unit
-        ) {}
+        ) {
+        }
     }
 
     private class PassthroughTransformer : DataTransformer<TestItem, TestItem> {
         override val name = "passthrough-transformer"
-        override suspend fun transform(context: EtlContext, collector: Flow<TestItem>): Flow<TestItem> = flow {
+        override suspend fun transform(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<TestItem>
+        ): Flow<TestItem> = flow {
             collector.collect { emit(it) }
         }
     }
 
     private class PrefixingTransformer : DataTransformer<TestItem, TransformedItem> {
         override val name = "prefixing-transformer"
-        override suspend fun transform(context: EtlContext, collector: Flow<TestItem>): Flow<TransformedItem> = flow {
+        override suspend fun transform(
+            context: EtlContext, sinceTimestamp: Instant,
+            untilTimestamp: Instant, collector: Flow<TestItem>
+        ): Flow<TransformedItem> = flow {
             collector.collect { emit(TransformedItem(it.timestamp, "transformed-${it.data}")) }
         }
     }

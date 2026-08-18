@@ -41,7 +41,13 @@ class BatchDataLoaderTest {
 
         val loadedBatches = mutableListOf<List<TestItem>>()
 
-        override suspend fun loadBatch(context: EtlContext, batch: List<TestItem>, batchNo: Int): BatchResult {
+        override suspend fun loadBatch(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            batch: List<TestItem>,
+            batchNo: Int
+        ): BatchResult {
             if (failOnBatch == batchNo) {
                 return BatchResult(success = false, rowsLoaded = 0, errorMessage = "Batch $batchNo failed")
             }

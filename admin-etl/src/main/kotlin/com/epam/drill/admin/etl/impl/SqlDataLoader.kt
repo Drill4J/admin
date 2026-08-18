@@ -49,11 +49,13 @@ abstract class SqlDataLoader<T: EtlRow>(
 
     override suspend fun loadBatch(
         context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
-        val timer = metrics.loadingDuration(name, context)
-        val failures = metrics.loadingFailures(name, context)
+        val timer = metrics.loadingDuration(name, context, sinceTimestamp)
+        val failures = metrics.loadingFailures(name, context, sinceTimestamp)
         val preparedSql = prepareSql(sqlUpsert)
         val duration = try {
             newSuspendedTransaction(db = database) {

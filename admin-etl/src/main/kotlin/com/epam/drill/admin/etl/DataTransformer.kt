@@ -16,11 +16,14 @@
 package com.epam.drill.admin.etl
 
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 interface DataTransformer<in T: EtlRow, out R: EtlRow> {
     val name: String
     suspend fun transform(
         context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         collector: Flow<T>,
     ): Flow<R>
 }

@@ -22,6 +22,7 @@ import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
+import java.time.Instant
 
 class UntypedFilterTransformer(
     override val name: String,
@@ -30,9 +31,11 @@ class UntypedFilterTransformer(
 ) : DataTransformer<UntypedRow, UntypedRow> {
     override suspend fun transform(
         context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
     ): Flow<UntypedRow> {
-        val rowsFiltered = metrics.rowsFiltered(name, context)
+        val rowsFiltered = metrics.rowsFiltered(name, context, sinceTimestamp)
         return flow {
             collector.filter {
                 predicate(it).also { passed ->

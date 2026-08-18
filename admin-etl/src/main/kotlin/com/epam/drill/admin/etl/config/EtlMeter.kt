@@ -21,6 +21,7 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -35,16 +36,16 @@ class EtlMeter(val registry: MeterRegistry) {
     private val doubleGauges = ConcurrentHashMap<String, AtomicReference<Double>>()
     private val integerGauges = ConcurrentHashMap<String, AtomicInteger>()
 
-    fun rowsFetched(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_fetched", jobName, context)
+    fun rowsFetched(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_fetched", jobName, context, sinceTimestamp)
     }
 
-    fun rowsExtracted(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_extracted", jobName, context)
+    fun rowsExtracted(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_extracted", jobName, context, sinceTimestamp)
     }
 
-    fun rowsAggregated(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_aggregated", jobName, context)
+    fun rowsAggregated(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_aggregated", jobName, context, sinceTimestamp)
     }
 
     fun aggregationBufferOccupancyRatio(jobName: String, context: EtlContext): AtomicReference<Double> {
@@ -55,36 +56,36 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerIntegerGauge("etl_extraction_buffer_occupancy_ratio", jobName, context)
     }
 
-    fun rowsFiltered(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_filtered", jobName, context)
+    fun rowsFiltered(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_filtered", jobName, context, sinceTimestamp)
     }
 
-    fun rowsProcessed(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_processed", jobName, context)
+    fun rowsProcessed(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_processed", jobName, context, sinceTimestamp)
     }
 
-    fun rowsLoaded(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_loaded", jobName, context)
+    fun rowsLoaded(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_loaded", jobName, context, sinceTimestamp)
     }
 
-    fun rowsSkipped(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_rows_skipped", jobName, context)
+    fun rowsSkipped(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_rows_skipped", jobName, context, sinceTimestamp)
     }
 
-    fun loadingFailures(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_loading_failures", jobName, context)
+    fun loadingFailures(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_loading_failures", jobName, context, sinceTimestamp)
     }
 
-    fun extractionFailures(jobName: String, context: EtlContext): Counter {
-        return registerCounter("etl_extraction_failures", jobName, context)
+    fun extractionFailures(jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
+        return registerCounter("etl_extraction_failures", jobName, context, sinceTimestamp)
     }
 
-    fun loadingDuration(jobName: String, context: EtlContext): Timer {
-        return registerTimer("etl_loading_duration", jobName, context)
+    fun loadingDuration(jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
+        return registerTimer("etl_loading_duration", jobName, context, sinceTimestamp)
     }
 
-    fun extractionDuration(jobName: String, context: EtlContext): Timer {
-        return registerTimer("etl_extraction_duration", jobName, context)
+    fun extractionDuration(jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
+        return registerTimer("etl_extraction_duration", jobName, context, sinceTimestamp)
     }
 
     private fun registerIntegerGauge(metricName: String, jobName: String, context: EtlContext): AtomicInteger {
@@ -119,18 +120,20 @@ class EtlMeter(val registry: MeterRegistry) {
         return "$metricName{$tags}"
     }
 
-    private fun registerCounter(metricName: String, jobName: String, context: EtlContext): Counter {
+    private fun registerCounter(metricName: String, jobName: String, context: EtlContext, sinceTimestamp: Instant): Counter {
         return Counter.builder(metricName)
             .tag("jobName", jobName)
             .tagContext(context)
+            .tag("sinceTimestamp", sinceTimestamp.toString())
             .register(registry)
     }
 
 
-    private fun registerTimer(metricName: String, jobName: String, context: EtlContext): Timer {
+    private fun registerTimer(metricName: String, jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
         return Timer.builder(metricName)
             .tag("jobName", jobName)
             .tagContext(context)
+            .tag("sinceTimestamp", sinceTimestamp.toString())
             .register(registry)
     }
 
