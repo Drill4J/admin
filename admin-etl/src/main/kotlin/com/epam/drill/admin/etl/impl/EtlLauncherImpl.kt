@@ -109,13 +109,12 @@ class EtlLauncherImpl(
 
     /**
      * The simplest partitioning strategy: splits a bounded [period] into up to [workers]
-     * roughly equal day-range chunks. Returns [period] unchanged when it's unbounded or
-     * [workers] `<= 1`.
+     * roughly equal day-range chunks. If the period is unbounded or [workers] <= 1, returns a single chunk.
      */
     private fun partition(period: EtlPeriod, workers: Int): List<EtlPeriod> {
         val from = period.from
-        val to = period.to
-        if (from == null || to == null || workers <= 1) return listOf(period)
+        val to = period.to ?: LocalDate.now()
+        if (from == null || workers <= 1) return listOf(period)
 
         val totalDays = ChronoUnit.DAYS.between(from, to) + 1
         val chunkCount = minOf(workers.toLong(), totalDays).coerceAtLeast(1).toInt()

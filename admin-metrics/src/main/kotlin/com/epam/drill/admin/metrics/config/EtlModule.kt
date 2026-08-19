@@ -30,10 +30,8 @@ import com.epam.drill.admin.etl.impl.SemaphoreWorkerPool
 import com.epam.drill.admin.etl.job.DEFAULT_ETL
 import com.epam.drill.admin.etl.job.IncrementalRunEtlJob
 import com.epam.drill.admin.etl.job.RunIdleEtlJobsJob
-import com.epam.drill.admin.etl.job.ScheduleUnloadedDaysEtlJob
 import com.epam.drill.admin.etl.job.incrementalRunEtlJobKey
 import com.epam.drill.admin.etl.job.runIdleEtlJobsJobKey
-import com.epam.drill.admin.etl.job.scheduleUnloadedDaysEtlJobKey
 import com.epam.drill.admin.metrics.etl.*
 import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.etl.service.impl.EtlServiceImpl
@@ -156,9 +154,6 @@ val etlDIModule
         bind<RunIdleEtlJobsJob>() with singleton {
             RunIdleEtlJobsJob(etlService = instance())
         }
-        bind<ScheduleUnloadedDaysEtlJob>() with singleton {
-            ScheduleUnloadedDaysEtlJob(etlService = instance())
-        }
     }
 
 val incrementalRunEtlJob: JobDetail
@@ -175,9 +170,3 @@ val runIdleEtlJobsJob: JobDetail
         .withIdentity(runIdleEtlJobsJobKey)
         .build()
 
-val scheduleUnloadedDaysEtlJob: JobDetail
-    get() = JobBuilder.newJob(ScheduleUnloadedDaysEtlJob::class.java)
-        .storeDurably()
-        .withDescription("Schedules loading of unloaded/unplanned days.")
-        .withIdentity(scheduleUnloadedDaysEtlJobKey)
-        .build()

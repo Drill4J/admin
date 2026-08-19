@@ -48,23 +48,8 @@ class RunIdleEtlJobsJob(
     }
 }
 
-@DisallowConcurrentExecution
-class ScheduleUnloadedDaysEtlJob(
-    private val etlService: EtlService,
-) : Job {
-    override fun execute(context: JobExecutionContext) {
-        val groupId = context.mergedJobDataMap.getString("groupId")
-        runBlocking {
-            etlService.scheduleUnloadedDays(groupId = groupId)
-        }
-    }
-}
-
 val incrementalRunEtlJobKey: JobKey
     get() = JobKey.jobKey("incrementalRunEtl", "drill")
 
 val runIdleEtlJobsJobKey: JobKey
     get() = JobKey.jobKey("runIdleEtlJobs", "drill")
-
-val scheduleUnloadedDaysEtlJobKey: JobKey
-    get() = JobKey.jobKey("scheduleUnloadedDaysEtl", "drill")

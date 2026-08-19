@@ -62,44 +62,10 @@ class EtlServiceImpl(
         }.minOf { it.processedUntilTimestamp ?: Instant.EPOCH }
     }
 
-    override suspend fun scheduleUnloadedDays(groupId: String?) {
-        val today = LocalDate.now(UTC)
-        forEachContextWithPeriodFrom(groupId) { context, from ->
-            val historyPeriod = EtlPeriod(from, today)
-
-            val unloadedDays =
-                defaultLauncher.getDailyStatuses(context, historyPeriod).filter { it.status == EtlDailyStatus.UNLOADED }
-                    .map { it.day }
-            val unplannedPeriods = combineIntoPeriods(unloadedDays)
-
-            if (unplannedPeriods.isNotEmpty()) {
-                val workersPerPeriod = (maxWorkers / unplannedPeriods.size).takeIf { it > 0 } ?: 1
-                for (period in unplannedPeriods) {
-                    defaultLauncher.schedule(context, period, workersPerPeriod)
-                }
-                for (period in unplannedPeriods) {
-                    defaultLauncher.resume(context, period)
-                }
-            }
-            emptyList<EtlJob>()
-        }
-    }
-
     override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView> {
-        check(to?.isBefore(LocalDate.now().plusDays(1)) ?: true) {
-            "Cannot rerun ETL for future dates."
-        }
-        val today = LocalDate.now(UTC)
         return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
-            val resolvedTo = to ?: today
-            if (resolvedTo != today) {
-                val period = EtlPeriod(resolvedFrom, resolvedTo)
-                defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
-            } else {
-                val period = EtlPeriod(resolvedFrom, today.minusDays(1))
-                defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
-                defaultLauncher.rerun(context, EtlPeriod.FROM_TODAY, 1, withDataDeletion = true)
-            }
+            val period = EtlPeriod(resolvedFrom, to)
+            defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
         }.map { it.toJobView() }
     }
 

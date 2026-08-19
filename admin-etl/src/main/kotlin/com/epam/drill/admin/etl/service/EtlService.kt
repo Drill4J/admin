@@ -43,13 +43,6 @@ interface EtlService {
      */
     suspend fun forceRefresh(groupId: String? = null, snapshotTimestamp: Instant? = null): Instant
 
-    /**
-     * Finds unplanned/unloaded days (within the group's configured history window), combines
-     * them into contiguous periods, schedules jobs for those periods (bounded by the available
-     * worker budget) and runs the scheduled jobs.
-     */
-    suspend fun scheduleUnloadedDays(groupId: String? = null)
-
     /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
     suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 
