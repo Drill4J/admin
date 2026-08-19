@@ -84,7 +84,7 @@ class EtlConfig(private val config: ApplicationConfig, val metrics: EtlMeter) {
      * Interval (in seconds) at which the ETL process refreshes its run-lock lease.
      */
     val lockRetryDelay: Long
-        get() = config.propertyOrNull("lockRetryDelay")?.getString()?.toLongOrNull() ?: 10L
+        get() = config.propertyOrNull("lockRetryDelay")?.getString()?.toLongOrNull() ?: 30L
 
     /**
      * Number of attempts to acquire the run-lock before giving up.

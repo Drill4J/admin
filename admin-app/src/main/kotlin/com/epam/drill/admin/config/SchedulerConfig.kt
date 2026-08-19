@@ -28,8 +28,8 @@ import org.quartz.CronTrigger
 import org.quartz.TriggerBuilder
 
 class SchedulerConfig(private val config: ApplicationConfig) {
-    private val incrementalRunEtlJobCron: String = config.propertyOrNull("incrementalRunEtlJobCron")?.getString() ?: "0 * * * * ?"
-    private val runIdleEtlJobsCron: String = config.propertyOrNull("runIdleEtlJobsCron")?.getString() ?: "0 */10 * * * ?"
+    private val incrementalRunEtlJobCron: String = config.propertyOrNull("etlJobCron")?.getString() ?: "0 * * * * ?"
+    private val runIdleEtlJobsCron: String = config.propertyOrNull("etlIdleJobCron")?.getString() ?: "0 */10 * * * ?"
     private val scheduleUnloadedDaysEtlJobCron: String = config.propertyOrNull("scheduleUnloadedDaysEtlJobCron")?.getString() ?: "0 0 * * * ?"
     private val dataRetentionJobCron: String = config.propertyOrNull("dataRetentionJobCron")?.getString() ?: "0 0 1 * * ?"
     val threadPools: Int = config.propertyOrNull("threadPools")?.getString()?.toInt() ?: 2
