@@ -95,35 +95,94 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
-    override suspend fun getAppBranches(groupId: String, appId: String): List<String> = transaction {
-        executeQueryReturnMap(
-            """
+    override suspend fun getAppBranches(
+        groupId: String,
+        appId: String,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<String> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
             SELECT DISTINCT branch
             FROM metrics.builds
             WHERE group_id = ? AND app_id = ?
               AND branch IS NOT NULL AND branch <> ''
-            ORDER BY branch
-            """.trimIndent(),
-            groupId, appId
-        ).map { it["branch"] as String }
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND branch ILIKE ?", query, transform = { "%$it%" })
+            append(" ORDER BY branch ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }.map { it["branch"] as String }
     }
 
-    override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
-        executeQueryReturnMap(
-            """
+    override suspend fun getAppBranchesCount(groupId: String, appId: String, query: String?): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(DISTINCT branch) AS total
+            FROM metrics.builds
+            WHERE group_id = ? AND app_id = ?
+              AND branch IS NOT NULL AND branch <> ''
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND branch ILIKE ?", query, transform = { "%$it%" })
+        }.firstOrNull()?.get("total").let(::totalAsLong)
+    }
+
+    override suspend fun getAppEnvIds(
+        groupId: String,
+        appId: String,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<String> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
             SELECT DISTINCT env_id
             FROM metrics.builds b
             CROSS JOIN LATERAL unnest(b.app_env_ids) AS env_id
             WHERE b.group_id = ? AND b.app_id = ?
-            ORDER BY env_id
-            """.trimIndent(),
-            groupId, appId
-        ).map { it["env_id"] as String }
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND env_id ILIKE ?", query, transform = { "%$it%" })
+            append(" ORDER BY env_id ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }.map { it["env_id"] as String }
     }
 
-    override suspend fun getAppTestTags(groupId: String, appId: String): List<String> = transaction {
-        executeQueryReturnMap(
-            """
+    override suspend fun getAppEnvIdsCount(groupId: String, appId: String, query: String?): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(DISTINCT env_id) AS total
+            FROM metrics.builds b
+            CROSS JOIN LATERAL unnest(b.app_env_ids) AS env_id
+            WHERE b.group_id = ? AND b.app_id = ?
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND env_id ILIKE ?", query, transform = { "%$it%" })
+        }.firstOrNull()?.get("total").let(::totalAsLong)
+    }
+
+    override suspend fun getAppTestTags(
+        groupId: String,
+        appId: String,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<String> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
             SELECT DISTINCT tag AS test_tag
             FROM metrics.test_definitions td
             JOIN metrics.test_launches tl
@@ -138,10 +197,39 @@ class MetricsRepositoryImpl : MetricsRepository {
             CROSS JOIN LATERAL unnest(td.test_tags) AS tag
             WHERE b.group_id = ? AND b.app_id = ?
               AND tag IS NOT NULL AND tag <> ''
-            ORDER BY tag
-            """.trimIndent(),
-            groupId, appId
-        ).map { it["test_tag"] as String }
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND tag ILIKE ?", query, transform = { "%$it%" })
+            append(" ORDER BY tag ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }.map { it["test_tag"] as String }
+    }
+
+    override suspend fun getAppTestTagsCount(groupId: String, appId: String, query: String?): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(DISTINCT tag) AS total
+            FROM metrics.test_definitions td
+            JOIN metrics.test_launches tl
+                ON tl.group_id = td.group_id
+                AND tl.test_definition_id = td.test_definition_id
+            JOIN metrics.test_session_builds tsb
+                ON tsb.group_id = tl.group_id
+                AND tsb.test_session_id = tl.test_session_id
+            JOIN metrics.builds b
+                ON b.group_id = tsb.group_id
+                AND b.build_id = tsb.build_id
+            CROSS JOIN LATERAL unnest(td.test_tags) AS tag
+            WHERE b.group_id = ? AND b.app_id = ?
+              AND tag IS NOT NULL AND tag <> ''
+                """.trimIndent(),
+                groupId, appId
+            )
+            appendOptional(" AND tag ILIKE ?", query, transform = { "%$it%" })
+        }.firstOrNull()?.get("total").let(::totalAsLong)
     }
 
     override suspend fun getBuildDetail(buildId: String): Map<String, Any?>? = transaction {
@@ -497,6 +585,34 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getTestSessionResults(groupId: String, buildId: String?): List<String> =
         getTestSessionDistinctValues(groupId, buildId, TestSessionDistinctColumn.RESULT)
+
+    override suspend fun getTestSessionFilterValues(
+        groupId: String,
+        buildId: String?,
+        field: String,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<String> = getTestSessionDistinctValues(
+        groupId = groupId,
+        buildId = buildId,
+        column = testSessionFilterField(field),
+        query = query,
+        offset = offset,
+        limit = limit,
+    )
+
+    override suspend fun getTestSessionFilterValuesCount(
+        groupId: String,
+        buildId: String?,
+        field: String,
+        query: String?,
+    ): Long = getTestSessionDistinctValuesCount(
+        groupId = groupId,
+        buildId = buildId,
+        column = testSessionFilterField(field),
+        query = query,
+    )
 
     override suspend fun testSessionExists(groupId: String, testSessionId: String): Boolean = transaction {
         executeQueryReturnMap(
@@ -954,6 +1070,49 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 
+    override suspend fun getTestFileLaunchFilterValues(
+        groupId: String,
+        testSessionId: String,
+        query: String?,
+        offset: Int?,
+        limit: Int?,
+    ): List<String> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT DISTINCT tfl.test_path AS value
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+                AND tfl.test_path IS NOT NULL AND tfl.test_path <> ''
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendOptional(" AND tfl.test_path ILIKE ?", query, transform = { "%$it%" })
+            append(" ORDER BY 1 ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }.mapNotNull { it["value"] as? String }
+    }
+
+    override suspend fun getTestFileLaunchFilterValuesCount(
+        groupId: String,
+        testSessionId: String,
+        query: String?,
+    ): Long = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(DISTINCT tfl.test_path) AS total
+            FROM metrics.test_file_launches_with_statistics tfl
+            WHERE tfl.group_id = ?
+                AND tfl.test_session_id = ?
+                AND tfl.test_path IS NOT NULL AND tfl.test_path <> ''
+                """.trimIndent(), groupId, testSessionId
+            )
+            appendOptional(" AND tfl.test_path ILIKE ?", query, transform = { "%$it%" })
+        }.firstOrNull()?.get("total").let(::totalAsLong)
+    }
+
     override suspend fun getTestFileLaunchRowNumber(
         groupId: String,
         testSessionId: String,
@@ -1082,6 +1241,15 @@ class MetricsRepositoryImpl : MetricsRepository {
         RESULT,
     }
 
+    private fun testSessionFilterField(field: String): TestSessionDistinctColumn = when (field) {
+        "testTaskIds" -> TestSessionDistinctColumn.TEST_TASK_ID
+        "createdBys" -> TestSessionDistinctColumn.CREATED_BY
+        "results" -> TestSessionDistinctColumn.RESULT
+        else -> throw IllegalArgumentException(
+            "Invalid field '$field'. Allowed values: testTaskIds, createdBys, results"
+        )
+    }
+
     private fun testSessionDistinctColumnSql(column: TestSessionDistinctColumn): String = when (column) {
         TestSessionDistinctColumn.TEST_TASK_ID -> "tss.test_task_id"
         TestSessionDistinctColumn.CREATED_BY -> "tss.created_by"
@@ -1092,6 +1260,9 @@ class MetricsRepositoryImpl : MetricsRepository {
         groupId: String,
         buildId: String?,
         column: TestSessionDistinctColumn,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
     ): List<String> = transaction {
         val sqlColumn = testSessionDistinctColumnSql(column)
         executeQueryReturnMap {
@@ -1108,8 +1279,36 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND tsb.build_id = ?", buildId)
             append(" AND $sqlColumn IS NOT NULL AND $sqlColumn::text <> '' ")
+            appendOptional(" AND $sqlColumn::text ILIKE ?", query, transform = { "%$it%" })
             append(" ORDER BY value ")
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
         }.mapNotNull { it["value"] as? String }
+    }
+
+    private suspend fun getTestSessionDistinctValuesCount(
+        groupId: String,
+        buildId: String?,
+        column: TestSessionDistinctColumn,
+        query: String? = null,
+    ): Long = transaction {
+        val sqlColumn = testSessionDistinctColumnSql(column)
+        executeQueryReturnMap {
+            append(
+                """
+            SELECT COUNT(DISTINCT $sqlColumn) AS total
+            FROM metrics.test_session_builds tsb
+            JOIN metrics.test_sessions_with_statistics tss
+                ON tss.group_id = tsb.group_id
+                AND tss.test_session_id = tsb.test_session_id
+            WHERE tsb.group_id = ?
+                """.trimIndent(),
+                groupId,
+            )
+            appendOptional(" AND tsb.build_id = ?", buildId)
+            append(" AND $sqlColumn IS NOT NULL AND $sqlColumn::text <> '' ")
+            appendOptional(" AND $sqlColumn::text ILIKE ?", query, transform = { "%$it%" })
+        }.firstOrNull()?.get("total").let(::totalAsLong)
     }
 
     private fun SqlBuilder.appendTestSessionFilters(
@@ -2656,6 +2855,13 @@ class MetricsRepositoryImpl : MetricsRepository {
         )
     }
 }
+
+private fun totalAsLong(value: Any?): Long =
+    when (value) {
+        is Long -> value
+        is Number -> value.toLong()
+        else -> 0L
+    }
 
 private fun SqlBuilder.appendImpactedTestsResultFilters(
     testDefinitionId: String?,

@@ -151,9 +151,17 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
             client.get("/metrics/test-sessions/filter-options") {
                 parameter("groupId", testGroup)
                 parameter("buildId", build1Id)
-            }.returnsSingle { data ->
-                assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
-                assertTrue((data["results"] as List<*>).contains("PASSED"))
+                parameter("field", "testTaskIds")
+            }.returnsStrings { data ->
+                assertTrue(data.contains(testTask))
+            }
+
+            client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+                parameter("field", "results")
+            }.returnsStrings { data ->
+                assertTrue(data.contains("PASSED"))
             }
         }
 
@@ -165,10 +173,23 @@ class TestSessionsApiTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             client.get("/metrics/test-sessions/filter-options") {
                 parameter("groupId", testGroup)
-            }.returnsSingle { data ->
-                assertTrue((data["testTaskIds"] as List<*>).contains(testTask))
-                assertTrue((data["results"] as List<*>).contains("PASSED"))
+                parameter("field", "testTaskIds")
+            }.returnsStrings { data ->
+                assertTrue(data.contains(testTask))
             }
+
+            client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("field", "results")
+            }.returnsStrings { data ->
+                assertTrue(data.contains("PASSED"))
+            }
+
+            val invalid = client.get("/metrics/test-sessions/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("field", "invalidField")
+            }
+            assertEquals(HttpStatusCode.BadRequest, invalid.status)
         }
 
     @Test

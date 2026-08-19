@@ -38,11 +38,35 @@ interface MetricsRepository {
         branches: List<String> = emptyList(), envIds: List<String> = emptyList()
     ): Long
 
-    suspend fun getAppBranches(groupId: String, appId: String): List<String>
+    suspend fun getAppBranches(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<String>
 
-    suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
+    suspend fun getAppBranchesCount(groupId: String, appId: String, query: String? = null): Long
 
-    suspend fun getAppTestTags(groupId: String, appId: String): List<String>
+    suspend fun getAppEnvIds(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<String>
+
+    suspend fun getAppEnvIdsCount(groupId: String, appId: String, query: String? = null): Long
+
+    suspend fun getAppTestTags(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<String>
+
+    suspend fun getAppTestTagsCount(groupId: String, appId: String, query: String? = null): Long
 
     suspend fun getBuildDetail(buildId: String): Map<String, Any?>?
 
@@ -106,6 +130,22 @@ interface MetricsRepository {
     suspend fun getTestSessionCreatedBys(groupId: String, buildId: String? = null): List<String>
 
     suspend fun getTestSessionResults(groupId: String, buildId: String? = null): List<String>
+
+    suspend fun getTestSessionFilterValues(
+        groupId: String,
+        buildId: String? = null,
+        field: String,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<String>
+
+    suspend fun getTestSessionFilterValuesCount(
+        groupId: String,
+        buildId: String? = null,
+        field: String,
+        query: String? = null,
+    ): Long
 
     suspend fun testSessionExists(groupId: String, testSessionId: String): Boolean
 
@@ -225,6 +265,20 @@ interface MetricsRepository {
         testSessionId: String,
         buildId: String? = null,
     ): Map<String, List<String>>
+
+    suspend fun getTestFileLaunchFilterValues(
+        groupId: String,
+        testSessionId: String,
+        query: String? = null,
+        offset: Int? = null,
+        limit: Int? = null,
+    ): List<String>
+
+    suspend fun getTestFileLaunchFilterValuesCount(
+        groupId: String,
+        testSessionId: String,
+        query: String? = null,
+    ): Long
 
     suspend fun getTestFileLaunchRowNumber(
         groupId: String,

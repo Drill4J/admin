@@ -633,13 +633,28 @@ paths:
           required: true
           schema:
             type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
-          description: List of branch names
+          description: Paginated list of branch names
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/apps/env-ids:
     get:
       summary: Get app environment IDs
@@ -661,13 +676,28 @@ paths:
           required: true
           schema:
             type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
-          description: List of environment IDs
+          description: Paginated list of environment IDs
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/test-sessions:
     get:
       summary: Get test sessions for a group
@@ -761,13 +791,34 @@ paths:
           required: false
           schema:
             type: string
+        - name: field
+          in: query
+          required: true
+          description: Filter field — `testTaskIds`, `createdBys`, or `results`.
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
-          description: Distinct filter option values
+          description: Paginated distinct filter option values
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/test-sessions/{testSessionId}/builds:
     get:
       summary: Get builds affected by a test session
@@ -1211,9 +1262,24 @@ paths:
           required: false
           schema:
             type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
-          description: Distinct test file paths and results
+          description: Distinct results, or a paginated path list when page/query/pageSize is set
           content:
             application/json:
               schema:

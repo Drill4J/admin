@@ -100,16 +100,46 @@ class MetricsServiceImpl(
         }
     }
 
-    override suspend fun getAppBranches(groupId: String, appId: String): List<String> = transaction {
-        metricsRepository.getAppBranches(groupId, appId)
+    override suspend fun getAppBranches(
+        groupId: String,
+        appId: String,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<String> = transaction {
+        pagedStringList(page, pageSize, { offset, limit ->
+            metricsRepository.getAppBranches(groupId, appId, query, offset, limit)
+        }) {
+            metricsRepository.getAppBranchesCount(groupId, appId, query)
+        }
     }
 
-    override suspend fun getAppEnvIds(groupId: String, appId: String): List<String> = transaction {
-        metricsRepository.getAppEnvIds(groupId, appId)
+    override suspend fun getAppEnvIds(
+        groupId: String,
+        appId: String,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<String> = transaction {
+        pagedStringList(page, pageSize, { offset, limit ->
+            metricsRepository.getAppEnvIds(groupId, appId, query, offset, limit)
+        }) {
+            metricsRepository.getAppEnvIdsCount(groupId, appId, query)
+        }
     }
 
-    override suspend fun getAppTestTags(groupId: String, appId: String): List<String> = transaction {
-        metricsRepository.getAppTestTags(groupId, appId)
+    override suspend fun getAppTestTags(
+        groupId: String,
+        appId: String,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<String> = transaction {
+        pagedStringList(page, pageSize, { offset, limit ->
+            metricsRepository.getAppTestTags(groupId, appId, query, offset, limit)
+        }) {
+            metricsRepository.getAppTestTagsCount(groupId, appId, query)
+        }
     }
 
     override suspend fun getBuildDetail(buildId: String): BuildDetailView = transaction {
@@ -283,12 +313,17 @@ class MetricsServiceImpl(
     override suspend fun getTestSessionFilterOptions(
         groupId: String,
         buildId: String?,
-    ): TestSessionFilterOptionsView = transaction {
-        TestSessionFilterOptionsView(
-            testTaskIds = metricsRepository.getTestSessionTestTaskIds(groupId, buildId),
-            createdBys = metricsRepository.getTestSessionCreatedBys(groupId, buildId),
-            results = metricsRepository.getTestSessionResults(groupId, buildId),
-        )
+        field: String,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<String> = transaction {
+        val validatedField = validateTestSessionFilterField(field)
+        pagedStringList(page, pageSize, { offset, limit ->
+            metricsRepository.getTestSessionFilterValues(groupId, buildId, validatedField, query, offset, limit)
+        }) {
+            metricsRepository.getTestSessionFilterValuesCount(groupId, buildId, validatedField, query)
+        }
     }
 
     override suspend fun getTestSessionDetail(
@@ -582,6 +617,29 @@ class MetricsServiceImpl(
             testPaths = options.getValue("testPaths"),
             results = options.getValue("results"),
         )
+    }
+
+    override suspend fun getTestFileLaunchFilterValues(
+        groupId: String,
+        testSessionId: String,
+        buildId: String?,
+        query: String?,
+        page: Int?,
+        pageSize: Int?,
+    ): PagedList<String> = transaction {
+        if (!metricsRepository.testSessionExists(groupId, testSessionId)) {
+            throw ResourceNotFoundException("Test session not found for $testSessionId in group $groupId")
+        }
+        buildId?.takeIf { it.isNotBlank() }?.let {
+            if (!metricsRepository.testSessionBuildExists(groupId, testSessionId, it)) {
+                throw ResourceNotFoundException("Test session $testSessionId is not linked to build $it")
+            }
+        }
+        pagedStringList(page, pageSize, { offset, limit ->
+            metricsRepository.getTestFileLaunchFilterValues(groupId, testSessionId, query, offset, limit)
+        }) {
+            metricsRepository.getTestFileLaunchFilterValuesCount(groupId, testSessionId, query)
+        }
     }
 
     override suspend fun getTestFileLaunchPage(
@@ -1467,6 +1525,26 @@ class MetricsServiceImpl(
         return ((rowNumber - 1) / size).toInt() + 1
     }
 
+    private suspend fun pagedStringList(
+        page: Int?,
+        pageSize: Int?,
+        getItems: suspend (Int, Int) -> List<String>,
+        getTotal: suspend () -> Long,
+    ): PagedList<String> =
+        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+            getItems(offset, limit)
+        } withTotal { getTotal() }
+
+    private fun validateTestSessionFilterField(field: String): String {
+        val normalized = field.trim()
+        if (normalized.isBlank() || normalized !in TEST_SESSION_FILTER_FIELDS) {
+            throw IllegalArgumentException(
+                "Invalid field '$field'. Allowed values: ${TEST_SESSION_FILTER_FIELDS.joinToString(", ")}"
+            )
+        }
+        return normalized
+    }
+
     private fun validateBuildChangeSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
         val normalized = requestedSortBy.trim()
         if (normalized.isBlank() || normalized !in BUILD_CHANGE_SORT_FIELDS) {
@@ -1625,6 +1703,7 @@ class MetricsServiceImpl(
             "signature",
         )
         private val TEST_SESSION_SORT_FIELDS = setOf("sessionStartedAt", "successRate")
+        private val TEST_SESSION_FILTER_FIELDS = setOf("testTaskIds", "createdBys", "results")
         private val TEST_FILE_LAUNCH_SORT_FIELDS = setOf(
             "testDefinitions",
             "testLaunches",

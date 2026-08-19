@@ -39,11 +39,29 @@ interface MetricsService {
         pageSize: Int?
     ): PagedList<BuildView>
 
-    suspend fun getAppBranches(groupId: String, appId: String): List<String>
+    suspend fun getAppBranches(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<String>
 
-    suspend fun getAppEnvIds(groupId: String, appId: String): List<String>
+    suspend fun getAppEnvIds(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<String>
 
-    suspend fun getAppTestTags(groupId: String, appId: String): List<String>
+    suspend fun getAppTestTags(
+        groupId: String,
+        appId: String,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<String>
 
     suspend fun getBuildDetail(buildId: String): BuildDetailView
 
@@ -98,7 +116,11 @@ interface MetricsService {
     suspend fun getTestSessionFilterOptions(
         groupId: String,
         buildId: String?,
-    ): TestSessionFilterOptionsView
+        field: String,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<String>
 
     suspend fun getTestSessionDetail(
         groupId: String,
@@ -181,6 +203,15 @@ interface MetricsService {
         testSessionId: String,
         buildId: String? = null,
     ): TestFileLaunchFilterOptionsView
+
+    suspend fun getTestFileLaunchFilterValues(
+        groupId: String,
+        testSessionId: String,
+        buildId: String? = null,
+        query: String? = null,
+        page: Int? = null,
+        pageSize: Int? = null,
+    ): PagedList<String>
 
     suspend fun getTestFileLaunchPage(
         groupId: String,

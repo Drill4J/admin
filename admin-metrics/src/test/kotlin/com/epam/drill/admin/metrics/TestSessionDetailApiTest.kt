@@ -237,6 +237,13 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
                 assertTrue(testPaths.contains(testPath))
                 assertTrue(results.isNotEmpty())
             }
+
+            client.get("/metrics/test-sessions/${session1.id}/file-launches/filter-options") {
+                parameter("groupId", testGroup)
+                parameter("page", 1)
+            }.returnsStrings { data ->
+                assertTrue(data.contains(testPath))
+            }
         }
 
     @Test

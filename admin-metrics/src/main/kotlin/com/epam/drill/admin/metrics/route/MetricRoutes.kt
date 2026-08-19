@@ -31,6 +31,7 @@ import com.epam.drill.admin.metrics.views.PagedList
 import com.epam.drill.admin.metrics.views.TestView
 import io.ktor.http.*
 import io.ktor.resources.*
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.resources.*
@@ -80,6 +81,10 @@ class Metrics {
 
         val groupId: String,
         val buildId: String? = null,
+        val field: String,
+        val query: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
     )
 
     @Resource("/test-sessions/{testSessionId}")
@@ -144,6 +149,9 @@ class Metrics {
             @Resource("filter-options")
             class FilterOptions(
                 val parent: FileLaunches,
+                val query: String? = null,
+                val page: Int? = null,
+                val pageSize: Int? = null,
             )
 
             @Resource("page")
@@ -233,6 +241,9 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
+        val query: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
     )
 
     @Resource("/apps/env-ids")
@@ -241,6 +252,9 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
+        val query: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
     )
 
     @Resource("/apps/test-tags")
@@ -249,6 +263,9 @@ class Metrics {
 
         val groupId: String,
         val appId: String,
+        val query: String? = null,
+        val page: Int? = null,
+        val pageSize: Int? = null,
     )
 
     @Resource("/coverage-treemap")
@@ -483,8 +500,14 @@ fun Route.getAppBranches() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppBranches> { params ->
-        val data = metricsService.getAppBranches(params.groupId, params.appId)
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        val data = metricsService.getAppBranches(
+            groupId = params.groupId,
+            appId = params.appId,
+            query = params.query,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respondPagedStrings(data)
     }
 }
 
@@ -492,8 +515,14 @@ fun Route.getAppEnvIds() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppEnvIds> { params ->
-        val data = metricsService.getAppEnvIds(params.groupId, params.appId)
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        val data = metricsService.getAppEnvIds(
+            groupId = params.groupId,
+            appId = params.appId,
+            query = params.query,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respondPagedStrings(data)
     }
 }
 
@@ -501,8 +530,14 @@ fun Route.getAppTestTags() {
     val metricsService by closestDI().instance<MetricsService>()
 
     get<Metrics.AppTestTags> { params ->
-        val data = metricsService.getAppTestTags(params.groupId, params.appId)
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        val data = metricsService.getAppTestTags(
+            groupId = params.groupId,
+            appId = params.appId,
+            query = params.query,
+            page = params.page,
+            pageSize = params.pageSize,
+        )
+        this.call.respondPagedStrings(data)
     }
 }
 
@@ -562,8 +597,12 @@ fun Route.getTestSessionFilterOptions() {
         val data = metricsService.getTestSessionFilterOptions(
             groupId = params.groupId,
             buildId = params.buildId,
+            field = params.field,
+            query = params.query,
+            page = params.page,
+            pageSize = params.pageSize,
         )
-        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+        this.call.respondPagedStrings(data)
     }
 }
 
@@ -749,6 +788,18 @@ fun Route.getTestFileLaunchFilterOptions() {
     get<Metrics.TestSessionById.FileLaunches.FilterOptions> { params ->
         val files = params.parent
         val session = files.parent
+        if (params.page != null || params.query != null || params.pageSize != null) {
+            val data = metricsService.getTestFileLaunchFilterValues(
+                groupId = session.groupId,
+                testSessionId = session.testSessionId,
+                buildId = files.buildId,
+                query = params.query,
+                page = params.page,
+                pageSize = params.pageSize,
+            )
+            this.call.respondPagedStrings(data)
+            return@get
+        }
         val data = metricsService.getTestFileLaunchFilterOptions(
             groupId = session.groupId,
             testSessionId = session.testSessionId,
@@ -1133,5 +1184,19 @@ private suspend fun getImpactedTests(
         sortOrder = params.sortOrder,
         page = params.page,
         pageSize = params.pageSize,
+    )
+}
+
+private suspend fun ApplicationCall.respondPagedStrings(data: PagedList<String>) {
+    respond(
+        HttpStatusCode.OK,
+        PagedDataResponse(
+            data = data.items,
+            paging = Paging(
+                page = data.page,
+                pageSize = data.pageSize,
+                total = data.total,
+            ),
+        ),
     )
 }
