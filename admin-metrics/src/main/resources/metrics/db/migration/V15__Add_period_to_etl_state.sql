@@ -4,8 +4,8 @@
 -- unbounded/open range.
 
 ALTER TABLE metrics.etl_metadata
-    ADD COLUMN IF NOT EXISTS period_from DATE NOT NULL DEFAULT DATE '0001-01-01',
-    ADD COLUMN IF NOT EXISTS period_to   DATE NOT NULL DEFAULT DATE '9999-12-31';
+    ADD COLUMN IF NOT EXISTS period_from DATE NOT NULL DEFAULT DATE '2000-01-01',
+    ADD COLUMN IF NOT EXISTS period_to   DATE NOT NULL DEFAULT DATE '2100-01-01';
 
 ALTER TABLE metrics.etl_metadata
     DROP CONSTRAINT IF EXISTS etl_metadata_pkey;
