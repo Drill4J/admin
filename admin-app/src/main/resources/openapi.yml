@@ -1366,6 +1366,14 @@ paths:
           schema:
             type: string
             format: date
+        - name: chunks
+          description: >
+            Number of chunks to split the ETL refresh job into. Each chunk will be processed in parallel. 
+            Defaults to the maximum number of workers.
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
           description: Metrics were refreshed

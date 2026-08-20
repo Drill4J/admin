@@ -16,7 +16,6 @@
 package com.epam.drill.admin.etl.service.impl
 
 import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlDailyStatus
 import com.epam.drill.admin.etl.EtlDailyStatusRow
 import com.epam.drill.admin.etl.EtlJob
 import com.epam.drill.admin.etl.EtlJobResult
@@ -62,20 +61,25 @@ class EtlServiceImpl(
         }.minOf { it.processedUntilTimestamp ?: Instant.EPOCH }
     }
 
-    override suspend fun rerunDateRange(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView> {
+    override suspend fun rerunDateRange(
+        groupId: String?,
+        from: LocalDate?,
+        to: LocalDate?,
+        chunks: Int?
+    ): List<EtlJobView> {
         return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val period = EtlPeriod(resolvedFrom, to)
-            defaultLauncher.rerun(context, period, maxWorkers, withDataDeletion = true)
+            defaultLauncher.rerun(context, period, chunks ?: maxWorkers, withDataDeletion = true)
         }.map { it.toJobView() }
     }
 
-    override suspend fun rerunAllData(groupId: String?): List<EtlJobView> {
-        return rerunDateRange(groupId, null, null)
+    override suspend fun rerunAllData(groupId: String?, chunks: Int?): List<EtlJobView> {
+        return rerunDateRange(groupId, null, null, chunks)
     }
 
     override suspend fun rerunToday(groupId: String?): List<EtlJobView> {
         val today = LocalDate.now(UTC)
-        return rerunDateRange(groupId, today, null)
+        return rerunDateRange(groupId, from = today, to = null, chunks = null)
     }
 
     override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {
