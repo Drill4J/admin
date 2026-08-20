@@ -111,6 +111,46 @@ class TestSessionDetailApiTest : MetricsDatabaseTests({ default, metrics ->
         }
 
     @Test
+    fun `given test definition with partial coverage, coverage summary totals should match build`(): Unit =
+        havingData {
+            build1 has listOf(method1, method2)
+            test1 of session1 covers method1 with probesOf(1, 1) on build1
+            test2 of session1 covers method2 with probesOf(1, 1, 1) on build1
+        }.expectThat {
+            val probesResponse = client.get("/metrics/builds/$build1Id/coverage-by-probes")
+            val buildProbes = JsonPath.read<List<Map<String, Any>>>(
+                probesResponse.bodyAsText(),
+                "$.data.slices"
+            ).sumOf { (it["value"] as Number).toInt() }
+
+            val methodsResponse = client.get("/metrics/builds/$build1Id/coverage-by-methods")
+            val buildMethods = JsonPath.read<List<Map<String, Any>>>(
+                methodsResponse.bodyAsText(),
+                "$.data.slices"
+            ).sumOf { (it["value"] as Number).toInt() }
+
+            client.get("/metrics/test-sessions/${session1.id}/coverage-summary") {
+                parameter("groupId", testGroup)
+                parameter("buildId", build1Id)
+                parameter("testDefinitionId", test1.definitionId)
+            }.returnsSingle { data ->
+                @Suppress("UNCHECKED_CAST")
+                val probesSlices = (data["probes"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
+                @Suppress("UNCHECKED_CAST")
+                val methodsSlices = (data["methods"] as Map<String, Any>)["slices"] as List<Map<String, Any>>
+                val probesByMetric = probesSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+                val methodsByMetric = methodsSlices.associate { it["metric"] as String to (it["value"] as Number).toInt() }
+
+                assertEquals(buildProbes, probesSlices.sumOf { (it["value"] as Number).toInt() })
+                assertEquals(buildMethods, methodsSlices.sumOf { (it["value"] as Number).toInt() })
+                assertEquals(2, probesByMetric["covered"])
+                assertEquals(1, methodsByMetric["covered"])
+                assertEquals(buildProbes - 2, probesByMetric["missed"])
+                assertEquals(1, methodsByMetric["missed"])
+            }
+        }
+
+    @Test
     fun `given session with coverage, should return coverage summary`(): Unit =
         havingData {
             build1 has listOf(method1)
