@@ -116,7 +116,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             )
         }
     } catch (e: CancellationException) {
-        throw e //TODO check
+        throw e
     } catch (e: Throwable) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
