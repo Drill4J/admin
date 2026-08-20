@@ -65,21 +65,21 @@ class EtlServiceImpl(
         groupId: String?,
         from: LocalDate?,
         to: LocalDate?,
-        chunks: Int?
+        workers: Int?
     ): List<EtlJobView> {
         return forEachContextWithPeriodFrom(groupId, from) { context, resolvedFrom ->
             val period = EtlPeriod(resolvedFrom, to)
-            defaultLauncher.rerun(context, period, chunks ?: maxWorkers, withDataDeletion = true)
+            defaultLauncher.rerun(context, period, workers ?: maxWorkers, withDataDeletion = true)
         }.map { it.toJobView() }
     }
 
-    override suspend fun rerunAllData(groupId: String?, chunks: Int?): List<EtlJobView> {
-        return rerunDateRange(groupId, null, null, chunks)
+    override suspend fun rerunAllData(groupId: String?, workers: Int?): List<EtlJobView> {
+        return rerunDateRange(groupId, null, null, workers)
     }
 
     override suspend fun rerunToday(groupId: String?): List<EtlJobView> {
         val today = LocalDate.now(UTC)
-        return rerunDateRange(groupId, from = today, to = null, chunks = null)
+        return rerunDateRange(groupId, from = today, to = null, workers = null)
     }
 
     override suspend fun runIdleJobs(groupId: String?): List<EtlJobView> {

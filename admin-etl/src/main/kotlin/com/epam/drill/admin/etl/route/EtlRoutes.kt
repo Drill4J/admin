@@ -37,7 +37,7 @@ class Refresh(
     val reset: Boolean = false,
     val fromDay: String? = null,
     val toDay: String? = null,
-    val chunks: Int? = null,
+    val workers: Int? = null,
 )
 
 @Resource("/refresh/status")
@@ -68,11 +68,11 @@ fun Route.postRefreshMetrics() {
         val toDay = params.toDay?.let { LocalDate.parse(it) }
         when {
             params.reset && fromDay == null && toDay == null -> {
-                etlService.rerunAllData(groupId = params.groupId, chunks = params.chunks)
+                etlService.rerunAllData(groupId = params.groupId, workers = params.workers)
                 call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
             }
             params.reset -> {
-                etlService.rerunDateRange(groupId = params.groupId, from = fromDay, to = toDay, chunks = params.chunks)
+                etlService.rerunDateRange(groupId = params.groupId, from = fromDay, to = toDay, workers = params.workers)
                 call.respond(HttpStatusCode.OK, ApiResponse("Metrics have reset and refreshed successfully"))
             }
             else -> {

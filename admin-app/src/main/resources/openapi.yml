@@ -1366,9 +1366,9 @@ paths:
           schema:
             type: string
             format: date
-        - name: chunks
+        - name: workers
           description: >
-            Number of chunks to split the ETL refresh job into. Each chunk will be processed in parallel. 
+            Number of workers to split the ETL refresh job into. Each worker will be processed in parallel. 
             Defaults to the maximum number of workers.
           in: query
           required: false

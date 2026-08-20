@@ -44,10 +44,10 @@ interface EtlService {
     suspend fun forceRefresh(groupId: String? = null, snapshotTimestamp: Instant? = null): Instant
 
     /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
-    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, chunks: Int? = null): List<EtlJobView>
+    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, workers: Int? = null): List<EtlJobView>
 
     /** Force rerun of the whole history. */
-    suspend fun rerunAllData(groupId: String? = null, chunks: Int? = null): List<EtlJobView>
+    suspend fun rerunAllData(groupId: String? = null, workers: Int? = null): List<EtlJobView>
 
     /** Force rerun of the `(today, today)` period. */
     suspend fun rerunToday(groupId: String? = null): List<EtlJobView>
