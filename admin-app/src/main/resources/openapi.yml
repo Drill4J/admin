@@ -1381,6 +1381,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+    delete:
+      summary: Cancel refresh metrics jobs
+      description: |
+        Cancels all currently running ETL jobs.
+      operationId: cancelRunningETLJobs
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          description: Group ID to cancel refresh metrics for. If not provided, refreshes metrics for all groups.
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: fromDay
+          description: >
+            Inclusive start day (ISO-8601 date, e.g. 2024-01-31).
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: toDay
+          description: >
+            Inclusive end day (ISO-8601 date, e.g. 2024-02-29).
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Metrics were cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
     get:
       summary: Get active ETL jobs
       description: |
