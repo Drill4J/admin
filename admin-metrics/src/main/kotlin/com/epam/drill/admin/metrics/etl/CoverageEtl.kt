@@ -157,6 +157,31 @@ val EtlConfig.buildMethodCoverageAggregator
         },
     )
 
+val EtlConfig.buildMethodTestSessionCoverageAggregator
+    get() = UntypedAggregationTransformer(
+        name = "build_method_test_session_coverage_aggregator",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        metrics = metrics,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "build_id",
+            "method_id",
+            "test_session_id",
+            "app_env_id",
+            "test_result",
+            "test_tag",
+            "created_at_day"
+        ),
+        aggregate = { current, next ->
+            val map = HashMap<String, Any?>(current)
+            map["probes"] = mergeProbes(current["probes"], next["probes"])
+            map["created_at_day"] = next["created_at_day"]
+            UntypedRow(next.timestamp, map)
+        },
+    )
+
 val EtlConfig.methodDailyCoverageAggregator
     get() = UntypedAggregationTransformer(
         name = "method_daily_coverage_aggregator",
@@ -185,6 +210,7 @@ val EtlConfig.buildMethodTestSessionCoveragePipeline
     get() = pipeline("build_method_test_session_coverage")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(buildMethodTestSessionCoverageAggregator)
         .loadWith(buildMethodTestSessionCoverageLoader)
 
 val EtlConfig.buildMethodCoveragePipeline
@@ -215,6 +241,7 @@ val EtlConfig.buildMethodTestSessionCoverageFromTestLaunchesPipeline
     get() = pipeline("build_method_test_session_coverage_from_test_launches")
         .extractWith(testLaunchCoverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(buildMethodTestSessionCoverageAggregator)
         .loadWith(buildMethodTestSessionCoverageLoader)
 
 val EtlConfig.buildMethodCoverageFromTestLaunchesPipeline
@@ -228,11 +255,6 @@ val EtlConfig.methodDailyCoverageFromTestLaunchesPipeline
         .extractWith(testLaunchCoverageExtractor)
         .transformWith(methodDailyCoverageAggregator)
         .loadWith(methodDailyCoverageLoader)
-
-val EtlConfig.buildMethodTestDefinitionCoverageByRequestPipeline
-    get() = pipeline("build_method_test_definition_coverage_by_request")
-        .extractWith(testLaunchCoverageRequestsExtractor)
-        .loadWith(buildMethodTestDefinitionCoverageLoader)
 
 val EtlConfig.test2CodeMappingPipeline
     get() = pipeline("test_to_code_mapping")
