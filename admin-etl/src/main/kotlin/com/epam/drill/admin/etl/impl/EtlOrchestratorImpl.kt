@@ -363,6 +363,8 @@ open class EtlOrchestratorImpl(
                     }
                 }
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             logger.debug(e) { "ETL extractor [${extractor.name}] for $period failed: ${e.message}" }
             sharedFlow.close(e)
@@ -402,6 +404,8 @@ open class EtlOrchestratorImpl(
                     }
                 }
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             logger.error("ETL pipeline [${pipeline.name}] for $period failed: ${e.message}", e)
             EtlProcessingResult(

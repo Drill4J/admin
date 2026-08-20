@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.system.measureTimeMillis
 
 class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
@@ -114,6 +115,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 onStatusChanged = onStatusChanged,
             )
         }
+    } catch (e: CancellationException) {
+        throw e //TODO check
     } catch (e: Throwable) {
         logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(

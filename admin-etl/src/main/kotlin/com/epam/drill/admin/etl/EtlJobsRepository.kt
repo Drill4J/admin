@@ -45,7 +45,13 @@ interface EtlJobsRepository {
         period: EtlPeriod,
     ): List<EtlJob>
 
-    /** Cancels (sets [EtlJobStatus.CANCELLED]) active jobs matching [etlName]/[context]/[period]. */
+    /**
+     * Requests cancellation of active jobs matching [etlName]/[context]/[period] by transitioning
+     * them from [EtlJobStatus.IDLE]/[EtlJobStatus.RUNNING] to [EtlJobStatus.CANCELLING]. Keeps
+     * `worker_id` and `lock_expires_at` intact so callers can observe whether the worker is still
+     * alive; `finished_at` is set only when the row reaches the terminal [EtlJobStatus.CANCELLED]
+     * via [markCancelled] or [reapExpiredCancelling].
+     */
     suspend fun cancelJobs(
         etlName: String,
         context: EtlContext,
@@ -95,6 +101,12 @@ interface EtlJobsRepository {
         job: EtlJob,
         workerId: String,
     )
+
+    /**
+     * Reaps a [job] that is stuck in [EtlJobStatus.CANCELLING] because its worker crashed or
+     * never observed the cancel signal.
+     */
+    suspend fun reapExpiredCancelling(job: EtlJob): EtlJobResult?
 
     /** Marks the job owned by [workerId] as [EtlJobStatus.ERROR] and releases the lock. */
     suspend fun markError(

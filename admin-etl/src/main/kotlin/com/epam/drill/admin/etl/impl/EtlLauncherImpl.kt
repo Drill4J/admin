@@ -42,6 +42,8 @@ class EtlLauncherImpl(
     private val lockRetryDelay: Long = 10000L,
     private val lockAttempts: Int = 60,
     private val workerPool: EtlWorkerPool = SemaphoreWorkerPool(maxWorkers = 4),
+    private val cancelWaitTimeoutMillis: Long = lockLeaseSeconds * 1000L,
+    private val cancelPollDelayMillis: Long = 500L,
 ) : EtlLauncher {
     private val logger = KotlinLogging.logger {}
     private val etlName get() = orchestrator.name
@@ -78,8 +80,38 @@ class EtlLauncherImpl(
         }.awaitAll()
     }
 
-    override suspend fun cancel(context: EtlContext, period: EtlPeriod): List<EtlJobResult> =
-        jobsRepository.cancelJobs(etlName, context, period)
+    override suspend fun cancel(context: EtlContext, period: EtlPeriod): List<EtlJobResult> {
+        val cancelling = jobsRepository.cancelJobs(etlName, context, period)
+        if (cancelling.isEmpty()) return emptyList()
+
+        val settled = mutableMapOf<EtlJob, EtlJobResult>()
+        val deadline = System.currentTimeMillis() + cancelWaitTimeoutMillis
+
+        while (settled.size < cancelling.size && System.currentTimeMillis() < deadline) {
+            delay(cancelPollDelayMillis)
+            for (row in cancelling) {
+                if (row.job in settled) continue
+                val current = jobsRepository.getActiveJob(row.job)
+                when {
+                    current == null -> {
+                        // Row is no longer active — worker already reached a terminal status
+                        settled[row.job] = row.copy(status = EtlJobStatus.CANCELLED)
+                    }
+                    current.status == EtlJobStatus.CANCELLED -> {
+                        settled[row.job] = current
+                    }
+                    current.status == EtlJobStatus.CANCELLING -> {
+                        jobsRepository.reapExpiredCancelling(row.job)?.also { settled[row.job] = it }
+                    }
+                }
+            }
+        }
+
+        if (settled.size < cancelling.size)
+            throw IllegalStateException("Failed to cancel all jobs within $cancelWaitTimeoutMillis ms: ${cancelling.size - settled.size} jobs still active")
+
+        return cancelling.map { settled[it.job] ?: it.copy(status = EtlJobStatus.CANCELLED) }
+    }
 
     override suspend fun rerun(
         context: EtlContext,

@@ -25,6 +25,11 @@ enum class EtlJobStatus {
     /** Worker is running, or unexpectedly crashed and is no longer updating `lock_expires_at`. */
     RUNNING,
 
+    /**
+     * Cancel has been requested.
+     */
+    CANCELLING,
+
     /** Worker reached the end of the period without errors and exited. */
     COMPLETED,
 
@@ -36,6 +41,6 @@ enum class EtlJobStatus {
 
     /** Statuses that represent a job that is still eligible to be (re)started or resumed. */
     companion object {
-        val ACTIVE: Set<EtlJobStatus> = setOf(IDLE, RUNNING)
+        val ACTIVE: Set<EtlJobStatus> = setOf(IDLE, RUNNING, CANCELLING)
     }
 }

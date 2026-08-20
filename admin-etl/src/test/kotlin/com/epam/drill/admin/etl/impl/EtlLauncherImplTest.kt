@@ -85,7 +85,7 @@ class EtlLauncherImplTest {
                 EtlJobStatus.IDLE -> jobsRepository.markIdle(result.job, workerId, result.processedUntilTimestamp ?: result.job.period.sinceTimestamp ?: Instant.EPOCH)
                 EtlJobStatus.ERROR -> jobsRepository.markError(result.job, workerId, result.errorMessage)
                 EtlJobStatus.CANCELLED -> jobsRepository.markCancelled(result.job, workerId)
-                EtlJobStatus.RUNNING -> Unit
+                EtlJobStatus.RUNNING, EtlJobStatus.CANCELLING -> Unit
             }
         }
     }
@@ -252,36 +252,107 @@ class EtlLauncherImplTest {
     }
 
     @Test
-    fun `cancel delegates to jobsRepository and cancels active jobs`() = runBlocking {
+    fun `cancel reaps a CANCELLING row whose lease has expired`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(
+            orchestrator, jobsRepository,
+            cancelWaitTimeoutMillis = 2000L,
+            cancelPollDelayMillis = 10L,
+        )
+
+        val period = EtlPeriod.UNBOUNDED
+        val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
+            ?: error("Failed to schedule job")
+        // Zero-second lease means the lease is already expired by the time cancel polls it.
+        jobsRepository.lockJob(job, "dead-worker", leaseSeconds = 0)
+
+        val cancelStart = System.currentTimeMillis()
+        val results = launcher.cancel(context, period)
+        val elapsed = System.currentTimeMillis() - cancelStart
+
+        assertEquals(1, results.size)
+        assertEquals(EtlJobStatus.CANCELLED, results.single().status)
+        assertTrue(elapsed < 500L, "cancel must reap quickly (elapsed=${elapsed}ms)")
+        assertNull(jobsRepository.getActiveJob(job))
+    }
+
+    @Test
+    fun `cancel throws IllegalStateException when cancelling timeout is exceeded`(): Unit = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val orchestrator = TestEtlOrchestrator(jobsRepository)
+        val launcher = EtlLauncherImpl(
+            orchestrator, jobsRepository,
+            cancelWaitTimeoutMillis = 150L,
+            cancelPollDelayMillis = 10L,
+        )
+
+        val period = EtlPeriod.UNBOUNDED
+        val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
+            ?: error("Failed to schedule job")
+        // Long lease + no worker ack → cancel will time out and must force-reap.
+        jobsRepository.lockJob(job, "stuck-worker", leaseSeconds = 3600)
+
+        assertFailsWith<IllegalStateException> {
+            launcher.cancel(context, period)
+        }
+    }
+
+    @Test
+    fun `overlapping schedule is rejected while cancel is still in flight`() = runBlocking {
+        val jobsRepository = SimpleEtlJobsRepository()
+        val orchestrator = TestEtlOrchestrator(jobsRepository)
+        val launcher = EtlLauncherImpl(
+            orchestrator, jobsRepository,
+            cancelWaitTimeoutMillis = 2000L,
+            cancelPollDelayMillis = 10L,
+        )
 
         val period = EtlPeriod.UNBOUNDED
         val job = jobsRepository.scheduleJob(orchestrator.name, context, period)
             ?: error("Failed to schedule job")
         jobsRepository.lockJob(job, "worker-1", leaseSeconds = 180)
 
-        val results = launcher.cancel(context, period)
+        coroutineScope {
+            // Slow worker ack — cancel is stuck in the CANCELLING wait window.
+            launch {
+                delay(200L)
+                jobsRepository.markCancelled(job, "worker-1")
+            }
+            val cancelJob = launch { launcher.cancel(context, period) }
 
-        assertEquals(1, results.size)
-        assertEquals(EtlJobStatus.CANCELLED, results.single().status)
-        assertNull(jobsRepository.getActiveJob(job))
+            // Give cancel a moment to flip the row to CANCELLING.
+            delay(50L)
+
+            val overlap = jobsRepository.scheduleJob(orchestrator.name, context, period)
+            assertNull(overlap, "scheduleJob must fail while an overlapping row is CANCELLING")
+
+            cancelJob.join()
+
+            // Once cancel returns, the row is CANCELLED and scheduling again is allowed.
+            val fresh = jobsRepository.scheduleJob(orchestrator.name, context, period)
+            assertTrue(fresh != null, "scheduleJob must succeed after cancel completes")
+        }
     }
 
     @Test
     fun `rerun cancels active jobs, reschedules and reruns via orchestrator`() = runBlocking {
         val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = TestEtlOrchestrator(jobsRepository)
-        val launcher = EtlLauncherImpl(orchestrator, jobsRepository)
+        val launcher = EtlLauncherImpl(
+            orchestrator, jobsRepository,
+            cancelWaitTimeoutMillis = 500L,
+            cancelPollDelayMillis = 10L,
+        )
 
         val from = LocalDate.of(2024, 1, 1)
         val period = EtlPeriod(from, from.plusDays(2))
 
-        // Simulate a job already running for this period that must be cancelled by rerun
+        // Simulate a job already running for this period that must be cancelled by rerun.
+        // Zero lease so cancel reaps immediately (test doesn't spawn a worker ack coroutine).
         val existingJob = jobsRepository.scheduleJob(orchestrator.name, context, period)
             ?: error("Failed to schedule job")
-        jobsRepository.lockJob(existingJob, "stale-worker", leaseSeconds = 180)
+        jobsRepository.lockJob(existingJob, "stale-worker", leaseSeconds = 0)
 
         val results = launcher.rerun(context, period, workers = 1, withDataDeletion = true)
 

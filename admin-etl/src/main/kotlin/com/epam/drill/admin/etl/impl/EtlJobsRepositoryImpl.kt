@@ -99,8 +99,7 @@ class EtlJobsRepositoryImpl(
         jobsTable.updateReturning(
             where = { sameEtl(etlName) and sameContext(context) and overlaps(period) and activeStatus() },
         ) {
-            it[status] = EtlJobStatus.CANCELLED.name
-            it[finishedAt] = CurrentTimestamp
+            it[status] = EtlJobStatus.CANCELLING.name
             it[updatedAt] = CurrentDateTime
         }.map(::mapJobResult)
     }
@@ -131,7 +130,7 @@ class EtlJobsRepositoryImpl(
 
     override suspend fun markIdle(job: EtlJob, workerId: String, processedUntilTimestamp: Instant) {
         newSuspendedTransaction(db = database) {
-            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
+            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and jobIsRunning() }) {
                 it[status] = EtlJobStatus.IDLE.name
                 it[jobsTable.processedUntilTimestamp] = processedUntilTimestamp
                 it[finishedAt] = CurrentTimestamp
@@ -144,7 +143,7 @@ class EtlJobsRepositoryImpl(
 
     override suspend fun markCompleted(job: EtlJob, workerId: String, processedUntilTimestamp: Instant) {
         newSuspendedTransaction(db = database) {
-            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
+            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and jobIsRunning() }) {
                 it[status] = EtlJobStatus.COMPLETED.name
                 it[jobsTable.processedUntilTimestamp] = processedUntilTimestamp
                 it[finishedAt] = CurrentTimestamp
@@ -157,7 +156,7 @@ class EtlJobsRepositoryImpl(
 
     override suspend fun markCancelled(job: EtlJob, workerId: String) {
         newSuspendedTransaction(db = database) {
-            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
+            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and cancellingOrRunning() }) {
                 it[status] = EtlJobStatus.CANCELLED.name
                 it[finishedAt] = CurrentTimestamp
                 it[jobsTable.workerId] = null
@@ -169,7 +168,7 @@ class EtlJobsRepositoryImpl(
 
     override suspend fun markError(job: EtlJob, workerId: String, errorMessage: String?) {
         newSuspendedTransaction(db = database) {
-            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) }) {
+            jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and jobIsRunning() }) {
                 it[status] = EtlJobStatus.ERROR.name
                 it[jobsTable.errorMessage] = errorMessage
                 it[finishedAt] = CurrentTimestamp
@@ -178,6 +177,21 @@ class EtlJobsRepositoryImpl(
                 it[updatedAt] = CurrentDateTime
             }
         }
+    }
+
+    override suspend fun reapExpiredCancelling(job: EtlJob): EtlJobResult? = newSuspendedTransaction(db = database) {
+        jobsTable.updateReturning(
+            where = {
+                sameJob(job) and jobIsCancelling() and
+                        (jobsTable.lockExpiresAt.isNull() or jobsTable.lockExpiresAt.less(CurrentTimestamp))
+            },
+        ) {
+            it[status] = EtlJobStatus.CANCELLED.name
+            it[finishedAt] = CurrentTimestamp
+            it[jobsTable.workerId] = null
+            it[lockExpiresAt] = null
+            it[updatedAt] = CurrentDateTime
+        }.map(::mapJobResult).firstOrNull()
     }
 
     override suspend fun getActiveJobs(
@@ -275,6 +289,7 @@ class EtlJobsRepositoryImpl(
             return when (coveredJob.status) {
                 EtlJobStatus.RUNNING -> EtlDailyStatus.SCHEDULED
                 EtlJobStatus.IDLE -> EtlDailyStatus.SCHEDULED
+                EtlJobStatus.CANCELLING -> EtlDailyStatus.SCHEDULED
                 EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
                 EtlJobStatus.COMPLETED -> EtlDailyStatus.UNLOADED
             }
@@ -283,6 +298,7 @@ class EtlJobsRepositoryImpl(
         return when (coveredJob.status) {
             EtlJobStatus.RUNNING -> EtlDailyStatus.RUNNING
             EtlJobStatus.IDLE -> EtlDailyStatus.RUNNING
+            EtlJobStatus.CANCELLING -> EtlDailyStatus.RUNNING
             EtlJobStatus.ERROR, EtlJobStatus.CANCELLED -> EtlDailyStatus.FAILED
             EtlJobStatus.COMPLETED -> EtlDailyStatus.COMPLETED
         }
@@ -330,11 +346,22 @@ class EtlJobsRepositoryImpl(
 
     private fun jobIsRunning(): Op<Boolean> = jobsTable.status eq EtlJobStatus.RUNNING.name
 
+    private fun jobIsCancelling(): Op<Boolean> = jobsTable.status eq EtlJobStatus.CANCELLING.name
+
+    private fun cancellingOrRunning(): Op<Boolean> =
+        (jobsTable.status eq EtlJobStatus.CANCELLING.name) or (jobsTable.status eq EtlJobStatus.RUNNING.name)
+
     private fun overlaps(period: EtlPeriod): Op<Boolean> =
         DaterangeOverlaps(jobsTable.period, period.toDateRangeValue())
 
+    /**
+     * Matches rows that the GIST exclusion constraint currently blocks — i.e. any row that
+     * still holds its overlap slot: IDLE, RUNNING, or CANCELLING (worker winding down).
+     */
     private fun activeStatus(): Op<Boolean> =
-        (jobsTable.status eq EtlJobStatus.IDLE.name) or (jobsTable.status eq EtlJobStatus.RUNNING.name)
+        (jobsTable.status eq EtlJobStatus.IDLE.name) or
+                (jobsTable.status eq EtlJobStatus.RUNNING.name) or
+                (jobsTable.status eq EtlJobStatus.CANCELLING.name)
 
     private fun resumableStatus(): Op<Boolean> =
         (jobsTable.status eq EtlJobStatus.IDLE.name) or

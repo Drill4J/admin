@@ -93,10 +93,10 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
         val toCancel = jobs.filter { (job, state) ->
             matchesEtlAndContext(job, etlName, context) &&
                     job.period.overlaps(period) &&
-                    state.status in EtlJobStatus.ACTIVE
+                    (state.status == EtlJobStatus.IDLE || state.status == EtlJobStatus.RUNNING)
         }.keys.toList()
         toCancel.map { job ->
-            val updated = jobs.getValue(job).copy(status = EtlJobStatus.CANCELLED, finishedAt = Instant.now())
+            val updated = jobs.getValue(job).copy(status = EtlJobStatus.CANCELLING)
             jobs[job] = updated
             toResult(job, updated)
         }
@@ -134,7 +134,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
     override suspend fun markIdle(job: EtlJob, workerId: String, processedUntilTimestamp: Instant): Unit =
         mutex.withLock {
             val current = jobs[job] ?: return@withLock
-            if (current.workerId != workerId) return@withLock
+            if (current.workerId != workerId || current.status != EtlJobStatus.RUNNING) return@withLock
             jobs[job] = current.copy(
                 status = EtlJobStatus.IDLE,
                 processedUntilTimestamp = processedUntilTimestamp,
@@ -147,7 +147,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
     override suspend fun markCompleted(job: EtlJob, workerId: String, processedUntilTimestamp: Instant): Unit =
         mutex.withLock {
             val current = jobs[job] ?: return@withLock
-            if (current.workerId != workerId) return@withLock
+            if (current.workerId != workerId || current.status != EtlJobStatus.RUNNING) return@withLock
             jobs[job] = current.copy(
                 status = EtlJobStatus.COMPLETED,
                 processedUntilTimestamp = processedUntilTimestamp,
@@ -160,6 +160,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
     override suspend fun markCancelled(job: EtlJob, workerId: String): Unit = mutex.withLock {
         val current = jobs[job] ?: return@withLock
         if (current.workerId != workerId) return@withLock
+        if (current.status != EtlJobStatus.CANCELLING && current.status != EtlJobStatus.RUNNING) return@withLock
         jobs[job] = current.copy(
             status = EtlJobStatus.CANCELLED,
             finishedAt = Instant.now(),
@@ -170,7 +171,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
 
     override suspend fun markError(job: EtlJob, workerId: String, errorMessage: String?): Unit = mutex.withLock {
         val current = jobs[job] ?: return@withLock
-        if (current.workerId != workerId) return@withLock
+        if (current.workerId != workerId || current.status != EtlJobStatus.RUNNING) return@withLock
         jobs[job] = current.copy(
             status = EtlJobStatus.ERROR,
             errorMessage = errorMessage,
@@ -178,6 +179,21 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
             workerId = null,
             lockExpiresAt = null,
         )
+    }
+
+    override suspend fun reapExpiredCancelling(job: EtlJob): EtlJobResult? = mutex.withLock {
+        val current = jobs[job] ?: return@withLock null
+        if (current.status != EtlJobStatus.CANCELLING) return@withLock null
+        val lease = current.lockExpiresAt
+        if (lease != null && !lease.isBefore(Instant.now())) return@withLock null
+        val updated = current.copy(
+            status = EtlJobStatus.CANCELLED,
+            finishedAt = Instant.now(),
+            workerId = null,
+            lockExpiresAt = null,
+        )
+        jobs[job] = updated
+        toResult(job, updated)
     }
 
     override suspend fun getActiveJobs(etlName: String, context: EtlContext?, period: EtlPeriod): List<EtlJobResult> = mutex.withLock {
@@ -198,7 +214,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
 
     override suspend fun getActiveJob(job: EtlJob): EtlJobResult? = mutex.withLock {
         jobs.entries.singleOrNull { (j, state) ->
-            j == job && (state.status == EtlJobStatus.RUNNING || state.status == EtlJobStatus.IDLE)
+            j == job && state.status in EtlJobStatus.ACTIVE
         }?.let { (j, state) -> toResult(j, state) }
     }
 
@@ -218,7 +234,7 @@ class SimpleEtlJobsRepository : EtlJobsRepository {
             }
             val status = when {
                 covering.isEmpty() -> EtlDailyStatus.UNLOADED
-                covering.any { it.value.status == EtlJobStatus.RUNNING } -> EtlDailyStatus.RUNNING
+                covering.any { it.value.status == EtlJobStatus.RUNNING || it.value.status == EtlJobStatus.CANCELLING } -> EtlDailyStatus.RUNNING
                 covering.any { it.value.status == EtlJobStatus.ERROR || it.value.status == EtlJobStatus.CANCELLED } -> EtlDailyStatus.FAILED
                 covering.any { it.value.status == EtlJobStatus.COMPLETED } -> EtlDailyStatus.COMPLETED
                 covering.any { it.value.status == EtlJobStatus.IDLE } -> EtlDailyStatus.SCHEDULED
