@@ -95,6 +95,7 @@ val etlDIModule
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
+                    metrics = metrics,
                     consistencyWindow = consistencyWindow,
                     processingDelay = processingDelay,
                     bufferSize = bufferSize,
@@ -110,6 +111,7 @@ val etlDIModule
                     pipelines = listOf(buildMethodTestDefinitionCoveragePipeline),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
+                    metrics = metrics,
                     lockLeaseSeconds = lockLeaseSeconds,
                 )
             }
