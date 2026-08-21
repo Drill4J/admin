@@ -155,4 +155,5 @@ class EtlMeter(val registry: MeterRegistry) {
     private fun <T> Gauge.Builder<T>.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
     private fun Counter.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
     private fun Timer.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
+    private fun LongTaskTimer.Builder.tagContext(context: EtlContext) = tagContext(context, this::tag).let { this }
 }
