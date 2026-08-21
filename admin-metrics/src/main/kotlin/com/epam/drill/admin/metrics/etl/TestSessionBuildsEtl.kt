@@ -15,9 +15,11 @@
  */
 package com.epam.drill.admin.metrics.etl
 
+import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
+import com.epam.drill.admin.etl.impl.UntypedAggregationTransformer
 import com.epam.drill.admin.etl.impl.pipeline
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig
 import com.epam.drill.admin.metrics.config.fromResource
@@ -33,6 +35,24 @@ val EtlConfig.testSessionBuildsExtractor
         loggingFrequency = loggingFrequency,
         lastExtractedAtColumnName = "created_at",
         metrics = metrics,
+    )
+
+val EtlConfig.testSessionBuildsAggregator
+    get() = UntypedAggregationTransformer(
+        name = "test_session_builds_aggregator",
+        bufferSize = transformationBufferSize,
+        loggingFrequency = loggingFrequency,
+        metrics = metrics,
+        groupKeys = listOf(
+            "group_id",
+            "app_id",
+            "build_id",
+            "test_session_id",
+            "created_at_day"
+        ),
+        aggregate = { current, next ->
+            UntypedRow(next.timestamp, current)
+        },
     )
 
 val EtlConfig.testSessionBuildsLoader

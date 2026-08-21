@@ -217,6 +217,7 @@ val EtlConfig.testSessionBuildsFromCoveragePipeline
     get() = pipeline("test_session_builds_from_coverage")
         .extractWith(coverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
 val EtlConfig.buildMethodTestDefinitionCoveragePipeline
@@ -268,6 +269,7 @@ val EtlConfig.testSessionBuildsFromTestLaunchesPipeline
     get() = pipeline("test_session_builds_from_test_launches")
         .extractWith(testLaunchCoverageExtractor)
         .transformWith(hasTestSessionFilter)
+        .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
 internal fun mergeProbes(current: Any?, next: Any?): PGobject {
