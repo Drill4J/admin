@@ -109,7 +109,7 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL job [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
-        val timer = metrics.etlDuration(name, workerId).start()
+        val timer = metrics.etlDuration(name, workerId, job.context).start()
         try {
             return extendLeaseOf(job, workerId) {
                 val results = runPipelines(job, workerId, initTimestamp, finalTimestamp)

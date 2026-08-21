@@ -89,10 +89,11 @@ class EtlMeter(val registry: MeterRegistry) {
         return registerTimer("etl_extraction_duration", jobName, context, sinceTimestamp)
     }
 
-    fun etlDuration(jobName: String, workerId: String): LongTaskTimer {
+    fun etlDuration(jobName: String, workerId: String, context: EtlContext): LongTaskTimer {
         return LongTaskTimer.builder("etl_duration")
             .tag("jobName", jobName)
             .tag("workerId", workerId)
+            .tagContext(context)
             .register(registry)
     }
 
