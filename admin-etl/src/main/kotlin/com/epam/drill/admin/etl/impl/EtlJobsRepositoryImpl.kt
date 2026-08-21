@@ -147,7 +147,6 @@ class EtlJobsRepositoryImpl(
                 it[status] = EtlJobStatus.COMPLETED.name
                 it[jobsTable.processedUntilTimestamp] = processedUntilTimestamp
                 it[finishedAt] = CurrentTimestamp
-                it[jobsTable.workerId] = null
                 it[lockExpiresAt] = null
                 it[updatedAt] = CurrentDateTime
             }
@@ -159,7 +158,6 @@ class EtlJobsRepositoryImpl(
             jobsTable.update(where = { sameJob(job) and sameWorker(workerId) and cancellingOrRunning() }) {
                 it[status] = EtlJobStatus.CANCELLED.name
                 it[finishedAt] = CurrentTimestamp
-                it[jobsTable.workerId] = null
                 it[lockExpiresAt] = null
                 it[updatedAt] = CurrentDateTime
             }
@@ -172,7 +170,6 @@ class EtlJobsRepositoryImpl(
                 it[status] = EtlJobStatus.ERROR.name
                 it[jobsTable.errorMessage] = errorMessage
                 it[finishedAt] = CurrentTimestamp
-                it[jobsTable.workerId] = null
                 it[lockExpiresAt] = null
                 it[updatedAt] = CurrentDateTime
             }
@@ -188,7 +185,6 @@ class EtlJobsRepositoryImpl(
         ) {
             it[status] = EtlJobStatus.CANCELLED.name
             it[finishedAt] = CurrentTimestamp
-            it[jobsTable.workerId] = null
             it[lockExpiresAt] = null
             it[updatedAt] = CurrentDateTime
         }.map(::mapJobResult).firstOrNull()
