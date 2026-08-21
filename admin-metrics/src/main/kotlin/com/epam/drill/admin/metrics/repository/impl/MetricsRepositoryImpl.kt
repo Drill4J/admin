@@ -284,6 +284,139 @@ class MetricsRepositoryImpl : MetricsRepository {
         }.firstOrNull()
     }
 
+    override suspend fun getAppCoverageTrends(
+        groupId: String,
+        appId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                WITH builds AS (
+                    SELECT
+                        b.group_id,
+                        b.app_id,
+                        b.build_id,
+                        b.build_version AS build_label,
+                        COALESCE(b.committed_at, b.created_at) AS build_date,
+                        b.committed_at,
+                        b.created_at
+                    FROM metrics.builds b
+                    WHERE b.group_id = ?
+                      AND b.app_id = ?
+                """.trimIndent(),
+                groupId,
+                appId,
+            )
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
+            append(
+                """
+                    ORDER BY b.created_at DESC
+                    LIMIT ?
+                )
+                SELECT
+                    b.build_id,
+                    b.build_label,
+                    b.build_date,
+                    COALESCE(c.isolated_probes_coverage_ratio, 0) AS isolated_probes_coverage_ratio,
+                    COALESCE(c.aggregated_probes_coverage_ratio, 0) AS aggregated_probes_coverage_ratio
+                FROM builds b
+                LEFT JOIN metrics.get_builds_with_coverage(
+                    input_build_ids => ARRAY(SELECT build_id FROM builds)
+                """.trimIndent(),
+                size,
+            )
+            appendCoverageFilterParams(testTags, envIds, branches)
+            append(
+                """
+                ) c
+                    ON c.group_id = b.group_id
+                    AND c.app_id = b.app_id
+                    AND c.build_id = b.build_id
+                ORDER BY b.build_date ASC, b.created_at ASC
+                """.trimIndent()
+            )
+        }
+    }
+
+    override suspend fun getAppChangesTrends(
+        groupId: String,
+        appId: String,
+        baselineBuildId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int,
+    ): List<Map<String, Any?>> = transaction {
+        executeQueryReturnMap {
+            append(
+                """
+                WITH baseline_info AS (
+                    SELECT COALESCE(b.committed_at, b.created_at) AS baseline_at
+                    FROM metrics.builds b
+                    WHERE b.build_id = ?
+                ),
+                builds AS (
+                    SELECT
+                        b.group_id,
+                        b.app_id,
+                        b.build_id,
+                        b.build_version AS build_label,
+                        COALESCE(b.committed_at, b.created_at) AS build_date,
+                        b.committed_at,
+                        b.created_at
+                    FROM metrics.builds b
+                    CROSS JOIN baseline_info bi
+                    WHERE b.group_id = ?
+                      AND b.app_id = ?
+                      AND COALESCE(b.committed_at, b.created_at) >= bi.baseline_at
+                """.trimIndent(),
+                baselineBuildId,
+                groupId,
+                appId,
+            )
+            appendOptional(" AND b.branch = ANY(?)", branches)
+            appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
+            append(
+                """
+                    ORDER BY COALESCE(b.committed_at, b.created_at) ASC, b.created_at ASC
+                    LIMIT ?
+                )
+                SELECT
+                    b.build_id,
+                    b.build_label,
+                    b.build_date,
+                    COALESCE(c.total_probes, 0) AS total_probes,
+                    COALESCE(c.isolated_covered_probes, 0) AS isolated_covered_probes,
+                    COALESCE(c.aggregated_covered_probes, 0) AS aggregated_covered_probes,
+                    COALESCE(c.total_methods, 0) AS total_methods,
+                    COALESCE(c.isolated_tested_methods, 0) AS isolated_tested_methods,
+                    COALESCE(c.aggregated_tested_methods, 0) AS aggregated_tested_methods
+                FROM builds b
+                LEFT JOIN metrics.get_builds_with_coverage(
+                    input_build_ids => ARRAY(SELECT build_id FROM builds),
+                    input_baseline_build_id => ?
+                """.trimIndent(),
+                size,
+                baselineBuildId,
+            )
+            appendCoverageFilterParams(testTags, envIds, branches)
+            append(
+                """
+                ) c
+                    ON c.group_id = b.group_id
+                    AND c.app_id = b.app_id
+                    AND c.build_id = b.build_id
+                ORDER BY b.build_date ASC, b.created_at ASC
+                """.trimIndent()
+            )
+        }
+    }
+
     override suspend fun getChangesSummary(
         buildId: String,
         baselineBuildId: String,

@@ -86,6 +86,25 @@ interface MetricsService {
         baselineBuildId: String,
     ): ChangesSummaryView
 
+    suspend fun getAppCoverageTrends(
+        groupId: String,
+        appId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int?,
+    ): List<CoverageTrendPointView>
+
+    suspend fun getAppChangesTrends(
+        groupId: String,
+        appId: String,
+        baselineBuildId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int?,
+    ): List<ChangesTrendPointView>
+
     suspend fun getSimilarBuilds(buildId: String): List<SimilarBuildView>
 
     suspend fun getBuildTestSessionStats(buildId: String): BuildTestSessionStatsView

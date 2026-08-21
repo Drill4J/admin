@@ -213,6 +213,78 @@ class MetricsServiceImpl(
         )
     }
 
+    override suspend fun getAppCoverageTrends(
+        groupId: String,
+        appId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int?,
+    ): List<CoverageTrendPointView> = transaction {
+        metricsRepository.getAppCoverageTrends(
+            groupId = groupId,
+            appId = appId,
+            branches = branches,
+            envIds = envIds,
+            testTags = testTags,
+            size = normalizeTrendSize(size),
+        ).map { row ->
+            val isolated = ratioToPercent(row["isolated_probes_coverage_ratio"])
+            val aggregated = ratioToPercent(row["aggregated_probes_coverage_ratio"])
+                .coerceAtLeast(isolated)
+            CoverageTrendPointView(
+                buildId = row["build_id"] as String,
+                buildLabel = row["build_label"] as? String ?: row["build_id"] as String,
+                buildDate = (row["build_date"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+                isolatedCoveragePercent = isolated,
+                otherBuildsCoveragePercent = (aggregated - isolated).coerceAtLeast(0.0),
+                aggregatedCoveragePercent = aggregated,
+            )
+        }
+    }
+
+    override suspend fun getAppChangesTrends(
+        groupId: String,
+        appId: String,
+        baselineBuildId: String,
+        branches: List<String>,
+        envIds: List<String>,
+        testTags: List<String>,
+        size: Int?,
+    ): List<ChangesTrendPointView> = transaction {
+        require(baselineBuildId.isNotBlank()) {
+            "baselineBuildId is required for changes trends"
+        }
+        if (!metricsRepository.buildExists(baselineBuildId)) {
+            throw BuildNotFound("Baseline build info not found for $baselineBuildId")
+        }
+        metricsRepository.getAppChangesTrends(
+            groupId = groupId,
+            appId = appId,
+            baselineBuildId = baselineBuildId,
+            branches = branches,
+            envIds = envIds,
+            testTags = testTags,
+            size = normalizeTrendSize(size),
+        ).map { row ->
+            val coveredProbes = (row["isolated_covered_probes"] as? Number)?.toInt() ?: 0
+            val aggregatedProbes = (row["aggregated_covered_probes"] as? Number)?.toInt() ?: 0
+            val coveredMethods = (row["isolated_tested_methods"] as? Number)?.toInt() ?: 0
+            val aggregatedMethods = (row["aggregated_tested_methods"] as? Number)?.toInt() ?: 0
+            ChangesTrendPointView(
+                buildId = row["build_id"] as String,
+                buildLabel = row["build_label"] as? String ?: row["build_id"] as String,
+                buildDate = (row["build_date"] as LocalDateTime?)?.toKotlinLocalDateTime(),
+                totalProbes = (row["total_probes"] as? Number)?.toInt() ?: 0,
+                coveredProbes = coveredProbes,
+                coveredInOtherBuildsProbes = aggregatedProbes.coerceAtLeast(coveredProbes),
+                totalMethods = (row["total_methods"] as? Number)?.toInt() ?: 0,
+                coveredMethods = coveredMethods,
+                coveredInOtherBuildsMethods = aggregatedMethods.coerceAtLeast(coveredMethods),
+            )
+        }
+    }
+
     override suspend fun getSimilarBuilds(buildId: String): List<SimilarBuildView> = transaction {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -1455,6 +1527,12 @@ class MetricsServiceImpl(
     private fun coverageRatio(covered: Int, total: Int): Double =
         if (total > 0) covered.toDouble() / total else 0.0
 
+    private fun ratioToPercent(value: Any?): Double =
+        ((value as? Number)?.toDouble() ?: 0.0) * 100.0
+
+    private fun normalizeTrendSize(size: Int?): Int =
+        (size ?: DEFAULT_TREND_SIZE).coerceIn(1, MAX_TREND_SIZE)
+
     private fun mapToBuildChangeView(resultSet: Map<String, Any?>): BuildChangeView = BuildChangeView(
         signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
@@ -1695,6 +1773,8 @@ class MetricsServiceImpl(
     }
 
     companion object {
+        private const val DEFAULT_TREND_SIZE = 100
+        private const val MAX_TREND_SIZE = 500
         private val BUILD_CHANGE_SORT_FIELDS = setOf(
             "changeType",
             "coverageRatioInOtherBuilds",

@@ -78,6 +78,25 @@ interface MetricsRepository {
         testTags: List<String>,
     ): Map<String, Any?>?
 
+    suspend fun getAppCoverageTrends(
+        groupId: String,
+        appId: String,
+        branches: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        size: Int = 100,
+    ): List<Map<String, Any?>>
+
+    suspend fun getAppChangesTrends(
+        groupId: String,
+        appId: String,
+        baselineBuildId: String,
+        branches: List<String> = emptyList(),
+        envIds: List<String> = emptyList(),
+        testTags: List<String> = emptyList(),
+        size: Int = 100,
+    ): List<Map<String, Any?>>
+
     suspend fun getChangesSummary(
         buildId: String,
         baselineBuildId: String,

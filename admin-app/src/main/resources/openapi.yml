@@ -698,6 +698,127 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/apps/trends/coverage:
+    get:
+      summary: Get app coverage trends
+      description: |
+        Time-series overall coverage ratios across recent builds
+        (Metabase card 71 — Coverage by Builds). Independent of baseline;
+        does not scope to changed methods.
+      operationId: getAppCoverageTrends
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: branches
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: size
+          in: query
+          required: false
+          description: Number of recent builds to include (default 100, max 500).
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Coverage trend points ordered oldest to newest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/trends/changes:
+    get:
+      summary: Get app changes trends (code probes + methods)
+      description: |
+        Time-series change-coverage counts from the baseline onward for both
+        probes (code) and methods in each point. Requires baselineBuildId.
+      operationId: getAppChangesTrends
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          description: Leftmost baseline build; later builds are compared to it.
+          schema:
+            type: string
+        - name: branches
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: size
+          in: query
+          required: false
+          description: Number of builds from the baseline onward (default 100, max 500).
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Changes trend points ordered oldest to newest (probes + methods per point)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/test-sessions:
     get:
       summary: Get test sessions for a group

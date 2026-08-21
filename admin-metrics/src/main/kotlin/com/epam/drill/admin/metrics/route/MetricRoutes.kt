@@ -268,6 +268,31 @@ class Metrics {
         val pageSize: Int? = null,
     )
 
+    @Resource("/apps/trends/coverage")
+    class AppCoverageTrends(
+        val parent: Metrics = Metrics(),
+
+        val groupId: String,
+        val appId: String,
+        val branches: List<String> = emptyList(),
+        val envIds: List<String> = emptyList(),
+        val testTags: List<String> = emptyList(),
+        val size: Int? = null,
+    )
+
+    @Resource("/apps/trends/changes")
+    class AppChangesTrends(
+        val parent: Metrics = Metrics(),
+
+        val groupId: String,
+        val appId: String,
+        val baselineBuildId: String,
+        val branches: List<String> = emptyList(),
+        val envIds: List<String> = emptyList(),
+        val testTags: List<String> = emptyList(),
+        val size: Int? = null,
+    )
+
     @Resource("/coverage-treemap")
     class CoverageTreemap(
         val parent: Metrics,
@@ -446,6 +471,8 @@ fun Route.metricsRoutes() {
     getAppBranches()
     getAppEnvIds()
     getAppTestTags()
+    getAppCoverageTrends()
+    getAppChangesTrends()
     getTestSessions()
     getBuildTestSessions()
     getTestSessionFilterOptions()
@@ -538,6 +565,39 @@ fun Route.getAppTestTags() {
             pageSize = params.pageSize,
         )
         this.call.respondPagedStrings(data)
+    }
+}
+
+fun Route.getAppCoverageTrends() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.AppCoverageTrends> { params ->
+        val data = metricsService.getAppCoverageTrends(
+            groupId = params.groupId,
+            appId = params.appId,
+            branches = params.branches,
+            envIds = params.envIds,
+            testTags = params.testTags,
+            size = params.size,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
+    }
+}
+
+fun Route.getAppChangesTrends() {
+    val metricsService by closestDI().instance<MetricsService>()
+
+    get<Metrics.AppChangesTrends> { params ->
+        val data = metricsService.getAppChangesTrends(
+            groupId = params.groupId,
+            appId = params.appId,
+            baselineBuildId = params.baselineBuildId,
+            branches = params.branches,
+            envIds = params.envIds,
+            testTags = params.testTags,
+            size = params.size,
+        )
+        this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
 }
 
