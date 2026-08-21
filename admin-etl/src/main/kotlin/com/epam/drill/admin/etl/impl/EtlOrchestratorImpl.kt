@@ -31,6 +31,7 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
+import com.epam.drill.admin.etl.config.EtlMeter
 import com.epam.drill.admin.etl.flow.ClosableFlow
 import com.epam.drill.admin.etl.flow.SubscribableChannelFlow
 import io.ktor.util.collections.ConcurrentMap
@@ -54,6 +55,7 @@ open class EtlOrchestratorImpl(
     override val pipelines: List<EtlPipeline<*, *>>,
     open val metadataRepository: EtlMetadataRepository,
     open val jobsRepository: EtlJobsRepository,
+    open val metrics: EtlMeter,
     open val consistencyWindow: Long = 0,
     open val processingDelay: Long = 0,
     open val bufferSize: Int = 2000,
@@ -107,6 +109,7 @@ open class EtlOrchestratorImpl(
         check(finalTimestamp.isAfter(initTimestamp)) {
             "ETL job [$workerId] has no new data to process (init=$initTimestamp, final=$finalTimestamp)"
         }
+        val timer = metrics.etlDuration(name, workerId).start()
         try {
             return extendLeaseOf(job, workerId) {
                 val results = runPipelines(job, workerId, initTimestamp, finalTimestamp)
@@ -164,6 +167,9 @@ open class EtlOrchestratorImpl(
                 errorMessage = e.message,
                 processedUntilTimestamp = initTimestamp
             )
+        }
+        finally {
+            timer.stop()
         }
     }
 

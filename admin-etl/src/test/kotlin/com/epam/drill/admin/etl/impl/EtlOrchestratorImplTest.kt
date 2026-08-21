@@ -158,6 +158,7 @@ class EtlOrchestratorImplTest {
             pipelines = listOf(pipeline1, pipeline2),
             metadataRepository = SimpleMetadataRepository(),
             jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
@@ -195,6 +196,7 @@ class EtlOrchestratorImplTest {
             pipelines = listOf(pipelineA, pipelineB),
             metadataRepository = SimpleMetadataRepository(),
             jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
@@ -227,6 +229,7 @@ class EtlOrchestratorImplTest {
             pipelines = pipelines,
             metadataRepository = SimpleMetadataRepository(),
             jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
@@ -281,6 +284,7 @@ class EtlOrchestratorImplTest {
                 pipelines = listOf(pipelineOld, pipelineNew),
                 metadataRepository = repo,
                 jobsRepository = jobsRepository,
+                metrics = metrics,
             )
 
             orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
@@ -332,6 +336,7 @@ class EtlOrchestratorImplTest {
             pipelines = listOf(pipeline),
             metadataRepository = repo,
             jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))
@@ -370,7 +375,8 @@ class EtlOrchestratorImplTest {
             pipelines = listOf(healthyPipeline, failingPipeline),
             metadataRepository = SimpleMetadataRepository(),
             jobsRepository = jobsRepository,
-            bufferSize = 0
+            metrics = metrics,
+            bufferSize = 0,
         )
 
         val result = orchestrator.runIncremental(jobsRepository, EtlContext(groupId = "g1"))

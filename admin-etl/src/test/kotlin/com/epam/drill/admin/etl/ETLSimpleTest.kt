@@ -145,7 +145,8 @@ class ETLSimpleTest {
             )
         ),
         metadataRepository = metadataRepository,
-        jobsRepository = jobsRepository
+        jobsRepository = jobsRepository,
+        metrics = metrics
     )
 
     private suspend fun runIncremental(
@@ -206,7 +207,8 @@ class ETLSimpleTest {
                 )
             ),
             metadataRepository = metadataRepo,
-            jobsRepository = jobsRepository
+            jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         val initialLastProcessedAt = metadataRepo.getMetadata(context, "failed-pipeline")
@@ -262,6 +264,7 @@ class ETLSimpleTest {
                 ),
                 metadataRepository = metadataRepo,
                 jobsRepository = jobsRepository,
+                metrics = metrics,
                 consistencyWindow = 60,
             )
 

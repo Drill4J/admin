@@ -19,6 +19,7 @@ import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.impl.toMap
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
+import io.micrometer.core.instrument.LongTaskTimer
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.time.Instant
@@ -86,6 +87,13 @@ class EtlMeter(val registry: MeterRegistry) {
 
     fun extractionDuration(jobName: String, context: EtlContext, sinceTimestamp: Instant): Timer {
         return registerTimer("etl_extraction_duration", jobName, context, sinceTimestamp)
+    }
+
+    fun etlDuration(jobName: String, workerId: String): LongTaskTimer {
+        return LongTaskTimer.builder("etl_duration")
+            .tag("jobName", jobName)
+            .tag("workerId", workerId)
+            .register(registry)
     }
 
     private fun registerIntegerGauge(metricName: String, jobName: String, context: EtlContext): AtomicInteger {
