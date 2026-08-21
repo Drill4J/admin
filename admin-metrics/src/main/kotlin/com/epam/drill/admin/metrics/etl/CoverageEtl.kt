@@ -258,11 +258,7 @@ val EtlConfig.test2CodeMappingPipeline
             "app_env_id",
             "test_task_id",
             "created_at_day"
-        ) { current, next ->
-            val map = HashMap<String, Any?>(current)
-            map["updated_at_day"] = next["created_at_day"]
-            UntypedRow(next.timestamp, map)
-        }
+        ) { current, next -> next }
         .loadWith(test2CodeMappingLoader)
 
 val EtlConfig.testSessionBuildsFromTestLaunchesPipeline

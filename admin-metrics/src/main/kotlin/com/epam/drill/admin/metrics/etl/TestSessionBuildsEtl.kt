@@ -15,7 +15,6 @@
  */
 package com.epam.drill.admin.metrics.etl
 
-import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.impl.UntypedSqlDataExtractor
 import com.epam.drill.admin.etl.impl.UntypedSqlDataLoader
 import com.epam.drill.admin.etl.config.EtlConfig
@@ -50,9 +49,7 @@ val EtlConfig.testSessionBuildsAggregator
             "test_session_id",
             "created_at_day"
         ),
-        aggregate = { current, next ->
-            UntypedRow(next.timestamp, current)
-        },
+        aggregate = { current, next -> next },
     )
 
 val EtlConfig.testSessionBuildsLoader

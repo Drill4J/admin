@@ -30,6 +30,4 @@ ON CONFLICT (
     COALESCE(app_env_id,''),
     COALESCE(test_task_id,'')
 )
-DO UPDATE SET
-    updated_at_day = EXCLUDED.created_at_day
-WHERE test_to_code_mapping.updated_at_day < EXCLUDED.created_at_day
+DO NOTHING
