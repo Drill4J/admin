@@ -74,7 +74,4 @@ val EtlConfig.buildMethodsPipeline
 val EtlConfig.methodsPipeline
     get() = pipeline("methods")
         .extractWith(methodsExtractor)
-        .aggregateBy("group_id", "app_id", "method_id") { _, next ->
-            UntypedRow(next.timestamp, next)
-        }
         .loadWith(methodsLoader)
