@@ -146,20 +146,21 @@ class Metrics {
             val page: Int? = null,
             val pageSize: Int? = null,
         ) {
-            @Resource("filter-options")
-            class FilterOptions(
-                val parent: FileLaunches,
-                val query: String? = null,
-                val page: Int? = null,
-                val pageSize: Int? = null,
-            )
-
             @Resource("page")
             class Page(
                 val parent: FileLaunches,
                 val path: String,
             )
         }
+
+        @Resource("file-launches/filter-options")
+        class FileLaunchFilterOptions(
+            val parent: TestSessionById,
+            val buildId: String? = null,
+            val query: String? = null,
+            val page: Int? = null,
+            val pageSize: Int? = null,
+        )
 
         @Resource("builds")
         class Builds(
@@ -845,14 +846,13 @@ fun Route.getTestLaunchPage() {
 fun Route.getTestFileLaunchFilterOptions() {
     val metricsService by closestDI().instance<MetricsService>()
 
-    get<Metrics.TestSessionById.FileLaunches.FilterOptions> { params ->
-        val files = params.parent
-        val session = files.parent
+    get<Metrics.TestSessionById.FileLaunchFilterOptions> { params ->
+        val session = params.parent
         if (params.page != null || params.query != null || params.pageSize != null) {
             val data = metricsService.getTestFileLaunchFilterValues(
                 groupId = session.groupId,
                 testSessionId = session.testSessionId,
-                buildId = files.buildId,
+                buildId = params.buildId,
                 query = params.query,
                 page = params.page,
                 pageSize = params.pageSize,
@@ -863,7 +863,7 @@ fun Route.getTestFileLaunchFilterOptions() {
         val data = metricsService.getTestFileLaunchFilterOptions(
             groupId = session.groupId,
             testSessionId = session.testSessionId,
-            buildId = files.buildId,
+            buildId = params.buildId,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
