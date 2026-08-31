@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.queue.QueueOutput
@@ -76,9 +77,10 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
     private val deserializer: suspend (KClass<out T>, ByteArray) -> T,
     private val recordKeyToPayloadType: (String) -> KClass<out T>,
     private val routeToRecordKey: (R) -> String,
-    capacity: Int = Channel.BUFFERED,
+    capacity: Int = Channel.RENDEZVOUS,
     private val pollTimeout: Duration = 500.milliseconds,
     private val shutdownTimeout: Duration = 5.seconds,
+    private val metrics: RawDataMeter,
 ) : DataQueue<R, T>, Channel<QueueOutput<T>> by Channel(capacity), AutoCloseable {
 
     private val logger = KotlinLogging.logger {}
@@ -151,12 +153,13 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                         deserializer(payloadType, record.value())
                     }.onFailure { e ->
                         logger.error(e) { "Error while deserializing record for [$key]: ${e.message}" }
+                        metrics.deserializeFailures.increment()
                     }.getOrNull() ?: continue
 
                     val metadata = record.headers()
                         .associate { it.key() to it.value().toString(Charsets.UTF_8) }
 
-                    this@KafkaDataQueue.send(QueueOutput(payload, metadata))
+                    outputChannel.send(QueueOutput(payload, metadata))
                 }
 
                 runCatching {
@@ -191,6 +194,7 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
             capacity: Int = Channel.BUFFERED,
             pollTimeout: Duration = 500.milliseconds,
             shutdownTimeout: Duration = 5.seconds,
+            metrics: RawDataMeter,
         ): KafkaDataQueue<R, T> {
             val pProps = Properties().apply {
                 putAll(producerProps)
@@ -217,12 +221,8 @@ class KafkaDataQueue<R : DataIngestRoute, T : RawDataPayload>(
                 capacity = capacity,
                 pollTimeout = pollTimeout,
                 shutdownTimeout = shutdownTimeout,
+                metrics = metrics,
             )
         }
     }
 }
-
-
-
-
-

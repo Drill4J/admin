@@ -25,6 +25,7 @@ import io.ktor.server.auth.principal
 import io.ktor.server.resources.delete
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post
+import io.ktor.server.resources.put
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import org.kodein.di.instance

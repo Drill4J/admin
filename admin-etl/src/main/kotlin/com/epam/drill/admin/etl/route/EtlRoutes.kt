@@ -17,10 +17,11 @@ package com.epam.drill.admin.etl.route
 
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.etl.service.EtlService
-import com.epam.drill.admin.metrics.repository.impl.ApiResponse
+import com.epam.drill.admin.common.config.ApiResponse
+import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlStatus
 import io.ktor.http.HttpStatusCode
 import io.ktor.resources.Resource
-import io.ktor.server.application.call
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post as postWithParams
 import io.ktor.server.response.respond
@@ -33,7 +34,10 @@ import kotlin.getValue
 @Resource("/refresh")
 class Refresh(
     val groupId: String? = null,
-    val reset: Boolean = false
+    val reset: Boolean = false,
+    val initTimestamp: Long? = null,
+    val finalTimestamp: Long? = null,
+    val skipIfLocked: Boolean = false,
 )
 
 @Resource("/refresh-status")
@@ -47,19 +51,31 @@ fun Route.etlManagementRoutes() {
 }
 
 fun Route.postRefreshMetrics() {
-    val metricsService by closestDI().instance<EtlService>()
+    val etlService by closestDI().instance<EtlService>()
 
     postWithParams<Refresh> { params ->
-        metricsService.refresh(params.groupId, params.reset)
+        val results = etlService.refresh(
+            context = params.groupId?.let { EtlContext(it) },
+            reset = params.reset,
+            initTimestamp = params.initTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
+            finalTimestamp = params.finalTimestamp?.let { java.time.Instant.ofEpochMilli(it) },
+            skipIfLocked = params.skipIfLocked,
+        )
+        if (results.any { it.status != EtlStatus.SUCCESS }) {
+            val errorMessages = results.filter { it.status == EtlStatus.FAILED }.joinToString(separator = "\n") {
+                "Pipeline `${it.pipelineName}`: ${it.errorMessage ?: "Unknown error"}"
+            }
+            throw IllegalStateException("Error(s) occurred during ETL process:\n$errorMessages")
+        }
         call.ok("Metrics were refreshed.")
     }
 }
 
 fun Route.getRefreshStatus() {
-    val metricsService by closestDI().instance<EtlService>()
+    val etlService by closestDI().instance<EtlService>()
 
     get<RefreshStatus> { params ->
-        val status = metricsService.getRefreshStatus(params.groupId)
+        val status = etlService.getRefreshStatus(params.groupId)
         this.call.respond(HttpStatusCode.OK, ApiResponse(status))
     }
 }

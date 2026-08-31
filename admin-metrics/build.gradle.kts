@@ -16,12 +16,14 @@ val ktorVersion: String by parent!!.extra
 val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
+val kotlinxCoroutinesVersion: String by parent!!.extra
 val mockitoKotlinVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
 val quartzVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -43,6 +45,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":admin-common"))
     implementation(project(":admin-writer"))
+    implementation(project(":admin-etl"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$kotlinxSerializationVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
@@ -59,11 +62,12 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
     implementation("org.quartz-scheduler:quartz:$quartzVersion")
+    implementation("io.micrometer:micrometer-core:${micrometerVersion}")
     api("org.flywaydb:flyway-core:$flywaydbVersion")
     compileOnly("org.postgresql:postgresql:$postgresSqlVersion")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-resources:$ktorVersion")
     testImplementation("com.jayway.jsonpath:json-path:2.9.0")

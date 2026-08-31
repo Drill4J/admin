@@ -15,14 +15,17 @@
  */
 package com.epam.drill.admin.writer.rawdata.queue.impl
 
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.route.BuildsRoute
 import com.epam.drill.admin.writer.rawdata.route.jsonConfig
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildPayload
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.mockito.kotlin.mock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -37,6 +40,7 @@ class ChannelDataQueueTest {
             routeToPayloadType = { BuildPayload::class },
             capacity = Channel.UNLIMITED,
             shutdownTimeout = 1.seconds,
+            metrics = RawDataMeter(SimpleMeterRegistry()),
         )
         val testBytes = BuildPayload(groupId = "my-group", appId = "my-app", buildVersion = "1.0.0").toBytes()
         val testMetadata = mapOf("key-1" to "value-1")
@@ -60,6 +64,7 @@ class ChannelDataQueueTest {
             routeToPayloadType = { BuildPayload::class },
             capacity = Channel.UNLIMITED,
             shutdownTimeout = 1.seconds,
+            metrics = RawDataMeter(SimpleMeterRegistry()),
         )
 
         queue.close()

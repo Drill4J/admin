@@ -20,31 +20,34 @@ package com.epam.drill.admin.etl.flow
  * when the maximum size is reached.
  */
 class LruMap<K, V>(
-    private val maxSize: Int,
-    private val onEvict: (K, V) -> Unit
+    private val maxSize: Int
 ) {
     private val map = LinkedHashMap<K, V>(16, 0.75f, true)
 
     val size: Int
         get() = map.size
 
-    fun compute(key: K, update: (V?) -> V) {
+    fun compute(key: K, update: (V?) -> V): V? {
         map[key] = update(map[key])
-        if (map.size >= maxSize) {
+        return if (map.size > maxSize) {
             evictOldest()
+        } else {
+            null
         }
     }
 
-    fun evictOldest() {
+    fun evictOldest(): V? {
         val it = map.entries.iterator()
-        if (!it.hasNext()) return
+        if (!it.hasNext()) return null
 
         val entry = it.next()
         it.remove()
-        onEvict(entry.key, entry.value)
+        return entry.value
     }
 
-    fun evictAll() {
+    suspend fun evictAll(
+        onEvict: suspend (key: K, value: V) -> Unit
+    ) {
         val it = map.entries.iterator()
         while (it.hasNext()) {
             val entry = it.next()

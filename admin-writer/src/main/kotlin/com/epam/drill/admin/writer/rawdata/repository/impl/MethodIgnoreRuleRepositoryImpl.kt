@@ -45,7 +45,8 @@ class MethodIgnoreRuleRepositoryImpl : MethodIgnoreRuleRepository {
         val data = MethodIgnoreRulesTable.selectAll()
             .where { condition }
             .orderBy(MethodIgnoreRulesTable.id to SortOrder.ASC)
-            .limit(pageSize, skip)
+            .limit(pageSize)
+            .offset(skip)
             .map {
                 MethodIgnoreRuleView(
                     id = it[MethodIgnoreRulesTable.id].value,

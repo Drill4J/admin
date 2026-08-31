@@ -24,15 +24,19 @@ import com.epam.drill.admin.metrics.route.metricsRoutes
 import com.epam.drill.admin.common.route.commonStatusPages
 import com.epam.drill.admin.common.scheduler.DrillScheduler
 import com.epam.drill.admin.config.SchedulerConfig
+import com.epam.drill.admin.config.monitoringDIModule
 import com.epam.drill.admin.config.schedulerDIModule
-import com.epam.drill.admin.etl.config.etlDIModule
-import com.epam.drill.admin.etl.config.updateMetricsEtlJob
+import com.epam.drill.admin.metrics.config.etlDIModule
+import com.epam.drill.admin.metrics.config.updateMetricsEtlJob
 import com.epam.drill.admin.etl.route.etlManagementRoutes
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.config.buildFinalizationRetryJob
+import com.epam.drill.admin.writer.rawdata.config.buildFinalizationRetryTrigger
+import com.epam.drill.admin.writer.rawdata.config.BuildValidationConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataDIModule
 import com.epam.drill.admin.writer.rawdata.route.*
 import io.ktor.http.*
@@ -41,10 +45,11 @@ import io.ktor.serialization.kotlinx.protobuf.*
 import io.ktor.server.application.*
 import io.ktor.server.application.call
 import io.ktor.server.auth.*
-import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.plugins.swagger.*
@@ -52,10 +57,12 @@ import io.ktor.server.request.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import io.micrometer.prometheus.PrometheusMeterRegistry
 import mu.KotlinLogging
 import org.kodein.di.allInstances
 import org.kodein.di.instance
@@ -64,11 +71,13 @@ import org.kodein.di.ktor.di
 import javax.sql.DataSource
 
 private val logger = KotlinLogging.logger {}
+private val loggingIgnorePaths = setOf("/metrics", "/swagger")
 
 fun Application.module() {
     val oauth2Enabled = oauth2Enabled
     val simpleAuthEnabled = simpleAuthEnabled
     di {
+        import(monitoringDIModule)
         import(dataSourceDIModule)
         import(schedulerDIModule)
         import(jwtServicesDIModule)
@@ -96,11 +105,11 @@ fun Application.module() {
         if (oauth2Enabled) configureOAuthAuthentication(di)
         roleBasedAuthentication()
     }
-    shutdownQueues()
+    shutdownCloseableServices()
     routing {
         rootRoute()
         swaggerUI(path = "swagger", swaggerFile = "openapi.yml")
-
+        metricsRoute()
         if (oauth2Enabled) configureOAuthRoutes()
         route("/api") {
             //UI
@@ -161,6 +170,10 @@ fun Application.module() {
 
 private fun Application.installPlugins() {
     install(CallLogging) {
+        filter { call ->
+            val path = call.request.path()
+            loggingIgnorePaths.none { path.startsWith(it) }
+        }
         format { call ->
             val status = call.response.status()
             val httpMethod = call.request.httpMethod.value
@@ -198,6 +211,11 @@ private fun Application.installPlugins() {
         exposeHeader(HttpHeaders.Authorization)
         exposeHeader(HttpHeaders.ContentType)
     }
+
+    val meterRegistry by closestDI().instance<MeterRegistry>()
+    install(MicrometerMetrics) {
+        registry = meterRegistry
+    }
 }
 
 private fun StatusPagesConfig.defaultStatusPages() {
@@ -220,15 +238,17 @@ private fun Application.initScheduler() {
     val dataSource by closestDI().instance<DataSource>()
     val schedulerConfig by closestDI().instance<SchedulerConfig>()
     val scheduler by closestDI().instance<DrillScheduler>()
+    val buildValidationConfig by closestDI().instance<BuildValidationConfig>()
 
     scheduler.init(KodeinJobFactory(closestDI()), dataSource)
-    environment.monitor.subscribe(ApplicationStopped) {
+    monitor.subscribe(ApplicationStopped) {
         scheduler.shutdown()
     }
     scheduler.start()
     scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
     scheduler.scheduleJob(rawDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("rawDataRetentionPolicyTrigger"))
     scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("metricsRetentionPolicyTrigger"))
+    scheduler.scheduleJob(buildFinalizationRetryJob, buildFinalizationRetryTrigger(buildValidationConfig.retryJobCron))
     scheduler.addJob(deleteMetricsDataJob)
 }
 
@@ -247,10 +267,10 @@ val Application.jsCoverageConverterAddress: String
         ?.takeIf { it.isNotBlank() }
         ?: "http://localhost:8092" // TODO think of default
 
-private fun Application.shutdownQueues() {
+private fun Application.shutdownCloseableServices() {
     val closableComponents: List<AutoCloseable> by closestDI().allInstances()
 
-    environment.monitor.subscribe(ApplicationStopping) {
+    monitor.subscribe(ApplicationStopping) {
         runBlocking {
             closableComponents.map {
                 async {
@@ -258,5 +278,12 @@ private fun Application.shutdownQueues() {
                 }
             }.awaitAll()
         }
+    }
+}
+
+private fun Route.metricsRoute() {
+    val meterRegistry by closestDI().instance<PrometheusMeterRegistry>()
+    get("/metrics") {
+        call.respondText(meterRegistry.scrape(), ContentType.Text.Plain.withCharset(Charsets.UTF_8))
     }
 }

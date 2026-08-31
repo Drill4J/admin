@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.Build
+import com.epam.drill.admin.writer.rawdata.entity.BuildValidationStatus
 import java.time.LocalDate
 
 interface BuildRepository {
@@ -24,4 +25,20 @@ interface BuildRepository {
     suspend fun existsById(groupId: String, appId: String, buildId: String): Boolean
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteByBuildId(groupId: String, appId: String, buildId: String)
+    suspend fun getById(groupId: String, appId: String, buildId: String): Build?
+    suspend fun getStatus(groupId: String, appId: String, buildId: String): BuildValidationStatus?
+    suspend fun saveBuildFinalization(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        methodsCount: Int,
+        methodsChecksum: String,
+    )
+    suspend fun updateBuildStatus(
+        groupId: String,
+        appId: String,
+        buildId: String,
+        status: BuildValidationStatus,
+    )
+    suspend fun findBuildsToRetry(limit: Int): List<Build>
 }

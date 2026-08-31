@@ -74,4 +74,32 @@ class MethodRepositoryImpl : MethodRepository {
                     (BuildMethodTable.buildId eq buildId)
         }
     }
+
+    override suspend fun countByBuildId(groupId: String, appId: String, buildId: String): Int {
+        return BuildMethodTable.select(BuildMethodTable.methodId).where {
+            (BuildMethodTable.groupId eq groupId) and
+                    (BuildMethodTable.appId eq appId) and
+                    (BuildMethodTable.buildId eq buildId)
+        }.count().toInt()
+    }
+
+    override suspend fun getBodyChecksumsByBuildId(groupId: String, appId: String, buildId: String): List<String> {
+        return BuildMethodTable
+            .join(
+                MethodTable,
+                joinType = org.jetbrains.exposed.sql.JoinType.INNER,
+                onColumn = BuildMethodTable.methodId,
+                otherColumn = MethodTable.methodId,
+                additionalConstraint = {
+                    (BuildMethodTable.appId eq MethodTable.appId) and (BuildMethodTable.groupId eq MethodTable.groupId)
+                }
+            )
+            .select(MethodTable.bodyChecksum)
+            .where {
+                (BuildMethodTable.groupId eq groupId) and
+                        (BuildMethodTable.appId eq appId) and
+                        (BuildMethodTable.buildId eq buildId)
+            }
+            .map { it[MethodTable.bodyChecksum] }
+    }
 }

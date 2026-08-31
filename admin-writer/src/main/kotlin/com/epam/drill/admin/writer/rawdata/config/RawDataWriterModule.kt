@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.config
 
 import com.epam.drill.admin.writer.rawdata.job.DataRetentionPolicyJob
+import com.epam.drill.admin.writer.rawdata.job.BuildFinalizationRetryJob
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.ChannelDataQueue
 import com.epam.drill.admin.writer.rawdata.queue.impl.KafkaDataQueue
@@ -25,10 +26,12 @@ import com.epam.drill.admin.writer.rawdata.repository.*
 import com.epam.drill.admin.writer.rawdata.repository.impl.*
 import com.epam.drill.admin.writer.rawdata.route.DataIngestRoute
 import com.epam.drill.admin.writer.rawdata.route.payload.RawDataPayload
+import com.epam.drill.admin.writer.rawdata.service.BuildValidationService
 import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.RawMethodBrowseService
 import com.epam.drill.admin.writer.rawdata.service.SettingsService
+import com.epam.drill.admin.writer.rawdata.service.impl.BuildValidationServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.DataManagementServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawMethodBrowseServiceImpl
 import com.epam.drill.admin.writer.rawdata.service.impl.RawDataServiceImpl
@@ -42,8 +45,11 @@ import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import org.quartz.CronScheduleBuilder
+import org.quartz.CronTrigger
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
+import org.quartz.TriggerBuilder
 import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = mu.KotlinLogging.logger {}
@@ -65,10 +71,17 @@ val rawDataDIModule
                 buildRepository = instance(),
             )
         }
+
+        bind<BuildFinalizationRetryJob>() with singleton {
+            BuildFinalizationRetryJob(
+                buildValidationService = instance(),
+            )
+        }
     }
 
 val rawDataServicesDIModule
     get() = DI.Module("rawDataWriterServices") {
+        bind<RawDataMeter>() with singleton { RawDataMeter(instance()) }
         bind<InstanceRepository>() with singleton { InstanceRepositoryImpl() }
         bind<BuildRepository>() with singleton { BuildRepositoryImpl() }
         bind<MethodRepository>() with singleton { MethodRepositoryImpl() }
@@ -77,6 +90,19 @@ val rawDataServicesDIModule
         bind<TestSessionRepository>() with singleton { TestSessionRepositoryImpl() }
         bind<TestSessionBuildRepository>() with singleton { TestSessionBuildRepositoryImpl() }
         bind<TestLaunchRepository>() with singleton { TestLaunchRepositoryImpl() }
+
+        bind<BuildValidationConfig>() with singleton {
+            val drillConfig: ApplicationConfig = instance<Application>().environment.config.config("drill")
+            BuildValidationConfig(drillConfig.config("buildValidation"))
+        }
+        bind<BuildValidationService>() with singleton {
+            val config = instance<BuildValidationConfig>()
+            BuildValidationServiceImpl(
+                buildRepository = instance(),
+                methodRepository = instance(),
+                maxValidationWindow = java.time.Duration.ofMinutes(config.maxValidationWindowMinutes),
+            )
+        }
 
         bind<RawDataWriter>() with singleton {
             RawDataServiceImpl(
@@ -88,6 +114,7 @@ val rawDataServicesDIModule
                 buildRepository = instance(),
                 testSessionRepository = instance(),
                 testSessionBuildRepository = instance(),
+                buildValidationService = instance(),
             )
         }
 
@@ -106,7 +133,8 @@ val rawDataServicesDIModule
                 routeToPayloadType = { route ->
                     route.toPayloadType()
                 },
-                capacity = config.capacity
+                capacity = config.capacity,
+                metrics = instance(),
             )
         }
         bind<DataQueue<DataIngestRoute, RawDataPayload>>(tag = RawDataQueueType.KAFKA) with singleton {
@@ -129,6 +157,7 @@ val rawDataServicesDIModule
                 capacity = config.capacity,
                 pollTimeout = kafkaQueueConfig.pollTimeoutMs.milliseconds,
                 shutdownTimeout = kafkaQueueConfig.shutdownTimeoutMs.milliseconds,
+                metrics = instance(),
             )
         }
         bind<QueuedRawDataWriter>() with eagerSingleton {
@@ -139,7 +168,8 @@ val rawDataServicesDIModule
             QueuedRawDataWriter(
                 handler = writer,
                 workers = config.workers,
-                queue = queue
+                queue = queue,
+                metrics = instance(),
             ).also {
                 logger.info { "${config.type} queue is configured for raw data writing with ${config.workers} workers." }
             }
@@ -165,6 +195,7 @@ val dataManagementServicesDIModule
         bind<RawMethodBrowseService>() with singleton {
             RawMethodBrowseServiceImpl(repository = instance())
         }
+        bind<TestLaunchCoverageRequestRepository>() with singleton { TestLaunchCoverageRequestRepositoryImpl() }
         bind<DataManagementService>() with singleton {
             DataManagementServiceImpl(
                 instanceRepository = instance(),
@@ -175,6 +206,7 @@ val dataManagementServicesDIModule
                 testLaunchRepository = instance(),
                 testSessionBuildRepository = instance(),
                 methodIgnoreRuleRepository = instance(),
+                testLaunchCoverageRequestRepository = instance(),
                 scheduler = instance(),
             )
         }
@@ -186,3 +218,16 @@ val rawDataRetentionPolicyJob: JobDetail
         .withDescription("Job for deleting raw data older than the retention period.")
         .withIdentity("rawDataRetentionPolicyJob", "drill")
         .build()
+
+val buildFinalizationRetryJob: JobDetail
+    get() = JobBuilder.newJob(BuildFinalizationRetryJob::class.java)
+        .storeDurably()
+        .withDescription("Job for periodically retrying build finalization validation at a fixed interval.")
+        .withIdentity("buildFinalizationRetryJob", "drill")
+        .build()
+
+fun buildFinalizationRetryTrigger(cron: String): CronTrigger = TriggerBuilder.newTrigger()
+    .withIdentity("buildFinalizationRetryTrigger", "drill")
+    .startNow()
+    .withSchedule(CronScheduleBuilder.cronSchedule(cron))
+    .build()

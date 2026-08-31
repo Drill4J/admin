@@ -21,6 +21,8 @@ import com.epam.drill.admin.writer.rawdata.table.InstanceTable
 import com.epam.drill.admin.test.*
 import com.epam.drill.admin.writer.rawdata.config.RawDataWriterDatabaseConfig
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
+import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatStatus
+import com.epam.drill.admin.writer.rawdata.route.putInstanceHeartbeat
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -41,6 +43,7 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
     private val testExistingGroup = "test-old-group"
     private val testExistingApp = "test-old-app"
     private val testExistingBuildVersion = "0.0.1"
+    private val testExistingInstance = "test-old-instance"
 
     @BeforeEach
     fun setUp(): Unit = transaction {
@@ -50,12 +53,23 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
             it[appId] = testExistingApp
             it[buildVersion] = testExistingBuildVersion
         }
+        InstanceTable.insert {
+            it[id] = testExistingInstance
+            it[groupId] = testExistingGroup
+            it[appId] = testExistingApp
+            it[buildId] = "$testExistingGroup:$testExistingApp:$testExistingBuildVersion"
+            it[envId] = "test-env"
+            it[status] = AgentHeartbeatStatus.RUNNING.name
+        }
     }
 
     @AfterEach
     fun tearDown(): Unit = transaction {
         BuildTable.deleteWhere {
             BuildTable.id eq "$testExistingGroup:$testExistingApp:$testExistingBuildVersion"
+        }
+        InstanceTable.deleteWhere {
+            InstanceTable.id eq testExistingInstance
         }
     }
 
@@ -64,7 +78,7 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
         withRollback {
             val testGroup = "test-group"
             val testApp = "test-app"
-            val testInstance = "test-instance"
+            val testInstance = "test-instance-1"
             val timeBeforeTest = LocalDateTime.now()
             val app = drillApplication(rawDataServicesDIModule) {
                 putInstances()
@@ -121,7 +135,7 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
     @Test
     fun `given existing build, put instances service should refer to existing build, save new instance in database and return OK`() =
         withRollback {
-            val testInstance = "test-instance"
+            val testInstance = "test-instance-2"
             val timeBeforeTest = LocalDateTime.now()
             val app = drillApplication(rawDataServicesDIModule) {
                 putInstances()
@@ -166,6 +180,45 @@ class InstancesApiTest : DatabaseTests({ RawDataWriterDatabaseConfig.init(it) })
                     .filter { it[BuildTable.appId] == testExistingApp }
                     .filter { it[BuildTable.buildVersion] == testExistingBuildVersion }
                 assertEquals(1, savedBuilds.size)
+            }
+        }
+
+    @Test
+    fun `given existing build, put instance heartbeat with SHUTDOWN status should record status for instance and return OK`() =
+        withRollback {
+            val app = drillApplication(rawDataServicesDIModule) {
+                putInstanceHeartbeat()
+            }
+
+            app.client.put("/instances/heartbeat") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(
+                    """
+                {
+                    "groupId": "$testExistingGroup",
+                    "appId": "$testExistingApp",                    
+                    "instanceId": "$testExistingInstance",                    
+                    "status": "SHUTDOWN"
+                }
+                """.trimIndent()
+                )
+            }.apply {
+                assertEquals(HttpStatusCode.OK, status)
+                assertJsonEquals(
+                    """
+                {
+                    "message": "Instance heartbeat saved"
+                }
+            """.trimIndent(), bodyAsText()
+                )
+            }
+
+            waitUntilInTransaction {
+                val savedInstance = InstanceTable.selectAll().first {
+                    it[InstanceTable.id].value == testExistingInstance
+                }
+                assertNotNull(savedInstance[InstanceTable.lastHeartbeatAt])
+                assertEquals(AgentHeartbeatStatus.SHUTDOWN.name, savedInstance[InstanceTable.status])
             }
         }
 }

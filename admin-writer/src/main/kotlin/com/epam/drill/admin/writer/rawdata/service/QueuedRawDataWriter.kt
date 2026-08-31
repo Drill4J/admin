@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.writer.rawdata.service
 
+import com.epam.drill.admin.common.config.recordSuspend
+import com.epam.drill.admin.writer.rawdata.config.RawDataMeter
 import com.epam.drill.admin.writer.rawdata.queue.DataQueue
 import com.epam.drill.admin.writer.rawdata.queue.QueueInput
 import com.epam.drill.admin.writer.rawdata.queue.QueueProcessor
@@ -34,31 +36,37 @@ import mu.KotlinLogging
 class QueuedRawDataWriter(
     handler: RawDataWriter,
     workers: Int = 10,
-    private val queue: DataQueue<DataIngestRoute, RawDataPayload>
+    private val queue: DataQueue<DataIngestRoute, RawDataPayload>,
+    private val metrics: RawDataMeter,
 ) {
     private val logger = KotlinLogging.logger {}
     private val usernameKey = "username"
     private val queueProcessor = QueueProcessor<DataIngestRoute, RawDataPayload>(
         handler = { output ->
-            val payload = output.payload
-            val metadata = output.metadata
-            when (payload) {
-                is CoveragePayload -> handler.saveCoverage(payload)
-                is MethodsPayload -> handler.saveMethods(payload)
-                is BuildPayload -> handler.saveBuild(payload)
-                is BuildInfoPayload -> handler.saveBuildInfo(payload)
-                is AddTestDefinitionsPayload -> handler.saveTestDefinitions(payload)
-                is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
-                is AddTestsPayload -> handler.saveTestMetadata(payload)
-                is InstancePayload -> handler.saveInstance(payload)
-                is SessionPayload -> handler.saveTestSession(payload, metadata[usernameKey])
+            metrics.dequeued.increment()
+            metrics.savingLatency.recordSuspend {
+                val payload = output.payload
+                val metadata = output.metadata
+                when (payload) {
+                    is CoveragePayload -> handler.saveCoverage(payload)
+                    is MethodsPayload -> handler.saveMethods(payload)
+                    is BuildPayload -> handler.saveBuild(payload)
+                    is BuildInfoPayload -> handler.saveBuildInfo(payload)
+                    is AddTestDefinitionsPayload -> handler.saveTestDefinitions(payload)
+                    is AddTestLaunchesPayload -> handler.saveTestLaunches(payload)
+                    is AddTestsPayload -> handler.saveTestMetadata(payload)
+                    is InstancePayload -> handler.saveInstance(payload)
+                    is SessionPayload -> handler.saveTestSession(payload, metadata[usernameKey])
+                }
             }
         },
         onError = { output, e ->
             logger.error(e) { "Error while saving [${output.payload::class.simpleName}]: ${e.message}" }
+            metrics.failures.increment()
         },
-        onSuccess = { payload ->
-            logger.debug { "Successfully saved [${payload::class.simpleName}]" }
+        onSuccess = { output ->
+            logger.debug { "Successfully saved [${output.payload::class.simpleName}]" }
+            metrics.saved.increment()
         }
     )
 
@@ -69,5 +77,6 @@ class QueuedRawDataWriter(
     suspend fun enqueue(route: DataIngestRoute, payload: ByteArray, username: String? = null) {
         val metadata = username?.let { mapOf(usernameKey to it) } ?: emptyMap()
         queue.enqueue(QueueInput(route, payload, metadata))
+        metrics.enqueued.increment()
     }
 }

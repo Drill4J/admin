@@ -15,11 +15,19 @@
  */
 package com.epam.drill.admin.metrics.views
 
+import java.time.Instant
+
+class SingleResponse<T>(
+    val data: T,
+    val refreshedAt: Instant? = null
+)
+
 class PagedList<T>(
     val page: Int,
     val pageSize: Int,
     val items: List<T>,
-    val total: Long? = null
+    val total: Long? = null,
+    val refreshedAt: Instant? = null
 )
 
 suspend fun <T> pagedListOf(
@@ -37,5 +45,5 @@ suspend fun <T> pagedListOf(
 }
 
 suspend infix fun <T> PagedList<T>.withTotal(getTotal: suspend () -> Long): PagedList<T> {
-    return PagedList(page, pageSize, items, this.total ?: getTotal())
+    return PagedList(page, pageSize, items, this.total ?: getTotal(), refreshedAt)
 }

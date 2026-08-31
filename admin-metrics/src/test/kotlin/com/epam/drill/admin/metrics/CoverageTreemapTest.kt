@@ -192,8 +192,14 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             fun onlyMatchingMethods(data: List<Map<String, Any?>>) {
                 assertTrue(data.isNotEmpty())
-                assertTrue(treemapAll(data) { it["name"].toString().contains("com.example.foo") })
-                assertTrue(!treemapAny(data) { it["name"].toString().contains("com.other.bar") })
+                assertTrue(treemapAny(data) { it["type"] == "method" && it["name"].toString().startsWith("methodA") })
+                assertTrue(
+                    !treemapAny(data) { node ->
+                        sequenceOf(node["full_name"], node["package_name"], node["class_name"], node["name"])
+                            .map { it?.toString().orEmpty() }
+                            .any { it.contains("com.other.bar") || it.contains("com/other/bar") || it.contains("ClassB") }
+                    }
+                )
             }
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {
@@ -235,8 +241,14 @@ class CoverageTreemapTest : MetricsDatabaseTests({ default, metrics ->
         }.expectThat {
             fun onlyMatchingMethods(data: List<Map<String, Any?>>) {
                 assertTrue(data.isNotEmpty())
-                assertTrue(treemapAll(data) { it["name"].toString().contains("com.example.foo.ClassA") })
-                assertTrue(!treemapAny(data) { it["name"].toString().contains("com.example.foo.ClassB") })
+                assertTrue(treemapAny(data) { it["type"] == "method" && it["name"].toString().startsWith("methodA") })
+                assertTrue(
+                    !treemapAny(data) { node ->
+                        sequenceOf(node["full_name"], node["package_name"], node["class_name"], node["name"])
+                            .map { it?.toString().orEmpty() }
+                            .any { it.contains("ClassB") || it.contains("methodB") }
+                    }
+                )
             }
             // Get coverage treemap by buildId
             client.get("/metrics/coverage-treemap") {

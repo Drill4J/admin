@@ -29,6 +29,8 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.ktor.closestDI
@@ -65,59 +67,60 @@ class OAuthModuleTest {
         val testIssuer = "test-issuer"
         val testSecret = "secret"
 
-        withTestApplication({
-            environment {
-                put("drill.auth.jwt.issuer", testIssuer)
-                put("drill.auth.jwt.secret", testSecret)
-            }
-            withTestOAuthModule()
-            routing {
-                authenticate("jwt") {
-                    get("/protected") {
-                        call.respond(HttpStatusCode.OK)
+        testApplication {
+            application {
+                environment {
+                    put("drill.auth.jwt.issuer", testIssuer)
+                    put("drill.auth.jwt.secret", testSecret)
+                }
+                withTestOAuthModule()
+                routing {
+                    authenticate("jwt") {
+                        get("/protected") {
+                            call.respond(HttpStatusCode.OK)
+                        }
                     }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/protected") {
+            val response = client.get("/protected") {
                 addJwtToken(
                     username = testUsername,
                     issuer = testIssuer,
                     secret = testSecret
                 ) {
-                    addHeader("Cookie", "$JWT_COOKIE=$it")
+                    header("Cookie", "$JWT_COOKIE=$it")
                 }
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
             }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `oauth login request must be redirected to oauth2 authorize url`() {
-        withTestApplication({
-            environment {
-                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
-                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-                put("drill.auth.oauth2.clientId", testClientId)
-                put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.auth.oauth2.scopes", "scope1, scope2")
-                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+        testApplication {
+            application {
+                environment {
+                    put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                    put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                    put("drill.auth.oauth2.clientId", testClientId)
+                    put("drill.auth.oauth2.clientSecret", testClientSecret)
+                    put("drill.auth.oauth2.scopes", "scope1, scope2")
+                    put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+                }
+                withTestOAuthModule()
             }
-            withTestOAuthModule()
-        }) {
-            with(handleRequest(HttpMethod.Get, "/oauth/login")) {
-                assertEquals(HttpStatusCode.Found, response.status())
+            val noRedirectClient = createClient { followRedirects = false }
+            val response = noRedirectClient.get("/oauth/login")
+            assertEquals(HttpStatusCode.Found, response.status)
 
-                val redirectedUrl = URL(response.headers[HttpHeaders.Location])
-                val queryParams = redirectedUrl.queryParams()
-                assertEquals(testOAuthServerHost, redirectedUrl.host)
-                assertEquals("/authorizeUrl", redirectedUrl.path)
-                assertEquals(testClientId, queryParams["client_id"])
-                assertEquals("http://$testDrillHost/oauth/callback", queryParams["redirect_uri"])
-                assertEquals("code", queryParams["response_type"])
-                assertNotNull(queryParams["state"])
-            }
+            val redirectedUrl = URL(response.headers[HttpHeaders.Location])
+            val queryParams = redirectedUrl.queryParams()
+            assertEquals(testOAuthServerHost, redirectedUrl.host)
+            assertEquals("/authorizeUrl", redirectedUrl.path)
+            assertEquals(testClientId, queryParams["client_id"])
+            assertEquals("http://$testDrillHost/oauth/callback", queryParams["redirect_uri"])
+            assertEquals("code", queryParams["response_type"])
+            assertNotNull(queryParams["state"])
         }
     }
 
@@ -128,53 +131,53 @@ class OAuthModuleTest {
         val testAuthenticationCode = "test-code"
         val testState = "test-state"
 
-        withTestApplication({
-            environment {
-                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
-                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-                put("drill.auth.oauth2.clientId", testClientId)
-                put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.auth.jwt.issuer", testIssuer)
-                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
-            }
-            withTestOAuthModule {
-                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
-                mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" shouldRespond { request ->
-                        request.formData().apply {
-                            assertEquals(testClientId, this["client_id"])
-                            assertEquals(testClientSecret, this["client_secret"])
-                            assertEquals(testAuthenticationCode, this["code"])
-                            assertEquals(testState, this["state"])
-                        }
-                        respondOk(
-                            """
-                            {
-                              "access_token":"test-access-token",                                                            
-                              "refresh_token":"test-refresh-token"                              
+        testApplication {
+            application {
+                environment {
+                    put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                    put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                    put("drill.auth.oauth2.clientId", testClientId)
+                    put("drill.auth.oauth2.clientSecret", testClientSecret)
+                    put("drill.auth.jwt.issuer", testIssuer)
+                    put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+                }
+                withTestOAuthModule {
+                    bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                    mockHttpClient("oauthHttpClient",
+                        "/accessTokenUrl" shouldRespond { request ->
+                            request.formData().apply {
+                                assertEquals(testClientId, this["client_id"])
+                                assertEquals(testClientSecret, this["client_secret"])
+                                assertEquals(testAuthenticationCode, this["code"])
+                                assertEquals(testState, this["state"])
                             }
-                            """.trimIndent()
-                        )
-                    }
-                )
-            }
-        }) {
-            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(id = 123, testUsername, Role.USER, false))
-
-            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
-                assertEquals(HttpStatusCode.Found, response.status())
-                assertEquals("http://$testDrillHost/drill", response.headers[HttpHeaders.Location])
-                assertNotNull(response.cookies[JWT_COOKIE]).let { jwtCookie ->
-                    assertNotNull(jwtCookie.value)
-                    JWT.decode(jwtCookie.value).apply {
-                        assertEquals(testUsername, subject)
-                        assertEquals(testIssuer, issuer)
-                        assertEquals(Role.USER.name, getClaim("role").asString())
-                    }
-                    assertTrue(jwtCookie.httpOnly)
-                    assertEquals("/", jwtCookie.path)
+                            respondOk(
+                                """
+                                {
+                                  "access_token":"test-access-token",                                                            
+                                  "refresh_token":"test-refresh-token"                              
+                                }
+                                """.trimIndent()
+                            )
+                        }
+                    )
                 }
             }
+            wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenReturn(UserInfoView(id = 123, testUsername, Role.USER, false))
+
+            val noRedirectClient = createClient { followRedirects = false }
+            val response = noRedirectClient.get("/oauth/callback?code=$testAuthenticationCode&state=$testState")
+            assertEquals(HttpStatusCode.Found, response.status)
+            assertEquals("http://$testDrillHost/drill", response.headers[HttpHeaders.Location])
+            val jwtCookie = assertNotNull(response.setCookie().find { it.name == JWT_COOKIE })
+            assertNotNull(jwtCookie.value)
+            JWT.decode(jwtCookie.value).apply {
+                assertEquals(testUsername, subject)
+                assertEquals(testIssuer, issuer)
+                assertEquals(Role.USER.name, getClaim("role").asString())
+            }
+            assertTrue(jwtCookie.httpOnly)
+            assertEquals("/", jwtCookie.path)
         }
     }
 
@@ -183,26 +186,26 @@ class OAuthModuleTest {
         val wrongAuthenticationCode = "invalid-code"
         val testState = "test-state"
 
-        withTestApplication({
-            environment {
-                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
-                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-                put("drill.auth.oauth2.clientId", testClientId)
-                put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+        testApplication {
+            application {
+                environment {
+                    put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                    put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                    put("drill.auth.oauth2.clientId", testClientId)
+                    put("drill.auth.oauth2.clientSecret", testClientSecret)
+                    put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+                }
+                withTestOAuthModule {
+                    bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                    mockHttpClient("oauthHttpClient",
+                        "/accessTokenUrl" shouldRespond {
+                            respondError(HttpStatusCode.Unauthorized, "Invalid authentication code")
+                        }
+                    )
+                }
             }
-            withTestOAuthModule {
-                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
-                mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" shouldRespond {
-                        respondError(HttpStatusCode.Unauthorized, "Invalid authentication code")
-                    }
-                )
-            }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$wrongAuthenticationCode&state=$testState")) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
-            }
+            val response = client.get("/oauth/callback?code=$wrongAuthenticationCode&state=$testState")
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -211,34 +214,34 @@ class OAuthModuleTest {
         val testAuthenticationCode = "test-code"
         val testState = "test-state"
 
-        withTestApplication({
-            environment {
-                put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
-                put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
-                put("drill.auth.oauth2.clientId", testClientId)
-                put("drill.auth.oauth2.clientSecret", testClientSecret)
-                put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+        testApplication {
+            application {
+                environment {
+                    put("drill.auth.oauth2.authorizeUrl", "http://$testOAuthServerHost/authorizeUrl")
+                    put("drill.auth.oauth2.accessTokenUrl", "http://$testOAuthServerHost/accessTokenUrl")
+                    put("drill.auth.oauth2.clientId", testClientId)
+                    put("drill.auth.oauth2.clientSecret", testClientSecret)
+                    put("drill.auth.oauth2.redirectUrl", "http://$testDrillHost/drill")
+                }
+                withTestOAuthModule {
+                    bind<OAuthService>(overrides = true) with provider { mockOAuthService }
+                    mockHttpClient("oauthHttpClient",
+                        "/accessTokenUrl" shouldRespond { request ->
+                            respondOk(
+                                """
+                                {
+                                  "access_token":"test-access-token",                                                            
+                                  "refresh_token":"test-refresh-token"                              
+                                }
+                                """.trimIndent()
+                            )
+                        }
+                    )
+                }
             }
-            withTestOAuthModule {
-                bind<OAuthService>(overrides = true) with provider { mockOAuthService }
-                mockHttpClient("oauthHttpClient",
-                    "/accessTokenUrl" shouldRespond { request ->
-                        respondOk(
-                            """
-                            {
-                              "access_token":"test-access-token",                                                            
-                              "refresh_token":"test-refresh-token"                              
-                            }
-                            """.trimIndent()
-                        )
-                    }
-                )
-            }
-        }) {
             wheneverBlocking(mockOAuthService) { signInThroughOAuth(any()) }.thenThrow(OAuthUnauthorizedException())
-            with(handleRequest(HttpMethod.Get, "/oauth/callback?code=$testAuthenticationCode&state=$testState")) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
-            }
+            val response = client.get("/oauth/callback?code=$testAuthenticationCode&state=$testState")
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 

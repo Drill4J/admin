@@ -25,7 +25,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.client.*
 import io.ktor.client.engine.apache.*
-import io.ktor.content.*
+import io.ktor.http.content.*
 import io.ktor.http.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*

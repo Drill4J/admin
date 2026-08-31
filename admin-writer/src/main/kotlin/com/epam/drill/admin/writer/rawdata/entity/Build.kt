@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.entity
 
+import kotlinx.serialization.json.JsonElement
 import java.time.LocalDateTime
 
 class Build(
@@ -27,5 +28,13 @@ class Build(
     val branch: String? = null,
     val commitDate: LocalDateTime? = null,
     val commitMessage: String? = null,
-    val commitAuthor: String? = null
+    val commitAuthor: String? = null,
+    val status: BuildValidationStatus? = null,
+    val methodsCount: Int? = null,
+    val buildChecksum: String? = null,
+    val finalizedAt: LocalDateTime? = null,
+    val validatedAt: LocalDateTime? = null,
+    val agentVersion: String? = null,
+    val agentEnv: JsonElement? = null,
+    val agentParams: JsonElement? = null,
 )

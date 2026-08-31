@@ -16,10 +16,12 @@
 package com.epam.drill.admin.writer.rawdata.repository
 
 import com.epam.drill.admin.writer.rawdata.entity.Instance
+import com.epam.drill.admin.writer.rawdata.entity.InstanceHeartbeat
 import java.time.LocalDate
 
 interface InstanceRepository {
     suspend fun create(instance: Instance)
+    suspend fun updateHeartbeat(instance: InstanceHeartbeat)
     suspend fun deleteAllCreatedBefore(groupId: String, createdBefore: LocalDate)
     suspend fun deleteAllByBuildId(groupId: String, appId: String, buildId: String)
 }

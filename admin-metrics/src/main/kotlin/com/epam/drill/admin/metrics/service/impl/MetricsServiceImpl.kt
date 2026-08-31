@@ -18,12 +18,16 @@ package com.epam.drill.admin.metrics.service.impl
 import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.exception.ResourceNotFoundException
 import com.epam.drill.admin.common.service.generateBuildId
+import com.epam.drill.admin.common.service.parseBuildId
+import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlOrchestrator
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
 import com.epam.drill.admin.metrics.config.TestRecommendationsConfig
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
@@ -39,6 +43,7 @@ import mu.KotlinLogging
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDateTime
 
 class MetricsServiceImpl(
@@ -46,6 +51,8 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
+    private val etl: EtlOrchestrator,
+    private val testDefinitionCoverageEtl: EtlOrchestrator,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
@@ -54,7 +61,10 @@ class MetricsServiceImpl(
         metricsRepository.getGroups()
     }
 
-    override suspend fun getApplications(groupId: String?): List<ApplicationView> {
+    override suspend fun getApplications(groupId: String?, freshAfter: Instant?): List<ApplicationView> {
+        //TODO refresh across all groups if groupId is not provided
+        if (groupId != null)
+            refresh(groupId, freshAfter)
         return transaction {
             metricsRepository.getApplications(groupId).map {
                 ApplicationView(
@@ -70,13 +80,22 @@ class MetricsServiceImpl(
         appId: String,
         branches: List<String>,
         envIds: List<String>,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField?,
+        sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<BuildView> = transaction {
-        pagedListOf(page = page ?: 1, pageSize = pageSize ?: metricsConfig.pageSize) { offset, limit ->
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<BuildView> {
+        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getBuilds(
                 groupId, appId,
                 branches, envIds,
+                commitSha,
+                buildVersion,
+                sortBy,
+                sortOrder,
                 offset, limit
             ).map {
                 BuildView(
@@ -95,7 +114,9 @@ class MetricsServiceImpl(
         } withTotal {
             metricsRepository.getBuildsCount(
                 groupId, appId,
-                branches, envIds
+                branches, envIds,
+                commitSha,
+                buildVersion,
             )
         }
     }
@@ -453,14 +474,25 @@ class MetricsServiceImpl(
         testSessionId: String,
         buildId: String,
         testDefinitionId: String?,
-    ): TestSessionCoverageSummaryView = transaction {
-        validateTestSessionBuild(groupId, testSessionId, buildId)
-        val row = if (testDefinitionId.isNullOrBlank()) {
-            metricsRepository.getTestSessionCoverageSummary(buildId, testSessionId)
-        } else {
-            metricsRepository.getTestDefinitionCoverageSummary(buildId, testSessionId, testDefinitionId)
+    ): TestSessionCoverageSummaryView {
+        if (!testDefinitionId.isNullOrBlank()) {
+            testDefinitionCoverageEtl.run(
+                EtlContext(
+                    groupId = groupId,
+                    testSessionId = testSessionId,
+                    testDefinitionId = testDefinitionId,
+                )
+            )
         }
-        mapToTestSessionCoverageSummaryView(row)
+        return transaction {
+            validateTestSessionBuild(groupId, testSessionId, buildId)
+            val row = if (testDefinitionId.isNullOrBlank()) {
+                metricsRepository.getTestSessionCoverageSummary(buildId, testSessionId)
+            } else {
+                metricsRepository.getTestDefinitionCoverageSummary(buildId, testSessionId, testDefinitionId)
+            }
+            mapToTestSessionCoverageSummaryView(row)
+        }
     }
 
     override suspend fun getTestSessionDefinitions(
@@ -761,6 +793,7 @@ class MetricsServiceImpl(
         testSessionId: String?,
         testDefinitionId: String?,
         includeOtherBuilds: Boolean,
+        freshAfter: Instant?,
     ): List<Any> {
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
@@ -770,10 +803,20 @@ class MetricsServiceImpl(
             className = classNamePattern
         )
 
+        refresh(parseBuildId(buildId).groupId, freshAfter)
+
         val data = when {
             testDefinitionId != null -> {
                 val resolvedTestSessionId = testSessionId
                     ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                testDefinitionCoverageEtl.run(
+                    EtlContext(
+                        groupId = parseBuildId(buildId).groupId,
+                        testSessionId = testSessionId,
+                        testDefinitionId = testDefinitionId
+                    ),
+                    finalTimestamp = freshAfter
+                )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
                     testSessionId = resolvedTestSessionId,
@@ -783,6 +826,7 @@ class MetricsServiceImpl(
                     coverageAppEnvIds = envIds,
                 )
             }
+
             testSessionId != null -> {
                 metricsRepository.getMethodsWithCoverageByTestSession(
                     buildId = buildId,
@@ -793,6 +837,7 @@ class MetricsServiceImpl(
                     testTags = testTags,
                 )
             }
+
             else -> {
                 metricsRepository.getMethodsWithCoverage(
                     buildId = buildId,
@@ -824,6 +869,7 @@ class MetricsServiceImpl(
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
         includeOtherBuilds: Boolean,
+        freshAfter: Instant?,
     ): List<Any> {
 
         if (!metricsRepository.buildExists(baselineBuildId)) {
@@ -833,6 +879,8 @@ class MetricsServiceImpl(
         if (!metricsRepository.buildExists(buildId)) {
             throw BuildNotFound("Build info not found for $buildId")
         }
+
+        refresh(parseBuildId(buildId).groupId, freshAfter)
 
         val data = metricsRepository.getChangesWithCoverage(
             buildId = buildId,
@@ -863,6 +911,7 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         coverageThreshold: Double,
+        freshAfter: Instant?,
     ): Map<String, Any?> {
         return transaction {
 
@@ -885,6 +934,8 @@ class MetricsServiceImpl(
             if (!metricsRepository.buildExists(buildId)) {
                 throw BuildNotFound("Build info not found for $buildId")
             }
+
+            refresh(groupId, freshAfter)
 
             val metrics = metricsRepository.getBuildDiffReport(
                 buildId,
@@ -968,6 +1019,7 @@ class MetricsServiceImpl(
         }
     }
 
+    // TODO: discuss with team later — replaces main's getChanges() (/changes slim method-diff API).
     override suspend fun getBuildChanges(
         groupId: String,
         appId: String,
@@ -987,8 +1039,9 @@ class MetricsServiceImpl(
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<BuildChangeView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<BuildChangeView> {
         val validatedSortBy = validateBuildChangeSortBy(sortBy)
         val baselineBuildId = generateBuildId(
             groupId,
@@ -1012,10 +1065,7 @@ class MetricsServiceImpl(
 
         val normalizedChangeTypes = changeTypes.map { it.trim().lowercase() }.filter { it.isNotBlank() }
 
-        return@transaction pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getBuildChanges(
                 buildId = buildId,
                 baselineBuildId = baselineBuildId,
@@ -1068,12 +1118,16 @@ class MetricsServiceImpl(
         pageSize: Int?,
         testSessionId: String?,
         testDefinitionId: String?,
-    ): PagedList<MethodView> = transaction {
+        freshAfter: Instant?,
+    ): PagedList<MethodView> {
         val resolvedBuildId = buildId?.takeIf { it.isNotBlank() }
             ?: generateBuildId(groupId!!, appId!!, instanceId, commitSha, buildVersion)
         if (!metricsRepository.buildExists(resolvedBuildId)) {
             throw BuildNotFound("Build info not found for $resolvedBuildId")
         }
+
+        val resolvedGroupId = groupId?.takeIf { it.isNotBlank() } ?: parseBuildId(resolvedBuildId).groupId
+        val freshness = refresh(resolvedGroupId, freshAfter)
 
         val packageFilter = packageNamePattern?.takeIf { it.isNotBlank() }
         val classFilter = classNamePattern?.takeIf { it.isNotBlank() }
@@ -1086,101 +1140,104 @@ class MetricsServiceImpl(
         )
         val mappedSortBy = sortBy?.let { sessionSortMapping[it] }
 
-        when {
-            testDefinitionId != null -> {
-                val resolvedTestSessionId = testSessionId
-                    ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
-                validateTestSessionBuildForCoverage(resolvedTestSessionId, resolvedBuildId)
+        val result = transaction {
+            when {
+                testDefinitionId != null -> {
+                    val resolvedTestSessionId = testSessionId
+                        ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
+                    validateTestSessionBuildForCoverage(resolvedTestSessionId, resolvedBuildId)
 
-                return@transaction pagedListOf(
-                    page = page ?: 1,
-                    pageSize = pageSize ?: metricsConfig.pageSize
-                ) { offset, limit ->
-                    metricsRepository.getMethodsWithCoverageByTestDefinition(
-                        buildId = resolvedBuildId,
-                        testSessionId = resolvedTestSessionId,
-                        testDefinitionId = testDefinitionId,
-                        packageNamePattern = methodCriteria.packageNamePattern,
-                        methodSignaturePattern = methodCriteria.signaturePattern,
-                        coverageAppEnvIds = envIds,
-                        sortBy = mappedSortBy,
-                        sortOrder = sortOrder,
-                        offset = offset,
-                        limit = limit,
-                    ).map(::mapToMethodView)
-                } withTotal {
-                    metricsRepository.getMethodsWithCoverageByTestDefinitionCount(
-                        buildId = resolvedBuildId,
-                        testSessionId = resolvedTestSessionId,
-                        testDefinitionId = testDefinitionId,
-                        packageNamePattern = methodCriteria.packageNamePattern,
-                        methodSignaturePattern = methodCriteria.signaturePattern,
-                        coverageAppEnvIds = envIds,
-                    )
+                    return@transaction pagedListOf(
+                        page = page ?: 1,
+                        pageSize = pageSize ?: metricsConfig.pageSize
+                    ) { offset, limit ->
+                        metricsRepository.getMethodsWithCoverageByTestDefinition(
+                            buildId = resolvedBuildId,
+                            testSessionId = resolvedTestSessionId,
+                            testDefinitionId = testDefinitionId,
+                            packageNamePattern = methodCriteria.packageNamePattern,
+                            methodSignaturePattern = methodCriteria.signaturePattern,
+                            coverageAppEnvIds = envIds,
+                            sortBy = mappedSortBy,
+                            sortOrder = sortOrder,
+                            offset = offset,
+                            limit = limit,
+                        ).map(::mapToMethodView)
+                    } withTotal {
+                        metricsRepository.getMethodsWithCoverageByTestDefinitionCount(
+                            buildId = resolvedBuildId,
+                            testSessionId = resolvedTestSessionId,
+                            testDefinitionId = testDefinitionId,
+                            packageNamePattern = methodCriteria.packageNamePattern,
+                            methodSignaturePattern = methodCriteria.signaturePattern,
+                            coverageAppEnvIds = envIds,
+                        )
+                    }
+                }
+                testSessionId != null -> {
+                    validateTestSessionBuildForCoverage(testSessionId, resolvedBuildId)
+
+                    return@transaction pagedListOf(
+                        page = page ?: 1,
+                        pageSize = pageSize ?: metricsConfig.pageSize
+                    ) { offset, limit ->
+                        metricsRepository.getMethodsWithCoverageByTestSession(
+                            buildId = resolvedBuildId,
+                            testSessionId = testSessionId,
+                            testTags = testTags,
+                            packageNamePattern = methodCriteria.packageNamePattern,
+                            methodSignaturePattern = methodCriteria.signaturePattern,
+                            coverageAppEnvIds = envIds,
+                            sortBy = mappedSortBy,
+                            sortOrder = sortOrder,
+                            offset = offset,
+                            limit = limit,
+                        ).map(::mapToMethodView)
+                    } withTotal {
+                        metricsRepository.getMethodsWithCoverageByTestSessionCount(
+                            buildId = resolvedBuildId,
+                            testSessionId = testSessionId,
+                            testTags = testTags,
+                            packageNamePattern = methodCriteria.packageNamePattern,
+                            methodSignaturePattern = methodCriteria.signaturePattern,
+                            coverageAppEnvIds = envIds,
+                        )
+                    }
                 }
             }
-            testSessionId != null -> {
-                validateTestSessionBuildForCoverage(testSessionId, resolvedBuildId)
 
-                return@transaction pagedListOf(
-                    page = page ?: 1,
-                    pageSize = pageSize ?: metricsConfig.pageSize
-                ) { offset, limit ->
-                    metricsRepository.getMethodsWithCoverageByTestSession(
-                        buildId = resolvedBuildId,
-                        testSessionId = testSessionId,
-                        testTags = testTags,
-                        packageNamePattern = methodCriteria.packageNamePattern,
-                        methodSignaturePattern = methodCriteria.signaturePattern,
-                        coverageAppEnvIds = envIds,
-                        sortBy = mappedSortBy,
-                        sortOrder = sortOrder,
-                        offset = offset,
-                        limit = limit,
-                    ).map(::mapToMethodView)
-                } withTotal {
-                    metricsRepository.getMethodsWithCoverageByTestSessionCount(
-                        buildId = resolvedBuildId,
-                        testSessionId = testSessionId,
-                        testTags = testTags,
-                        packageNamePattern = methodCriteria.packageNamePattern,
-                        methodSignaturePattern = methodCriteria.signaturePattern,
-                        coverageAppEnvIds = envIds,
-                    )
-                }
-            }
-        }
-
-        val sortingFieldMapping = mapOf(
-            "coverageRatio" to "isolated_probes_coverage_ratio",
-            "probesCount" to "probes_count",
-            "coveredProbes" to "isolated_covered_probes",
-        )
-        val buildMappedSortBy = sortBy?.let { sortingFieldMapping[it] }
-
-        return@transaction pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
-            metricsRepository.getMethodsWithCoverage(
-                buildId = resolvedBuildId,
-                coverageTestTags = testTags,
-                coverageAppEnvIds = envIds,
-                coverageBranches = branches,
-                packageName = packageFilter,
-                className = classFilter,
-                sortBy = buildMappedSortBy,
-                sortOrder = sortOrder,
-                offset = offset,
-                limit = limit
-            ).map(::mapToMethodView)
-        } withTotal {
-            metricsRepository.getMethodsCount(
-                buildId = resolvedBuildId,
-                packageNamePattern = packageFilter,
-                classNamePattern = classFilter,
+            val sortingFieldMapping = mapOf(
+                "coverageRatio" to "isolated_probes_coverage_ratio",
+                "probesCount" to "probes_count",
+                "coveredProbes" to "isolated_covered_probes",
             )
+            val buildMappedSortBy = sortBy?.let { sortingFieldMapping[it] }
+
+            return@transaction pagedListOf(
+                page = page ?: 1,
+                pageSize = pageSize ?: metricsConfig.pageSize
+            ) { offset, limit ->
+                metricsRepository.getMethodsWithCoverage(
+                    buildId = resolvedBuildId,
+                    coverageTestTags = testTags,
+                    coverageAppEnvIds = envIds,
+                    coverageBranches = branches,
+                    packageName = packageFilter,
+                    className = classFilter,
+                    sortBy = buildMappedSortBy,
+                    sortOrder = sortOrder,
+                    offset = offset,
+                    limit = limit
+                ).map(::mapToMethodView)
+            } withTotal {
+                metricsRepository.getMethodsCount(
+                    buildId = resolvedBuildId,
+                    packageNamePattern = packageFilter,
+                    classNamePattern = classFilter,
+                )
+            }
         }
+        return PagedList(result.page, result.pageSize, result.items, result.total, freshness)
     }
 
     override suspend fun getCoverageByPackage(
@@ -1322,11 +1379,13 @@ class MetricsServiceImpl(
         testCriteria: TestCriteria,
         methodCriteria: MethodCriteria,
         coverageCriteria: CoverageCriteria,
+        impactStatuses: List<TestImpactStatus>,
         sortBy: String?,
         sortOrder: SortOrder?,
         page: Int?,
-        pageSize: Int?
-    ): PagedList<TestView> = transaction {
+        pageSize: Int?,
+        freshAfter: Instant?
+    ): PagedList<TestView> {
         val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Target build info not found for ${build.id}")
 
@@ -1335,15 +1394,11 @@ class MetricsServiceImpl(
 
         val mappedSortBy = validateImpactedTestsSortBy(sortBy)
 
-        return@transaction pagedListOf(
-            page = page ?: 1,
-            pageSize = pageSize ?: metricsConfig.pageSize
-        ) { offset, limit ->
+        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getImpactedTests(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
-                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,
@@ -1356,6 +1411,8 @@ class MetricsServiceImpl(
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                impactStatuses = impactStatuses,
 
                 sortBy = mappedSortBy,
                 sortOrder = sortOrder,
@@ -1370,6 +1427,7 @@ class MetricsServiceImpl(
                     testRunner = data["test_runner"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
+                    impactStatus = (data["impact_status"] as String).let { TestImpactStatus.valueOf(it) },
                     impactedMethods = (data["impacted_methods"] as Number?)?.toInt(),
                 )
             }
@@ -1391,6 +1449,8 @@ class MetricsServiceImpl(
 
                 coverageBranches = coverageCriteria.branches,
                 coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                impactStatuses = impactStatuses,
             )
         }
     }
@@ -1421,6 +1481,58 @@ class MetricsServiceImpl(
             testRunners = options["testRunners"].orEmpty(),
             testTags = options["testTags"].orEmpty(),
         )
+    }
+
+    override suspend fun getImpactedMethods(
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria,
+        methodCriteria: MethodCriteria,
+        coverageCriteria: CoverageCriteria,
+        sortBy: String?,
+        sortOrder: SortOrder?,
+        page: Int?,
+        pageSize: Int?,
+        freshAfter: Instant?,
+    ): PagedList<MethodView> {
+        val targetBuildId = build.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Target build info not found for ${build.id}")
+
+        val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
+            ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
+
+        val sortingFieldMapping = mapOf(
+            "signature" to "signature",
+            "className" to "class_name",
+            "name" to "method_name",
+            "impactedTests" to "impacted_tests"
+        )
+        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
+
+        return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
+            metricsRepository.getImpactedMethods(
+                targetBuildId = targetBuildId,
+                baselineBuildId = baselineBuildId,
+
+                testTaskId = testCriteria.testTaskId,
+                testTags = testCriteria.testTags,
+                testPathPattern = testCriteria.testPath,
+                testNamePattern = testCriteria.testName,
+
+                packageNamePattern = methodCriteria.packageNamePattern,
+                methodSignaturePattern = methodCriteria.signaturePattern,
+                excludeMethodSignatures = methodCriteria.excludeMethodSignatures,
+
+                coverageBranches = coverageCriteria.branches,
+                coverageAppEnvIds = coverageCriteria.appEnvIds,
+
+                sortBy = mappedSortBy,
+                sortOrder = sortOrder,
+
+                offset = offset,
+                limit = limit
+            ).map(::mapToImpactedMethodView)
+        }
     }
 
     private fun mapToBuildDetailView(row: Map<String, Any?>): BuildDetailView = BuildDetailView(
@@ -1550,13 +1662,19 @@ class MetricsServiceImpl(
         impactedTests = (resultSet["impacted_tests"] as Number).toInt(),
     )
 
-    private fun mapToChangeView(resultSet: Map<String, Any?>): ChangeView = ChangeView(
+    private fun mapToImpactedMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
         signature = resultSet["signature"] as String,
         className = resultSet["class_name"] as String,
         name = resultSet["method_name"] as String,
-        params = (resultSet["method_params"] as String).split(",").map(String::trim),
-        returnType = resultSet["return_type"] as String,
+        params = (resultSet["method_params"] as? String)?.split(",")?.map(String::trim) ?: emptyList(),
+        returnType = resultSet["return_type"] as? String ?: "",
         changeType = ChangeType.fromString(resultSet["change_type"] as String?),
+        probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
+        coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
+        coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
+        impactedTests = (resultSet["impacted_tests"] as Number?)?.toInt(),
     )
 
     private fun mapToMethodView(resultSet: Map<String, Any?>): MethodView = MethodView(
@@ -1569,7 +1687,7 @@ class MetricsServiceImpl(
         changeType = ChangeType.fromString(resultSet["change_type"] as String?),
         probesCount = (resultSet["probes_count"] as Number?)?.toInt() ?: 0,
         coveredProbes = (resultSet["isolated_covered_probes"] as Number?)?.toInt() ?: 0,
-        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number).toInt(),
+        coveredProbesInOtherBuilds = (resultSet["aggregated_covered_probes"] as Number?)?.toInt() ?: 0,
         coverageRatio = (resultSet["isolated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         coverageRatioInOtherBuilds = (resultSet["aggregated_probes_coverage_ratio"] as Number?)?.toDouble() ?: 0.0,
         missedProbes = (resultSet["isolated_missed_probes"] as Number?)?.toInt(),
@@ -1770,6 +1888,38 @@ class MetricsServiceImpl(
             "${it.key}=${URLEncoder.encode(it.value, StandardCharsets.UTF_8.toString())}"
         }
         return URI("$uri?$queryString").toString()
+    }
+
+    private suspend fun refresh(groupId: String, freshAfter: Instant?): Instant? {
+        return freshAfter?.let {
+            etl.run(EtlContext(groupId), finalTimestamp = it).minOfOrNull { result ->
+                result.lastProcessedAt
+            }
+        }
+    }
+
+    /**
+     * Fetches paged list of items with optional freshness guarantee.
+     * If [freshAfter] is provided, it will trigger a refresh and wait for it to complete before fetching the items.
+     */
+    private suspend fun <T> pagedFreshListOf(
+        groupId: String,
+        page: Int?,
+        pageSize: Int?,
+        freshAfter: Instant?,
+        getItems: suspend (offset: Int, limit: Int) -> List<T>
+    ): PagedList<T> {
+        val page = page ?: 1
+        val pageSize = pageSize ?: metricsConfig.pageSize
+        val freshness = refresh(groupId, freshAfter)
+        val items = getItems((page - 1) * pageSize, pageSize)
+        return PagedList(
+            page, pageSize, items, when {
+                items.size < pageSize -> ((page - 1) * pageSize + items.size).toLong()
+                else -> null
+            },
+            refreshedAt = freshness
+        )
     }
 
     companion object {

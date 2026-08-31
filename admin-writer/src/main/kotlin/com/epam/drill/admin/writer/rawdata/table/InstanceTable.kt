@@ -15,13 +15,20 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import kotlinx.serialization.json.JsonElement
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.json.jsonb
 
 object InstanceTable : StringIdTable("raw_data.instances", "id") {
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
     val appId = varchar("app_id", SHORT_TEXT_LENGTH)
     val buildId = (varchar("build_id",  MEDIUM_TEXT_LENGTH).references(BuildTable.id)).nullable()
     val envId = varchar("env_id",  MEDIUM_TEXT_LENGTH).nullable()
+    val agentVersion = varchar("agent_version", MEDIUM_TEXT_LENGTH).nullable()
+    val agentEnv = jsonb<JsonElement>("agent_env", rawDataJson).nullable()
+    val agentParams = jsonb<JsonElement>("agent_params", rawDataJson).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val lastHeartbeatAt = datetime("last_heartbeat_at").nullable()
+    val status = varchar("status", MEDIUM_TEXT_LENGTH).nullable()
 }

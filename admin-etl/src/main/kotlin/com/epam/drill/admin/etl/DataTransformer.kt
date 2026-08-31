@@ -20,17 +20,7 @@ import kotlinx.coroutines.flow.Flow
 interface DataTransformer<in T: EtlRow, out R: EtlRow> {
     val name: String
     suspend fun transform(
-        groupId: String,
+        context: EtlContext,
         collector: Flow<T>,
     ): Flow<R>
 }
-
-class NopTransformer<T: EtlRow> : DataTransformer<T, T> {
-    override val name: String = "nop-transformer"
-    override suspend fun transform(
-        groupId: String,
-        collector: Flow<T>,
-    ): Flow<T> = collector
-}
-
-val untypedNopTransformer = NopTransformer<UntypedRow>()

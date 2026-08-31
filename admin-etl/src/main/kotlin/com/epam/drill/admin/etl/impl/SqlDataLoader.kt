@@ -15,7 +15,10 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.common.config.recordInline
+import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
+import com.epam.drill.admin.etl.config.EtlMeter
 import kotlinx.coroutines.Dispatchers
 import mu.KotlinLogging
 import org.jetbrains.exposed.sql.Database
@@ -33,17 +36,20 @@ abstract class SqlDataLoader<T: EtlRow>(
     override val loggingFrequency: Int,
     open val sqlUpsert: String,
     open val sqlDelete: String,
-    open val database: Database
-) : BatchDataLoader<T>(name, batchSize, loggingFrequency) {
+    open val database: Database,
+    override val metrics: EtlMeter
+) : BatchDataLoader<T>(name, batchSize, loggingFrequency, metrics) {
     private val logger = KotlinLogging.logger {}
 
     abstract fun prepareSql(sql: String): PreparedSql<T>
 
     override suspend fun loadBatch(
-        groupId: String,
+        context: EtlContext,
         batch: List<T>,
         batchNo: Int
     ): BatchResult {
+        val timer = metrics.loadingDuration(name, context)
+        val failures = metrics.loadingFailures(name, context)
         val preparedSql = prepareSql(sqlUpsert)
         val duration = try {
             newSuspendedTransaction(db = database) {
@@ -60,7 +66,9 @@ abstract class SqlDataLoader<T: EtlRow>(
                             }
                             addBatch()
                         }
-                        executeBatch()
+                        timer.recordInline {
+                            executeBatch()
+                        }
                     }
                     override fun prepareSQL(transaction: Transaction, prepared: Boolean): String = preparedSql.getSql()
                     override fun arguments(): Iterable<Iterable<Pair<IColumnType<*>, Any?>>> = emptyList()
@@ -72,7 +80,9 @@ abstract class SqlDataLoader<T: EtlRow>(
                 success = false,
                 rowsLoaded = 0,
                 errorMessage = "Error during loading data with loader $name: ${e.message ?: e.javaClass.simpleName}"
-            )
+            ).also {
+                failures.increment()
+            }
         }
         return BatchResult(
             success = true,
@@ -81,7 +91,8 @@ abstract class SqlDataLoader<T: EtlRow>(
         )
     }
 
-    override suspend fun deleteAll(groupId: String) {
+    override suspend fun deleteAll(context: EtlContext) {
+        val groupId = context.groupId
         logger.debug { "Loader [$name] deleting data for group [$groupId]" }
         val preparedSql = prepareSql(sqlDelete)
         val duration = try {

@@ -15,8 +15,10 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import kotlinx.serialization.json.JsonElement
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
 import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.json.jsonb
 
 object BuildTable : StringIdTable("raw_data.builds") {
     val groupId = varchar("group_id", SHORT_TEXT_LENGTH)
@@ -28,6 +30,14 @@ object BuildTable : StringIdTable("raw_data.builds") {
     val commitAuthor = varchar("commit_author", SHORT_TEXT_LENGTH).nullable()
     val commitMessage = varchar("commit_message", LONG_TEXT_LENGTH).nullable()
     val committedAt = datetime("committed_at").nullable()
+    val agentVersion = varchar("agent_version", MEDIUM_TEXT_LENGTH).nullable()
+    val agentEnv = jsonb<JsonElement>("agent_env", rawDataJson).nullable()
+    val agentParams = jsonb<JsonElement>("agent_params", rawDataJson).nullable()
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt = datetime("updated_at").defaultExpression(CurrentDateTime)
+    val validationStatus = varchar("validation_status", SHORT_TEXT_LENGTH).nullable()
+    val methodsCount = integer("methods_count").nullable()
+    val methodsChecksum = varchar("methods_checksum", SHORT_TEXT_LENGTH).nullable()
+    val finalizedAt = datetime("finalized_at").nullable()
+    val validatedAt = datetime("validated_at").nullable()
 }

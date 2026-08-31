@@ -16,6 +16,7 @@
 package com.epam.drill.admin.writer.rawdata.route.payload
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 class InstancePayload(
@@ -25,4 +26,7 @@ class InstancePayload(
     val commitSha: String? = null,
     val buildVersion: String? = null,
     val envId: String? = null,
+    val agentVersion: String? = null,
+    val agentEnvironment: JsonElement? = null,
+    val agentParams: JsonElement? = null,
 ): RawDataPayload

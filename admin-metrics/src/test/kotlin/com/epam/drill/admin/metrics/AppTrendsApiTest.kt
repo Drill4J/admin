@@ -82,7 +82,10 @@ class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
             parameter("appId", testApp)
             parameter("size", 10)
         }.apply {
-            assertTrue(status == HttpStatusCode.BadRequest || status == HttpStatusCode.InternalServerError)
+            assertTrue(
+                status == HttpStatusCode.BadRequest || status == HttpStatusCode.InternalServerError,
+                "missing baseline expected 400/500 but was $status body=${bodyAsText()}"
+            )
         }
 
         client.get("/metrics/apps/trends/changes") {
@@ -91,18 +94,18 @@ class AppTrendsApiTest : MetricsDatabaseTests({ default, metrics ->
             parameter("baselineBuildId", build1Id)
             parameter("size", 10)
         }.apply {
-            assertEquals(HttpStatusCode.OK, status)
+            assertEquals(HttpStatusCode.OK, status, "with baseline body=${bodyAsText()}")
             val json = JsonPath.parse(bodyAsText())
             val data = json.read<List<Map<String, Any>>>("$.data")
-            assertTrue(data.size >= 2)
+            assertTrue(data.size >= 2, "expected >=2 trend points, got ${data.size}: $data")
             assertEquals(build1Id, data[0]["buildId"])
             data.forEach { point ->
                 val coveredProbes = (point["coveredProbes"] as Number).toInt()
                 val aggregatedProbes = (point["coveredInOtherBuildsProbes"] as Number).toInt()
                 val coveredMethods = (point["coveredMethods"] as Number).toInt()
                 val aggregatedMethods = (point["coveredInOtherBuildsMethods"] as Number).toInt()
-                assertTrue(aggregatedProbes >= coveredProbes)
-                assertTrue(aggregatedMethods >= coveredMethods)
+                assertTrue(aggregatedProbes >= coveredProbes, "probes agg=$aggregatedProbes iso=$coveredProbes point=$point")
+                assertTrue(aggregatedMethods >= coveredMethods, "methods agg=$aggregatedMethods iso=$coveredMethods point=$point")
             }
         }
     }

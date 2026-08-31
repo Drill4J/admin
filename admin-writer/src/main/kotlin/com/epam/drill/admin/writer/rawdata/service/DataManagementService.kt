@@ -44,4 +44,7 @@ interface DataManagementService {
         pageSize: Int,
     ): MethodIgnoreRulesPageView
     suspend fun deleteMethodIgnoreRuleById(groupId: String, appId: String, ruleId: Int)
+
+    suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
+    suspend fun deleteTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
 }

@@ -15,44 +15,70 @@
  */
 package com.epam.drill.admin.etl.job
 
-import com.epam.drill.admin.etl.EtlOrchestrator
-import com.epam.drill.admin.writer.rawdata.service.SettingsService
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.impl.toEtlContext
+import com.epam.drill.admin.etl.impl.toMap
+import com.epam.drill.admin.etl.service.EtlService
 import kotlinx.coroutines.runBlocking
 import org.quartz.DisallowConcurrentExecution
 import org.quartz.Job
+import org.quartz.JobDataMap
 import org.quartz.JobExecutionContext
+import org.quartz.JobKey
 import java.time.Instant
-import java.time.ZoneOffset.UTC
+
+const val DEFAULT_ETL = "metrics"
 
 @DisallowConcurrentExecution
 class UpdateMetricsEtlJob(
-    private val settingsService: SettingsService,
-    private val etl: EtlOrchestrator,
+    private val etlService: EtlService,
 ) : Job {
 
     override fun execute(context: JobExecutionContext) {
-        val groupId: String? = context.mergedJobDataMap.getString("groupId")
+        val etlName = context.mergedJobDataMap.getString("etl") ?: DEFAULT_ETL
+        val hasGroupId: Boolean = context.mergedJobDataMap.getString("groupId") != null
         val reset: Boolean = context.mergedJobDataMap.getBooleanValue("reset")
-
-        runBlocking {
-            val results = settingsService.getAllGroupSettings().let {
-                if (groupId != null) mapOf(groupId to (it[groupId])) else it
-            }.map { (groupId, groupSettings) ->
-                val initTimestamp = groupSettings?.metricsPeriodDays?.let {
-                    Instant.now().atZone(UTC).toLocalDate().minusDays(it.toLong()).atStartOfDay().toInstant(UTC)
-                } ?: Instant.EPOCH
-                groupId to initTimestamp
-            }.map { (groupId, initTimestamp) ->
-                async {
-                    if (reset)
-                        etl.rerun(groupId, initTimestamp, withDataDeletion = true)
-                    else
-                        etl.run(groupId, initTimestamp)
-                }
-            }.awaitAll().flatten()
-            context.result = results
+        val initTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("initTimestamp")
+        val finalTimestamp: Instant? = context.mergedJobDataMap.getInstantValue("finalTimestamp")
+        val skipIfLocked = context.mergedJobDataMap.getBooleanValue("skipIfLocked")
+        val etlContext = takeIf { hasGroupId }?.let {
+            context.mergedJobDataMap.toEtlContext()
+        }
+        context.result = runBlocking {
+            etlService.refresh(etlContext, etlName, reset, initTimestamp, finalTimestamp, skipIfLocked)
         }
     }
+
+    private fun JobDataMap.getInstantValue(key: String): Instant? = get(key)?.let {
+        when (it) {
+            is Instant -> it
+            is String -> Instant.parse(it)
+            is Long -> Instant.ofEpochMilli(it)
+            else -> throw IllegalArgumentException("Unsupported initTimestamp type: ${it::class}")
+        }
+    }
+}
+
+val updateMetricsEtlJobKey: JobKey
+    get() = JobKey.jobKey("metricsEtl", "drill")
+
+fun getUpdateMetricsEtlDataMap(groupId: String?, reset: Boolean) = JobDataMap().apply {
+    groupId?.let { put("groupId", it) }
+    put("reset", reset)
+}
+
+fun getJobDataMap(
+    context: EtlContext? = null,
+    etl: String? = null,
+    reset: Boolean = false,
+    initTimestamp: Instant? = null,
+    finalTimestamp: Instant? = null,
+): JobDataMap {
+    val jobData = JobDataMap()
+    context?.toMap()?.filterValues { it != null }?.forEach { (key, value) -> jobData.put(key, value) }
+    etl?.let { jobData.put("etl", it) }
+    jobData.put("reset", reset)
+    initTimestamp?.let { jobData.put("initTimestamp", it) }
+    finalTimestamp?.let { jobData.put("finalTimestamp", it) }
+    return jobData
 }

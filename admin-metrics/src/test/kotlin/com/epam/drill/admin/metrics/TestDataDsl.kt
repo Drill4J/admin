@@ -16,7 +16,8 @@
 package com.epam.drill.admin.metrics
 
 import com.epam.drill.admin.common.scheduler.DrillScheduler
-import com.epam.drill.admin.etl.config.etlDIModule
+import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.metrics.config.etlDIModule
 import com.epam.drill.admin.metrics.config.metricsDIModule
 import com.epam.drill.admin.etl.job.UpdateMetricsEtlJob
 import com.epam.drill.admin.etl.route.etlManagementRoutes
@@ -27,8 +28,10 @@ import com.epam.drill.admin.test.StubDrillScheduler
 import com.epam.drill.admin.test.drillApplication
 import com.epam.drill.admin.test.drillClient
 import com.epam.drill.admin.test.waitUntilInBlocking
+import com.epam.drill.admin.writer.rawdata.config.dataManagementServicesDIModule
 import com.epam.drill.admin.writer.rawdata.config.rawDataServicesDIModule
 import com.epam.drill.admin.writer.rawdata.route.dataIngestRoutes
+import com.epam.drill.admin.writer.rawdata.route.dataManagementRoutes
 import com.epam.drill.admin.writer.rawdata.route.payload.InstancePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SessionPayload
 import com.epam.drill.admin.writer.rawdata.route.payload.SingleMethodPayload
@@ -40,6 +43,7 @@ import io.ktor.client.request.parameter
 import io.ktor.server.routing.route
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
+import org.kodein.di.allInstances
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
@@ -47,17 +51,16 @@ import org.kodein.di.singleton
 val scheduler = DI.Module("testModule") {
     bind<DrillScheduler>() with singleton {
         StubDrillScheduler(
-            UpdateMetricsEtlJob(
-                instance(), instance()
-            )
+            instance<UpdateMetricsEtlJob>()
         )
     }
 }
 
 fun havingData(testsData: suspend TestDataDsl.() -> Unit): HttpClient {
     return runBlocking {
-        drillApplication(scheduler, rawDataServicesDIModule, metricsDIModule, etlDIModule) {
+        drillApplication(rawDataServicesDIModule, dataManagementServicesDIModule, metricsDIModule, etlDIModule, scheduler) {
             dataIngestRoutes()
+            dataManagementRoutes()
             metricsRoutes()
             route("/metrics") {
                 etlManagementRoutes()
@@ -304,7 +307,7 @@ class ExpectationDsl(
         ImpactedTests(listOf(this), build, TestImpactStatus.UNKNOWN_IMPACT)
 
     suspend infix fun ImpactedTests.comparedTo(baseline: InstancePayload) {
-        client.postImpactedTests(this.build, baseline).returns { data ->
+        client.postImpactedTests(this.build, baseline, this.impactStatus).returns { data ->
             when (this.impactStatus) {
                 TestImpactStatus.IMPACTED -> this.tests.forEach { it.assertTestIsImpacted(data) }
                 TestImpactStatus.NOT_IMPACTED -> this.tests.forEach { it.assertTestIsNotImpacted(data) }

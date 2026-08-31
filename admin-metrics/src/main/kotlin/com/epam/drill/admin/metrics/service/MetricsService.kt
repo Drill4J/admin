@@ -17,17 +17,20 @@ package com.epam.drill.admin.metrics.service
 
 import com.epam.drill.admin.metrics.models.BaselineBuild
 import com.epam.drill.admin.metrics.models.Build
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.CoverageCriteria
 import com.epam.drill.admin.metrics.models.MethodCriteria
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.models.TestCriteria
 import com.epam.drill.admin.metrics.views.*
+import java.time.Instant
 
 interface MetricsService {
     suspend fun getGroups(): List<String>
 
     suspend fun getApplications(
         groupId: String? = null,
+        freshAfter: Instant? = null,
     ): List<ApplicationView>
 
     suspend fun getBuilds(
@@ -35,8 +38,13 @@ interface MetricsService {
         appId: String,
         branches: List<String>,
         envIds: List<String>,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField? = null,
+        sortOrder: SortOrder? = null,
         page: Int?,
-        pageSize: Int?
+        pageSize: Int?,
+        freshAfter: Instant? = null,
     ): PagedList<BuildView>
 
     suspend fun getAppBranches(
@@ -255,6 +263,7 @@ interface MetricsService {
         testSessionId: String? = null,
         testDefinitionId: String? = null,
         includeOtherBuilds: Boolean = true,
+        freshAfter: Instant? = null,
     ): List<Any>
 
     suspend fun getChangesCoverageTreemap(
@@ -269,6 +278,7 @@ interface MetricsService {
         includeDeleted: Boolean?,
         includeEqual: Boolean?,
         includeOtherBuilds: Boolean = true,
+        freshAfter: Instant? = null,
     ): List<Any>
 
     suspend fun getBuildDiffReport(
@@ -280,9 +290,11 @@ interface MetricsService {
         baselineInstanceId: String?,
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
-        coverageThreshold: Double
+        coverageThreshold: Double,
+        freshAfter: Instant? = null,
     ): Map<String, Any?>
 
+    // TODO: discuss with team later — replaces main's getChanges() (/changes slim method-diff API).
     suspend fun getBuildChanges(
         groupId: String,
         appId: String,
@@ -302,7 +314,8 @@ interface MetricsService {
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         page: Int?,
-        pageSize: Int?
+        pageSize: Int?,
+        freshAfter: Instant? = null,
     ): PagedList<BuildChangeView>
 
     suspend fun getCoverage(
@@ -323,6 +336,7 @@ interface MetricsService {
         pageSize: Int? = null,
         testSessionId: String? = null,
         testDefinitionId: String? = null,
+        freshAfter: Instant? = null,
     ): PagedList<MethodView>
 
     suspend fun getCoverageByPackage(
@@ -352,10 +366,12 @@ interface MetricsService {
         testCriteria: TestCriteria = TestCriteria.NONE,
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        impactStatuses: List<TestImpactStatus> = listOf(TestImpactStatus.IMPACTED),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         page: Int?,
-        pageSize: Int?
+        pageSize: Int?,
+        freshAfter: Instant? = null,
     ): PagedList<TestView>
 
     suspend fun getImpactedTestsFilterOptions(
@@ -364,4 +380,17 @@ interface MetricsService {
         methodCriteria: MethodCriteria = MethodCriteria.NONE,
         coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
     ): ImpactedTestsFilterOptionsView
+
+    suspend fun getImpactedMethods(
+        build: Build,
+        baselineBuild: BaselineBuild,
+        testCriteria: TestCriteria = TestCriteria.NONE,
+        methodCriteria: MethodCriteria = MethodCriteria.NONE,
+        coverageCriteria: CoverageCriteria = CoverageCriteria.NONE,
+        sortBy: String? = null,
+        sortOrder: SortOrder? = null,
+        page: Int?,
+        pageSize: Int?,
+        freshAfter: Instant? = null,
+    ): PagedList<MethodView>
 }

@@ -605,6 +605,13 @@ paths:
           description: Optional filter to retrieve applications belonging to a specific group only.
           schema:
             type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of applications
@@ -1495,16 +1502,46 @@ paths:
           description: Unique identifier for the application.
           schema:
             type: string
-        - name: branch
+        - name: branches
           in: query
-          description: Optional Git branch name filter. When specified, only builds from this branch are returned.
+          description: Optional Git branch name filters. When specified, only builds from these branches are returned.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          description: Optional environment identifier filters. When specified, only builds deployed in these environments are returned.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: commitSha
+          in: query
+          description: Optional Git commit SHA filter. When specified, only builds from this commit are returned.
           schema:
             type: string
-        - name: envId
+        - name: buildVersion
           in: query
-          description: Optional environment identifier filter. When specified, only builds deployed in this environment are returned.
+          description: Optional build version filter. When specified, only builds with this version are returned.
           schema:
             type: string
+        - name: sortBy
+          in: query
+          description: Field to sort builds by. Supported values COMMIT_DATE, BUILD_VERSION. Defaults to COMMIT_DATE.
+          schema:
+            type: string
+            enum:
+              - COMMIT_DATE
+              - BUILD_VERSION
+        - name: sortOrder
+          in: query
+          description: Sort order direction. Defaults to DESC if not specified.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1 if not specified.
@@ -1515,6 +1552,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: List of builds
@@ -1825,6 +1869,13 @@ paths:
             type: number
             format: float
             default: 1.0
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Build diff report
@@ -1896,6 +1947,13 @@ paths:
           schema:
             type: boolean
             default: true
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Coverage treemap data
@@ -1983,6 +2041,13 @@ paths:
           schema:
             type: boolean
             default: true
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Changes coverage treemap data
@@ -1992,6 +2057,7 @@ paths:
                 $ref: '#/components/schemas/DataResponse'
   /api/metrics/build-changes:
     get:
+      # TODO: discuss with team later — supersedes main's /api/metrics/changes (slim method-diff only).
       summary: Get unified build changes between builds
       description: |
         Retrieves a paginated unified changes report between a target build and a baseline build.
@@ -2112,6 +2178,13 @@ paths:
           in: query
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Paginated unified build changes
@@ -2206,6 +2279,13 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Method list with coverage data
@@ -2227,6 +2307,69 @@ paths:
           required: true
           schema:
             type: string
+          description: Unique identifier for the application group.
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          description: Unique identifier for the application.
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          description: Instance ID of the target build deployment.
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          description: Git commit SHA of the target build.
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          description: Build version of the target build.
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          description: Instance ID of the baseline build deployment.
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          description: Git commit SHA of the baseline build.
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          description: Build version of the baseline build.
+          schema:
+            type: string
+        - name: packageName
+          in: query
+          description: Optional filter to only consider methods in this package when determining impacted tests.
+          schema:
+            type: string
+        - name: className
+          in: query
+          description: Optional filter to only consider methods in this class when determining impacted tests.
+          schema:
+            type: string
+        - name: methodName
+          in: query
+          description: Optional filter to only consider methods with this name when determining impacted tests.
+          schema:
+            type: string
+        - name: excludeMethodSignatures
+          in: query
+          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType".
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: testTag
           in: query
           schema:
@@ -2284,6 +2427,23 @@ paths:
           in: query
           schema:
             type: integer
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: impactStatuses
+          in: query
+          description: |
+            List of impact statuses to filter results by. Supported values are IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT. 
+            When specified, only tests with one of these impact statuses are returned.
+            Defaults to IMPACTED if not specified.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
         - name: sortBy
           in: query
           description: |
@@ -2312,6 +2472,23 @@ paths:
             enum:
               - ASC
               - DESC
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1 if not specified.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value if not specified.
+          schema:
+            type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Class coverage aggregates
@@ -2344,6 +2521,157 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/impacted-methods:
+    get:
+      summary: Get impacted methods
+      description: |
+        Retrieves a paginated list of methods that have been covered by tests and changed between a target build and a baseline build. 
+        While impacted-tests shows which tests are affected by changes, impacted-methods shows
+        which changed methods are covered (or uncovered) by existing tests.
+      operationId: getImpactedMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: Unique identifier for the application group.
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          description: Unique identifier for the application.
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          description: Instance ID of the target build deployment.
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          description: Git commit SHA of the target build.
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
+          description: Build version of the target build.
+          schema:
+            type: string
+        - name: baselineInstanceId
+          in: query
+          description: Instance ID of the baseline build deployment.
+          schema:
+            type: string
+        - name: baselineCommitSha
+          in: query
+          description: Git commit SHA of the baseline build.
+          schema:
+            type: string
+        - name: baselineBuildVersion
+          in: query
+          description: Build version of the baseline build
+          schema:
+            type: string
+        - name: packageName
+          in: query
+          description: Optional filter by package name to narrow results to methods in a specific package.
+          schema:
+            type: string
+        - name: className
+          in: query
+          description: Optional filter by class name to narrow results to methods in a specific class.
+          schema:
+            type: string
+        - name: methodName
+          in: query
+          description: Optional filter by method name to narrow results to a specific method.
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
+          schema:
+            type: string
+        - name: testPath
+          in: query
+          description: Optional filter by test source path. When specified, only tests at this path are considered for impact counting.
+          schema:
+            type: string
+        - name: testName
+          in: query
+          description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Field name to sort results by. Supported values are signature, className, name, impactedTests.
+          schema:
+            type: string
+            enum:
+              - signature
+              - className
+              - name
+              - impactedTests
+        - name: sortOrder
+          in: query
+          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1 if not specified.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value if not specified.
+          schema:
+            type: integer
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: List of impacted methods
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+    post:
+      summary: Get impacted methods (POST)
+      description: |
+        POST variant of the impacted methods endpoint. Accepts the same parameters as the GET endpoint but via a JSON
+        request body instead of query parameters. Useful when the number of filter parameters is large or contains
+        complex values that are impractical to pass as query parameters.
+      operationId: postImpactedMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactedMethodsRequest'
+      responses:
+        '200':
+          description: List of impacted methods
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/refresh:
     post:
       summary: Refresh metrics
@@ -2362,7 +2690,27 @@ paths:
           schema:
             type: string
         - name: reset
-          description: If true, clears existing computed data and restarts the ETL process from scratch.
+          description: If true, clears existing computed data and rerun the ETL process from scratch.
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: initTimestamp
+          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun from this timestamp
+          in: query
+          required: false
+          schema:
+              type: integer
+              format: int64
+        - name: finalTimestamp
+          description: Unix timestamp in milliseconds. If provided, the ETL process will rerun up to this timestamp
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: skipIfLocked
+          description: If true, the refresh request will be skipped if another refresh is already in progress. Defaults to false.
           in: query
           required: false
           schema:
@@ -2844,6 +3192,20 @@ components:
           type: string
           nullable: true
           description: Name or identifier of the commit author.
+        agentVersion:
+          type: string
+          nullable: true
+          description: Version of the Drill4J agent that reported this build.
+        agentEnvironment:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Agent runtime environment info (e.g., OS, Java version).
+        agentParams:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Arbitrary agent configuration parameters as a free-form JSON object.
       required:
         - groupId
         - appId
@@ -2873,6 +3235,20 @@ components:
           type: string
           nullable: true
           description: Environment identifier where this application instance is deployed (e.g., 'dev', 'staging', 'production'). Specifies the deployment environment context.
+        agentVersion:
+          type: string
+          nullable: true
+          description: Version of the Drill4J agent running on this instance.
+        agentEnvironment:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Agent runtime environment info (e.g., OS, Java version).
+        agentParams:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Arbitrary agent configuration parameters as a free-form JSON object.
       required:
         - groupId
         - appId
@@ -3679,6 +4055,11 @@ components:
         pageSize:
           type: integer
           nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
     BuildChangeView:
       type: object
       description: Unified build change row with coverage and impacted test count.
@@ -3728,3 +4109,96 @@ components:
           nullable: true
         impactedTests:
           type: integer
+    ImpactedMethodsRequest:
+      type: object
+      description: |
+        Request body for the POST variant of the impacted methods endpoint.
+      required:
+        - groupId
+        - appId
+      properties:
+        groupId:
+          type: string
+          description: Unique identifier for the application group.
+        appId:
+          type: string
+          description: Unique identifier for the application.
+        instanceId:
+          type: string
+          nullable: true
+          description: Instance ID of the target build. One of instanceId, commitSha, or buildVersion should be provided.
+        commitSha:
+          type: string
+          nullable: true
+          description: Git commit SHA of the target build. One of instanceId, commitSha, or buildVersion should be provided.
+        buildVersion:
+          type: string
+          nullable: true
+          description: Build version of the target build. One of instanceId, commitSha, or buildVersion should be provided.
+        baselineInstanceId:
+          type: string
+          nullable: true
+          description: Instance ID of the baseline build. If not provided, the system automatically selects the previous build.
+        baselineCommitSha:
+          type: string
+          nullable: true
+          description: Git commit SHA of the baseline build. If not provided, the system automatically selects the previous build.
+        baselineBuildVersion:
+          type: string
+          nullable: true
+          description: Build version of the baseline build. If not provided, the system automatically selects the previous build.
+        packageName:
+          type: string
+          nullable: true
+          description: Optional filter by package name to narrow results to methods in a specific package.
+        className:
+          type: string
+          nullable: true
+          description: Optional filter by class name to narrow results to methods in a specific class.
+        methodName:
+          type: string
+          nullable: true
+          description: Optional filter by method name to narrow results to a specific method.
+        testTaskId:
+          type: string
+          nullable: true
+          description: Optional filter by test task ID. When specified, only test launches from this task ID are considered for impact counting.
+        testTag:
+          type: string
+          nullable: true
+          description: Optional filter by test tag. When specified, only tests with this tag are considered for impact counting.
+        testPath:
+          type: string
+          nullable: true
+          description: Optional filter by test source path. When specified, only tests at this path are considered for impact counting.
+        testName:
+          type: string
+          nullable: true
+          description: Optional filter by test name. When specified, only tests with this name are considered for impact counting.
+        sortBy:
+          type: string
+          enum:
+            - signature
+            - className
+            - name
+            - impactedTests
+          description: Field name to sort results by.
+          nullable: true
+        sortOrder:
+          type: string
+          enum:
+            - ASC
+            - DESC
+          description: Sort order direction. Defaults to ASC if not specified.
+          nullable: true
+        page:
+          type: integer
+          nullable: true
+        pageSize:
+          type: integer
+          nullable: true
+        freshAfter:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.

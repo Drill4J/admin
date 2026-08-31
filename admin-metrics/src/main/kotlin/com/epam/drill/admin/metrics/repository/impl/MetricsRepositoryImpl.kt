@@ -19,9 +19,11 @@ import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.SqlBuilder
 import com.epam.drill.admin.metrics.config.executeQueryReturnMap
 import com.epam.drill.admin.metrics.config.executeUpdate
+import com.epam.drill.admin.metrics.models.BuildSortField
 import com.epam.drill.admin.metrics.models.SortOrder
 import com.epam.drill.admin.metrics.repository.MetricsRepository
 import com.epam.drill.admin.metrics.util.sqlSortDirection
+import com.epam.drill.admin.metrics.views.TestImpactStatus
 import java.sql.Timestamp
 import java.time.Instant
 import java.time.LocalDateTime
@@ -65,6 +67,9 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getBuilds(
         groupId: String, appId: String,
         branches: List<String>, envIds: List<String>,
+        commitSha: String?,
+        buildVersion: String?,
+        sortBy: BuildSortField?, sortOrder: SortOrder?,
         offset: Int?, limit: Int?
     ): List<Map<String, Any?>> = transaction {
         executeQueryReturnMap {
@@ -89,7 +94,17 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ANY(?)", branches)
             appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
-            append(" ORDER BY COALESCE(b.committed_at, b.created_at) DESC ")
+            appendOptional(" AND b.commit_sha = ?", commitSha)
+            appendOptional(" AND b.build_version = ?", buildVersion)
+            val direction = sqlSortDirection(sortOrder, default = SortOrder.DESC)
+            when (sortBy ?: BuildSortField.COMMIT_DATE) {
+                BuildSortField.COMMIT_DATE -> "COALESCE(b.committed_at, b.created_at) $direction"
+                BuildSortField.BUILD_VERSION -> (1..3).joinToString(separator = ", ") {
+                    "SPLIT_PART(b.build_version, '.', $it) $direction"
+                }
+            }.let {
+                append(" ORDER BY $it")
+            }
             appendOptional(" OFFSET ?", offset)
             appendOptional(" LIMIT ?", limit)
         }
@@ -1470,7 +1485,9 @@ class MetricsRepositoryImpl : MetricsRepository {
 
     override suspend fun getBuildsCount(
         groupId: String, appId: String,
-        branches: List<String>, envIds: List<String>
+        branches: List<String>, envIds: List<String>,
+        commitSha: String?,
+        buildVersion: String?,
     ): Long = transaction {
         val result = executeQueryReturnMap {
             append(
@@ -1482,6 +1499,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
             appendOptional(" AND b.branch = ANY(?)", branches)
             appendOptional(" AND b.app_env_ids && ?::varchar[]", envIds)
+            appendOptional(" AND b.commit_sha = ?", commitSha)
+            appendOptional(" AND b.build_version = ?", buildVersion)
         }
         (result[0]["cnt"] as? Number)?.toLong() ?: 0
     }
@@ -2388,7 +2407,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                         SELECT 
                             test_definition_id, 
                             group_id
-                        FROM metrics.get_impacted_tests_v2(
+                        FROM metrics.get_impacted_tests_v3(
                             input_build_id => ?,
                             input_baseline_build_id => ?
                         )
@@ -2426,98 +2445,22 @@ class MetricsRepositoryImpl : MetricsRepository {
         result.firstOrNull() ?: emptyMap()
     }
 
-
-    override suspend fun getRecommendedTests(
-        targetBuildId: String,
-        testImpactStatuses: List<String>,
-
-        baselineBuildIds: List<String>,
-        baselineFromBuildId: String?,
-        baselineUntilBuildId: String?,
-        baselineBuildBranches: List<String>,
-
-        testTaskIds: List<String>,
-        testTags: List<String>,
-        testPathPattern: String?,
-        testNamePattern: String?,
-
-        packageNamePattern: String?,
-        classNamePattern: String?,
-
-        coverageAppEnvIds: List<String>,
-        coveragePeriodFrom: LocalDateTime?,
-        coveragePeriodUntil: LocalDateTime?,
-
-        offset: Int?,
-        limit: Int?
-    ): List<Map<String, Any?>> = transaction {
-        executeQueryReturnMap {
-            append(
-                """
-                SELECT                     
-                    test_definition_id,
-                    test_runner,
-                    test_path,
-                    test_name,
-                    test_tags,
-                    test_metadata,
-                    test_impact_status,
-                    impacted_methods,
-                    baseline_build_id
-                FROM metrics.get_recommended_tests_v2(                    
-                    input_build_id => ?,
-                    input_test_impact_statuses => ?                
-            """.trimIndent(), targetBuildId, testImpactStatuses
-            )
-
-            appendOptional(", input_baseline_build_ids => ?", baselineBuildIds)
-            appendOptional(", input_baseline_from_build_id => ?", baselineFromBuildId)
-            appendOptional(", input_baseline_until_build_id => ?", baselineUntilBuildId)
-            appendOptional(", input_baseline_build_branches => ?", baselineBuildBranches)
-
-            appendOptional(", input_test_task_ids => ?", testTaskIds)
-            appendOptional(", input_test_tags => ?", testTags)
-            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
-            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
-
-            appendOptional(", input_package_pattern => ?", packageNamePattern) { "$it%" }
-            appendOptional(", input_class_name_pattern => ?", classNamePattern) { "$it%" }
-
-            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
-            appendOptional(", input_coverage_period_from => ?", coveragePeriodFrom)
-            appendOptional(", input_coverage_period_until => ?", coveragePeriodUntil)
-            append(
-                """
-                )
-            """.trimIndent()
-            )
-            appendOptional(" OFFSET ?", offset)
-            appendOptional(" LIMIT ?", limit)
-        }
-    }
-
     override suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
-
-        testTaskId: String?,
         testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
         testRunner: String?,
-
         packageNamePattern: String?,
         methodSignaturePattern: String?,
         excludeMethodSignatures: List<String>,
-
         coverageBranches: List<String>,
         coverageAppEnvIds: List<String>,
-
         testDefinitionId: String?,
-
+        impactStatuses: List<TestImpactStatus>,
         sortBy: String?,
         sortOrder: SortOrder?,
-
         offset: Int?,
         limit: Int?
     ): List<Map<String, Any?>> = transaction {
@@ -2533,13 +2476,14 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_runner,
                     test_tags,
                     test_metadata,
-                    impacted_methods
-                FROM metrics.get_impacted_tests_v2(
+                    impact_status,
+                    impacted_methods                 
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                     """.trimIndent(), targetBuildId, baselineBuildId
             )
-            appendOptional(", input_test_task_id => ?", testTaskId)
+
             appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
@@ -2550,6 +2494,8 @@ class MetricsRepositoryImpl : MetricsRepository {
 
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
+            appendOptional(", input_impact_statuses => ?", impactStatuses.map { it.name })
 
             append(
                 """
@@ -2585,12 +2531,13 @@ class MetricsRepositoryImpl : MetricsRepository {
         coverageAppEnvIds: List<String>,
 
         testDefinitionId: String?,
+        impactStatuses: List<TestImpactStatus>,
     ): Long = transaction {
         val result = executeQueryReturnMap {
             append(
                 """
                 SELECT COUNT(*) AS cnt
-                FROM metrics.get_impacted_tests_v2(
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
@@ -2607,6 +2554,8 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendOptional(", input_coverage_branches => ?", coverageBranches)
             appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
 
+            appendOptional(", input_impact_statuses => ?", impactStatuses.map { it.name })
+
             append(
                 """
                 )
@@ -2615,6 +2564,73 @@ class MetricsRepositoryImpl : MetricsRepository {
             appendImpactedTestsResultFilters(testDefinitionId, testRunner)
         }
         (result.firstOrNull()?.get("cnt") as? Number)?.toLong() ?: 0
+    }
+
+    override suspend fun getImpactedMethods(
+        targetBuildId: String,
+        baselineBuildId: String,
+
+        testTaskId: String?,
+        testTags: List<String>,
+        testPathPattern: String?,
+        testNamePattern: String?,
+
+        packageNamePattern: String?,
+        methodSignaturePattern: String?,
+        excludeMethodSignatures: List<String>,
+
+        coverageBranches: List<String>,
+        coverageAppEnvIds: List<String>,
+
+        sortBy: String?,
+        sortOrder: SortOrder?,
+
+        offset: Int?,
+        limit: Int?
+    ): List<Map<String, Any?>> = transaction {
+        val sortDirection = sqlSortDirection(sortOrder, default = SortOrder.ASC)
+
+        executeQueryReturnMap {
+            append(
+                """
+                SELECT 
+                    group_id,
+                    app_id,
+                    signature,
+                    class_name,
+                    method_name,
+                    method_params,
+                    return_type,
+                    impacted_tests
+                FROM metrics.get_impacted_methods_v2(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                    """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendOptional(", input_test_task_id => ?", testTaskId)
+            appendOptional(", input_test_tags => ?", testTags)
+            appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
+            appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
+
+            appendOptional(", input_package_name_pattern => ?", packageNamePattern)
+            appendOptional(", input_method_signature_pattern => ?", methodSignaturePattern)
+            appendOptional(", input_exclude_method_signatures => ?", excludeMethodSignatures)
+
+            appendOptional(", input_coverage_branches => ?", coverageBranches)
+            appendOptional(", input_coverage_app_env_ids => ?", coverageAppEnvIds)
+
+            append(
+                """
+                )
+            """.trimIndent()
+            )
+
+            if (sortBy != null) {
+                append(" ORDER BY $sortBy $sortDirection")
+            }
+            appendOptional(" OFFSET ?", offset)
+            appendOptional(" LIMIT ?", limit)
+        }
     }
 
     override suspend fun getImpactedTestsFilterOptions(

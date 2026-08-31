@@ -27,7 +27,7 @@ class UntypedPreparedSql(val preparedSql: String, val indexes: List<String>) : P
 
     companion object {
         fun prepareSql(sql: String): PreparedSql<UntypedRow> {
-            val regex = Regex("""(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)(?![:=])""")
+            val regex = Regex("""(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)(?!:(?!:))(?!=)""")
 
             val indexes = mutableListOf<String>()
 

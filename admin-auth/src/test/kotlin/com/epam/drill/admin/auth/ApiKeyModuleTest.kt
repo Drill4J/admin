@@ -31,6 +31,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
 import org.kodein.di.*
 import org.kodein.di.ktor.closestDI
 import org.kodein.di.ktor.di
@@ -72,41 +73,35 @@ class ApiKeyModuleTest {
         wheneverBlocking(mockApiKeyRepository) { findById(123) }.doReturn(createTestApiKeyEntity())
         whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, validApiKey)
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, validApiKey)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
         }
     }
 
     @Test
     fun `without api key, api-key authenticated request must fail with 401 status`() {
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                //no adding API key header
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
-            }
+            val response = client.get("/api")
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -117,21 +112,19 @@ class ApiKeyModuleTest {
         wheneverBlocking(mockApiKeyRepository) { findById(123) }.doReturn(createTestApiKeyEntity(apiKeyHash = "hash"))
         whenever(mockPasswordService.matchPasswords("wrong-secret", "hash")).doReturn(false)
 
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, invalidApiKey)
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, invalidApiKey)
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -143,21 +136,19 @@ class ApiKeyModuleTest {
             .doReturn(createTestApiKeyEntity(expiresAt = LocalDateTime.now().minusDays(1)))
         whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, expiredApiKey)
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, expiredApiKey)
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -169,21 +160,19 @@ class ApiKeyModuleTest {
             .doReturn(createTestApiKeyEntity(user = createTestUserEntity(blocked = true)))
         whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, blockedApiKey)
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, blockedApiKey)
             }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
@@ -195,21 +184,19 @@ class ApiKeyModuleTest {
             .doReturn(createTestApiKeyEntity(user = createTestUserEntity(role = Role.UNDEFINED)))
         whenever(mockPasswordService.matchPasswords(eq("key-secret"), any())).doReturn(true)
 
-        withTestApplication({
-            withApiKeyModule {
-                configureMocks()
-            }
-            routing {
-                authenticate("api-key") {
-                    configureGetApiRoute()
+        testApplication {
+            application {
+                withApiKeyModule { configureMocks() }
+                routing {
+                    authenticate("api-key") {
+                        configureGetApiRoute()
+                    }
                 }
             }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/api") {
-                addHeader(API_KEY_HEADER, undefinedRoleApiKey)
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
+            val response = client.get("/api") {
+                header(API_KEY_HEADER, undefinedRoleApiKey)
             }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 

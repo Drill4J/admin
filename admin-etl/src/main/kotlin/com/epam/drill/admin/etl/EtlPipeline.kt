@@ -15,38 +15,26 @@
  */
 package com.epam.drill.admin.etl
 
+import com.epam.drill.admin.etl.flow.ClosableFlow
 import java.time.Instant
 
 /**
- * EtlPipeline represents a single ETL flow connecting:
- * - one `DataExtractor` (source),
- * - one or more `DataLoader`-s (sinks).
- * It encodes business logic of how raw data becomes metric data.
- *
- * Core Concepts:
- * - **Composition**: EtlPipeline is typically constructed with specific extractor and loaders.
- * - **Concurrency control**: may use coroutines to run:
- *     - extractor in one coroutine,
- *     - loaders in another,
- *     - sharing a bounded buffer (`bufferSize`).
- * - **Backpressure**:
- *     - if loaders are slow, the buffer fills up and extractor suspends, keeping memory usage controlled.
- * - **Error propagation**:
- *     - failures in loaders or extractor are propagated to the pipeline,
- *     - pipeline may cancel child coroutines and report status to `EtlOrchestrator`.
+ * EtlPipeline represents a linear ETL flow:
+ *   DataExtractor -> DataTransformer -> DataLoader
  */
-interface EtlPipeline<in T : EtlRow, out R : EtlRow> {
+interface EtlPipeline<T : EtlRow, R : EtlRow> {
     val name: String
-    val extractor: DataExtractor<in T>
-    val loaders: List<Pair<DataTransformer<T, R>, DataLoader<out R>>>
+    val extractor: DataExtractor<T>
+    val transformer: DataTransformer<T, R>
+    val loader: DataLoader<R>
     suspend fun execute(
-        groupId: String,
-        sinceTimestampPerLoader: Map<String, Instant>,
+        context: EtlContext,
+        sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        onExtractingProgress: suspend (EtlExtractingResult) -> Unit = {},
-        onLoadingProgress: suspend (loaderName: String, result: EtlLoadingResult) -> Unit = { _, _ -> },
-        onStatusChanged: suspend (loaderName: String, status: EtlStatus) -> Unit = { _, _ -> },
+        extractionFlow: ClosableFlow<T>,
+        onLoadingProgress: suspend (EtlLoadingResult) -> Unit = {},
+        onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlProcessingResult
 
-    suspend fun cleanUp(groupId: String)
+    suspend fun cleanUp(context: EtlContext)
 }

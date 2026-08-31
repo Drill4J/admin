@@ -39,6 +39,8 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.resources.*
 import io.ktor.server.testing.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.serialization.json.Json
 import org.kodein.di.bind
 import org.kodein.di.eagerSingleton
@@ -82,16 +84,16 @@ class UserAuthenticationTest {
             .thenReturn(true)
         whenever(tokenService.issueToken(any())).thenReturn("token")
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-in") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-in") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val payload = LoginPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), payload))
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val response = assertResponseNotNull(TokenView.serializer())
-                assertEquals("token", response.token)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val body = response.assertResponseNotNull(TokenView.serializer())
+            assertEquals("token", body.token)
         }
     }
 
@@ -102,22 +104,22 @@ class UserAuthenticationTest {
         whenever(passwordService.hashPassword("secret")).thenReturn("hash")
         wheneverBlocking(userRepository) { create(any()) }.thenAnswer(CopyUserWithID)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-up") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-up") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = testUsername, password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) {
-                    create(
-                        UserEntity(
-                            username = testUsername,
-                            passwordHash = "hash",
-                            role = Role.UNDEFINED.name
-                        )
+            }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) {
+                create(
+                    UserEntity(
+                        username = testUsername,
+                        passwordHash = "hash",
+                        role = Role.UNDEFINED.name
                     )
-                }
+                )
             }
         }
     }
@@ -128,16 +130,16 @@ class UserAuthenticationTest {
         wheneverBlocking(userRepository) { findByUsername(testUsername) }
             .thenReturn(UserEntity(id = 1, username = testUsername, passwordHash = "hash", role = "USER"))
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Get, "/user-info") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.get("/user-info") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth(testUsername, "secret")
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                val userInfo = assertResponseNotNull(UserInfoView.serializer())
-                assertEquals(testUsername, userInfo.username)
-                assertEquals(Role.USER, userInfo.role)
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            val userInfo = response.assertResponseNotNull(UserInfoView.serializer())
+            assertEquals(testUsername, userInfo.username)
+            assertEquals(Role.USER, userInfo.role)
         }
     }
 
@@ -150,16 +152,16 @@ class UserAuthenticationTest {
         whenever(passwordService.hashPassword("secret2"))
             .thenReturn("hash2")
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/update-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/update-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
                 val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                verifyBlocking(userRepository) { update(USER_GUEST.copy(passwordHash = "hash2")) }
             }
+            assertEquals(HttpStatusCode.OK, response.status)
+            verifyBlocking(userRepository) { update(USER_GUEST.copy(passwordHash = "hash2")) }
         }
     }
 
@@ -168,14 +170,14 @@ class UserAuthenticationTest {
         wheneverBlocking(userRepository) { findByUsername("unknown") }
             .thenReturn(null)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-in") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-in") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "unknown", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -186,14 +188,14 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-in") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-in") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "guest", password = "incorrect")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -208,14 +210,14 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-in") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-in") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "blocked_user", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
             }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
@@ -230,14 +232,14 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("secret", "hash"))
             .thenReturn(true)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-in") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-in") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = LoginPayload(username = "undefined_role", password = "secret")
                 setBody(Json.encodeToString(LoginPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.Forbidden, response.status())
             }
+            assertEquals(HttpStatusCode.Forbidden, response.status)
         }
     }
 
@@ -246,28 +248,27 @@ class UserAuthenticationTest {
         wheneverBlocking(userRepository) { findByUsername("guest") }
             .thenReturn(USER_GUEST)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-up") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/sign-up") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = RegistrationPayload(username = "guest", password = "secret")
                 setBody(Json.encodeToString(RegistrationPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.BadRequest, response.status())
             }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
         }
     }
 
     @Test
     fun `without authentication 'POST update-password' must fail with 401 status`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/update-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                //not add auth
+        testApplication {
+            application(config)
+            val response = client.post("/update-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 val form = ChangePasswordPayload(oldPassword = "secret", newPassword = "secret2")
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.Unauthorized, response.status())
             }
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
         }
     }
 
@@ -278,15 +279,15 @@ class UserAuthenticationTest {
         whenever(passwordService.matchPasswords("incorrect", "hash"))
             .thenReturn(false)
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/update-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/update-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("guest", "secret")
                 val form = ChangePasswordPayload(oldPassword = "incorrect", newPassword = "secret2")
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.BadRequest, response.status())
             }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
         }
     }
 
@@ -294,29 +295,28 @@ class UserAuthenticationTest {
     fun `given external user 'POST update-password' must fail with 422 status`() {
         wheneverBlocking(userRepository) { findByUsername("external-user") }
             .thenReturn(
-                //null password hash means the user is external
                 UserEntity(id = 123, username = "external-user", passwordHash = null, role = "USER")
             )
 
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/update-password") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        testApplication {
+            application(config)
+            val response = client.post("/update-password") {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addBasicAuth("external-user", "")
                 val form = ChangePasswordPayload(oldPassword = "", newPassword = "secret")
                 setBody(Json.encodeToString(ChangePasswordPayload.serializer(), form))
-            }) {
-                assertEquals(HttpStatusCode.UnprocessableEntity, response.status())
             }
+            assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
         }
     }
 
     @Test
     fun `'POST sign-out' must clear jwt cookie`() {
-        withTestApplication(config) {
-            with(handleRequest(HttpMethod.Post, "/sign-out")) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                assertTrue(response.cookies[JWT_COOKIE]?.value.isNullOrEmpty())
-            }
+        testApplication {
+            application(config)
+            val response = client.post("/sign-out")
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.setCookie().find { it.name == JWT_COOKIE }?.value.isNullOrEmpty())
         }
     }
 

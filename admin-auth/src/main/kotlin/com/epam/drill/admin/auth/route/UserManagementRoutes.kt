@@ -28,7 +28,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
-import io.ktor.util.pipeline.*
 import org.kodein.di.instance
 import org.kodein.di.ktor.closestDI as di
 import com.epam.drill.admin.common.route.*
@@ -149,7 +148,7 @@ fun Route.resetPasswordRoute() {
     }
 }
 
-private fun PipelineContext<Unit, ApplicationCall>.throwExceptionIfCurrentUserIs(userId: Int, message: String) {
+private fun RoutingContext.throwExceptionIfCurrentUserIs(userId: Int, message: String) {
     if (call.principal<User>()?.id == userId)
         throw ForbiddenOperationException(message)
 }

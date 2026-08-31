@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration
 
 class ProgressTracker(val job: suspend () -> Unit) {
-    suspend fun every(duration: Duration, track: () -> Unit) = coroutineScope {
+    suspend fun every(duration: Duration, track: suspend () -> Unit) = coroutineScope {
         val trackingJob = launch {
             while (isActive) {
                 delay(duration.inWholeMilliseconds)

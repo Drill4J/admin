@@ -17,9 +17,11 @@ val kodeinVersion: String by parent!!.extra
 val kotlinxSerializationVersion: String by parent!!.extra
 val kotlinxDatetimeVersion: String by parent!!.extra
 val exposedVersion: String by parent!!.extra
+val kotlinxCoroutinesVersion: String by parent!!.extra
 val flywaydbVersion: String by parent!!.extra
 val postgresSqlVersion: String by parent!!.extra
 val zaxxerHikaricpVersion: String by parent!!.extra
+val micrometerVersion: String by parent!!.extra
 
 repositories {
     mavenLocal()
@@ -41,7 +43,6 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":admin-common"))
     implementation(project(":admin-writer"))
-    implementation(project(":admin-metrics"))
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:$kotlinxDatetimeVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${kotlinxSerializationVersion}")
     implementation("io.github.microutils:kotlin-logging-jvm:$microutilsLoggingVersion")
@@ -53,6 +54,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
+    implementation("io.micrometer:micrometer-core:$micrometerVersion")
 
     implementation("io.ktor:ktor-server-resources:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
@@ -60,7 +62,7 @@ dependencies {
     compileOnly("org.postgresql:postgresql:${postgresSqlVersion}")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
 }
 
 tasks {

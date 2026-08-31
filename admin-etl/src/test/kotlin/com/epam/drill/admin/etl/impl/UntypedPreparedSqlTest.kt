@@ -63,6 +63,16 @@ class UntypedPreparedSqlTest {
     }
 
     @Test
+    fun `prepareSql should handle cast expression`() {
+        val sql = "SELECT * FROM users WHERE id = :id::TEXT"
+
+        val result = UntypedPreparedSql.prepareSql(sql)
+
+        assertEquals("SELECT * FROM users WHERE id = ?::TEXT", result.getSql())
+        assertEquals(listOf("1"), result.getArgs(rowOf("id" to "1")))
+    }
+
+    @Test
     fun `prepareSql should handle SQL with no named parameters`() {
         val sql = "SELECT * FROM users WHERE id = 1"
 
