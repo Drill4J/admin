@@ -2307,88 +2307,41 @@ paths:
           required: true
           schema:
             type: string
-          description: Unique identifier for the application group.
-          schema:
-            type: string
-        - name: appId
+        - name: testTags
           in: query
-          required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: instanceId
-          in: query
-          description: Instance ID of the target build deployment.
-          schema:
-            type: string
-        - name: commitSha
-          in: query
-          description: Git commit SHA of the target build.
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          description: Build version of the target build.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build deployment.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build.
-          schema:
-            type: string
-        - name: packageName
-          in: query
-          description: Optional filter to only consider methods in this package when determining impacted tests.
-          schema:
-            type: string
-        - name: className
-          in: query
-          description: Optional filter to only consider methods in this class when determining impacted tests.
-          schema:
-            type: string
-        - name: methodName
-          in: query
-          description: Optional filter to only consider methods with this name when determining impacted tests.
-          schema:
-            type: string
-        - name: excludeMethodSignatures
-          in: query
-          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType".
+          description: Optional test tag filters for coverage.
           schema:
             type: array
             items:
               type: string
-          style: form
-          explode: true
-        - name: testTag
+        - name: envIds
           in: query
+          description: Optional environment identifier filters for coverage.
           schema:
-            type: string
-        - name: envId
+            type: array
+            items:
+              type: string
+        - name: branches
           in: query
+          description: Optional Git branch filters for coverage.
           schema:
-            type: string
-        - name: branch
+            type: array
+            items:
+              type: string
+        - name: freshAfter
           in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         '200':
           description: Package coverage aggregates
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/ApiResponse'
   /api/metrics/coverage/by-class:
     get:
       summary: Get aggregated class coverage for a build
@@ -2407,43 +2360,27 @@ paths:
           in: query
           schema:
             type: string
-        - name: testTag
+        - name: testTags
           in: query
-          schema:
-            type: string
-        - name: envId
-          in: query
-          schema:
-            type: string
-        - name: branch
-          in: query
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-        - name: impactStatuses
-          in: query
-          description: |
-            List of impact statuses to filter results by. Supported values are IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT. 
-            When specified, only tests with one of these impact statuses are returned.
-            Defaults to IMPACTED if not specified.
+          description: Optional test tag filters for coverage.
           schema:
             type: array
             items:
               type: string
-          style: form
-          explode: true
+        - name: envIds
+          in: query
+          description: Optional environment identifier filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: branches
+          in: query
+          description: Optional Git branch filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
         - name: sortBy
           in: query
           description: |
@@ -2482,6 +2419,16 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: testSessionId
+          in: query
+          description: Optional test session filter for drill-down coverage.
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          description: Optional test definition filter for drill-down coverage.
+          schema:
+            type: string
         - name: freshAfter
           in: query
           required: false
@@ -3154,6 +3101,31 @@ components:
       properties:
         message:
           type: string
+    ApiResponse:
+      type: object
+      properties:
+        data:
+          type: object
+    PagedDataResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        paging:
+          $ref: '#/components/schemas/Paging'
+    Paging:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          format: int64
+          nullable: true
 
     # Data Ingest Schemas
     BuildPayload:
