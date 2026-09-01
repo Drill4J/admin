@@ -506,6 +506,7 @@ interface MetricsRepository {
         targetBuildId: String,
         baselineBuildId: String,
 
+        testTaskId: String? = null,
         testTags: List<String> = emptyList(),
         testPathPattern: String? = null,
         testNamePattern: String? = null,

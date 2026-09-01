@@ -234,6 +234,52 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }
         }
 
+    @Test
+    fun `given test task id filter, impacted tests service should return only tests from matching task`() =
+        havingData {
+            build1 has listOf(method1)
+            val taskASession = session1.testTaskId("task-a")
+            val taskBSession = session2.testTaskId("task-b")
+            val testFromTaskA = TestDetails(testName = "testFromTaskA")
+            val testFromTaskB = TestDetails(testName = "testFromTaskB")
+            testFromTaskA of taskASession covers method1 on build1
+            testFromTaskB of taskBSession covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.postImpactedTests(build2, build1) {
+                put("testTaskId", "task-a")
+            }.returns { data ->
+                assertTrue(data.isNotEmpty(), "Expected at least one test from task-a")
+                assertTrue(data.all { it["testName"] == "testFromTaskA" }, "All returned tests should belong to task-a")
+                assertTrue(data.none { it["testName"] == "testFromTaskB" }, "No tests from task-b should be returned")
+            }
+        }
+
+    @Test
+    fun `given test task id filter, impacted methods service should count only tests from matching task`() =
+        havingData {
+            build1 has listOf(method1)
+            val taskASession = session1.testTaskId("task-a")
+            val taskBSession = session2.testTaskId("task-b")
+            val testFromTaskA = TestDetails(testName = "testFromTaskA")
+            val testFromTaskB = TestDetails(testName = "testFromTaskB")
+            testFromTaskA of taskASession covers method1 on build1
+            testFromTaskB of taskBSession covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.getImpactedMethods(build2, build1).returns { data ->
+                val methodRow = data.find { it["name"] == method1.name }
+                assertEquals(2, (methodRow?.get("impactedTests") as Number?)?.toInt())
+            }
+
+            client.getImpactedMethods(build2, build1) {
+                parameter("testTaskId", "task-a")
+            }.returns { data ->
+                val methodRow = data.find { it["name"] == method1.name }
+                assertEquals(1, (methodRow?.get("impactedTests") as Number?)?.toInt())
+            }
+        }
+
     @AfterTest
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()

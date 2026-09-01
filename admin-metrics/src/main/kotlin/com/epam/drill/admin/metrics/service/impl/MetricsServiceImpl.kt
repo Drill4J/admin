@@ -1399,6 +1399,7 @@ class MetricsServiceImpl(
                 targetBuildId = targetBuildId,
                 baselineBuildId = baselineBuildId,
 
+                testTaskId = testCriteria.testTaskId,
                 testTags = testCriteria.testTags,
                 testPathPattern = testCriteria.testPath,
                 testNamePattern = testCriteria.testName,

@@ -229,6 +229,29 @@ class TestImpactAnalysisTest : MetricsDatabaseTests({ default, metrics ->
             //because method2 does not exist on both build3 and build1
         }
 
+    @Test
+    fun `given test task id filter with NOT_IMPACTED status, impacted tests service should return only not impacted tests from matching task`() =
+        havingData {
+            build1 has listOf(method1, method2)
+            val taskASession = session1.testTaskId("task-a")
+            val taskBSession = session2.testTaskId("task-b")
+            val impactedTestFromTaskA = TestDetails(testName = "impactedTestFromTaskA")
+            val notImpactedTestFromTaskA = TestDetails(testName = "notImpactedTestFromTaskA")
+            val notImpactedTestFromTaskB = TestDetails(testName = "notImpactedTestFromTaskB")
+            impactedTestFromTaskA of taskASession covers method1 on build1
+            notImpactedTestFromTaskA of taskASession covers method2 on build1
+            notImpactedTestFromTaskB of taskBSession covers method2 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.postImpactedTests(build2, build1, TestImpactStatus.NOT_IMPACTED) {
+                put("testTaskId", "task-a")
+            }.returns { data ->
+                TestDetails(testName = "notImpactedTestFromTaskA").assertTestIsNotImpacted(data)
+                TestDetails(testName = "impactedTestFromTaskA").assertTestIsAbsent(data)
+                TestDetails(testName = "notImpactedTestFromTaskB").assertTestIsAbsent(data)
+            }
+        }
+
     @AfterTest
     fun clearAll() = withTransaction(RawDataWriterDatabaseConfig.database) {
         MethodCoverageTable.deleteAll()

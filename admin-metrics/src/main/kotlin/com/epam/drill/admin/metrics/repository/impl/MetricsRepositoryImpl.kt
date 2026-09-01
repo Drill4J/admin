@@ -2448,6 +2448,7 @@ class MetricsRepositoryImpl : MetricsRepository {
     override suspend fun getImpactedTests(
         targetBuildId: String,
         baselineBuildId: String,
+        testTaskId: String?,
         testTags: List<String>,
         testPathPattern: String?,
         testNamePattern: String?,
@@ -2484,6 +2485,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     """.trimIndent(), targetBuildId, baselineBuildId
             )
 
+            appendOptional(", input_test_task_id => ?", testTaskId)
             appendOptional(", input_test_tags => ?", testTags)
             appendOptional(", input_test_path_pattern => ?", testPathPattern) { "$it%" }
             appendOptional(", input_test_name_pattern => ?", testNamePattern) { "$it%" }
