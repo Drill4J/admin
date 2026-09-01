@@ -32,6 +32,7 @@ interface EtlPipeline<T : EtlRow, R : EtlRow> {
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit = {},
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit = {},
         onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlProcessingResult

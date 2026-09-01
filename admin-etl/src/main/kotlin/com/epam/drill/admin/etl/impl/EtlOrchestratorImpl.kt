@@ -63,10 +63,10 @@ open class EtlOrchestratorImpl(
 ) : EtlOrchestrator {
     private val logger = KotlinLogging.logger {}
 
-    inner class ProgressTracker {
+    class ProgressTracker {
         private val progress: ConcurrentMap<String, Instant> = ConcurrentMap()
         fun register(pipelineName: String, lastProcessedAt: Instant) {
-            progress.put(pipelineName, lastProcessedAt)
+            progress[pipelineName] = lastProcessedAt
         }
 
         fun getProcessedUntilTimestamp(): Instant {
@@ -397,6 +397,9 @@ open class EtlOrchestratorImpl(
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
                 extractionFlow = sharedFlow,
+                onTransformationProgress = { lastProcessedAt ->
+                    progressTracker.register(pipeline.name, lastProcessedAt)
+                },
                 onLoadingProgress = { result ->
                     saveLoadingProgress(context, period, pipeline.name, result)
                     progressTracker.register(pipeline.name, result.lastProcessedAt)

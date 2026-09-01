@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -266,8 +266,11 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
 private class PbPassThroughTransformer(override val name: String = "pass") :
     DataTransformer<UntypedRow, UntypedRow> {
     override suspend fun transform(
-        context: EtlContext, sinceTimestamp: Instant,
-        untilTimestamp: Instant, collector: Flow<UntypedRow>
+        context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<UntypedRow>,
+        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = flow {
         collector.collect { emit(it) }
     }

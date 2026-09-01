@@ -179,10 +179,19 @@ internal class SequencedTransformer<T : EtlRow, M : EtlRow, R : EtlRow>(
 ) : DataTransformer<T, R> {
     override val name: String = "${first.name}+${second.name}"
     override suspend fun transform(
-        context: EtlContext, sinceTimestamp: Instant,
-        untilTimestamp: Instant, collector: Flow<T>
+        context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<R> =
-        second.transform(context, sinceTimestamp, untilTimestamp, first.transform(context, sinceTimestamp, untilTimestamp, collector))
+        second.transform(
+            context,
+            sinceTimestamp,
+            untilTimestamp,
+            first.transform(context, sinceTimestamp, untilTimestamp, collector, onTransformationProgress),
+            onTransformationProgress
+        )
 }
 
 /**
@@ -194,7 +203,8 @@ internal object NoOpTransformer : DataTransformer<UntypedRow, UntypedRow> {
         context: EtlContext,
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
-        collector: Flow<UntypedRow>
+        collector: Flow<UntypedRow>,
+        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = collector
 }
 

@@ -50,8 +50,9 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
-        onStatusChanged: suspend (EtlStatus) -> Unit,
+        onStatusChanged: suspend (EtlStatus) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
         logger.debug { "ETL pipeline [$name] loading since $sinceTimestamp..." }
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
@@ -61,6 +62,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 sinceTimestamp,
                 untilTimestamp,
                 extractionFlow,
+                onTransformationProgress,
                 onLoadingProgress,
                 onStatusChanged
             )
@@ -92,6 +94,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
@@ -99,16 +102,22 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             context,
             sinceTimestamp,
             untilTimestamp,
-            extractionFlow
-        ) { errorMessage, lastProcessedAt ->
-            onLoadingProgress(
-                EtlLoadingResult(
-                    errorMessage = errorMessage,
-                    lastProcessedAt = lastProcessedAt
+            extractionFlow,
+            onTransformationProgress = onTransformationProgress,
+            onTransformationError = { errorMessage, lastProcessedAt ->
+                onLoadingProgress(
+                    EtlLoadingResult(
+                        errorMessage = errorMessage,
+                        lastProcessedAt = lastProcessedAt
+                    )
                 )
-            )
-        }
-        transformer.transform(context, sinceTimestamp, untilTimestamp, transformationFlow).let { loadingFlow ->
+            }
+        )
+        transformer.transform(
+            context, sinceTimestamp, untilTimestamp,
+            collector = transformationFlow,
+            onTransformationProgress
+        ).let { loadingFlow ->
             loader.load(
                 context, sinceTimestamp, untilTimestamp, loadingFlow,
                 onLoadingProgress = onLoadingProgress,
@@ -130,14 +139,15 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
-        onLoadingError: suspend (String, Instant) -> Unit
+        onTransformationProgress: suspend (Instant) -> Unit,
+        onTransformationError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
         val rowsExtracted = metrics.rowsExtracted(name, context, sinceTimestamp)
         val skippedRows = metrics.rowsSkipped(name, context, sinceTimestamp)
         suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
             close()
-            onLoadingError(message, previousTimestamp ?: sinceTimestamp)
+            onTransformationError(message, previousTimestamp ?: sinceTimestamp)
         }
         return flow {
             extractionFlow.collect { row ->
@@ -155,6 +165,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 if (currentTimestamp <= sinceTimestamp) {
                     previousTimestamp = currentTimestamp
                     skippedRows.increment()
+                    onTransformationProgress(currentTimestamp)
                     return@collect
                 }
                 emit(row)

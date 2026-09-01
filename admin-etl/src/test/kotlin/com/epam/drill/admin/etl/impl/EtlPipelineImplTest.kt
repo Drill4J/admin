@@ -204,7 +204,8 @@ class EtlPipelineImplTest {
             context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
-            collector: Flow<TestItem>
+            collector: Flow<TestItem>,
+            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<TestItem> = flow {
             collector.collect { emit(it) }
         }
@@ -213,8 +214,11 @@ class EtlPipelineImplTest {
     private class PrefixingTransformer : DataTransformer<TestItem, TransformedItem> {
         override val name = "prefixing-transformer"
         override suspend fun transform(
-            context: EtlContext, sinceTimestamp: Instant,
-            untilTimestamp: Instant, collector: Flow<TestItem>
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<TestItem>,
+            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<TransformedItem> = flow {
             collector.collect { emit(TransformedItem(it.timestamp, "transformed-${it.data}")) }
         }

@@ -93,13 +93,14 @@ class ETLSimpleTest {
         }
     }
 
-    inner class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
+    class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
         override val name = SIMPLE_TRANSFORMER
         override suspend fun transform(
             context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
-            collector: Flow<SimpleClass>
+            collector: Flow<SimpleClass>,
+            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<SimpleClass> = flow {
             collector.collect { emit(it) }
         }

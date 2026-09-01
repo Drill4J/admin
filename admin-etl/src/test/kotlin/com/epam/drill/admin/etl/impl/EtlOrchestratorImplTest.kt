@@ -66,7 +66,8 @@ class EtlOrchestratorImplTest {
             context: EtlContext,
             sinceTimestamp: Instant,
             untilTimestamp: Instant,
-            collector: Flow<GRow>
+            collector: Flow<GRow>,
+            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<GRow> = collector
     }
 
