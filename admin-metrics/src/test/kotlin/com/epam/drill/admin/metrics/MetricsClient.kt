@@ -32,6 +32,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 suspend fun HttpClient.postImpactedTests(
@@ -138,6 +139,27 @@ fun TestDetails.assertTestHasUnknownImpact(data: List<Map<String, Any?>>) {
 
 private fun TestDetails.getImpactStatus(data: List<Map<String, Any?>>): Any? =
     data.firstOrNull { it["testName"] == this.testName && it["testPath"] == this.path }?.get("impactStatus")
+
+fun TestDetails.assertTestIsAbsent(data: List<Map<String, Any?>>) {
+    assertTrue(
+        data.none { it["testName"] == this.testName && it["testPath"] == this.path },
+        "Expected test [${this.testName}] to be absent, but it was found with status ${getImpactStatus(data)}"
+    )
+}
+
+fun TestDetails.assertImpactedMethodsEquals(data: List<Map<String, Any?>>, expected: Int) {
+    val actual = data.firstOrNull { it["testName"] == this.testName && it["testPath"] == this.path }
+    assertTrue(
+        actual != null,
+        "Expected test [${this.testName}] in response of impacted tests."
+    )
+    val count = (actual["impactedMethods"] as Number?)?.toInt() ?: 0
+    assertEquals(
+        expected,
+        count,
+        "Expected impactedMethods=$expected for [${this.testName}], got $count"
+    )
+}
 
 
 fun SingleMethodPayload.assertMethodIsImpacted(data: List<Map<String, Any?>>) {
