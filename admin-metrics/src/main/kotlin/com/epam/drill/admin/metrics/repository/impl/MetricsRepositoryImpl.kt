@@ -587,6 +587,31 @@ class MetricsRepositoryImpl : MetricsRepository {
         }
     }
 
+    override suspend fun getInstanceDateRange(
+        groupId: String,
+        appId: String,
+        buildId: String
+    ): Pair<Instant, Instant>? {
+        return transaction {
+            val result = executeQueryReturnMap(
+                """
+                SELECT 
+                    first_instance_created_at,
+                    last_instance_heartbeat_at
+                FROM metrics.builds
+                WHERE group_id = ? AND app_id = ? AND build_id = ?
+                """.trimIndent(), groupId, appId, buildId
+            )
+            val firstStartedAt = result.firstOrNull()?.get("first_instance_created_at") as? LocalDateTime
+            val lastStoppedAt = result.firstOrNull()?.get("last_instance_heartbeat_at") as? LocalDateTime
+            if (firstStartedAt != null && lastStoppedAt != null) {
+                Pair(firstStartedAt.toInstant(UTC), lastStoppedAt.toInstant(UTC))
+            } else {
+                null
+            }
+        }
+    }
+
     override suspend fun deleteAllBuildDataCreatedBefore(groupId: String, timestamp: Instant) = transaction {
         val timestamp = Timestamp.from(timestamp)
         executeUpdate(

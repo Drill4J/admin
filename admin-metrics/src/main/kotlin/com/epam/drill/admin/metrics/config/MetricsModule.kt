@@ -52,6 +52,7 @@ val metricsDIModule
         bind<DeleteMetricsDataJob>() with singleton {
             DeleteMetricsDataJob(
                 metricsRepository = instance(),
+                etlService = instance(),
             )
         }
     }
