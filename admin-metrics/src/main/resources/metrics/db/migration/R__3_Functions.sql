@@ -609,7 +609,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_baseline_build_id: The ID of the baseline build for comparison
 
 -- @param input_package_name_pattern: Optional pattern to filter methods by package name
--- @param input_method_signature_pattern: Optional pattern to select which tests to return (counts stay over full change set; see TODO vs main narrowing get_changes)
+-- @param input_method_signature_pattern: Optional pattern to select which tests to return (counts stay over full change set)
 -- @param input_exclude_method_signatures: Optional array of method signatures to exclude from analysis
 
 -- @param input_test_tags: Array of test tags to filter tests
@@ -674,8 +674,6 @@ BEGIN
                 input_build_id => input_build_id,
                 input_baseline_build_id => input_baseline_build_id,
                 input_package_name_pattern => input_package_name_pattern,
-                -- TODO: discuss with team later — main narrowed the change set via signature (commented out, do not delete):
-                -- input_method_signature_pattern => input_method_signature_pattern,
                 input_exclude_method_signatures => input_exclude_method_signatures,
                 include_deleted => true,
                 include_equal => false
@@ -719,9 +717,6 @@ BEGIN
                 OR it.matches_signature_pattern
             )
         ;
-        -- TODO: discuss with team later — main alternative (narrow change set via signature in get_changes):
-        -- FROM metrics.get_changes(..., input_method_signature_pattern => input_method_signature_pattern, ...)
-        -- then JOIN impacted_tests only (no matches_signature_pattern filter on final WHERE)
     ELSE RETURN QUERY
         WITH
         -- Full change set for impacted-methods counts (signature filter applied separately for test selection)
@@ -739,8 +734,6 @@ BEGIN
                 input_build_id => input_build_id,
                 input_baseline_build_id => input_baseline_build_id,
                 input_package_name_pattern => input_package_name_pattern,
-                -- TODO: discuss with team later — main narrowed the change set via signature (commented out, do not delete):
-                -- input_method_signature_pattern => input_method_signature_pattern,
                 input_exclude_method_signatures => input_exclude_method_signatures,
                 include_deleted => true,
                 include_equal => false
@@ -797,9 +790,6 @@ BEGIN
                 OR it.matches_signature_pattern
             )
         ;
-        -- TODO: discuss with team later — main alternative (narrow change set via signature in get_changes):
-        -- FROM metrics.get_changes(..., input_method_signature_pattern => input_method_signature_pattern, ...)
-        -- then JOIN impacted_tests only (no matches_signature_pattern filter on final WHERE)
     END IF;
 END;
 $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
