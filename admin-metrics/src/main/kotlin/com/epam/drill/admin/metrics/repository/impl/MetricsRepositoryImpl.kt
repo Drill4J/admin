@@ -2475,6 +2475,7 @@ class MetricsRepositoryImpl : MetricsRepository {
                     test_path,
                     test_name,
                     test_runner,
+                    test_task_id,
                     test_tags,
                     test_metadata,
                     impact_status,
@@ -2656,7 +2657,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT DISTINCT test_path AS value
-                FROM metrics.get_impacted_tests_v2(
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
@@ -2675,7 +2676,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT DISTINCT test_name AS value
-                FROM metrics.get_impacted_tests_v2(
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
@@ -2694,7 +2695,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT DISTINCT test_runner AS value
-                FROM metrics.get_impacted_tests_v2(
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
@@ -2713,7 +2714,7 @@ class MetricsRepositoryImpl : MetricsRepository {
             append(
                 """
                 SELECT DISTINCT tag AS value
-                FROM metrics.get_impacted_tests_v2(
+                FROM metrics.get_impacted_tests_v3(
                     input_build_id => ?,
                     input_baseline_build_id => ?
                 """.trimIndent(), targetBuildId, baselineBuildId
@@ -2729,11 +2730,31 @@ class MetricsRepositoryImpl : MetricsRepository {
             )
         }.mapNotNull { it["value"] as? String }
 
+        val testTaskIds = executeQueryReturnMap {
+            append(
+                """
+                SELECT DISTINCT test_task_id AS value
+                FROM metrics.get_impacted_tests_v3(
+                    input_build_id => ?,
+                    input_baseline_build_id => ?
+                """.trimIndent(), targetBuildId, baselineBuildId
+            )
+            appendImpactedTestsFilterParams()
+            append(
+                """
+                )
+                WHERE test_task_id IS NOT NULL AND test_task_id <> ''
+                ORDER BY 1
+                """.trimIndent()
+            )
+        }.mapNotNull { it["value"] as? String }
+
         mapOf(
             "testPaths" to paths,
             "testNames" to names,
             "testRunners" to runners,
             "testTags" to tags,
+            "testTaskIds" to testTaskIds,
         )
     }
 

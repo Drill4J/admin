@@ -69,6 +69,38 @@ suspend fun HttpClient.postImpactedTests(
     }.assertSuccessStatus()
 }
 
+suspend fun HttpClient.postImpactedTestsFilterOptions(
+    build: InstancePayload,
+    baselineBuild: InstancePayload,
+    otherParameters: MutableMap<String, Any?>.() -> Unit = {}
+): HttpResponse {
+    val extras = mutableMapOf<String, Any?>()
+    extras.otherParameters()
+    val body = buildJsonObject {
+        put("groupId", build.groupId)
+        put("appId", build.appId)
+        put("buildVersion", build.buildVersion)
+        put("baselineBuildVersion", baselineBuild.buildVersion)
+        extras.forEach { (key, value) ->
+            when (value) {
+                null -> Unit
+                is String -> put(key, value)
+                is Number -> put(key, value)
+                is Boolean -> put(key, value)
+                is List<*> -> put(
+                    key,
+                    JsonArray(value.map { item -> JsonPrimitive(item.toString()) })
+                )
+                else -> put(key, value.toString())
+            }
+        }
+    }
+    return post("/metrics/impacted-tests/filter-options") {
+        contentType(ContentType.Application.Json)
+        setBody(body)
+    }.assertSuccessStatus()
+}
+
 suspend fun HttpClient.getBuildChanges(
     build: InstancePayload,
     baselineBuild: InstancePayload,

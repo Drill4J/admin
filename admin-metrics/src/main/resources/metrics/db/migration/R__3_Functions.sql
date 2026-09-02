@@ -645,6 +645,7 @@ CREATE OR REPLACE FUNCTION metrics.get_impacted_tests_v3(
     test_tags VARCHAR[],
     test_metadata JSON,
     test_runner VARCHAR,
+    test_task_id VARCHAR,
     impact_status VARCHAR,
     impacted_methods NUMERIC
 ) AS $$
@@ -681,6 +682,7 @@ BEGIN
         impacted_tests AS (
             SELECT
                 tc.test_definition_id,
+                MIN(tc.test_task_id) AS test_task_id,
                 COUNT(DISTINCT tc.signature) AS impacted_methods,
                 BOOL_OR(changed_m.signature LIKE input_method_signature_pattern) AS matches_signature_pattern
             FROM metrics.test_to_code_mapping tc
@@ -706,6 +708,7 @@ BEGIN
             td.test_tags,
             td.test_metadata::JSON,
             td.test_runner,
+            it.test_task_id::VARCHAR,
             'IMPACTED'::VARCHAR AS impact_status,
             it.impacted_methods::NUMERIC
         FROM metrics.test_definitions td
@@ -742,6 +745,7 @@ BEGIN
         impacted_tests AS (
             SELECT
                 td.test_definition_id,
+                MIN(tc.test_task_id) AS test_task_id,
                 BOOL_AND(CASE WHEN tc.test_definition_id IS NULL THEN TRUE ELSE FALSE END) AS unknown_impact,
                 BOOL_OR(CASE WHEN changed_m.signature IS NOT NULL THEN TRUE ELSE FALSE END) AS impacted,
                 COUNT(DISTINCT changed_m.signature) AS impacted_methods,
@@ -770,6 +774,7 @@ BEGIN
             td.test_tags,
             td.test_metadata::JSON,
             td.test_runner,
+            it.test_task_id::VARCHAR,
             (CASE
                 WHEN it.impacted IS TRUE THEN 'IMPACTED'
                 WHEN it.unknown_impact IS FALSE THEN 'NOT_IMPACTED'

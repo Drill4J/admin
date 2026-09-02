@@ -1426,6 +1426,7 @@ class MetricsServiceImpl(
                     testPath = data["test_path"] as String,
                     testName = data["test_name"] as String,
                     testRunner = data["test_runner"] as String?,
+                    testTaskId = data["test_task_id"] as String?,
                     tags = data["test_tags"] as List<String>?,
                     metadata = data["test_metadata"] as JsonElement?,
                     impactStatus = (data["impact_status"] as String).let { TestImpactStatus.valueOf(it) },
@@ -1481,6 +1482,7 @@ class MetricsServiceImpl(
             testNames = options["testNames"].orEmpty(),
             testRunners = options["testRunners"].orEmpty(),
             testTags = options["testTags"].orEmpty(),
+            testTaskIds = options["testTaskIds"].orEmpty(),
         )
     }
 

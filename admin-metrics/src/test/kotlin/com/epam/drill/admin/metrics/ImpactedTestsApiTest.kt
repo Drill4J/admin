@@ -251,7 +251,26 @@ class ImpactedTestsApiTest : MetricsDatabaseTests({ default, metrics ->
             }.returns { data ->
                 assertTrue(data.isNotEmpty(), "Expected at least one test from task-a")
                 assertTrue(data.all { it["testName"] == "testFromTaskA" }, "All returned tests should belong to task-a")
+                assertTrue(data.all { it["testTaskId"] == "task-a" }, "All returned tests should have testTaskId task-a")
                 assertTrue(data.none { it["testName"] == "testFromTaskB" }, "No tests from task-b should be returned")
+            }
+        }
+
+    @Test
+    fun `given impacted tests, filter-options should return available test task ids`() =
+        havingData {
+            build1 has listOf(method1)
+            val taskASession = session1.testTaskId("task-a")
+            val taskBSession = session2.testTaskId("task-b")
+            val testFromTaskA = TestDetails(testName = "testFromTaskA")
+            val testFromTaskB = TestDetails(testName = "testFromTaskB")
+            testFromTaskA of taskASession covers method1 on build1
+            testFromTaskB of taskBSession covers method1 on build1
+            build2 hasModified method1 comparedTo build1
+        }.expectThat { client ->
+            client.postImpactedTestsFilterOptions(build2, build1).returnsSingle { options ->
+                val testTaskIds = options["testTaskIds"] as? List<*>
+                assertEquals(listOf("task-a", "task-b"), testTaskIds)
             }
         }
 
