@@ -205,6 +205,7 @@ $$ LANGUAGE plpgsql STABLE PARALLEL SAFE;
 -- @param input_coverage_branches: Array of branches to filter coverage
 -- @param input_coverage_test_tags: Array of test tags to filter coverage
 -- @param input_coverage_test_task_ids: Array of test task IDs to filter coverage
+-- @param input_coverage_test_results: Array of test results to filter coverage
 -- @param input_coverage_period_from: Optional timestamp to filter coverage by creation date
 -- @param is_smart_coverage_before_build: Boolean value indicating whether smart coverage should only be considered up to the build date
 -- @returns TABLE: A table containing builds with coverage information
@@ -223,6 +224,7 @@ CREATE OR REPLACE FUNCTION metrics.get_builds_with_coverage(
     input_coverage_branches VARCHAR[] DEFAULT NULL,
     input_coverage_test_tags VARCHAR[] DEFAULT NULL,
     input_coverage_test_task_ids VARCHAR[] DEFAULT NULL,
+    input_coverage_test_results VARCHAR[] DEFAULT NULL,
     input_coverage_period_from TIMESTAMP DEFAULT NULL,
 
     include_smart_coverage BOOLEAN DEFAULT TRUE,
@@ -284,6 +286,7 @@ BEGIN
             input_coverage_branches => input_coverage_branches,
             input_coverage_test_tags => input_coverage_test_tags,
             input_coverage_test_task_ids => input_coverage_test_task_ids,
+            input_coverage_test_results => input_coverage_test_results,
             input_coverage_period_from => input_coverage_period_from,
 
             include_smart_coverage => include_smart_coverage,

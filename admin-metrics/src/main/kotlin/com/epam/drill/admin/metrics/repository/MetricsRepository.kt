@@ -87,6 +87,7 @@ interface MetricsRepository {
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String> = emptyList(),
     ): Map<String, Any?>?
 
     suspend fun getAppCoverageTrends(
@@ -95,6 +96,7 @@ interface MetricsRepository {
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         size: Int = 100,
     ): List<Map<String, Any?>>
 
@@ -105,6 +107,7 @@ interface MetricsRepository {
         branches: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         size: Int = 100,
     ): List<Map<String, Any?>>
 
@@ -326,6 +329,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         sortBy: String? = null,
@@ -429,6 +433,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
     ): List<Map<String, Any?>>
 
     suspend fun getClassCoverage(
@@ -437,6 +442,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
         sortBy: String? = null,
         sortOrder: SortOrder? = null,
         offset: Int? = null,
@@ -449,6 +455,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
     ): Long
 
     suspend fun getChangesWithCoverage(
@@ -457,6 +464,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
         packageName: String? = null,
         className: String? = null,
         offset: Int? = null, limit: Int? = null,
@@ -472,6 +480,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
         changeTypes: List<String> = emptyList(),
         hasImpactedTests: Boolean? = null,
         methodSignature: String? = null,
@@ -490,6 +499,7 @@ interface MetricsRepository {
         coverageTestTags: List<String> = emptyList(),
         coverageAppEnvIds: List<String> = emptyList(),
         coverageBranches: List<String> = emptyList(),
+        coverageTestResults: List<String> = emptyList(),
         changeTypes: List<String> = emptyList(),
         hasImpactedTests: Boolean? = null,
         methodSignature: String? = null,

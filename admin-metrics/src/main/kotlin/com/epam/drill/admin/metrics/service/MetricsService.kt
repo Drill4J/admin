@@ -79,6 +79,7 @@ interface MetricsService {
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String> = emptyList(),
     ): CoverageUnitSummaryView
 
     suspend fun getBuildCoverageByMethods(
@@ -87,6 +88,7 @@ interface MetricsService {
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String> = emptyList(),
     ): CoverageUnitSummaryView
 
     suspend fun getChangesSummary(
@@ -100,6 +102,7 @@ interface MetricsService {
         branches: List<String>,
         envIds: List<String>,
         testTags: List<String>,
+        testResults: List<String> = emptyList(),
         size: Int?,
     ): List<CoverageTrendPointView>
 
@@ -110,6 +113,7 @@ interface MetricsService {
         branches: List<String>,
         envIds: List<String>,
         testTags: List<String>,
+        testResults: List<String> = emptyList(),
         size: Int?,
     ): List<ChangesTrendPointView>
 
@@ -257,6 +261,7 @@ interface MetricsService {
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        testResults: List<String> = emptyList(),
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -272,6 +277,7 @@ interface MetricsService {
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        testResults: List<String> = emptyList(),
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -305,6 +311,7 @@ interface MetricsService {
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
         changeTypes: List<String> = emptyList(),
@@ -326,6 +333,7 @@ interface MetricsService {
         commitSha: String? = null,
         buildVersion: String? = null,
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
         packageNamePattern: String? = null,
@@ -342,6 +350,7 @@ interface MetricsService {
     suspend fun getCoverageByPackage(
         buildId: String,
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
     ): List<PackageCoverageView>
@@ -350,6 +359,7 @@ interface MetricsService {
         buildId: String,
         packageName: String? = null,
         testTags: List<String> = emptyList(),
+        testResults: List<String> = emptyList(),
         envIds: List<String> = emptyList(),
         branches: List<String> = emptyList(),
         sortBy: String? = null,

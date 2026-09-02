@@ -178,8 +178,9 @@ class MetricsServiceImpl(
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String>,
     ): CoverageUnitSummaryView = transaction {
-        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, CoverageUnit.PROBES)
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, testResults, CoverageUnit.PROBES)
     }
 
     override suspend fun getBuildCoverageByMethods(
@@ -188,8 +189,9 @@ class MetricsServiceImpl(
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String>,
     ): CoverageUnitSummaryView = transaction {
-        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, CoverageUnit.METHODS)
+        getBuildCoverageUnitSummary(buildId, baselineBuildId, envIds, branches, testTags, testResults, CoverageUnit.METHODS)
     }
 
     private suspend fun getBuildCoverageUnitSummary(
@@ -198,6 +200,7 @@ class MetricsServiceImpl(
         envIds: List<String>,
         branches: List<String>,
         testTags: List<String>,
+        testResults: List<String>,
         unit: CoverageUnit,
     ): CoverageUnitSummaryView {
         if (!metricsRepository.buildExists(buildId)) {
@@ -209,7 +212,7 @@ class MetricsServiceImpl(
             }
         }
         val row = metricsRepository.getBuildCoverageSummary(
-            buildId, baselineBuildId, envIds, branches, testTags
+            buildId, baselineBuildId, envIds, branches, testTags, testResults
         )
         return CoverageUnitSummaryView(slices = mapToCoverageUnitSlices(row, unit))
     }
@@ -240,6 +243,7 @@ class MetricsServiceImpl(
         branches: List<String>,
         envIds: List<String>,
         testTags: List<String>,
+        testResults: List<String>,
         size: Int?,
     ): List<CoverageTrendPointView> = transaction {
         metricsRepository.getAppCoverageTrends(
@@ -248,6 +252,7 @@ class MetricsServiceImpl(
             branches = branches,
             envIds = envIds,
             testTags = testTags,
+            testResults = testResults,
             size = normalizeTrendSize(size),
         ).map { row ->
             val isolated = ratioToPercent(row["isolated_probes_coverage_ratio"])
@@ -271,6 +276,7 @@ class MetricsServiceImpl(
         branches: List<String>,
         envIds: List<String>,
         testTags: List<String>,
+        testResults: List<String>,
         size: Int?,
     ): List<ChangesTrendPointView> = transaction {
         require(baselineBuildId.isNotBlank()) {
@@ -286,6 +292,7 @@ class MetricsServiceImpl(
             branches = branches,
             envIds = envIds,
             testTags = testTags,
+            testResults = testResults,
             size = normalizeTrendSize(size),
         ).map { row ->
             val coveredProbes = (row["isolated_covered_probes"] as? Number)?.toInt() ?: 0
@@ -787,6 +794,7 @@ class MetricsServiceImpl(
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        testResults: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -844,6 +852,7 @@ class MetricsServiceImpl(
                     coverageTestTags = testTags,
                     coverageAppEnvIds = envIds,
                     coverageBranches = branches,
+                    coverageTestResults = testResults,
                     packageName = packageNamePattern?.takeIf { it.isNotBlank() },
                     className = classNamePattern?.takeIf { it.isNotBlank() }
                 )
@@ -863,6 +872,7 @@ class MetricsServiceImpl(
         testTags: List<String>,
         envIds: List<String>,
         branches: List<String>,
+        testResults: List<String>,
         packageNamePattern: String?,
         classNamePattern: String?,
         rootId: String?,
@@ -888,6 +898,7 @@ class MetricsServiceImpl(
             coverageTestTags = testTags,
             coverageAppEnvIds = envIds,
             coverageBranches = branches,
+            coverageTestResults = testResults,
             packageName = packageNamePattern?.takeIf { it.isNotBlank() },
             className = classNamePattern?.takeIf { it.isNotBlank() },
             includeDeleted = includeDeleted?.takeIf { it },
@@ -1030,6 +1041,7 @@ class MetricsServiceImpl(
         baselineCommitSha: String?,
         baselineBuildVersion: String?,
         testTags: List<String>,
+        testResults: List<String>,
         envIds: List<String>,
         branches: List<String>,
         changeTypes: List<String>,
@@ -1074,6 +1086,7 @@ class MetricsServiceImpl(
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                coverageTestResults = testResults,
                 changeTypes = normalizedChangeTypes,
                 hasImpactedTests = hasImpactedTests,
                 methodSignature = methodSignature?.takeIf { it.isNotBlank() },
@@ -1092,6 +1105,7 @@ class MetricsServiceImpl(
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                coverageTestResults = testResults,
                 changeTypes = normalizedChangeTypes,
                 hasImpactedTests = hasImpactedTests,
                 methodSignature = methodSignature?.takeIf { it.isNotBlank() },
@@ -1108,6 +1122,7 @@ class MetricsServiceImpl(
         commitSha: String?,
         buildVersion: String?,
         testTags: List<String>,
+        testResults: List<String>,
         envIds: List<String>,
         branches: List<String>,
         packageNamePattern: String?,
@@ -1222,6 +1237,7 @@ class MetricsServiceImpl(
                     coverageTestTags = testTags,
                     coverageAppEnvIds = envIds,
                     coverageBranches = branches,
+                    coverageTestResults = testResults,
                     packageName = packageFilter,
                     className = classFilter,
                     sortBy = buildMappedSortBy,
@@ -1243,6 +1259,7 @@ class MetricsServiceImpl(
     override suspend fun getCoverageByPackage(
         buildId: String,
         testTags: List<String>,
+        testResults: List<String>,
         envIds: List<String>,
         branches: List<String>,
     ): List<PackageCoverageView> = transaction {
@@ -1254,6 +1271,7 @@ class MetricsServiceImpl(
             coverageTestTags = testTags,
             coverageAppEnvIds = envIds,
             coverageBranches = branches,
+            coverageTestResults = testResults,
         ).map(::mapToPackageCoverageView)
     }
 
@@ -1261,6 +1279,7 @@ class MetricsServiceImpl(
         buildId: String,
         packageName: String?,
         testTags: List<String>,
+        testResults: List<String>,
         envIds: List<String>,
         branches: List<String>,
         sortBy: String?,
@@ -1357,6 +1376,7 @@ class MetricsServiceImpl(
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                coverageTestResults = testResults,
                 sortBy = mappedSortBy,
                 sortOrder = sortOrder,
                 offset = offset,
@@ -1369,6 +1389,7 @@ class MetricsServiceImpl(
                 coverageTestTags = testTags,
                 coverageAppEnvIds = envIds,
                 coverageBranches = branches,
+                coverageTestResults = testResults,
             )
         }
     }

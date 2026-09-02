@@ -204,6 +204,7 @@ class Metrics(
             val envIds: List<String> = emptyList(),
             val branches: List<String> = emptyList(),
             val testTags: List<String> = emptyList(),
+            val testResults: List<String> = emptyList(),
         )
 
         @Resource("coverage-by-methods")
@@ -213,6 +214,7 @@ class Metrics(
             val envIds: List<String> = emptyList(),
             val branches: List<String> = emptyList(),
             val testTags: List<String> = emptyList(),
+            val testResults: List<String> = emptyList(),
         )
 
         @Resource("changes-summary")
@@ -287,6 +289,7 @@ class Metrics(
         val branches: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val size: Int? = null,
     )
 
@@ -300,6 +303,7 @@ class Metrics(
         val branches: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val size: Int? = null,
     )
 
@@ -309,6 +313,7 @@ class Metrics(
 
         val buildId: String,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
         val packageNamePattern: String? = null,
@@ -326,6 +331,7 @@ class Metrics(
         val buildId: String,
         val baselineBuildId: String,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
         val packageNamePattern: String? = null,
@@ -385,6 +391,7 @@ class Metrics(
         val baselineCommitSha: String? = null,
         val baselineBuildVersion: String? = null,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
         val changeTypes: List<String> = emptyList(),
@@ -408,6 +415,7 @@ class Metrics(
         val commitSha: String? = null,
         val buildVersion: String? = null,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
         val packageName: String? = null,
@@ -429,6 +437,7 @@ class Metrics(
 
         val buildId: String,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
     )
@@ -440,6 +449,7 @@ class Metrics(
         val buildId: String,
         val packageName: String? = null,
         val testTags: List<String> = emptyList(),
+        val testResults: List<String> = emptyList(),
         val envIds: List<String> = emptyList(),
         val branches: List<String> = emptyList(),
         val sortBy: String? = null,
@@ -657,6 +667,7 @@ fun Route.getAppCoverageTrends() {
             branches = params.branches,
             envIds = params.envIds,
             testTags = params.testTags,
+            testResults = params.testResults,
             size = params.size,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
@@ -674,6 +685,7 @@ fun Route.getAppChangesTrends() {
             branches = params.branches,
             envIds = params.envIds,
             testTags = params.testTags,
+            testResults = params.testResults,
             size = params.size,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
@@ -1015,6 +1027,7 @@ fun Route.getBuildCoverageByProbes() {
             envIds = params.envIds,
             branches = params.branches,
             testTags = params.testTags,
+            testResults = params.testResults,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -1030,6 +1043,7 @@ fun Route.getBuildCoverageByMethods() {
             envIds = params.envIds,
             branches = params.branches,
             testTags = params.testTags,
+            testResults = params.testResults,
         )
         this.call.respond(HttpStatusCode.OK, ApiResponse(data))
     }
@@ -1074,6 +1088,7 @@ fun Route.getCoverageTreemap() {
             params.testTags,
             params.envIds,
             params.branches,
+            params.testResults,
             params.packageNamePattern,
             params.classNamePattern,
             params.rootId,
@@ -1096,6 +1111,7 @@ fun Route.getChangesCoverageTreemap() {
             params.testTags,
             params.envIds,
             params.branches,
+            params.testResults,
             params.packageNamePattern,
             params.classNamePattern,
             params.rootId,
@@ -1143,6 +1159,7 @@ fun Route.getBuildChanges() {
             baselineCommitSha = params.baselineCommitSha,
             baselineBuildVersion = params.baselineBuildVersion,
             testTags = params.testTags,
+            testResults = params.testResults,
             envIds = params.envIds,
             branches = params.branches,
             changeTypes = params.changeTypes,
@@ -1178,6 +1195,7 @@ fun Route.getCoverage() {
             commitSha = params.commitSha,
             buildVersion = params.buildVersion,
             testTags = params.testTags,
+            testResults = params.testResults,
             envIds = params.envIds,
             branches = params.branches,
             packageNamePattern = params.packageName,
@@ -1208,6 +1226,7 @@ fun Route.getCoverageByPackage() {
         val data = metricsService.getCoverageByPackage(
             buildId = params.buildId,
             testTags = params.testTags,
+            testResults = params.testResults,
             envIds = params.envIds,
             branches = params.branches,
         )
@@ -1223,6 +1242,7 @@ fun Route.getCoverageByClass() {
             buildId = params.buildId,
             packageName = params.packageName,
             testTags = params.testTags,
+            testResults = params.testResults,
             envIds = params.envIds,
             branches = params.branches,
             sortBy = params.sortBy,
