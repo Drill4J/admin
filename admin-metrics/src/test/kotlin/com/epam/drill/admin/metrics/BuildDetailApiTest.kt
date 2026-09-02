@@ -72,6 +72,8 @@ class BuildDetailApiTest : MetricsDatabaseTests({ default, metrics ->
             val data = json.read<Map<String, Any>>("$.data")
             assertEquals(1, data["newMethods"])
             assertEquals(1, data["modifiedMethods"])
+            assertTrue(data.containsKey("impactedTests"))
+            assertTrue(data.containsKey("impactedMethods"))
         }
     }
 

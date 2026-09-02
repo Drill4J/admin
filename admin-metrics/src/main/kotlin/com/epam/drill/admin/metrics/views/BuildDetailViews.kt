@@ -52,6 +52,8 @@ data class ChangesSummaryView(
     val modifiedMethods: Int,
     val newMethods: Int,
     val deletedMethods: Int,
+    val impactedTests: Int,
+    val impactedMethods: Int,
 )
 
 @Serializable

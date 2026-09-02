@@ -230,10 +230,25 @@ class MetricsServiceImpl(
             throw BuildNotFound("Baseline build info not found for $baselineBuildId")
         }
         val row = metricsRepository.getChangesSummary(buildId, baselineBuildId)
+        val parsedBuildId = parseBuildId(buildId)
+        val impactedTests = metricsRepository.getImpactedTestsCount(
+            targetBuildId = buildId,
+            baselineBuildId = baselineBuildId,
+            impactStatuses = listOf(TestImpactStatus.IMPACTED),
+        )
+        val impactedMethods = metricsRepository.getBuildChangesCount(
+            buildId = buildId,
+            baselineBuildId = baselineBuildId,
+            groupId = parsedBuildId.groupId,
+            appId = parsedBuildId.appId,
+            hasImpactedTests = true,
+        )
         ChangesSummaryView(
             modifiedMethods = (row["modified_methods"] as? Number)?.toInt() ?: 0,
             newMethods = (row["new_methods"] as? Number)?.toInt() ?: 0,
             deletedMethods = (row["deleted_methods"] as? Number)?.toInt() ?: 0,
+            impactedTests = impactedTests.toInt(),
+            impactedMethods = impactedMethods.toInt(),
         )
     }
 
@@ -1525,13 +1540,7 @@ class MetricsServiceImpl(
         val baselineBuildId = baselineBuild.id.takeIf { metricsRepository.buildExists(it) }
             ?: throw BuildNotFound("Baseline build info not found for ${baselineBuild.id}")
 
-        val sortingFieldMapping = mapOf(
-            "signature" to "signature",
-            "className" to "class_name",
-            "name" to "method_name",
-            "impactedTests" to "impacted_tests"
-        )
-        val mappedSortBy = sortBy?.let { sortingFieldMapping[it] ?: it }
+        val mappedSortBy = validateImpactedMethodsSortBy(sortBy)
 
         return pagedFreshListOf(build.groupId, page, pageSize, freshAfter) { offset, limit ->
             metricsRepository.getImpactedMethods(
@@ -1793,6 +1802,14 @@ class MetricsServiceImpl(
             )
     }
 
+    private fun validateImpactedMethodsSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
+        val normalized = requestedSortBy.trim()
+        IMPACTED_METHODS_SORT_FIELDS[normalized]
+            ?: throw IllegalArgumentException(
+                "Invalid sortBy '$requestedSortBy'. Allowed values: ${IMPACTED_METHODS_SORT_FIELDS.keys.joinToString(", ")}"
+            )
+    }
+
     private fun validateTestFileLaunchSortBy(sortBy: String?): String? = sortBy?.let { requestedSortBy ->
         val normalized = requestedSortBy.trim()
         if (normalized.isBlank() || normalized !in TEST_FILE_LAUNCH_SORT_FIELDS) {
@@ -1974,6 +1991,12 @@ class MetricsServiceImpl(
             "testName" to "test_name",
             "testRunner" to "test_runner",
             "impactedMethods" to "impacted_methods",
+        )
+        private val IMPACTED_METHODS_SORT_FIELDS = mapOf(
+            "signature" to "signature",
+            "className" to "class_name",
+            "name" to "method_name",
+            "impactedTests" to "impacted_tests",
         )
     }
 }
