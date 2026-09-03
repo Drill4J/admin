@@ -338,19 +338,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-  /api/data-ingest/method-ignore-rules:
+  /api/data-management/method-ignore-rules:
     post:
       summary: Save method ignore rule
       description: |
         Creates a new rule for excluding methods from coverage analysis and metrics computation.
-        Rules are matched by name pattern and/or class name pattern using glob-style matching.
+        All populated fields within one rule are AND-ed; separate rules are OR-ed.
+        Pattern values are regular expressions.
 
         **Note:** Newly created rules are automatically applied during subsequent ETL cycles for new data only.
         If you need the rule to take effect for already loaded data, trigger an ETL refresh from scratch
         by calling `POST /api/metrics/refresh?reset=true`.
       operationId: postMethodIgnoreRules
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
       requestBody:
@@ -370,10 +371,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
     get:
-      summary: Get all method ignore rules
+      summary: Get method ignore rules for an app
       description: |
-        Retrieves the complete list of method ignore rules configured in the system.
-        Each rule defines patterns (name and/or class name) used to exclude matching methods
+        Retrieves method ignore rules for the requested group and application.
+        Each rule defines class name and/or method name patterns used to exclude matching methods
         from coverage analysis and metrics computation.
 
         **Note:** Changes to ignore rules (creation or deletion) are automatically applied during subsequent ETL cycles
@@ -381,17 +382,43 @@ paths:
         from scratch by calling `POST /api/metrics/refresh?reset=true`.
       operationId: getAllMethodIgnoreRules
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 500
       responses:
         '200':
-          description: List of method ignore rules
+          description: Paged list of method ignore rules
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
-  /api/data-ingest/method-ignore-rules/{id}:
+                $ref: '#/components/schemas/MethodIgnoreRulesDataResponse'
+  /api/data-management/method-ignore-rules/{id}:
     delete:
       summary: Delete method ignore rule by ID
       description: |
@@ -401,7 +428,7 @@ paths:
         an ETL refresh from scratch. Trigger it by calling `POST /api/metrics/refresh?reset=true`.
       operationId: deleteMethodIgnoreRuleById
       tags:
-        - data-ingest
+        - data-management
       security:
         - apiKeyAuth: [ ]
       parameters:
@@ -411,6 +438,16 @@ paths:
           description: Unique numeric identifier of the method ignore rule to delete.
           schema:
             type: integer
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Method ignore rule deleted
@@ -418,6 +455,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/tree:
+    get:
+      summary: Browse nested package/class/method tree for a build
+      description: |
+        Returns a nested package→class→method tree built server-side (same nesting/collapse approach as coverage treemap).
+        Method leaves are included for structure treemap rendering; the methods endpoint remains for paged class drill-down.
+        Ignore rules only affect ignored / ignoredMethods flags; they never filter nodes.
+        Response includes roots plus affectedMethods and totalMethods scalars.
+      operationId: getRawMethodTree
+      tags: [data-management]
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string } }
+        - { name: appId, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Nested package/class/method tree with total and ignored method counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawMethodTreeDataResponse'
+  /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}/raw-methods/methods:
+    get:
+      summary: Browse every method in a class
+      description: Returns methods whether or not they match saved ignore rules; matching methods are marked with ignored=true.
+      operationId: getRawMethods
+      tags: [data-management]
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string } }
+        - { name: appId, in: path, required: true, schema: { type: string } }
+        - { name: buildId, in: path, required: true, schema: { type: string } }
+        - { name: className, in: query, required: true, schema: { type: string } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, default: 100, minimum: 1, maximum: 500 } }
+      responses:
+        '200':
+          description: Paged methods with ignore metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawMethodPageDataResponse'
   # Data Management Endpoints
   /api/data-management/groups/{groupId}/apps/{appId}/builds/{buildId}:
     delete:
@@ -489,6 +571,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
   # Metrics Endpoints
+  /api/metrics/groups:
+    get:
+      summary: Get groups
+      description: |
+        Retrieves distinct group IDs that have metrics build data.
+      operationId: getGroups
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      responses:
+        '200':
+          description: List of group IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
   /api/metrics/applications:
     get:
       summary: Get applications
@@ -520,6 +619,866 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/branches:
+    get:
+      summary: Get app branches
+      description: |
+        Retrieves distinct Git branch names for builds of the specified application.
+      operationId: getAppBranches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of branch names
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/apps/env-ids:
+    get:
+      summary: Get app environment IDs
+      description: |
+        Retrieves distinct environment IDs from builds of the specified application.
+      operationId: getAppEnvIds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of environment IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/apps/trends/coverage:
+    get:
+      summary: Get app coverage trends
+      description: |
+        Time-series overall coverage ratios across recent builds
+        (Metabase card 71 — Coverage by Builds). Independent of baseline;
+        does not scope to changed methods.
+      operationId: getAppCoverageTrends
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: branches
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: size
+          in: query
+          required: false
+          description: Number of recent builds to include (default 100, max 500).
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Coverage trend points ordered oldest to newest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/apps/trends/changes:
+    get:
+      summary: Get app changes trends (code probes + methods)
+      description: |
+        Time-series change-coverage counts from the baseline onward for both
+        probes (code) and methods in each point. Requires baselineBuildId.
+      operationId: getAppChangesTrends
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          description: Leftmost baseline build; later builds are compared to it.
+          schema:
+            type: string
+        - name: branches
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: size
+          in: query
+          required: false
+          description: Number of builds from the baseline onward (default 100, max 500).
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Changes trend points ordered oldest to newest (probes + methods per point)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/test-sessions:
+    get:
+      summary: Get test sessions for a group
+      description: |
+        Retrieves a paginated list of test sessions for a group (one row per session ID).
+        Sessions may span multiple builds; use the session builds endpoint for per-build detail.
+      operationId: getGroupTestSessions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          description: Group identifier.
+          schema:
+            type: string
+        - name: testTaskIds
+          in: query
+          required: false
+          description: Optional test task identifier filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: createdBys
+          in: query
+          required: false
+          description: Optional creator filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          description: Sort field — `sessionStartedAt` or `successRate`.
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          required: false
+          description: Sort direction — `ASC` or `DESC`.
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of test sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/filter-options:
+    get:
+      summary: Get test session filter options
+      description: |
+        Returns distinct values for test session filters scoped to a group and optional build.
+      operationId: getTestSessionFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: field
+          in: query
+          required: true
+          description: Filter field — `testTaskIds`, `createdBys`, or `results`.
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated distinct filter option values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/builds:
+    get:
+      summary: Get builds affected by a test session
+      operationId: getTestSessionBuilds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated builds linked to the test session with per-build coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+        '404':
+          description: Test session not found or group mismatch
+  /api/metrics/test-sessions/{testSessionId}:
+    get:
+      summary: Get test session details
+      operationId: getTestSessionById
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+        '404':
+          description: Test session not found or group mismatch
+  /api/metrics/test-sessions/{testSessionId}/coverage-summary:
+    get:
+      summary: Get test session coverage summary
+      operationId: getTestSessionCoverageSummary
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session coverage summary (probes and methods)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/test-sessions/{testSessionId}/definitions:
+    get:
+      summary: Get paginated test definitions for a session
+      operationId: getTestSessionDefinitions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          description: Search by test definition id, name, or path
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated test definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches:
+    get:
+      summary: Get test launches for a session
+      operationId: getTestLaunches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testResults
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testNames
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testLaunches, testDuration]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated test launches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches:
+    get:
+      summary: Get file-level test launches for a session
+      operationId: getTestFileLaunches
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testPaths
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - testDefinitions
+              - testLaunches
+              - passed
+              - failed
+              - skipped
+              - smartSkipped
+              - testDuration
+              - successRate
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated file-level launches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches/filter-options:
+    get:
+      summary: Get filter options for test launches in a session
+      operationId: getTestLaunchFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Distinct test names, tags, and results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/launches/page:
+    get:
+      summary: Get the page number of a test launch in the filtered, sorted list
+      operationId: getTestLaunchPage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: launchId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testNames
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testResults
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: testTags
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testLaunches, testDuration]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 1-based page containing the launch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches/filter-options:
+    get:
+      summary: Get filter options for file-level test launches
+      operationId: getTestFileLaunchFilterOptions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Distinct results, or a paginated path list when page/query/pageSize is set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/test-sessions/{testSessionId}/file-launches/page:
+    get:
+      summary: Get the page number of a test file in the filtered, sorted list
+      operationId: getTestFileLaunchPage
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: testSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: buildId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: testPaths
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [testDefinitions, testLaunches, passed, failed, skipped, smartSkipped, testDuration, successRate]
+        - name: sortOrder
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 1-based page containing the test file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
   /api/metrics/builds:
     get:
       summary: Get builds
@@ -543,16 +1502,20 @@ paths:
           description: Unique identifier for the application.
           schema:
             type: string
-        - name: branch
+        - name: branches
           in: query
-          description: Optional Git branch name filter. When specified, only builds from this branch are returned.
+          description: Optional Git branch name filters. When specified, only builds from these branches are returned.
           schema:
-            type: string
-        - name: envId
+            type: array
+            items:
+              type: string
+        - name: envIds
           in: query
-          description: Optional environment identifier filter. When specified, only builds deployed in this environment are returned.
+          description: Optional environment identifier filters. When specified, only builds deployed in these environments are returned.
           schema:
-            type: string
+            type: array
+            items:
+              type: string
         - name: commitSha
           in: query
           description: Optional Git commit SHA filter. When specified, only builds from this commit are returned.
@@ -568,6 +1531,17 @@ paths:
           description: Field to sort builds by. Supported values COMMIT_DATE, BUILD_VERSION. Defaults to COMMIT_DATE.
           schema:
             type: string
+            enum:
+              - COMMIT_DATE
+              - BUILD_VERSION
+        - name: sortOrder
+          in: query
+          description: Sort order direction. Defaults to DESC if not specified.
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1 if not specified.
@@ -592,6 +1566,245 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}:
+    get:
+      summary: Get build details
+      operationId: getBuildById
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Build details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-probes:
+    get:
+      summary: Get build code coverage by probes
+      operationId: getBuildCoverageByProbes
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Probe coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/coverage-by-methods:
+    get:
+      summary: Get build code coverage by methods
+      operationId: getBuildCoverageByMethods
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          schema:
+            type: string
+        - name: envId
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: testTag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Method coverage slices (covered / missed) for pie chart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/changes-summary:
+    get:
+      summary: Get build changes summary
+      operationId: getBuildChangesSummary
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: baselineBuildId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Change type counts vs baseline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/similar-builds:
+    get:
+      summary: Get similar builds for baseline selection
+      operationId: getSimilarBuilds
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Similar builds ranked by identity ratio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDataResponse'
+  /api/metrics/builds/{buildId}/test-session-stats:
+    get:
+      summary: Get test session stats for a build
+      operationId: getBuildTestSessionStats
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session and launch counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResponse'
+  /api/metrics/builds/{buildId}/test-sessions:
+    get:
+      summary: Get test sessions for a build
+      description: |
+        Retrieves a paginated list of test sessions linked to a specific build.
+      operationId: getBuildTestSessions
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          description: Group identifier.
+          schema:
+            type: string
+        - name: testTaskIds
+          in: query
+          required: false
+          description: Optional test task identifier filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: createdBys
+          in: query
+          required: false
+          description: Optional creator filters.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: results
+          in: query
+          required: false
+          description: Optional session result filters (e.g. PASSED, FAILED).
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sortBy
+          in: query
+          required: false
+          description: Sort field — `sessionStartedAt` or `successRate`.
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          required: false
+          description: Sort direction — `ASC` or `DESC`.
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          description: Page number for pagination (1-based). Defaults to 1.
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: Number of items per page. Defaults to a system-defined value.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of test sessions for the build
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/build-diff-report:
     get:
       summary: Get build diff report
@@ -728,6 +1941,12 @@ paths:
           description: Filter coverage by test definition ID. Requires testSessionId to be specified. When provided, only coverage data from the specific test definition is included.
           schema:
             type: string
+        - name: includeOtherBuilds
+          in: query
+          description: Whether covered probes include aggregated coverage contributed by other builds. Defaults to true.
+          schema:
+            type: boolean
+            default: true
         - name: freshAfter
           in: query
           required: false
@@ -816,6 +2035,12 @@ paths:
           description: Whether to include methods that are unchanged between builds. Defaults to false.
           schema:
             type: boolean
+        - name: includeOtherBuilds
+          in: query
+          description: Whether covered probes include aggregated coverage contributed by other builds. Defaults to true.
+          schema:
+            type: boolean
+            default: true
         - name: freshAfter
           in: query
           required: false
@@ -830,14 +2055,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/changes:
+  /api/metrics/build-changes:
     get:
-      summary: Get method changes between builds
+      # TODO: discuss with team later — supersedes main's /api/metrics/changes (slim method-diff only).
+      summary: Get unified build changes between builds
       description: |
-        Retrieves a paginated list of method-level changes between a target build and a baseline build.
-        The target build is identified by instanceId, commitSha, or buildVersion; the baseline build is identified
-        by baselineInstanceId, baselineCommitSha, or baselineBuildVersion.
-      operationId: getMethodChanges
+        Retrieves a paginated unified changes report between a target build and a baseline build.
+        Composes `metrics.get_changes_with_coverage` (with deleted methods included) LEFT JOIN
+        `metrics.get_impacted_methods_v2` — one row per diff entry with coverage and impacted test counts.
+        Default sort is aggregated missed probes descending.
+      operationId: getBuildChanges
       tags:
         - metrics
       security:
@@ -846,63 +2073,109 @@ paths:
         - name: groupId
           in: query
           required: true
-          description: Unique identifier for the application group.
           schema:
             type: string
         - name: appId
           in: query
           required: true
-          description: Unique identifier for the application.
           schema:
             type: string
         - name: instanceId
           in: query
-          description: Instance ID of the target build deployment.
           schema:
             type: string
         - name: commitSha
           in: query
-          description: Git commit SHA of the target build.
           schema:
             type: string
         - name: buildVersion
           in: query
-          description: Build version of the target build.
           schema:
             type: string
         - name: baselineInstanceId
           in: query
-          description: Instance ID of the baseline build deployment.
           schema:
             type: string
         - name: baselineCommitSha
           in: query
-          description: Git commit SHA of the baseline build.
           schema:
             type: string
         - name: baselineBuildVersion
           in: query
-          description: Build version of the baseline build.
           schema:
             type: string
-        - name: includeDeleted
+        - name: testTags
           in: query
-          description: Whether to include methods that were deleted in the target build (present in baseline but absent in target). Defaults to false.
+          description: Optional test tag filters for coverage and impacted-methods join.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          description: Optional app environment filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: branches
+          in: query
+          description: Optional branch filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: changeTypes
+          in: query
+          description: Optional filter by change type. Supported values are new, modified, deleted, equal.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - new
+                - modified
+                - deleted
+                - equal
+        - name: hasImpactedTests
+          in: query
+          description: When true, return only rows with impactedTests > 0.
           schema:
             type: boolean
-        - name: includeEqual
+        - name: methodSignature
           in: query
-          description: Whether to include methods that are unchanged between builds. Defaults to false.
+          description: Optional filter by full method signature (className:methodName:params:returnType).
           schema:
-            type: boolean
+            type: string
+        - name: testDefinitionId
+          in: query
+          description: Optional reverse drill-down filter — return only changed methods linked to the given test definition.
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Field name to sort results by.
+          schema:
+            type: string
+            enum:
+              - changeType
+              - coverageRatioInOtherBuilds
+              - impactedTests
+              - aggregatedMissedProbes
+              - signature
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
         - name: page
           in: query
-          description: Page number for pagination (1-based). Defaults to 1 if not specified.
           schema:
             type: integer
         - name: pageSize
           in: query
-          description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
         - name: freshAfter
@@ -914,11 +2187,11 @@ paths:
             format: int64
       responses:
         '200':
-          description: List of method changes between builds
+          description: Paginated unified build changes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
   /api/metrics/coverage:
     get:
       summary: Get coverage by methods for a build
@@ -932,8 +2205,27 @@ paths:
       parameters:
         - name: buildId
           in: query
-          required: true
-          description: Internal build identifier for which to retrieve method-level coverage data.
+          description: Internal build identifier. When omitted, groupId, appId, and one of instanceId/commitSha/buildVersion are required.
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+        - name: appId
+          in: query
+          schema:
+            type: string
+        - name: instanceId
+          in: query
+          schema:
+            type: string
+        - name: commitSha
+          in: query
+          schema:
+            type: string
+        - name: buildVersion
+          in: query
           schema:
             type: string
         - name: testTag
@@ -951,16 +2243,32 @@ paths:
           description: Optional Git branch filter. When specified, only coverage data from this branch is included.
           schema:
             type: string
-        - name: packageNamePattern
+        - name: packageName
           in: query
-          description: Optional package name pattern filter for narrowing results to specific packages.
+          description: Optional package name filter for narrowing results to specific packages.
           schema:
             type: string
-        - name: classNamePattern
+        - name: className
           in: query
-          description: Optional class name pattern filter for narrowing results to specific classes.
+          description: Optional class name filter for narrowing results to specific classes.
           schema:
             type: string
+        - name: sortBy
+          in: query
+          description: |
+            Field to sort results by. When omitted, results are ordered by method id ascending.
+            Supported values:
+            - coverageRatio — probe coverage percentage
+            - probesCount — total probes count
+            - coveredProbes — covered probes count
+          schema:
+            type: string
+        - name: sortOrder
+          in: query
+          description: Sort direction. Defaults to ASC when sortBy is set.
+          schema:
+            type: string
+            enum: [ASC, DESC]
         - name: page
           in: query
           description: Page number for pagination (1-based). Defaults to 1 if not specified.
@@ -985,142 +2293,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  /api/metrics/impacted-tests:
+  /api/metrics/coverage/by-package:
     get:
-      summary: Get impacted tests
-      description: |
-        Retrieves a paginated list of tests that are impacted by code changes between a target build and a baseline build.
-        Impact analysis identifies which tests previously covered methods that have been modified, added, or deleted.
-      operationId: getImpactedTests
+      summary: Get aggregated package coverage for a build
+      operationId: getCoverageByPackage
       tags:
         - metrics
       security:
         - apiKeyAuth: [ ]
       parameters:
-        - name: groupId
+        - name: buildId
           in: query
           required: true
-          description: Unique identifier for the application group.
           schema:
             type: string
-        - name: appId
+        - name: testTags
+          in: query
+          description: Optional test tag filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: envIds
+          in: query
+          description: Optional environment identifier filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: branches
+          in: query
+          description: Optional Git branch filters for coverage.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: freshAfter
+          in: query
+          required: false
+          description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Package coverage aggregates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/metrics/coverage/by-class:
+    get:
+      summary: Get aggregated class coverage for a build
+      operationId: getCoverageByClass
+      tags:
+        - metrics
+      security:
+        - apiKeyAuth: [ ]
+      parameters:
+        - name: buildId
           in: query
           required: true
-          description: Unique identifier for the application.
-          schema:
-            type: string
-        - name: instanceId
-          in: query
-          description: Instance ID of the target build deployment.
-          schema:
-            type: string
-        - name: commitSha
-          in: query
-          description: Git commit SHA of the target build.
-          schema:
-            type: string
-        - name: buildVersion
-          in: query
-          description: Build version of the target build.
-          schema:
-            type: string
-        - name: baselineInstanceId
-          in: query
-          description: Instance ID of the baseline build deployment.
-          schema:
-            type: string
-        - name: baselineCommitSha
-          in: query
-          description: Git commit SHA of the baseline build.
-          schema:
-            type: string
-        - name: baselineBuildVersion
-          in: query
-          description: Build version of the baseline build.
           schema:
             type: string
         - name: packageName
           in: query
-          description: Optional filter to only consider methods in this package when determining impacted tests.
           schema:
             type: string
-        - name: className
+        - name: testTags
           in: query
-          description: Optional filter to only consider methods in this class when determining impacted tests.
-          schema:
-            type: string
-        - name: methodName
-          in: query
-          description: Optional filter to only consider methods with this name when determining impacted tests.
-          schema:
-            type: string
-        - name: excludeMethodSignatures
-          in: query
-          description: List of method signatures to exclude from impact analysis. Tests covering only excluded methods will not be returned. Signature format is "className:methodName:params:returnType".
+          description: Optional test tag filters for coverage.
           schema:
             type: array
             items:
               type: string
-          style: form
-          explode: true
-        - name: testTag
+        - name: envIds
           in: query
-          description: Optional filter by test tag. When specified, only tests with this tag are included.
-          schema:
-            type: string
-        - name: testPath
-          in: query
-          description: Optional filter by test source path. When specified, only tests at this path are included.
-          schema:
-            type: string
-        - name: testName
-          in: query
-          description: Optional filter by test name. When specified, only tests with this name are included.
-          schema:
-            type: string
-        - name: coverageBranches
-          in: query
-          description: List of Git branch names to consider when selecting coverage data for impact analysis.
+          description: Optional environment identifier filters for coverage.
           schema:
             type: array
             items:
               type: string
-          style: form
-          explode: true
-        - name: coverageAppEnvIds
+        - name: branches
           in: query
-          description: List of application environment IDs to consider when selecting coverage data for impact analysis.
+          description: Optional Git branch filters for coverage.
           schema:
             type: array
             items:
               type: string
-          style: form
-          explode: true
-        - name: impactStatuses
-          in: query
-          description: |
-            List of impact statuses to filter results by. Supported values are IMPACTED, NOT_IMPACTED, UNKNOWN_IMPACT. 
-            When specified, only tests with one of these impact statuses are returned.
-            Defaults to IMPACTED if not specified.
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
         - name: sortBy
           in: query
-          description: Field name to sort results by. Supported values are testPath, testName, testRunner, impactedMethods.
+          description: |
+            Field to sort results by. When omitted, results are ordered by class name ascending.
+            Supported values:
+            - methodsCoverageRatio — method coverage percentage
+            - methodsCount — total methods count
+            - coveredMethods — covered methods count
+            - probesCoverageRatio — probe coverage percentage
+            - probesCount — total probes count
+            - coveredProbes — covered probes count
           schema:
             type: string
             enum:
-              - testPath
-              - testName
-              - testRunner
-              - impactedMethods
+              - methodsCoverageRatio
+              - methodsCount
+              - coveredMethods
+              - probesCoverageRatio
+              - probesCount
+              - coveredProbes
         - name: sortOrder
           in: query
-          description: Sort order direction. ASC for ascending, DESC for descending. Defaults to ASC if not specified.
+          description: Sort direction. Defaults to ASC when sortBy is set. Ignored when sortBy is omitted.
           schema:
             type: string
             enum:
@@ -1136,6 +2419,16 @@ paths:
           description: Number of items per page. Defaults to a system-defined value if not specified.
           schema:
             type: integer
+        - name: testSessionId
+          in: query
+          description: Optional test session filter for drill-down coverage.
+          schema:
+            type: string
+        - name: testDefinitionId
+          in: query
+          description: Optional test definition filter for drill-down coverage.
+          schema:
+            type: string
         - name: freshAfter
           in: query
           required: false
@@ -1145,17 +2438,18 @@ paths:
             format: int64
       responses:
         '200':
-          description: List of impacted tests
+          description: Class coverage aggregates
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListDataResponse'
+                $ref: '#/components/schemas/PagedDataResponse'
+  /api/metrics/impacted-tests:
     post:
-      summary: Get impacted tests (POST)
+      summary: Get impacted tests
       description: |
-        POST variant of the impacted tests endpoint. Accepts the same parameters as the GET endpoint but via a JSON
-        request body instead of query parameters. Useful when the number of filter parameters is large or contains
-        complex values (e.g., lists of method signatures to exclude) that are impractical to pass as query parameters.
+        Retrieves a paginated list of tests that are impacted by code changes between a target build and a baseline build.
+        Impact analysis identifies which tests previously covered methods that have been modified, added, or deleted.
+        Accepts filters via JSON request body (including lists such as excludeMethodSignatures) that are impractical as query parameters.
       operationId: postImpactedTests
       tags:
         - metrics
@@ -1859,8 +3153,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DataResponse'
-  # API Key Management Routes
-  /api/api-keys:
+  # API Key Management Routes (admin — matches ApiKeyManagementRoutes @Resource("/keys"))
+  /api/keys:
     get:
       summary: Get API keys
       description: |
@@ -1879,29 +3173,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ListDataResponse'
-    post:
-      summary: Generate API key
-      description: |
-        Generates a new API key on behalf of any user.
-      operationId: generateApiKey
-      tags:
-        - auth
-      security:
-        - apiKeyAuth: [ ]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenerateApiKeyPayload'
-      responses:
-        '200':
-          description: API Key successfully generated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DataResponse'
-  /api/api-keys/{id}:
+  /api/keys/{id}:
     delete:
       summary: Delete API key
       description: |
@@ -1951,6 +3223,31 @@ components:
       properties:
         message:
           type: string
+    ApiResponse:
+      type: object
+      properties:
+        data:
+          type: object
+    PagedDataResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        paging:
+          $ref: '#/components/schemas/Paging'
+    Paging:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          format: int64
+          nullable: true
 
     # Data Ingest Schemas
     BuildPayload:
@@ -2425,21 +3722,232 @@ components:
       type: object
       description: |
         Rule definition for excluding methods from coverage analysis and metrics computation.
+        At least one of namePattern or classnamePattern must be a non-empty valid regular expression.
+        Populated pattern fields within one rule are AND-ed; separate rules are OR-ed.
+        Empty / null pattern fields are ignored and do not participate in matching.
+      required:
+        - groupId
+        - appId
+      anyOf:
+        - required: [namePattern]
+        - required: [classnamePattern]
       properties:
         groupId:
           type: string
+          minLength: 1
           description: Unique identifier for the application group this rule applies to.
         appId:
           type: string
+          minLength: 1
           description: Unique identifier for the application this rule applies to.
         namePattern:
           type: string
           nullable: true
-          description: Glob-style pattern for matching method names to exclude (e.g., 'get*', 'set*', 'toString'). Methods with names matching this pattern will be excluded from analysis.
+          description: Regular expression for matching method names. Must be valid regex when non-empty.
         classnamePattern:
           type: string
           nullable: true
-          description: Glob-style pattern for matching fully qualified class names to exclude (e.g., 'com.example.generated.*'). All methods in classes matching this pattern will be excluded.
+          description: Regular expression for matching fully qualified class names. Must be valid regex when non-empty.
+    MethodIgnoreRuleView:
+      type: object
+      description: Saved method ignore rule.
+      required:
+        - id
+        - groupId
+        - appId
+      properties:
+        id:
+          type: integer
+          description: Unique numeric identifier of the rule.
+        groupId:
+          type: string
+        appId:
+          type: string
+        namePattern:
+          type: string
+          nullable: true
+        classnamePattern:
+          type: string
+          nullable: true
+    MethodIgnoreRulesPageView:
+      type: object
+      description: Paged method ignore rules for one group/app.
+      required:
+        - data
+        - page
+        - pageSize
+        - total
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MethodIgnoreRuleView'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          format: int64
+    MethodIgnoreRulesDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MethodIgnoreRulesPageView'
+        message:
+          type: string
+          nullable: true
+    RawMethodTreeNodeView:
+      type: object
+      description: |
+        Nested package, class, or method node in the raw-methods tree.
+        Several fields are serialized with snake_case names (full_name, package_name, etc.).
+      required:
+        - type
+        - name
+        - full_name
+        - package_name
+      properties:
+        type:
+          type: string
+          enum: [package, class, method]
+        name:
+          type: string
+        full_name:
+          type: string
+          description: Full package path, class path, or method path.
+        package_name:
+          type: string
+          description: Package path using `/` separators; empty string means the default package.
+        class_name:
+          type: string
+          nullable: true
+        method_id:
+          type: string
+          nullable: true
+        method_name:
+          type: string
+          nullable: true
+        signature:
+          type: string
+          nullable: true
+        params:
+          type: string
+          nullable: true
+        return_type:
+          type: string
+          nullable: true
+        probes_count:
+          type: integer
+          format: int64
+          description: Layout size for treemap (at least 1 so zero-probe methods remain visible).
+        covered_probes:
+          type: integer
+          format: int64
+          description: Unused for ignore-rules coloring; kept for coverage treemap layout compatibility.
+        ignored:
+          type: boolean
+          description: True when a method leaf matches saved ignore rules.
+        total_methods:
+          type: integer
+          description: Methods under this node (1 for method leaves).
+        ignored_methods:
+          type: integer
+          description: Methods under this node matched by saved ignore rules.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodTreeNodeView'
+    RawMethodTreeView:
+      type: object
+      description: Server-built nested package→class→method tree.
+      required:
+        - roots
+        - affectedMethods
+        - totalMethods
+      properties:
+        roots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodTreeNodeView'
+        affectedMethods:
+          type: integer
+          format: int64
+          description: Methods matched by saved ignore rules.
+        totalMethods:
+          type: integer
+          format: int64
+          description: Total methods in the build catalog under this tree.
+    RawMethodTreeDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RawMethodTreeView'
+        message:
+          type: string
+          nullable: true
+    RawMethodView:
+      type: object
+      description: One method with ignore-rule metadata.
+      required:
+        - methodId
+        - methodName
+        - className
+        - signature
+        - methodParams
+        - returnType
+        - probesCount
+        - ignored
+      properties:
+        methodId:
+          type: string
+        methodName:
+          type: string
+        className:
+          type: string
+        signature:
+          type: string
+        methodParams:
+          type: string
+        returnType:
+          type: string
+        probesCount:
+          type: integer
+        ignored:
+          type: boolean
+          description: True when the method matches at least one saved ignore rule.
+    RawMethodPageView:
+      type: object
+      description: Paged methods for one class in a build.
+      required:
+        - data
+        - page
+        - pageSize
+        - total
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RawMethodView'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          format: int64
+    RawMethodPageDataResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RawMethodPageView'
+        message:
+          type: string
+          nullable: true
     # Auth Schemas
     LoginPayload:
       type: object
@@ -2524,7 +4032,7 @@ components:
         retentionPeriodDays:
           type: integer
           nullable: true
-          description: Number of days to retain raw ingested data (builds, coverage, methods, test sessions) before automatic cleanup. Set to null to use the system default.
+          description: Number of days to retain ingested data (builds, coverage, methods, test sessions) before automatic cleanup. Set to null to use the system default.
         metricsPeriodDays:
           type: integer
           nullable: true
@@ -2580,6 +4088,10 @@ components:
           type: string
           nullable: true
           description: Optional filter to only consider methods with this name when determining impacted tests.
+        methodSignature:
+          type: string
+          nullable: true
+          description: Optional filter by full method signature (className:methodName:params:returnType).
         excludeMethodSignatures:
           type: array
           items:
@@ -2601,6 +4113,10 @@ components:
           type: string
           nullable: true
           description: Optional filter by test name. When specified, only tests with this name are included.
+        testDefinitionId:
+          type: string
+          nullable: true
+          description: Optional filter by exact test definition ID.
         coverageBranches:
           type: array
           items:
@@ -2638,6 +4154,55 @@ components:
           format: int64
           nullable: true
           description: Unix timestamp in milliseconds. Guarantees that the returned data will not be older than this timestamp.
+    BuildChangeView:
+      type: object
+      description: Unified build change row with coverage and impacted test count.
+      properties:
+        signature:
+          type: string
+        className:
+          type: string
+        name:
+          type: string
+        params:
+          type: array
+          items:
+            type: string
+        returnType:
+          type: string
+          nullable: true
+        changeType:
+          type: string
+          enum:
+            - NEW
+            - MODIFIED
+            - DELETED
+            - EQUAL
+        probesCount:
+          type: integer
+          nullable: true
+        coveredProbes:
+          type: integer
+          nullable: true
+        missedProbes:
+          type: integer
+          nullable: true
+        coverageRatio:
+          type: number
+          format: double
+          nullable: true
+        coveredProbesInOtherBuilds:
+          type: integer
+          nullable: true
+        missedProbesInOtherBuilds:
+          type: integer
+          nullable: true
+        coverageRatioInOtherBuilds:
+          type: number
+          format: double
+          nullable: true
+        impactedTests:
+          type: integer
     ImpactedMethodsRequest:
       type: object
       description: |

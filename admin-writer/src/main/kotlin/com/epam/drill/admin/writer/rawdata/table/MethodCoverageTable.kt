@@ -15,6 +15,7 @@
  */
 package com.epam.drill.admin.writer.rawdata.table
 
+import com.epam.drill.admin.writer.rawdata.config.BitString
 import com.epam.drill.admin.writer.rawdata.config.ProbesColumnType
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.javatime.CurrentDateTime
@@ -28,7 +29,7 @@ object MethodCoverageTable : IntIdTable("raw_data.method_coverage") {
     val methodId = varchar("method_id", MEDIUM_TEXT_LENGTH).references(MethodTable.methodId).nullable()
     val testId = varchar("test_id",  SHORT_TEXT_LENGTH).nullable()
     val testSessionId = varchar("test_session_id",  SHORT_TEXT_LENGTH).nullable()
-    val probes = registerColumn("probes", ProbesColumnType())
+    val probes = registerColumn<BitString>("probes", ProbesColumnType())
     val probesCount = integer("probes_count")
     val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
 }

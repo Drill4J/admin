@@ -16,7 +16,6 @@
 package com.epam.drill.admin.writer.rawdata.entity
 
 import com.epam.drill.admin.common.exception.InvalidParameters
-import com.epam.drill.admin.writer.rawdata.exception.InvalidMethodIgnoreRule
 import java.util.regex.PatternSyntaxException
 
 class MethodIgnoreRule(
@@ -38,7 +37,9 @@ class MethodIgnoreRule(
             throw InvalidParameters("Field 'appId' is required and must contain non-empty string")
         }
 
-        if (namePattern.isNullOrEmpty() && classnamePattern.isNullOrEmpty()) {
+        if (namePattern.isNullOrEmpty() &&
+            classnamePattern.isNullOrEmpty()
+        ) {
             throw InvalidParameters("You must specify at least one of the following fields containing valid regex: " +
                     "'namePattern', " +
                     "'classnamePattern'")

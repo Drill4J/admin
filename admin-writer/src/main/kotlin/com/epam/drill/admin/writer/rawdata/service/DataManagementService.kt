@@ -17,7 +17,7 @@ package com.epam.drill.admin.writer.rawdata.service
 
 import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.writer.rawdata.route.payload.MethodIgnoreRulePayload
-import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRuleView
+import com.epam.drill.admin.writer.rawdata.views.MethodIgnoreRulesPageView
 
 interface DataManagementService {
     /**
@@ -37,8 +37,13 @@ interface DataManagementService {
     suspend fun deleteTestSessionData(groupId: String, testSessionId: String, user: User?)
 
     suspend fun saveMethodIgnoreRule(rulePayload: MethodIgnoreRulePayload)
-    suspend fun getAllMethodIgnoreRules(): List<MethodIgnoreRuleView>
-    suspend fun deleteMethodIgnoreRuleById(ruleId: Int)
+    suspend fun getAllMethodIgnoreRules(
+        groupId: String,
+        appId: String,
+        page: Int,
+        pageSize: Int,
+    ): MethodIgnoreRulesPageView
+    suspend fun deleteMethodIgnoreRuleById(groupId: String, appId: String, ruleId: Int)
 
     suspend fun saveTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)
     suspend fun deleteTestLaunchCoverageRequest(groupId: String, testSessionId: String, testDefinitionId: String?)

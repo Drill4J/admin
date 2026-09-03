@@ -38,6 +38,7 @@ import com.epam.drill.admin.writer.rawdata.route.payload.TestDetails
 import com.epam.drill.admin.writer.rawdata.route.payload.TestResult
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.parameter
 import io.ktor.server.routing.route
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DI
@@ -243,18 +244,25 @@ class ExpectationDsl(
         MethodComparison(build, this, ChangeType.DELETED)
 
     suspend infix fun MethodComparison.comparedTo(baseline: InstancePayload) {
-        client.getChanges(
-            build = this.build,
+        val comparison = this
+        client.getBuildChanges(
+            build = comparison.build,
             baselineBuild = baseline,
-            includeDeleted = (this.changeType == ChangeType.DELETED),
-            includeEqual = (this.changeType == ChangeType.EQUAL),
-            otherParameters = parameters
+            otherParameters = {
+                when (comparison.changeType) {
+                    ChangeType.DELETED -> parameter("changeTypes", "deleted")
+                    ChangeType.NEW -> parameter("changeTypes", "new")
+                    ChangeType.MODIFIED -> parameter("changeTypes", "modified")
+                    ChangeType.EQUAL -> parameter("changeTypes", "equal")
+                }
+                parameters()
+            }
         ).returns { data ->
-            when (this.changeType) {
-                ChangeType.MODIFIED -> this.method.assertMethodIsModified(data)
-                ChangeType.NEW -> this.method.assertMethodIsNew(data)
-                ChangeType.DELETED -> this.method.assertMethodIsDeleted(data)
-                ChangeType.EQUAL -> this.method.assertMethodIsEqual(data)
+            when (comparison.changeType) {
+                ChangeType.MODIFIED -> comparison.method.assertMethodIsModified(data)
+                ChangeType.NEW -> comparison.method.assertMethodIsNew(data)
+                ChangeType.DELETED -> comparison.method.assertMethodIsDeleted(data)
+                ChangeType.EQUAL -> comparison.method.assertMethodIsEqual(data)
             }
         }
     }
@@ -297,7 +305,7 @@ class ExpectationDsl(
         ImpactedTests(listOf(this), build, TestImpactStatus.UNKNOWN_IMPACT)
 
     suspend infix fun ImpactedTests.comparedTo(baseline: InstancePayload) {
-        client.getImpactedTests(this.build, baseline, this.impactStatus, parameters).returns { data ->
+        client.postImpactedTests(this.build, baseline, this.impactStatus).returns { data ->
             when (this.impactStatus) {
                 TestImpactStatus.IMPACTED -> this.tests.forEach { it.assertTestIsImpacted(data) }
                 TestImpactStatus.NOT_IMPACTED -> this.tests.forEach { it.assertTestIsNotImpacted(data) }
@@ -322,7 +330,8 @@ class ExpectationDsl(
         ImpactedMethods(listOf(this), build, TestImpactStatus.UNKNOWN_IMPACT)
 
     suspend infix fun ImpactedMethods.comparedTo(baseline: InstancePayload) {
-        client.getImpactedMethods(this.build, baseline, parameters).returns { data ->
+        client.getBuildChanges(this.build, baseline, hasImpactedTests = true, otherParameters = parameters)
+            .returns { data ->
             when (this.impactedStatus) {
                 TestImpactStatus.IMPACTED -> this.methods.forEach { it.assertMethodIsImpacted(data) }
                 TestImpactStatus.NOT_IMPACTED -> this.methods.forEach { it.assertMethodIsNotImpacted(data) }
