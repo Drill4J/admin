@@ -45,5 +45,5 @@ suspend fun <T> pagedListOf(
 }
 
 suspend infix fun <T> PagedList<T>.withTotal(getTotal: suspend () -> Long): PagedList<T> {
-    return PagedList(page, pageSize, items, this.total ?: getTotal())
+    return PagedList(page, pageSize, items, this.total ?: getTotal(), refreshedAt)
 }

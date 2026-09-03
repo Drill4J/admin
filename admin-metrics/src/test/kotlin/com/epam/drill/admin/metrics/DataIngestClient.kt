@@ -154,6 +154,18 @@ suspend fun HttpResponse.assertSuccessStatus() = also {
     )
 }
 
+suspend fun HttpResponse.returnsStrings(path: String = "$.data", body: (List<String>) -> Unit) = also {
+    assertEquals(
+        HttpStatusCode.OK,
+        status,
+        "Expected HTTP status OK, but got $status with a message '${this.bodyAsText()}'"
+    )
+}.apply {
+    val json = JsonPath.parse(bodyAsText())
+    val data = json.read<List<String>>(path)
+    body(data)
+}
+
 suspend fun HttpResponse.returns(path: String = "$.data", body: (List<Map<String, Any?>>) -> Unit) = also {
     assertEquals(
         HttpStatusCode.OK,

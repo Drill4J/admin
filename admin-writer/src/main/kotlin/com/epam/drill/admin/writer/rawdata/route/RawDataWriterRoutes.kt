@@ -19,7 +19,6 @@ import com.epam.drill.admin.common.principal.User
 import com.epam.drill.admin.common.route.ok
 import com.epam.drill.admin.writer.rawdata.service.RawDataWriter
 import com.epam.drill.admin.writer.rawdata.service.QueuedRawDataWriter
-import com.epam.drill.admin.writer.rawdata.service.DataManagementService
 import com.epam.drill.admin.writer.rawdata.route.payload.BuildFinalizePayload
 import com.epam.drill.admin.writer.rawdata.route.payload.AgentHeartbeatPayload
 import com.epam.drill.admin.writer.rawdata.views.BuildFinalizationResultView
@@ -87,11 +86,6 @@ class TestDefinitionsRoute(): DataIngestRoute
 @Resource("test-launches")
 class TestLaunchesRoute(): DataIngestRoute
 
-@Resource("method-ignore-rules")
-class MethodIgnoreRulesRoute() {
-    @Resource("/{id}")
-    class Id(val parent: MethodIgnoreRulesRoute, val id: Int)
-}
 //@Resource("/groups/{groupId}/agents/{appId}/builds/{buildVersion}/raw-javascript-coverage")
 //class RawJavaScriptCoverage(val groupId: String, val appId: String, val buildVersion: String)
 
@@ -108,10 +102,6 @@ fun Route.dataIngestRoutes() {
         putTestSessions()
         postTestDefinitions()
         postTestLaunches()
-        postMethodIgnoreRules()
-        getMethodIgnoreRules()
-        deleteMethodIgnoreRule()
-//        postRawJavaScriptCoverage(jsCoverageConverterAddress)
     }
 }
 
@@ -213,33 +203,6 @@ fun Route.postTestLaunches() {
     post<TestLaunchesRoute> { params ->
         queuedRawDataWriter.enqueue(params, call.decompress())
         call.ok("Test launches saved")
-    }
-}
-
-fun Route.postMethodIgnoreRules() {
-    val dataManagementService by closestDI().instance<DataManagementService>()
-
-    post<MethodIgnoreRulesRoute> {
-        dataManagementService.saveMethodIgnoreRule(call.decompressAndReceive())
-        call.ok("Method ignore rule saved")
-    }
-}
-
-fun Route.getMethodIgnoreRules() {
-    val dataManagementService by closestDI().instance<DataManagementService>()
-
-    get<MethodIgnoreRulesRoute> {
-        call.ok(dataManagementService.getAllMethodIgnoreRules())
-    }
-}
-
-fun Route.deleteMethodIgnoreRule() {
-    val dataManagementService by closestDI().instance<DataManagementService>()
-
-    delete<MethodIgnoreRulesRoute.Id> { params ->
-        val id = params.id
-        dataManagementService.deleteMethodIgnoreRuleById(id)
-        call.ok("Method ignore rule deleted")
     }
 }
 

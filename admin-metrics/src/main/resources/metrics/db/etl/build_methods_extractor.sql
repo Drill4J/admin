@@ -23,8 +23,8 @@ WHERE bm.group_id = :group_id
         FROM raw_data.method_ignore_rules r
         WHERE r.group_id = m.group_id
             AND r.app_id = m.app_id
-            AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
-                OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
+            AND (r.classname_pattern IS NULL OR m.class_name::text ~ r.classname_pattern::text)
+            AND (r.name_pattern IS NULL OR m.method_name::text ~ r.name_pattern::text)
     )
 ORDER BY bm.created_at ASC, bm.method_id
 LIMIT :limit

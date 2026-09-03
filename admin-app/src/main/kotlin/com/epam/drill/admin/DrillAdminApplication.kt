@@ -135,8 +135,12 @@ fun Application.module() {
 
             //Data Management
             authenticate("jwt", "api-key") {
+                withRole(Role.USER, Role.ADMIN) {
+                    dataManagementReadRoutes()
+                }
                 withRole(Role.ADMIN) {
                     dataManagementRoutes()
+                    dataManagementWriteRoutes()
                 }
             }
 
