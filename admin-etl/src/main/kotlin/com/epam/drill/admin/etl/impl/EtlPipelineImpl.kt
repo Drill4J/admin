@@ -22,6 +22,7 @@ import com.epam.drill.admin.etl.EtlPipeline
 import com.epam.drill.admin.etl.EtlProcessingResult
 import com.epam.drill.admin.etl.EtlLoadingResult
 import com.epam.drill.admin.etl.EtlContext
+import com.epam.drill.admin.etl.EtlPeriod
 import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.EtlStatus
 import com.epam.drill.admin.etl.config.EtlMeter
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.system.measureTimeMillis
 
 class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
@@ -48,11 +50,11 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
-        onStatusChanged: suspend (EtlStatus) -> Unit,
+        onStatusChanged: suspend (EtlStatus) -> Unit
     ): EtlProcessingResult = withContext(Dispatchers.IO) {
-        val groupId = context.groupId
-        logger.debug { "ETL pipeline [$name] for group [$groupId] loading since $sinceTimestamp..." }
+        logger.debug { "ETL pipeline [$name] loading since $sinceTimestamp..." }
         var result = EtlLoadingResult(lastProcessedAt = sinceTimestamp)
         val duration = measureTimeMillis {
             result = loadData(
@@ -60,16 +62,17 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 sinceTimestamp,
                 untilTimestamp,
                 extractionFlow,
+                onTransformationProgress,
                 onLoadingProgress,
                 onStatusChanged
             )
         }
         logger.debug {
             if (result.processedRows == 0L && !result.isFailed) {
-                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, no new rows"
+                "ETL pipeline [$name] completed in ${duration}ms, no new rows"
             } else {
                 val errors = result.errorMessage?.let { ", errors: $it" } ?: ""
-                "ETL pipeline [$name] for group [$groupId] completed in ${duration}ms, rows processed: ${result.processedRows}" + errors
+                "ETL pipeline [$name] completed in ${duration}ms, rows processed: ${result.processedRows}" + errors
             }
         }
         EtlProcessingResult(
@@ -82,8 +85,8 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         )
     }
 
-    override suspend fun cleanUp(context: EtlContext) {
-        loader.deleteAll(context)
+    override suspend fun cleanUp(context: EtlContext, period: EtlPeriod) {
+        loader.deleteAll(context, period)
     }
 
     private suspend fun loadData(
@@ -91,6 +94,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit,
         onLoadingProgress: suspend (EtlLoadingResult) -> Unit,
         onStatusChanged: suspend (EtlStatus) -> Unit,
     ): EtlLoadingResult = try {
@@ -98,25 +102,32 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
             context,
             sinceTimestamp,
             untilTimestamp,
-            extractionFlow
-        ) { errorMessage, lastProcessedAt ->
-            onLoadingProgress(
-                EtlLoadingResult(
-                    errorMessage = errorMessage,
-                    lastProcessedAt = lastProcessedAt
+            extractionFlow,
+            onTransformationProgress = onTransformationProgress,
+            onTransformationError = { errorMessage, lastProcessedAt ->
+                onLoadingProgress(
+                    EtlLoadingResult(
+                        errorMessage = errorMessage,
+                        lastProcessedAt = lastProcessedAt
+                    )
                 )
-            )
-        }
-        transformer.transform(context, transformationFlow).let { loadingFlow ->
+            }
+        )
+        transformer.transform(
+            context, sinceTimestamp, untilTimestamp,
+            collector = transformationFlow,
+            onTransformationProgress
+        ).let { loadingFlow ->
             loader.load(
                 context, sinceTimestamp, untilTimestamp, loadingFlow,
                 onLoadingProgress = onLoadingProgress,
                 onStatusChanged = onStatusChanged,
             )
         }
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Throwable) {
-        val groupId = context.groupId
-        logger.debug(e) { "ETL pipeline [$name] for group [$groupId] failed for loader [${loader.name}]: ${e.message}" }
+        logger.debug(e) { "ETL pipeline [$name] failed for loader [${loader.name}]: ${e.message}" }
         EtlLoadingResult(
             errorMessage = "Error during loading data with loader ${loader.name}: ${e.message ?: e.javaClass.simpleName}",
             lastProcessedAt = sinceTimestamp
@@ -128,14 +139,15 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
         sinceTimestamp: Instant,
         untilTimestamp: Instant,
         extractionFlow: ClosableFlow<T>,
-        onLoadingError: suspend (String, Instant) -> Unit
+        onTransformationProgress: suspend (Instant) -> Unit,
+        onTransformationError: suspend (String, Instant) -> Unit
     ): Flow<T> {
         var previousTimestamp: Instant? = null
-        val rowsExtracted = metrics.rowsExtracted(name, context)
-        val skippedRows = metrics.rowsSkipped(name, context)
+        val rowsExtracted = metrics.rowsExtracted(name, context, sinceTimestamp)
+        val skippedRows = metrics.rowsSkipped(name, context, sinceTimestamp)
         suspend fun <T> ClosableFlow<T>.closeWithMessage(message: String) {
             close()
-            onLoadingError(message, previousTimestamp ?: sinceTimestamp)
+            onTransformationError(message, previousTimestamp ?: sinceTimestamp)
         }
         return flow {
             extractionFlow.collect { row ->
@@ -153,6 +165,7 @@ class EtlPipelineImpl<T : EtlRow, R : EtlRow>(
                 if (currentTimestamp <= sinceTimestamp) {
                     previousTimestamp = currentTimestamp
                     skippedRows.increment()
+                    onTransformationProgress(currentTimestamp)
                     return@collect
                 }
                 emit(row)

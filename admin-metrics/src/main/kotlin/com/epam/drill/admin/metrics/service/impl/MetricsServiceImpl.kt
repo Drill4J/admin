@@ -19,8 +19,7 @@ import com.epam.drill.admin.common.exception.BuildNotFound
 import com.epam.drill.admin.common.exception.ResourceNotFoundException
 import com.epam.drill.admin.common.service.generateBuildId
 import com.epam.drill.admin.common.service.parseBuildId
-import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlOrchestrator
+import com.epam.drill.admin.etl.service.EtlService
 import com.epam.drill.admin.metrics.config.MetricsConfig
 import com.epam.drill.admin.metrics.config.MetricsDatabaseConfig.transaction
 import com.epam.drill.admin.metrics.config.MetricsServiceUiLinksConfig
@@ -51,8 +50,7 @@ class MetricsServiceImpl(
     private val metricsServiceUiLinksConfig: MetricsServiceUiLinksConfig,
     private val testRecommendationsConfig: TestRecommendationsConfig,
     private val metricsConfig: MetricsConfig,
-    private val etl: EtlOrchestrator,
-    private val testDefinitionCoverageEtl: EtlOrchestrator,
+    private val etlService: EtlService,
 ) : MetricsService {
 
     private val logger = KotlinLogging.logger {}
@@ -832,13 +830,11 @@ class MetricsServiceImpl(
             testDefinitionId != null -> {
                 val resolvedTestSessionId = testSessionId
                     ?: throw IllegalArgumentException("testSessionId is required when testDefinitionId is specified")
-                testDefinitionCoverageEtl.run(
-                    EtlContext(
-                        groupId = parseBuildId(buildId).groupId,
-                        testSessionId = testSessionId,
-                        testDefinitionId = testDefinitionId
-                    ),
-                    finalTimestamp = freshAfter
+                etlService.loadTestDefinitionCoverage(
+                    groupId = parseBuildId(buildId).groupId,
+                    testSessionId = testSessionId,
+                    testDefinitionId = testDefinitionId,
+                    snapshotTimestamp = freshAfter ?: Instant.now(),
                 )
                 metricsRepository.getMethodsWithCoverageByTestDefinition(
                     buildId = buildId,
@@ -1933,9 +1929,7 @@ class MetricsServiceImpl(
 
     private suspend fun refresh(groupId: String, freshAfter: Instant?): Instant? {
         return freshAfter?.let {
-            etl.run(EtlContext(groupId), finalTimestamp = it).minOfOrNull { result ->
-                result.lastProcessedAt
-            }
+            etlService.forceRefresh(groupId, snapshotTimestamp = freshAfter)
         }
     }
 

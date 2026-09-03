@@ -15,6 +15,8 @@
  */
 package com.epam.drill.admin.etl.impl
 
+import com.epam.drill.admin.etl.EtlPeriod
+
 import com.epam.drill.admin.etl.DataExtractor
 import com.epam.drill.admin.etl.DataLoader
 import com.epam.drill.admin.etl.DataTransformer
@@ -258,12 +260,18 @@ private class PbCapturingLoader(override val name: String) : DataLoader<UntypedR
         return EtlLoadingResult(lastProcessedAt = untilTimestamp, processedRows = received.size.toLong())
     }
 
-    override suspend fun deleteAll(context: EtlContext) = received.clear()
+    override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) = received.clear()
 }
 
 private class PbPassThroughTransformer(override val name: String = "pass") :
     DataTransformer<UntypedRow, UntypedRow> {
-    override suspend fun transform(context: EtlContext, collector: Flow<UntypedRow>): Flow<UntypedRow> = flow {
+    override suspend fun transform(
+        context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<UntypedRow>,
+        onTransformationProgress: suspend (Instant) -> Unit
+    ): Flow<UntypedRow> = flow {
         collector.collect { emit(it) }
     }
 }

@@ -11,17 +11,17 @@ SELECT
     b.commit_message,
     b.committed_at,
     b.created_at,
-    GREATEST(b.updated_at, MAX(i.created_at)) AS updated_at,
+    MIN(i.created_at) AS first_instance_created_at,
+    MAX(COALESCE(i.last_heartbeat_at, i.created_at)) AS last_instance_heartbeat_at,
+    GREATEST(b.updated_at, MAX(COALESCE(i.last_heartbeat_at, i.created_at))) AS updated_at,
     DATE_TRUNC('day', b.created_at) AS created_at_day,
-    DATE_TRUNC('day', GREATEST(b.updated_at, MAX(i.created_at))) AS updated_at_day
+    DATE_TRUNC('day', GREATEST(b.updated_at, MAX(COALESCE(i.last_heartbeat_at, i.created_at)))) AS updated_at_day
 FROM raw_data.builds b
 LEFT JOIN raw_data.instances i ON i.build_id = b.id
 	AND i.group_id = b.group_id
-	AND i.created_at > :since_timestamp
-	AND i.created_at <= :until_timestamp
 WHERE b.group_id = :group_id
     AND b.updated_at > :since_timestamp
     AND b.updated_at <= :until_timestamp
 GROUP BY b.id
-ORDER BY GREATEST(b.updated_at, MAX(i.created_at)) ASC
+ORDER BY GREATEST(b.updated_at, MAX(COALESCE(i.last_heartbeat_at, i.created_at))) ASC
 LIMIT :limit

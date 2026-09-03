@@ -69,6 +69,13 @@ The table uses a composite primary key `(pipeline_name, extractor_name, loader_n
 | `rows_processed` | Cumulative count of rows processed across all executions.                                                                                                |
 | `created_at` | Timestamp when the metadata record was first created.                                                                                                    |
 | `updated_at` | Timestamp when the metadata record was last modified.                                                                                                    |
+| `period_from` | Inclusive start day of a bounded-period rerun (day granularity). The incremental lane uses the sentinel `0001-01-01`. Part of the primary key.           |
+| `period_to` | Inclusive end day of a bounded-period rerun (day granularity). The incremental lane uses the sentinel `9999-12-31`. Part of the primary key.             |
+
+> **Note:** The `etl_metadata` and `etl_runs` primary keys also include the data-context columns
+> (`group_id`, `app_id`, …) and `period_from`/`period_to`, so each `(context, period)` keeps its own
+> watermark and run-lock. This is what lets bounded-period reruns run independently of the
+> incremental `run()` and of each other (when non-overlapping).
 
 ### Persistence Strategy
 
@@ -120,18 +127,58 @@ suspend fun run(initTimestamp: Instant = Instant.EPOCH): List<EtlProcessingResul
     - Updates metadata after each loader completes.
 - **Use case**: Periodic scheduled updates to refresh metrics with recent data.
 
-#### 2. Full Rerun (`rerun()`)
+#### 2. Full or Period Rerun (`rerun()`)
 
 ```kotlin
-suspend fun rerun(initTimestamp: Instant = Instant.EPOCH, withDataDeletion: Boolean): List<EtlProcessingResult>
+suspend fun rerun(
+    context: EtlContext,
+    initTimestamp: Instant = Instant.EPOCH,
+    finalTimestamp: Instant? = null,
+    period: EtlPeriod = EtlPeriod.UNBOUNDED,
+    withDataDeletion: Boolean = false,
+    skipIfLocked: Boolean = false,
+): List<EtlProcessingResult>
 ```
 
-- **Purpose**: Rebuild metrics from scratch, optionally deleting existing metric data.
+- **Purpose**: Rebuild metrics, optionally deleting existing metric data, either for the whole
+  history or for a bounded day range.
 - **Behavior**:
-    - Deletes all metadata records for the orchestrator's pipelines from `etl_metadata`.
-    - If `withDataDeletion = true`, invokes `cleanUp()` on each pipeline to truncate target tables.
-    - Executes a full `run()` starting from `initTimestamp` (typically based on the configured metrics retention period).
-- **Use case**: Recovery from original data in case of changes that occurred retrospectively or periodic full refresh to restore consistency.
+    - Deletes the metadata records for the orchestrator's pipelines scoped to `period` from `etl_metadata`.
+    - If `withDataDeletion = true`, invokes `cleanUp(context, period)` on each pipeline to delete the
+      target rows (filtered by `created_at_day` when `period` is bounded).
+    - When `period` is **unbounded** (`EtlPeriod.UNBOUNDED`), executes a full `run()` starting from
+      `initTimestamp`.
+    - When `period` is **bounded** (`EtlPeriod(from, to)`), the extraction window and deletion are
+      derived from the day range `[from, to]` (time-of-day ignored). The rerun keeps its **own
+      watermark** in its **own** `etl_metadata`/`etl_runs` rows (keyed by `period_from`/`period_to`),
+      independent of the incremental `run()` and of other, non-overlapping periods.
+- **Parallelism & serialization**: non-overlapping bounded periods for the same context run in
+  parallel; overlapping periods are **serialized** by the run-lock (`tryAcquireLockAndStart` performs
+  a range-overlap check). The incremental (unbounded/sentinel) lane never conflicts with bounded
+  periods.
+- **Use case**: Recover or back-fill a specific past date range, and parallelize large back-fills by
+  splitting a range into day chunks (see `EtlService.refresh(fromDay, toDay, chunkDays)`).
+
+#### 3. Resume Unfinished (`resumeUnfinished()`)
+
+```kotlin
+suspend fun resumeUnfinished(context: EtlContext? = null): List<EtlProcessingResult>
+```
+
+- **Purpose**: Continue bounded-period reruns that were interrupted (e.g. by a restart or crash).
+- **Behavior**: finds `etl_metadata` rows for bounded periods whose status is not terminal
+  (`EXTRACTING`, `LOADING`, `FAILED`) via `EtlMetadataRepository.getUnfinishedTargets`, and re-runs
+  each `(context, period)` **from its persisted watermark** (no metadata or data deletion).
+  Overlapping unfinished periods are serialized automatically by the run-lock.
+- **Scheduling**: `UpdateMetricsEtlJob` calls `resumeUnfinished()` on every tick (after the
+  incremental `run()`), so back-fills survive restarts.
+
+##### Period model (`EtlPeriod`)
+
+- `EtlPeriod.UNBOUNDED` (`from == null && to == null`) — the incremental lane; persisted with
+  sentinel bounds (`0001-01-01` / `9999-12-31`).
+- `EtlPeriod(from, to)` — an inclusive day range; deletion filters on `created_at_day`, extraction
+  uses `created_at > from-midnight` and `created_at <= (to+1)-midnight`.
 
 ## Usage
 
