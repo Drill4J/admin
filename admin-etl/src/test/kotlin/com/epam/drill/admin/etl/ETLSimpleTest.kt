@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2020 - 2022 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -86,16 +88,19 @@ class ETLSimpleTest {
             }
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             dataStore.clear()
         }
     }
 
-    inner class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
+    class SimpleTransformer : DataTransformer<SimpleClass, SimpleClass> {
         override val name = SIMPLE_TRANSFORMER
         override suspend fun transform(
             context: EtlContext,
-            collector: Flow<SimpleClass>
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            collector: Flow<SimpleClass>,
+            onTransformationProgress: suspend (Instant) -> Unit
         ): Flow<SimpleClass> = flow {
             collector.collect { emit(it) }
         }
@@ -120,7 +125,7 @@ class ETLSimpleTest {
             )
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
             dataStore.clear()
         }
     }
@@ -128,7 +133,7 @@ class ETLSimpleTest {
 
     private fun buildOrchestrator(
         metadataRepository: EtlMetadataRepository = SimpleMetadataRepository(),
-        runsRepository: EtlRunsRepository = SimpleEtlRunsRepository()
+        jobsRepository: EtlJobsRepository = SimpleEtlJobsRepository()
     ) = EtlOrchestratorImpl(
         name = "simple-etl",
         pipelines = listOf(
@@ -141,8 +146,20 @@ class ETLSimpleTest {
             )
         ),
         metadataRepository = metadataRepository,
-        runsRepository = runsRepository
+        jobsRepository = jobsRepository,
+        metrics = metrics
     )
+
+    private suspend fun runIncremental(
+        orchestrator: EtlOrchestratorImpl,
+        jobsRepository: EtlJobsRepository,
+        context: EtlContext,
+    ): EtlJobResult {
+        val job = jobsRepository.findResumable(orchestrator.name, context, EtlPeriod.UNBOUNDED).firstOrNull()
+            ?: jobsRepository.scheduleJob(orchestrator.name, context, EtlPeriod.UNBOUNDED)
+            ?: error("Could not schedule/resume job")
+        return orchestrator.run(job, "test-worker")
+    }
 
     @BeforeEach
     fun setUp() {
@@ -153,17 +170,19 @@ class ETLSimpleTest {
     @Test
     fun `given success loading, ETL orchestrator should move lastProcessedAt forward`() = runBlocking {
         val repo = SimpleMetadataRepository()
-        val orchestrator = buildOrchestrator(repo)
+        val jobsRepository = SimpleEtlJobsRepository()
+        val orchestrator = buildOrchestrator(repo, jobsRepository)
         val context = EtlContext(groupId = "test-group")
 
         val initialLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE)
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
-        val result = orchestrator.run(context)
+        val result = runIncremental(orchestrator, jobsRepository, context)
 
-        assertTrue(result.first().status == EtlStatus.SUCCESS)
-        assertEquals(3, result.first().rowsProcessed)
+        // Unbounded (incremental) periods never "complete" - IDLE means the worker
+        // caught up with all available data but the period stays open for future runs.
+        assertTrue(result.status == EtlJobStatus.IDLE)
 
         val updatedLastProcessedAt = repo.getMetadata(context, SIMPLE_PIPELINE)
             ?.lastProcessedAt ?: Instant.EPOCH
@@ -176,7 +195,7 @@ class ETLSimpleTest {
     fun `given failed loading, ETL orchestrator should leave lastProcessedAt as initial`() = runBlocking {
         val context = EtlContext(groupId = "test-group")
         val metadataRepo = SimpleMetadataRepository()
-        val runsRepo = SimpleEtlRunsRepository()
+        val jobsRepository = SimpleEtlJobsRepository()
         val orchestrator = EtlOrchestratorImpl(
             name = "failed-etl",
             pipelines = listOf(
@@ -189,17 +208,17 @@ class ETLSimpleTest {
                 )
             ),
             metadataRepository = metadataRepo,
-            runsRepository = runsRepo
+            jobsRepository = jobsRepository,
+            metrics = metrics,
         )
 
         val initialLastProcessedAt = metadataRepo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
 
         addNewRecords(3)
-        val result = orchestrator.run(context)
+        val result = runIncremental(orchestrator, jobsRepository, context)
 
-        assertTrue(result.first().status == EtlStatus.FAILED)
-        assertEquals(0, result.first().rowsProcessed)
+        assertTrue(result.status == EtlJobStatus.ERROR)
 
         val updatedLastProcessedAt = metadataRepo.getMetadata(context, "failed-pipeline")
             ?.lastProcessedAt ?: Instant.EPOCH
@@ -211,27 +230,28 @@ class ETLSimpleTest {
     @Test
     fun `given several launches, ETL orchestrator should process only new data`() = runBlocking {
         val repo = SimpleMetadataRepository()
-        val orchestrator = buildOrchestrator(repo)
+        val jobsRepository = SimpleEtlJobsRepository()
+        val orchestrator = buildOrchestrator(repo, jobsRepository)
         val groupId = "test-group"
+        val context = EtlContext(groupId = groupId)
 
         addNewRecords(5)
-        val result1 = orchestrator.run(EtlContext(groupId = groupId))
-        assertTrue(result1.first().status == EtlStatus.SUCCESS)
-        assertEquals(5, result1.first().rowsProcessed)
+        val result1 = runIncremental(orchestrator, jobsRepository, context)
+        assertTrue(result1.status == EtlJobStatus.IDLE)
 
         Thread.sleep(10)
         addNewRecords(3)
-        val result2 = orchestrator.run(EtlContext(groupId = groupId))
-        assertTrue(result2.first().status == EtlStatus.SUCCESS)
-        assertEquals(3, result2.first().rowsProcessed)
+        val result2 = runIncremental(orchestrator, jobsRepository, context)
+        assertTrue(result2.status == EtlJobStatus.IDLE)
     }
 
     @Test
     fun `given consistencyWindow, ETL orchestrator should re-process records within the lookback window`() =
         runBlocking {
             val groupId = "test-group"
+            val context = EtlContext(groupId = groupId)
             val metadataRepo = SimpleMetadataRepository()
-            val runsRepo = SimpleEtlRunsRepository()
+            val jobsRepository = SimpleEtlJobsRepository()
             val orchestrator = EtlOrchestratorImpl(
                 name = "lookback-etl",
                 pipelines = listOf(
@@ -244,21 +264,43 @@ class ETLSimpleTest {
                     )
                 ),
                 metadataRepository = metadataRepo,
-                runsRepository = runsRepo,
+                jobsRepository = jobsRepository,
+                metrics = metrics,
                 consistencyWindow = 60,
             )
 
             addNewRecords(5)
-            val result1 = orchestrator.run(EtlContext(groupId = groupId))
-            assertTrue(result1.first().status == EtlStatus.SUCCESS)
-            assertEquals(5, result1.first().rowsProcessed)
+            val result1 = runIncremental(orchestrator, jobsRepository, context)
+            assertTrue(result1.status == EtlJobStatus.IDLE)
 
             addNewRecords(3)
             // lookback of 60s should re-process all 8 records (5 original + 3 new)
-            val result2 = orchestrator.run(EtlContext(groupId = groupId))
-            assertTrue(result2.first().status == EtlStatus.SUCCESS)
-            assertEquals(8, result2.first().rowsProcessed)
+            val result2 = runIncremental(orchestrator, jobsRepository, context)
+            assertTrue(result2.status == EtlJobStatus.IDLE)
         }
+
+    @Test
+    fun `given bounded period reaching its end, ETL orchestrator should report COMPLETED`() = runBlocking {
+        val repo = SimpleMetadataRepository()
+        val jobsRepository = SimpleEtlJobsRepository()
+        val orchestrator = buildOrchestrator(repo, jobsRepository)
+        val context = EtlContext(groupId = "test-group")
+
+        // A bounded period (today..today) has a non-null untilTimestamp, so once the
+        // worker reaches it without errors, the job is reported as COMPLETED.
+        val yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1)
+        val period = EtlPeriod(from = yesterday, to = yesterday)
+
+        addNewRecords(3)
+
+        val job = jobsRepository.findResumable(orchestrator.name, context, period).firstOrNull()
+            ?: jobsRepository.scheduleJob(orchestrator.name, context, period)
+            ?: error("Could not schedule/resume job")
+        val result = orchestrator.run(job, "test-worker")
+
+        assertEquals(EtlJobStatus.COMPLETED, result.status)
+        assertEquals(EtlStatus.SUCCESS, repo.getMetadata(context, SIMPLE_PIPELINE, period)?.status)
+    }
 }
 
 

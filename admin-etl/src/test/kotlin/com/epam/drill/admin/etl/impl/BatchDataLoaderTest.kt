@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.epam.drill.admin.etl.impl
+import com.epam.drill.admin.etl.EtlPeriod
 
 import com.epam.drill.admin.etl.EtlContext
 import com.epam.drill.admin.etl.EtlRow
@@ -40,7 +41,13 @@ class BatchDataLoaderTest {
 
         val loadedBatches = mutableListOf<List<TestItem>>()
 
-        override suspend fun loadBatch(context: EtlContext, batch: List<TestItem>, batchNo: Int): BatchResult {
+        override suspend fun loadBatch(
+            context: EtlContext,
+            sinceTimestamp: Instant,
+            untilTimestamp: Instant,
+            batch: List<TestItem>,
+            batchNo: Int
+        ): BatchResult {
             if (failOnBatch == batchNo) {
                 return BatchResult(success = false, rowsLoaded = 0, errorMessage = "Batch $batchNo failed")
             }
@@ -48,7 +55,7 @@ class BatchDataLoaderTest {
             return BatchResult(success = true, rowsLoaded = batch.size.toLong())
         }
 
-        override suspend fun deleteAll(context: EtlContext) {
+        override suspend fun deleteAll(context: EtlContext, period: EtlPeriod) {
         }
     }
 

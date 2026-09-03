@@ -18,37 +18,40 @@ package com.epam.drill.admin.etl
 import java.time.Instant
 
 class SimpleMetadataRepository : EtlMetadataRepository {
-    private val store = mutableMapOf<Pair<EtlContext, String>, EtlMetadata>()
+    private data class Key(val context: EtlContext, val pipelineName: String, val period: EtlPeriod)
 
+    private val store = mutableMapOf<Key, EtlMetadata>()
 
     override suspend fun getMetadata(
         context: EtlContext,
         pipelineName: String,
-    ): EtlMetadata? = store[context to pipelineName]
+        period: EtlPeriod,
+    ): EtlMetadata? = store[Key(context, pipelineName, period)]
 
     override suspend fun saveMetadata(context: EtlContext, metadata: EtlMetadata) {
-        store[context to metadata.pipelineName] = metadata
+        store[Key(context, metadata.pipelineName, metadata.period)] = metadata
     }
 
-    override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String) {
-        store.keys.remove(context to pipelineName)
+    override suspend fun deleteMetadataByPipeline(context: EtlContext, pipelineName: String, period: EtlPeriod) {
+        store.keys.remove(Key(context, pipelineName, period))
     }
 
-    override suspend fun getAllMetadata(context: EtlContext): List<EtlMetadata> =
-        store.filter { it.key.first == context }.values.toList()
+    override suspend fun getAllMetadata(context: EtlContext, period: EtlPeriod): List<EtlMetadata> =
+        store.filter { it.key.context == context && it.key.period == period }.values.toList()
 
     override suspend fun accumulateMetadataByLoader(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod,
         lastProcessedAt: Instant?,
         status: EtlStatus?,
         loadDuration: Long,
         rowsProcessed: Long,
         errorMessage: String?
     ) {
-        val existing = store[context to pipelineName]
-        if (existing == null) return
-        store[context to pipelineName] = existing.copy(
+        val key = Key(context, pipelineName, period)
+        val existing = store[key] ?: return
+        store[key] = existing.copy(
             lastProcessedAt = lastProcessedAt ?: existing.lastProcessedAt,
             lastLoadDuration = existing.lastLoadDuration + loadDuration,
             lastRowsProcessed = existing.lastRowsProcessed + rowsProcessed,
@@ -60,16 +63,25 @@ class SimpleMetadataRepository : EtlMetadataRepository {
     override suspend fun accumulateMetadataByExtractor(
         context: EtlContext,
         pipelineName: String,
+        period: EtlPeriod,
         status: EtlStatus?,
         extractDuration: Long,
         errorMessage: String?
     ) {
-        val existing = store[context to pipelineName]
-        if (existing == null) return
-        store[context to pipelineName] = existing.copy(
+        val key = Key(context, pipelineName, period)
+        val existing = store[key] ?: return
+        store[key] = existing.copy(
             lastExtractDuration = existing.lastExtractDuration + extractDuration,
-            status = if (errorMessage != null) EtlStatus.FAILED else existing.status,
+            status = status ?: (if (errorMessage != null) EtlStatus.FAILED else existing.status),
             errorMessage = errorMessage
         )
+    }
+
+    override suspend fun getUnfinishedTargets(pipelineNames: Collection<String>): List<EtlRunTarget> {
+        val unfinished = setOf(EtlStatus.EXTRACTING, EtlStatus.LOADING, EtlStatus.FAILED)
+        return store.entries
+            .filter { it.key.pipelineName in pipelineNames && it.value.status in unfinished && it.key.period.isBounded }
+            .map { EtlRunTarget(it.key.context, it.key.period) }
+            .distinct()
     }
 }
