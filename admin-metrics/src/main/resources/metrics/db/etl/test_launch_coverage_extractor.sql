@@ -8,7 +8,7 @@ WITH test_launch_coverage AS (
 		tl.created_at AS test_completed_at,
 		td.path AS test_path,
 		td.name AS test_name,
-		test_tag,
+		NULL AS test_tag,
 		ts.test_task_id,
 		c.app_id,
 		c.build_id,
@@ -31,7 +31,6 @@ WITH test_launch_coverage AS (
 	                AND (r.classname_pattern IS NOT NULL AND m.class_name::text ~ r.classname_pattern::text
 	                    OR r.name_pattern IS NOT NULL AND m.method_name::text ~ r.name_pattern::text)
 	        )
-	LEFT JOIN LATERAL unnest(td.tags) AS test_tag ON TRUE
 	WHERE tl.group_id = :group_id
 	    AND (:test_session_id::TEXT IS NULL OR tl.test_session_id = :test_session_id)
 	    AND (:test_definition_id::TEXT IS NULL OR tl.test_definition_id = :test_definition_id)
