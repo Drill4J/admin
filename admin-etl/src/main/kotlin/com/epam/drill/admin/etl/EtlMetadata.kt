@@ -22,11 +22,11 @@ data class EtlMetadata(
     val extractorName: String,
     val loaderName: String,
     val lastProcessedAt: Instant,
-    val lastRunAt: Instant,
     val lastLoadDuration: Long = 0L,
     val lastExtractDuration: Long = 0L,
     val lastRowsProcessed: Long = 0L,
     val status: EtlStatus,
     val errorMessage: String? = null,
+    val period: EtlPeriod = EtlPeriod.UNBOUNDED,
 )
 

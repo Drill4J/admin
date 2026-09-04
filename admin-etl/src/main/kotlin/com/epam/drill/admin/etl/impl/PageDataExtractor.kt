@@ -42,11 +42,10 @@ abstract class PageDataExtractor<T : EtlRow>(
         emitter: FlowCollector<T>,
         onExtractingProgress: suspend (EtlExtractingResult) -> Unit
     ) {
-        val groupId = context.groupId
         var currentSince = sinceTimestamp
         val page = AtomicInteger(0)
-        val rowsFetched = metrics.rowsFetched(name, context)
-        val failures = metrics.extractionFailures(name, context)
+        val rowsFetched = metrics.rowsFetched(name, context, sinceTimestamp)
+        val failures = metrics.extractionFailures(name, context, sinceTimestamp)
         var hasMore = true
         val buffer: MutableList<T> = mutableListOf()
         val isExecutingQuery = AtomicBoolean(true)
@@ -55,7 +54,7 @@ abstract class PageDataExtractor<T : EtlRow>(
             try {
                 while (hasMore && currentSince < untilTimestamp) {
                     page.incrementAndGet()
-                    logger.debug { "ETL extractor [$name] for group [$groupId] is executing query for page ${page.get()} since $currentSince until $untilTimestamp ..." }
+                    logger.debug { "ETL extractor [$name] for context [$context] is executing query for page ${page.get()} since $currentSince until $untilTimestamp ..." }
 
                     var previousTimestamp: Instant? = null
                     var previousEmittedTimestamp: Instant? = null
@@ -68,7 +67,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                         untilTimestamp = untilTimestamp,
                         limit = extractionLimit,
                         onExtractionExecuted = { duration ->
-                            logger.debug { "ETL extractor [$name] for group [$groupId] executed query for page ${page.get()} in ${duration}ms " }
+                            logger.debug { "ETL extractor [$name] for context [$context] executed query for page ${page.get()} in ${duration}ms " }
                             onExtractingProgress(
                                 EtlExtractingResult(
                                     duration = duration
@@ -101,7 +100,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                         emitBuffer(buffer, emitter)
                         previousEmittedTimestamp = previousTimestamp
                         logger.debug {
-                            "ETL extractor [$name] for group [$groupId] completed fetching" +
+                            "ETL extractor [$name] for context [$context] completed fetching" +
                                     ", rows fetched: ${rowsFetched.count()}" +
                                     ", total pages: ${page.get()}" +
                                     (if (previousEmittedTimestamp != null) ", last extracted at $previousEmittedTimestamp" else "")
@@ -113,7 +112,7 @@ abstract class PageDataExtractor<T : EtlRow>(
                         // Remove rows from buffer that have timestamp greater than currentSince to avoid re-emission on the next page
                         buffer.removeIf { it.timestamp > currentSince }
                         hasMore = true
-                        logger.debug { "ETL extractor [$name] for group [$groupId] fetched $pageRows rows on page ${page.get()}" +
+                        logger.debug { "ETL extractor [$name] for context [$context] fetched $pageRows rows on page ${page.get()}" +
                                 ", last extracted at $previousEmittedTimestamp" }
                     }
                 }
@@ -127,11 +126,11 @@ abstract class PageDataExtractor<T : EtlRow>(
         }.every(loggingFrequency.seconds) {
             if (isExecutingQuery.get()) {
                 logger.debug {
-                    "ETL extractor [$name] for group [$groupId] is still executing query for page ${page.get()} ..."
+                    "ETL extractor [$name] for context [$context] is still executing query for page ${page.get()} ..."
                 }
             } else {
                 logger.debug {
-                    "ETL extractor [$name] for group [$groupId] fetched ${rowsFetched.count()} rows" +
+                    "ETL extractor [$name] for context [$context] fetched ${rowsFetched.count()} rows" +
                             ", page: ${page.get()}"
                 }
             }

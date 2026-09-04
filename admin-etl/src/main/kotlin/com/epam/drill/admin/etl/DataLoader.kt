@@ -40,5 +40,10 @@ interface DataLoader<T: EtlRow> {
         onStatusChanged: suspend (EtlStatus) -> Unit = {},
     ): EtlLoadingResult
 
-    suspend fun deleteAll(context: EtlContext)
+    /**
+     * Deletes rows from the target table for the given [context], optionally scoped to the
+     * day range in [period] (filtered by `created_at_day`). An unbounded [period] deletes
+     * all rows for the context.
+     */
+    suspend fun deleteAll(context: EtlContext, period: EtlPeriod = EtlPeriod.UNBOUNDED)
 }

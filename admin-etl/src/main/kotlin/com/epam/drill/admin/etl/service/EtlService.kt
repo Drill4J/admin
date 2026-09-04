@@ -15,19 +15,58 @@
  */
 package com.epam.drill.admin.etl.service
 
-import com.epam.drill.admin.etl.EtlContext
-import com.epam.drill.admin.etl.EtlProcessingResult
+import com.epam.drill.admin.etl.EtlDailyStatusRow
+import com.epam.drill.admin.etl.model.EtlJobView
 import java.time.Instant
+import java.time.LocalDate
 
+/**
+ * Service for ETL operations.
+ */
 interface EtlService {
-    suspend fun refresh(
-        context: EtlContext? = null,
-        etlName: String? = null,
-        reset: Boolean = false,
-        initTimestamp: Instant? = null,
-        finalTimestamp: Instant? = null,
-        skipIfLocked: Boolean = false,
-    ): List<EtlProcessingResult>
 
-    suspend fun getRefreshStatus(groupId: String): Map<String, Any?>
+    /**
+     * Refreshes the ETL data.
+     * If a job is already running, it will be skipped.
+     *
+     * @param groupId The group ID to refresh the ETL data for.
+     */
+    suspend fun refresh(groupId: String? = null)
+
+    /**
+     * Forces a refresh of the ETL data.
+     * If a job is already running, it will be waited for completion before starting a new one.
+     *
+     * @param groupId The group ID to refresh the ETL data for.
+     * @param snapshotTimestamp An optional timestamp to use for the refresh snapshot.
+     * @return The timestamp of the refresh operation.
+     */
+    suspend fun forceRefresh(groupId: String? = null, snapshotTimestamp: Instant? = null): Instant
+
+    /** Force rerun for `[from, to]`: cancels overlapping jobs, schedules and runs new ones. */
+    suspend fun rerunDateRange(groupId: String? = null, from: LocalDate?, to: LocalDate?, workers: Int? = null): List<EtlJobView>
+
+    /** Force rerun of the whole history. */
+    suspend fun rerunAllData(groupId: String? = null, workers: Int? = null): List<EtlJobView>
+
+    /** Force rerun of the `(today, today)` period. */
+    suspend fun rerunToday(groupId: String? = null): List<EtlJobView>
+
+    /** Resumes/(re)starts idle or expired-lease jobs, bounded by the available worker budget. */
+    suspend fun runIdleJobs(groupId: String? = null): List<EtlJobView>
+
+    /** Per-day ETL status within `[from, to]` for [groupId] (worst status across orchestrators wins). */
+    suspend fun getDailyStatuses(groupId: String, from: LocalDate?, to: LocalDate?): List<EtlDailyStatusRow>
+
+    /** The furthest timestamp processed so far for [groupId] (the minimum across orchestrators), or null. */
+    suspend fun getLastProcessedTimestamp(groupId: String): Instant?
+
+    suspend fun loadTestDefinitionCoverage(
+        groupId: String, testSessionId: String, testDefinitionId: String,
+        snapshotTimestamp: Instant? = null,
+    )
+
+    suspend fun getActiveJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
+
+    suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 }

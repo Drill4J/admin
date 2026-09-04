@@ -23,6 +23,7 @@ import com.epam.drill.admin.etl.EtlRow
 import com.epam.drill.admin.etl.UntypedRow
 import com.epam.drill.admin.etl.config.EtlConfig
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 /**
  * Entry point for the fluent ETL pipeline builder DSL.
@@ -177,8 +178,20 @@ internal class SequencedTransformer<T : EtlRow, M : EtlRow, R : EtlRow>(
     private val second: DataTransformer<M, R>
 ) : DataTransformer<T, R> {
     override val name: String = "${first.name}+${second.name}"
-    override suspend fun transform(context: EtlContext, collector: Flow<T>): Flow<R> =
-        second.transform(context, first.transform(context, collector))
+    override suspend fun transform(
+        context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
+        collector: Flow<T>,
+        onTransformationProgress: suspend (Instant) -> Unit
+    ): Flow<R> =
+        second.transform(
+            context,
+            sinceTimestamp,
+            untilTimestamp,
+            first.transform(context, sinceTimestamp, untilTimestamp, collector, onTransformationProgress),
+            onTransformationProgress
+        )
 }
 
 /**
@@ -188,7 +201,10 @@ internal object NoOpTransformer : DataTransformer<UntypedRow, UntypedRow> {
     override val name: String = "identity"
     override suspend fun transform(
         context: EtlContext,
+        sinceTimestamp: Instant,
+        untilTimestamp: Instant,
         collector: Flow<UntypedRow>,
+        onTransformationProgress: suspend (Instant) -> Unit
     ): Flow<UntypedRow> = collector
 }
 

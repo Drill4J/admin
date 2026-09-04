@@ -27,8 +27,8 @@ import com.epam.drill.admin.config.SchedulerConfig
 import com.epam.drill.admin.config.monitoringDIModule
 import com.epam.drill.admin.config.schedulerDIModule
 import com.epam.drill.admin.metrics.config.etlDIModule
-import com.epam.drill.admin.metrics.config.updateMetricsEtlJob
-import com.epam.drill.admin.etl.route.etlManagementRoutes
+import com.epam.drill.admin.etl.route.etlManagementReadRoutes
+import com.epam.drill.admin.etl.route.etlManagementWriteRoutes
 import com.epam.drill.admin.metrics.config.*
 import com.epam.drill.admin.route.rootRoute
 import com.epam.drill.admin.route.uiConfigRoute
@@ -126,10 +126,13 @@ fun Application.module() {
             //Admin
             authenticate("jwt", "api-key") {
                 tryApiKeyRoute()
+                withRole(Role.USER, Role.ADMIN) {
+                    settingsReadRoutes()
+                }
                 withRole(Role.ADMIN) {
                     userManagementRoutes()
                     apiKeyManagementRoutes()
-                    settingsRoutes()
+                    settingsWriteRoutes()
                 }
             }
 
@@ -147,9 +150,14 @@ fun Application.module() {
             //Metrics
             authenticate("jwt", "api-key") {
                 metricsRoutes()
+                withRole(Role.USER, Role.ADMIN) {
+                    route("/metrics") {
+                        etlManagementReadRoutes()
+                    }
+                }
                 withRole(Role.ADMIN) {
                     route("/metrics") {
-                        etlManagementRoutes()
+                        etlManagementWriteRoutes()
                     }
                 }
             }
@@ -245,7 +253,8 @@ private fun Application.initScheduler() {
         scheduler.shutdown()
     }
     scheduler.start()
-    scheduler.scheduleJob(updateMetricsEtlJob, schedulerConfig.etlTrigger)
+    scheduler.scheduleJob(incrementalRunEtlJob, schedulerConfig.incrementalRunEtlTrigger)
+    scheduler.scheduleJob(runIdleEtlJobsJob, schedulerConfig.runIdleEtlJobsTrigger)
     scheduler.scheduleJob(rawDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("rawDataRetentionPolicyTrigger"))
     scheduler.scheduleJob(metricsDataRetentionPolicyJob, schedulerConfig.getRetentionPoliciesTrigger("metricsRetentionPolicyTrigger"))
     scheduler.scheduleJob(buildFinalizationRetryJob, buildFinalizationRetryTrigger(buildValidationConfig.retryJobCron))
