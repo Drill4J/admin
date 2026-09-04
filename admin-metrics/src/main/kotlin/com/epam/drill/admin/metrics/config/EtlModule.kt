@@ -44,7 +44,7 @@ import org.kodein.di.singleton
 import org.quartz.JobBuilder
 import org.quartz.JobDetail
 
-const val DEFAULT_ETL = "today"
+const val DEFAULT_ETL = "incremental"
 const val HISTORICAL_ETL = "historical"
 const val TEST_DEFINITION_COVERAGE_ETL = "testDefinitionCoverage"
 
@@ -85,12 +85,12 @@ val etlDIModule
                         // Coverage extractor group
                         buildMethodTestSessionCoveragePipeline,
                         buildMethodCoveragePipeline,
-                        methodDailyCoveragePipeline,
+                        methodCoveragePipeline,
                         testSessionBuildsFromCoveragePipeline,
                         // Test-launch coverage extractor group
                         buildMethodTestSessionCoverageFromTestLaunchesPipeline,
                         buildMethodCoverageFromTestLaunchesPipeline,
-                        methodDailyCoverageFromTestLaunchesPipeline,
+                        methodCoverageFromTestLaunchesPipeline,
                         test2CodeMappingPipeline,
                         testSessionBuildsFromTestLaunchesPipeline,
                     ),
@@ -119,16 +119,12 @@ val etlDIModule
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
                         // Coverage extractor group
-                        buildMethodTestSessionCoveragePipeline,
-                        buildMethodCoveragePipeline,
-                        methodDailyCoveragePipeline,
-                        testSessionBuildsFromCoveragePipeline,
-                        // Test-launch coverage extractor group
-                        buildMethodTestSessionCoverageFromTestLaunchesPipeline,
-                        buildMethodCoverageFromTestLaunchesPipeline,
-                        methodDailyCoverageFromTestLaunchesPipeline,
-                        test2CodeMappingPipeline,
-                        testSessionBuildsFromTestLaunchesPipeline,
+                        historicalBuildMethodTestDefinitionCoveragePipeline,
+                        historicalBuildMethodTestSessionCoveragePipeline,
+                        historicalBuildMethodCoveragePipeline,
+                        historicalMethodCoveragePipeline,
+                        historicalTest2CodeMappingPipeline,
+                        historicalTestSessionBuildsPipeline,
                     ),
                     metadataRepository = instance(),
                     jobsRepository = instance(),
@@ -193,7 +189,7 @@ val etlDIModule
         bind<EtlService>() with singleton {
             EtlServiceImpl(
                 todayLauncher = instance(tag = DEFAULT_ETL),
-                historicalLauncher = instance(tag = DEFAULT_ETL),
+                historicalLauncher = instance(tag = HISTORICAL_ETL),
                 testDefinitionCoverageLauncher = instance(tag = TEST_DEFINITION_COVERAGE_ETL),
                 settingsService = instance(),
                 maxWorkers = instance<EtlConfig>().maxWorkers,
