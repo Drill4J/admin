@@ -61,12 +61,15 @@ interface EtlService {
     /** The furthest timestamp processed so far for [groupId] (the minimum across orchestrators), or null. */
     suspend fun getLastProcessedTimestamp(groupId: String): Instant?
 
+    /** Runs ETL for the coverage of a specific test definition within a test session. */
     suspend fun loadTestDefinitionCoverage(
         groupId: String, testSessionId: String, testDefinitionId: String,
         snapshotTimestamp: Instant? = null,
     )
 
+    /** Returns the list of active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun getActiveJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 
+    /** Cancels all active ETL jobs for [groupId] within `[from, to]`. */
     suspend fun cancelJobs(groupId: String?, from: LocalDate?, to: LocalDate?): List<EtlJobView>
 }
