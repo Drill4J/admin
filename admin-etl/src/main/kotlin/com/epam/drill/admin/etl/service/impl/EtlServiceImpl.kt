@@ -139,6 +139,7 @@ class EtlServiceImpl(
     }
 
     private fun EtlJobResult.toJobView(): EtlJobView = EtlJobView(
+        etlName = this.job.etlName,
         groupId = this.job.context.groupId,
         workerId = this.workerId,
         status = this.status,
@@ -146,35 +147,6 @@ class EtlServiceImpl(
         toDay = this.job.period.to?.toString(),
         processedUntilTimestamp = this.processedUntilTimestamp.toString(),
     )
-
-    private fun EtlJob.toJobView(): EtlJobView = EtlJobView(
-        groupId = this.context.groupId,
-        fromDay = this.period.from?.toString(),
-        toDay = this.period.to?.toString(),
-        workerId = null,
-        status = null,
-        processedUntilTimestamp = null,
-    )
-
-    /** Combines a (sorted or unsorted) list of individual days into contiguous [EtlPeriod]s. */
-    private fun combineIntoPeriods(days: List<LocalDate>): List<EtlPeriod> {
-        if (days.isEmpty()) return emptyList()
-        val sorted = days.distinct().sorted()
-        val periods = mutableListOf<EtlPeriod>()
-        var rangeStart = sorted.first()
-        var rangeEnd = sorted.first()
-        for (day in sorted.drop(1)) {
-            if (day == rangeEnd.plusDays(1)) {
-                rangeEnd = day
-            } else {
-                periods += EtlPeriod(rangeStart, rangeEnd)
-                rangeStart = day
-                rangeEnd = day
-            }
-        }
-        periods += EtlPeriod(rangeStart, rangeEnd)
-        return periods
-    }
 
     private suspend fun forEachContext(
         groupId: String?, block: suspend (EtlContext) -> List<EtlJobResult>
