@@ -119,7 +119,6 @@ val etlDIModule
                         testSessionsPipeline,
                         testSessionBuildsPipeline,
                         // Coverage extractor group
-                        historicalBuildMethodTestDefinitionCoveragePipeline,
                         historicalBuildMethodTestSessionCoveragePipeline,
                         historicalBuildMethodCoveragePipeline,
                         historicalMethodCoveragePipeline,

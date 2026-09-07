@@ -59,13 +59,6 @@ val EtlConfig.historicalTestSessionBuildsPipeline
         .transformWith(testSessionBuildsAggregator)
         .loadWith(testSessionBuildsLoader)
 
-val EtlConfig.historicalBuildMethodTestDefinitionCoveragePipeline
-    get() = pipeline("build_method_test_definition_coverage")
-        .extractWith(coverageExtractor)
-        .transformWith(hasTestSessionAndDefinitionFilter)
-        .loadWith(buildMethodTestDefinitionCoverageLoader)
-
-
 val EtlConfig.historicalTest2CodeMappingPipeline
     get() = pipeline("test_to_code_mapping")
         .extractWith(coverageExtractor)
